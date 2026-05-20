@@ -2,8 +2,9 @@ export function formatCurrency(amount: number): string {
   return `₱${amount.toLocaleString('en-PH')}`;
 }
 
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-PH', {
+export function formatDate(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleDateString('en-PH', {
     month: '2-digit',
     day: '2-digit',
     year: 'numeric'

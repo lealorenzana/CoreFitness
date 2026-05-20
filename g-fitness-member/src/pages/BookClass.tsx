@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, User, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { trainers as trainerData } from '../data/trainers';
+import { showSuccessToast } from '../utils/errorHandler';
+import { SharedStorage } from '../utils/sharedStorage';
+import { getCurrentUser } from '../utils/auth';
 
 interface Trainer {
   id: string;
@@ -47,13 +50,40 @@ export default function BookClass() {
   }));
 
   const handleBooking = () => {
-    alert(`Class booked!\n\nClass: ${classTypes.find(c => c.id === selectedClassType)?.name}\nTrainer: ${selectedTrainer?.name}\nDay: ${selectedDay}\nTime: ${selectedTime}\nLocation: Core Fitness Main Studio`);
-    // Reset
-    setStep(1);
-    setSelectedClassType(null);
-    setSelectedTrainer(null);
-    setSelectedDay(null);
-    setSelectedTime(null);
+    const currentUser = getCurrentUser();
+    const className = classTypes.find(c => c.id === selectedClassType)?.name;
+    
+    // Create booking object
+    const booking = {
+      id: `booking-${Date.now()}`,
+      memberId: currentUser?.email || 'eya.lorenzana@email.com',
+      memberName: currentUser?.name || 'Eya Lorenzana',
+      memberEmail: currentUser?.email || 'eya.lorenzana@email.com',
+      className: className || '',
+      classType: selectedClassType || '',
+      trainerName: selectedTrainer?.name || '',
+      trainerId: selectedTrainer?.id || '',
+      day: selectedDay || '',
+      time: selectedTime || '',
+      date: new Date().toISOString().split('T')[0],
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to shared storage (visible to admin)
+    SharedStorage.addBooking(booking);
+    
+    showSuccessToast(`${className} class booked successfully!`);
+    
+    // Reset and navigate after short delay
+    setTimeout(() => {
+      setStep(1);
+      setSelectedClassType(null);
+      setSelectedTrainer(null);
+      setSelectedDay(null);
+      setSelectedTime(null);
+      navigate('/member/booking-history');
+    }, 1500);
   };
 
   return (
@@ -116,7 +146,7 @@ export default function BookClass() {
                     setSelectedClassType(classType.id);
                     setStep(2);
                   }}
-                  className="w-full bg-gray-800 border-2 ${selectedClassType === classType.id ? 'border-primary-start' : 'border-gray-600'} rounded-xl p-4 text-left hover:border-primary-start/50 transition-colors shadow-lg"
+                  className={`w-full bg-gray-800 border-2 ${selectedClassType === classType.id ? 'border-primary-start' : 'border-gray-600'} rounded-xl p-4 text-left hover:border-primary-start/50 transition-colors shadow-lg`}
                 >
                   <div className="flex items-center gap-4">
                     <div className="text-4xl">{classType.icon}</div>

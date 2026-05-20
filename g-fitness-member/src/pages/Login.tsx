@@ -1,25 +1,45 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, ArrowRight } from 'lucide-react';
+import { User, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
+import { login } from '../utils/auth';
+import { handleError, showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [memberId, setMemberId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    // Validate inputs
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
     
     setIsLoading(true);
     
+    // Simulate API call delay
     setTimeout(() => {
-      const finalMemberId = memberId || 'GF-2024-001';
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('memberId', finalMemberId);
-      navigate('/member/home');
+      const result = login(email, password);
+      
+      if (result.success && result.user) {
+        showSuccessToast(`Welcome back, ${result.user.firstName}!`);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('memberId', result.user.id);
+        navigate('/member/home');
+      } else {
+        setError(result.error || 'Login failed');
+        showErrorToast(handleError({ message: result.error || 'Invalid credentials' }));
+        setIsLoading(false);
+      }
     }, 1000);
   };
 
@@ -71,16 +91,23 @@ export default function Login() {
             onSubmit={handleLogin}
             className="space-y-5"
           >
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">Member ID</label>
+              <label className="block text-sm font-semibold text-white mb-2">Email Address</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
-                  type="text"
-                  value={memberId}
-                  onChange={(e) => setMemberId(e.target.value)}
-                  placeholder="Enter your member ID"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="eya.lorenzana@email.com"
                   className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                  required
                 />
               </div>
             </div>
@@ -90,12 +117,20 @@ export default function Login() {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-12 pr-12 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                  required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

@@ -2,6 +2,9 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Smartphone, Building2, Wallet, CheckCircle, ArrowLeft } from 'lucide-react';
+import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
+import { SharedStorage } from '../utils/sharedStorage';
+import { getCurrentUser } from '../utils/auth';
 
 export default function RenewMembership() {
   const navigate = useNavigate();
@@ -24,13 +27,35 @@ export default function RenewMembership() {
 
   const handlePayment = () => {
     if (!selectedMethod) {
-      alert('Please select a payment method');
+      showErrorToast({ type: 'validation', message: 'Please select a payment method' });
       return;
     }
 
+    const currentUser = getCurrentUser();
+    const selectedPlanData = plans.find((p) => p.id === selectedPlan);
+    
+    // Create payment record
+    const payment = {
+      id: `payment-${Date.now()}`,
+      memberId: currentUser?.email || 'eya.lorenzana@email.com',
+      memberName: currentUser?.name || 'Eya Lorenzana',
+      memberEmail: currentUser?.email || 'eya.lorenzana@email.com',
+      amount: selectedPlanData?.price || 0,
+      method: selectedMethod === 'gcash' ? 'GCash' : 
+              selectedMethod === 'card' ? 'Credit Card' :
+              selectedMethod === 'bank' ? 'Bank Transfer' : 'Cash',
+      date: new Date().toISOString().split('T')[0],
+      notes: `Membership renewal - ${selectedPlanData?.name} plan`,
+      status: selectedMethod === 'cash' ? 'Pending' : 'Completed',
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to shared storage (visible to admin)
+    SharedStorage.addPayment(payment);
+
     if (selectedMethod === 'cash') {
-      alert('Please proceed to the gym reception to complete your payment. Show this confirmation to the staff.');
-      navigate('/member/home');
+      showSuccessToast('Payment confirmed! Please proceed to reception to complete payment.');
+      setTimeout(() => navigate('/member/home'), 2000);
     } else {
       // Simulate payment processing
       setTimeout(() => {

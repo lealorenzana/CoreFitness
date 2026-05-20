@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { Home, MessageSquare, Calendar, TrendingUp, User } from 'lucide-react';
+import { Home, MessageSquare, Calendar, Dumbbell, User } from 'lucide-react';
 
 const navItems = [
   { label: 'Home', path: '/member/home', icon: Home },
   { label: 'Chat', path: '/member/chatbot', icon: MessageSquare },
   { label: 'Events', path: '/member/events', icon: Calendar },
-  { label: 'Progress', path: '/member/progress', icon: TrendingUp },
+  { label: 'Trainers', path: '/member/trainers', icon: Dumbbell },
   { label: 'Profile', path: '/member/profile', icon: User },
 ];
 

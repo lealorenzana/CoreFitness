@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { X, CreditCard, User, Calendar, DollarSign } from 'lucide-react';
+import { X, CreditCard, User, Calendar, DollarSign, Search } from 'lucide-react';
 import Button from './Button';
 import Input from './Input';
 import { MEMBERS } from '../../data/members';
@@ -29,8 +29,19 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
   const paymentMethods = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Debit Card'];
+
+  // Filter members based on search
+  const filteredMembers = gymMembers.filter(m =>
+    m.fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
+    m.qrCode.toLowerCase().includes(memberSearch.toLowerCase()) ||
+    m.email.toLowerCase().includes(memberSearch.toLowerCase())
+  );
+
+  const selectedMember = gymMembers.find(m => m.id === formData.memberId);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -60,8 +71,6 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
 
     // Simulate API call
     setTimeout(() => {
-      const selectedMember = gymMembers.find(m => m.id === formData.memberId);
-      
       onSubmit({
         memberId: formData.memberId,
         memberName: selectedMember?.fullName || '',
@@ -79,6 +88,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
         date: new Date().toISOString().split('T')[0],
         notes: '',
       });
+      setMemberSearch('');
       setErrors({});
       setIsLoading(false);
       onClose();
@@ -94,9 +104,18 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
         date: new Date().toISOString().split('T')[0],
         notes: '',
       });
+      setMemberSearch('');
+      setShowMemberDropdown(false);
       setErrors({});
       onClose();
     }
+  };
+
+  const handleSelectMember = (member: typeof gymMembers[0]) => {
+    setFormData({ ...formData, memberId: member.id });
+    setMemberSearch(member.fullName);
+    setShowMemberDropdown(false);
+    if (errors.memberId) setErrors({ ...errors, memberId: '' });
   };
 
   return (
@@ -144,29 +163,96 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {/* Member Selection */}
+                {/* Member Selection with Search */}
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
                     <User size={16} />
                     Select Member
                   </label>
-                  <select
-                    value={formData.memberId}
-                    onChange={(e) => {
-                      setFormData({ ...formData, memberId: e.target.value });
-                      if (errors.memberId) setErrors({ ...errors, memberId: '' });
-                    }}
-                    className={`w-full bg-dark border ${errors.memberId ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
-                  >
-                    <option value="">Choose a member...</option>
-                    {gymMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.fullName} ({member.qrCode})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+                    <Input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => {
+                        setMemberSearch(e.target.value);
+                        setShowMemberDropdown(true);
+                        if (!e.target.value) {
+                          setFormData({ ...formData, memberId: '' });
+                        }
+                      }}
+                      onFocus={() => setShowMemberDropdown(true)}
+                      placeholder="Search by name, email, or ID..."
+                      className={`pl-12 ${errors.memberId ? 'border-red-500' : ''}`}
+                    />
+                    
+                    {/* Dropdown List */}
+                    {showMemberDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-dark border border-dark-border rounded-xl shadow-2xl max-h-60 overflow-y-auto z-20">
+                        {filteredMembers.length > 0 ? (
+                          filteredMembers.map((member) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => handleSelectMember(member)}
+                              className="w-full text-left px-4 py-3 hover:bg-dark-border transition-colors flex items-center gap-3 border-b border-dark-border last:border-b-0"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {member.firstName[0]}{member.lastName[0]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white font-semibold truncate">{member.fullName}</p>
+                                <p className="text-gray-400 text-xs truncate">{member.email}</p>
+                                <p className="text-gray-500 text-xs font-mono">{member.qrCode}</p>
+                              </div>
+                              <div className="flex-shrink-0">
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  member.membershipType === 'Premium' ? 'bg-purple-500/20 text-purple-400' :
+                                  member.membershipType === 'Standard' ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {member.membershipType}
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-8 text-center text-gray-400">
+                            <User size={32} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No members found</p>
+                            <p className="text-xs mt-1">Try a different search term</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {errors.memberId && (
                     <p className="text-red-400 text-xs mt-1">{errors.memberId}</p>
+                  )}
+                  
+                  {/* Selected Member Display */}
+                  {selectedMember && (
+                    <div className="mt-3 p-3 bg-dark rounded-xl border border-primary-start/30">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold">
+                          {selectedMember.firstName[0]}{selectedMember.lastName[0]}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white font-semibold text-sm">{selectedMember.fullName}</p>
+                          <p className="text-gray-400 text-xs">{selectedMember.membershipType} Member</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, memberId: '' });
+                            setMemberSearch('');
+                          }}
+                          className="text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
 

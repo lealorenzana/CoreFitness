@@ -1,19 +1,118 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, Dumbbell, Trophy, TrendingUp, Bell, ChevronRight, Zap, Target } from 'lucide-react';
+import { Calendar, Dumbbell, Trophy, TrendingUp, Bell, ChevronRight, Zap, Target, RefreshCw, AlertCircle, CheckCircle, Ban } from 'lucide-react';
 import Notifications from '../components/Notifications';
+import { useState, useEffect, useRef } from 'react';
+import { generateSecureQR, getQRTimeRemaining } from '../utils/qrCode';
+import { getCurrentUser } from '../utils/auth';
+import { SharedStorage } from '../utils/sharedStorage';
 
 export default function Home() {
   const navigate = useNavigate();
-  const member = {
-    name: 'Juan Dela Cruz',
-    membershipType: 'Premium',
-    qrCode: 'GF-2024-001',
-    expiryDate: 'Dec 31, 2024',
-    gym: 'Core Fitness Mamburao',
-    daysLeft: 45,
+  const currentUser = getCurrentUser();
+  const memberEmail = localStorage.getItem('memberEmail') || currentUser?.email || 'eya.lorenzana@email.com';
+
+  // Load member data from SharedStorage (same as Profile page)
+  const getActiveMember = () => {
+    const sharedMember = SharedStorage.getMember(memberEmail);
+    if (sharedMember) {
+      // Calculate days left from expiry
+      const expiryDate = sharedMember.expiryDate || 'Dec 31, 2026';
+      const daysLeft = Math.max(0, Math.floor((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      return {
+        name: sharedMember.fullName || `${sharedMember.firstName} ${sharedMember.lastName}`,
+        membershipType: sharedMember.membershipType || 'Premium',
+        qrCode: sharedMember.qrCode || 'GF-2024-001',
+        expiryDate: expiryDate,
+        gym: 'Core Fitness Mamburao',
+        daysLeft,
+      };
+    }
+    // Fallback for demo
+    return {
+      name: currentUser?.name || 'Eya Lorenzana',
+      membershipType: 'Premium',
+      qrCode: 'GF-2024-001',
+      expiryDate: 'Dec 31, 2026',
+      gym: 'Core Fitness Mamburao',
+      daysLeft: 591,
+    };
   };
+
+  const member = getActiveMember();
+
+  const [qrCode, setQrCode] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [isExpired, setIsExpired] = useState(false);
+  const [hasBeenUsed, setHasBeenUsed] = useState(false);
+  const hasGeneratedRef = useRef(false);
+
+  // Check if QR was already used today
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const lastUsed = localStorage.getItem('qr_last_used');
+    
+    if (lastUsed) {
+      const data = JSON.parse(lastUsed);
+      if (data.date === today && data.memberId === member.qrCode) {
+        setHasBeenUsed(true);
+      }
+    }
+  }, [member.qrCode]);
+
+  // Check if membership is expired
+  const checkMembershipStatus = () => {
+    const today = new Date();
+    const expiryDate = new Date(member.expiryDate);
+    const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      isExpired: today > expiryDate,
+      daysUntilExpiry: daysUntilExpiry,
+      isExpiringSoon: daysUntilExpiry <= 7 && daysUntilExpiry > 0
+    };
+  };
+
+  const membershipStatus = checkMembershipStatus();
+
+  // Generate QR code ONCE per day (only if membership is active)
+  const generateNewQR = () => {
+    // Check if membership is expired
+    if (membershipStatus.isExpired) {
+      return; // Don't generate QR if expired
+    }
+
+    const newQR = generateSecureQR(member.qrCode, 'gym-001');
+    setQrCode(newQR);
+    setTimeRemaining(60);
+    setIsExpired(false);
+  };
+
+  // Generate QR code ONCE on mount (if not used today and membership active)
+  useEffect(() => {
+    if (!hasGeneratedRef.current && !hasBeenUsed && !membershipStatus.isExpired) {
+      generateNewQR();
+      hasGeneratedRef.current = true;
+    }
+  }, [hasBeenUsed, membershipStatus.isExpired]);
+
+  // Update countdown timer every second
+  useEffect(() => {
+    if (!qrCode || hasBeenUsed) return;
+
+    const interval = setInterval(() => {
+      const remaining = getQRTimeRemaining(qrCode);
+      setTimeRemaining(remaining);
+      
+      // Mark as expired when reaches 0
+      if (remaining === 0) {
+        setIsExpired(true);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [qrCode, hasBeenUsed]);
 
   const stats = [
     { label: 'Check-ins', value: '24', icon: Calendar, color: 'from-blue-500 to-cyan-500', bgColor: 'bg-blue-500/20' },
@@ -31,18 +130,25 @@ export default function Home() {
       action: () => navigate('/member/book-class'),
     },
     {
+      title: 'Booking History',
+      subtitle: 'View your class bookings',
+      icon: CheckCircle,
+      color: 'from-blue-500 to-cyan-500',
+      action: () => navigate('/member/booking-history'),
+    },
+    {
+      title: 'Renew Membership',
+      subtitle: 'Extend your membership',
+      icon: RefreshCw,
+      color: 'from-green-500 to-emerald-500',
+      action: () => navigate('/member/renew-membership'),
+    },
+    {
       title: 'Browse Events',
       subtitle: 'Join upcoming activities',
       icon: Trophy,
       color: 'from-purple-500 to-pink-500',
       action: () => navigate('/member/events'),
-    },
-    {
-      title: 'Track Progress',
-      subtitle: 'View your fitness journey',
-      icon: TrendingUp,
-      color: 'from-green-500 to-emerald-500',
-      action: () => navigate('/member/progress'),
     },
   ];
 
@@ -78,9 +184,73 @@ export default function Home() {
               <p className="text-white/90 text-sm mt-1">{member.gym}</p>
             </div>
             
-            {/* QR Code */}
-            <div className="bg-white p-3 rounded-2xl shadow-lg">
-              <QRCodeSVG value={member.qrCode} size={100} />
+            {/* QR Code with Timer */}
+            <div className="relative">
+              {membershipStatus.isExpired ? (
+                // Membership Expired - Show blocked message
+                <div className="relative">
+                  <div className="bg-white p-3 rounded-2xl shadow-lg blur-md opacity-20">
+                    <QRCodeSVG value={member.qrCode} size={100} />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-red-600 rounded-full p-3">
+                      <Ban size={32} className="text-white" />
+                    </div>
+                  </div>
+                </div>
+              ) : hasBeenUsed ? (
+                // Already used today - Show message
+                <div className="relative">
+                  <div className="bg-white p-3 rounded-2xl shadow-lg blur-md opacity-30">
+                    <QRCodeSVG value={member.qrCode} size={100} />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-green-500 rounded-full p-3">
+                      <CheckCircle size={32} className="text-white" />
+                    </div>
+                  </div>
+                </div>
+              ) : isExpired ? (
+                // Expired QR - Show blur and message
+                <div className="relative">
+                  <div className="bg-white p-3 rounded-2xl shadow-lg blur-sm opacity-50">
+                    <QRCodeSVG value={qrCode || member.qrCode} size={100} />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-red-500 rounded-full p-3">
+                      <AlertCircle size={32} className="text-white" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Active QR
+                <div className="bg-white p-3 rounded-2xl shadow-lg">
+                  <QRCodeSVG value={qrCode || member.qrCode} size={100} />
+                </div>
+              )}
+              
+              {/* Status Badge */}
+              {membershipStatus.isExpired ? (
+                <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-red-600 to-red-700 rounded-full px-3 py-1 shadow-lg">
+                  <p className="text-white text-xs font-bold">EXPIRED</p>
+                </div>
+              ) : hasBeenUsed ? (
+                <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full px-3 py-1 shadow-lg">
+                  <p className="text-white text-xs font-bold">USED</p>
+                </div>
+              ) : isExpired ? (
+                <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 rounded-full px-3 py-1 shadow-lg">
+                  <p className="text-white text-xs font-bold">EXPIRED</p>
+                </div>
+              ) : (
+                <div className={`absolute -bottom-2 -right-2 rounded-full px-3 py-1 shadow-lg ${
+                  timeRemaining <= 10 
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 animate-pulse' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                }`}>
+                  <p className="text-white text-xs font-bold">{timeRemaining}s</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -95,12 +265,118 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Days Left Badge */}
-          <div className="mt-3 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 inline-block">
-            <p className="text-white text-xs">
-              <span className="font-bold text-lg">{member.daysLeft}</span> days remaining
-            </p>
+          {/* Status Messages */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 inline-block">
+              <p className="text-white text-xs">
+                <span className="font-bold text-lg">{member.daysLeft}</span> days remaining
+              </p>
+            </div>
+            
+            {membershipStatus.isExpired ? (
+              <div className="bg-red-600/30 backdrop-blur-sm rounded-xl px-3 py-2 inline-block border border-red-600/50 flex items-center gap-2">
+                <Ban size={14} className="text-red-300" />
+                <p className="text-red-300 text-xs font-semibold">
+                  Membership Expired
+                </p>
+              </div>
+            ) : membershipStatus.isExpiringSoon ? (
+              <div className="bg-orange-500/20 backdrop-blur-sm rounded-xl px-3 py-2 inline-block border border-orange-500/30 flex items-center gap-2 animate-pulse">
+                <AlertCircle size={14} className="text-orange-300" />
+                <p className="text-orange-300 text-xs font-semibold">
+                  Expires in {membershipStatus.daysUntilExpiry} days!
+                </p>
+              </div>
+            ) : hasBeenUsed ? (
+              <div className="bg-green-500/20 backdrop-blur-sm rounded-xl px-3 py-2 inline-block border border-green-500/30 flex items-center gap-2">
+                <CheckCircle size={14} className="text-green-300" />
+                <p className="text-green-300 text-xs font-semibold">
+                  Already checked in today
+                </p>
+              </div>
+            ) : isExpired ? (
+              <div className="bg-red-500/20 backdrop-blur-sm rounded-xl px-3 py-2 inline-block border border-red-500/30 flex items-center gap-2">
+                <AlertCircle size={14} className="text-red-300" />
+                <p className="text-red-300 text-xs font-semibold">
+                  QR Expired - Use manual check-in
+                </p>
+              </div>
+            ) : (
+              <div className={`backdrop-blur-sm rounded-xl px-3 py-2 inline-block border ${
+                timeRemaining <= 10 
+                  ? 'bg-red-500/20 border-red-500/30' 
+                  : 'bg-green-500/20 border-green-500/30'
+              }`}>
+                <p className={`text-xs flex items-center gap-1 ${
+                  timeRemaining <= 10 ? 'text-red-300' : 'text-green-300'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    timeRemaining <= 10 ? 'bg-red-400' : 'bg-green-400'
+                  } animate-pulse`}></span>
+                  {timeRemaining <= 10 ? 'Expiring soon!' : `Valid for ${timeRemaining}s`}
+                </p>
+              </div>
+            )}
           </div>
+          
+          {/* Instructions */}
+          {membershipStatus.isExpired ? (
+            <div className="mt-3 bg-red-600/10 border border-red-600/30 rounded-xl p-4">
+              <p className="text-red-300 text-sm font-semibold mb-2">🚫 Membership Expired</p>
+              <p className="text-red-200 text-xs mb-3">
+                Your membership has expired on {member.expiryDate}. Please renew to continue using gym facilities.
+              </p>
+              <button
+                onClick={() => navigate('/member/renew-membership')}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all"
+              >
+                Renew Membership Now
+              </button>
+            </div>
+          ) : membershipStatus.isExpiringSoon ? (
+            <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+              <p className="text-orange-300 text-sm font-semibold mb-2">⚠️ Membership Expiring Soon!</p>
+              <p className="text-orange-200 text-xs mb-3">
+                Your membership expires in {membershipStatus.daysUntilExpiry} days. Renew now to avoid interruption.
+              </p>
+              <button
+                onClick={() => navigate('/member/renew-membership')}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all"
+              >
+                Renew Now
+              </button>
+            </div>
+          ) : hasBeenUsed ? (
+            <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+              <p className="text-green-300 text-sm font-semibold mb-2">✅ You've already checked in today!</p>
+              <p className="text-green-200 text-xs">
+                Your attendance has been recorded. Come back tomorrow for a new QR code.
+              </p>
+            </div>
+          ) : isExpired ? (
+            <div className="mt-3 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+              <p className="text-red-300 text-sm font-semibold mb-2">⏰ QR Code Expired</p>
+              <p className="text-red-200 text-xs mb-3">
+                Your QR code has expired. Please use manual check-in at the front desk.
+              </p>
+              <div className="bg-red-500/20 rounded-lg p-3">
+                <p className="text-red-100 text-xs font-semibold mb-1">💡 Why did it expire?</p>
+                <p className="text-red-200 text-xs">
+                  QR codes expire after 60 seconds for security. This prevents sharing and ensures you're at the gym when checking in.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+              <p className="text-blue-300 text-sm font-semibold mb-2">📱 How to use your QR code:</p>
+              <ol className="text-blue-200 text-xs space-y-1 ml-4 list-decimal">
+                <li>Show this QR code to the front desk staff</li>
+                <li>Staff will scan it to record your attendance</li>
+                <li>QR expires in {timeRemaining} seconds</li>
+                <li>One QR code per day - cannot be reused</li>
+              </ol>
+            </div>
+          )}
         </div>
 
         {/* Background decoration */}

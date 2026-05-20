@@ -6,10 +6,13 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { MEMBERS } from '../data/members';
 import { formatDate, formatCurrency, formatPhoneNumber } from '../utils/formatters';
+import { showToast } from '../utils/toast';
+import { useState } from 'react';
 
 export default function MemberDetail() {
   const navigate = useNavigate();
   const { memberId } = useParams();
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const member = MEMBERS.find(m => m.id === memberId);
 
@@ -43,6 +46,31 @@ export default function MemberDetail() {
 
   const membershipPrices = { Basic: 800, Standard: 1500, Premium: 2500 };
 
+  const handleEdit = () => {
+    showToast('Opening edit member form...', 'info');
+    // In production, this would open an edit modal
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${member.fullName}? This action cannot be undone.`)) {
+      setIsDeleting(true);
+      setTimeout(() => {
+        showToast(`${member.fullName} has been deleted successfully`, 'success');
+        navigate('/members');
+      }, 1000);
+    }
+  };
+
+  const handleRecordPayment = () => {
+    showToast('Opening payment recording form...', 'info');
+    // In production, this would open a payment modal
+  };
+
+  const handleViewPayment = (invoice: string) => {
+    showToast(`Viewing invoice ${invoice}...`, 'info');
+    // In production, this would show invoice details
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -64,13 +92,18 @@ export default function MemberDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2" onClick={handleEdit}>
             <Edit2 size={18} />
             Edit
           </Button>
-          <Button variant="ghost" className="flex items-center gap-2 text-red-400 hover:text-red-300">
+          <Button 
+            variant="ghost" 
+            className="flex items-center gap-2 text-red-400 hover:text-red-300" 
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
             <Trash2 size={18} />
-            Delete
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
         </div>
       </motion.div>
@@ -241,7 +274,7 @@ export default function MemberDetail() {
               <CreditCard size={20} className="text-blue-400" />
               <h3 className="font-semibold text-white text-lg">Payment History</h3>
             </div>
-            <Button variant="primary" size="sm">
+            <Button variant="primary" onClick={handleRecordPayment}>
               Record Payment
             </Button>
           </div>
@@ -263,7 +296,14 @@ export default function MemberDetail() {
                     <td className="py-4 px-4 text-white">{formatDate(payment.date)}</td>
                     <td className="py-4 px-4 text-white font-semibold">{formatCurrency(payment.amount)}</td>
                     <td className="py-4 px-4 text-gray-400">{payment.method}</td>
-                    <td className="py-4 px-4 text-gray-400 font-mono text-sm">{payment.invoice}</td>
+                    <td className="py-4 px-4">
+                      <button 
+                        onClick={() => handleViewPayment(payment.invoice)}
+                        className="text-primary-start hover:text-primary-end font-mono text-sm hover:underline transition-colors"
+                      >
+                        {payment.invoice}
+                      </button>
+                    </td>
                     <td className="py-4 px-4">
                       <Badge variant="Active">{payment.status}</Badge>
                     </td>

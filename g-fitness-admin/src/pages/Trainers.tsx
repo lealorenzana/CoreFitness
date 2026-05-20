@@ -3,13 +3,22 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { useGymContext } from '../hooks/useGymContext';
+import { useNavigate } from 'react-router-dom';
 import { TRAINERS } from '../data/trainers';
 import { UserPlus, Star, Award, Calendar } from 'lucide-react';
 import { showToast } from '../utils/toast';
 
 export default function Trainers() {
   const { selectedGym } = useGymContext();
+  const navigate = useNavigate();
   const gymTrainers = TRAINERS.filter(t => t.gymId === selectedGym.id);
+
+  const handleAddTrainer = () => {
+    const name = window.prompt('Trainer full name:');
+    if (!name) return;
+    const specialty = window.prompt('Specialization (e.g. Yoga, Boxing):') || 'General Fitness';
+    showToast(`${name} added as a ${specialty} trainer! Update the trainers data file to persist.`, 'success');
+  };
 
   return (
     <div className="space-y-6">
@@ -26,7 +35,7 @@ export default function Trainers() {
         <Button 
           variant="primary" 
           className="shadow-lg shadow-primary-start/30 flex items-center gap-2"
-          onClick={() => showToast('Add Trainer modal would open here', 'info')}
+          onClick={handleAddTrainer}
         >
           <UserPlus size={18} />
           Add Trainer
@@ -132,14 +141,18 @@ export default function Trainers() {
                 {/* Action Buttons */}
                 <div className="mt-6 flex gap-2">
                   <button 
-                    onClick={() => showToast(`Viewing profile for ${trainer.name}`, 'info')}
+                    onClick={() => navigate(`/trainers/${trainer.id}`)}
                     className="flex-1 py-2 px-4 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-lg font-medium hover:shadow-lg hover:shadow-primary-start/30 transition-all duration-200"
                   >
                     View Profile
                   </button>
                   <button 
-                    onClick={() => showToast(`Viewing schedule for ${trainer.name}`, 'info')}
+                    onClick={() => {
+                      const days = trainer.availability?.map((a: any) => a.day).join(', ') || 'N/A';
+                      showToast(`${trainer.name} available: ${days}`, 'info');
+                    }}
                     className="p-2 bg-dark border border-dark-border rounded-lg hover:border-primary-start transition-colors"
+                    title="View availability"
                   >
                     <Calendar size={20} className="text-gray-400" />
                   </button>

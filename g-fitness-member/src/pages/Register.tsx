@@ -3,20 +3,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, MapPin, Calendar, ArrowLeft, CheckCircle, Eye, EyeOff, CreditCard, Zap, Crown, Sparkles } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
+import { register } from '../utils/auth';
+import { validateRegistrationForm } from '../utils/validation';
+import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 export default function Register() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    birthdate: '',
+    firstName: 'Eya',
+    lastName: 'Lorenzana',
+    email: 'eya.lorenzana@email.com',
+    phone: '09123456789',
+    address: 'Mamburao, Occidental Mindoro',
+    birthdate: '2000-01-01',
     password: '',
     confirmPassword: '',
-    selectedPlan: 'basic',
+    selectedPlan: 'premium',
     termsAccepted: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,14 +49,61 @@ export default function Register() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   const handleNext = () => {
-    if (step === 1) setStep(2);
-    else if (step === 2) setStep(3);
-    else if (step === 3) handleSubmit();
+    if (step === 1) {
+      // Validate step 1 fields
+      const step1Errors: Record<string, string> = {};
+      if (!formData.firstName.trim()) step1Errors.firstName = 'First name is required';
+      if (!formData.lastName.trim()) step1Errors.lastName = 'Last name is required';
+      if (!formData.email.trim()) step1Errors.email = 'Email is required';
+      if (!formData.phone.trim()) step1Errors.phone = 'Phone is required';
+      
+      if (Object.keys(step1Errors).length > 0) {
+        setErrors(step1Errors);
+        showErrorToast({ type: 'validation', message: 'Please fill in all required fields' });
+        return;
+      }
+      setErrors({});
+      setStep(2);
+    } else if (step === 2) {
+      // Validate step 2 fields
+      const step2Errors: Record<string, string> = {};
+      if (!formData.address.trim()) step2Errors.address = 'Address is required';
+      if (!formData.birthdate) step2Errors.birthdate = 'Birthdate is required';
+      if (!formData.password) step2Errors.password = 'Password is required';
+      if (formData.password !== formData.confirmPassword) step2Errors.confirmPassword = 'Passwords do not match';
+      
+      if (Object.keys(step2Errors).length > 0) {
+        setErrors(step2Errors);
+        showErrorToast({ type: 'validation', message: 'Please complete all fields correctly' });
+        return;
+      }
+      setErrors({});
+      setStep(3);
+    } else if (step === 3) {
+      handleSubmit();
+    }
   };
 
   const handleSubmit = () => {
-    setShowSuccess(true);
-    setTimeout(() => navigate('/', { replace: true }), 10000);
+    // Final validation
+    const validation = validateRegistrationForm(formData);
+    
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      showErrorToast({ type: 'validation', message: 'Please fix the errors in the form' });
+      return;
+    }
+
+    // Attempt registration
+    const result = register(formData);
+    
+    if (result.success) {
+      showSuccessToast('Registration successful! Please wait for admin approval.');
+      setShowSuccess(true);
+      setTimeout(() => navigate('/', { replace: true }), 10000);
+    } else {
+      showErrorToast({ type: 'validation', message: result.error || 'Registration failed' });
+    }
   };
 
   if (showSuccess) {

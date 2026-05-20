@@ -20,6 +20,7 @@ import AttendanceHistory from './pages/AttendanceHistory';
 import BookClass from './pages/BookClass';
 import BookingHistory from './pages/BookingHistory';
 import TrainerProfile from './pages/TrainerProfile';
+import Trainers from './pages/Trainers';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,7 @@ function App() {
           <Route path="home" element={<Home />} />
           <Route path="chatbot" element={<ChatbotPage />} />
           <Route path="events" element={<Events />} />
+          <Route path="trainers" element={<Trainers />} />
           <Route path="book-class" element={<BookClass />} />
           <Route path="booking-history" element={<BookingHistory />} />
           <Route path="trainer/:trainerId" element={<TrainerProfile />} />
@@ -58,6 +60,7 @@ function App() {
           <Route path="profile/edit" element={<EditProfile />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
+          <Route path="renew-membership" element={<RenewMembership />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
         </Route>
       </Routes>

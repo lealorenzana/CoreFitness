@@ -83,7 +83,7 @@ export default function Membership() {
         </div>
         <div className="space-y-2">
           <button
-            onClick={() => navigate('/member/renew')}
+            onClick={() => navigate('/member/renew-membership')}
             className="w-full py-3 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-primary-start/30 transition-all flex items-center justify-center gap-2"
           >
             <Calendar size={16} />
@@ -141,7 +141,10 @@ export default function Membership() {
                 ))}
               </div>
 
-              <button className="w-full mt-6 py-3 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary-start/30 transition-all duration-200">
+              <button
+                onClick={() => navigate('/member/renew-membership')}
+                className="w-full mt-6 py-3 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary-start/30 transition-all duration-200"
+              >
                 Select Plan
               </button>
             </motion.div>

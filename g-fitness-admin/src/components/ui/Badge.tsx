@@ -1,8 +1,8 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface BadgeProps {
   children: ReactNode;
-  variant?: 'Active' | 'Expired' | 'Suspended' | 'High' | 'Medium' | 'Low' | 'Basic' | 'Standard' | 'Premium';
+  variant?: 'Active' | 'Expired' | 'Expiring' | 'Suspended' | 'High' | 'Medium' | 'Low' | 'Basic' | 'Standard' | 'Premium';
   className?: string;
 }
 
@@ -10,6 +10,7 @@ export default function Badge({ children, variant = 'Active', className = '' }: 
   const variantStyles = {
     Active: 'bg-green-500/20 text-green-400 border-green-500/50',
     Expired: 'bg-red-500/20 text-red-400 border-red-500/50',
+    Expiring: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
     Suspended: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
     High: 'bg-red-500/20 text-red-400 border-red-500/50',
     Medium: 'bg-orange-500/20 text-orange-400 border-orange-500/50',

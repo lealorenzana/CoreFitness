@@ -3,11 +3,62 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User, Mail, Phone, MapPin, Calendar, LogOut, Bell, Shield, Edit, Moon, Sun, CreditCard, ArrowLeft } from 'lucide-react';
+import { SharedStorage } from '../utils/sharedStorage';
+import { showSuccessToast } from '../utils/errorHandler';
 
 export default function Profile() {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Get logged-in member email
+  const memberEmail = localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com';
+
+  // Load member data from SharedStorage with auto-refresh
+  const [member, setMember] = useState(() => {
+    const sharedMember = SharedStorage.getMember(memberEmail);
+    if (sharedMember) {
+      return {
+        name: sharedMember.fullName || `${sharedMember.firstName} ${sharedMember.lastName}`,
+        email: sharedMember.email,
+        phone: sharedMember.phone,
+        gym: 'Core Fitness Mamburao',
+        joinDate: new Date(sharedMember.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        membershipType: sharedMember.membershipType,
+        membershipStatus: sharedMember.membershipStatus,
+      };
+    }
+    // Default fallback
+    return {
+      name: 'Eya Lorenzana',
+      email: 'eya.lorenzana@email.com',
+      phone: '+63 912 345 6789',
+      gym: 'Core Fitness Mamburao',
+      joinDate: 'January 15, 2024',
+      membershipType: 'Premium',
+      membershipStatus: 'Active',
+    };
+  });
+
+  // Auto-refresh member data every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const sharedMember = SharedStorage.getMember(memberEmail);
+      if (sharedMember) {
+        setMember({
+          name: sharedMember.fullName || `${sharedMember.firstName} ${sharedMember.lastName}`,
+          email: sharedMember.email,
+          phone: sharedMember.phone,
+          gym: 'Core Fitness Mamburao',
+          joinDate: new Date(sharedMember.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          membershipType: sharedMember.membershipType,
+          membershipStatus: sharedMember.membershipStatus,
+        });
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [memberEmail]);
 
   // Prevent body scroll when dialog is open
   useEffect(() => {
@@ -29,19 +80,11 @@ export default function Profile() {
     }
   }, []);
 
-  const member = {
-    name: 'Juan Dela Cruz',
-    email: 'juan.delacruz@email.com',
-    phone: '+63 912 345 6789',
-    gym: 'Core Fitness Mamburao',
-    joinDate: 'January 15, 2024',
-  };
-
   const menuItems = [
     { label: 'Payment History', icon: CreditCard, color: 'from-green-500 to-emerald-500', action: () => navigate('/member/payments') },
     { label: 'Membership Details', icon: Shield, color: 'from-purple-500 to-pink-500', action: () => navigate('/member/membership') },
     { label: 'Attendance History', icon: Calendar, color: 'from-blue-500 to-cyan-500', action: () => navigate('/member/attendance-history') },
-    { label: 'Notifications', icon: Bell, color: 'from-yellow-500 to-orange-500', action: () => alert('Notification settings coming soon!') },
+    { label: 'Notifications', icon: Bell, color: 'from-yellow-500 to-orange-500', action: () => showSuccessToast('Notifications are enabled for your account!') },
   ];
 
   const handleLogout = () => {
@@ -99,7 +142,7 @@ export default function Profile() {
             <User size={48} className="text-white" />
           </div>
           <h2 className="text-2xl font-bold text-white">{member.name}</h2>
-          <p className="text-white/80 text-sm mt-1">Premium Member</p>
+          <p className="text-white/80 text-sm mt-1">{member.membershipType} Member</p>
           
           {/* Edit Profile Button */}
           <button

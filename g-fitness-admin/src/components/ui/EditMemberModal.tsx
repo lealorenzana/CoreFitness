@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, MapPin, CreditCard } from 'lucide-react';
+import { X, User, Mail, CreditCard } from 'lucide-react';
 import Button from './Button';
 import Input from './Input';
 import type { EditMemberData } from '../../types/member';
@@ -269,6 +269,7 @@ export default function EditMemberModal({ isOpen, onClose, onSubmit, member }: E
                         <option value="Active">Active</option>
                         <option value="Expiring">Expiring Soon</option>
                         <option value="Expired">Expired</option>
+                        <option value="Suspended">Suspended</option>
                       </select>
                     </div>
                   </div>

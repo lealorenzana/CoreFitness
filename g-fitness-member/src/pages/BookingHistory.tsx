@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react';
+import { SharedStorage } from '../utils/sharedStorage';
+import { getCurrentUser } from '../utils/auth';
 
 interface Booking {
   id: string;
@@ -17,89 +19,64 @@ interface Booking {
 
 export default function BookingHistory() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [bookings] = useState<Booking[]>([
-    {
-      id: 'B001',
-      className: 'HIIT Bootcamp',
-      classType: 'HIIT',
-      trainer: 'Coach John Cruz',
-      date: '2024-05-28',
-      time: '06:00 PM',
-      location: 'Outdoor Area',
-      status: 'upcoming',
-      duration: '45 min',
-    },
-    {
-      id: 'B002',
-      className: 'Strength Fundamentals',
-      classType: 'Strength Training',
-      trainer: 'Coach Mike Santos',
-      date: '2024-05-30',
-      time: '08:00 AM',
-      location: 'Main Gym Floor',
-      status: 'upcoming',
-      duration: '60 min',
-    },
-    {
-      id: 'B003',
-      className: 'Morning Yoga Flow',
-      classType: 'Yoga',
-      trainer: 'Coach Sarah Reyes',
-      date: '2024-05-20',
-      time: '07:00 AM',
-      location: 'Studio A',
-      status: 'completed',
-      duration: '45 min',
-    },
-    {
-      id: 'B004',
-      className: 'Personal Training Session',
-      classType: 'Personal Training',
-      trainer: 'Coach Maria Lopez',
-      date: '2024-05-18',
-      time: '10:00 AM',
-      location: 'Private Training Room',
-      status: 'completed',
-      duration: '60 min',
-    },
-    {
-      id: 'B005',
-      className: 'Powerlifting Basics',
-      classType: 'Strength Training',
-      trainer: 'Coach Mike Santos',
-      date: '2024-05-15',
-      time: '05:00 PM',
-      location: 'Main Gym Floor',
-      status: 'cancelled',
-      duration: '90 min',
-    },
-  ]);
+  const [bookings, setBookings] = useState<any[]>([]);
 
-  const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
-  const pastBookings = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+  // Load bookings from shared storage
+  useEffect(() => {
+    const userEmail = currentUser?.email || 'eya.lorenzana@email.com';
+    const allBookings = SharedStorage.getMemberBookings(userEmail);
+    setBookings(allBookings);
+  }, [currentUser]);
+
+  // Refresh bookings periodically to see admin updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const userEmail = currentUser?.email || 'eya.lorenzana@email.com';
+      const allBookings = SharedStorage.getMemberBookings(userEmail);
+      setBookings(allBookings);
+    }, 2000); // Refresh every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
+  const upcomingBookings = bookings.filter(b => 
+    b.status === 'Pending' || b.status === 'Confirmed'
+  );
+  const pastBookings = bookings.filter(b => 
+    b.status === 'Cancelled' || b.status === 'Completed' || b.status === 'Rejected'
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'upcoming':
-        return <AlertCircle size={20} className="text-orange-400" />;
-      case 'completed':
+      case 'Pending':
+        return <AlertCircle size={20} className="text-yellow-400" />;
+      case 'Confirmed':
         return <CheckCircle size={20} className="text-green-400" />;
-      case 'cancelled':
+      case 'Cancelled':
+        return <XCircle size={20} className="text-gray-400" />;
+      case 'Rejected':
         return <XCircle size={20} className="text-red-400" />;
+      case 'Completed':
+        return <CheckCircle size={20} className="text-blue-400" />;
       default:
-        return null;
+        return <AlertCircle size={20} className="text-gray-400" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'upcoming':
-        return 'text-orange-400 bg-orange-500/20 border-orange-500/30';
-      case 'completed':
+      case 'Pending':
+        return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+      case 'Confirmed':
         return 'text-green-400 bg-green-500/20 border-green-500/30';
-      case 'cancelled':
+      case 'Cancelled':
+        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+      case 'Rejected':
         return 'text-red-400 bg-red-500/20 border-red-500/30';
+      case 'Completed':
+        return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
       default:
         return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
     }
@@ -121,8 +98,16 @@ export default function BookingHistory() {
   };
 
   const handleCancelBooking = (bookingId: string) => {
-    if (confirm('Are you sure you want to cancel this booking?')) {
-      alert(`Booking ${bookingId} cancelled successfully!`);
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      // Actually update the booking in SharedStorage
+      SharedStorage.updateBooking(bookingId, {
+        status: 'Cancelled',
+        cancelledAt: new Date().toISOString(),
+      });
+      // Update local state so UI reflects immediately
+      setBookings(prev =>
+        prev.map(b => b.id === bookingId ? { ...b, status: 'Cancelled' } : b)
+      );
     }
   };
 
@@ -224,27 +209,48 @@ export default function BookingHistory() {
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex items-center gap-2 text-gray-300">
                   <User size={16} className="text-orange-400" />
-                  <span>{booking.trainer}</span>
+                  <span>{booking.trainerName || booking.trainer}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Calendar size={16} className="text-orange-400" />
-                  <span>{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  <span>{booking.day}, {booking.time}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Clock size={16} className="text-orange-400" />
-                  <span>{booking.time} • {booking.duration}</span>
+                  <span>{booking.time} • {booking.duration || '60 min'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <MapPin size={16} className="text-orange-400" />
-                  <span>{booking.location}</span>
+                  <span>Core Fitness Main Studio</span>
                 </div>
               </div>
 
+              {/* Admin Note or Rejection Reason */}
+              {booking.status === 'Confirmed' && booking.adminNote && (
+                <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                  <p className="text-green-400 text-xs font-semibold mb-1">Admin Note:</p>
+                  <p className="text-gray-300 text-sm">{booking.adminNote}</p>
+                </div>
+              )}
+              {booking.status === 'Rejected' && booking.rejectionReason && (
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-red-400 text-xs font-semibold mb-1">Rejection Reason:</p>
+                  <p className="text-gray-300 text-sm">{booking.rejectionReason}</p>
+                </div>
+              )}
+
               {/* Actions */}
-              {booking.status === 'upcoming' && (
+              {(booking.status === 'Pending' || booking.status === 'Confirmed') && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => navigate(`/member/trainer/${booking.trainer.split(' ')[2].toLowerCase()}`)}
+                    onClick={() => {
+                      // Use trainerId if available, otherwise navigate to trainers list
+                      if (booking.trainerId) {
+                        navigate(`/member/trainer/${booking.trainerId}`);
+                      } else {
+                        navigate('/member/trainers');
+                      }
+                    }}
                     className="flex-1 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg text-sm font-semibold hover:border-orange-500 transition-all"
                   >
                     View Trainer
@@ -259,7 +265,16 @@ export default function BookingHistory() {
                 </div>
               )}
 
-              {booking.status === 'completed' && (
+              {booking.status === 'Rejected' && (
+                <button
+                  onClick={() => navigate('/member/book-class')}
+                  className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+                >
+                  Book Another Class
+                </button>
+              )}
+
+              {booking.status === 'Completed' && (
                 <button
                   onClick={() => navigate('/member/book-class')}
                   className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"

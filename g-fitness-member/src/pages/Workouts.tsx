@@ -1,9 +1,19 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Play, Clock, Flame, Dumbbell, ArrowLeft } from 'lucide-react';
+import { showSuccessToast } from '../utils/errorHandler';
 
 export default function Workouts() {
   const navigate = useNavigate();
+  
+  const handleStartWorkout = (workoutName: string) => {
+    showSuccessToast(`Starting ${workoutName}...`);
+    // In production: Navigate to workout timer/tracker
+    setTimeout(() => {
+      navigate('/member/progress');
+    }, 1500);
+  };
+  
   const workouts = [
     {
       name: 'Full Body Strength',
@@ -77,7 +87,10 @@ export default function Workouts() {
             </div>
           </div>
 
-          <button className="w-full bg-white text-primary-end font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+          <button 
+            onClick={() => handleStartWorkout("Chest & Triceps")}
+            className="w-full bg-white text-primary-end font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+          >
             <Play size={20} fill="currentColor" />
             Start Workout
           </button>
@@ -122,7 +135,10 @@ export default function Workouts() {
                   </span>
                 </div>
               </div>
-              <button className="w-10 h-10 rounded-full bg-primary-start/20 flex items-center justify-center text-primary-start hover:bg-primary-start hover:text-white transition-all">
+              <button 
+                onClick={() => handleStartWorkout(workout.name)}
+                className="w-10 h-10 rounded-full bg-primary-start/20 flex items-center justify-center text-primary-start hover:bg-primary-start hover:text-white transition-all"
+              >
                 <Play size={18} fill="currentColor" />
               </button>
             </div>

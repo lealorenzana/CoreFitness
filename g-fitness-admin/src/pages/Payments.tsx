@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import RecordPaymentModal from '../components/ui/RecordPaymentModal';
+import ViewReceiptModal from '../components/ui/ViewReceiptModal';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { DollarSign, CreditCard, Calendar, CheckCircle, XCircle, Clock, TrendingUp, Download, Filter, Plus } from 'lucide-react';
-import type { PaymentData } from '../types/member';
+import { DollarSign, Calendar, CheckCircle, XCircle, Clock, TrendingUp, Download, Filter, Plus } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { SharedStorage } from '../utils/sharedStorage';
 
 interface Payment {
   id: string;
@@ -23,72 +24,124 @@ interface Payment {
 export default function Payments() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [payments, setPayments] = useState<Payment[]>([
-    {
-      id: '1',
-      memberName: 'Maria Santos',
-      memberId: 'GF-2024-001',
-      amount: 2500,
-      plan: 'Premium',
-      method: 'gcash',
-      status: 'completed',
-      date: '2024-06-01',
-      dueDate: '2024-07-01',
-      invoiceNumber: 'INV-2024-001',
-    },
-    {
-      id: '2',
-      memberName: 'Juan Dela Cruz',
-      memberId: 'GF-2024-002',
-      amount: 1500,
-      plan: 'Standard',
-      method: 'cash',
-      status: 'completed',
-      date: '2024-06-02',
-      dueDate: '2024-07-02',
-      invoiceNumber: 'INV-2024-002',
-    },
-    {
-      id: '3',
-      memberName: 'Pedro Reyes',
-      memberId: 'GF-2024-003',
-      amount: 800,
-      plan: 'Basic',
-      method: 'card',
-      status: 'pending',
-      date: '2024-06-03',
-      dueDate: '2024-06-05',
-      invoiceNumber: 'INV-2024-003',
-    },
-    {
-      id: '4',
-      memberName: 'Ana Garcia',
-      memberId: 'GF-2024-004',
-      amount: 2500,
-      plan: 'Premium',
-      method: 'bank',
-      status: 'completed',
-      date: '2024-06-03',
-      dueDate: '2024-07-03',
-      invoiceNumber: 'INV-2024-004',
-    },
-    {
-      id: '5',
-      memberName: 'Carlos Mendoza',
-      memberId: 'GF-2024-005',
-      amount: 1500,
-      plan: 'Standard',
-      method: 'gcash',
-      status: 'failed',
-      date: '2024-06-04',
-      dueDate: '2024-06-04',
-      invoiceNumber: 'INV-2024-005',
-    },
-  ]);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  
+  // Load payments from SharedStorage
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    const sharedPayments = SharedStorage.getPayments();
+    
+    // If no shared payments, use default mock data
+    if (sharedPayments.length === 0) {
+      return [
+        {
+          id: '1',
+          memberName: 'Maria Santos',
+          memberId: 'GF-2024-001',
+          amount: 2500,
+          plan: 'Premium',
+          method: 'gcash',
+          status: 'completed',
+          date: '2024-06-01',
+          dueDate: '2024-07-01',
+          invoiceNumber: 'INV-2024-001',
+        },
+        {
+          id: '2',
+          memberName: 'Juan Dela Cruz',
+          memberId: 'GF-2024-002',
+          amount: 1500,
+          plan: 'Standard',
+          method: 'cash',
+          status: 'completed',
+          date: '2024-06-02',
+          dueDate: '2024-07-02',
+          invoiceNumber: 'INV-2024-002',
+        },
+        {
+          id: '3',
+          memberName: 'Pedro Reyes',
+          memberId: 'GF-2024-003',
+          amount: 800,
+          plan: 'Basic',
+          method: 'card',
+          status: 'pending',
+          date: '2024-06-03',
+          dueDate: '2024-06-05',
+          invoiceNumber: 'INV-2024-003',
+        },
+        {
+          id: '4',
+          memberName: 'Ana Garcia',
+          memberId: 'GF-2024-004',
+          amount: 2500,
+          plan: 'Premium',
+          method: 'bank',
+          status: 'completed',
+          date: '2024-06-03',
+          dueDate: '2024-07-03',
+          invoiceNumber: 'INV-2024-004',
+        },
+        {
+          id: '5',
+          memberName: 'Carlos Mendoza',
+          memberId: 'GF-2024-005',
+          amount: 1500,
+          plan: 'Standard',
+          method: 'gcash',
+          status: 'failed',
+          date: '2024-06-04',
+          dueDate: '2024-06-04',
+          invoiceNumber: 'INV-2024-005',
+        },
+      ];
+    }
+    
+    // Convert shared payments to Payment format
+    return sharedPayments.map((p: any) => ({
+      id: p.id,
+      memberName: p.memberName,
+      memberId: p.memberId || p.memberEmail,
+      amount: p.amount,
+      plan: p.plan || 'Standard',
+      method: (p.method || 'cash').toLowerCase() as 'cash' | 'card' | 'gcash' | 'bank',
+      // Preserve real status: cash payments submitted by members should be 'pending'
+      status: (p.status === 'Pending' || p.status === 'pending') ? 'pending' :
+              (p.status === 'Failed' || p.status === 'failed') ? 'failed' : 'completed',
+      date: p.date,
+      dueDate: p.expiryDate || new Date(new Date(p.date).setMonth(new Date(p.date).getMonth() + 1)).toISOString().split('T')[0],
+      invoiceNumber: p.invoiceNumber || `INV-${p.id}`,
+    }));
+  });
+
+  // Auto-refresh payments every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const sharedPayments = SharedStorage.getPayments();
+      if (sharedPayments.length > 0) {
+        const updatedPayments = sharedPayments.map((p: any) => ({
+          id: p.id,
+          memberName: p.memberName,
+          memberId: p.memberId || p.memberEmail,
+          amount: p.amount,
+          plan: p.plan || 'Standard',
+          method: (p.method || 'cash').toLowerCase() as 'cash' | 'card' | 'gcash' | 'bank',
+          status: (p.status === 'Pending' || p.status === 'pending') ? 'pending' :
+                  (p.status === 'Failed' || p.status === 'failed') ? 'failed' : 'completed',
+          date: p.date,
+          dueDate: p.expiryDate || new Date(new Date(p.date).setMonth(new Date(p.date).getMonth() + 1)).toISOString().split('T')[0],
+          invoiceNumber: p.invoiceNumber || `INV-${p.id}`,
+        }));
+        setPayments(updatedPayments);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRecordPayment = (paymentData: any) => {
     const newPayment: Payment = {
-      id: `${payments.length + 1}`,
+      id: `PAY-${Date.now()}`,
       memberName: paymentData.memberName,
       memberId: paymentData.memberId,
       amount: paymentData.amount,
@@ -97,10 +150,25 @@ export default function Payments() {
       status: 'completed',
       date: paymentData.date,
       dueDate: new Date(new Date(paymentData.date).setMonth(new Date(paymentData.date).getMonth() + 1)).toISOString().split('T')[0],
-      invoiceNumber: `INV-2024-${String(payments.length + 1).padStart(3, '0')}`,
+      invoiceNumber: `INV-2024-${String(Date.now()).slice(-6)}`,
     };
 
+    // Save to SharedStorage
+    SharedStorage.addPayment({
+      id: newPayment.id,
+      memberName: newPayment.memberName,
+      memberId: newPayment.memberId,
+      memberEmail: paymentData.memberEmail || '',
+      amount: newPayment.amount,
+      plan: newPayment.plan,
+      method: newPayment.method,
+      date: newPayment.date,
+      expiryDate: newPayment.dueDate,
+      invoiceNumber: newPayment.invoiceNumber,
+    });
+
     setPayments([newPayment, ...payments]);
+    showToast('Payment recorded successfully!', 'success');
   };
 
   const paymentStats = [
@@ -330,11 +398,26 @@ export default function Payments() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <button className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/30 transition-all">
+                        <button 
+                          onClick={() => {
+                            setSelectedPayment(payment);
+                            setIsReceiptModalOpen(true);
+                          }}
+                          className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/30 transition-all"
+                        >
                           View
                         </button>
                         {payment.status === 'pending' && (
-                          <button className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/30 transition-all">
+                          <button 
+                            onClick={() => {
+                              const updatedPayments = payments.map(p => 
+                                p.id === payment.id ? { ...p, status: 'completed' as const } : p
+                              );
+                              setPayments(updatedPayments);
+                              showToast(`Payment ${payment.invoiceNumber} confirmed!`, 'success');
+                            }}
+                            className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/30 transition-all"
+                          >
                             Confirm
                           </button>
                         )}
@@ -353,6 +436,16 @@ export default function Payments() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleRecordPayment}
+      />
+
+      {/* View Receipt Modal */}
+      <ViewReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
       />
     </div>
   );

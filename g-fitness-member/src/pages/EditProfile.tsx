@@ -1,23 +1,44 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, Lock, Save } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { SharedStorage } from '../utils/sharedStorage';
 
 export default function EditProfile() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    firstName: 'Juan',
-    lastName: 'Dela Cruz',
-    email: 'juan.delacruz@email.com',
-    phone: '+63 912 345 6789',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+  
+  // Get logged-in member email
+  const memberEmail = localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com';
+  
+  // Load member data from SharedStorage
+  const [formData, setFormData] = useState(() => {
+    const sharedMember = SharedStorage.getMember(memberEmail);
+    if (sharedMember) {
+      return {
+        firstName: sharedMember.firstName,
+        lastName: sharedMember.lastName,
+        email: sharedMember.email,
+        phone: sharedMember.phone,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      };
+    }
+    // Default fallback
+    return {
+      firstName: 'Eya',
+      lastName: 'Lorenzana',
+      email: 'eya.lorenzana@email.com',
+      phone: '09123456789',
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    };
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -70,16 +91,25 @@ export default function EditProfile() {
     e.preventDefault();
     
     if (!validateForm()) {
+      showErrorToast({ type: 'validation', message: 'Please fix the errors in the form' });
       return;
     }
 
     setIsLoading(true);
-    setSuccessMessage('');
 
     // Simulate API call
     setTimeout(() => {
+      // Update SharedStorage so admin can see the changes
+      SharedStorage.updateMember(memberEmail, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        fullName: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        phone: formData.phone,
+      });
+      
       setIsLoading(false);
-      setSuccessMessage('Profile updated successfully!');
+      showSuccessToast('Profile updated successfully!');
       
       // Clear password fields
       setFormData({
@@ -89,10 +119,10 @@ export default function EditProfile() {
         confirmPassword: '',
       });
 
-      // Navigate back after 2 seconds
+      // Navigate back after 1 second
       setTimeout(() => {
         navigate('/member/profile');
-      }, 2000);
+      }, 1000);
     }, 1500);
   };
 
@@ -115,17 +145,6 @@ export default function EditProfile() {
           <p className="text-gray-400 mt-1">Update your personal information</p>
         </div>
       </motion.div>
-
-      {/* Success Message */}
-      {successMessage && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 text-green-400 text-center"
-        >
-          {successMessage}
-        </motion.div>
-      )}
 
       {/* Form */}
       <motion.form

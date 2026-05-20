@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -13,24 +13,124 @@ import { MEMBERS } from '../data/members';
 import { formatDate, formatPhoneNumber } from '../utils/formatters';
 import { exportMembersToCSV } from '../utils/exportUtils';
 import { Search, UserPlus, Edit2, Trash2, Download } from 'lucide-react';
-import type { NewMemberData, EditMemberData } from '../types/member';
+import { showToast } from '../utils/toast';
+import { SharedStorage } from '../utils/sharedStorage';
+
+interface SimpleMember {
+  id: string;
+  gymId: string;
+  qrCode: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  membershipType: 'Basic' | 'Standard' | 'Premium';
+  membershipStatus: 'Active' | 'Expired' | 'Expiring' | 'Suspended';
+  joinDate: string;
+  expiryDate: string;
+}
+
+interface NewMemberData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  membershipType: 'Basic' | 'Standard' | 'Premium';
+  startDate: string;
+}
+
+interface EditMemberData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  membershipType: 'Basic' | 'Standard' | 'Premium';
+  membershipStatus: 'Active' | 'Expired' | 'Expiring' | 'Suspended';
+}
 
 export default function Members() {
   const navigate = useNavigate();
   const { selectedGym } = useGymContext();
-  const gymMembers = MEMBERS.filter(m => m.gymId === selectedGym.id);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberToDelete, setMemberToDelete] = useState<any>(null);
-  const [members, setMembers] = useState(gymMembers);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [filters, setFilters] = useState({
+    membershipType: 'all' as 'all' | 'Basic' | 'Standard' | 'Premium',
+    membershipStatus: 'all' as 'all' | 'Active' | 'Expired' | 'Expiring' | 'Suspended',
+  });
+  
+  // Convert MEMBERS data to simple format
+  const getGymMembers = () => {
+    return MEMBERS.filter(m => m.gymId === selectedGym.id).map(m => ({
+      id: m.id,
+      gymId: m.gymId,
+      qrCode: m.qrCode,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      fullName: m.fullName,
+      email: m.email,
+      phone: m.phone,
+      address: m.address,
+      membershipType: m.membershipType,
+      membershipStatus: m.membershipStatus,
+      joinDate: m.startDate instanceof Date ? m.startDate.toISOString().split('T')[0] : String(m.startDate),
+      expiryDate: m.expiryDate instanceof Date ? m.expiryDate.toISOString().split('T')[0] : String(m.expiryDate),
+    }));
+  };
+  
+  // Load members from localStorage or use default
+  const [members, setMembers] = useState<SimpleMember[]>(() => {
+    try {
+      const saved = localStorage.getItem(`members_${selectedGym.id}`);
+      if (saved) {
+        const localMembers = JSON.parse(saved);
+        // Also sync to SharedStorage for member app access
+        SharedStorage.setMembers(localMembers);
+        return localMembers;
+      }
+    } catch (error) {
+      console.error('Error loading members from localStorage:', error);
+    }
+    const gymMembers = getGymMembers();
+    // Initialize SharedStorage with gym members
+    SharedStorage.setMembers(gymMembers);
+    return gymMembers;
+  });
 
-  const filteredMembers = members.filter(m => 
-    m.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Save to localStorage whenever members change
+  useEffect(() => {
+    try {
+      localStorage.setItem(`members_${selectedGym.id}`, JSON.stringify(members));
+      // Also update SharedStorage
+      SharedStorage.setMembers(members);
+    } catch (error) {
+      console.error('Error saving members to localStorage:', error);
+    }
+  }, [members, selectedGym.id]);
+
+  const filteredMembers = members.filter(m => {
+    // Search filter
+    const matchesSearch = m.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Membership type filter
+    const matchesType = filters.membershipType === 'all' || m.membershipType === filters.membershipType;
+    
+    // Membership status filter
+    const matchesStatus = filters.membershipStatus === 'all' || m.membershipStatus === filters.membershipStatus;
+    
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   const stats = [
     { label: 'Total Members', value: members.length, color: 'from-blue-500 to-cyan-500' },
@@ -39,8 +139,8 @@ export default function Members() {
     { label: 'Expired', value: members.filter(m => m.membershipStatus === 'Expired').length, color: 'from-red-500 to-pink-500' },
   ];
 
-  const handleAddMember = (newMemberData: any) => {
-    const newMember = {
+  const handleAddMember = (newMemberData: NewMemberData) => {
+    const newMember: SimpleMember = {
       id: `${selectedGym.id}-${Date.now()}`,
       gymId: selectedGym.id,
       qrCode: `${selectedGym.id.toUpperCase()}-2024-${String(members.length + 1).padStart(3, '0')}`,
@@ -51,16 +151,18 @@ export default function Members() {
       phone: newMemberData.phone,
       address: newMemberData.address,
       membershipType: newMemberData.membershipType,
-      membershipStatus: 'Active' as const,
+      membershipStatus: 'Active',
       joinDate: newMemberData.startDate,
       expiryDate: new Date(new Date(newMemberData.startDate).setMonth(new Date(newMemberData.startDate).getMonth() + 1)).toISOString().split('T')[0],
     };
 
     setMembers([newMember, ...members]);
+    setIsAddModalOpen(false);
+    showToast('Member added successfully!', 'success');
   };
 
-  const handleEditMember = (editedMemberData: any) => {
-    setMembers(members.map(m => 
+  const handleEditMember = (editedMemberData: EditMemberData) => {
+    const updatedMembers = members.map((m: SimpleMember) => 
       m.id === editedMemberData.id 
         ? {
             ...m,
@@ -74,7 +176,27 @@ export default function Members() {
             membershipStatus: editedMemberData.membershipStatus,
           }
         : m
-    ));
+    );
+    
+    setMembers(updatedMembers);
+    
+    // Save to SharedStorage so member app can see the changes
+    const updatedMember = updatedMembers.find(m => m.id === editedMemberData.id);
+    if (updatedMember) {
+      SharedStorage.updateMember(updatedMember.id, {
+        firstName: updatedMember.firstName,
+        lastName: updatedMember.lastName,
+        fullName: updatedMember.fullName,
+        email: updatedMember.email,
+        phone: updatedMember.phone,
+        address: updatedMember.address,
+        membershipType: updatedMember.membershipType,
+        membershipStatus: updatedMember.membershipStatus,
+      });
+    }
+    
+    setIsEditModalOpen(false);
+    showToast('Member updated successfully!', 'success');
   };
 
   const handleEditClick = (e: React.MouseEvent, member: any) => {
@@ -91,9 +213,10 @@ export default function Members() {
 
   const handleDeleteConfirm = () => {
     if (memberToDelete) {
-      // In production, this would be a soft delete (mark as inactive)
-      setMembers(members.filter(m => m.id !== memberToDelete.id));
+      setMembers(members.filter((m: SimpleMember) => m.id !== memberToDelete.id));
       setMemberToDelete(null);
+      setIsDeleteDialogOpen(false);
+      showToast('Member deleted successfully!', 'success');
     }
   };
 
@@ -163,7 +286,75 @@ export default function Members() {
                 className="w-full pl-12"
               />
             </div>
-            <Button variant="ghost">Filter</Button>
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className="flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filter
+                {(filters.membershipType !== 'all' || filters.membershipStatus !== 'all') && (
+                  <span className="w-2 h-2 bg-primary-start rounded-full"></span>
+                )}
+              </Button>
+
+              {/* Filter Dropdown */}
+              {showFilterDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-72 bg-dark border border-dark-border rounded-xl shadow-2xl z-20 p-4 space-y-4">
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-2">Membership Type</label>
+                    <select
+                      value={filters.membershipType}
+                      onChange={(e) => setFilters({ ...filters, membershipType: e.target.value as any })}
+                      className="w-full bg-dark-lighter border border-dark-border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-start"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="Basic">Basic</option>
+                      <option value="Standard">Standard</option>
+                      <option value="Premium">Premium</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-2">Membership Status</label>
+                    <select
+                      value={filters.membershipStatus}
+                      onChange={(e) => setFilters({ ...filters, membershipStatus: e.target.value as any })}
+                      className="w-full bg-dark-lighter border border-dark-border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-start"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="Expiring">Expiring Soon</option>
+                      <option value="Expired">Expired</option>
+                      <option value="Suspended">Suspended</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setFilters({ membershipType: 'all', membershipStatus: 'all' });
+                        setShowFilterDropdown(false);
+                      }}
+                      className="flex-1 text-xs"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => setShowFilterDropdown(false)}
+                      className="flex-1 text-xs"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       </motion.div>
@@ -221,7 +412,36 @@ export default function Members() {
                       <Badge variant={member.membershipType}>{member.membershipType}</Badge>
                     </td>
                     <td className="py-5 px-4">
-                      <Badge variant={member.membershipStatus}>{member.membershipStatus}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={member.membershipStatus}>{member.membershipStatus}</Badge>
+                        {/* Suspend/Activate Toggle */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newStatus = member.membershipStatus === 'Suspended' ? 'Active' : 'Suspended';
+                            const updatedMembers = members.map((m: SimpleMember) => 
+                              m.id === member.id ? { ...m, membershipStatus: newStatus as any } : m
+                            );
+                            setMembers(updatedMembers);
+                            
+                            // Update SharedStorage
+                            SharedStorage.updateMember(member.id, { membershipStatus: newStatus });
+                            
+                            showToast(
+                              `${member.fullName} ${newStatus === 'Suspended' ? 'suspended' : 'activated'}!`, 
+                              newStatus === 'Suspended' ? 'error' : 'success'
+                            );
+                          }}
+                          className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+                            member.membershipStatus === 'Suspended'
+                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          }`}
+                          title={member.membershipStatus === 'Suspended' ? 'Activate' : 'Suspend'}
+                        >
+                          {member.membershipStatus === 'Suspended' ? '✓ Activate' : '✕ Suspend'}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-5 px-4">
                       <p className="text-white font-medium">{formatDate(member.expiryDate)}</p>

@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GymProvider } from './hooks/useGymContext';
 import Layout from './components/layout/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminLogin from './pages/AdminLogin';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import MemberDetail from './pages/MemberDetail';
@@ -20,8 +22,17 @@ function App() {
     <GymProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
+          {/* Public Route - Login */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          
+          {/* Protected Routes - Admin Panel */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
             <Route path="members/:memberId" element={<MemberDetail />} />
             <Route path="attendance" element={<Attendance />} />
@@ -35,6 +46,9 @@ function App() {
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+          
+          {/* Catch all - redirect to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </GymProvider>

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, Users, Heart, Share2, Bell, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { showSuccessToast } from '../utils/errorHandler';
 
 interface Event {
   id: string;
@@ -73,10 +74,10 @@ export default function Events() {
       isRegistered: false,
     },
     {
-      id: '4',
+      id: '4b',
       title: 'Yoga & Meditation',
       description: 'Relax and rejuvenate with our morning yoga session. Perfect for all skill levels.',
-      date: '2024-06-22',
+      date: '2026-06-22',
       time: '7:00 AM - 8:00 AM',
       location: 'Core Fitness Mamburao',
       attendees: 10,
@@ -89,7 +90,7 @@ export default function Events() {
       id: '5',
       title: 'Member Appreciation Day',
       description: 'Free smoothies, raffles, and special discounts! Bring a friend and enjoy the celebration.',
-      date: '2024-06-25',
+      date: '2026-06-25',
       time: '5:00 PM - 9:00 PM',
       location: 'Core Fitness Mamburao',
       attendees: 67,
@@ -182,10 +183,14 @@ export default function Events() {
             <div className={`h-32 bg-gradient-to-br ${event.image} relative`}>
               <div className="absolute inset-0 bg-black/30"></div>
               <div className="absolute top-4 right-4 flex gap-2">
-                <button className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all">
+                <button
+                  onClick={() => showSuccessToast(`${event.title} link copied to clipboard!`)}
+                  className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all">
                   <Share2 size={18} />
                 </button>
-                <button className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all">
+                <button
+                  onClick={() => showSuccessToast(`Reminder set for ${event.title}!`)}
+                  className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all">
                   <Bell size={18} />
                 </button>
               </div>

@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
-import { Calendar, Clock, Users, Plus, Edit, Trash2, User } from 'lucide-react';
+import Badge from '../components/ui/Badge';
+import { Calendar, Clock, Users, Plus, Edit, Trash2, User, CheckCircle, XCircle } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { SharedStorage } from '../utils/sharedStorage';
 
 interface ClassSchedule {
   id: string;
@@ -26,9 +28,51 @@ interface StaffMember {
 }
 
 export default function Schedule() {
-  const [activeTab, setActiveTab] = useState<'classes' | 'staff'>('classes');
+  const [activeTab, setActiveTab] = useState<'classes' | 'staff' | 'bookings'>('classes');
+  const [classBookings, setClassBookings] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<ClassSchedule[]>([]);
 
-  const classSchedules: ClassSchedule[] = [
+  // Load class bookings from shared storage
+  useEffect(() => {
+    const bookings = SharedStorage.getBookings();
+    setClassBookings(bookings);
+  }, []);
+
+  // Refresh bookings periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const bookings = SharedStorage.getBookings();
+      setClassBookings(bookings);
+    }, 2000); // Refresh every 2 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleConfirmBooking = (bookingId: string) => {
+    const note = prompt('Add a note for the member (optional):');
+    SharedStorage.updateBooking(bookingId, { 
+      status: 'Confirmed',
+      adminNote: note || '',
+      approvedAt: new Date().toISOString()
+    });
+    setClassBookings(SharedStorage.getBookings());
+    showToast('Booking approved successfully!', 'success');
+  };
+
+  const handleCancelBooking = (bookingId: string) => {
+    const reason = prompt('Reason for rejection (will be shown to member):');
+    if (reason) {
+      SharedStorage.updateBooking(bookingId, { 
+        status: 'Rejected',
+        rejectionReason: reason,
+        rejectedAt: new Date().toISOString()
+      });
+      setClassBookings(SharedStorage.getBookings());
+      showToast('Booking rejected', 'success');
+    }
+  };
+
+  const initialClassSchedules: ClassSchedule[] = [
     {
       id: '1',
       name: 'Morning HIIT',
@@ -85,6 +129,55 @@ export default function Schedule() {
       room: 'Boxing Ring',
     },
   ];
+
+  // Initialize schedules state from the static data
+  useEffect(() => {
+    setSchedules(initialClassSchedules);
+  }, []);
+
+  const handleAddClass = () => {
+    const name = window.prompt('Class name (e.g. Morning HIIT):');
+    if (!name) return;
+    const instructor = window.prompt('Instructor name:') || 'TBA';
+    const day = window.prompt('Day (e.g. Monday):') || 'Monday';
+    const time = window.prompt('Time (e.g. 6:00 AM):') || '6:00 AM';
+    const capacity = parseInt(window.prompt('Max capacity:') || '20', 10);
+    const room = window.prompt('Room (e.g. Studio A):') || 'Studio A';
+    const newClass: ClassSchedule = {
+      id: `class-${Date.now()}`,
+      name,
+      instructor,
+      day,
+      time,
+      duration: 60,
+      capacity,
+      enrolled: 0,
+      room,
+    };
+    setSchedules(prev => [...prev, newClass]);
+    showToast(`${name} class added!`, 'success');
+  };
+
+  const handleEditClass = (classItem: ClassSchedule) => {
+    const newName = window.prompt('Edit class name:', classItem.name);
+    if (!newName) return;
+    const newTime = window.prompt('Edit time:', classItem.time) || classItem.time;
+    const newRoom = window.prompt('Edit room:', classItem.room) || classItem.room;
+    setSchedules(prev =>
+      prev.map(c => c.id === classItem.id ? { ...c, name: newName, time: newTime, room: newRoom } : c)
+    );
+    showToast(`${newName} updated!`, 'success');
+  };
+
+  const handleDeleteClass = (classItem: ClassSchedule) => {
+    if (window.confirm(`Delete "${classItem.name}"? This cannot be undone.`)) {
+      setSchedules(prev => prev.filter(c => c.id !== classItem.id));
+      showToast(`${classItem.name} deleted`, 'success');
+    }
+  };
+
+  const classSchedules = schedules;
+
 
   const staffMembers: StaffMember[] = [
     {
@@ -170,7 +263,10 @@ export default function Schedule() {
           <p className="text-gray-400 mt-1">Manage classes and staff schedules</p>
         </div>
         <button 
-          onClick={() => showToast(activeTab === 'classes' ? 'Add Class modal would open here' : 'Add Staff modal would open here', 'info')}
+          onClick={() => {
+            if (activeTab === 'classes') handleAddClass();
+            else showToast('Add Staff: contact HR to onboard new staff', 'info');
+          }}
           className="px-6 py-3 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary-start/30 transition-all flex items-center gap-2"
         >
           <Plus size={20} />
@@ -202,6 +298,27 @@ export default function Schedule() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab('bookings')}
+          className={`px-6 py-3 font-semibold transition-all relative ${
+            activeTab === 'bookings'
+              ? 'text-primary-start'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Class Bookings
+          {classBookings.length > 0 && (
+            <span className="ml-2 px-2 py-0.5 bg-primary-start text-white text-xs rounded-full">
+              {classBookings.length}
+            </span>
+          )}
+          {activeTab === 'bookings' && (
+            <motion.div
+              layoutId="activeTab"
+              className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-start to-primary-end"
+            />
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('staff')}
           className={`px-6 py-3 font-semibold transition-all relative ${
             activeTab === 'staff'
@@ -218,6 +335,117 @@ export default function Schedule() {
           )}
         </button>
       </motion.div>
+
+      {/* Class Bookings Tab */}
+      {activeTab === 'bookings' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-dark-border">
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Member</th>
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Class</th>
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Trainer</th>
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Schedule</th>
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Status</th>
+                    <th className="text-left py-4 px-4 text-gray-400 font-semibold uppercase text-xs">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classBookings.length > 0 ? (
+                    classBookings.map((booking, index) => (
+                      <tr key={booking.id} className="border-b border-dark-border hover:bg-dark-border/50">
+                        <td className="py-4 px-4">
+                          <div>
+                            <p className="text-white font-semibold">{booking.memberName}</p>
+                            <p className="text-gray-400 text-sm">{booking.memberEmail}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="text-white font-medium">{booking.className}</p>
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="text-white">{booking.trainerName}</p>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div>
+                            <p className="text-white">{booking.day}</p>
+                            <p className="text-gray-400 text-sm">{booking.time}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge variant={
+                            booking.status === 'Confirmed' ? 'Active' :
+                            booking.status === 'Rejected' ? 'Expired' :
+                            booking.status === 'Cancelled' ? 'Expired' :
+                            'Suspended'
+                          }>
+                            {booking.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {booking.status === 'Pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleConfirmBooking(booking.id)}
+                                  className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-1 text-sm font-semibold"
+                                >
+                                  <CheckCircle size={14} />
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleCancelBooking(booking.id)}
+                                  className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center gap-1 text-sm font-semibold"
+                                >
+                                  <XCircle size={14} />
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {booking.status === 'Confirmed' && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-green-400 text-sm font-semibold">✓ Approved</span>
+                                {booking.adminNote && (
+                                  <span className="text-gray-400 text-xs">Note: {booking.adminNote}</span>
+                                )}
+                              </div>
+                            )}
+                            {booking.status === 'Rejected' && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-red-400 text-sm font-semibold">✗ Rejected</span>
+                                {booking.rejectionReason && (
+                                  <span className="text-gray-400 text-xs">Reason: {booking.rejectionReason}</span>
+                                )}
+                              </div>
+                            )}
+                            {booking.status === 'Cancelled' && (
+                              <span className="text-gray-400 text-sm">Cancelled by member</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <Calendar size={48} className="text-gray-600 mx-auto mb-3" />
+                        <p className="text-gray-400">No class bookings yet</p>
+                        <p className="text-gray-500 text-sm mt-1">Bookings from members will appear here</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Class Schedule Tab */}
       {activeTab === 'classes' && (
@@ -298,14 +526,16 @@ export default function Schedule() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => showToast(`Editing ${classItem.name}`, 'info')}
+                            onClick={() => handleEditClass(classItem)}
                             className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all"
+                            title="Edit class"
                           >
                             <Edit size={16} />
                           </button>
                           <button 
-                            onClick={() => showToast(`${classItem.name} deleted`, 'success')}
+                            onClick={() => handleDeleteClass(classItem)}
                             className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                            title="Delete class"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -381,13 +611,16 @@ export default function Schedule() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => showToast(`Editing ${staff.name}`, 'info')}
+                            onClick={() => {
+                              const newShift = window.prompt(`Edit shift for ${staff.name}:`, staff.shift);
+                              if (newShift) showToast(`${staff.name}'s shift updated to ${newShift}`, 'success');
+                            }}
                             className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all"
                           >
                             <Edit size={16} />
                           </button>
                           <button 
-                            onClick={() => showToast(`Viewing schedule for ${staff.name}`, 'info')}
+                            onClick={() => showToast(`${staff.name} | ${staff.role} | Shift: ${staff.shift} | Classes: ${staff.classes}`, 'info')}
                             className="px-3 py-1 rounded-lg bg-primary-start/20 text-primary-start hover:bg-primary-start/30 transition-all text-xs font-semibold"
                           >
                             View Schedule

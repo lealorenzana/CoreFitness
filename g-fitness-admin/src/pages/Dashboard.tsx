@@ -1,13 +1,38 @@
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import { useGymContext } from '../hooks/useGymContext';
 import { MEMBERS } from '../data/members';
 import { formatCurrency } from '../utils/formatters';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, UserCheck, Activity, DollarSign, TrendingUp, Calendar, BarChart3, ArrowRight } from 'lucide-react';
+import { showToast } from '../utils/toast';
+import { useNavigate } from 'react-router-dom';
+import { SharedStorage } from '../utils/sharedStorage';
 
 export default function Dashboard() {
   const { selectedGym } = useGymContext();
+  const navigate = useNavigate();
+  
+  // Get pending bookings count
+  const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
+  
+  useEffect(() => {
+    const bookings = SharedStorage.getBookings();
+    const pending = bookings.filter((b: any) => b.status === 'Pending').length;
+    setPendingBookingsCount(pending);
+  }, []);
+
+  // Auto-refresh pending count
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const bookings = SharedStorage.getBookings();
+      const pending = bookings.filter((b: any) => b.status === 'Pending').length;
+      setPendingBookingsCount(pending);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
   
   const gymMembers = MEMBERS.filter(m => m.gymId === selectedGym.id);
   const activeMembers = gymMembers.filter(m => m.membershipStatus === 'Active');
@@ -250,7 +275,10 @@ export default function Dashboard() {
                 <Activity size={20} className="text-green-400" />
                 <h3 className="font-semibold text-white text-lg">Recent Activity</h3>
               </div>
-              <span className="text-xs text-primary-start cursor-pointer hover:text-primary-end transition-colors flex items-center gap-1">
+              <span className="text-xs text-primary-start cursor-pointer hover:text-primary-end transition-colors flex items-center gap-1" onClick={() => {
+                showToast('Viewing all recent activity...', 'info');
+                navigate('/attendance');
+              }}>
                 View All <ArrowRight size={14} />
               </span>
             </div>
@@ -263,6 +291,10 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.7 + idx * 0.1 }}
                   className="flex items-center gap-4 p-4 bg-dark rounded-xl hover:bg-dark-border transition-all duration-200 group cursor-pointer border border-transparent hover:border-primary-start/30"
+                  onClick={() => {
+                    showToast(`Viewing ${member.fullName}'s profile...`, 'info');
+                    navigate(`/members/${member.id}`);
+                  }}
                 >
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold text-lg shadow-lg">
@@ -297,6 +329,14 @@ export default function Dashboard() {
           }>
             <div className="space-y-5">
               {[
+                { 
+                  label: 'Pending Booking Requests', 
+                  value: pendingBookingsCount, 
+                  icon: Calendar, 
+                  color: 'text-yellow-400',
+                  clickable: true,
+                  onClick: () => navigate('/schedule')
+                },
                 { label: 'Membership Renewals This Month', value: '12', icon: TrendingUp, color: 'text-blue-400' },
                 { label: 'New Members This Week', value: '5', icon: Users, color: 'text-green-400' },
                 { label: 'Average Daily Attendance', value: Math.floor(activeMembers.length * 0.65), icon: Activity, color: 'text-purple-400' },
@@ -309,11 +349,17 @@ export default function Dashboard() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.8 + idx * 0.1 }}
-                    className="flex items-center justify-between p-4 bg-dark rounded-xl hover:bg-dark-border transition-all duration-200 group border border-transparent hover:border-primary-start/20"
+                    onClick={stat.clickable ? stat.onClick : undefined}
+                    className={`flex items-center justify-between p-4 bg-dark rounded-xl hover:bg-dark-border transition-all duration-200 group border border-transparent hover:border-primary-start/20 ${stat.clickable ? 'cursor-pointer' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       <StatIcon size={20} className={stat.color} />
                       <span className="text-gray-300 group-hover:text-white transition-colors">{stat.label}</span>
+                      {stat.clickable && stat.value > 0 && (
+                        <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold animate-pulse">
+                          {stat.value}
+                        </span>
+                      )}
                     </div>
                     <span className={`text-2xl font-bold font-orbitron ${stat.color}`}>{stat.value}</span>
                   </motion.div>

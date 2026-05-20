@@ -1,12 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import QRScanner from '../components/ui/QRScanner';
 import { useGymContext } from '../hooks/useGymContext';
 import { MEMBERS } from '../data/members';
-import { QrCode, UserCheck, Search, Calendar, Clock, TrendingUp } from 'lucide-react';
+import { QrCode, UserCheck, Search, Calendar, Clock, TrendingUp, Camera } from 'lucide-react';
+import { showToast } from '../utils/toast';
+
+// Simple QR validation for admin
+const validateQR = (qrCode: string) => {
+  try {
+    const decoded = atob(qrCode);
+    const qrData = JSON.parse(decoded);
+    
+    const now = Date.now();
+    const expirationTime = qrData.timestamp + (qrData.expiresIn * 1000);
+    
+    if (now > expirationTime) {
+      return { valid: false, reason: 'QR Code expired', data: null };
+    }
+    
+    return { valid: true, data: qrData };
+  } catch {
+    return { valid: false, reason: 'Invalid QR Code format', data: null };
+  }
+};
 
 interface AttendanceRecord {
   id: string;
@@ -23,28 +44,87 @@ export default function Attendance() {
   const [activeTab, setActiveTab] = useState<'scan' | 'manual'>('scan');
   const [qrInput, setQrInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([
-    {
-      id: '1',
-      memberId: 'GF-2024-001',
-      memberName: 'Juan Dela Cruz',
-      checkInTime: new Date(Date.now() - 1000 * 60 * 30),
-      method: 'qr',
-    },
-    {
-      id: '2',
-      memberId: 'GF-2024-002',
-      memberName: 'Maria Santos',
-      checkInTime: new Date(Date.now() - 1000 * 60 * 45),
-      method: 'manual',
-    },
-  ]);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  
+  // Load attendance from localStorage or use default
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>(() => {
+    const today = new Date().toDateString();
+    const saved = localStorage.getItem(`attendance_${selectedGym.id}_${today}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Convert string dates back to Date objects
+      return parsed.map((record: any) => ({
+        ...record,
+        checkInTime: new Date(record.checkInTime)
+      }));
+    }
+    return [
+      {
+        id: '1',
+        memberId: 'GF-2024-001',
+        memberName: 'Eya Lorenzana',
+        checkInTime: new Date(Date.now() - 1000 * 60 * 30),
+        method: 'qr',
+      },
+      {
+        id: '2',
+        memberId: 'GF-2024-002',
+        memberName: 'Maria Santos',
+        checkInTime: new Date(Date.now() - 1000 * 60 * 45),
+        method: 'manual',
+      },
+    ];
+  });
 
-  const handleQRCheckIn = () => {
-    if (!qrInput.trim()) return;
+  // Save to localStorage whenever attendance changes
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`attendance_${selectedGym.id}_${today}`, JSON.stringify(todayAttendance));
+  }, [todayAttendance, selectedGym.id]);
+
+  const handleQRCheckIn = (qrCodeValue?: string) => {
+    const qrToValidate = qrCodeValue || qrInput.trim();
     
-    const member = gymMembers.find(m => m.qrCode === qrInput.trim());
+    if (!qrToValidate) {
+      showToast('Please enter a QR code', 'error');
+      return;
+    }
+    
+    // Validate QR code
+    const validation = validateQR(qrToValidate);
+    
+    if (!validation.valid) {
+      showToast(`❌ ${validation.reason}`, 'error');
+      return;
+    }
+    
+    const member = gymMembers.find(m => m.qrCode === validation.data?.memberId);
     if (member) {
+      // Check if already checked in today
+      const alreadyCheckedIn = todayAttendance.find(a => a.memberId === member.qrCode);
+      if (alreadyCheckedIn) {
+        showToast(`❌ ${member.fullName} already checked in today at ${alreadyCheckedIn.checkInTime.toLocaleTimeString()}`, 'error');
+        setQrInput('');
+        return;
+      }
+
+      // Check membership status
+      if (member.membershipStatus !== 'Active') {
+        showToast(`❌ ${member.fullName}'s membership is ${member.membershipStatus}. Cannot check in.`, 'error');
+        setQrInput('');
+        return;
+      }
+
+      // Check if membership expired
+      const today = new Date();
+      const expiryDate = new Date(member.expiryDate);
+      if (today > expiryDate) {
+        showToast(`❌ ${member.fullName}'s membership expired on ${expiryDate.toLocaleDateString()}`, 'error');
+        setQrInput('');
+        return;
+      }
+
+      // All checks passed - proceed with check-in
       const newRecord: AttendanceRecord = {
         id: Date.now().toString(),
         memberId: member.qrCode,
@@ -54,13 +134,44 @@ export default function Attendance() {
       };
       setTodayAttendance([newRecord, ...todayAttendance]);
       setQrInput('');
-      alert(`✅ ${member.fullName} checked in successfully!`);
+      
+      // Mark QR as used for today
+      const todayStr = new Date().toDateString();
+      localStorage.setItem('qr_last_used', JSON.stringify({
+        date: todayStr,
+        memberId: member.qrCode,
+        timestamp: Date.now()
+      }));
+      
+      showToast(`✅ ${member.fullName} checked in successfully!`, 'success');
     } else {
-      alert('❌ Invalid QR code. Member not found.');
+      showToast('❌ Invalid QR code. Member not found.', 'error');
     }
   };
 
   const handleManualCheckIn = (member: typeof gymMembers[0]) => {
+    // Check if already checked in today
+    const alreadyCheckedIn = todayAttendance.find(a => a.memberId === member.qrCode);
+    if (alreadyCheckedIn) {
+      showToast(`❌ ${member.fullName} already checked in today at ${alreadyCheckedIn.checkInTime.toLocaleTimeString()}`, 'error');
+      return;
+    }
+
+    // Check membership status
+    if (member.membershipStatus !== 'Active') {
+      showToast(`❌ ${member.fullName}'s membership is ${member.membershipStatus}. Cannot check in.`, 'error');
+      return;
+    }
+
+    // Check if membership expired
+    const today = new Date();
+    const expiryDate = new Date(member.expiryDate);
+    if (today > expiryDate) {
+      showToast(`❌ ${member.fullName}'s membership expired on ${expiryDate.toLocaleDateString()}`, 'error');
+      return;
+    }
+
+    // All checks passed - proceed with check-in
     const newRecord: AttendanceRecord = {
       id: Date.now().toString(),
       memberId: member.qrCode,
@@ -70,7 +181,7 @@ export default function Attendance() {
     };
     setTodayAttendance([newRecord, ...todayAttendance]);
     setSearchTerm('');
-    alert(`✅ ${member.fullName} checked in manually!`);
+    showToast(`✅ ${member.fullName} checked in manually!`, 'success');
   };
 
   const filteredMembers = gymMembers.filter(m =>
@@ -163,23 +274,41 @@ export default function Attendance() {
               <div className="bg-dark rounded-2xl p-8 text-center border-2 border-dashed border-dark-border">
                 <QrCode size={64} className="text-primary-start mx-auto mb-4" />
                 <h3 className="text-white font-semibold text-lg mb-2">Scan Member QR Code</h3>
-                <p className="text-gray-400 text-sm mb-6">Ask member to show their QR code from the mobile app</p>
+                <p className="text-gray-400 text-sm mb-6">Use camera to scan or enter QR code manually</p>
                 
-                <div className="max-w-md mx-auto">
+                <div className="max-w-md mx-auto space-y-3">
+                  {/* Camera Scanner Button */}
+                  <Button
+                    onClick={() => setIsScannerOpen(true)}
+                    variant="primary"
+                    className="w-full shadow-lg shadow-primary-start/30 flex items-center justify-center gap-2"
+                  >
+                    <Camera size={20} />
+                    Open Camera Scanner
+                  </Button>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-dark-border"></div>
+                    <span className="text-gray-500 text-xs">OR</span>
+                    <div className="flex-1 h-px bg-dark-border"></div>
+                  </div>
+
+                  {/* Manual Input */}
                   <Input
                     type="text"
                     placeholder="Enter QR code manually (e.g., GF-2024-001)"
                     value={qrInput}
                     onChange={(e) => setQrInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleQRCheckIn()}
-                    className="mb-4"
+                    className="mb-3"
                   />
                   <Button
-                    onClick={handleQRCheckIn}
-                    variant="primary"
-                    className="w-full shadow-lg shadow-primary-start/30"
+                    onClick={() => handleQRCheckIn()}
+                    variant="ghost"
+                    className="w-full"
                   >
-                    Check In with QR
+                    Check In with Manual Entry
                   </Button>
                 </div>
               </div>
@@ -187,7 +316,7 @@ export default function Attendance() {
               <div className="bg-dark-border/30 rounded-xl p-4">
                 <p className="text-gray-400 text-sm">
                   <strong className="text-white">💡 Tip:</strong> Members can show their QR code from the mobile app Home screen. 
-                  You can also type the member ID manually if the QR scanner is unavailable.
+                  Use the camera scanner for quick check-ins, or type the member ID manually if needed.
                 </p>
               </div>
             </motion.div>
@@ -304,6 +433,13 @@ export default function Attendance() {
           </div>
         </Card>
       </motion.div>
+
+      {/* QR Scanner Modal */}
+      <QRScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={(qrCode) => handleQRCheckIn(qrCode)}
+      />
     </div>
   );
 }

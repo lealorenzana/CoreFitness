@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { X, User, Mail, Phone, MapPin, Calendar, CreditCard } from 'lucide-react';
+import { X, User, Mail, CreditCard } from 'lucide-react';
 import Button from './Button';
 import Input from './Input';
 import { useGymContext } from '../../hooks/useGymContext';
