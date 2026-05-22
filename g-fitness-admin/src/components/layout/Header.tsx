@@ -1,8 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useGymContext } from '../../hooks/useGymContext';
-import { MapPin, Bell, User, X, Calendar, UserPlus, DollarSign, AlertCircle, Clock } from 'lucide-react';
+import { Search, Mail, Bell, X, Calendar, DollarSign, AlertCircle, Clock, MapPin } from 'lucide-react';
 import { SharedStorage } from '../../utils/sharedStorage';
+
+const SURFACE        = 'var(--color-surface)';
+const SURFACE_RAISED = 'var(--color-surface-raised)';
+const BORDER         = 'var(--color-border)';
+const PRIMARY        = 'var(--color-primary)';
+const PRIMARY_LIGHT  = 'var(--color-primary-light)';
+const SECONDARY      = 'var(--color-secondary)';
+const SECONDARY_BG   = 'var(--color-secondary-light)';
+const TEXT_SECOND    = 'var(--color-text-secondary)';
+const TEXT_MUTED     = 'var(--color-text-muted)';
 
 interface Notification {
   id: string;
@@ -11,8 +21,6 @@ interface Notification {
   message: string;
   time: string;
   icon: any;
-  color: string;
-  bgColor: string;
   unread: boolean;
   priority: 'high' | 'medium' | 'low';
   actionUrl?: string;
@@ -22,296 +30,252 @@ export default function Header() {
   const { selectedGym } = useGymContext();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [search, setSearch] = useState('');
 
-  // Generate real notifications based on actual data
   useEffect(() => {
-    const generateNotifications = () => {
-      const newNotifications: Notification[] = [];
-      
-      // Get members from SharedStorage
+    const generate = () => {
+      const list: Notification[] = [];
       const members = SharedStorage.getMembers().filter((m: any) => m.gymId === selectedGym.id);
-      
-      // Check for expiring memberships (within 7 days)
       const today = new Date();
-      const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      
+
       members.forEach((member: any) => {
-        const expiryDate = new Date(member.expiryDate);
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Expired memberships
-        if (expiryDate < today && member.membershipStatus !== 'Expired') {
-          newNotifications.push({
+        const expiry = new Date(member.expiryDate);
+        const daysUntil = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (expiry < today && member.membershipStatus !== 'Expired') {
+          list.push({
             id: `expired-${member.id}`,
             type: 'expired',
-            title: '🚨 Membership Expired',
-            message: `${member.fullName}'s membership expired ${Math.abs(daysUntilExpiry)} days ago`,
+            title: 'Membership Expired',
+            message: `${member.fullName}'s membership expired ${Math.abs(daysUntil)} days ago`,
             time: 'Now',
             icon: AlertCircle,
-            color: 'text-red-400',
-            bgColor: 'bg-red-500/20',
             unread: true,
             priority: 'high',
             actionUrl: `/members/${member.id}`,
           });
-        }
-        // Expiring soon (within 7 days)
-        else if (daysUntilExpiry > 0 && daysUntilExpiry <= 7) {
-          newNotifications.push({
+        } else if (daysUntil > 0 && daysUntil <= 7) {
+          list.push({
             id: `expiring-${member.id}`,
             type: 'expiring',
-            title: '⚠️ Membership Expiring Soon',
-            message: `${member.fullName}'s membership expires in ${daysUntilExpiry} day${daysUntilExpiry > 1 ? 's' : ''}`,
-            time: `${daysUntilExpiry} days`,
+            title: 'Expiring Soon',
+            message: `${member.fullName} expires in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+            time: `${daysUntil}d`,
             icon: Clock,
-            color: 'text-yellow-400',
-            bgColor: 'bg-yellow-500/20',
             unread: true,
             priority: 'high',
             actionUrl: `/members/${member.id}`,
           });
         }
-        
-        // Suspended members
+
         if (member.membershipStatus === 'Suspended') {
-          newNotifications.push({
+          list.push({
             id: `suspended-${member.id}`,
             type: 'suspended',
-            title: '🔒 Suspended Member',
+            title: 'Suspended Member',
             message: `${member.fullName} is currently suspended`,
             time: 'Active',
             icon: AlertCircle,
-            color: 'text-orange-400',
-            bgColor: 'bg-orange-500/20',
             unread: false,
             priority: 'medium',
             actionUrl: `/members/${member.id}`,
           });
         }
       });
-      
-      // Check for pending bookings
+
       const bookings = SharedStorage.getBookings();
-      const pendingBookings = bookings.filter((b: any) => b.status === 'Pending');
-      
-      if (pendingBookings.length > 0) {
-        newNotifications.push({
+      const pending = bookings.filter((b: any) => b.status === 'Pending');
+      if (pending.length > 0) {
+        list.push({
           id: 'pending-bookings',
           type: 'booking',
-          title: '📅 Pending Booking Requests',
-          message: `${pendingBookings.length} trainer booking${pendingBookings.length > 1 ? 's' : ''} waiting for approval`,
+          title: 'Pending Booking Requests',
+          message: `${pending.length} booking${pending.length > 1 ? 's' : ''} waiting for approval`,
           time: 'Now',
           icon: Calendar,
-          color: 'text-purple-400',
-          bgColor: 'bg-purple-500/20',
           unread: true,
           priority: 'high',
-          actionUrl: '/schedule',
+          actionUrl: '/bookings',
         });
       }
-      
-      // Check for recent payments (last 24 hours)
+
       const payments = SharedStorage.getPayments();
-      const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-      const recentPayments = payments.filter((p: any) => new Date(p.date) > oneDayAgo);
-      
-      if (recentPayments.length > 0) {
-        const totalAmount = recentPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-        newNotifications.push({
+      const dayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      const recent = payments.filter((p: any) => new Date(p.date) > dayAgo);
+      if (recent.length > 0) {
+        const total = recent.reduce((s: number, p: any) => s + p.amount, 0);
+        list.push({
           id: 'recent-payments',
           type: 'payment',
-          title: '💰 Recent Payments',
-          message: `${recentPayments.length} payment${recentPayments.length > 1 ? 's' : ''} received (₱${totalAmount.toLocaleString()})`,
+          title: 'Recent Payments',
+          message: `${recent.length} payment${recent.length > 1 ? 's' : ''} received (₱${total.toLocaleString()})`,
           time: 'Today',
           icon: DollarSign,
-          color: 'text-green-400',
-          bgColor: 'bg-green-500/20',
           unread: false,
           priority: 'low',
           actionUrl: '/payments',
         });
       }
-      
-      // Sort by priority and time
-      newNotifications.sort((a, b) => {
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
+
+      list.sort((a, b) => {
+        const order = { high: 0, medium: 1, low: 2 };
+        return order[a.priority] - order[b.priority];
       });
-      
-      setNotifications(newNotifications);
+      setNotifications(list);
     };
 
-    generateNotifications();
-    
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(generateNotifications, 30000);
-    
+    generate();
+    const interval = setInterval(generate, 30000);
     return () => clearInterval(interval);
   }, [selectedGym.id]);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
-  const highPriorityCount = notifications.filter(n => n.priority === 'high' && n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <header className="h-20 bg-dark-lighter/80 backdrop-blur-md border-b border-dark-border px-8 flex items-center justify-between shadow-lg sticky top-0 z-40">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-4"
-      >
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center shadow-lg p-2">
-          <img src="/logo.png" alt="Gym" className="w-full h-full object-contain" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-white font-orbitron">
-            {selectedGym.name}
-          </h2>
-          <p className="text-sm text-gray-400 flex items-center gap-1">
-            <MapPin size={14} />
-            {selectedGym.location}
+    <header
+      className="h-16 px-6 flex items-center gap-4 sticky top-0 z-30"
+      style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}
+    >
+      <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 min-w-0">
+        <div className="hidden lg:block">
+          <p className="text-sm font-semibold text-white">Core Fitness</p>
+          <p className="text-xs flex items-center gap-1" style={{ color: TEXT_MUTED }}>
+            <MapPin size={11} /> {selectedGym.location}
           </p>
         </div>
       </motion.div>
-      
-      <motion.div 
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-6"
-      >
-        {/* Notifications */}
+
+      <div className="flex-1 relative">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search members, bookings, payments…"
+          className="w-full pl-11 pr-4 text-sm rounded-full transition-colors"
+          style={{
+            height: 40,
+            background: SURFACE_RAISED,
+            border: `1px solid ${BORDER}`,
+            color: '#fff',
+            outline: 'none',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = PRIMARY;
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.18)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = BORDER;
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        />
+      </div>
+
+      <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 flex-shrink-0">
+        <button
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
+          title="Inbox"
+        >
+          <Mail size={16} style={{ color: TEXT_SECOND }} />
+        </button>
+
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-3 rounded-xl bg-dark border border-dark-border hover:border-primary-start/50 hover:bg-dark-border transition-all duration-200 group"
+            className="relative w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
           >
-            <Bell size={20} className="text-gray-400 group-hover:text-primary-start transition-colors" />
+            <Bell size={16} style={{ color: TEXT_SECOND }} />
             {unreadCount > 0 && (
-              <span className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                highPriorityCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-primary-start'
-              }`}>
+              <span
+                className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-black"
+                style={{ background: SECONDARY }}
+              >
                 {unreadCount}
               </span>
             )}
           </button>
 
-          {/* Notification Dropdown */}
           <AnimatePresence>
             {showNotifications && (
               <>
-                {/* Backdrop */}
-                <div 
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowNotifications(false)}
-                />
-                
-                {/* Dropdown */}
+                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
                 <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute right-0 top-full mt-2 w-[450px] bg-dark border border-dark-border rounded-xl shadow-2xl overflow-hidden z-50"
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute right-0 top-full mt-2 w-[400px] rounded-2xl shadow-2xl overflow-hidden z-50"
+                  style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
                 >
-                  {/* Header */}
-                  <div className="p-4 border-b border-dark-border flex items-center justify-between bg-dark-lighter">
+                  <div className="p-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${BORDER}`, background: SURFACE }}>
                     <div>
-                      <h3 className="text-white font-semibold flex items-center gap-2">
-                        Notifications
-                        {highPriorityCount > 0 && (
-                          <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-bold">
-                            {highPriorityCount} urgent
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-gray-400 text-xs">
-                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                      <h3 className="text-white font-semibold text-sm">Notifications</h3>
+                      <p className="text-xs mt-0.5" style={{ color: TEXT_MUTED }}>
+                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => setShowNotifications(false)}
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      <X size={20} />
+                    <button onClick={() => setShowNotifications(false)} style={{ color: TEXT_MUTED }}>
+                      <X size={18} />
                     </button>
                   </div>
 
-                  {/* Notifications List */}
-                  <div className="max-h-[500px] overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => {
-                        const Icon = notification.icon;
-                        return (
+                  <div className="max-h-[440px] overflow-y-auto">
+                    {notifications.length > 0 ? notifications.map((n) => {
+                      const Icon = n.icon;
+                      return (
+                        <button
+                          key={n.id}
+                          onClick={() => { if (n.actionUrl) window.location.href = n.actionUrl; }}
+                          className="w-full text-left p-4 transition-colors flex items-start gap-3"
+                          style={{
+                            borderBottom: `1px solid ${BORDER}`,
+                            background: n.unread ? 'rgba(124,58,237,0.06)' : 'transparent',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = PRIMARY_LIGHT)}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = n.unread ? 'rgba(124,58,237,0.06)' : 'transparent')}
+                        >
                           <div
-                            key={notification.id}
-                            onClick={() => {
-                              if (notification.actionUrl) {
-                                window.location.href = notification.actionUrl;
-                              }
-                            }}
-                            className={`p-4 border-b border-dark-border hover:bg-dark-border/50 transition-colors cursor-pointer ${
-                              notification.unread ? 'bg-primary-start/5' : ''
-                            } ${
-                              notification.priority === 'high' ? 'border-l-4 border-l-red-500' : ''
-                            }`}
+                            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: n.priority === 'high' ? SECONDARY_BG : PRIMARY_LIGHT }}
                           >
-                            <div className="flex items-start gap-3">
-                              <div className={`w-10 h-10 rounded-lg ${notification.bgColor} flex items-center justify-center flex-shrink-0`}>
-                                <Icon size={20} className={notification.color} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="text-white font-medium text-sm leading-tight">{notification.title}</p>
-                                  {notification.unread && (
-                                    <span className="w-2 h-2 bg-primary-start rounded-full flex-shrink-0 mt-1"></span>
-                                  )}
-                                </div>
-                                <p className="text-gray-400 text-sm mt-1 leading-snug">{notification.message}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <p className="text-gray-500 text-xs">{notification.time}</p>
-                                  {notification.priority === 'high' && (
-                                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-semibold">
-                                      URGENT
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                            <Icon size={16} style={{ color: n.priority === 'high' ? SECONDARY : PRIMARY }} />
                           </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-12 text-center">
-                        <Bell size={48} className="text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-400 font-medium">No notifications</p>
-                        <p className="text-gray-500 text-sm mt-1">You're all caught up!</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-medium text-white">{n.title}</p>
+                              {n.unread && (
+                                <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: SECONDARY }} />
+                              )}
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: TEXT_SECOND }}>{n.message}</p>
+                            <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>{n.time}</p>
+                          </div>
+                        </button>
+                      );
+                    }) : (
+                      <div className="p-10 text-center">
+                        <Bell size={36} className="mx-auto mb-3" style={{ color: TEXT_MUTED }} />
+                        <p className="text-sm" style={{ color: TEXT_SECOND }}>You're all caught up</p>
                       </div>
                     )}
                   </div>
 
-                  {/* Footer */}
                   {notifications.length > 0 && (
-                    <div className="p-3 border-t border-dark-border bg-dark-lighter flex items-center gap-2">
-                      <button 
-                        onClick={() => {
-                          // Mark all as read
-                          setNotifications(notifications.map(n => ({ ...n, unread: false })));
-                        }}
-                        className="flex-1 text-center text-gray-400 text-sm font-medium hover:text-white transition-colors"
+                    <div
+                      className="p-3 flex items-center justify-center"
+                      style={{ borderTop: `1px solid ${BORDER}`, background: SURFACE }}
+                    >
+                      <button
+                        onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))}
+                        className="text-xs font-medium"
+                        style={{ color: PRIMARY }}
                       >
-                        Mark All as Read
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setShowNotifications(false);
-                          // In a real app, this would navigate to a full notifications page
-                          // For now, we'll show all notifications are already visible
-                          setTimeout(() => {
-                            setShowNotifications(true);
-                          }, 100);
-                        }}
-                        className="flex-1 text-center text-primary-start text-sm font-medium hover:text-primary-end transition-colors"
-                      >
-                        Refresh Notifications
+                        Mark all as read
                       </button>
                     </div>
                   )}
@@ -321,14 +285,18 @@ export default function Header() {
           </AnimatePresence>
         </div>
 
-        {/* User Profile */}
-        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-dark border border-dark-border hover:border-primary-start/50 transition-all duration-200 cursor-pointer group">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary to-primary-end flex items-center justify-center text-white shadow-lg">
-            <User size={20} />
+        <div
+          className="flex items-center gap-2.5 pl-2 pr-3 h-10 rounded-full cursor-pointer transition-colors"
+          style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
+        >
+          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+            <img src="/core-fitness-logo.png" alt="Admin" className="w-full h-full object-cover" />
           </div>
-          <div className="text-left">
-            <p className="text-white font-medium text-sm group-hover:text-primary-start transition-colors">Admin</p>
-            <p className="text-gray-400 text-xs">Super Admin</p>
+          <div className="hidden sm:block text-left">
+            <p className="text-xs font-semibold text-white leading-tight">Admin</p>
+            <p className="text-[10px] leading-tight" style={{ color: TEXT_MUTED }}>Super Admin</p>
           </div>
         </div>
       </motion.div>

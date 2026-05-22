@@ -1,217 +1,213 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Smartphone, Building2, Wallet, CheckCircle, ArrowLeft } from 'lucide-react';
-import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
+import { CreditCard, Smartphone, Wallet, CheckCircle, ArrowLeft, Zap, Crown } from 'lucide-react';
 import { SharedStorage } from '../utils/sharedStorage';
 import { getCurrentUser } from '../utils/auth';
+import { toast } from '../components/ui/Toast';
+
+const PLANS = [
+  { id: 'basic',    name: 'G-Silver', label: 'Monthly', price: 800,  icon: CreditCard, accent: 'var(--color-text-muted)' },
+  { id: 'standard', name: 'G-Gold',   label: 'Monthly', price: 1000, icon: Zap,        accent: 'var(--color-primary)' },
+  { id: 'premium',  name: 'G-Ruby',   label: 'Monthly', price: 1500, icon: Crown,      accent: 'var(--color-secondary)' },
+];
+
+const PAYMENT_METHODS = [
+  { id: 'gcash', name: 'GCash', icon: Smartphone, description: 'Pay via GCash app' },
+  { id: 'cash',  name: 'Cash',  icon: Wallet,     description: 'Pay at reception' },
+];
 
 export default function RenewMembership() {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState('premium');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const plans = [
-    { id: 'basic', name: 'Basic', price: 800, color: 'from-blue-500 to-cyan-500' },
-    { id: 'standard', name: 'Standard', price: 1500, color: 'from-green-500 to-emerald-500' },
-    { id: 'premium', name: 'Premium', price: 2500, color: 'from-orange-500 to-orange-400' },
-  ];
-
-  const paymentMethods = [
-    { id: 'gcash', name: 'GCash', icon: Smartphone, description: 'Pay via GCash app' },
-    { id: 'card', name: 'Credit/Debit Card', icon: CreditCard, description: 'Visa, Mastercard, etc.' },
-    { id: 'bank', name: 'Bank Transfer', icon: Building2, description: 'Online banking' },
-    { id: 'cash', name: 'Cash', icon: Wallet, description: 'Pay at reception' },
-  ];
+  const [agreed, setAgreed] = useState(false);
 
   const handlePayment = () => {
     if (!selectedMethod) {
-      showErrorToast({ type: 'validation', message: 'Please select a payment method' });
+      toast.error('Please select a payment method');
+      return;
+    }
+    if (!agreed) {
+      toast.error('Please agree to the Terms and Privacy Policy');
       return;
     }
 
     const currentUser = getCurrentUser();
-    const selectedPlanData = plans.find((p) => p.id === selectedPlan);
-    
-    // Create payment record
+    const selectedPlanData = PLANS.find(p => p.id === selectedPlan);
+
     const payment = {
       id: `payment-${Date.now()}`,
       memberId: currentUser?.email || 'eya.lorenzana@email.com',
       memberName: currentUser?.name || 'Eya Lorenzana',
       memberEmail: currentUser?.email || 'eya.lorenzana@email.com',
       amount: selectedPlanData?.price || 0,
-      method: selectedMethod === 'gcash' ? 'GCash' : 
-              selectedMethod === 'card' ? 'Credit Card' :
-              selectedMethod === 'bank' ? 'Bank Transfer' : 'Cash',
+      method: selectedMethod === 'gcash' ? 'GCash' : 'Cash',
       date: new Date().toISOString().split('T')[0],
-      notes: `Membership renewal - ${selectedPlanData?.name} plan`,
+      notes: `Membership renewal — ${selectedPlanData?.name} plan`,
       status: selectedMethod === 'cash' ? 'Pending' : 'Completed',
       createdAt: new Date().toISOString(),
     };
-    
-    // Save to shared storage (visible to admin)
+
     SharedStorage.addPayment(payment);
 
     if (selectedMethod === 'cash') {
-      showSuccessToast('Payment confirmed! Please proceed to reception to complete payment.');
-      setTimeout(() => navigate('/member/home'), 2000);
+      toast.success('Confirmed! Please proceed to reception.');
+      setTimeout(() => navigate('/member/home'), 1500);
     } else {
-      // Simulate payment processing
       setTimeout(() => {
         setShowSuccess(true);
-        setTimeout(() => {
-          navigate('/member/payments');
-        }, 2000);
-      }, 1500);
+        setTimeout(() => navigate('/member/payments'), 1500);
+      }, 1000);
     }
   };
 
-  const selectedPlanData = plans.find((p) => p.id === selectedPlan);
+  const selectedPlanData = PLANS.find(p => p.id === selectedPlan);
 
   if (showSuccess) {
     return (
       <div className="flex items-center justify-center h-full">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="text-center"
-        >
-          <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={48} className="text-green-400" />
+        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-center">
+          <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"
+            style={{ background: 'var(--color-primary-light)', border: '2px solid var(--color-primary)' }}>
+            <CheckCircle size={44} style={{ color: 'var(--color-primary)' }} />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Payment Successful!</h2>
-          <p className="text-gray-400">Your membership has been renewed</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Payment Successful</h2>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Your membership has been renewed</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-4">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-400 hover:text-orange-400 transition-colors mb-4"
-        >
-          <ArrowLeft size={20} />
-          Back
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
+          className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+          <ArrowLeft size={18} />
         </button>
-        <h1 className="text-3xl font-orbitron font-bold bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">Renew Membership</h1>
-        <p className="text-gray-400 mt-1">Select your plan and payment method</p>
-      </motion.div>
-
-      {/* Plan Selection */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <h3 className="text-white font-semibold mb-3">Select Plan</h3>
-        <div className="space-y-3">
-          {plans.map((plan) => (
-            <button
-              key={plan.id}
-              onClick={() => setSelectedPlan(plan.id)}
-              className={`w-full p-4 rounded-2xl border-2 transition-all ${
-                selectedPlan === plan.id
-                  ? 'border-orange-500 bg-orange-500/10'
-                  : 'border-dark-border bg-dark-lighter hover:border-orange-500/50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-left">
-                  <p className="text-white font-semibold">{plan.name}</p>
-                  <p className="text-gray-400 text-sm">Monthly membership</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">₱{plan.price.toLocaleString()}</p>
-                  <p className="text-gray-400 text-xs">/month</p>
-                </div>
-              </div>
-            </button>
-          ))}
+        <div>
+          <h1 className="text-xl font-bold text-white">Renew Membership</h1>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Select your plan and payment method</p>
         </div>
       </motion.div>
 
-      {/* Payment Method Selection */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <h3 className="text-white font-semibold mb-3">Payment Method</h3>
+      {/* Plans */}
+      <div className="space-y-2">
+        <h3 className="text-white font-semibold text-sm">Select Plan</h3>
+        {PLANS.map((plan, i) => {
+          const isActive = selectedPlan === plan.id;
+          const Icon = plan.icon;
+          return (
+            <motion.button
+              key={plan.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => setSelectedPlan(plan.id)}
+              className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
+              style={{
+                background: 'var(--color-surface-raised)',
+                border: `1.5px solid ${isActive ? plan.accent : 'var(--color-border)'}`,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--color-primary-light)' }}>
+                  <Icon size={18} style={{ color: 'var(--color-primary)' }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm">{plan.name}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{plan.label}</p>
+                </div>
+                <p className="text-lg font-bold" style={{ color: isActive ? plan.accent : 'var(--color-text-secondary)' }}>
+                  ₱{plan.price.toLocaleString()}
+                </p>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Payment methods — only GCash and Cash */}
+      <div className="space-y-2">
+        <h3 className="text-white font-semibold text-sm">Payment Method</h3>
         <div className="grid grid-cols-2 gap-3">
-          {paymentMethods.map((method) => {
+          {PAYMENT_METHODS.map(method => {
             const Icon = method.icon;
+            const isActive = selectedMethod === method.id;
             return (
-              <button
-                key={method.id}
-                onClick={() => setSelectedMethod(method.id)}
-                className={`p-4 rounded-2xl border-2 transition-all ${
-                  selectedMethod === method.id
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-dark-border bg-dark-lighter hover:border-orange-500/50'
-                }`}
-              >
-                <Icon size={24} className={selectedMethod === method.id ? 'text-orange-400' : 'text-gray-400'} />
-                <p className={`text-sm font-semibold mt-2 ${selectedMethod === method.id ? 'text-white' : 'text-gray-300'}`}>
+              <button key={method.id} onClick={() => setSelectedMethod(method.id)}
+                className="p-4 rounded-2xl text-left transition-all active:scale-[0.97]"
+                style={{
+                  background: 'var(--color-surface-raised)',
+                  border: `1.5px solid ${isActive ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+                }}>
+                <Icon size={20} style={{ color: isActive ? 'var(--color-secondary)' : 'var(--color-text-muted)' }} />
+                <p className="text-sm font-bold mt-2" style={{ color: isActive ? '#fff' : 'var(--color-text-secondary)' }}>
                   {method.name}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{method.description}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{method.description}</p>
               </button>
             );
           })}
         </div>
-      </motion.div>
+      </div>
+
+      {/* Terms checkbox */}
+      <label className="flex items-center gap-3 cursor-pointer">
+        <div
+          className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+          style={{
+            background: agreed ? 'var(--color-primary)' : 'transparent',
+            border: `1.5px solid ${agreed ? 'var(--color-primary)' : 'var(--color-border)'}`,
+          }}
+          onClick={() => setAgreed(!agreed)}
+        >
+          {agreed && <CheckCircle size={12} className="text-white" />}
+        </div>
+        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          I agree to the{' '}
+          <span style={{ color: 'var(--color-primary)' }} className="font-semibold">Terms</span>
+          {' '}and{' '}
+          <span style={{ color: 'var(--color-primary)' }} className="font-semibold">Privacy Policy</span>
+        </span>
+      </label>
 
       {/* Summary */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-dark-lighter border border-dark-border rounded-2xl p-6"
-      >
-        <h3 className="text-white font-semibold mb-4">Payment Summary</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-400">Plan</span>
-            <span className="text-white font-semibold">{selectedPlanData?.name}</span>
+      <div className="rounded-2xl p-4 space-y-2"
+        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+        <h3 className="text-white font-semibold text-sm">Payment Summary</h3>
+        {[
+          { label: 'Plan',           value: selectedPlanData?.name },
+          { label: 'Duration',       value: '1 Month' },
+          { label: 'Payment Method', value: selectedMethod ? PAYMENT_METHODS.find(m => m.id === selectedMethod)?.name : '—' },
+        ].map(row => (
+          <div key={row.label} className="flex justify-between text-sm py-1">
+            <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
+            <span className="text-white font-semibold">{row.value}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Duration</span>
-            <span className="text-white font-semibold">1 Month</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Payment Method</span>
-            <span className="text-white font-semibold capitalize">
-              {selectedMethod ? paymentMethods.find((m) => m.id === selectedMethod)?.name : 'Not selected'}
-            </span>
-          </div>
-          <div className="border-t border-dark-border pt-3 mt-3">
-            <div className="flex justify-between">
-              <span className="text-white font-bold">Total</span>
-              <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">₱{selectedPlanData?.price.toLocaleString()}</span>
-            </div>
-          </div>
+        ))}
+        <div className="pt-3 mt-1 flex justify-between" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <span className="text-white font-bold">Total</span>
+          <span className="text-xl font-bold" style={{ color: 'var(--color-secondary)' }}>
+            ₱{selectedPlanData?.price.toLocaleString()}
+          </span>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Pay Button */}
-      <motion.button
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+      {/* CTA */}
+      <button
         onClick={handlePayment}
-        disabled={!selectedMethod}
-        className="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!selectedMethod || !agreed}
+        className="w-full h-12 rounded-full font-bold text-black flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.97]"
+        style={{ background: 'var(--color-secondary)' }}
       >
-        {selectedMethod === 'cash' ? 'Confirm & Pay at Reception' : 'Pay Now'}
-      </motion.button>
+        {selectedMethod === 'cash' ? 'CONFIRM & PAY AT RECEPTION' : 'PAY NOW'}
+      </button>
     </div>
   );
 }

@@ -92,9 +92,10 @@ G-Fitness Management System
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-6 border-b border-dark-border flex items-center justify-between bg-gradient-to-r from-primary-start/10 to-primary-end/10">
+              <div className="p-6 border-b border-dark-border flex items-center justify-between"
+                style={{ background: 'var(--color-surface-raised)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
                     <Receipt size={24} className="text-white" />
                   </div>
                   <div>
@@ -116,7 +117,7 @@ G-Fitness Management System
                 <div className="flex items-center justify-center">
                   <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold uppercase ${
                     payment.status === 'completed' 
-                      ? 'bg-green-500/20 text-green-400 border-2 border-green-500/30' 
+                      ? 'bg-green-500/20 text-violet border-2 border-green-500/30' 
                       : 'bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500/30'
                   }`}>
                     <CheckCircle size={20} />
@@ -207,7 +208,7 @@ G-Fitness Management System
                   </div>
 
                   <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <p className="text-blue-400 text-sm">
+                    <p className="text-violet text-sm">
                       <strong>Duration:</strong> {Math.ceil((new Date(payment.dueDate).getTime() - new Date(payment.date).getTime()) / (1000 * 60 * 60 * 24))} days
                     </p>
                   </div>

@@ -1,35 +1,41 @@
-import type { InputHTMLAttributes } from 'react';
-import { forwardRef } from 'react';
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
+const SURFACE_RAISED = 'var(--color-surface-raised)';
+const BORDER         = 'var(--color-border)';
+const PRIMARY        = 'var(--color-primary)';
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className = '', ...props }, ref) => {
-    return (
-      <div className="w-full">
-        {label && (
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            {label}
-          </label>
-        )}
-        <input
-          ref={ref}
-          className={`w-full px-4 py-3 bg-dark border-2 ${
-            error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-dark-border focus:border-primary-start focus:ring-primary-start/20'
-          } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${className}`}
-          {...props}
-        />
-        {error && (
-          <p className="mt-2 text-sm text-red-400">{error}</p>
-        )}
-      </div>
-    );
-  }
+/**
+ * Standard input — surface-raised bg, violet focus ring, white text.
+ * Consistent 40px height across the app.
+ */
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, style, onFocus, onBlur, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={cn('w-full px-4 text-sm rounded-xl transition-colors focus:outline-none', className)}
+      style={{
+        height: 40,
+        background: SURFACE_RAISED,
+        border: `1px solid ${BORDER}`,
+        color: '#fff',
+        ...style,
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = PRIMARY;
+        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.18)';
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = BORDER;
+        e.currentTarget.style.boxShadow = 'none';
+        onBlur?.(e);
+      }}
+      {...props}
+    />
+  ),
 );
-
 Input.displayName = 'Input';
 
 export default Input;
+export { Input };

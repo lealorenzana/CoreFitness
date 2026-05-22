@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, Lock, Save } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Save } from 'lucide-react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { SharedStorage } from '../utils/sharedStorage';
 
@@ -136,13 +136,13 @@ export default function EditProfile() {
       >
         <button
           onClick={() => navigate('/member/profile')}
-          className="w-10 h-10 rounded-xl bg-dark-lighter border border-dark-border flex items-center justify-center text-gray-400 hover:text-white hover:border-primary-start transition-all duration-200"
+          className="w-10 h-10 rounded-xl bg-dark-lighter border border-dark-border flex items-center justify-center text-white/40 hover:text-white hover:border-yellow-500/40 transition-all duration-200"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
           <h1 className="text-3xl font-orbitron font-bold text-gradient">Edit Profile</h1>
-          <p className="text-gray-400 mt-1">Update your personal information</p>
+          <p className="text-white/40 mt-1">Update your personal information</p>
         </div>
       </motion.div>
 
@@ -155,7 +155,7 @@ export default function EditProfile() {
         className="space-y-6"
       >
         {/* Personal Information */}
-        <div className="bg-dark-lighter border border-dark-border rounded-2xl p-6 space-y-4">
+        <div className="glass-card rounded-2xl p-6 space-y-4">
           <h2 className="text-white font-semibold text-lg flex items-center gap-2">
             <User size={20} className="text-primary-start" />
             Personal Information
@@ -163,7 +163,7 @@ export default function EditProfile() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-400 text-sm block mb-2">First Name</label>
+              <label className="text-white/40 text-sm block mb-2">First Name</label>
               <input
                 type="text"
                 name="firstName"
@@ -172,12 +172,12 @@ export default function EditProfile() {
                 className={`w-full bg-dark border ${errors.firstName ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
               />
               {errors.firstName && (
-                <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>
+                <p className="text-yellow text-xs mt-1">{errors.firstName}</p>
               )}
             </div>
 
             <div>
-              <label className="text-gray-400 text-sm block mb-2">Last Name</label>
+              <label className="text-white/40 text-sm block mb-2">Last Name</label>
               <input
                 type="text"
                 name="lastName"
@@ -186,21 +186,21 @@ export default function EditProfile() {
                 className={`w-full bg-dark border ${errors.lastName ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
               />
               {errors.lastName && (
-                <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>
+                <p className="text-yellow text-xs mt-1">{errors.lastName}</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Contact Information */}
-        <div className="bg-dark-lighter border border-dark-border rounded-2xl p-6 space-y-4">
+        <div className="glass-card rounded-2xl p-6 space-y-4">
           <h2 className="text-white font-semibold text-lg flex items-center gap-2">
             <Mail size={20} className="text-primary-start" />
             Contact Information
           </h2>
 
           <div>
-            <label className="text-gray-400 text-sm block mb-2">Email Address</label>
+            <label className="text-white/40 text-sm block mb-2">Email Address</label>
             <input
               type="email"
               name="email"
@@ -209,12 +209,12 @@ export default function EditProfile() {
               className={`w-full bg-dark border ${errors.email ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
             />
             {errors.email && (
-              <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+              <p className="text-yellow text-xs mt-1">{errors.email}</p>
             )}
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm block mb-2">Phone Number</label>
+            <label className="text-white/40 text-sm block mb-2">Phone Number</label>
             <input
               type="tel"
               name="phone"
@@ -224,21 +224,21 @@ export default function EditProfile() {
               className={`w-full bg-dark border ${errors.phone ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
             />
             {errors.phone && (
-              <p className="text-red-400 text-xs mt-1">{errors.phone}</p>
+              <p className="text-yellow text-xs mt-1">{errors.phone}</p>
             )}
           </div>
         </div>
 
         {/* Change Password */}
-        <div className="bg-dark-lighter border border-dark-border rounded-2xl p-6 space-y-4">
+        <div className="glass-card rounded-2xl p-6 space-y-4">
           <h2 className="text-white font-semibold text-lg flex items-center gap-2">
             <Lock size={20} className="text-primary-start" />
             Change Password
           </h2>
-          <p className="text-gray-400 text-sm">Leave blank if you don't want to change your password</p>
+          <p className="text-white/40 text-sm">Leave blank if you don't want to change your password</p>
 
           <div>
-            <label className="text-gray-400 text-sm block mb-2">Current Password</label>
+            <label className="text-white/40 text-sm block mb-2">Current Password</label>
             <input
               type="password"
               name="currentPassword"
@@ -247,12 +247,12 @@ export default function EditProfile() {
               className={`w-full bg-dark border ${errors.currentPassword ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
             />
             {errors.currentPassword && (
-              <p className="text-red-400 text-xs mt-1">{errors.currentPassword}</p>
+              <p className="text-yellow text-xs mt-1">{errors.currentPassword}</p>
             )}
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm block mb-2">New Password</label>
+            <label className="text-white/40 text-sm block mb-2">New Password</label>
             <input
               type="password"
               name="newPassword"
@@ -261,12 +261,12 @@ export default function EditProfile() {
               className={`w-full bg-dark border ${errors.newPassword ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
             />
             {errors.newPassword && (
-              <p className="text-red-400 text-xs mt-1">{errors.newPassword}</p>
+              <p className="text-yellow text-xs mt-1">{errors.newPassword}</p>
             )}
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm block mb-2">Confirm New Password</label>
+            <label className="text-white/40 text-sm block mb-2">Confirm New Password</label>
             <input
               type="password"
               name="confirmPassword"
@@ -275,16 +275,17 @@ export default function EditProfile() {
               className={`w-full bg-dark border ${errors.confirmPassword ? 'border-red-500' : 'border-dark-border'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors`}
             />
             {errors.confirmPassword && (
-              <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>
+              <p className="text-yellow text-xs mt-1">{errors.confirmPassword}</p>
             )}
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* Submit Button — flat yellow */}
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-primary-start to-primary-end text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-primary-start/30 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 text-black"
+          style={{ background: 'var(--color-secondary)' }}
         >
           {isLoading ? (
             <>

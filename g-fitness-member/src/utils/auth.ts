@@ -6,6 +6,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
+  name?: string;
   membershipType: string;
   membershipStatus: string;
 }
@@ -52,6 +53,7 @@ export const login = (email: string, password: string): { success: boolean; user
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    name: `${user.firstName} ${user.lastName}`,
     membershipType: user.membershipType,
     membershipStatus: user.membershipStatus
   };

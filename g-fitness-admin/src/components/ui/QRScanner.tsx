@@ -121,7 +121,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
               {/* Header */}
               <div className="p-6 border-b border-dark-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
                     <QrCode size={24} className="text-white" />
                   </div>
                   <div>
@@ -199,9 +199,9 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                     {/* Error Message */}
                     {error && (
                       <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-                        <AlertCircle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
+                        <AlertCircle size={20} className="text-yellow flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-red-400 text-sm font-semibold mb-1">Camera Error</p>
+                          <p className="text-yellow text-sm font-semibold mb-1">Camera Error</p>
                           <p className="text-red-300 text-xs">{error}</p>
                         </div>
                       </div>

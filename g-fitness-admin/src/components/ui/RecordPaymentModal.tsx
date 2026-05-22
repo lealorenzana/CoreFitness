@@ -144,7 +144,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
               {/* Header */}
               <div className="p-6 border-b border-dark-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
                     <CreditCard size={24} className="text-white" />
                   </div>
                   <div>
@@ -197,7 +197,8 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                               onClick={() => handleSelectMember(member)}
                               className="w-full text-left px-4 py-3 hover:bg-dark-border transition-colors flex items-center gap-3 border-b border-dark-border last:border-b-0"
                             >
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold flex-shrink-0"
+                                style={{ background: 'var(--color-secondary)' }}>
                                 {member.firstName[0]}{member.lastName[0]}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -207,8 +208,8 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                               </div>
                               <div className="flex-shrink-0">
                                 <span className={`text-xs px-2 py-1 rounded-full ${
-                                  member.membershipType === 'Premium' ? 'bg-purple-500/20 text-purple-400' :
-                                  member.membershipType === 'Standard' ? 'bg-blue-500/20 text-blue-400' :
+                                  member.membershipType === 'Premium' ? 'bg-purple-500/20 text-violet' :
+                                  member.membershipType === 'Standard' ? 'bg-blue-500/20 text-violet' :
                                   'bg-gray-500/20 text-gray-400'
                                 }`}>
                                   {member.membershipType}
@@ -227,14 +228,15 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                     )}
                   </div>
                   {errors.memberId && (
-                    <p className="text-red-400 text-xs mt-1">{errors.memberId}</p>
+                    <p className="text-yellow text-xs mt-1">{errors.memberId}</p>
                   )}
                   
                   {/* Selected Member Display */}
                   {selectedMember && (
                     <div className="mt-3 p-3 bg-dark rounded-xl border border-primary-start/30">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold"
+                          style={{ background: 'var(--color-secondary)' }}>
                           {selectedMember.firstName[0]}{selectedMember.lastName[0]}
                         </div>
                         <div className="flex-1">
@@ -247,7 +249,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                             setFormData({ ...formData, memberId: '' });
                             setMemberSearch('');
                           }}
-                          className="text-gray-400 hover:text-red-400 transition-colors"
+                          className="text-gray-400 hover:text-yellow transition-colors"
                         >
                           <X size={16} />
                         </button>
@@ -275,7 +277,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                     className={errors.amount ? 'border-red-500' : ''}
                   />
                   {errors.amount && (
-                    <p className="text-red-400 text-xs mt-1">{errors.amount}</p>
+                    <p className="text-yellow text-xs mt-1">{errors.amount}</p>
                   )}
                 </div>
 
@@ -314,7 +316,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                     className={errors.date ? 'border-red-500' : ''}
                   />
                   {errors.date && (
-                    <p className="text-red-400 text-xs mt-1">{errors.date}</p>
+                    <p className="text-yellow text-xs mt-1">{errors.date}</p>
                   )}
                 </div>
 

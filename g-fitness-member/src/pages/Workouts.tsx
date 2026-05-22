@@ -5,141 +5,85 @@ import { showSuccessToast } from '../utils/errorHandler';
 
 export default function Workouts() {
   const navigate = useNavigate();
-  
+
   const handleStartWorkout = (workoutName: string) => {
     showSuccessToast(`Starting ${workoutName}...`);
-    // In production: Navigate to workout timer/tracker
-    setTimeout(() => {
-      navigate('/member/progress');
-    }, 1500);
+    setTimeout(() => navigate('/member/progress'), 1500);
   };
-  
+
   const workouts = [
-    {
-      name: 'Full Body Strength',
-      duration: '45 min',
-      calories: '350 kcal',
-      difficulty: 'Intermediate',
-      color: 'from-red-500 to-orange-500',
-    },
-    {
-      name: 'HIIT Cardio Blast',
-      duration: '30 min',
-      calories: '400 kcal',
-      difficulty: 'Advanced',
-      color: 'from-purple-500 to-pink-500',
-    },
-    {
-      name: 'Core & Abs',
-      duration: '20 min',
-      calories: '180 kcal',
-      difficulty: 'Beginner',
-      color: 'from-blue-500 to-cyan-500',
-    },
-    {
-      name: 'Upper Body Power',
-      duration: '40 min',
-      calories: '320 kcal',
-      difficulty: 'Intermediate',
-      color: 'from-green-500 to-emerald-500',
-    },
+    { name: 'Full Body Strength', duration: '45 min', calories: '350 kcal', difficulty: 'Intermediate', color: 'var(--color-secondary)' },
+    { name: 'HIIT Cardio Blast', duration: '30 min', calories: '400 kcal', difficulty: 'Advanced', color: 'var(--color-primary)' },
+    { name: 'Core & Abs', duration: '20 min', calories: '180 kcal', difficulty: 'Beginner', color: 'var(--color-primary)' },
+    { name: 'Upper Body Power', duration: '40 min', calories: '320 kcal', difficulty: 'Intermediate', color: 'var(--color-primary)' },
   ];
 
+  const difficultyStyle = (d: string) => {
+    if (d === 'Beginner') return { background: 'var(--color-primary-light)', color: 'var(--color-primary)' };
+    if (d === 'Intermediate') return { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' };
+    return { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' };
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header with Back Button */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
-      >
-        <button
-          onClick={() => navigate('/member/home')}
-          className="w-10 h-10 rounded-xl bg-dark-lighter border border-dark-border flex items-center justify-center text-gray-400 hover:text-white hover:border-primary-start transition-all"
-        >
+    <div className="space-y-5 pb-4">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+        <button onClick={() => navigate('/member/home')}
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
           <ArrowLeft size={20} />
         </button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-orbitron font-bold text-gradient">Workouts</h1>
-          <p className="text-gray-400 mt-1">Choose your training program</p>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Workouts</h1>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Choose your training program</p>
         </div>
       </motion.div>
 
-      {/* Today's Workout */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-start via-primary-end to-secondary p-6 shadow-2xl"
-      >
-        <div className="relative z-10">
-          <p className="text-white/80 text-sm font-medium">TODAY'S WORKOUT</p>
-          <h2 className="text-2xl font-bold text-white mt-2 mb-4">Chest & Triceps</h2>
-          
-          <div className="flex gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Clock size={18} className="text-white/80" />
-              <span className="text-white text-sm">60 min</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Flame size={18} className="text-white/80" />
-              <span className="text-white text-sm">450 kcal</span>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => handleStartWorkout("Chest & Triceps")}
-            className="w-full bg-white text-primary-end font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
-          >
-            <Play size={20} fill="currentColor" />
-            Start Workout
-          </button>
+      {/* Today's Workout — flat violet */}
+      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+        className="rounded-2xl p-5" style={{ background: 'var(--color-primary)', border: '1px solid var(--color-primary-hover)' }}>
+        <p className="text-white/70 text-xs font-semibold uppercase tracking-wide">Today's Workout</p>
+        <h2 className="text-xl font-bold text-white mt-1 mb-4">Chest & Triceps</h2>
+        <div className="flex gap-4 mb-4">
+          <div className="flex items-center gap-1.5 text-sm text-white/80"><Clock size={15} /> 60 min</div>
+          <div className="flex items-center gap-1.5 text-sm text-white/80"><Flame size={15} /> 450 kcal</div>
         </div>
-
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-3xl"></div>
+        <button onClick={() => handleStartWorkout('Chest & Triceps')}
+          className="w-full py-3 rounded-xl font-semibold text-sm text-black flex items-center justify-center gap-2"
+          style={{ background: 'var(--color-secondary)' }}>
+          <Play size={18} fill="currentColor" /> Start Workout
+        </button>
       </motion.div>
 
       {/* Workout Library */}
-      <div className="space-y-4">
-        <h3 className="text-white font-semibold text-lg">Workout Library</h3>
-        {workouts.map((workout, index) => (
-          <motion.div
-            key={workout.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + index * 0.1 }}
-            className="bg-dark-lighter border border-dark-border rounded-2xl p-4 hover:border-primary-start transition-all duration-200"
-          >
+      <div className="space-y-3">
+        <h3 className="text-white font-semibold">Workout Library</h3>
+        {workouts.map((w, i) => (
+          <motion.div key={w.name} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.08 }}
+            className="rounded-2xl p-4 transition-colors"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${workout.color} flex items-center justify-center flex-shrink-0`}>
-                <Dumbbell size={28} className="text-white" />
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${w.color}20` }}>
+                <Dumbbell size={24} style={{ color: w.color }} />
               </div>
               <div className="flex-1">
-                <h4 className="text-white font-semibold">{workout.name}</h4>
-                <div className="flex gap-3 mt-2 text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {workout.duration}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Flame size={12} />
-                    {workout.calories}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full ${
-                    workout.difficulty === 'Beginner' ? 'bg-green-500/20 text-green-400' :
-                    workout.difficulty === 'Intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {workout.difficulty}
-                  </span>
+                <h4 className="text-white font-semibold text-sm">{w.name}</h4>
+                <div className="flex gap-2 mt-1.5 flex-wrap">
+                  <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}><Clock size={11} /> {w.duration}</span>
+                  <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}><Flame size={11} /> {w.calories}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={difficultyStyle(w.difficulty)}>{w.difficulty}</span>
                 </div>
               </div>
-              <button 
-                onClick={() => handleStartWorkout(workout.name)}
-                className="w-10 h-10 rounded-full bg-primary-start/20 flex items-center justify-center text-primary-start hover:bg-primary-start hover:text-white transition-all"
-              >
-                <Play size={18} fill="currentColor" />
+              <button onClick={() => handleStartWorkout(w.name)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', border: '1px solid rgba(245,158,11,0.20)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-secondary)'; e.currentTarget.style.color = '#000'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-secondary-light)'; e.currentTarget.style.color = 'var(--color-secondary)'; }}>
+                <Play size={16} fill="currentColor" />
               </button>
             </div>
           </motion.div>

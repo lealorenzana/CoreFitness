@@ -1,374 +1,517 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import {
+  Users, DollarSign, Activity, CalendarDays, ArrowUpRight, ChevronRight,
+  Star, Target, Dumbbell as DumbbellIcon, Scale, Sparkles, ChevronDown,
+} from 'lucide-react';
+
 import Card from '../components/ui/Card';
 import { useGymContext } from '../hooks/useGymContext';
 import { MEMBERS } from '../data/members';
 import { formatCurrency } from '../utils/formatters';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, UserCheck, Activity, DollarSign, TrendingUp, Calendar, BarChart3, ArrowRight } from 'lucide-react';
-import { showToast } from '../utils/toast';
-import { useNavigate } from 'react-router-dom';
 import { SharedStorage } from '../utils/sharedStorage';
+import {
+  dashboardService,
+  type RevenuePoint, type MembersPoint, type AttendancePt,
+  type HeatmapCell, type TopTrainer, type ProgressKpis,
+} from '../services/dashboardService';
 
+const VIOLET     = '#7C3AED';
+const YELLOW     = '#F59E0B';
+const TEXT_MUTED = 'var(--color-text-muted)';
+const BORDER     = 'var(--color-border)';
+
+// ── Filter pill ─────────────────────────────────────────────────────────────
+function FilterSelect({ value, options, onChange }: {
+  value: string; options: string[]; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none pl-3 pr-7 py-1.5 rounded-full text-xs font-medium focus:outline-none cursor-pointer"
+        style={{
+          background: 'var(--color-surface-raised)',
+          border: `1px solid ${BORDER}`,
+          color: 'var(--color-text-secondary)',
+        }}
+      >
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: TEXT_MUTED }} />
+    </div>
+  );
+}
+
+// ── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, delta, icon: Icon }: {
+  label: string; value: string | number; delta?: string; icon: any;
+}) {
+  return (
+    <Card className="!p-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--color-primary-light)' }}>
+          <Icon size={16} style={{ color: VIOLET }} />
+        </div>
+        {delta && (
+          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{ background: 'var(--color-secondary-light)', color: YELLOW }}>
+            <ArrowUpRight size={9} /> {delta}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+      <p className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>{label}</p>
+    </Card>
+  );
+}
+
+// ── Progress Ring ───────────────────────────────────────────────────────────
+function ProgressRing({ value, label, sub, accent = VIOLET, format }: {
+  value: number; label: string; sub?: string; accent?: string;
+  format?: (v: number) => string;
+}) {
+  const radius = 24;
+  const stroke = 5;
+  const size = (radius + stroke) * 2;
+  const c = 2 * Math.PI * radius;
+  const pct = Math.max(0, Math.min(100, value));
+  const offset = c - (pct / 100) * c;
+  const display = format ? format(value) : `${Math.round(value)}%`;
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={size / 2} cy={size / 2} r={radius} stroke={BORDER} strokeWidth={stroke} fill="none" />
+          <circle
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke={accent} strokeWidth={stroke} fill="none"
+            strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">
+          {display}
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-white truncate">{label}</p>
+        {sub && <p className="text-[10px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Activity Heatmap ────────────────────────────────────────────────────────
+function HeatmapGrid({ cells }: { cells: HeatmapCell[] }) {
+  if (cells.length === 0) return null;
+  const max  = Math.max(...cells.map((c) => c.visits));
+  const days = Array.from(new Set(cells.map((c) => c.day)));
+  const hrs  = Array.from(new Set(cells.map((c) => c.hour)));
+  const visitOf = (d: string, h: string) => cells.find((c) => c.day === d && c.hour === h)?.visits ?? 0;
+
+  // Color scale: dark → yellow (more visits = brighter yellow)
+  const colorFor = (v: number) => {
+    if (v === 0) return 'var(--color-surface-raised)';
+    const pct = v / Math.max(1, max);
+    if (pct < 0.25) return 'rgba(124,58,237,0.25)';
+    if (pct < 0.5)  return 'rgba(124,58,237,0.50)';
+    if (pct < 0.75) return 'rgba(245,158,11,0.45)';
+    return 'rgba(245,158,11,0.75)';
+  };
+
+  return (
+    <div>
+      <div className="grid gap-[3px]"
+        style={{ gridTemplateColumns: `32px repeat(${hrs.length}, 1fr)` }}>
+        <div />
+        {hrs.map((h) => (
+          <div key={h} className="text-[8px] text-center truncate" style={{ color: TEXT_MUTED }}>{h}</div>
+        ))}
+        {days.map((d) => (
+          <div key={d} className="contents">
+            <div className="text-[8px] flex items-center" style={{ color: TEXT_MUTED }}>{d}</div>
+            {hrs.map((h) => {
+              const v = visitOf(d, h);
+              return (
+                <div
+                  key={`${d}-${h}`}
+                  className="h-7 rounded-sm flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ background: colorFor(v) }}
+                  title={`${d} ${h}: ${v} visits`}
+                >
+                  {v > 0 ? v : ''}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5 mt-2 text-[8px]" style={{ color: TEXT_MUTED }}>
+        Less
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'var(--color-surface-raised)' }} />
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(124,58,237,0.25)' }} />
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(124,58,237,0.50)' }} />
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(245,158,11,0.45)' }} />
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(245,158,11,0.75)' }} />
+        More
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { selectedGym } = useGymContext();
   const navigate = useNavigate();
-  
-  // Get pending bookings count
-  const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
-  
+
+  const years = dashboardService.getYears();
+  const [revenueYear, setRevenueYear] = useState(years[years.length - 1]);
+  const [memberYear,  setMemberYear]  = useState(years[years.length - 1]);
+  const [attendanceScope, setAttendanceScope] = useState<'weekly' | 'monthly'>('weekly');
+  const [pendingBookings, setPendingBookings] = useState(0);
+
+  const [revenueData,    setRevenueData]    = useState<RevenuePoint[]>([]);
+  const [memberData,     setMemberData]     = useState<MembersPoint[]>([]);
+  const [attendanceData, setAttendanceData] = useState<AttendancePt[]>([]);
+  const [heatmap,        setHeatmap]        = useState<HeatmapCell[]>([]);
+  const [topTrainers,    setTopTrainers]    = useState<TopTrainer[]>([]);
+  const [progressKpis,   setProgressKpis]   = useState<ProgressKpis | null>(null);
+
   useEffect(() => {
-    const bookings = SharedStorage.getBookings();
-    const pending = bookings.filter((b: any) => b.status === 'Pending').length;
-    setPendingBookingsCount(pending);
+    const refresh = () => setPendingBookings(SharedStorage.getBookings().filter((b: any) => b.status === 'Pending').length);
+    refresh();
+    const i = setInterval(refresh, 2000);
+    return () => clearInterval(i);
   }, []);
 
-  // Auto-refresh pending count
+  useEffect(() => { dashboardService.getRevenueByYear(revenueYear).then(setRevenueData); }, [revenueYear]);
+  useEffect(() => { dashboardService.getNewMembersByYear(memberYear).then(setMemberData); }, [memberYear]);
+  useEffect(() => { dashboardService.getAttendance(attendanceScope).then(setAttendanceData); }, [attendanceScope]);
   useEffect(() => {
-    const interval = setInterval(() => {
-      const bookings = SharedStorage.getBookings();
-      const pending = bookings.filter((b: any) => b.status === 'Pending').length;
-      setPendingBookingsCount(pending);
-    }, 2000);
-
-    return () => clearInterval(interval);
+    dashboardService.getAttendanceHeatmap().then(setHeatmap);
+    dashboardService.getTopTrainers().then(setTopTrainers);
+    dashboardService.getProgressKpis().then(setProgressKpis);
   }, []);
-  
-  const gymMembers = MEMBERS.filter(m => m.gymId === selectedGym.id);
-  const activeMembers = gymMembers.filter(m => m.membershipStatus === 'Active');
+
+  // Derived KPIs
+  const gymMembers      = MEMBERS.filter((m) => m.gymId === selectedGym.id);
+  const activeMembers   = gymMembers.filter((m) => m.membershipStatus === 'Active');
   const todayAttendance = Math.floor(activeMembers.length * 0.6);
-  const monthlyRevenue = activeMembers.reduce((sum, m) => {
+  const monthlyRevenue  = activeMembers.reduce((sum, m) => {
     const prices = { Basic: 800, Standard: 1500, Premium: 2500 };
     return sum + prices[m.membershipType];
   }, 0);
 
   const kpis = [
-    { label: 'Total Members', value: gymMembers.length, trend: '+12%', icon: Users, color: 'from-blue-500 to-cyan-500' },
-    { label: 'Active Members', value: activeMembers.length, trend: '+8%', icon: UserCheck, color: 'from-green-500 to-emerald-500' },
-    { label: "Today's Attendance", value: todayAttendance, trend: '+5%', icon: Activity, color: 'from-purple-500 to-pink-500' },
-    { label: 'Monthly Revenue', value: formatCurrency(monthlyRevenue), trend: '+15%', icon: DollarSign, color: 'from-primary-start to-primary-end' },
-  ];
-
-  // Mock chart data
-  const revenueData = [
-    { month: 'Jan', revenue: 45000 },
-    { month: 'Feb', revenue: 52000 },
-    { month: 'Mar', revenue: 48000 },
-    { month: 'Apr', revenue: 61000 },
-    { month: 'May', revenue: 55000 },
-    { month: 'Jun', revenue: monthlyRevenue },
-  ];
-
-  const attendanceData = [
-    { day: 'Mon', count: 45 },
-    { day: 'Tue', count: 52 },
-    { day: 'Wed', count: 48 },
-    { day: 'Thu', count: 61 },
-    { day: 'Fri', count: 55 },
-    { day: 'Sat', count: 70 },
-    { day: 'Sun', count: 38 },
-  ];
-
-  // Membership growth data
-  const membershipGrowthData = [
-    { month: 'Jan', members: 45, newMembers: 8 },
-    { month: 'Feb', members: 52, newMembers: 7 },
-    { month: 'Mar', members: 58, newMembers: 6 },
-    { month: 'Apr', members: 65, newMembers: 7 },
-    { month: 'May', members: 71, newMembers: 6 },
-    { month: 'Jun', members: gymMembers.length, newMembers: 5 },
+    { label: 'Total Members',    value: gymMembers.length,             delta: '+12%', icon: Users },
+    { label: 'Monthly Revenue',  value: formatCurrency(monthlyRevenue), delta: '+15%', icon: DollarSign },
+    { label: 'Active Classes',   value: progressKpis?.totalClasses ?? '—', delta: '+2', icon: CalendarDays },
+    { label: 'Attendance Today', value: todayAttendance,                delta: '+5%',  icon: Activity },
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Header with gradient background */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-start via-primary-end to-secondary p-8 shadow-2xl"
-      >
-        <div className="relative z-10">
-          <h1 className="text-4xl font-orbitron font-bold text-white drop-shadow-lg">Dashboard</h1>
-          <p className="text-white/90 mt-2 text-lg">Welcome to {selectedGym.name} • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        </div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-      </motion.div>
+    <div className="flex gap-5">
+      {/* ── LEFT: Main content ─────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 space-y-4">
+        {/* ── HERO BANNER ──────────────────────────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
+          <div
+            className="relative overflow-hidden rounded-2xl p-5"
+            style={{ background: VIOLET }}
+          >
+            <Sparkles size={80} className="absolute -top-2 -right-2 text-white/10" />
 
-      {/* KPI Cards with enhanced design */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpis.map((kpi, index) => {
-          const Icon = kpi.icon;
-          return (
-            <motion.div
-              key={kpi.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <div className="relative group">
-                <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-300`}></div>
-                <Card className="relative backdrop-blur-sm border-2 border-dark-border hover:border-primary-start/50 transition-all duration-300">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-gray-400 text-sm font-medium uppercase tracking-wide">{kpi.label}</p>
-                      <p className="text-4xl font-bold text-white mt-3 font-orbitron">{kpi.value}</p>
-                      <div className="flex items-center gap-2 mt-3">
-                        <span className="text-green-400 text-sm font-semibold bg-green-400/10 px-2 py-1 rounded-full flex items-center gap-1">
-                          <TrendingUp size={14} />
-                          {kpi.trend}
-                        </span>
-                        <span className="text-gray-500 text-xs">vs last month</span>
-                      </div>
-                    </div>
-                    <div className={`p-4 rounded-2xl bg-gradient-to-br ${kpi.color} shadow-lg`}>
-                      <Icon size={28} className="text-white" />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+            <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-white/60 mb-1">
+              Admin Console
+            </p>
+            <h1 className="text-xl font-bold text-white leading-tight">
+              Welcome to Core Fitness
+            </h1>
+            <p className="text-xs text-white/60 mt-1">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </p>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card header={
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={20} className="text-primary-start" />
-                <h3 className="font-semibold text-white text-lg">Revenue Trend</h3>
-              </div>
-              <span className="text-xs text-gray-400 bg-dark-border px-3 py-1 rounded-full flex items-center gap-1">
-                <Calendar size={12} />
-                Last 6 Months
-              </span>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => navigate('/revenue')}
+                className="inline-flex items-center gap-1.5 h-8 px-4 rounded-full font-semibold text-xs text-black"
+                style={{ background: YELLOW }}
+              >
+                View Reports <ArrowUpRight size={12} />
+              </button>
+              {pendingBookings > 0 && (
+                <button
+                  onClick={() => navigate('/bookings')}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full font-medium text-xs text-white"
+                  style={{ background: 'rgba(255,255,255,0.15)' }}
+                >
+                  {pendingBookings} pending <ChevronRight size={12} />
+                </button>
+              )}
             </div>
-          }>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-                <XAxis dataKey="month" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '8px' }}
-                  labelStyle={{ color: '#FDB813' }}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FF6B35', r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
+          </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card header={
+        {/* ── KPI ROW ──────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpis.map((k, i) => (
+          <motion.div key={k.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+            <KpiCard {...k} />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── REVENUE + NEW MEMBERS ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <motion.div className="lg:col-span-2" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="!p-4" header={
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 size={20} className="text-secondary" />
-                <h3 className="font-semibold text-white text-lg">Weekly Attendance</h3>
+              <div>
+                <h3 className="text-xs font-semibold text-white">Revenue</h3>
+                <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>Monthly performance</p>
               </div>
-              <span className="text-xs text-gray-400 bg-dark-border px-3 py-1 rounded-full">This Week</span>
+              <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
             </div>
           }>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={attendanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-                <XAxis dataKey="day" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '8px' }}
-                  labelStyle={{ color: '#8B5CF6' }}
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
+                  cursor={{ fill: 'rgba(124,58,237,0.08)' }}
                 />
-                <Bar dataKey="count" fill="url(#colorGradient)" radius={[8, 8, 0, 0]} />
-                <defs>
-                  <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8B5CF6" />
-                    <stop offset="100%" stopColor="#FF6B35" />
-                  </linearGradient>
-                </defs>
+                <Bar dataKey="revenue" fill={VIOLET} radius={[8, 8, 0, 0]} maxBarSize={42} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
         </motion.div>
+
+        <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
+          <Card className="!p-4" header={
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-semibold text-white">New Members</h3>
+                <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>Trend</p>
+              </div>
+              <FilterSelect value={memberYear} options={years} onChange={setMemberYear} />
+            </div>
+          }>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={memberData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }} />
+                <Line type="monotone" dataKey="newMembers" stroke={YELLOW} strokeWidth={2.5} dot={{ fill: YELLOW, r: 4 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Membership Growth Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
-        <Card header={
+      {/* ── ATTENDANCE + 12-MONTH TREND ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="!p-4" header={
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-semibold text-white">Attendance</h3>
+                <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>Yellow bars</p>
+              </div>
+              <div className="flex p-0.5 rounded-full" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
+                {(['weekly', 'monthly'] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setAttendanceScope(s)}
+                    className="px-2.5 h-6 rounded-full text-[10px] font-semibold capitalize transition-colors"
+                    style={{
+                      background: attendanceScope === s ? VIOLET : 'transparent',
+                      color:      attendanceScope === s ? '#fff'  : 'var(--color-text-secondary)',
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={attendanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                <XAxis dataKey="day" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
+                  cursor={{ fill: 'rgba(245,158,11,0.08)' }}
+                />
+                <Bar dataKey="count" fill={YELLOW} radius={[8, 8, 0, 0]} maxBarSize={42} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Card className="!p-4" header={
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-semibold text-white">12-Month Revenue Trend</h3>
+                <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>Yellow line overlay</p>
+              </div>
+              <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
+            </div>
+          }>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }} />
+                <Line type="monotone" dataKey="revenue" stroke={YELLOW} strokeWidth={2.5} dot={{ fill: YELLOW, r: 3 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* ── HEATMAP (compact, no extra space) ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <Card className="!p-4" header={
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users size={20} className="text-blue-400" />
-              <h3 className="font-semibold text-white text-lg">Membership Growth</h3>
+              <Activity size={14} style={{ color: VIOLET }} />
+              <h3 className="text-xs font-semibold text-white">Member Activity Heatmap</h3>
             </div>
-            <span className="text-xs text-gray-400 bg-dark-border px-3 py-1 rounded-full flex items-center gap-1">
-              <Calendar size={12} />
-              Last 6 Months
-            </span>
+            <span className="text-[10px]" style={{ color: TEXT_MUTED }}>day-of-week × hour bucket</span>
           </div>
         }>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={membershipGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-              <XAxis dataKey="month" stroke="#666" />
-              <YAxis stroke="#666" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '8px' }}
-                labelStyle={{ color: '#3B82F6' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="members" 
-                stroke="#3B82F6" 
-                strokeWidth={3} 
-                dot={{ fill: '#3B82F6', r: 6 }} 
-                name="Total Members"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="newMembers" 
-                stroke="#10B981" 
-                strokeWidth={2} 
-                dot={{ fill: '#10B981', r: 4 }} 
-                strokeDasharray="5 5"
-                name="New Members"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-          <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span className="text-gray-400 text-sm">Total Members</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-gray-400 text-sm">New Members</span>
-            </div>
+          <div className="max-h-[220px] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+            {heatmap.length > 0
+              ? <HeatmapGrid cells={heatmap} />
+              : <div className="py-8 text-center text-sm" style={{ color: TEXT_MUTED }}>Loading heatmap…</div>}
           </div>
         </Card>
       </motion.div>
+      </div>
 
-      {/* Activity and Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <Card header={
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity size={20} className="text-green-400" />
-                <h3 className="font-semibold text-white text-lg">Recent Activity</h3>
-              </div>
-              <span className="text-xs text-primary-start cursor-pointer hover:text-primary-end transition-colors flex items-center gap-1" onClick={() => {
-                showToast('Viewing all recent activity...', 'info');
-                navigate('/attendance');
-              }}>
-                View All <ArrowRight size={14} />
-              </span>
-            </div>
-          }>
-            <div className="space-y-3">
-              {activeMembers.slice(0, 5).map((member, idx) => (
-                <motion.div 
-                  key={member.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + idx * 0.1 }}
-                  className="flex items-center gap-4 p-4 bg-dark rounded-xl hover:bg-dark-border transition-all duration-200 group cursor-pointer border border-transparent hover:border-primary-start/30"
-                  onClick={() => {
-                    showToast(`Viewing ${member.fullName}'s profile...`, 'info');
-                    navigate(`/members/${member.id}`);
-                  }}
+      {/* ── RIGHT: Statistics sidebar ──────────────────────────────────────── */}
+      <aside className="hidden xl:block w-[280px] flex-shrink-0 space-y-4">
+        {/* Greeting card */}
+        <Card className="!p-4 text-center">
+          <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3"
+            style={{ background: 'var(--color-primary-light)', border: `2px solid ${VIOLET}` }}>
+            <Users size={24} style={{ color: VIOLET }} />
+          </div>
+          <h3 className="text-sm font-bold text-white">Good Morning, Admin 🔥</h3>
+          <p className="text-[10px] mt-1" style={{ color: TEXT_MUTED }}>
+            Continue managing your gym!
+          </p>
+        </Card>
+
+        {/* Progress Summary */}
+        <Card className="!p-4" header={
+          <h3 className="text-xs font-semibold text-white">Statistics</h3>
+        }>
+          <div className="space-y-3">
+            <ProgressRing
+              value={progressKpis ? Math.min(100, (progressKpis.avgBmi / 30) * 100) : 0}
+              label="Avg BMI"
+              sub={progressKpis ? progressKpis.avgBmi.toFixed(1) : '—'}
+              accent={VIOLET}
+              format={() => progressKpis ? progressKpis.avgBmi.toFixed(1) : '—'}
+            />
+            <ProgressRing
+              value={progressKpis ? Math.min(100, Math.abs(progressKpis.avgWeightChangeKg) * 25) : 0}
+              label="Avg Weight Change"
+              sub={progressKpis
+                ? `${progressKpis.avgWeightChangeKg > 0 ? '+' : ''}${progressKpis.avgWeightChangeKg} kg`
+                : '—'}
+              accent={YELLOW}
+              format={() => progressKpis ? `${progressKpis.avgWeightChangeKg > 0 ? '+' : ''}${progressKpis.avgWeightChangeKg}` : '—'}
+            />
+            <ProgressRing
+              value={progressKpis ? Math.min(100, (progressKpis.totalWorkouts / 1500) * 100) : 0}
+              label="Total Workouts"
+              sub={progressKpis ? `${progressKpis.totalWorkouts.toLocaleString()} logged` : '—'}
+              accent={VIOLET}
+              format={() => progressKpis ? `${Math.round((progressKpis.totalWorkouts / 1500) * 100)}%` : '—'}
+            />
+            <ProgressRing
+              value={progressKpis ? Math.min(100, (progressKpis.activeGoals / 100) * 100) : 0}
+              label="Active Goals"
+              sub={progressKpis ? `${progressKpis.activeGoals} in progress` : '—'}
+              accent={YELLOW}
+              format={() => progressKpis ? `${progressKpis.activeGoals}` : '—'}
+            />
+          </div>
+        </Card>
+
+        {/* Attendance mini chart */}
+        <Card className="!p-4" header={
+          <h3 className="text-xs font-semibold text-white">Attendance</h3>
+        }>
+          <ResponsiveContainer width="100%" height={100}>
+            <BarChart data={attendanceData.slice(0, 5)}>
+              <XAxis dataKey="day" tick={{ fill: '#9CA3AF', fontSize: 9 }} axisLine={false} tickLine={false} />
+              <Bar dataKey="count" fill={VIOLET} radius={[4, 4, 0, 0]} maxBarSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Top Trainers */}
+        <Card className="!p-4" header={
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-white">Top Trainers</h3>
+            <button
+              onClick={() => navigate('/trainers')}
+              className="text-[10px] font-semibold flex items-center gap-0.5"
+              style={{ color: YELLOW }}
+            >
+              See all <ChevronRight size={10} />
+            </button>
+          </div>
+        }>
+          {topTrainers.length === 0 ? (
+            <div className="py-4 text-center text-xs" style={{ color: TEXT_MUTED }}>Loading…</div>
+          ) : (
+            <div className="space-y-1.5">
+              {topTrainers.slice(0, 4).map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-2 p-2 rounded-xl"
+                  style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}
                 >
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-start to-primary-end flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                      {member.firstName[0]}{member.lastName[0]}
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
+                    style={{ background: VIOLET }}>
+                    {t.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-white font-semibold truncate">{t.name}</p>
+                    <div className="flex items-center gap-1">
+                      <Star size={8} style={{ color: YELLOW, fill: YELLOW }} />
+                      <span className="text-[9px] text-white">{t.avgRating.toFixed(1)}</span>
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-dark"></div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white font-semibold group-hover:text-primary-start transition-colors">{member.fullName}</p>
-                    <p className="text-gray-400 text-sm">Checked in • {Math.floor(Math.random() * 30) + 1} mins ago</p>
-                  </div>
-                  <ArrowRight size={18} className="text-gray-600 group-hover:text-primary-start transition-colors" />
-                </motion.div>
+                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                    style={{ background: 'var(--color-primary-light)', color: VIOLET }}>
+                    {t.sessions}
+                  </span>
+                </div>
               ))}
             </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
-          <Card header={
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 size={20} className="text-blue-400" />
-                <h3 className="font-semibold text-white text-lg">Quick Stats</h3>
-              </div>
-              <span className="text-xs text-gray-400 bg-dark-border px-3 py-1 rounded-full">Live Data</span>
-            </div>
-          }>
-            <div className="space-y-5">
-              {[
-                { 
-                  label: 'Pending Booking Requests', 
-                  value: pendingBookingsCount, 
-                  icon: Calendar, 
-                  color: 'text-yellow-400',
-                  clickable: true,
-                  onClick: () => navigate('/schedule')
-                },
-                { label: 'Membership Renewals This Month', value: '12', icon: TrendingUp, color: 'text-blue-400' },
-                { label: 'New Members This Week', value: '5', icon: Users, color: 'text-green-400' },
-                { label: 'Average Daily Attendance', value: Math.floor(activeMembers.length * 0.65), icon: Activity, color: 'text-purple-400' },
-                { label: 'Retention Rate', value: '87%', icon: TrendingUp, color: 'text-primary-start' },
-              ].map((stat, idx) => {
-                const StatIcon = stat.icon;
-                return (
-                  <motion.div 
-                    key={stat.label}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.8 + idx * 0.1 }}
-                    onClick={stat.clickable ? stat.onClick : undefined}
-                    className={`flex items-center justify-between p-4 bg-dark rounded-xl hover:bg-dark-border transition-all duration-200 group border border-transparent hover:border-primary-start/20 ${stat.clickable ? 'cursor-pointer' : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <StatIcon size={20} className={stat.color} />
-                      <span className="text-gray-300 group-hover:text-white transition-colors">{stat.label}</span>
-                      {stat.clickable && stat.value > 0 && (
-                        <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold animate-pulse">
-                          {stat.value}
-                        </span>
-                      )}
-                    </div>
-                    <span className={`text-2xl font-bold font-orbitron ${stat.color}`}>{stat.value}</span>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </Card>
-        </motion.div>
-      </div>
+          )}
+        </Card>
+      </aside>
     </div>
   );
 }

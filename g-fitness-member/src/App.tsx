@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Onboarding from './pages/Onboarding';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import GymList from './pages/GymList';
@@ -9,7 +10,7 @@ import GymDetail from './pages/GymDetail';
 import Home from './pages/Home';
 import Membership from './pages/Membership';
 import Workouts from './pages/Workouts';
-import Progress from './pages/Progress';
+import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import ChatbotPage from './pages/ChatbotPage';
 import Events from './pages/Events';
@@ -21,31 +22,61 @@ import BookClass from './pages/BookClass';
 import BookingHistory from './pages/BookingHistory';
 import TrainerProfile from './pages/TrainerProfile';
 import Trainers from './pages/Trainers';
+import { getSelectedGym } from './utils/prototype';
 
-// Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  return isLoggedIn ? <>{children}</> : <Navigate to="/" replace />;
+  const selectedGym = getSelectedGym();
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!selectedGym) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function LoginRoute() {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const selectedGym = getSelectedGym();
+
+  if (isLoggedIn && selectedGym) {
+    return <Navigate to="/member/home" replace />;
+  }
+
+  if (!selectedGym) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Login />;
 }
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Login />} />
+        {/* Landing: Browse Gyms first */}
+        <Route path="/" element={<GymList />} />
+        <Route path="/gyms" element={<Navigate to="/" replace />} />
+        <Route path="/gym/:gymId" element={<GymDetail />} />
+        <Route path="/login" element={<LoginRoute />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/gyms" element={<GymList />} />
-        <Route path="/gym/:gymId" element={<GymDetail />} />
 
         {/* Protected Member Routes */}
-        <Route path="/member" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
+        <Route
+          path="/member"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="home" element={<Home />} />
           <Route path="chatbot" element={<ChatbotPage />} />
           <Route path="events" element={<Events />} />
@@ -55,7 +86,7 @@ function App() {
           <Route path="trainer/:trainerId" element={<TrainerProfile />} />
           <Route path="membership" element={<Membership />} />
           <Route path="workouts" element={<Workouts />} />
-          <Route path="progress" element={<Progress />} />
+          <Route path="progress" element={<ProgressHub />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/edit" element={<EditProfile />} />
           <Route path="payments" element={<PaymentHistory />} />

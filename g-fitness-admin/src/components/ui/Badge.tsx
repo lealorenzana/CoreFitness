@@ -1,28 +1,99 @@
-import type { ReactNode } from 'react';
+import * as React from 'react';
+import { cn } from '../../lib/utils';
 
-interface BadgeProps {
-  children: ReactNode;
-  variant?: 'Active' | 'Expired' | 'Expiring' | 'Suspended' | 'High' | 'Medium' | 'Low' | 'Basic' | 'Standard' | 'Premium';
-  className?: string;
+/**
+ * Status pill badge — only ever uses Violet, Yellow or White tones.
+ *
+ * Domain variants are mapped semantically:
+ *   - "Active", "Confirmed", "Completed", "Premium" → Violet
+ *   - "Pending", "Expiring", "Standard"             → Yellow
+ *   - "Cancelled", "Inactive", "Basic"              → White / muted
+ *   - "Expired", "Rejected", "Failed", "Suspended"  → Yellow (warning)
+ *
+ * No greens, reds, blues — the design system enforces this.
+ */
+type DomainVariant =
+  | 'Basic' | 'Standard' | 'Premium'
+  | 'Active' | 'Expired' | 'Expiring' | 'Suspended' | 'Inactive'
+  | 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Failed' | 'Rejected'
+  | 'QR' | 'Manual'
+  | 'violet' | 'yellow' | 'white'
+  | string;
+
+interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: DomainVariant;
 }
 
-export default function Badge({ children, variant = 'Active', className = '' }: BadgeProps) {
-  const variantStyles = {
-    Active: 'bg-green-500/20 text-green-400 border-green-500/50',
-    Expired: 'bg-red-500/20 text-red-400 border-red-500/50',
-    Expiring: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
-    Suspended: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
-    High: 'bg-red-500/20 text-red-400 border-red-500/50',
-    Medium: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
-    Low: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
-    Basic: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
-    Standard: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-    Premium: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
-  };
+const VIOLET = {
+  background: 'var(--color-primary-light)',
+  color:      'var(--color-primary)',
+  border:     'rgba(124,58,237,0.25)',
+};
 
+const YELLOW = {
+  background: 'var(--color-secondary-light)',
+  color:      'var(--color-secondary)',
+  border:     'rgba(245,158,11,0.30)',
+};
+
+const WHITE = {
+  background: 'var(--color-border)',
+  color:      'var(--color-text-secondary)',
+  border:     'var(--color-border)',
+};
+
+const STYLE_MAP: Record<string, { background: string; color: string; border: string }> = {
+  // Membership tiers
+  Basic:    WHITE,
+  Standard: YELLOW,
+  Premium:  VIOLET,
+
+  // Member status
+  Active:    VIOLET,
+  Expired:   YELLOW,
+  Expiring:  YELLOW,
+  Suspended: YELLOW,
+  Inactive:  WHITE,
+
+  // Booking / payment
+  Confirmed: VIOLET,
+  Pending:   YELLOW,
+  Completed: VIOLET,
+  Cancelled: WHITE,
+  Failed:    YELLOW,
+  Rejected:  YELLOW,
+
+  // Methods
+  QR:     VIOLET,
+  Manual: YELLOW,
+
+  // Generic
+  violet: VIOLET,
+  yellow: YELLOW,
+  white:  WHITE,
+};
+
+function Badge({ className, variant = 'violet', children, style, ...props }: BadgeProps) {
+  const tokens = STYLE_MAP[variant] ?? VIOLET;
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${variantStyles[variant]} ${className}`}>
+    <div
+      className={cn(
+        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
+        className,
+      )}
+      style={{
+        background: tokens.background,
+        color: tokens.color,
+        borderColor: tokens.border,
+        ...style,
+      }}
+      {...props}
+    >
       {children}
-    </span>
+    </div>
   );
 }
+
+export type { BadgeProps };
+export default Badge;
+export { Badge };

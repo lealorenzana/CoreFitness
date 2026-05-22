@@ -1,169 +1,236 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { GYMS } from '../data/gyms';
-import { MapPin, Clock, DollarSign, Users, ArrowLeft, Check, User } from 'lucide-react';
+import {
+  MapPin,
+  Clock,
+  DollarSign,
+  Users,
+  ArrowLeft,
+  Check,
+  Mail,
+  Phone,
+  Sparkles,
+} from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
+import { setSelectedGym } from '../utils/prototype';
 
 export default function GymDetail() {
   const navigate = useNavigate();
   const { gymId } = useParams();
-  const gym = GYMS.find(g => g.id === gymId);
+  const gym = GYMS.find((g) => g.id === gymId);
 
   if (!gym) {
-    return <div>Gym not found</div>;
+    return (
+      <MobileFrame>
+        <div className="p-6 text-white text-center">Gym not found</div>
+      </MobileFrame>
+    );
   }
+
+  const handleBecomeMember = () => {
+    setSelectedGym(gym.id, gym.name);
+    navigate('/login');
+  };
+
+  const isGFitness = gym.id === 'g-fitness';
 
   return (
     <MobileFrame>
-      <div className="px-4 py-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+      <div className="min-h-screen pb-8" style={{ backgroundColor: '#050400' }}>
+        <div className="px-4 py-6">
           <button
-            onClick={() => navigate('/gyms')}
-            className="flex items-center gap-2 text-gray-400 hover:text-primary-start transition-colors mb-4"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-white/40 hover:text-yellow-400 transition-colors mb-4"
           >
             <ArrowLeft size={20} />
             Back to Gyms
           </button>
-        </motion.div>
 
-        <div className="space-y-6 pb-6">
-          {/* Hero */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="relative overflow-hidden rounded-3xl shadow-2xl"
+            className="relative overflow-hidden rounded-3xl shadow-2xl mb-6"
           >
-            <div className="relative h-48">
+            <div className="relative h-52">
               <img src={gym.cover} alt={gym.name} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-              <div className="absolute bottom-4 left-4 right-4 flex items-center gap-4">
-                <img src={gym.logo} alt={`${gym.name} logo`} className="w-16 h-16 object-contain rounded-xl bg-white p-2 shadow-lg" />
+              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.55)' }} />
+              {gym.motivationalText && (
+                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 font-bebas text-2xl tracking-widest rotate-[-90deg] origin-left opacity-80">
+                  {gym.motivationalText}
+                </p>
+              )}
+              <div className="absolute bottom-4 left-4 right-4 flex items-end gap-4">
+                <img
+                  src={gym.logo}
+                  alt={`${gym.name} logo`}
+                  className="w-16 h-16 object-contain rounded-xl bg-white p-1 shadow-lg flex-shrink-0"
+                />
                 <div>
-                  <h1 className="text-2xl font-orbitron font-bold text-white">{gym.name}</h1>
-                  <p className="text-white/80 text-sm mt-1">{gym.description}</p>
+                  <h1 className="text-2xl font-orbitron font-bold text-white">
+                    {isGFitness ? 'G-FITNESS GYM' : gym.name}
+                  </h1>
+                  <p className="text-yellow-300 text-sm font-semibold mt-1">{gym.tagline}</p>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Info */}
+          {isGFitness && gym.packages && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="glass-card rounded-2xl p-5 mb-5"
+            >
+              <h3 className="text-white font-semibold text-lg mb-1 flex items-center gap-2">
+                <Sparkles className="text-yellow-400" size={20} />
+                Membership Packages & Pricing
+              </h3>
+              <div className="space-y-3 mt-4">
+                {gym.packages.map((pkg) => (
+                  <div
+                    key={pkg.tier}
+                    className="bg-black/40 border border-yellow-500/10 rounded-xl p-4"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-yellow-400 text-xs font-semibold uppercase">{pkg.name}</p>
+                        <p className="text-white font-bold text-lg">{pkg.tier}</p>
+                      </div>
+                      <p className="text-2xl font-bebas text-white">₱{pkg.price.toLocaleString()}</p>
+                    </div>
+                    <p className="text-white/40 text-sm">
+                      <span className="text-white/35">Inclusions: </span>
+                      {pkg.inclusions}
+                    </p>
+                  </div>
+                ))}
+                {gym.perSession && (
+                  <div className="bg-black/40 border border-gray-700 rounded-xl p-4 flex justify-between items-center">
+                    <span className="text-white font-semibold">Per Session</span>
+                    <span className="text-yellow-400 font-bebas text-xl">₱{gym.perSession}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-dark-lighter border border-dark-border rounded-2xl p-6 space-y-4"
+            className="glass-card rounded-2xl p-5 mb-5 space-y-4"
           >
-            <h3 className="text-white font-semibold text-lg mb-4">Gym Information</h3>
-            
+            <h3 className="text-white font-semibold text-lg">Operating Hours</h3>
             <div className="flex items-start gap-3">
-              <User size={20} className="text-primary-start mt-1" />
+              <Clock size={20} className="text-yellow-400 mt-1" />
               <div>
-                <p className="text-gray-400 text-sm">Owner</p>
-                <p className="text-white font-medium">{gym.owner}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <MapPin size={20} className="text-primary-start mt-1" />
-              <div>
-                <p className="text-gray-400 text-sm">Location</p>
-                <p className="text-white font-medium">{gym.location}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <Clock size={20} className="text-primary-start mt-1" />
-              <div>
-                <p className="text-gray-400 text-sm">Operating Hours</p>
+                <p className="text-white/40 text-sm">Days</p>
+                <p className="text-white font-medium">{gym.operatingDays}</p>
+                <p className="text-white/40 text-sm mt-2">Hours</p>
                 <p className="text-white font-medium">{gym.hours}</p>
               </div>
             </div>
+          </motion.div>
 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="glass-card rounded-2xl p-5 mb-5 space-y-4"
+          >
+            <h3 className="text-white font-semibold text-lg">Location & Contact</h3>
             <div className="flex items-start gap-3">
-              <Users size={20} className="text-primary-start mt-1" />
+              <MapPin size={20} className="text-yellow-400 mt-1" />
               <div>
-                <p className="text-gray-400 text-sm">Trainers</p>
-                <p className="text-white font-medium">{gym.hasTrainers ? 'Personal Trainers Available' : 'No Personal Trainers'}</p>
+                <p className="text-white/40 text-sm">Address</p>
+                <p className="text-white font-medium text-sm">{gym.address}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Mail size={20} className="text-yellow-400 mt-1" />
+              <div>
+                <p className="text-white/40 text-sm">Email</p>
+                <p className="text-white font-medium text-sm">{gym.email}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Phone size={20} className="text-yellow-400 mt-1" />
+              <div>
+                <p className="text-white/40 text-sm">Contact Number</p>
+                <p className="text-white font-medium">{gym.phone}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Users size={20} className="text-yellow-400 mt-1" />
+              <div>
+                <p className="text-white/40 text-sm">Trainers</p>
+                <p className="text-white font-medium">
+                  {gym.hasTrainers ? 'Personal Trainers Available' : 'No Personal Trainers'}
+                </p>
               </div>
             </div>
           </motion.div>
 
-          {/* Pricing */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-dark-lighter border border-dark-border rounded-2xl p-6"
-          >
-            <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
-              <DollarSign size={20} className="text-primary-start" />
-              Pricing
-            </h3>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-dark rounded-xl">
-                <span className="text-gray-300">Daily Rate</span>
-                <span className="text-primary-start font-bold text-lg">₱{gym.dailyRate}</span>
-              </div>
-
-              <div className="border-t border-dark-border pt-3">
-                <p className="text-gray-400 text-sm mb-3">Monthly Plans</p>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center p-3 bg-dark rounded-xl">
-                    <span className="text-gray-300">Basic</span>
-                    <span className="text-white font-bold">₱{gym.monthlyPlans.basic}/mo</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-dark rounded-xl">
-                    <span className="text-gray-300">Standard</span>
-                    <span className="text-white font-bold">₱{gym.monthlyPlans.standard}/mo</span>
-                  </div>
-                  {gym.monthlyPlans.premium > 0 && (
-                    <div className="flex justify-between items-center p-3 bg-gradient-to-r from-primary-start/20 to-primary-end/20 border border-primary-start/30 rounded-xl">
-                      <span className="text-white font-semibold">Premium</span>
-                      <span className="text-primary-start font-bold">₱{gym.monthlyPlans.premium}/mo</span>
-                    </div>
-                  )}
+          {!isGFitness && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="glass-card rounded-2xl p-5 mb-5"
+            >
+              <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <DollarSign size={20} className="text-yellow-400" />
+                Pricing
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between p-3 bg-black/40 rounded-xl">
+                  <span className="text-white/60">Daily Rate</span>
+                  <span className="text-yellow-400 font-bold">₱{gym.dailyRate}</span>
                 </div>
+                <div className="flex justify-between p-3 bg-black/40 rounded-xl">
+                  <span className="text-white/60">Basic</span>
+                  <span className="text-white font-bold">₱{gym.monthlyPlans.basic}/mo</span>
+                </div>
+                <div className="flex justify-between p-3 bg-black/40 rounded-xl">
+                  <span className="text-white/60">Standard</span>
+                  <span className="text-white font-bold">₱{gym.monthlyPlans.standard}/mo</span>
+                </div>
+                {gym.monthlyPlans.premium > 0 && (
+                  <div className="flex justify-between p-3 bg-yellow-500/8 border border-yellow-500/20 rounded-xl">
+                    <span className="text-white">Premium</span>
+                    <span className="text-yellow-400 font-bold">₱{gym.monthlyPlans.premium}/mo</span>
+                  </div>
+                )}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
-          {/* Amenities */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-dark-lighter border border-dark-border rounded-2xl p-6"
+            transition={{ delay: 0.35 }}
+            className="glass-card rounded-2xl p-5 mb-6"
           >
-            <h3 className="text-white font-semibold text-lg mb-4">Amenities & Features</h3>
-            <div className="grid grid-cols-1 gap-2">
-              {gym.amenities.map((amenity, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-dark rounded-xl">
-                  <Check size={18} className="text-green-400" />
-                  <span className="text-gray-300">{amenity}</span>
+            <h3 className="text-white font-semibold text-lg mb-3">Amenities & Features</h3>
+            <div className="space-y-2">
+              {gym.amenities.map((amenity) => (
+                <div key={amenity} className="flex items-center gap-3 p-3 bg-black/40 rounded-xl">
+                  <Check size={18} className="text-violet" />
+                  <span className="text-white/60 text-sm">{amenity}</span>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          {/* CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+          <button
+            onClick={handleBecomeMember}
+            className="w-full py-3.5 rounded-xl font-bold transition-colors text-black"
+            style={{ background: 'var(--color-secondary)' }}
           >
-            <button
-              onClick={() => navigate('/')}
-              className="w-full py-4 bg-gradient-to-r from-primary-start to-primary-end text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary-start/30 transition-all duration-200"
-            >
-              Become a Member
-            </button>
-          </motion.div>
+            Login / Become a Member
+          </button>
         </div>
       </div>
     </MobileFrame>

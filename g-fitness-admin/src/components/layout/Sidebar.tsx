@@ -1,91 +1,218 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import Logo from '../brand/Logo';
-import { motion } from 'framer-motion';
-import { LayoutDashboard, Users, CheckSquare, TrendingUp, Target, DollarSign, CreditCard, Dumbbell, CalendarDays, Calendar, MessageSquare, Settings, LogOut } from 'lucide-react';
-import { showToast } from '../../utils/toast';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import {
+  LayoutDashboard, Users, CheckSquare, Target, DollarSign,
+  CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
+  LogOut, ChevronRight,
+} from 'lucide-react';
+import { toast } from '../ui/sonner';
 
-const navItems = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Members', path: '/members', icon: Users },
-  { label: 'Attendance', path: '/attendance', icon: CheckSquare },
-  { label: 'Analytics', path: '/analytics', icon: TrendingUp },
-  { label: 'Retention', path: '/retention', icon: Target },
-  { label: 'Revenue', path: '/revenue', icon: DollarSign },
-  { label: 'Payments', path: '/payments', icon: CreditCard },
-  { label: 'Trainers', path: '/trainers', icon: Dumbbell },
-  { label: 'Schedule', path: '/schedule', icon: CalendarDays },
-  { label: 'Bookings', path: '/bookings', icon: Calendar },
-  { label: 'Chatbot', path: '/chatbot', icon: MessageSquare },
-  { label: 'Settings', path: '/settings', icon: Settings },
+const BG           = 'var(--color-bg)';
+const SURFACE      = 'var(--color-surface)';
+const BORDER       = 'var(--color-border)';
+const PRIMARY      = 'var(--color-primary)';
+const PRIMARY_LIGHT = 'var(--color-primary-light)';
+const SECONDARY    = 'var(--color-secondary)';
+const TEXT_SECOND  = 'var(--color-text-secondary)';
+const TEXT_MUTED   = 'var(--color-text-muted)';
+
+const NAV_ITEMS = [
+  { label: 'Dashboard',  path: '/dashboard',  icon: LayoutDashboard, section: 'Overview' },
+  { label: 'Members',    path: '/members',    icon: Users,           section: 'Management' },
+  { label: 'Trainers',   path: '/trainers',   icon: Dumbbell,        section: 'Management' },
+  { label: 'Schedule',   path: '/schedule',   icon: CalendarDays,    section: 'Management' },
+  { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
+  { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
+  { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
+  { label: 'Revenue',    path: '/revenue',     icon: DollarSign,      section: 'Reports' },
+  { label: 'Payments',   path: '/payments',    icon: CreditCard,      section: 'Reports' },
+  { label: 'Settings',   path: '/settings',    icon: Settings,        section: 'Settings' },
 ];
 
-export default function Sidebar() {
+const SECTIONS = ['Overview', 'Management', 'Reports', 'Settings'];
+const ICON_RAIL_W = 56;
+const DETAIL_W = 208;
+const STORAGE_KEY = 'admin_sidebar_collapsed';
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const handleLogout = () => {
     localStorage.removeItem('adminAuthenticated');
     localStorage.removeItem('adminUser');
-    showToast('Logged out successfully', 'success');
+    toast.success('Logged out successfully');
     navigate('/admin/login');
   };
-  
+
+  const totalWidth = collapsed ? ICON_RAIL_W : DETAIL_W;
+
   return (
-    <aside className="w-72 min-w-[288px] h-screen bg-dark-lighter border-r border-dark-border flex flex-col shadow-2xl flex-shrink-0 fixed left-0 top-0 z-50">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-dark-border">
-        <Logo size="md" showText={true} />
-        <p className="text-xs text-gray-400 mt-3 font-medium tracking-wide">
-          SMART FITNESS. SMARTER MANAGEMENT.
-        </p>
-      </div>
-      
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-gradient-to-r from-primary-start to-primary-end text-white shadow-lg shadow-primary-start/30'
-                    : 'text-gray-400 hover:bg-dark-border/50 hover:text-white'
-                }`
-              }
-              style={{
-                outline: 'none',
-                boxShadow: 'none',
-                border: 'none'
-              }}
-            >
-              <Icon size={20} className="group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-sm">{item.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
-      
-      {/* Footer */}
-      <div className="p-4 border-t border-dark-border/50 space-y-3">
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 text-gray-400 hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/30 group"
+    <aside
+      className="h-screen fixed left-0 top-0 z-40 flex transition-all duration-300"
+      style={{ width: totalWidth }}
+    >
+      {/* ─── Icon Rail (only visible when collapsed) ─── */}
+      {collapsed && (
+        <div
+          className="h-full flex flex-col items-center py-4 gap-1 flex-shrink-0"
+          style={{ width: ICON_RAIL_W, background: BG, borderRight: `1px solid ${BORDER}` }}
         >
-          <LogOut size={20} className="group-hover:scale-110 transition-transform" />
-          <span className="font-medium text-sm">Logout</span>
-        </button>
-        
-        {/* Version Info */}
-        <div className="bg-dark-border/30 rounded-xl p-4 text-center">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Powered by <span className="text-gradient font-semibold">G-Fitness CORE</span>
-          </p>
-          <p className="text-xs text-gray-600 mt-1">v1.0.0</p>
+          {/* Logo */}
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 cursor-pointer"
+            style={{ background: PRIMARY }}
+            onClick={onToggle}
+            title="Expand"
+          >
+            <Dumbbell size={16} className="text-white" />
+          </div>
+
+          {/* Nav icons */}
+          <div className="flex-1 flex flex-col gap-1 w-full px-2 overflow-y-auto scrollbar-hide">
+            {NAV_ITEMS.map(item => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors"
+                  style={{
+                    background: isActive ? PRIMARY_LIGHT : 'transparent',
+                    color: isActive ? PRIMARY : TEXT_MUTED,
+                  }}
+                  title={item.label}
+                >
+                  <Icon size={18} />
+                </NavLink>
+              );
+            })}
+          </div>
+
+          {/* Bottom: Logout */}
+          <div className="flex flex-col gap-1 w-full px-2 mt-2">
+            <button
+              onClick={handleLogout}
+              className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors"
+              style={{ color: SECONDARY }}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Detail Panel (shows when not collapsed) ─── */}
+      {!collapsed && (
+        <div
+          className="h-full flex flex-col overflow-hidden"
+          style={{
+            width: DETAIL_W,
+            background: SURFACE,
+            borderRight: `1px solid ${BORDER}`,
+          }}
+        >
+        {/* Brand header with logo */}
+        <div className="px-4 py-4 flex items-center gap-3 flex-shrink-0">
+          <img src="/core-fitness-logo.png" alt="Core Fitness"
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">Core Fitness</p>
+            <p className="text-[9px] uppercase tracking-[0.15em]" style={{ color: TEXT_MUTED }}>Admin Panel</p>
+          </div>
+          <button
+            onClick={onToggle}
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+            style={{ color: TEXT_MUTED }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
+            onMouseLeave={e => (e.currentTarget.style.color = TEXT_MUTED)}
+            title="Collapse"
+          >
+            <ChevronRight size={14} className="rotate-180" />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-4">
+          {SECTIONS.map(section => {
+            const items = NAV_ITEMS.filter(i => i.section === section);
+            if (items.length === 0) return null;
+            return (
+              <div key={section}>
+                <p className="px-3 mb-1.5 text-[9px] font-semibold tracking-[0.2em] uppercase"
+                  style={{ color: TEXT_MUTED }}>{section}</p>
+                <div className="space-y-0.5">
+                  {items.map(item => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
+                        style={{
+                          background: isActive ? PRIMARY_LIGHT : 'transparent',
+                          color: isActive ? PRIMARY : TEXT_SECOND,
+                        }}
+                      >
+                        <item.icon size={15} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
+                        <span className="truncate">{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Footer — Logout */}
+        <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
+            style={{ color: SECONDARY }}
+          >
+            <LogOut size={15} />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
+      )}
     </aside>
   );
+}
+
+/** Hook to read & persist the sidebar collapsed state. */
+export function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(STORAGE_KEY) === '1'; }
+    catch { return false; }
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth < 1280 && !collapsed) setCollapsed(true);
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(STORAGE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  return { collapsed, toggle };
 }

@@ -16,21 +16,24 @@ import Chatbot from './pages/Chatbot';
 import Settings from './pages/Settings';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
     <GymProvider>
       <BrowserRouter>
+        <Toaster />
         <Routes>
-          {/* Public Route - Login */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          
-          {/* Protected Routes - Admin Panel */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
@@ -46,9 +49,10 @@ function App() {
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       </BrowserRouter>
     </GymProvider>

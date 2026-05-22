@@ -21,11 +21,11 @@ export default function Logo({ size = 'md', animated = false, showText = true }:
     animate: { 
       scale: 1, 
       opacity: 1,
-      transition: { duration: 0.5, ease: 'easeOut' }
+      transition: { duration: 0.5, ease: 'easeOut' as const }
     },
     pulse: {
       scale: [1, 1.05, 1],
-      transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+      transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' as const }
     }
   };
 
@@ -33,7 +33,7 @@ export default function Logo({ size = 'md', animated = false, showText = true }:
     <div className="flex items-center gap-3">
       <img 
         src="/logo.png" 
-        alt="G-Fitness CORE Logo" 
+        alt="Core Fitness Logo" 
         className="object-contain"
         style={{ width: dimension, height: dimension }}
       />
@@ -41,9 +41,9 @@ export default function Logo({ size = 'md', animated = false, showText = true }:
       {showText && (
         <div className="flex flex-col">
           <h1 className="font-orbitron font-bold text-gradient leading-none" style={{ fontSize: dimension * 0.35 }}>
-            G-FITNESS
+            CORE FITNESS
           </h1>
-          <p className="text-gray-400 text-xs font-medium tracking-wider">CORE</p>
+          <p className="text-gray-400 text-xs font-medium tracking-wider">ADMIN</p>
         </div>
       )}
     </div>

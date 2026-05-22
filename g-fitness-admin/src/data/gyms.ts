@@ -3,7 +3,7 @@ import type { Gym } from '../types';
 export const GYMS: Gym[] = [
   {
     id: 'gym-001',
-    name: 'CORE Fitness',
+    name: 'G-Fitness',
     location: 'Mamburao, Occidental Mindoro',
     address: 'Poblacion, Mamburao, Occidental Mindoro',
     phone: '+63 917 123 4567',
