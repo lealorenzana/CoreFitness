@@ -16,10 +16,29 @@ interface Booking {
 
 const ITEMS_PER_PAGE = 10;
 
+const MOCK_BOOKINGS: Booking[] = [
+  { id: 'bk-001', memberId: 'aaron.diwa@email.com', memberName: 'Aaron Diwa', memberEmail: 'aaron.diwa@email.com', className: 'Strength Training', classType: 'Strength Training', trainerName: 'Cyrelle Joy Duhac', trainerId: 'trainer-001', day: 'Monday', time: '6:00 AM', date: '2026-05-23', status: 'Pending', createdAt: '2026-05-23T08:00:00Z' },
+  { id: 'bk-002', memberId: 'aj.aguirre@email.com', memberName: 'Aj Aguirre', memberEmail: 'aj.aguirre@email.com', className: 'HIIT', classType: 'HIIT', trainerName: 'Ana Par Iturralde', trainerId: 'trainer-002', day: 'Tuesday', time: '7:00 AM', date: '2026-05-22', status: 'Confirmed', createdAt: '2026-05-22T07:30:00Z' },
+  { id: 'bk-003', memberId: 'anjeleca.avila@email.com', memberName: 'Anjeleca Avila', memberEmail: 'anjeleca.avila@email.com', className: 'Boxing', classType: 'Boxing', trainerName: 'Nathanniel Ucol', trainerId: 'trainer-003', day: 'Wednesday', time: '5:00 PM', date: '2026-05-21', status: 'Confirmed', createdAt: '2026-05-21T14:00:00Z' },
+  { id: 'bk-004', memberId: 'clairey.belen@email.com', memberName: 'Clairey Anne Belen', memberEmail: 'clairey.belen@email.com', className: 'Yoga', classType: 'Yoga', trainerName: 'Cyrelle Joy Duhac', trainerId: 'trainer-001', day: 'Thursday', time: '6:00 AM', date: '2026-05-20', status: 'Rejected', createdAt: '2026-05-20T05:00:00Z' },
+  { id: 'bk-005', memberId: 'crizaldo.alboro@email.com', memberName: 'Crizaldo Alboro', memberEmail: 'crizaldo.alboro@email.com', className: 'CrossFit', classType: 'CrossFit', trainerName: 'Nathanniel Ucol', trainerId: 'trainer-003', day: 'Friday', time: '6:00 PM', date: '2026-05-19', status: 'Pending', createdAt: '2026-05-19T16:00:00Z' },
+  { id: 'bk-006', memberId: 'cyrelle.flordeliza@email.com', memberName: 'Cyrelle Joy Flordeliza', memberEmail: 'cyrelle.flordeliza@email.com', className: 'Strength Training', classType: 'Strength Training', trainerName: 'Ana Par Iturralde', trainerId: 'trainer-002', day: 'Saturday', time: '8:00 AM', date: '2026-05-18', status: 'Confirmed', createdAt: '2026-05-18T07:00:00Z' },
+  { id: 'bk-007', memberId: 'bhebemon@email.com', memberName: 'Bhebemon Bhebemon', memberEmail: 'bhebemon@email.com', className: 'HIIT', classType: 'HIIT', trainerName: 'Cyrelle Joy Duhac', trainerId: 'trainer-001', day: 'Monday', time: '5:00 PM', date: '2026-05-17', status: 'Pending', createdAt: '2026-05-17T15:00:00Z' },
+  { id: 'bk-008', memberId: 'arvin.delarosa@email.com', memberName: 'Arvin Dela Rosa', memberEmail: 'arvin.delarosa@email.com', className: 'Boxing', classType: 'Boxing', trainerName: 'Nathanniel Ucol', trainerId: 'trainer-003', day: 'Wednesday', time: '7:00 PM', date: '2026-05-16', status: 'Confirmed', createdAt: '2026-05-16T18:00:00Z' },
+];
+
 const emptyForm = { memberName: '', memberEmail: '', trainerName: '', sessionType: 'Strength Training', date: '', time: '6:00 AM', notes: '' };
 
 export default function Bookings() {
-  const [bookings, setBookings] = useState<Booking[]>(() => SharedStorage.getBookings());
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    const stored = SharedStorage.getBookings();
+    if (stored.length === 0) {
+      // Seed with mock data if empty
+      MOCK_BOOKINGS.forEach(b => SharedStorage.addBooking(b));
+      return MOCK_BOOKINGS;
+    }
+    return stored;
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -98,164 +117,149 @@ export default function Bookings() {
   const rejected = bookings.filter(b => b.status === 'Rejected').length;
 
   return (
-    <div className="space-y-6">
+    <div className="h-[calc(100vh-5rem)] flex flex-col gap-3 overflow-hidden">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-white">Bookings</h1>
-          <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>Trainer session booking requests</p>
+          <h1 className="text-xl font-bold text-white">Bookings</h1>
+          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Trainer session booking requests</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
-          className="px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-black transition-colors"
-          style={{ background: 'var(--color-secondary)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-secondary-hover)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-secondary)')}>
-          <Plus size={18} /> Add Booking
+          className="px-4 h-9 rounded-full font-semibold text-xs flex items-center gap-2 text-black transition-colors"
+          style={{ background: 'var(--color-secondary)' }}>
+          <Plus size={14} /> Add Booking
         </button>
       </motion.div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Pending', value: pending, icon: Clock, color: 'var(--color-secondary)' },
-          { label: 'Confirmed', value: confirmed, icon: CheckCircle, color: 'var(--color-primary)' },
-          { label: 'Rejected', value: rejected, icon: XCircle, color: 'var(--color-secondary)' },
-        ].map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${s.color}20` }}>
-                    <Icon size={20} style={{ color: s.color }} />
-                  </div>
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                    <p className="text-2xl font-bold text-white">{s.value}</p>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          );
-        })}
+      {/* Stats + Search row */}
+      <div className="flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2">
+          {[
+            { label: 'Pending', value: pending, icon: Clock, color: 'var(--color-secondary)' },
+            { label: 'Confirmed', value: confirmed, icon: CheckCircle, color: 'var(--color-primary)' },
+            { label: 'Rejected', value: rejected, icon: XCircle, color: '#ef4444' },
+          ].map(s => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                <Icon size={12} style={{ color: s.color }} />
+                <span className="text-[9px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</span>
+                <span className="text-sm font-bold text-white">{s.value}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="w-40 pl-8 pr-3 h-8 rounded-full text-xs text-white focus:outline-none"
+              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
+          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="px-2 h-8 rounded-full text-[11px] focus:outline-none"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+            <option value="all">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+            className="px-2 h-8 rounded-full text-[11px] focus:outline-none"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }} />
+          {(search || statusFilter !== 'all' || dateFilter) && (
+            <button onClick={() => { setSearch(''); setStatusFilter('all'); setDateFilter(''); }}
+              className="px-2 h-8 rounded-full text-[10px] font-semibold"
+              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Search + Filter row */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <Card>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[220px] relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search member, email or trainer…"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: '#fff' }} />
-            </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-              <option value="all">All statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-            <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }} />
-            {(search || statusFilter !== 'all' || dateFilter) && (
-              <button onClick={() => { setSearch(''); setStatusFilter('all'); setDateFilter(''); }}
-                className="px-3 py-2 rounded-xl text-xs font-semibold"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                Clear
-              </button>
-            )}
-          </div>
-        </Card>
-      </motion.div>
-
-      {/* Table */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <Card>
-          {filtered.length > 0 ? (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                      {['Member', 'Trainer', 'Session Type', 'Date & Time', 'Status', 'Actions'].map(h => (
-                        <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
-                      ))}
+      {/* Table — fills remaining height */}
+      <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        {filtered.length > 0 ? (
+          <>
+            <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+              <table className="w-full table-fixed">
+                <thead className="sticky top-0 z-10" style={{ background: 'var(--color-surface)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[20%]" style={{ color: 'var(--color-text-muted)' }}>Member</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[15%]" style={{ color: 'var(--color-text-muted)' }}>Trainer</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[15%]" style={{ color: 'var(--color-text-muted)' }}>Session</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[18%]" style={{ color: 'var(--color-text-muted)' }}>Date & Time</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[12%]" style={{ color: 'var(--color-text-muted)' }}>Status</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider w-[14%]" style={{ color: 'var(--color-text-muted)' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedBookings.map(b => (
+                    <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)' }}
+                      className="transition-colors"
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      <td className="py-2 px-3">
+                        <p className="text-xs text-white font-semibold truncate">{b.memberName}</p>
+                        <p className="text-[9px] truncate" style={{ color: 'var(--color-text-muted)' }}>{b.memberEmail}</p>
+                      </td>
+                      <td className="py-2 px-3 text-[11px] text-white truncate">{b.trainerName}</td>
+                      <td className="py-2 px-3">
+                        <span className="text-[9px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                          {b.sessionType || b.className}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <p className="text-[11px] text-white flex items-center gap-1">
+                          <Calendar size={10} style={{ color: 'var(--color-text-muted)' }} />
+                          {b.day || new Date(b.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                        <p className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                          <Clock size={9} /> {b.time}
+                        </p>
+                      </td>
+                      <td className="py-2 px-3">
+                        <Badge variant={b.status}>{b.status}</Badge>
+                      </td>
+                      <td className="py-2 px-3">
+                        {b.status === 'Pending' && (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => handleApprove(b)}
+                              className="p-1.5 rounded-full" title="Approve"
+                              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                              <Check size={12} />
+                            </button>
+                            <button onClick={() => handleReject(b)}
+                              className="p-1.5 rounded-full" title="Reject"
+                              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                        {b.status === 'Confirmed' && <span className="text-[10px] font-semibold" style={{ color: 'var(--color-primary)' }}>✓ Approved</span>}
+                        {b.status === 'Rejected' && <span className="text-[10px] font-semibold" style={{ color: 'var(--color-secondary)' }}>✗ Rejected</span>}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedBookings.map(b => (
-                      <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                        <td className="py-4 px-4">
-                          <p className="text-white font-semibold">{b.memberName}</p>
-                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{b.memberEmail}</p>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-white">{b.trainerName}</td>
-                        <td className="py-4 px-4">
-                          <span className="text-xs px-2 py-1 rounded-lg font-semibold" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.20)' }}>
-                            {b.sessionType || b.className}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-1.5 text-sm text-white mb-1">
-                            <Calendar size={13} style={{ color: 'var(--color-text-muted)' }} />
-                            {b.day || new Date(b.date).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            <Clock size={13} /> {b.time}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant={b.status}>{b.status}</Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          {b.status === 'Pending' && (
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => handleApprove(b)}
-                                className="p-2 rounded-lg transition-colors" title="Approve"
-                                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.20)' }}>
-                                <Check size={15} />
-                              </button>
-                              <button onClick={() => handleReject(b)}
-                                className="p-2 rounded-lg transition-colors" title="Reject"
-                                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', border: '1px solid rgba(245,158,11,0.20)' }}>
-                                <X size={15} />
-                              </button>
-                            </div>
-                          )}
-                          {b.status === 'Confirmed' && <span className="text-xs text-violet font-semibold">✓ Approved</span>}
-                          {b.status === 'Rejected' && <span className="text-xs text-yellow font-semibold">✗ Rejected</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination currentPage={currentPage} totalItems={filtered.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
-            </>
-          ) : (
-            <div className="py-16 text-center">
-              <Calendar size={56} className="mx-auto mb-4" style={{ color: 'var(--color-border)' }} />
-              <p className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                {bookings.length === 0 ? 'No booking requests yet' : 'No bookings match your filters'}
-              </p>
-              <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                {bookings.length === 0
-                  ? 'Trainer booking requests from members will appear here'
-                  : 'Try clearing your search or filters'}
-              </p>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </Card>
-      </motion.div>
+            <div className="flex-shrink-0 px-3 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
+              <Pagination currentPage={currentPage} totalItems={filtered.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Calendar size={32} className="mb-2" style={{ color: 'var(--color-border)' }} />
+            <p className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+              {bookings.length === 0 ? 'No booking requests yet' : 'No bookings match your filters'}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Add Booking Modal */}
       <AnimatePresence>

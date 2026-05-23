@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, DollarSign,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight,
+  LogOut, ChevronRight, PartyPopper,
 } from 'lucide-react';
 import { toast } from '../ui/sonner';
 
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Trainers',   path: '/trainers',   icon: Dumbbell,        section: 'Management' },
   { label: 'Schedule',   path: '/schedule',   icon: CalendarDays,    section: 'Management' },
   { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
+  { label: 'Events',     path: '/events',     icon: PartyPopper,     section: 'Management' },
   { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
   { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
   { label: 'Revenue',    path: '/revenue',     icon: DollarSign,      section: 'Reports' },
@@ -124,18 +125,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <img src="/core-fitness-logo.png" alt="Core Fitness"
             className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white">Core Fitness</p>
-            <p className="text-[9px] uppercase tracking-[0.15em]" style={{ color: TEXT_MUTED }}>Admin Panel</p>
+            <p className="text-sm font-bold text-white uppercase tracking-wide whitespace-nowrap">CORE FITNESS</p>
+            <p className="text-[9px] uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: TEXT_MUTED }}>ADMIN PANEL</p>
           </div>
+        </div>
+        {/* Collapse button — separate row */}
+        <div className="px-4 pb-2 flex-shrink-0">
           <button
             onClick={onToggle}
-            className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-            style={{ color: TEXT_MUTED }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-            onMouseLeave={e => (e.currentTarget.style.color = TEXT_MUTED)}
-            title="Collapse"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors"
+            style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
           >
-            <ChevronRight size={14} className="rotate-180" />
+            <ChevronRight size={12} className="rotate-180" /> Collapse
           </button>
         </div>
 

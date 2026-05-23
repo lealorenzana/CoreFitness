@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Onboarding from './pages/Onboarding';
@@ -20,8 +21,13 @@ import EditProfile from './pages/EditProfile';
 import AttendanceHistory from './pages/AttendanceHistory';
 import BookClass from './pages/BookClass';
 import BookingHistory from './pages/BookingHistory';
-import TrainerProfile from './pages/TrainerProfile';
+import TrainerProfilePage from './pages/TrainerProfile';
 import Trainers from './pages/Trainers';
+import TrainerHome from './pages/trainer/TrainerHome';
+import TrainerMembers from './pages/trainer/TrainerMembers';
+import TrainerSchedule from './pages/trainer/TrainerSchedule';
+import TrainerBookings from './pages/trainer/TrainerBookings';
+import TrainerProfile from './pages/trainer/TrainerProfile';
 import { getSelectedGym } from './utils/prototype';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -42,9 +48,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function LoginRoute() {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const selectedGym = getSelectedGym();
+  const trainerMode = localStorage.getItem('trainerMode') === 'true';
 
   if (isLoggedIn && selectedGym) {
-    return <Navigate to="/member/home" replace />;
+    return <Navigate to={trainerMode ? '/trainer/home' : '/member/home'} replace />;
   }
 
   if (!selectedGym) {
@@ -68,6 +75,16 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
 
+        {/* Trainer Role Route */}
+        <Route path="/trainer" element={<TrainerLayout />}>
+          <Route index element={<Navigate to="/trainer/home" replace />} />
+          <Route path="home" element={<TrainerHome />} />
+          <Route path="members" element={<TrainerMembers />} />
+          <Route path="schedule" element={<TrainerSchedule />} />
+          <Route path="bookings" element={<TrainerBookings />} />
+          <Route path="profile" element={<TrainerProfile />} />
+        </Route>
+
         {/* Protected Member Routes */}
         <Route
           path="/member"
@@ -83,7 +100,7 @@ function App() {
           <Route path="trainers" element={<Trainers />} />
           <Route path="book-class" element={<BookClass />} />
           <Route path="booking-history" element={<BookingHistory />} />
-          <Route path="trainer/:trainerId" element={<TrainerProfile />} />
+          <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />
           <Route path="membership" element={<Membership />} />
           <Route path="workouts" element={<Workouts />} />
           <Route path="progress" element={<ProgressHub />} />

@@ -13,6 +13,9 @@ export const STORAGE_KEYS = {
   
   // Attendance data - shared between apps
   ATTENDANCE: 'gfitness_attendance',
+
+  // Pending registrations - shared between apps
+  PENDING_REGISTRATIONS: 'pending_registrations',
   
   // Member-specific data
   MEMBER_PROFILE: (memberId: string) => `gfitness_member_${memberId}`,
@@ -126,12 +129,35 @@ export const SharedStorage = {
     SharedStorage.setAttendance(attendance);
   },
 
+  // --- Pending Registrations ---
+
+  // Get all pending registrations
+  getPendingRegistrations: (): any[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.PENDING_REGISTRATIONS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  // Add a pending registration
+  addPendingRegistration: (registration: any) => {
+    const pending = SharedStorage.getPendingRegistrations();
+    pending.push(registration);
+    localStorage.setItem(STORAGE_KEYS.PENDING_REGISTRATIONS, JSON.stringify(pending));
+  },
+
+  // Remove a pending registration by id
+  removePendingRegistration: (id: string) => {
+    const pending = SharedStorage.getPendingRegistrations();
+    const updated = pending.filter((r: any) => r.id !== id);
+    localStorage.setItem(STORAGE_KEYS.PENDING_REGISTRATIONS, JSON.stringify(updated));
+  },
+
   // Clear all data (for testing)
   clearAll: () => {
     localStorage.removeItem(STORAGE_KEYS.MEMBERS);
     localStorage.removeItem(STORAGE_KEYS.BOOKINGS);
     localStorage.removeItem(STORAGE_KEYS.PAYMENTS);
     localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
+    localStorage.removeItem(STORAGE_KEYS.PENDING_REGISTRATIONS);
   },
 };
 

@@ -194,179 +194,143 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* LEFT: Check-in Methods */}
+      {/* Three-column layout */}
+      <div className="flex-1 min-h-0 grid grid-cols-3 gap-3">
+        {/* COL 1: QR Code Scan */}
         <div className="rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          {/* Tabs */}
-          <div className="flex gap-1 p-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            {[
-              { id: 'scan',   icon: QrCode, label: 'QR Code Scan' },
-              { id: 'manual', icon: Search, label: 'Manual Check-in' },
-            ].map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-                  className="flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-2 text-xs transition-colors"
-                  style={{
-                    background: isActive ? 'var(--color-secondary)' : 'transparent',
-                    color: isActive ? '#000' : 'var(--color-text-secondary)',
-                  }}>
-                  <Icon size={14} /> {tab.label}
-                </button>
-              );
-            })}
+          <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <QrCode size={13} style={{ color: 'var(--color-secondary)' }} />
+            <h3 className="text-[11px] font-semibold text-white">QR Code Scan</h3>
           </div>
-
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === 'scan' && (
-              <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                <QrCode size={48} style={{ color: 'var(--color-secondary)' }} />
-                <div>
-                  <h3 className="text-white font-semibold text-sm">Scan Member QR Code</h3>
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Use camera or enter QR code manually</p>
-                </div>
-                <Button onClick={() => setIsScannerOpen(true)} variant="primary" size="sm"
-                  className="w-full max-w-xs flex items-center justify-center gap-2">
-                  <Camera size={14} /> Open Camera Scanner
-                </Button>
-                <div className="flex items-center gap-3 w-full max-w-xs">
-                  <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>OR</span>
-                  <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-                </div>
-                <div className="w-full max-w-xs space-y-2">
-                  <input type="text" placeholder="Enter QR code (e.g., GF-2024-001)"
-                    value={qrInput} onChange={(e) => setQrInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleQRCheckIn()}
-                    className="w-full px-4 py-2 rounded-xl text-sm text-white focus:outline-none"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  <Button onClick={() => handleQRCheckIn()} variant="ghost" size="sm" className="w-full">
-                    Check In with Manual Entry
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'manual' && (
-              <div className="space-y-3 h-full flex flex-col">
-                <div className="relative flex-shrink-0">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-                  <input type="text" placeholder="Search member by name or ID…"
-                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl text-sm text-white focus:outline-none"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-1.5">
-                  {filteredMembers.length > 0 ? filteredMembers.map(member => (
-                    <div key={member.id} className="flex items-center justify-between p-2.5 rounded-xl"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-black font-bold text-[10px]"
-                          style={{ background: 'var(--color-secondary)' }}>
-                          {member.firstName[0]}{member.lastName[0]}
-                        </div>
-                        <div>
-                          <p className="text-[11px] text-white font-semibold">{member.fullName}</p>
-                          <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
-                            {member.qrCode} • {member.membershipType}
-                          </p>
-                        </div>
-                      </div>
-                      <Button onClick={() => handleManualCheckIn(member)} variant="primary" size="sm">
-                        Check In
-                      </Button>
-                    </div>
-                  )) : (
-                    <div className="text-center py-6 text-xs" style={{ color: 'var(--color-text-muted)' }}>No members found</div>
-                  )}
-                </div>
-              </div>
-            )}
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col items-center justify-center text-center space-y-3">
+            <QrCode size={36} style={{ color: 'var(--color-secondary)' }} />
+            <div>
+              <h3 className="text-white font-semibold text-xs">Scan Member QR</h3>
+              <p className="text-[9px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Use camera or enter code</p>
+            </div>
+            <Button onClick={() => setIsScannerOpen(true)} variant="primary" size="sm"
+              className="w-full flex items-center justify-center gap-1.5 !text-[10px]">
+              <Camera size={12} /> Open Camera
+            </Button>
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+              <span className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>OR</span>
+              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+            </div>
+            <div className="w-full space-y-1.5">
+              <input type="text" placeholder="Enter QR code (e.g., GF-2024-001)"
+                value={qrInput} onChange={(e) => setQrInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleQRCheckIn()}
+                className="w-full px-3 py-2 rounded-xl text-[11px] text-white focus:outline-none"
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+              <Button onClick={() => handleQRCheckIn()} variant="ghost" size="sm" className="w-full !text-[10px]">
+                Check In
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT: Attendance Log */}
+        {/* COL 2: Manual Check-in */}
         <div className="rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          {/* Log header */}
-          <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <div className="flex items-center gap-2">
-              <Calendar size={14} style={{ color: 'var(--color-secondary)' }} />
-              <h3 className="text-xs font-semibold text-white">Attendance Log</h3>
+          <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <Search size={13} style={{ color: 'var(--color-primary)' }} />
+            <h3 className="text-[11px] font-semibold text-white">Manual Check-in</h3>
+          </div>
+          <div className="flex-1 overflow-hidden flex flex-col p-3">
+            <div className="relative flex-shrink-0 mb-2">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+              <input type="text" placeholder="Search member..."
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 rounded-xl text-[11px] text-white focus:outline-none"
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
             </div>
+            <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-dark-border">
+              {filteredMembers.length > 0 ? filteredMembers.slice(0, 20).map(member => (
+                <div key={member.id} className="flex items-center justify-between p-2 rounded-lg"
+                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-black font-bold text-[8px] flex-shrink-0"
+                      style={{ background: 'var(--color-secondary)' }}>
+                      {member.firstName[0]}{member.lastName[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-white font-semibold truncate">{member.fullName}</p>
+                      <p className="text-[8px] truncate" style={{ color: 'var(--color-text-muted)' }}>{member.qrCode}</p>
+                    </div>
+                  </div>
+                  <Button onClick={() => handleManualCheckIn(member)} variant="primary" size="sm" className="!text-[9px] !px-2 !py-1 !h-6">
+                    Check In
+                  </Button>
+                </div>
+              )) : (
+                <div className="text-center py-4 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No members found</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* COL 3: Attendance Log */}
+        <div className="rounded-xl overflow-hidden flex flex-col"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="flex items-center justify-between p-2.5 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <div className="flex items-center gap-2">
+              <Calendar size={13} style={{ color: 'var(--color-secondary)' }} />
+              <h3 className="text-[11px] font-semibold text-white">Attendance Log</h3>
+            </div>
+            <div className="flex items-center gap-1.5">
               <input type="date" value={dateInputValue}
                 onChange={(e) => setLogDate(new Date(e.target.value).toDateString())}
-                className="px-2 py-1 rounded-lg text-[11px] focus:outline-none"
+                className="px-1.5 py-1 rounded-lg text-[9px] focus:outline-none"
                 style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }} />
               <div className="relative">
-                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
                 <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
-                  placeholder="Search log…"
-                  className="pl-7 pr-2 py-1 rounded-lg text-[11px] w-28 focus:outline-none"
+                  placeholder="Search…"
+                  className="pl-6 pr-2 py-1 rounded-lg text-[9px] w-20 focus:outline-none"
                   style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: '#fff' }} />
               </div>
             </div>
           </div>
-
-          {/* Log table */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
             {filteredLog.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-8">
-                <UserCheck size={32} style={{ color: 'var(--color-border)' }} className="mb-2" />
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>No check-ins for {new Date(logDate).toLocaleDateString()}</p>
+              <div className="flex flex-col items-center justify-center h-full py-6">
+                <UserCheck size={24} style={{ color: 'var(--color-border)' }} className="mb-1" />
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No check-ins</p>
               </div>
             ) : (
               <table className="w-full">
                 <thead className="sticky top-0" style={{ background: 'var(--color-surface)' }}>
                   <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {['Member', 'Member ID', 'Time', 'Method', 'Visits'].map(h => (
-                      <th key={h} className="text-left py-2 px-3 text-[9px] font-semibold uppercase tracking-wider"
+                    {['Member', 'Time', 'Method'].map(h => (
+                      <th key={h} className="text-left py-1.5 px-2 text-[8px] font-semibold uppercase tracking-wider"
                         style={{ color: 'var(--color-text-muted)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                    {filteredLog.slice((logPage - 1) * ITEMS_PER_PAGE, logPage * ITEMS_PER_PAGE).map(r => (
-                      <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                        <td className="py-2 px-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-black font-bold text-[9px]"
-                              style={{ background: 'var(--color-secondary)' }}>
-                              {r.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </div>
-                            <span className="text-[11px] text-white font-semibold">{r.memberName}</span>
-                          </div>
-                        </td>
-                        <td className="py-2 px-3 text-[10px] font-mono" style={{ color: 'var(--color-text-secondary)' }}>{r.memberId}</td>
-                        <td className="py-2 px-3">
-                          <div className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
-                            <Clock size={10} style={{ color: 'var(--color-text-muted)' }} />
-                            {r.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3">
-                          <Badge variant={r.method === 'qr' ? 'QR' : 'Manual'}>
-                            {r.method === 'qr' ? 'QR Scan' : 'Manual'}
-                          </Badge>
-                        </td>
-                        <td className="py-2 px-3 text-[11px] font-semibold text-white">
-                          {visitCounts[r.memberId] ?? 0}
-                        </td>
-                      </tr>
-                    ))}
+                  {filteredLog.slice((logPage - 1) * ITEMS_PER_PAGE, logPage * ITEMS_PER_PAGE).map(r => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td className="py-1.5 px-2">
+                        <p className="text-[10px] text-white font-semibold truncate">{r.memberName}</p>
+                      </td>
+                      <td className="py-1.5 px-2 text-[9px]" style={{ color: 'var(--color-text-secondary)' }}>
+                        {r.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <Badge variant={r.method === 'qr' ? 'QR' : 'Manual'}>
+                          {r.method === 'qr' ? 'QR' : 'Manual'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
           </div>
           {filteredLog.length > 0 && (
-            <div className="flex-shrink-0 px-3 py-1.5" style={{ borderTop: '1px solid var(--color-border)' }}>
+            <div className="flex-shrink-0 px-2 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
               <Pagination currentPage={logPage} totalItems={filteredLog.length}
                 itemsPerPage={ITEMS_PER_PAGE} onPageChange={setLogPage} />
             </div>

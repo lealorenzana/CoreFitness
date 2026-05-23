@@ -138,12 +138,11 @@ export default function Profile() {
           {/* Large avatar with violet ring */}
           <div className="relative mb-3">
             <div
-              className="w-24 h-24 rounded-full flex items-center justify-center"
+              className="w-24 h-24 rounded-full overflow-hidden"
               style={{
-                background: 'var(--color-primary-light)',
                 border: '4px solid var(--color-primary)',
               }}>
-              <User size={42} style={{ color: 'var(--color-primary)' }} />
+              <img src="/eya.png" alt="Eya Lorenzana" className="w-full h-full object-cover" />
             </div>
             <button onClick={() => navigate('/member/profile/edit')}
               className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-black"

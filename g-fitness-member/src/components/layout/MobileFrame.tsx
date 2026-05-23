@@ -9,14 +9,14 @@ export default function MobileFrame({ children }: MobileFrameProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--color-bg)' }}>
       <div className="relative w-full max-w-[375px] h-[812px] rounded-[3rem] overflow-hidden"
-        style={{ border: '2px solid var(--color-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }}>
+        style={{ border: '3px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.06)' }}>
 
         {/* Inner Screen */}
-        <div className="relative w-full h-full rounded-[2.9rem] overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="relative w-full h-full rounded-[2.8rem] overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
 
           {/* Status Bar */}
-          <div className="absolute top-0 left-0 right-0 h-11 z-50 px-6 flex items-center justify-between text-white text-sm"
-            style={{ background: 'rgba(10,10,15,0.9)' }}>
+          <div className="absolute top-0 left-0 right-0 h-11 z-[90] px-6 flex items-center justify-between text-white text-sm"
+            style={{ background: '#000' }}>
             <span className="font-semibold">9:41</span>
             <div className="flex items-center gap-1.5">
               <svg className="w-4 h-3" viewBox="0 0 16 12" fill="white">
@@ -33,10 +33,10 @@ export default function MobileFrame({ children }: MobileFrameProps) {
           </div>
 
           {/* Notch */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-7 rounded-b-3xl z-50"
-            style={{ backgroundColor: 'var(--color-bg)' }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-7 rounded-b-3xl z-[91]"
+            style={{ backgroundColor: '#000' }}>
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
+              style={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.15)' }} />
           </div>
 
           {/* Screen Content */}

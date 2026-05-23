@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -13,7 +13,7 @@ import { useGymContext } from '../hooks/useGymContext';
 import { MEMBERS } from '../data/members';
 import { formatDate, formatPhoneNumber } from '../utils/formatters';
 import { exportMembersToCSV } from '../utils/exportUtils';
-import { Search, UserPlus, Edit2, Trash2, Download, Users, Filter } from 'lucide-react';
+import { Search, UserPlus, Edit2, Trash2, Download, Users, Filter, X, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { SharedStorage } from '../utils/sharedStorage';
 
@@ -58,6 +58,7 @@ export default function Members() {
   const [memberToDelete, setMemberToDelete] = useState<SimpleMember | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showPendingPanel, setShowPendingPanel] = useState(false);
   const ITEMS_PER_PAGE = 10;
   const [filters, setFilters] = useState({
     membershipType:   'all' as 'all' | 'Basic' | 'Standard' | 'Premium',
@@ -197,6 +198,15 @@ export default function Members() {
           <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Manage and track gym members</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPendingPanel(true)}>
+            <Clock size={14} /> Pending
+            {(() => {
+              const pendingCount = SharedStorage.getPendingRegistrations ? SharedStorage.getPendingRegistrations().length : 0;
+              return pendingCount > 0 ? (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: 'var(--color-secondary)', color: '#000' }}>{pendingCount}</span>
+              ) : null;
+            })()}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportMembersToCSV(filteredMembers)}>
             <Download size={14} /> Export CSV
           </Button>
@@ -304,22 +314,22 @@ export default function Members() {
                     <div className="flex items-center gap-2">
                       {member.photoUrl ? (
                         <img src={member.photoUrl} alt={member.firstName}
-                          className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0"
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0"
                           style={{ background: 'var(--color-primary)' }}>
                           {member.firstName[0]}
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-[11px] text-white font-semibold leading-tight truncate">{member.fullName}</p>
-                        <p className="text-[9px] font-mono truncate" style={{ color: 'var(--color-text-muted)' }}>{member.qrCode}</p>
+                        <p className="text-sm text-white font-semibold leading-tight truncate">{member.fullName}</p>
+                        <p className="text-[10px] font-mono truncate" style={{ color: 'var(--color-text-muted)' }}>{member.qrCode}</p>
                       </div>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
-                    <p className="text-[11px] text-white truncate">{member.email}</p>
-                    <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{formatPhoneNumber(member.phone)}</p>
+                    <p className="text-xs text-white truncate">{member.email}</p>
+                    <p className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>{formatPhoneNumber(member.phone)}</p>
                   </td>
                   <td className="py-2.5 px-3">
                     <Badge variant={member.membershipType}>{member.membershipType}</Badge>
@@ -330,7 +340,7 @@ export default function Members() {
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3">
-                    <p className="text-[11px] text-white">{formatDate(member.expiryDate)}</p>
+                    <p className="text-xs text-white">{formatDate(member.expiryDate)}</p>
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -349,7 +359,7 @@ export default function Members() {
             </tbody>
           </table>
         </div>
-        <div className="flex-shrink-0 px-3 py-1.5" style={{ borderTop: '1px solid var(--color-border)' }}>
+        <div className="flex-shrink-0 px-3 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
           <Pagination currentPage={currentPage} totalItems={filteredMembers.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
         </div>
       </div>
@@ -381,6 +391,171 @@ export default function Members() {
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* Pending Registrations Panel */}
+      <AnimatePresence>
+        {showPendingPanel && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-50" onClick={() => setShowPendingPanel(false)} />
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--color-primary-light)' }}>
+                      <Clock size={16} style={{ color: 'var(--color-primary)' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Pending Registrations</h2>
+                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Approve or reject member registrations</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowPendingPanel(false)} className="p-2 rounded-lg transition-colors"
+                    style={{ color: 'var(--color-text-muted)' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Pending List */}
+                <PendingRegistrationsList
+                  onApprove={(reg) => {
+                    // Create active member from registration
+                    const start = new Date();
+                    const expiry = new Date(start);
+                    expiry.setMonth(expiry.getMonth() + 1);
+                    const newMember: SimpleMember = {
+                      id: `${selectedGym.id}-${Date.now()}`,
+                      gymId: selectedGym.id,
+                      qrCode: `${selectedGym.id.toUpperCase()}-2024-${String(members.length + 1).padStart(3, '0')}`,
+                      firstName: reg.firstName,
+                      lastName: reg.lastName,
+                      fullName: `${reg.firstName} ${reg.lastName}`,
+                      email: reg.email,
+                      phone: reg.phone || '',
+                      address: reg.address || '',
+                      membershipType: reg.membershipType || 'Basic',
+                      membershipStatus: 'Active',
+                      joinDate: start.toISOString().split('T')[0],
+                      expiryDate: expiry.toISOString().split('T')[0],
+                    };
+                    setMembers([newMember, ...members]);
+                    SharedStorage.removePendingRegistration(reg.id);
+                    showToast(`${reg.firstName} ${reg.lastName} approved and added as Active member!`, 'success');
+                  }}
+                  onReject={(reg) => {
+                    SharedStorage.removePendingRegistration(reg.id);
+                    showToast(`${reg.firstName} ${reg.lastName} registration rejected.`, 'success');
+                  }}
+                />
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─── Pending Registrations List Sub-component ─── */
+interface PendingReg {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  membershipType?: 'Basic' | 'Standard' | 'Premium';
+  registeredAt?: string;
+}
+
+const MOCK_PENDING: PendingReg[] = [
+  { id: 'pend-001', firstName: 'Mark', lastName: 'Villanueva', email: 'mark.v@email.com', phone: '09171234567', membershipType: 'Standard', registeredAt: '2026-05-20' },
+  { id: 'pend-002', firstName: 'Jasmine', lastName: 'Cruz', email: 'jasmine.cruz@email.com', phone: '09181234567', membershipType: 'Premium', registeredAt: '2026-05-21' },
+  { id: 'pend-003', firstName: 'Rafael', lastName: 'Santos', email: 'rafael.s@email.com', phone: '09191234567', membershipType: 'Basic', registeredAt: '2026-05-22' },
+];
+
+function PendingRegistrationsList({ onApprove, onReject }: { onApprove: (reg: PendingReg) => void; onReject: (reg: PendingReg) => void }) {
+  const [pendingList, setPendingList] = useState<PendingReg[]>([]);
+
+  useEffect(() => {
+    let list = SharedStorage.getPendingRegistrations();
+    // Seed mock data if empty
+    if (list.length === 0) {
+      MOCK_PENDING.forEach(p => SharedStorage.addPendingRegistration(p));
+      list = SharedStorage.getPendingRegistrations();
+    }
+    setPendingList(list);
+  }, []);
+
+  const handleApprove = (reg: PendingReg) => {
+    onApprove(reg);
+    setPendingList(prev => prev.filter(p => p.id !== reg.id));
+  };
+
+  const handleReject = (reg: PendingReg) => {
+    onReject(reg);
+    setPendingList(prev => prev.filter(p => p.id !== reg.id));
+  };
+
+  if (pendingList.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <CheckCircle size={32} className="mx-auto mb-3" style={{ color: 'var(--color-primary)' }} />
+        <p className="text-sm font-semibold text-white">All caught up!</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>No pending registrations to review.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border space-y-2.5">
+      {pendingList.map((reg, i) => (
+        <motion.div key={reg.id}
+          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+          className="flex items-center gap-3 p-3 rounded-xl"
+          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+          {/* Avatar */}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+            style={{ background: 'var(--color-primary)' }}>
+            {reg.firstName[0]}{reg.lastName[0]}
+          </div>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-white font-semibold truncate">{reg.firstName} {reg.lastName}</p>
+            <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{reg.email}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                {reg.membershipType || 'Basic'}
+              </span>
+              {reg.registeredAt && (
+                <span className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
+                  Registered {new Date(reg.registeredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button onClick={() => handleApprove(reg)}
+              className="p-2 rounded-full transition-colors"
+              style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}
+              title="Approve">
+              <CheckCircle size={16} />
+            </button>
+            <button onClick={() => handleReject(reg)}
+              className="p-2 rounded-full transition-colors"
+              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}
+              title="Reject">
+              <XCircle size={16} />
+            </button>
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 }

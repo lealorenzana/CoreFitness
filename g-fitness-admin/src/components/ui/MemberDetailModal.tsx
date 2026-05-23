@@ -151,10 +151,67 @@ export default function MemberDetailModal({ isOpen, onClose, member }: MemberDet
                         </div>
                       ))}
                     </div>
+
+                    {/* Body Measurements */}
                     <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        Detailed body progress, workouts, goals and badges are tracked in the member-app Progress Hub.
-                      </p>
+                      <h4 className="text-xs font-semibold text-white mb-3">Body Measurements</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Height', value: '170 cm' },
+                          { label: 'Weight', value: '65 kg' },
+                          { label: 'BMI', value: '22.5' },
+                          { label: 'Body Fat', value: '18%' },
+                          { label: 'Arms', value: '32 cm' },
+                          { label: 'Waist', value: '78 cm' },
+                          { label: 'Chest', value: '98 cm' },
+                          { label: 'Legs', value: '55 cm' },
+                        ].map(m => (
+                          <div key={m.label} className="flex justify-between py-1.5 px-2 rounded-lg" style={{ background: 'var(--color-bg)' }}>
+                            <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{m.label}</span>
+                            <span className="text-[11px] font-semibold text-white">{m.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Workout Summary */}
+                    <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                      <h4 className="text-xs font-semibold text-white mb-3">Workout Summary</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'This Week', value: '3', sub: 'sessions' },
+                          { label: 'Streak', value: '4', sub: 'days' },
+                          { label: 'Total', value: '48', sub: 'workouts' },
+                        ].map(w => (
+                          <div key={w.label} className="text-center p-2 rounded-lg" style={{ background: 'var(--color-bg)' }}>
+                            <p className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>{w.value}</p>
+                            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{w.sub}</p>
+                            <p className="text-[9px] font-medium text-white mt-0.5">{w.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Goals */}
+                    <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                      <h4 className="text-xs font-semibold text-white mb-3">Active Goals</h4>
+                      <div className="space-y-2">
+                        {[
+                          { title: 'Lose 5 kg', progress: 60, target: '5 kg' },
+                          { title: 'Attend 20 sessions', progress: 75, target: '20 visits' },
+                          { title: 'Burn 5000 kcal', progress: 40, target: '5000 kcal' },
+                        ].map(g => (
+                          <div key={g.title}>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-[11px] text-white font-medium">{g.title}</span>
+                              <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{g.progress}%</span>
+                            </div>
+                            <div className="h-1.5 rounded-full" style={{ background: 'var(--color-border)' }}>
+                              <div className="h-full rounded-full" style={{ width: `${g.progress}%`, background: g.progress >= 75 ? 'var(--color-primary)' : 'var(--color-secondary)' }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

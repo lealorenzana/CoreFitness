@@ -49,11 +49,11 @@ function FilterSelect({ value, options, onChange }: {
 }
 
 // ── KPI Card ────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, delta, icon: Icon }: {
-  label: string; value: string | number; delta?: string; icon: any;
+function KpiCard({ label, value, delta, icon: Icon, tooltip }: {
+  label: string; value: string | number; delta?: string; icon: any; tooltip?: string;
 }) {
   return (
-    <Card className="!p-4">
+    <Card className="!p-4" title={tooltip}>
       <div className="flex items-start justify-between mb-2">
         <div className="w-9 h-9 rounded-full flex items-center justify-center"
           style={{ background: 'var(--color-primary-light)' }}>
@@ -212,10 +212,10 @@ export default function Dashboard() {
   }, 0);
 
   const kpis = [
-    { label: 'Total Members',    value: gymMembers.length,             delta: '+12%', icon: Users },
-    { label: 'Monthly Revenue',  value: formatCurrency(monthlyRevenue), delta: '+15%', icon: DollarSign },
-    { label: 'Active Classes',   value: progressKpis?.totalClasses ?? '—', delta: '+2', icon: CalendarDays },
-    { label: 'Attendance Today', value: todayAttendance,                delta: '+5%',  icon: Activity },
+    { label: 'Total Members',    value: gymMembers.length,             delta: '+12%', icon: Users,        tooltip: 'Total number of registered gym members across all membership types' },
+    { label: 'Monthly Revenue',  value: formatCurrency(monthlyRevenue), delta: '+15%', icon: DollarSign,   tooltip: 'Estimated monthly revenue based on active membership fees' },
+    { label: 'Active Classes',   value: progressKpis?.totalClasses ?? '—', delta: '+2', icon: CalendarDays, tooltip: 'Number of scheduled classes currently running this week' },
+    { label: 'Attendance Today', value: todayAttendance,                delta: '+5%',  icon: Activity,     tooltip: 'Number of members who checked in today via QR or manual entry' },
   ];
 
   return (
@@ -227,6 +227,7 @@ export default function Dashboard() {
           <div
             className="relative overflow-hidden rounded-2xl p-5"
             style={{ background: VIOLET }}
+            title="Admin welcome banner — quick access to reports and pending bookings"
           >
             <Sparkles size={80} className="absolute -top-2 -right-2 text-white/10" />
 
@@ -273,7 +274,7 @@ export default function Dashboard() {
       {/* ── REVENUE + NEW MEMBERS ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.div className="lg:col-span-2" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="!p-4" header={
+          <Card className="!p-4" title="Monthly revenue breakdown showing income per month for the selected year" header={
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-semibold text-white">Revenue</h3>
@@ -298,7 +299,7 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
-          <Card className="!p-4" header={
+          <Card className="!p-4" title="New member sign-ups per month showing growth trend over time" header={
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-semibold text-white">New Members</h3>
@@ -323,7 +324,7 @@ export default function Dashboard() {
       {/* ── ATTENDANCE + 12-MONTH TREND ────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card className="!p-4" header={
+          <Card className="!p-4" title="Daily/weekly member check-in count showing gym traffic patterns" header={
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-semibold text-white">Attendance</h3>
@@ -362,7 +363,7 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-          <Card className="!p-4" header={
+          <Card className="!p-4" title="12-month revenue trend line showing overall financial performance" header={
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-semibold text-white">12-Month Revenue Trend</h3>
@@ -386,7 +387,7 @@ export default function Dashboard() {
 
       {/* ── HEATMAP (compact, no extra space) ── */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <Card className="!p-4" header={
+        <Card className="!p-4" title="Heatmap showing peak gym hours — darker cells mean more member visits at that time" header={
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity size={14} style={{ color: VIOLET }} />
@@ -407,7 +408,7 @@ export default function Dashboard() {
       {/* ── RIGHT: Statistics sidebar ──────────────────────────────────────── */}
       <aside className="hidden xl:block w-[280px] flex-shrink-0 space-y-4">
         {/* Greeting card */}
-        <Card className="!p-4 text-center">
+        <Card className="!p-4 text-center" title="Admin greeting card — shows current admin status">
           <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3"
             style={{ background: 'var(--color-primary-light)', border: `2px solid ${VIOLET}` }}>
             <Users size={24} style={{ color: VIOLET }} />
@@ -419,7 +420,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Progress Summary */}
-        <Card className="!p-4" header={
+        <Card className="!p-4" title="Key fitness statistics — average BMI, weight changes, total workouts, and active goals across all members" header={
           <h3 className="text-xs font-semibold text-white">Statistics</h3>
         }>
           <div className="space-y-3">
@@ -456,20 +457,8 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Attendance mini chart */}
-        <Card className="!p-4" header={
-          <h3 className="text-xs font-semibold text-white">Attendance</h3>
-        }>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={attendanceData.slice(0, 5)}>
-              <XAxis dataKey="day" tick={{ fill: '#9CA3AF', fontSize: 9 }} axisLine={false} tickLine={false} />
-              <Bar dataKey="count" fill={VIOLET} radius={[4, 4, 0, 0]} maxBarSize={24} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
         {/* Top Trainers */}
-        <Card className="!p-4" header={
+        <Card className="!p-4" title="Top-performing trainers ranked by rating and completed sessions" header={
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-white">Top Trainers</h3>
             <button
@@ -510,6 +499,48 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+        </Card>
+
+        {/* Membership Expiring Soon */}
+        <Card className="!p-4" title="Members whose memberships expire within the next 7 days — send reminders to retain them" header={
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-white">Expiring Soon</h3>
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ background: 'var(--color-secondary-light)', color: YELLOW }}>
+              {gymMembers.filter(m => {
+                const days = Math.ceil((new Date(m.expiryDate).getTime() - Date.now()) / 86400000);
+                return days > 0 && days <= 7;
+              }).length} members
+            </span>
+          </div>
+        }>
+          {(() => {
+            const expiring = gymMembers
+              .map(m => ({ ...m, daysLeft: Math.ceil((new Date(m.expiryDate).getTime() - Date.now()) / 86400000) }))
+              .filter(m => m.daysLeft > 0 && m.daysLeft <= 7)
+              .sort((a, b) => a.daysLeft - b.daysLeft)
+              .slice(0, 4);
+            if (expiring.length === 0) return (
+              <p className="text-center py-4 text-[11px]" style={{ color: TEXT_MUTED }}>No expiring memberships</p>
+            );
+            return (
+              <div className="space-y-1.5">
+                {expiring.map(m => (
+                  <div key={m.id} className="flex items-center gap-2 p-2 rounded-xl"
+                    style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
+                      style={{ background: YELLOW }}>
+                      {m.firstName[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] text-white font-semibold truncate">{m.fullName}</p>
+                      <p className="text-[9px]" style={{ color: YELLOW }}>{m.daysLeft} day{m.daysLeft !== 1 ? 's' : ''} left</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </Card>
       </aside>
     </div>

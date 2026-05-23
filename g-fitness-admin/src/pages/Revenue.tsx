@@ -9,7 +9,7 @@ import { exportToCSV } from '../utils/toast';
 interface Service {
   id: string;
   name: string;
-  tier: 'Basic' | 'Standard' | 'Premium';
+  tier: string;
   price: number;
   active: boolean;
 }
@@ -227,16 +227,13 @@ export default function Revenue() {
                   className="w-full px-3 h-9 rounded-lg text-sm text-white focus:outline-none"
                   style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
                 />
-                <select
+                <input
                   value={newService.tier}
-                  onChange={e => setNewService({ ...newService, tier: e.target.value as Service['tier'] })}
+                  onChange={e => setNewService({ ...newService, tier: e.target.value as any })}
+                  placeholder="Category (e.g. Basic, Premium, PT, Class)"
                   className="w-full px-3 h-9 rounded-lg text-sm text-white focus:outline-none"
                   style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                >
-                  <option value="Basic">Basic</option>
-                  <option value="Standard">Standard</option>
-                  <option value="Premium">Premium</option>
-                </select>
+                />
                 <input
                   type="number"
                   value={newService.price}

@@ -171,16 +171,6 @@ export default function Header() {
       </div>
 
       <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 flex-shrink-0">
-        <button
-          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-          style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
-          title="Inbox"
-        >
-          <Mail size={16} style={{ color: TEXT_SECOND }} />
-        </button>
-
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
@@ -291,8 +281,8 @@ export default function Header() {
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
         >
-          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-            <img src="/core-fitness-logo.png" alt="Admin" className="w-full h-full object-cover" />
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: PRIMARY }}>
+            AD
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-xs font-semibold text-white leading-tight">Admin</p>

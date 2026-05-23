@@ -41,11 +41,7 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
   });
 
   return (
-    <div className="flex items-center justify-between pt-4 mt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
-      <p className="text-sm" style={{ color: TEXT_MUTED }}>
-        Showing <span className="font-semibold text-white">{start}–{end}</span>{' '}
-        of <span className="font-semibold text-white">{totalItems}</span>
-      </p>
+    <div className="flex items-center justify-end pt-2 mt-2" style={{ borderTop: `1px solid ${BORDER}` }}>
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}

@@ -6,7 +6,7 @@ import { useGymContext } from '../hooks/useGymContext';
 import { TRAINERS } from '../data/trainers';
 import { MEMBERS } from '../data/members';
 import { MOCK_TRAINER_FEEDBACK } from '../data/mockTrainerFeedback';
-import { UserPlus, Star, Users, X, Calendar, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { UserPlus, Star, Users, X, Calendar, MessageSquare, ChevronDown, ChevronUp, Edit2, Eye, EyeOff, KeyRound, Copy, CheckCircle2 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 
 export default function Trainers() {
@@ -18,7 +18,10 @@ export default function Trainers() {
   const [detailTab, setDetailTab] = useState<'profile' | 'members' | 'schedule' | 'feedback'>('profile');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', specialty: '', email: '', phone: '' });
+  const [addForm, setAddForm] = useState({ name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[], loginEmail: '', loginPassword: '' });
+  const [showLoginPw, setShowLoginPw] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[] });
 
   // Simulate assigned members per trainer (round-robin for demo)
   const getAssignedMembers = (trainerId: string) => {
@@ -39,120 +42,149 @@ export default function Trainers() {
       showToast('Name and specialization are required', 'error');
       return;
     }
-    showToast(`${addForm.name} (${addForm.specialty}) added successfully!`, 'success');
-    setAddForm({ name: '', specialty: '', email: '', phone: '' });
+    if (!addForm.loginEmail.trim() || !addForm.loginPassword.trim()) {
+      showToast('Login credentials are required for the trainer to access the app', 'error');
+      return;
+    }
+    // Save trainer credentials to localStorage so trainer can log in
+    const trainerAccounts = JSON.parse(localStorage.getItem('trainer_accounts') || '[]');
+    trainerAccounts.push({
+      id: `trainer-${Date.now()}`,
+      name: addForm.name,
+      specialization: addForm.specialty,
+      email: addForm.loginEmail,
+      password: addForm.loginPassword,
+      phone: addForm.phone,
+      bio: addForm.bio,
+      availability: addForm.availability,
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem('trainer_accounts', JSON.stringify(trainerAccounts));
+    showToast(`${addForm.name} added! Credentials: ${addForm.loginEmail} / ${addForm.loginPassword}`, 'success');
+    setAddForm({ name: '', specialty: '', email: '', phone: '', bio: '', availability: [], loginEmail: '', loginPassword: '' });
     setShowAddModal(false);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Trainers</h1>
-          <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>Manage gym trainers and their assigned members</p>
+          <h1 className="text-xl font-bold text-white">Trainers</h1>
+          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Manage gym trainers and assigned members</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
-          className="px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 text-black transition-colors"
+          className="px-4 h-9 rounded-full font-semibold text-xs flex items-center gap-2 text-black transition-colors"
           style={{ background: 'var(--color-secondary)' }}>
-          <UserPlus size={16} /> Add Trainer
+          <UserPlus size={14} /> Add Trainer
         </button>
       </motion.div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Trainers', value: gymTrainers.length, color: 'var(--color-primary)' },
           { label: 'Avg Rating', value: (gymTrainers.reduce((s, t) => s + t.rating, 0) / gymTrainers.length).toFixed(1), color: 'var(--color-secondary)' },
           { label: 'Total Sessions', value: gymTrainers.reduce((s, t) => s + t.sessionsCompleted, 0), color: 'var(--color-primary)' },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}>
-            <div className="rounded-xl p-5" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${s.color}30` }}>
-              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-              <p className="text-4xl font-bold mt-2" style={{ color: s.color }}>{s.value}</p>
+            <div className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${s.color}30` }}>
+              <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Trainer Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Trainer Cards — 2 columns */}
+      <div className="grid grid-cols-2 gap-4">
         {gymTrainers.map((trainer, index) => {
           const assigned = getAssignedMembers(trainer.id);
           return (
             <motion.div key={trainer.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + index * 0.1 }}>
-              <Card className="group">
-                <div className="text-center">
+              <Card className="group !p-4">
+                <div className="flex items-start gap-3">
                   {/* Avatar */}
-                  <div className="relative inline-block mb-4">
-                    <div className="w-24 h-24 rounded-full flex items-center justify-center text-black text-3xl font-bold mx-auto" style={{ background: 'var(--color-secondary)' }}>
-                      {trainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                  <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0" style={{ border: '2px solid var(--color-secondary)' }}>
+                    {trainer.photoUrl ? (
+                      <img src={trainer.photoUrl} alt={trainer.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-black text-lg font-bold" style={{ background: 'var(--color-secondary)' }}>
+                        {trainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white truncate">{trainer.name}</h3>
+                    <Badge variant="Premium" className="mt-0.5 inline-block !text-[9px] !px-2 !py-0.5">{trainer.specialization}</Badge>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <Star size={11} style={{ color: 'var(--color-secondary)' }} />
+                        <span className="text-[11px] text-white font-semibold">{trainer.rating}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={11} style={{ color: 'var(--color-primary)' }} />
+                        <span className="text-[11px] text-white font-semibold">{trainer.sessionsCompleted}</span>
+                      </div>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-white">{trainer.name}</h3>
-                  <Badge variant="Premium" className="mt-2 inline-block">{trainer.specialization}</Badge>
+                </div>
 
-                  {/* Stats */}
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--color-bg)' }}>
-                      <span className="text-sm flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
-                        <Star size={14} style={{ color: 'var(--color-secondary)' }} /> Avg. Rating
-                      </span>
-                      <span className="text-white font-bold">{trainer.rating}</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--color-bg)' }}>
-                      <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Total Sessions</span>
-                      <span className="text-white font-bold">{trainer.sessionsCompleted}</span>
-                    </div>
-                    <button onClick={() => setExpanded(expanded === trainer.id ? null : trainer.id)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl transition-colors"
-                      style={{ background: 'var(--color-bg)' }}>
-                      <span className="text-sm flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
-                        <Users size={14} style={{ color: 'var(--color-primary)' }} /> Assigned Members
-                      </span>
-                      <span className="font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                        {assigned.length}
-                        {expanded === trainer.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                    </button>
-                  </div>
+                {/* Availability days */}
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {trainer.availability?.map((a: any) => (
+                    <span key={a.day} className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      {a.day.slice(0, 3)}
+                    </span>
+                  ))}
+                </div>
 
-                  {/* Expandable assigned members */}
-                  {expanded === trainer.id && assigned.length > 0 && (
-                    <div className="mt-3 text-left space-y-1">
-                      {assigned.map(m => (
-                        <div key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'var(--color-bg)' }}>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-black text-xs font-bold" style={{ background: 'var(--color-secondary)' }}>
-                            {m.firstName[0]}
-                          </div>
-                          <span className="text-sm text-white">{m.fullName}</span>
-                          <span className="ml-auto text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.membershipType}</span>
+                {/* Assigned members expandable */}
+                <button onClick={() => setExpanded(expanded === trainer.id ? null : trainer.id)}
+                  className="w-full flex items-center justify-between mt-2 p-2 rounded-lg transition-colors text-left"
+                  style={{ background: 'var(--color-bg)' }}>
+                  <span className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                    <Users size={11} style={{ color: 'var(--color-primary)' }} /> Assigned Members
+                  </span>
+                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
+                    {assigned.length}
+                    {expanded === trainer.id ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  </span>
+                </button>
+
+                {expanded === trainer.id && assigned.length > 0 && (
+                  <div className="mt-1.5 space-y-1 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                    {assigned.map(m => (
+                      <div key={m.id} className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ background: 'var(--color-bg)' }}>
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-black text-[8px] font-bold" style={{ background: 'var(--color-secondary)' }}>
+                          {m.firstName[0]}
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="mt-4 flex gap-2">
-                    <button onClick={() => openDetail(trainer)}
-                      className="flex-1 py-2 px-4 rounded-lg font-medium text-sm text-black transition-colors"
-                      style={{ background: 'var(--color-secondary)' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-secondary-hover)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-secondary)')}>
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        const days = trainer.availability?.map((a: any) => a.day).join(', ') || 'N/A';
-                        showToast(`${trainer.name} available: ${days}`, 'info');
-                      }}
-                      className="p-2 rounded-lg transition-colors" title="View availability"
-                      style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                      <Calendar size={18} />
-                    </button>
+                        <span className="text-[11px] text-white truncate">{m.fullName}</span>
+                        <span className="ml-auto text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{m.membershipType}</span>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => openDetail(trainer)}
+                    className="flex-1 py-2 rounded-full font-semibold text-[11px] text-black transition-colors"
+                    style={{ background: 'var(--color-secondary)' }}>
+                    View Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      const trainerAvail = trainer.availability?.map((a: any) => a.day) || [];
+                      setEditForm({ id: trainer.id, name: trainer.name, specialty: trainer.specialization, email: '', phone: '', bio: '', availability: trainerAvail });
+                      setShowEditModal(true);
+                    }}
+                    className="p-2 rounded-full transition-colors" title="Edit trainer"
+                    style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)', color: 'var(--color-primary)' }}>
+                    <Edit2 size={13} />
+                  </button>
                 </div>
               </Card>
             </motion.div>
@@ -175,8 +207,14 @@ export default function Trainers() {
                 {/* Header */}
                 <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold text-lg" style={{ background: 'var(--color-secondary)' }}>
-                      {selectedTrainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0" style={{ border: '2px solid var(--color-secondary)' }}>
+                      {selectedTrainer.photoUrl ? (
+                        <img src={selectedTrainer.photoUrl} alt={selectedTrainer.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-black font-bold text-lg" style={{ background: 'var(--color-secondary)' }}>
+                          {selectedTrainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">{selectedTrainer.name}</h2>
@@ -330,35 +368,109 @@ export default function Trainers() {
                 </div>
 
                 {/* Form */}
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
                   <div>
-                    <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>Full Name *</label>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Full Name *</label>
                     <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
                       placeholder="e.g. Coach Maria"
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
                       style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                   </div>
                   <div>
-                    <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>Specialization *</label>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Specialization *</label>
                     <input value={addForm.specialty} onChange={e => setAddForm({ ...addForm, specialty: e.target.value })}
                       placeholder="e.g. Yoga, Boxing, HIIT"
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
                       style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>Email</label>
+                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Email</label>
                       <input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })}
                         placeholder="trainer@email.com"
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                     </div>
                     <div>
-                      <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>Phone</label>
+                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Phone</label>
                       <input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })}
                         placeholder="+63 917 000 0000"
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Bio / Description</label>
+                    <textarea value={addForm.bio} onChange={e => setAddForm({ ...addForm, bio: e.target.value })}
+                      placeholder="Brief description about the trainer..."
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none resize-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] block mb-1.5 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Available Days</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                        const isSelected = addForm.availability.includes(day);
+                        return (
+                          <button key={day} type="button"
+                            onClick={() => setAddForm({ ...addForm, availability: isSelected ? addForm.availability.filter(d => d !== day) : [...addForm.availability, day] })}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
+                            style={{
+                              background: isSelected ? 'var(--color-primary)' : 'var(--color-bg)',
+                              color: isSelected ? '#fff' : 'var(--color-text-muted)',
+                              border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            }}>
+                            {day.slice(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Login Credentials Section */}
+                  <div className="pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <KeyRound size={13} style={{ color: 'var(--color-primary)' }} />
+                      <p className="text-[11px] font-semibold text-white">App Login Credentials</p>
+                    </div>
+                    <p className="text-[10px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
+                      These credentials will be given to the trainer to log in to the mobile app as Trainer.
+                    </p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Login Email *</label>
+                        <input value={addForm.loginEmail} onChange={e => setAddForm({ ...addForm, loginEmail: e.target.value })}
+                          placeholder="e.g. cyrelle@corefitness.com"
+                          className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
+                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-primary)', boxShadow: '0 0 0 1px rgba(124,58,237,0.1)' }} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Login Password *</label>
+                        <div className="relative">
+                          <input type={showLoginPw ? 'text' : 'password'} value={addForm.loginPassword}
+                            onChange={e => setAddForm({ ...addForm, loginPassword: e.target.value })}
+                            placeholder="Min. 6 characters"
+                            className="w-full px-3 py-2 pr-16 rounded-xl text-white text-xs focus:outline-none"
+                            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-primary)', boxShadow: '0 0 0 1px rgba(124,58,237,0.1)' }} />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            <button type="button" onClick={() => setShowLoginPw(!showLoginPw)}
+                              className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
+                              {showLoginPw ? <EyeOff size={12} /> : <Eye size={12} />}
+                            </button>
+                            <button type="button" title="Copy password"
+                              onClick={() => { navigator.clipboard.writeText(addForm.loginPassword); showToast('Password copied!', 'success'); }}
+                              className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 p-2 rounded-lg" style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)' }}>
+                      <p className="text-[9px]" style={{ color: 'var(--color-primary)' }}>
+                        ⚠️ Share these credentials with the trainer. They will use them to log in and select "Trainer" role on the mobile app.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -374,6 +486,112 @@ export default function Trainers() {
                     className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors"
                     style={{ background: 'var(--color-secondary)' }}>
                     Add Trainer
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Trainer Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setShowEditModal(false)} />
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+                onClick={e => e.stopPropagation()}>
+                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Edit Trainer</h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Update trainer details</p>
+                  </div>
+                  <button onClick={() => setShowEditModal(false)} style={{ color: 'var(--color-text-muted)' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                  <div>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Full Name *</label>
+                    <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Specialization *</label>
+                    <input value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Email</label>
+                      <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                        placeholder="trainer@email.com"
+                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
+                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Phone</label>
+                      <input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                        placeholder="+63 917 000 0000"
+                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
+                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Bio / Description</label>
+                    <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                      placeholder="Brief description about the trainer..."
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none resize-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] block mb-1.5 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Available Days</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                        const isSelected = editForm.availability.includes(day);
+                        return (
+                          <button key={day} type="button"
+                            onClick={() => setEditForm({ ...editForm, availability: isSelected ? editForm.availability.filter(d => d !== day) : [...editForm.availability, day] })}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
+                            style={{
+                              background: isSelected ? 'var(--color-primary)' : 'var(--color-bg)',
+                              color: isSelected ? '#fff' : 'var(--color-text-muted)',
+                              border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            }}>
+                            {day.slice(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <button onClick={() => setShowEditModal(false)}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm transition-colors"
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                    Cancel
+                  </button>
+                  <button onClick={() => {
+                    if (!editForm.name.trim() || !editForm.specialty.trim()) {
+                      showToast('Name and specialization are required', 'error');
+                      return;
+                    }
+                    showToast(`${editForm.name} updated successfully!`, 'success');
+                    setShowEditModal(false);
+                  }}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors"
+                    style={{ background: 'var(--color-secondary)' }}>
+                    Save Changes
                   </button>
                 </div>
               </motion.div>
