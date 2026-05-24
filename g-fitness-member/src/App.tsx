@@ -30,6 +30,7 @@ import TrainerMembers from './pages/trainer/TrainerMembers';
 import TrainerSchedule from './pages/trainer/TrainerSchedule';
 import TrainerBookings from './pages/trainer/TrainerBookings';
 import TrainerProfile from './pages/trainer/TrainerProfile';
+import TrainerChatbot from './pages/trainer/TrainerChatbot';
 import { getSelectedGym } from './utils/prototype';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,7 @@ function App() {
           <Route path="members" element={<TrainerMembers />} />
           <Route path="schedule" element={<TrainerSchedule />} />
           <Route path="bookings" element={<TrainerBookings />} />
+          <Route path="chatbot" element={<TrainerChatbot />} />
           <Route path="profile" element={<TrainerProfile />} />
         </Route>
 

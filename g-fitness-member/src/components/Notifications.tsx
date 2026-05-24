@@ -1,58 +1,39 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X, Calendar, CreditCard, Award, Info } from 'lucide-react';
-
-interface Notification {
-  id: string;
-  type: 'payment' | 'event' | 'achievement' | 'info';
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
+import { useNavigate } from 'react-router-dom';
+import { Bell, X, Calendar, CreditCard, Award, Info, BookOpen, Target, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { notificationService, getRelativeTime, type Notification } from '../services/notificationService';
 
 function getOverlayRoot(): HTMLElement | null {
   return document.getElementById('phone-overlay-root') ?? document.getElementById('phone-screen');
 }
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'payment',
-      title: 'Payment Due Soon',
-      message: 'Your membership expires in 7 days. Renew now to avoid interruption.',
-      time: '2 hours ago',
-      read: false,
-    },
-    {
-      id: '2',
-      type: 'event',
-      title: 'New Event: Yoga Class',
-      message: 'Join our special yoga session this Saturday at 9 AM.',
-      time: '5 hours ago',
-      read: false,
-    },
-    {
-      id: '3',
-      type: 'achievement',
-      title: 'Streak Achievement!',
-      message: "Congratulations! You've maintained a 7-day check-in streak.",
-      time: '1 day ago',
-      read: true,
-    },
-    {
-      id: '4',
-      type: 'info',
-      title: 'Gym Schedule Update',
-      message: 'G-Fitness will open 1 hour early on weekends starting next month.',
-      time: '2 days ago',
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const userId = localStorage.getItem('memberEmail') || localStorage.getItem('trainerEmail') || 'eya.lorenzana@email.com';
+
+  // Load notifications
+  useEffect(() => {
+    loadNotifications();
+  }, [userId]);
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const data = await notificationService.getNotifications(userId);
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setOverlayRoot(getOverlayRoot());
@@ -63,26 +44,48 @@ export default function Notifications() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'payment':
+      case 'membership':
         return CreditCard;
       case 'event':
         return Calendar;
       case 'achievement':
         return Award;
+      case 'booking':
+        return BookOpen;
+      case 'goal_milestone':
+        return Target;
+      case 'trainer_feedback':
+        return Users;
+      case 'attendance':
+        return TrendingUp;
+      case 'system':
+        return AlertCircle;
       default:
         return Info;
     }
   };
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
+    await notificationService.markAsRead(userId, id);
     setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    await notificationService.markAllAsRead(userId);
     setNotifications(notifications.map((n) => ({ ...n, read: true })));
   };
 
-  const deleteNotification = (id: string) => {
+  const deleteNotification = async (id: string) => {
+    await notificationService.deleteNotification(userId, id);
     setNotifications(notifications.filter((n) => n.id !== id));
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification.id);
+    if (notification.actionUrl) {
+      setIsOpen(false);
+      navigate(notification.actionUrl);
+    }
   };
 
   const panel = (
@@ -132,7 +135,7 @@ export default function Notifications() {
                     return (
                       <div
                         key={notification.id}
-                        onClick={() => markAsRead(notification.id)}
+                        onClick={() => handleNotificationClick(notification)}
                         className={`p-4 hover:bg-[rgba(10,8,0,0.85)]/50 transition-colors cursor-pointer relative ${
                           !notification.read ? 'bg-[rgba(10,8,0,0.85)]/30' : ''
                         }`}
@@ -158,7 +161,7 @@ export default function Notifications() {
                               </button>
                             </div>
                             <p className="text-white/40 text-xs mt-1 line-clamp-2">{notification.message}</p>
-                            <p className="text-gray-500 text-xs mt-1.5">{notification.time}</p>
+                            <p className="text-gray-500 text-xs mt-1.5">{getRelativeTime(notification.timestamp)}</p>
                           </div>
                         </div>
                         {!notification.read && (

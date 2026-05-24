@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TrainerBottomNav from './TrainerBottomNav';
 import { Toaster } from '../ui/Toast';
+import Notifications from '../Notifications';
+import FloatingChatbot from '../ui/FloatingChatbot';
 
 export default function TrainerLayout() {
   const location = useLocation();
@@ -61,6 +63,11 @@ export default function TrainerLayout() {
           <Toaster />
 
           <div id="phone-screen" className="h-full flex flex-col pt-8 relative" style={{ backgroundColor: 'var(--color-bg)' }}>
+            {/* Header with Notifications */}
+            <div className="absolute top-11 right-4 z-50 flex items-center gap-2">
+              <Notifications />
+            </div>
+
             <main ref={mainRef} className="flex-1 overflow-y-auto px-4 py-4 pb-2 scrollbar-hide relative"
               style={{ backgroundColor: 'var(--color-bg)' }}>
               <AnimatePresence mode="popLayout">
@@ -77,6 +84,9 @@ export default function TrainerLayout() {
             </main>
 
             <TrainerBottomNav />
+
+            {/* Floating Chatbot */}
+            <FloatingChatbot />
 
             <div id="modal-root" className="absolute inset-0 pointer-events-none z-[95]" />
           </div>

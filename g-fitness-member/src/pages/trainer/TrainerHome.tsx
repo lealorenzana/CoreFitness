@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Users, Calendar, Clock, Star, TrendingUp, ChevronRight, Dumbbell } from 'lucide-react';
+import { initializeMockNotifications } from '../../data/mockNotifications';
 
 const TRAINER = {
   name: 'Cyrelle Joy Duhac',
@@ -26,6 +28,11 @@ const RECENT_ACTIVITY = [
 
 export default function TrainerHome() {
   const navigate = useNavigate();
+
+  // Initialize mock notifications on first load
+  useEffect(() => {
+    initializeMockNotifications();
+  }, []);
 
   return (
     <div className="space-y-4 pb-4">

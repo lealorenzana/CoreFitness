@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
 import Events from './pages/Events';
+import Notifications from './pages/Notifications';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
             <Route path="schedule" element={<Schedule />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="events" element={<Events />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<Settings />} />
           </Route>

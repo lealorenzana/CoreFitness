@@ -8,6 +8,7 @@ import { generateSecureQR, getQRTimeRemaining } from '../utils/qrCode';
 import { getCurrentUser } from '../utils/auth';
 import { SharedStorage } from '../utils/sharedStorage';
 import { MOCK_HOME_QUICK_STATS, MOCK_UPCOMING_CLASS } from '../data/mockHomeDashboard';
+import { initializeMockNotifications } from '../data/mockNotifications';
 
 /** Circular progress ring used in the hero stats row. */
 function ProgressRing({ value, goal, label, unit }: { value: number; goal: number; label: string; unit?: string }) {
@@ -85,6 +86,11 @@ export default function Home() {
     if (h < 17) return 'Good Afternoon';
     return 'Good Evening';
   })();
+
+  // Initialize mock notifications on first load
+  useEffect(() => {
+    initializeMockNotifications();
+  }, []);
 
   useEffect(() => {
     const today = new Date().toDateString();

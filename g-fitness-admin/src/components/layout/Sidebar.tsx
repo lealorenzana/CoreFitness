@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, DollarSign,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, PartyPopper,
+  LogOut, ChevronRight, PartyPopper, Bell,
 } from 'lucide-react';
 import { toast } from '../ui/sonner';
 
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { label: 'Schedule',   path: '/schedule',   icon: CalendarDays,    section: 'Management' },
   { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
   { label: 'Events',     path: '/events',     icon: PartyPopper,     section: 'Management' },
+  { label: 'Notifications', path: '/notifications', icon: Bell,      section: 'Management' },
   { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
   { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
   { label: 'Revenue',    path: '/revenue',     icon: DollarSign,      section: 'Reports' },
