@@ -204,7 +204,7 @@ export function CinematicFooter() {
       <div
         ref={wrapperRef}
         className="relative h-screen w-full gf-footer-wrapper"
-        style={{ clipPath: 'polygon(0% 0, 100% 0%, 100% 100%, 0 100%)' }}
+        style={{ clipPath: 'polygon(0% 0, 100% 0%, 100% 100%, 0 100%)', position: 'relative' }}
       >
         <footer
           className="fixed bottom-0 left-0 flex h-screen w-full flex-col justify-between overflow-hidden"

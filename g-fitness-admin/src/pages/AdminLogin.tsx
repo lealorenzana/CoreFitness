@@ -85,7 +85,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="w-full" style={{ background: '#000' }}>
+    <div className="w-full relative" style={{ background: '#000' }}>
     {/* Login Section — full viewport */}
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
       {/* Background violet gradient */}

@@ -3,8 +3,9 @@ import { useState } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Plus, Edit2, Trash2, X, Calendar, MapPin, Users, Clock } from 'lucide-react';
-import { showToast } from '../utils/toast';
+import Input from '../components/ui/Input';
+import { Plus, Edit2, Trash2, X, Calendar, MapPin, Users, Clock, Bell, Send, Dumbbell, User } from 'lucide-react';
+import { showToast, showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface GymEvent {
   id: string;
@@ -18,6 +19,18 @@ interface GymEvent {
   status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
 }
 
+type RecipientType = 'all_members' | 'all_trainers' | 'specific_user';
+type NotificationType = 'info' | 'event' | 'system' | 'payment' | 'achievement';
+
+interface NotificationForm {
+  recipientType: RecipientType;
+  specificUsers: string[];
+  notificationType: NotificationType;
+  title: string;
+  message: string;
+  actionUrl?: string;
+}
+
 const MOCK_EVENTS: GymEvent[] = [
   { id: 'evt-001', title: 'Summer Fitness Challenge', description: 'Join our 30-day fitness challenge! Track your progress and win prizes.', date: '2026-06-01', time: '6:00 AM', location: 'Main Floor', capacity: 50, registered: 32, status: 'Upcoming' },
   { id: 'evt-002', title: 'Free Boxing Workshop', description: 'Learn boxing basics with Coach Nathanniel. Open to all members.', date: '2026-05-28', time: '4:00 PM', location: 'Boxing Area', capacity: 20, registered: 18, status: 'Upcoming' },
@@ -28,6 +41,9 @@ const MOCK_EVENTS: GymEvent[] = [
 const emptyForm = { title: '', description: '', date: '', time: '', location: '', capacity: '30' };
 
 export default function Events() {
+  const [activeTab, setActiveTab] = useState<'events' | 'announcements'>('events');
+  
+  // Events state
   const [events, setEvents] = useState<GymEvent[]>(() => {
     try { const s = localStorage.getItem('admin_events'); if (s) return JSON.parse(s); } catch {}
     localStorage.setItem('admin_events', JSON.stringify(MOCK_EVENTS));
@@ -38,24 +54,30 @@ export default function Events() {
   const [form, setForm] = useState(emptyForm);
   const [viewAttendeesEvent, setViewAttendeesEvent] = useState<GymEvent | null>(null);
 
-  // Mock attendees per event (in real app, this comes from API)
+  // Announcements state
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState<NotificationForm>({
+    recipientType: 'all_members',
+    specificUsers: [],
+    notificationType: 'info',
+    title: '',
+    message: '',
+    actionUrl: '',
+  });
+
+  const [recentNotifications] = useState([
+    { id: '1', title: 'Gym Schedule Update', message: 'G-Fitness will open 1 hour early on weekends starting next month.', recipients: 'All Members', sentAt: '2 hours ago', type: 'info' },
+    { id: '2', title: 'New Event: Yoga Class', message: 'Join our special yoga session this Saturday at 9 AM.', recipients: 'All Members', sentAt: '1 day ago', type: 'event' },
+    { id: '3', title: 'Schedule Reminder', message: 'You have sessions scheduled for tomorrow.', recipients: 'All Trainers', sentAt: '2 days ago', type: 'info' },
+  ]);
+
+  // Mock attendees per event
   const getEventAttendees = (eventId: string) => {
-    const names = [
-      'Aaron Diwa', 'Aaron Paglicawan Dionisio', 'Aj Aguirre', 'Ana Par Ituralde',
-      'Anjeleca Avila', 'Arvin Dela Rosa', 'Bhebemon Bhebemon', 'Clairey Anne Belen',
-      'Crizaldo Alboro', 'Cyrelle Joy Flordeliza', 'Carlos Villanueva', 'Patricia Bautista',
-      'Ricardo Aquino', 'Sofia Lim', 'David Cruz', 'Angela Tan', 'Kevin Pascual',
-      'Joy Manalo', 'Benjamin Ocampo', 'Celia Navarro',
-    ];
+    const names = ['Aaron Diwa', 'Aaron Paglicawan Dionisio', 'Aj Aguirre', 'Ana Par Ituralde', 'Anjeleca Avila', 'Arvin Dela Rosa', 'Bhebemon Bhebemon', 'Clairey Anne Belen', 'Crizaldo Alboro', 'Cyrelle Joy Flordeliza', 'Carlos Villanueva', 'Patricia Bautista', 'Ricardo Aquino', 'Sofia Lim', 'David Cruz', 'Angela Tan', 'Kevin Pascual', 'Joy Manalo', 'Benjamin Ocampo', 'Celia Navarro'];
     const evt = events.find(e => e.id === eventId);
     if (!evt) return [];
-    // Deterministic subset based on event id hash
     const seed = eventId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    return names.slice(0, evt.registered).map((name, i) => ({
-      id: `att-${i}`,
-      name,
-      joinedAt: new Date(Date.now() - (i * 86400000 + seed * 1000)).toLocaleDateString(),
-    }));
+    return names.slice(0, evt.registered).map((name, i) => ({ id: `att-${i}`, name, joinedAt: new Date(Date.now() - (i * 86400000 + seed * 1000)).toLocaleDateString() }));
   };
 
   const saveEvents = (updated: GymEvent[]) => {
@@ -90,79 +112,183 @@ export default function Events() {
     showToast('Event deleted', 'success');
   };
 
+  const handleSendNotification = () => {
+    if (!announcementForm.title || !announcementForm.message) {
+      showErrorToast('Please fill in all required fields');
+      return;
+    }
+    console.log('Sending notification:', announcementForm);
+    showSuccessToast('Announcement sent successfully!');
+    setShowSendModal(false);
+    setAnnouncementForm({ recipientType: 'all_members', specificUsers: [], notificationType: 'info', title: '', message: '', actionUrl: '' });
+  };
+
+  const getRecipientLabel = (type: RecipientType) => {
+    switch (type) {
+      case 'all_members': return 'All Members';
+      case 'all_trainers': return 'All Trainers';
+      case 'specific_user': return 'Specific Users';
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Events</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Create and manage gym events for members</p>
+          <h1 className="text-2xl font-bold text-white">Events & Announcements</h1>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Manage gym events and send announcements to members</p>
         </div>
-        <Button variant="secondary" onClick={openAdd}>
-          <Plus size={16} /> Create Event
+        <Button variant="secondary" onClick={activeTab === 'events' ? openAdd : () => setShowSendModal(true)}>
+          <Plus size={16} /> {activeTab === 'events' ? 'Create Event' : 'Send Announcement'}
         </Button>
       </motion.div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Events', value: events.length },
-          { label: 'Upcoming', value: events.filter(e => e.status === 'Upcoming').length },
-          { label: 'Total Registered', value: events.reduce((s, e) => s + e.registered, 0) },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-            <Calendar size={16} style={{ color: 'var(--color-primary)' }} />
-            <div>
-              <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-              <p className="text-lg font-bold text-white">{s.value}</p>
-            </div>
-          </div>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-2 p-1 rounded-xl" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+        <button onClick={() => setActiveTab('events')}
+          className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+          style={{ background: activeTab === 'events' ? 'var(--color-secondary)' : 'transparent', color: activeTab === 'events' ? '#000' : 'var(--color-text-muted)' }}>
+          <Calendar size={16} /> Events
+        </button>
+        <button onClick={() => setActiveTab('announcements')}
+          className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+          style={{ background: activeTab === 'announcements' ? 'var(--color-secondary)' : 'transparent', color: activeTab === 'announcements' ? '#000' : 'var(--color-text-muted)' }}>
+          <Bell size={16} /> Announcements
+        </button>
       </div>
 
-      {/* Events List — 2 columns */}
-      <div className="grid grid-cols-2 gap-3">
-        {events.map((evt, i) => (
-          <motion.div key={evt.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="!p-3">
-              <div className="flex items-start justify-between mb-1.5">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <h3 className="text-xs font-bold text-white truncate">{evt.title}</h3>
+      {/* Events Tab */}
+      {activeTab === 'events' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Total Events', value: events.length },
+              { label: 'Upcoming', value: events.filter(e => e.status === 'Upcoming').length },
+              { label: 'Total Registered', value: events.reduce((s, e) => s + e.registered, 0) },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
+                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                <Calendar size={16} style={{ color: 'var(--color-primary)' }} />
+                <div>
+                  <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
+                  <p className="text-lg font-bold text-white">{s.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Events List */}
+          <div className="grid grid-cols-2 gap-3">
+            {events.map((evt, i) => (
+              <motion.div key={evt.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <Card className="!p-3">
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <h3 className="text-xs font-bold text-white truncate">{evt.title}</h3>
+                      </div>
+                      <Badge variant={evt.status === 'Upcoming' ? 'Active' : evt.status === 'Completed' ? 'Expired' : 'Pending'}>{evt.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <button onClick={() => openEdit(evt)} className="p-1.5 rounded-lg" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                        <Edit2 size={11} />
+                      </button>
+                      <button onClick={() => handleDelete(evt.id)} className="p-1.5 rounded-lg" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
-                  <Badge variant={evt.status === 'Upcoming' ? 'Active' : evt.status === 'Completed' ? 'Expired' : 'Pending'}>{evt.status}</Badge>
+                  <p className="text-[10px] mb-2 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{evt.description}</p>
+                  <div className="flex flex-wrap gap-2 text-[9px]" style={{ color: 'var(--color-text-secondary)' }}>
+                    <span className="flex items-center gap-0.5"><Calendar size={9} /> {new Date(evt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span className="flex items-center gap-0.5"><Clock size={9} /> {evt.time}</span>
+                    <span className="flex items-center gap-0.5"><MapPin size={9} /> {evt.location}</span>
+                  </div>
+                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <button className="flex items-center gap-1 text-[10px] font-semibold cursor-pointer hover:text-white transition-colors"
+                      style={{ color: 'var(--color-primary)' }} onClick={(e) => { e.stopPropagation(); setViewAttendeesEvent(evt); }}>
+                      <Users size={10} /> {evt.registered}/{evt.capacity} registered
+                    </button>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Announcements Tab */}
+      {activeTab === 'announcements' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="!p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary-light)' }}>
+                  <Send size={20} style={{ color: 'var(--color-primary)' }} />
                 </div>
-                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                  <button onClick={() => openEdit(evt)} className="p-1.5 rounded-lg"
-                    style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                    <Edit2 size={11} />
-                  </button>
-                  <button onClick={() => handleDelete(evt.id)} className="p-1.5 rounded-lg"
-                    style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                    <Trash2 size={11} />
-                  </button>
+                <div>
+                  <p className="text-2xl font-bold text-white">156</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Total Sent</p>
                 </div>
-              </div>
-              <p className="text-[10px] mb-2 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{evt.description}</p>
-              <div className="flex flex-wrap gap-2 text-[9px]" style={{ color: 'var(--color-text-secondary)' }}>
-                <span className="flex items-center gap-0.5"><Calendar size={9} /> {new Date(evt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <span className="flex items-center gap-0.5"><Clock size={9} /> {evt.time}</span>
-                <span className="flex items-center gap-0.5"><MapPin size={9} /> {evt.location}</span>
-              </div>
-              <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <button className="flex items-center gap-1 text-[10px] font-semibold cursor-pointer hover:text-white transition-colors"
-                  style={{ color: 'var(--color-primary)' }}
-                  onClick={(e) => { e.stopPropagation(); setViewAttendeesEvent(evt); }}>
-                  <Users size={10} /> {evt.registered}/{evt.capacity} registered
-                </button>
               </div>
             </Card>
-          </motion.div>
-        ))}
-      </div>
+            <Card className="!p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-secondary-light)' }}>
+                  <Users size={20} style={{ color: 'var(--color-secondary)' }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">342</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Total Recipients</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="!p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#10b98120' }}>
+                  <Bell size={20} style={{ color: '#10b981' }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">89%</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Read Rate</p>
+                </div>
+              </div>
+            </Card>
+          </div>
 
-      {/* Create/Edit Modal */}
+          {/* Recent Announcements */}
+          <Card title="Recent Announcements">
+            <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+              {recentNotifications.map((notif) => (
+                <div key={notif.id} className="p-4 hover:bg-white/5 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-white font-semibold">{notif.title}</h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase"
+                          style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                          {notif.type}
+                        </span>
+                      </div>
+                      <p className="text-sm mb-2" style={{ color: 'var(--color-text-muted)' }}>{notif.message}</p>
+                      <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        <span>📤 {notif.recipients}</span>
+                        <span>•</span>
+                        <span>{notif.sentAt}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* Create/Edit Event Modal */}
       <AnimatePresence>
         {showModal && (
           <>
@@ -276,6 +402,130 @@ export default function Events() {
                     className="w-full py-2.5 rounded-full font-semibold text-sm text-black"
                     style={{ background: 'var(--color-secondary)' }}>
                     Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Send Announcement Modal */}
+      <AnimatePresence>
+        {showSendModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-50" onClick={() => setShowSendModal(false)} />
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                onClick={e => e.stopPropagation()}>
+                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <h2 className="text-lg font-bold text-white">Send Announcement</h2>
+                  <button onClick={() => setShowSendModal(false)} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Recipient Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Recipients</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['all_members', 'all_trainers', 'specific_user'] as RecipientType[]).map((type) => {
+                        const isActive = announcementForm.recipientType === type;
+                        const Icon = type === 'all_members' ? Users : type === 'all_trainers' ? Dumbbell : User;
+                        
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => setAnnouncementForm({ ...announcementForm, recipientType: type })}
+                            className="p-3 rounded-xl text-sm font-semibold transition-all flex flex-col items-center gap-1"
+                            style={{
+                              background: isActive ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                              border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                              color: isActive ? '#fff' : 'var(--color-text-secondary)',
+                            }}
+                          >
+                            <Icon size={16} />
+                            {getRecipientLabel(type)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Notification Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Type</label>
+                    <select
+                      value={announcementForm.notificationType}
+                      onChange={(e) => setAnnouncementForm({ ...announcementForm, notificationType: e.target.value as NotificationType })}
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      style={{
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <option value="info">Info</option>
+                      <option value="event">Event</option>
+                      <option value="system">System</option>
+                      <option value="payment">Payment</option>
+                      <option value="achievement">Achievement</option>
+                    </select>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Title *</label>
+                    <input
+                      value={announcementForm.title}
+                      onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                      placeholder="Enter announcement title"
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    />
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Message *</label>
+                    <textarea
+                      value={announcementForm.message}
+                      onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
+                      placeholder="Enter announcement message"
+                      rows={4}
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm resize-none focus:outline-none"
+                      style={{
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    />
+                  </div>
+
+                  {/* Action URL (Optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Action URL (Optional)</label>
+                    <input
+                      value={announcementForm.actionUrl}
+                      onChange={(e) => setAnnouncementForm({ ...announcementForm, actionUrl: e.target.value })}
+                      placeholder="/member/events"
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    />
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                      Where users will be redirected when they tap the notification
+                    </p>
+                  </div>
+                </div>
+                <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <button onClick={() => setShowSendModal(false)}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm"
+                    style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                    Cancel
+                  </button>
+                  <button onClick={handleSendNotification}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2"
+                    style={{ background: 'var(--color-secondary)' }}>
+                    <Send size={16} /> Send Announcement
                   </button>
                 </div>
               </motion.div>

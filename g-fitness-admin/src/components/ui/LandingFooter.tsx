@@ -133,7 +133,7 @@ export default function LandingFooter() {
       </section>
 
       {/* ─── Cinematic Footer ─── */}
-      <div ref={containerRef} className="relative h-screen w-full" style={{ clipPath: 'polygon(0% 0, 100% 0%, 100% 100%, 0 100%)' }}>
+      <div ref={containerRef} className="relative h-screen w-full" style={{ clipPath: 'polygon(0% 0, 100% 0%, 100% 100%, 0 100%)', position: 'relative' }}>
         <footer className="fixed bottom-0 left-0 flex h-screen w-full flex-col justify-between overflow-hidden"
           style={{ background: 'rgba(124,58,237,0.2)', color: '#fff' }}>
 

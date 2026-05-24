@@ -1,0 +1,482 @@
+﻿Research Proposal Form
+
+
+
+Research Title: G-Fitness CORE: A Cross-Platform Intelligent Management Information System for Localized Health and Fitness via Web-Admin and Mobile-Member Architecture.
+
+Research Title: G-Fitness CORE: A Cross-Platform Intelligent Management Information System for Localized Health and Fitness via Web-Admin and Mobile-Member Architecture.
+
+Research Title: G-Fitness CORE: A Cross-Platform Intelligent Management Information System for Localized Health and Fitness via Web-Admin and Mobile-Member Architecture.
+
+Research Title: G-Fitness CORE: A Cross-Platform Intelligent Management Information System for Localized Health and Fitness via Web-Admin and Mobile-Member Architecture.
+
+Proponents:                                                                     
+Lea R. Lorenzana
+Ana P. Ituralde
+Cyrelle Joy F. Duhac
+Nathanniel R.Ucol      
+Proponents:                                                                     
+Lea R. Lorenzana
+Ana P. Ituralde
+Cyrelle Joy F. Duhac
+Nathanniel R.Ucol      
+
+Adviser:           Erika Jane Tadeja
+Data Analyst:   Erika Jane Tadeja
+Critic Reader:   Ma. Krizhna Rose Guerra
+
+Adviser:           Erika Jane Tadeja
+Data Analyst:   Erika Jane Tadeja
+Critic Reader:   Ma. Krizhna Rose Guerra
+Priority Area/s (check the applicable): 
+1. Natural & Applied Sciences
+ Agriculture (Crops, Livestock, Fisheries, Forestry, Natural Resources)
+ Food and Nutrition
+ Health and Medicine
+ Environment and Climate Change
+ Energy and Infrastructure
+2. Social & Community Development
+ Countryside Development
+ Social Services (Welfare, housing, community programs)
+ Education (Curriculum, pedagogy, e-learning, inclusive education)
+ Disaster and Risk Reduction (Preparedness, resilience, recovery strategies)
+ Sports, Recreation & Wellness (Sports science, physical education, community wellness)
+ Digital Transformation (E-governance, fintech, smart cities, digital inclusion)
+3. Governance, Economics & Policy
+ Economics and Business (Entrepreneurship, trade, finance, sustainable practices)
+ Governance and Policy (Public administration, law, peace and security, human rights)
+ Globalization & International Relations (Migration, trade, diplomacy, global cooperation)
+ Peace & Security Studies (Conflict resolution, cybersecurity, disaster diplomacy)
+ Transportation (Smart mobility, logistics, sustainable transport)
+4. Culture, Arts & Humanities
+ Culture, Arts, and Humanities (History, literature, linguistics, creative industries, indigenous knowledge)
+ Tourism and Hospitality (Eco-tourism, cultural tourism, sustainable tourism management)
+Other pls specify: __________________________________________________
+
+Priority Area/s (check the applicable): 
+1. Natural & Applied Sciences
+ Agriculture (Crops, Livestock, Fisheries, Forestry, Natural Resources)
+ Food and Nutrition
+ Health and Medicine
+ Environment and Climate Change
+ Energy and Infrastructure
+2. Social & Community Development
+ Countryside Development
+ Social Services (Welfare, housing, community programs)
+ Education (Curriculum, pedagogy, e-learning, inclusive education)
+ Disaster and Risk Reduction (Preparedness, resilience, recovery strategies)
+ Sports, Recreation & Wellness (Sports science, physical education, community wellness)
+ Digital Transformation (E-governance, fintech, smart cities, digital inclusion)
+3. Governance, Economics & Policy
+ Economics and Business (Entrepreneurship, trade, finance, sustainable practices)
+ Governance and Policy (Public administration, law, peace and security, human rights)
+ Globalization & International Relations (Migration, trade, diplomacy, global cooperation)
+ Peace & Security Studies (Conflict resolution, cybersecurity, disaster diplomacy)
+ Transportation (Smart mobility, logistics, sustainable transport)
+4. Culture, Arts & Humanities
+ Culture, Arts, and Humanities (History, literature, linguistics, creative industries, indigenous knowledge)
+ Tourism and Hospitality (Eco-tourism, cultural tourism, sustainable tourism management)
+Other pls specify: __________________________________________________
+
+Software and Emerging Technology Domains (Check the applicable) 
+Data Analytics & Visualization (predictive dashboards, big data tools, business intelligence, real-time monitoring)
+Cybersecurity Solutions (authentication systems, intrusion detection, secure communication apps, digital forensics)
+Cloud Computing Applications (SaaS platforms, cloud storage management, distributed systems, serverless computing)
+Internet of Things (IoT) Systems (smart homes, sensor networks, agriculture IoT, industrial IoT)
+Blockchain Applications (cryptocurrency wallets, supply chain tracking, smart contracts, decentralized apps)
+Artificial Intelligence & Machine Learning (chatbots, recommendation engines, predictive models, natural language processing)
+Augmented Reality (AR) / Virtual Reality (VR) (immersive training, tourism, simulation systems, interactive learning)
+Software Customization (especially Free & Open-Source Software û FOSS; localization, accessibility, usability enhancements)
+Extensions (feature add-ons for browsers, IDEs, or platforms; workflow automation, productivity tools)
+Plug-ins (modular enhancements for existing applications; multimedia plug-ins, analytics plug-ins)
+Expert Systems and Decision Support Systems / Intelligent Systems (knowledge-based systems, AI-driven decision support, diagnostics)
+Systems Software (utilities, interpreters, simulators, compilers, security-related software, performance monitoring)
+Web Applications Development (e-commerce, portals, dashboards, online services, collaborative platforms)
+Mobile Computing Systems (Android/iOS apps, cross-platform solutions, mobile health, mobile banking)
+Computer Vision (image recognition, surveillance, medical imaging, gesture tracking, AR integration)
+Game Development (educational games, serious games, entertainment platforms, gamified training)
+E-learning Systems (LMS, gamified learning, adaptive learning platforms, AI tutors)
+Interactive Systems (touch interfaces, gesture-based systems, VR/AR experiences, smart classrooms)
+Information Kiosks (public service kiosks, tourism info systems, campus kiosks, healthcare kiosks)
+
+Software and Emerging Technology Domains (Check the applicable) 
+Data Analytics & Visualization (predictive dashboards, big data tools, business intelligence, real-time monitoring)
+Cybersecurity Solutions (authentication systems, intrusion detection, secure communication apps, digital forensics)
+Cloud Computing Applications (SaaS platforms, cloud storage management, distributed systems, serverless computing)
+Internet of Things (IoT) Systems (smart homes, sensor networks, agriculture IoT, industrial IoT)
+Blockchain Applications (cryptocurrency wallets, supply chain tracking, smart contracts, decentralized apps)
+Artificial Intelligence & Machine Learning (chatbots, recommendation engines, predictive models, natural language processing)
+Augmented Reality (AR) / Virtual Reality (VR) (immersive training, tourism, simulation systems, interactive learning)
+Software Customization (especially Free & Open-Source Software û FOSS; localization, accessibility, usability enhancements)
+Extensions (feature add-ons for browsers, IDEs, or platforms; workflow automation, productivity tools)
+Plug-ins (modular enhancements for existing applications; multimedia plug-ins, analytics plug-ins)
+Expert Systems and Decision Support Systems / Intelligent Systems (knowledge-based systems, AI-driven decision support, diagnostics)
+Systems Software (utilities, interpreters, simulators, compilers, security-related software, performance monitoring)
+Web Applications Development (e-commerce, portals, dashboards, online services, collaborative platforms)
+Mobile Computing Systems (Android/iOS apps, cross-platform solutions, mobile health, mobile banking)
+Computer Vision (image recognition, surveillance, medical imaging, gesture tracking, AR integration)
+Game Development (educational games, serious games, entertainment platforms, gamified training)
+E-learning Systems (LMS, gamified learning, adaptive learning platforms, AI tutors)
+Interactive Systems (touch interfaces, gesture-based systems, VR/AR experiences, smart classrooms)
+Information Kiosks (public service kiosks, tourism info systems, campus kiosks, healthcare kiosks)
+
+Background
+The operational landscape for fitness centers in Mamburao, specifically G-Fitness, Fitness Regency, and Ferrer Fitness, is currently defined by a reliance on analog administrative methods. Despite the increasing complexity of gym management, these establishments still utilize manual logbooks and fragmented spreadsheets to track memberships, attendance, and revenue. This traditional approach creates significant data silos and operational bottlenecks, preventing owners from accessing the real-time business intelligence necessary for sustainable growth. Furthermore, existing fitness software like Glofox or Mindbody, while technologically advanced, are often ill-suited for provincial Philippine settings due to high subscription costs and a lack of localized nutritional databases. As noted by Bayan and Cawad (2021), digital transformation in rural enterprises must go beyond simple automation and instead integrate with existing local economic structures to be truly effective.
+The most critical gap in the current market, however, is the disconnect between professional fitness guidance and localized nutritional reality. Most contemporary health applications recommend dietary plans based on Western standards and specialized grocery items that are neither accessible nor affordable in a rural context. In Mamburao, residents primarily rely on local carinderias for daily sustenance, yet no digital bridge currently exists to align these food sources with a memberÆs specific caloric and macro-nutrient needs. This "localization gap" often results in poor dietary compliance and stalled physical progress, as members find it difficult to sustain a healthy lifestyle using only local resources.
+To address these challenges, G-Fitness CORE (G-Core) is developed as a cross-platform ecosystem utilizing a Node.js and MySQL 8.0 architecture. By employing a React.js web dashboard for administrators and a React Native mobile application for members, the system ensures that gym management and member engagement are synchronized in real-time. The systemÆs technical novelty lies in its use of Heuristic Algorithms and Natural Language Processing (NLP) to provide personalized health interventions. By mapping the daily menus of partner carinderias against DOST-FNRI (2024) nutritional standards, the platform creates a community-centered marketplace. This allows members to order goal-aligned meals directly through the app, effectively transforming the local food economy into a vital component of the gymÆs wellness infrastructure.
+References:
+Bayan, A. M., & Cawad, A. C. (2021). Digital transformation of small-scale enterprises in rural Philippines: Challenges and opportunities. Journal of Philippine Information Technology, 14(1), 45-58. https://www.philjol.info/philjol/index.php/JPIT/article/view/2154
+Food and Nutrition Research Institute (FNRI). (2024). Philippine food composition tables: Strategic nutrition data for dietary interventions. Department of Science and Technology. https://i.fnri.dost.gov.ph/fct/
+
+
+Background
+The operational landscape for fitness centers in Mamburao, specifically G-Fitness, Fitness Regency, and Ferrer Fitness, is currently defined by a reliance on analog administrative methods. Despite the increasing complexity of gym management, these establishments still utilize manual logbooks and fragmented spreadsheets to track memberships, attendance, and revenue. This traditional approach creates significant data silos and operational bottlenecks, preventing owners from accessing the real-time business intelligence necessary for sustainable growth. Furthermore, existing fitness software like Glofox or Mindbody, while technologically advanced, are often ill-suited for provincial Philippine settings due to high subscription costs and a lack of localized nutritional databases. As noted by Bayan and Cawad (2021), digital transformation in rural enterprises must go beyond simple automation and instead integrate with existing local economic structures to be truly effective.
+The most critical gap in the current market, however, is the disconnect between professional fitness guidance and localized nutritional reality. Most contemporary health applications recommend dietary plans based on Western standards and specialized grocery items that are neither accessible nor affordable in a rural context. In Mamburao, residents primarily rely on local carinderias for daily sustenance, yet no digital bridge currently exists to align these food sources with a memberÆs specific caloric and macro-nutrient needs. This "localization gap" often results in poor dietary compliance and stalled physical progress, as members find it difficult to sustain a healthy lifestyle using only local resources.
+To address these challenges, G-Fitness CORE (G-Core) is developed as a cross-platform ecosystem utilizing a Node.js and MySQL 8.0 architecture. By employing a React.js web dashboard for administrators and a React Native mobile application for members, the system ensures that gym management and member engagement are synchronized in real-time. The systemÆs technical novelty lies in its use of Heuristic Algorithms and Natural Language Processing (NLP) to provide personalized health interventions. By mapping the daily menus of partner carinderias against DOST-FNRI (2024) nutritional standards, the platform creates a community-centered marketplace. This allows members to order goal-aligned meals directly through the app, effectively transforming the local food economy into a vital component of the gymÆs wellness infrastructure.
+References:
+Bayan, A. M., & Cawad, A. C. (2021). Digital transformation of small-scale enterprises in rural Philippines: Challenges and opportunities. Journal of Philippine Information Technology, 14(1), 45-58. https://www.philjol.info/philjol/index.php/JPIT/article/view/2154
+Food and Nutrition Research Institute (FNRI). (2024). Philippine food composition tables: Strategic nutrition data for dietary interventions. Department of Science and Technology. https://i.fnri.dost.gov.ph/fct/
+
+
+Background
+The operational landscape for fitness centers in Mamburao, specifically G-Fitness, Fitness Regency, and Ferrer Fitness, is currently defined by a reliance on analog administrative methods. Despite the increasing complexity of gym management, these establishments still utilize manual logbooks and fragmented spreadsheets to track memberships, attendance, and revenue. This traditional approach creates significant data silos and operational bottlenecks, preventing owners from accessing the real-time business intelligence necessary for sustainable growth. Furthermore, existing fitness software like Glofox or Mindbody, while technologically advanced, are often ill-suited for provincial Philippine settings due to high subscription costs and a lack of localized nutritional databases. As noted by Bayan and Cawad (2021), digital transformation in rural enterprises must go beyond simple automation and instead integrate with existing local economic structures to be truly effective.
+The most critical gap in the current market, however, is the disconnect between professional fitness guidance and localized nutritional reality. Most contemporary health applications recommend dietary plans based on Western standards and specialized grocery items that are neither accessible nor affordable in a rural context. In Mamburao, residents primarily rely on local carinderias for daily sustenance, yet no digital bridge currently exists to align these food sources with a memberÆs specific caloric and macro-nutrient needs. This "localization gap" often results in poor dietary compliance and stalled physical progress, as members find it difficult to sustain a healthy lifestyle using only local resources.
+To address these challenges, G-Fitness CORE (G-Core) is developed as a cross-platform ecosystem utilizing a Node.js and MySQL 8.0 architecture. By employing a React.js web dashboard for administrators and a React Native mobile application for members, the system ensures that gym management and member engagement are synchronized in real-time. The systemÆs technical novelty lies in its use of Heuristic Algorithms and Natural Language Processing (NLP) to provide personalized health interventions. By mapping the daily menus of partner carinderias against DOST-FNRI (2024) nutritional standards, the platform creates a community-centered marketplace. This allows members to order goal-aligned meals directly through the app, effectively transforming the local food economy into a vital component of the gymÆs wellness infrastructure.
+References:
+Bayan, A. M., & Cawad, A. C. (2021). Digital transformation of small-scale enterprises in rural Philippines: Challenges and opportunities. Journal of Philippine Information Technology, 14(1), 45-58. https://www.philjol.info/philjol/index.php/JPIT/article/view/2154
+Food and Nutrition Research Institute (FNRI). (2024). Philippine food composition tables: Strategic nutrition data for dietary interventions. Department of Science and Technology. https://i.fnri.dost.gov.ph/fct/
+
+
+Background
+The operational landscape for fitness centers in Mamburao, specifically G-Fitness, Fitness Regency, and Ferrer Fitness, is currently defined by a reliance on analog administrative methods. Despite the increasing complexity of gym management, these establishments still utilize manual logbooks and fragmented spreadsheets to track memberships, attendance, and revenue. This traditional approach creates significant data silos and operational bottlenecks, preventing owners from accessing the real-time business intelligence necessary for sustainable growth. Furthermore, existing fitness software like Glofox or Mindbody, while technologically advanced, are often ill-suited for provincial Philippine settings due to high subscription costs and a lack of localized nutritional databases. As noted by Bayan and Cawad (2021), digital transformation in rural enterprises must go beyond simple automation and instead integrate with existing local economic structures to be truly effective.
+The most critical gap in the current market, however, is the disconnect between professional fitness guidance and localized nutritional reality. Most contemporary health applications recommend dietary plans based on Western standards and specialized grocery items that are neither accessible nor affordable in a rural context. In Mamburao, residents primarily rely on local carinderias for daily sustenance, yet no digital bridge currently exists to align these food sources with a memberÆs specific caloric and macro-nutrient needs. This "localization gap" often results in poor dietary compliance and stalled physical progress, as members find it difficult to sustain a healthy lifestyle using only local resources.
+To address these challenges, G-Fitness CORE (G-Core) is developed as a cross-platform ecosystem utilizing a Node.js and MySQL 8.0 architecture. By employing a React.js web dashboard for administrators and a React Native mobile application for members, the system ensures that gym management and member engagement are synchronized in real-time. The systemÆs technical novelty lies in its use of Heuristic Algorithms and Natural Language Processing (NLP) to provide personalized health interventions. By mapping the daily menus of partner carinderias against DOST-FNRI (2024) nutritional standards, the platform creates a community-centered marketplace. This allows members to order goal-aligned meals directly through the app, effectively transforming the local food economy into a vital component of the gymÆs wellness infrastructure.
+References:
+Bayan, A. M., & Cawad, A. C. (2021). Digital transformation of small-scale enterprises in rural Philippines: Challenges and opportunities. Journal of Philippine Information Technology, 14(1), 45-58. https://www.philjol.info/philjol/index.php/JPIT/article/view/2154
+Food and Nutrition Research Institute (FNRI). (2024). Philippine food composition tables: Strategic nutrition data for dietary interventions. Department of Science and Technology. https://i.fnri.dost.gov.ph/fct/
+
+
+Problem Statement
+The study aims to design, develop, and evaluate G-Fitness CORE (G-Core), a cross-platform Hybrid Intelligent Management Information System and Localized Nutrition Marketplace for the gym community of Mamburao, Occidental Mindoro.
+Specifically, this study seeks to answer the following questions:
+1. What are the current challenges in gym management and nutrition tracking within the Mamburao community?
+1.1. What are the limitations of existing manual membership and attendance logging systems?
+1.2. What difficulties do members face in accessing localized nutritional guidance that aligns with local carinderia food availability?
+1.3. How do carinderia partners currently manage and promote their menus to health-conscious consumers?
+
+2. How can a Hybrid Intelligent Management Information System be designed and developed using a MERN-variant stack (MySQL, Express, React, Node.js)?
+2.1. How can a Node.js/MySQL backend be structured to synchronize gym operations with marketplace transactions?
+2.2. How can a React Native application be developed to provide members with real-time access to fitness and nutrition tools?
+2.3. How can React.js web dashboards be optimized for gym administrators and carinderia partners?
+
+3. How can intelligent modules be integrated into the system to enhance health interventions?
+3.1. How can Natural Language Processing (NLP) be utilized to provide automated assistance for member inquiries?
+3.2. How can a Heuristic Algorithm be developed to match personal nutritional requirements with FNRI-standardized meal options from local carinderias?
+
+4. How can the system facilitate secure and localized digital commerce?
+4.1. How can a Digital Payment Gateway API be integrated to support multi-channel transactions for membership and meal orders?
+4.2. How can real-time notifications (Firebase) improve the coordination between members and carinderia vendors?
+
+5. How effective is the G-Fitness CORE system based on software quality standards?
+5.1. What is the level of technical performance based on the ISO/IEC 25010 quality standards in terms of functional suitability, reliability, performance efficiency, usability, security, compatibility, maintainability, and portability?
+5.2. What is the level of user acceptance among gym owners, members, and carinderia partners in Mamburao?
+
+
+Problem Statement
+The study aims to design, develop, and evaluate G-Fitness CORE (G-Core), a cross-platform Hybrid Intelligent Management Information System and Localized Nutrition Marketplace for the gym community of Mamburao, Occidental Mindoro.
+Specifically, this study seeks to answer the following questions:
+1. What are the current challenges in gym management and nutrition tracking within the Mamburao community?
+1.1. What are the limitations of existing manual membership and attendance logging systems?
+1.2. What difficulties do members face in accessing localized nutritional guidance that aligns with local carinderia food availability?
+1.3. How do carinderia partners currently manage and promote their menus to health-conscious consumers?
+
+2. How can a Hybrid Intelligent Management Information System be designed and developed using a MERN-variant stack (MySQL, Express, React, Node.js)?
+2.1. How can a Node.js/MySQL backend be structured to synchronize gym operations with marketplace transactions?
+2.2. How can a React Native application be developed to provide members with real-time access to fitness and nutrition tools?
+2.3. How can React.js web dashboards be optimized for gym administrators and carinderia partners?
+
+3. How can intelligent modules be integrated into the system to enhance health interventions?
+3.1. How can Natural Language Processing (NLP) be utilized to provide automated assistance for member inquiries?
+3.2. How can a Heuristic Algorithm be developed to match personal nutritional requirements with FNRI-standardized meal options from local carinderias?
+
+4. How can the system facilitate secure and localized digital commerce?
+4.1. How can a Digital Payment Gateway API be integrated to support multi-channel transactions for membership and meal orders?
+4.2. How can real-time notifications (Firebase) improve the coordination between members and carinderia vendors?
+
+5. How effective is the G-Fitness CORE system based on software quality standards?
+5.1. What is the level of technical performance based on the ISO/IEC 25010 quality standards in terms of functional suitability, reliability, performance efficiency, usability, security, compatibility, maintainability, and portability?
+5.2. What is the level of user acceptance among gym owners, members, and carinderia partners in Mamburao?
+
+
+Problem Statement
+The study aims to design, develop, and evaluate G-Fitness CORE (G-Core), a cross-platform Hybrid Intelligent Management Information System and Localized Nutrition Marketplace for the gym community of Mamburao, Occidental Mindoro.
+Specifically, this study seeks to answer the following questions:
+1. What are the current challenges in gym management and nutrition tracking within the Mamburao community?
+1.1. What are the limitations of existing manual membership and attendance logging systems?
+1.2. What difficulties do members face in accessing localized nutritional guidance that aligns with local carinderia food availability?
+1.3. How do carinderia partners currently manage and promote their menus to health-conscious consumers?
+
+2. How can a Hybrid Intelligent Management Information System be designed and developed using a MERN-variant stack (MySQL, Express, React, Node.js)?
+2.1. How can a Node.js/MySQL backend be structured to synchronize gym operations with marketplace transactions?
+2.2. How can a React Native application be developed to provide members with real-time access to fitness and nutrition tools?
+2.3. How can React.js web dashboards be optimized for gym administrators and carinderia partners?
+
+3. How can intelligent modules be integrated into the system to enhance health interventions?
+3.1. How can Natural Language Processing (NLP) be utilized to provide automated assistance for member inquiries?
+3.2. How can a Heuristic Algorithm be developed to match personal nutritional requirements with FNRI-standardized meal options from local carinderias?
+
+4. How can the system facilitate secure and localized digital commerce?
+4.1. How can a Digital Payment Gateway API be integrated to support multi-channel transactions for membership and meal orders?
+4.2. How can real-time notifications (Firebase) improve the coordination between members and carinderia vendors?
+
+5. How effective is the G-Fitness CORE system based on software quality standards?
+5.1. What is the level of technical performance based on the ISO/IEC 25010 quality standards in terms of functional suitability, reliability, performance efficiency, usability, security, compatibility, maintainability, and portability?
+5.2. What is the level of user acceptance among gym owners, members, and carinderia partners in Mamburao?
+
+
+Problem Statement
+The study aims to design, develop, and evaluate G-Fitness CORE (G-Core), a cross-platform Hybrid Intelligent Management Information System and Localized Nutrition Marketplace for the gym community of Mamburao, Occidental Mindoro.
+Specifically, this study seeks to answer the following questions:
+1. What are the current challenges in gym management and nutrition tracking within the Mamburao community?
+1.1. What are the limitations of existing manual membership and attendance logging systems?
+1.2. What difficulties do members face in accessing localized nutritional guidance that aligns with local carinderia food availability?
+1.3. How do carinderia partners currently manage and promote their menus to health-conscious consumers?
+
+2. How can a Hybrid Intelligent Management Information System be designed and developed using a MERN-variant stack (MySQL, Express, React, Node.js)?
+2.1. How can a Node.js/MySQL backend be structured to synchronize gym operations with marketplace transactions?
+2.2. How can a React Native application be developed to provide members with real-time access to fitness and nutrition tools?
+2.3. How can React.js web dashboards be optimized for gym administrators and carinderia partners?
+
+3. How can intelligent modules be integrated into the system to enhance health interventions?
+3.1. How can Natural Language Processing (NLP) be utilized to provide automated assistance for member inquiries?
+3.2. How can a Heuristic Algorithm be developed to match personal nutritional requirements with FNRI-standardized meal options from local carinderias?
+
+4. How can the system facilitate secure and localized digital commerce?
+4.1. How can a Digital Payment Gateway API be integrated to support multi-channel transactions for membership and meal orders?
+4.2. How can real-time notifications (Firebase) improve the coordination between members and carinderia vendors?
+
+5. How effective is the G-Fitness CORE system based on software quality standards?
+5.1. What is the level of technical performance based on the ISO/IEC 25010 quality standards in terms of functional suitability, reliability, performance efficiency, usability, security, compatibility, maintainability, and portability?
+5.2. What is the level of user acceptance among gym owners, members, and carinderia partners in Mamburao?
+
+
+General Objectives
+
+This study aims to design and develop G-Fitness CORE, an AI-integrated Web-Based Fitness Management System for Local Gyms in Mamburao, Occidental Mindoro that improves gym operations, enhances member experience through digital access, and provides personalized fitness and nutrition guidance.
+1. To develop a Cross-Platform Fitness Ecosystem with the following features: 
+For Gym Management & Partners (Web-Based Administration):
+Centralized Operational Core: A unified system for membership tracking, attendance monitoring, and automated payment processing to replace manual paper-based logs.
+Stakeholder Management: Management modules for trainers, staff, and class schedules to improve coordination and data accessibility across the gym facility.
+Business Intelligence Dashboard: Real-time analytics and reporting to enable data-driven decisions on member engagement, revenue trends, and facility utilization.
+Predictive Retention Analytics: AI-driven analysis of attendance patterns to identify at-risk members and automate re-engagement strategies.
+Curated Content Management: A video library management system for instructors to upload and validate exercise demonstrations for member consumption.
+Marketplace Partner Portal: A dedicated B2B dashboard for local carinderias and restaurants to manage digital menus, track orders, and monitor sales within the gym ecosystem.
+NLP Administrative Assistant: An AI-powered chatbot to automate handling of general inquiries, gym announcements, and schedule updates.
+
+For Members (Mobile Application Experience):
+On-Demand Mobile Access: 24/7 access to personal membership profiles, digital identification, and gym service schedules via a native mobile interface.
+ Real-Time Push Notifications: Automated mobile alerts for class schedules, gym announcements, and personalized workout reminders via Firebase.
+ Interactive Progress Tracking: A mobile dashboard for monitoring personal workout history, attendance consistency, and biometric fitness metrics to assist coaches in evaluation.
+Heuristic Workout Suggestions: Data-driven exercise recommendations generated through the analysis of individual goals and physical progress to serve as a baseline for trainer-led routines.
+Nutritional Decision Support: A feature that provides meal suggestions by matching a memberÆs caloric needs with FNRI-standardized nutritional data from local Mamburao vendors.
+Localized Meal Matching: An intelligent filter that highlights available carinderia dishes that align with the member's targets, allowing the user and coach to make informed dietary choices.
+Marketplace Transaction Module: Mobile commerce integration allowing members to browse, order, and pay for identified meal suggestions from partner carinderias for seamless nutrition management.
+2. To build the system architecture using:
+React.js: For the responsive, high-performance administrative and partner web dashboards.
+React Native: For the cross-platform (Android/iOS) member mobile application.
+Node.js & Express: For the scalable backend API and server-side logic handling concurrent requests.
+MySQL 8.0: For the relational database management system, ensuring data integrity for financial and membership records
+Hybrid AI/Heuristic Modules: For the NLP chatbot, predictive analytics, and the nutritional menu-matching logic.
+Digital Payment Gateway API: For secure, multi-channel processing of membership and marketplace transactions.
+YouTube API & Firebase: For hosting instructor-validated video content and managing secure user authentication and cloud messaging.
+
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To evaluate the system's effectiveness in improving gym operational efficiency and member satisfaction through user acceptance testing.
+General Objectives
+
+This study aims to design and develop G-Fitness CORE, an AI-integrated Web-Based Fitness Management System for Local Gyms in Mamburao, Occidental Mindoro that improves gym operations, enhances member experience through digital access, and provides personalized fitness and nutrition guidance.
+1. To develop a Cross-Platform Fitness Ecosystem with the following features: 
+For Gym Management & Partners (Web-Based Administration):
+Centralized Operational Core: A unified system for membership tracking, attendance monitoring, and automated payment processing to replace manual paper-based logs.
+Stakeholder Management: Management modules for trainers, staff, and class schedules to improve coordination and data accessibility across the gym facility.
+Business Intelligence Dashboard: Real-time analytics and reporting to enable data-driven decisions on member engagement, revenue trends, and facility utilization.
+Predictive Retention Analytics: AI-driven analysis of attendance patterns to identify at-risk members and automate re-engagement strategies.
+Curated Content Management: A video library management system for instructors to upload and validate exercise demonstrations for member consumption.
+Marketplace Partner Portal: A dedicated B2B dashboard for local carinderias and restaurants to manage digital menus, track orders, and monitor sales within the gym ecosystem.
+NLP Administrative Assistant: An AI-powered chatbot to automate handling of general inquiries, gym announcements, and schedule updates.
+
+For Members (Mobile Application Experience):
+On-Demand Mobile Access: 24/7 access to personal membership profiles, digital identification, and gym service schedules via a native mobile interface.
+ Real-Time Push Notifications: Automated mobile alerts for class schedules, gym announcements, and personalized workout reminders via Firebase.
+ Interactive Progress Tracking: A mobile dashboard for monitoring personal workout history, attendance consistency, and biometric fitness metrics to assist coaches in evaluation.
+Heuristic Workout Suggestions: Data-driven exercise recommendations generated through the analysis of individual goals and physical progress to serve as a baseline for trainer-led routines.
+Nutritional Decision Support: A feature that provides meal suggestions by matching a memberÆs caloric needs with FNRI-standardized nutritional data from local Mamburao vendors.
+Localized Meal Matching: An intelligent filter that highlights available carinderia dishes that align with the member's targets, allowing the user and coach to make informed dietary choices.
+Marketplace Transaction Module: Mobile commerce integration allowing members to browse, order, and pay for identified meal suggestions from partner carinderias for seamless nutrition management.
+2. To build the system architecture using:
+React.js: For the responsive, high-performance administrative and partner web dashboards.
+React Native: For the cross-platform (Android/iOS) member mobile application.
+Node.js & Express: For the scalable backend API and server-side logic handling concurrent requests.
+MySQL 8.0: For the relational database management system, ensuring data integrity for financial and membership records
+Hybrid AI/Heuristic Modules: For the NLP chatbot, predictive analytics, and the nutritional menu-matching logic.
+Digital Payment Gateway API: For secure, multi-channel processing of membership and marketplace transactions.
+YouTube API & Firebase: For hosting instructor-validated video content and managing secure user authentication and cloud messaging.
+
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To evaluate the system's effectiveness in improving gym operational efficiency and member satisfaction through user acceptance testing.
+General Objectives
+
+This study aims to design and develop G-Fitness CORE, an AI-integrated Web-Based Fitness Management System for Local Gyms in Mamburao, Occidental Mindoro that improves gym operations, enhances member experience through digital access, and provides personalized fitness and nutrition guidance.
+1. To develop a Cross-Platform Fitness Ecosystem with the following features: 
+For Gym Management & Partners (Web-Based Administration):
+Centralized Operational Core: A unified system for membership tracking, attendance monitoring, and automated payment processing to replace manual paper-based logs.
+Stakeholder Management: Management modules for trainers, staff, and class schedules to improve coordination and data accessibility across the gym facility.
+Business Intelligence Dashboard: Real-time analytics and reporting to enable data-driven decisions on member engagement, revenue trends, and facility utilization.
+Predictive Retention Analytics: AI-driven analysis of attendance patterns to identify at-risk members and automate re-engagement strategies.
+Curated Content Management: A video library management system for instructors to upload and validate exercise demonstrations for member consumption.
+Marketplace Partner Portal: A dedicated B2B dashboard for local carinderias and restaurants to manage digital menus, track orders, and monitor sales within the gym ecosystem.
+NLP Administrative Assistant: An AI-powered chatbot to automate handling of general inquiries, gym announcements, and schedule updates.
+
+For Members (Mobile Application Experience):
+On-Demand Mobile Access: 24/7 access to personal membership profiles, digital identification, and gym service schedules via a native mobile interface.
+ Real-Time Push Notifications: Automated mobile alerts for class schedules, gym announcements, and personalized workout reminders via Firebase.
+ Interactive Progress Tracking: A mobile dashboard for monitoring personal workout history, attendance consistency, and biometric fitness metrics to assist coaches in evaluation.
+Heuristic Workout Suggestions: Data-driven exercise recommendations generated through the analysis of individual goals and physical progress to serve as a baseline for trainer-led routines.
+Nutritional Decision Support: A feature that provides meal suggestions by matching a memberÆs caloric needs with FNRI-standardized nutritional data from local Mamburao vendors.
+Localized Meal Matching: An intelligent filter that highlights available carinderia dishes that align with the member's targets, allowing the user and coach to make informed dietary choices.
+Marketplace Transaction Module: Mobile commerce integration allowing members to browse, order, and pay for identified meal suggestions from partner carinderias for seamless nutrition management.
+2. To build the system architecture using:
+React.js: For the responsive, high-performance administrative and partner web dashboards.
+React Native: For the cross-platform (Android/iOS) member mobile application.
+Node.js & Express: For the scalable backend API and server-side logic handling concurrent requests.
+MySQL 8.0: For the relational database management system, ensuring data integrity for financial and membership records
+Hybrid AI/Heuristic Modules: For the NLP chatbot, predictive analytics, and the nutritional menu-matching logic.
+Digital Payment Gateway API: For secure, multi-channel processing of membership and marketplace transactions.
+YouTube API & Firebase: For hosting instructor-validated video content and managing secure user authentication and cloud messaging.
+
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To evaluate the system's effectiveness in improving gym operational efficiency and member satisfaction through user acceptance testing.
+General Objectives
+
+This study aims to design and develop G-Fitness CORE, an AI-integrated Web-Based Fitness Management System for Local Gyms in Mamburao, Occidental Mindoro that improves gym operations, enhances member experience through digital access, and provides personalized fitness and nutrition guidance.
+1. To develop a Cross-Platform Fitness Ecosystem with the following features: 
+For Gym Management & Partners (Web-Based Administration):
+Centralized Operational Core: A unified system for membership tracking, attendance monitoring, and automated payment processing to replace manual paper-based logs.
+Stakeholder Management: Management modules for trainers, staff, and class schedules to improve coordination and data accessibility across the gym facility.
+Business Intelligence Dashboard: Real-time analytics and reporting to enable data-driven decisions on member engagement, revenue trends, and facility utilization.
+Predictive Retention Analytics: AI-driven analysis of attendance patterns to identify at-risk members and automate re-engagement strategies.
+Curated Content Management: A video library management system for instructors to upload and validate exercise demonstrations for member consumption.
+Marketplace Partner Portal: A dedicated B2B dashboard for local carinderias and restaurants to manage digital menus, track orders, and monitor sales within the gym ecosystem.
+NLP Administrative Assistant: An AI-powered chatbot to automate handling of general inquiries, gym announcements, and schedule updates.
+
+For Members (Mobile Application Experience):
+On-Demand Mobile Access: 24/7 access to personal membership profiles, digital identification, and gym service schedules via a native mobile interface.
+ Real-Time Push Notifications: Automated mobile alerts for class schedules, gym announcements, and personalized workout reminders via Firebase.
+ Interactive Progress Tracking: A mobile dashboard for monitoring personal workout history, attendance consistency, and biometric fitness metrics to assist coaches in evaluation.
+Heuristic Workout Suggestions: Data-driven exercise recommendations generated through the analysis of individual goals and physical progress to serve as a baseline for trainer-led routines.
+Nutritional Decision Support: A feature that provides meal suggestions by matching a memberÆs caloric needs with FNRI-standardized nutritional data from local Mamburao vendors.
+Localized Meal Matching: An intelligent filter that highlights available carinderia dishes that align with the member's targets, allowing the user and coach to make informed dietary choices.
+Marketplace Transaction Module: Mobile commerce integration allowing members to browse, order, and pay for identified meal suggestions from partner carinderias for seamless nutrition management.
+2. To build the system architecture using:
+React.js: For the responsive, high-performance administrative and partner web dashboards.
+React Native: For the cross-platform (Android/iOS) member mobile application.
+Node.js & Express: For the scalable backend API and server-side logic handling concurrent requests.
+MySQL 8.0: For the relational database management system, ensuring data integrity for financial and membership records
+Hybrid AI/Heuristic Modules: For the NLP chatbot, predictive analytics, and the nutritional menu-matching logic.
+Digital Payment Gateway API: For secure, multi-channel processing of membership and marketplace transactions.
+YouTube API & Firebase: For hosting instructor-validated video content and managing secure user authentication and cloud messaging.
+
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To evaluate the system's effectiveness in improving gym operational efficiency and member satisfaction through user acceptance testing.
+Beneficiaries
+Gym Administrators and Owners. Owners of establishments like G-Fitness, Fitness Regency, and Ferrer Fitness gain a professionalized business framework. By moving away from manual logs to a centralized Node.js/MySQL dashboard, they obtain precise control over membership cycles and revenue. The system's ability to track attendance trends allows them to make data-driven decisions on facility improvements and member retention strategies.
+Gym Members. Members receive a significantly modernized fitness experience through the React Native mobile app. Instead of navigating their fitness journey alone, they gain 24/7 access to their progress data and instructional content. The system provides intelligent nutritional suggestions that bridge the gap between their workouts and the actual meals available in Mamburao, making a healthy lifestyle more attainable and less confusing.
+Local Carinderia Owners and Vendors. This group benefits from a specialized digital storefront that connects them directly with a health-conscious market. Small-scale vendors gain the ability to digitize their daily menus, helping them reach new customers and participate in the digital economy without the steep fees or logistical hurdles of traditional delivery platforms.
+The Academic Community and Future Researchers. This study serves as a technical reference for "Localized Intelligence." It provides a blueprint for future IT researchers on how to integrate heuristic algorithms with local economic data (like carinderia menus) and national standards (like the FNRI). It contributes to the growing body of knowledge on how technology can be tailored for provincial or "countryside" settings.
+The Mamburao Community and Local Economy. On a broader scale, the study promotes a "circular economy" where fitness-related spending supports local small businesses. By encouraging members to source their nutrition from neighborhood carinderias, the system helps circulate wealth within Mamburao, strengthening the local economy while simultaneously improving the public health of its residents.
+Beneficiaries
+Gym Administrators and Owners. Owners of establishments like G-Fitness, Fitness Regency, and Ferrer Fitness gain a professionalized business framework. By moving away from manual logs to a centralized Node.js/MySQL dashboard, they obtain precise control over membership cycles and revenue. The system's ability to track attendance trends allows them to make data-driven decisions on facility improvements and member retention strategies.
+Gym Members. Members receive a significantly modernized fitness experience through the React Native mobile app. Instead of navigating their fitness journey alone, they gain 24/7 access to their progress data and instructional content. The system provides intelligent nutritional suggestions that bridge the gap between their workouts and the actual meals available in Mamburao, making a healthy lifestyle more attainable and less confusing.
+Local Carinderia Owners and Vendors. This group benefits from a specialized digital storefront that connects them directly with a health-conscious market. Small-scale vendors gain the ability to digitize their daily menus, helping them reach new customers and participate in the digital economy without the steep fees or logistical hurdles of traditional delivery platforms.
+The Academic Community and Future Researchers. This study serves as a technical reference for "Localized Intelligence." It provides a blueprint for future IT researchers on how to integrate heuristic algorithms with local economic data (like carinderia menus) and national standards (like the FNRI). It contributes to the growing body of knowledge on how technology can be tailored for provincial or "countryside" settings.
+The Mamburao Community and Local Economy. On a broader scale, the study promotes a "circular economy" where fitness-related spending supports local small businesses. By encouraging members to source their nutrition from neighborhood carinderias, the system helps circulate wealth within Mamburao, strengthening the local economy while simultaneously improving the public health of its residents.
+Beneficiaries
+Gym Administrators and Owners. Owners of establishments like G-Fitness, Fitness Regency, and Ferrer Fitness gain a professionalized business framework. By moving away from manual logs to a centralized Node.js/MySQL dashboard, they obtain precise control over membership cycles and revenue. The system's ability to track attendance trends allows them to make data-driven decisions on facility improvements and member retention strategies.
+Gym Members. Members receive a significantly modernized fitness experience through the React Native mobile app. Instead of navigating their fitness journey alone, they gain 24/7 access to their progress data and instructional content. The system provides intelligent nutritional suggestions that bridge the gap between their workouts and the actual meals available in Mamburao, making a healthy lifestyle more attainable and less confusing.
+Local Carinderia Owners and Vendors. This group benefits from a specialized digital storefront that connects them directly with a health-conscious market. Small-scale vendors gain the ability to digitize their daily menus, helping them reach new customers and participate in the digital economy without the steep fees or logistical hurdles of traditional delivery platforms.
+The Academic Community and Future Researchers. This study serves as a technical reference for "Localized Intelligence." It provides a blueprint for future IT researchers on how to integrate heuristic algorithms with local economic data (like carinderia menus) and national standards (like the FNRI). It contributes to the growing body of knowledge on how technology can be tailored for provincial or "countryside" settings.
+The Mamburao Community and Local Economy. On a broader scale, the study promotes a "circular economy" where fitness-related spending supports local small businesses. By encouraging members to source their nutrition from neighborhood carinderias, the system helps circulate wealth within Mamburao, strengthening the local economy while simultaneously improving the public health of its residents.
+Beneficiaries
+Gym Administrators and Owners. Owners of establishments like G-Fitness, Fitness Regency, and Ferrer Fitness gain a professionalized business framework. By moving away from manual logs to a centralized Node.js/MySQL dashboard, they obtain precise control over membership cycles and revenue. The system's ability to track attendance trends allows them to make data-driven decisions on facility improvements and member retention strategies.
+Gym Members. Members receive a significantly modernized fitness experience through the React Native mobile app. Instead of navigating their fitness journey alone, they gain 24/7 access to their progress data and instructional content. The system provides intelligent nutritional suggestions that bridge the gap between their workouts and the actual meals available in Mamburao, making a healthy lifestyle more attainable and less confusing.
+Local Carinderia Owners and Vendors. This group benefits from a specialized digital storefront that connects them directly with a health-conscious market. Small-scale vendors gain the ability to digitize their daily menus, helping them reach new customers and participate in the digital economy without the steep fees or logistical hurdles of traditional delivery platforms.
+The Academic Community and Future Researchers. This study serves as a technical reference for "Localized Intelligence." It provides a blueprint for future IT researchers on how to integrate heuristic algorithms with local economic data (like carinderia menus) and national standards (like the FNRI). It contributes to the growing body of knowledge on how technology can be tailored for provincial or "countryside" settings.
+The Mamburao Community and Local Economy. On a broader scale, the study promotes a "circular economy" where fitness-related spending supports local small businesses. By encouraging members to source their nutrition from neighborhood carinderias, the system helps circulate wealth within Mamburao, strengthening the local economy while simultaneously improving the public health of its residents.
+Scope
+The primary focus of this research is the development and functional validation of G-Fitness CORE (G-Core), an integrated ecosystem designed for the gym community in Mamburao, Occidental Mindoro. The study encompasses the creation of a React.js web dashboard for administrative use and a React Native mobile application for gym members, both supported by a robust Node.js and MySQL backend. Administratively, the system is designed to digitize manual workflows, specifically membership tracking, attendance logs, and business analytics. For the end-user, the mobile app provides a centralized space for workout logs, instructional videos, and an NLP-driven assistant for immediate support. A central feature of this study is the localized marketplace bridge, which utilizes a Heuristic Algorithm to provide nutritional suggestions by aligning a memberÆs caloric targets derived from DOST-FNRI data with the daily menu offerings of local partner carinderias. This facilitates a streamlined order-and-pickup process with integrated digital payments, acting as a Decision Support System (DSS) for both members and their trainers.
+Scope
+The primary focus of this research is the development and functional validation of G-Fitness CORE (G-Core), an integrated ecosystem designed for the gym community in Mamburao, Occidental Mindoro. The study encompasses the creation of a React.js web dashboard for administrative use and a React Native mobile application for gym members, both supported by a robust Node.js and MySQL backend. Administratively, the system is designed to digitize manual workflows, specifically membership tracking, attendance logs, and business analytics. For the end-user, the mobile app provides a centralized space for workout logs, instructional videos, and an NLP-driven assistant for immediate support. A central feature of this study is the localized marketplace bridge, which utilizes a Heuristic Algorithm to provide nutritional suggestions by aligning a memberÆs caloric targets derived from DOST-FNRI data with the daily menu offerings of local partner carinderias. This facilitates a streamlined order-and-pickup process with integrated digital payments, acting as a Decision Support System (DSS) for both members and their trainers.
+Scope
+The primary focus of this research is the development and functional validation of G-Fitness CORE (G-Core), an integrated ecosystem designed for the gym community in Mamburao, Occidental Mindoro. The study encompasses the creation of a React.js web dashboard for administrative use and a React Native mobile application for gym members, both supported by a robust Node.js and MySQL backend. Administratively, the system is designed to digitize manual workflows, specifically membership tracking, attendance logs, and business analytics. For the end-user, the mobile app provides a centralized space for workout logs, instructional videos, and an NLP-driven assistant for immediate support. A central feature of this study is the localized marketplace bridge, which utilizes a Heuristic Algorithm to provide nutritional suggestions by aligning a memberÆs caloric targets derived from DOST-FNRI data with the daily menu offerings of local partner carinderias. This facilitates a streamlined order-and-pickup process with integrated digital payments, acting as a Decision Support System (DSS) for both members and their trainers.
+Scope
+The primary focus of this research is the development and functional validation of G-Fitness CORE (G-Core), an integrated ecosystem designed for the gym community in Mamburao, Occidental Mindoro. The study encompasses the creation of a React.js web dashboard for administrative use and a React Native mobile application for gym members, both supported by a robust Node.js and MySQL backend. Administratively, the system is designed to digitize manual workflows, specifically membership tracking, attendance logs, and business analytics. For the end-user, the mobile app provides a centralized space for workout logs, instructional videos, and an NLP-driven assistant for immediate support. A central feature of this study is the localized marketplace bridge, which utilizes a Heuristic Algorithm to provide nutritional suggestions by aligning a memberÆs caloric targets derived from DOST-FNRI data with the daily menu offerings of local partner carinderias. This facilitates a streamlined order-and-pickup process with integrated digital payments, acting as a Decision Support System (DSS) for both members and their trainers.
+Limitation
+Certain boundaries have been established to ensure the project remains focused and achievable. While the system provides data-driven fitness and meal suggestions, it is not a medical tool and does not offer clinical diagnoses or prescriptions for health conditions; all suggestions are intended to serve as a baseline for discussion between the member and their professional coach. The marketplace functionality is strictly limited to menu visibility and transaction management; it does not include delivery logistics or the management of a courier fleet. Furthermore, because carinderia recipes vary by household, the nutritional data provided are standardized estimates based on national averages rather than exact chemical analyses of every individual serving. Technically, the study is confined to software development and does not extend to the creation of proprietary wearable hardware or physical biometric security systems. Lastly, the workout library is intended for pre-recorded demonstrations to support trainer-led programs and does not include live-streamed personal training sessions.
+
+Limitation
+Certain boundaries have been established to ensure the project remains focused and achievable. While the system provides data-driven fitness and meal suggestions, it is not a medical tool and does not offer clinical diagnoses or prescriptions for health conditions; all suggestions are intended to serve as a baseline for discussion between the member and their professional coach. The marketplace functionality is strictly limited to menu visibility and transaction management; it does not include delivery logistics or the management of a courier fleet. Furthermore, because carinderia recipes vary by household, the nutritional data provided are standardized estimates based on national averages rather than exact chemical analyses of every individual serving. Technically, the study is confined to software development and does not extend to the creation of proprietary wearable hardware or physical biometric security systems. Lastly, the workout library is intended for pre-recorded demonstrations to support trainer-led programs and does not include live-streamed personal training sessions.
+
+Limitation
+Certain boundaries have been established to ensure the project remains focused and achievable. While the system provides data-driven fitness and meal suggestions, it is not a medical tool and does not offer clinical diagnoses or prescriptions for health conditions; all suggestions are intended to serve as a baseline for discussion between the member and their professional coach. The marketplace functionality is strictly limited to menu visibility and transaction management; it does not include delivery logistics or the management of a courier fleet. Furthermore, because carinderia recipes vary by household, the nutritional data provided are standardized estimates based on national averages rather than exact chemical analyses of every individual serving. Technically, the study is confined to software development and does not extend to the creation of proprietary wearable hardware or physical biometric security systems. Lastly, the workout library is intended for pre-recorded demonstrations to support trainer-led programs and does not include live-streamed personal training sessions.
+
+Limitation
+Certain boundaries have been established to ensure the project remains focused and achievable. While the system provides data-driven fitness and meal suggestions, it is not a medical tool and does not offer clinical diagnoses or prescriptions for health conditions; all suggestions are intended to serve as a baseline for discussion between the member and their professional coach. The marketplace functionality is strictly limited to menu visibility and transaction management; it does not include delivery logistics or the management of a courier fleet. Furthermore, because carinderia recipes vary by household, the nutritional data provided are standardized estimates based on national averages rather than exact chemical analyses of every individual serving. Technically, the study is confined to software development and does not extend to the creation of proprietary wearable hardware or physical biometric security systems. Lastly, the workout library is intended for pre-recorded demonstrations to support trainer-led programs and does not include live-streamed personal training sessions.
+
+Materials and Methods
+
+The study adopts the Agile Scrum Framework to manage the iterative development of the cross-platform system. This methodology allows for continuous feedback from gym owners and members throughout four distinct sprint cycles. The development environment utilizes a MERN-variant stack, specifically React.js for web dashboards, React Native for the member mobile application, Node.js/Express for the backend API, and MySQL 8.0 for relational data management. Data collection involves Purposive Sampling of stakeholders in Mamburao, followed by a system evaluation using the ISO/IEC 25010 quality standard and User Acceptance Testing (UAT).
+
+Materials and Methods
+
+The study adopts the Agile Scrum Framework to manage the iterative development of the cross-platform system. This methodology allows for continuous feedback from gym owners and members throughout four distinct sprint cycles. The development environment utilizes a MERN-variant stack, specifically React.js for web dashboards, React Native for the member mobile application, Node.js/Express for the backend API, and MySQL 8.0 for relational data management. Data collection involves Purposive Sampling of stakeholders in Mamburao, followed by a system evaluation using the ISO/IEC 25010 quality standard and User Acceptance Testing (UAT).
+
+Materials and Methods
+
+The study adopts the Agile Scrum Framework to manage the iterative development of the cross-platform system. This methodology allows for continuous feedback from gym owners and members throughout four distinct sprint cycles. The development environment utilizes a MERN-variant stack, specifically React.js for web dashboards, React Native for the member mobile application, Node.js/Express for the backend API, and MySQL 8.0 for relational data management. Data collection involves Purposive Sampling of stakeholders in Mamburao, followed by a system evaluation using the ISO/IEC 25010 quality standard and User Acceptance Testing (UAT).
+
+Materials and Methods
+
+The study adopts the Agile Scrum Framework to manage the iterative development of the cross-platform system. This methodology allows for continuous feedback from gym owners and members throughout four distinct sprint cycles. The development environment utilizes a MERN-variant stack, specifically React.js for web dashboards, React Native for the member mobile application, Node.js/Express for the backend API, and MySQL 8.0 for relational data management. Data collection involves Purposive Sampling of stakeholders in Mamburao, followed by a system evaluation using the ISO/IEC 25010 quality standard and User Acceptance Testing (UAT).
+

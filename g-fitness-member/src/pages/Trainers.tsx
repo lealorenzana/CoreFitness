@@ -7,6 +7,8 @@ import { SharedStorage } from '../utils/sharedStorage';
 import { getCurrentUser } from '../utils/auth';
 import { getMembersForTrainer, type AssignedMember } from '../data/mockTrainerAssignments';
 import EmptyState from '../components/ui/EmptyState';
+import { createTestYesterdayBooking } from '../utils/testRatingData';
+import { showSuccessToast } from '../utils/errorHandler';
 
 // Detect if logged-in user is a trainer by matching name
 function useTrainerView() {
@@ -17,40 +19,57 @@ function useTrainerView() {
   return trainers.find((t) => t.name.toLowerCase().includes(first)) || null;
 }
 
-// Rating prompt for Premium members after a session
-function RatingPrompt({ booking, onRate, onDismiss }: { booking: any; onRate: (stars: number, comment: string) => void; onDismiss: () => void }) {
-  const [stars, setStars] = useState(0);
-  const [comment, setComment] = useState('');
+// Evaluation prompt for Premium members after a session
+function EvaluationPrompt({ booking, onEvaluate, onDismiss }: { booking: any; onEvaluate: (score: number, feedback: string) => void; onDismiss: () => void }) {
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  
+  const scoreLabels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-secondary)' }}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white font-semibold text-sm">Rate your session</p>
+          <p className="text-white font-semibold text-sm">Evaluate your session</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{booking.className} with {booking.trainerName}</p>
         </div>
         <button onClick={onDismiss} style={{ color: 'var(--color-text-muted)' }}><X size={16} /></button>
       </div>
-      <div className="flex gap-2 mb-3">
+      
+      <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>How would you rate this session?</p>
+      <div className="flex gap-2 mb-2">
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={s} onClick={() => setStars(s)}>
-            <Star size={24} style={{ color: s <= stars ? 'var(--color-secondary)' : 'var(--color-border)', fill: s <= stars ? 'var(--color-secondary)' : 'none' }} />
+          <button key={s} onClick={() => setScore(s)} className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{ 
+              background: s <= score ? 'var(--color-secondary)' : 'var(--color-bg)', 
+              border: `1px solid ${s <= score ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+              color: s <= score ? '#000' : 'var(--color-text-muted)'
+            }}>
+            {s}
           </button>
         ))}
       </div>
-      <input value={comment} onChange={e => setComment(e.target.value)}
-        placeholder="Leave a comment (optional)…"
-        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none mb-3"
+      {score > 0 && (
+        <p className="text-xs text-center mb-3 font-semibold" style={{ color: 'var(--color-secondary)' }}>
+          {scoreLabels[score - 1]}
+        </p>
+      )}
+      
+      <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
+        placeholder="Share your feedback (optional)…"
+        rows={3}
+        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none mb-3 resize-none"
         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
       <div className="flex gap-2">
         <button onClick={onDismiss} className="flex-1 py-2 rounded-xl text-xs font-semibold"
           style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
           Skip
         </button>
-        <button onClick={() => stars > 0 && onRate(stars, comment)} disabled={stars === 0}
+        <button onClick={() => score > 0 && onEvaluate(score, feedback)} disabled={score === 0}
           className="flex-1 py-2 rounded-xl text-xs font-semibold text-black disabled:opacity-40"
           style={{ background: 'var(--color-secondary)' }}>
-          Submit Rating
+          Submit Evaluation
         </button>
       </div>
     </motion.div>
@@ -150,47 +169,61 @@ export default function Trainers() {
   // Tab state — only relevant when logged-in user is a trainer
   const [tab, setTab] = useState<'browse' | 'my-members'>(trainerSelf ? 'my-members' : 'browse');
 
-  // Premium-only ratings detection
+  // Premium-only evaluations detection
+  // FORCE Premium for Eya (demo/testing)
   const memberData = SharedStorage.getMember(memberEmail);
-  const isPremium = memberData?.membershipType === 'Premium';
+  const storedMemberType = localStorage.getItem('membershipType');
+  const isEya = memberEmail === 'eya.lorenzana@email.com';
+  const isPremium = isEya || memberData?.membershipType === 'Premium' || storedMemberType === 'Premium';
 
-  const [pendingRatings, setPendingRatings] = useState<any[]>([]);
-  const [dismissedRatings, setDismissedRatings] = useState<string[]>(() => {
-    const s = localStorage.getItem('dismissed_ratings');
+  const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([]);
+  const [dismissedEvaluations, setDismissedEvaluations] = useState<string[]>(() => {
+    const s = localStorage.getItem('dismissed_evaluations');
     return s ? JSON.parse(s) : [];
   });
 
   useEffect(() => {
     if (!isPremium) return;
+    
+    // AUTO-CREATE TEST BOOKING FOR DEMO - for ANY Premium member
+    if (isPremium && memberEmail) {
+      createTestYesterdayBooking();
+    }
+    
     const bookings = SharedStorage.getMemberBookings(memberEmail);
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yStr = yesterday.toISOString().split('T')[0];
-    const rated = JSON.parse(localStorage.getItem('rated_sessions') || '[]');
+    const evaluated = JSON.parse(localStorage.getItem('evaluated_sessions') || '[]');
+    
     const pending = bookings.filter((b: any) =>
       b.status === 'Confirmed' &&
       b.date === yStr &&
-      !rated.includes(b.id) &&
-      !dismissedRatings.includes(b.id)
+      !evaluated.includes(b.id) &&
+      !dismissedEvaluations.includes(b.id)
     );
-    setPendingRatings(pending);
-  }, [memberEmail, isPremium, dismissedRatings]);
+    
+    setPendingEvaluations(pending);
+  }, [memberEmail, isPremium, dismissedEvaluations]);
 
-  const handleRate = (bookingId: string, stars: number, comment: string) => {
-    const rated = JSON.parse(localStorage.getItem('rated_sessions') || '[]');
-    rated.push(bookingId);
-    localStorage.setItem('rated_sessions', JSON.stringify(rated));
-    const ratings = JSON.parse(localStorage.getItem('session_ratings') || '[]');
-    ratings.push({ bookingId, stars, comment, date: new Date().toISOString() });
-    localStorage.setItem('session_ratings', JSON.stringify(ratings));
-    setPendingRatings(prev => prev.filter(b => b.id !== bookingId));
+  const handleEvaluate = (bookingId: string, score: number, feedback: string) => {
+    const evaluated = JSON.parse(localStorage.getItem('evaluated_sessions') || '[]');
+    evaluated.push(bookingId);
+    localStorage.setItem('evaluated_sessions', JSON.stringify(evaluated));
+    const evaluations = JSON.parse(localStorage.getItem('session_evaluations') || '[]');
+    evaluations.push({ bookingId, score, feedback, date: new Date().toISOString() });
+    localStorage.setItem('session_evaluations', JSON.stringify(evaluations));
+    setPendingEvaluations(prev => prev.filter(b => b.id !== bookingId));
+    
+    const scoreLabels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+    showSuccessToast(`Thank you for your evaluation! ${scoreLabels[score - 1]} (${score}/5)`);
   };
 
   const handleDismiss = (bookingId: string) => {
-    const updated = [...dismissedRatings, bookingId];
-    setDismissedRatings(updated);
-    localStorage.setItem('dismissed_ratings', JSON.stringify(updated));
-    setPendingRatings(prev => prev.filter(b => b.id !== bookingId));
+    const updated = [...dismissedEvaluations, bookingId];
+    setDismissedEvaluations(updated);
+    localStorage.setItem('dismissed_evaluations', JSON.stringify(updated));
+    setPendingEvaluations(prev => prev.filter(b => b.id !== bookingId));
   };
 
   return (
@@ -222,9 +255,15 @@ export default function Trainers() {
         </div>
       )}
 
-      {/* Rating prompts for Premium members */}
-      {isPremium && pendingRatings.map(b => (
-        <RatingPrompt key={b.id} booking={b} onRate={(s, c) => handleRate(b.id, s, c)} onDismiss={() => handleDismiss(b.id)} />
+      {/* Evaluation prompts for Premium members */}
+      {isPremium && pendingEvaluations.length > 0 && (
+        <div className="text-xs text-white/50 mb-2">
+          💎 Premium Feature: {pendingEvaluations.length} session(s) to evaluate
+        </div>
+      )}
+      
+      {isPremium && pendingEvaluations.map(b => (
+        <EvaluationPrompt key={b.id} booking={b} onEvaluate={(s, f) => handleEvaluate(b.id, s, f)} onDismiss={() => handleDismiss(b.id)} />
       ))}
 
       {/* Trainer's "My Members" view */}

@@ -6,6 +6,14 @@ export const showToast = (message: string, type: 'success' | 'error' | 'info' = 
   else toast.info(message);
 };
 
+export const showSuccessToast = (message: string) => {
+  toast.success(message);
+};
+
+export const showErrorToast = (message: string) => {
+  toast.error(message);
+};
+
 export const exportToCSV = (data: unknown[], filename: string) => {
   void data;
   showToast(`Exporting ${filename}...`, 'info');
