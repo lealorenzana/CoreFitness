@@ -11,9 +11,49 @@ import {
   Mail,
   Phone,
   Sparkles,
+  Dumbbell,
+  ExternalLink,
+  ChevronRight,
 } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
 import { setSelectedGym } from '../utils/prototype';
+
+// Equipment images data
+const GYM_EQUIPMENT: Record<string, string[]> = {
+  'g-fitness': [
+    '/g-fitness equipment.jpg',
+    '/g-fitness equipment2.jpg',
+    '/g-fitness equipment3.jpg',
+  ],
+  'fitness-regency': [
+    '/fitness-regency-equiment1.jpg',
+    '/fitness-regency-equiment2.jpg',
+    '/fitness-regency-equiment3.jpg',
+  ],
+  'ferrer-fitness': [
+    '/ferrer-fitness-cover.png',
+    '/ferrer-fitness-logo.png',
+  ],
+};
+
+// Google Maps coordinates (you can update these with actual coordinates)
+const GYM_COORDINATES: Record<string, { lat: number; lng: number; address: string }> = {
+  'g-fitness': {
+    lat: 13.4167,
+    lng: 120.6000,
+    address: 'Brgy. Payompon, Mamburao (Beside OMECO Mamburao)',
+  },
+  'fitness-regency': {
+    lat: 13.4170,
+    lng: 120.6010,
+    address: 'Mamburao, Occidental Mindoro',
+  },
+  'ferrer-fitness': {
+    lat: 13.4165,
+    lng: 120.5995,
+    address: 'Mamburao, Occidental Mindoro',
+  },
+};
 
 export default function GymDetail() {
   const navigate = useNavigate();
@@ -33,19 +73,30 @@ export default function GymDetail() {
     navigate('/login');
   };
 
+  const handleBackToGyms = () => {
+    navigate('/', { 
+      replace: true,
+      state: { skipSplash: true, scrollToGymList: true }
+    });
+  };
+
   const isGFitness = gym.id === 'g-fitness';
 
   return (
     <MobileFrame>
       <div className="min-h-screen pb-8" style={{ backgroundColor: '#050400' }}>
-        <div className="px-4 py-6">
+        {/* Back Button */}
+        <div className="px-4 pt-6 pb-8" style={{ backgroundColor: '#050400' }}>
           <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-white/40 hover:text-yellow-400 transition-colors mb-4"
+            onClick={handleBackToGyms}
+            className="flex items-center gap-2 text-white/40 hover:text-yellow-400 transition-colors"
           >
             <ArrowLeft size={20} />
             Back to Gyms
           </button>
+        </div>
+
+        <div className="px-4">
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -148,6 +199,34 @@ export default function GymDetail() {
                 <p className="text-white font-medium text-sm">{gym.address}</p>
               </div>
             </div>
+            
+            {/* Embedded Google Map */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-white/60 text-sm font-semibold">View on Map</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(GYM_COORDINATES[gym.id]?.address || gym.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
+                >
+                  Open in Google Maps
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-yellow-500/20">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  style={{ border: 0 }}
+                  src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(GYM_COORDINATES[gym.id]?.address || gym.address)}&zoom=15`}
+                  allowFullScreen
+                  title={`${gym.name} Location`}
+                />
+              </div>
+            </div>
+
             <div className="flex items-start gap-3">
               <Mail size={20} className="text-yellow-400 mt-1" />
               <div>
@@ -172,6 +251,45 @@ export default function GymDetail() {
               </div>
             </div>
           </motion.div>
+
+          {/* Equipment & Facilities Section */}
+          {GYM_EQUIPMENT[gym.id] && GYM_EQUIPMENT[gym.id].length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28 }}
+              className="glass-card rounded-2xl p-5 mb-5"
+            >
+              <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <Dumbbell size={20} className="text-yellow-400" />
+                Equipment & Facilities
+              </h3>
+              <div className="grid grid-cols-3 gap-3">
+                {GYM_EQUIPMENT[gym.id].map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square rounded-xl overflow-hidden border border-yellow-500/20 bg-black/40"
+                  >
+                    <img
+                      src={img}
+                      alt={`Equipment ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/40 text-xs mt-3 text-center">
+                Tap images to view full size
+              </p>
+              <button
+                className="w-full mt-3 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                style={{ background: 'var(--color-primary)', color: 'white' }}
+              >
+                See More
+                <ChevronRight size={16} />
+              </button>
+            </motion.div>
+          )}
 
           {!isGFitness && (
             <motion.div

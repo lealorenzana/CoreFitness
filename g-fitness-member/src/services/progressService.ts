@@ -13,7 +13,6 @@ import { MOCK_BODY_PROGRESS, type BodyProgressEntry } from '../data/mockBodyProg
 import { MOCK_WORKOUT_LOGS,  type WorkoutLog }        from '../data/mockWorkoutLogs';
 import { MOCK_GOALS,         type Goal }              from '../data/mockGoals';
 import { ALL_BADGES, MOCK_MEMBER_BADGES, type Badge, type MemberBadge } from '../data/mockBadges';
-import { MOCK_PROGRESS_PHOTOS, type ProgressPhoto } from '../data/mockProgressPhotos';
 import { MOCK_TRAINER_FEEDBACK, MOCK_WORKOUT_PLANS, type TrainerFeedback, type WorkoutPlan } from '../data/mockTrainerFeedback';
 import { MOCK_ATTENDANCE,    type AttendanceRecord } from '../data/mockAttendance';
 
@@ -21,7 +20,6 @@ const STORAGE = {
   body:       (m: string) => `progress_body_${m}`,
   workouts:   (m: string) => `progress_workouts_${m}`,
   goals:      (m: string) => `progress_goals_${m}`,
-  photos:     (m: string) => `progress_photos_${m}`,
   badges:     (m: string) => `progress_badges_${m}`,
   attendance: (m: string) => `progress_attendance_${m}`,
 };
@@ -115,32 +113,6 @@ export const progressService = {
     await delay(undefined, 80);
   },
 
-  // ── Progress Photos ──────────────────────────────────────────────────────
-  async getProgressPhotos(memberId: string): Promise<ProgressPhoto[]> {
-    const seed  = MOCK_PROGRESS_PHOTOS.filter(p => p.memberId === memberId);
-    const local = readJson<ProgressPhoto[]>(STORAGE.photos(memberId), []);
-    return delay([...seed, ...local].sort((a, b) => a.date.localeCompare(b.date)));
-  },
-
-  async addProgressPhoto(memberId: string, url: string, label = 'Front'): Promise<ProgressPhoto> {
-    const local = readJson<ProgressPhoto[]>(STORAGE.photos(memberId), []);
-    const created: ProgressPhoto = {
-      id: `p-${Date.now()}`,
-      memberId,
-      url,
-      label,
-      date: new Date().toISOString().split('T')[0],
-    };
-    writeJson(STORAGE.photos(memberId), [...local, created]);
-    return delay(created, 100);
-  },
-
-  async deleteProgressPhoto(memberId: string, photoId: string): Promise<void> {
-    const local = readJson<ProgressPhoto[]>(STORAGE.photos(memberId), []);
-    writeJson(STORAGE.photos(memberId), local.filter(p => p.id !== photoId));
-    await delay(undefined, 80);
-  },
-
   // ── Badges ───────────────────────────────────────────────────────────────
   async getAllBadges(): Promise<Badge[]> {
     return delay(ALL_BADGES);
@@ -212,4 +184,4 @@ export const goalProgressPct = (g: { currentValue: number; targetValue: number }
 };
 
 // Re-export types so components can import everything from one place.
-export type { BodyProgressEntry, WorkoutLog, Goal, Badge, MemberBadge, ProgressPhoto, TrainerFeedback, WorkoutPlan, AttendanceRecord };
+export type { BodyProgressEntry, WorkoutLog, Goal, Badge, MemberBadge, TrainerFeedback, WorkoutPlan, AttendanceRecord };

@@ -25,7 +25,7 @@ export const ALL_BADGES: Badge[] = [
   { id: 'b-005', name: 'Cardio King',          icon: '👑', description: 'Logged 10 cardio sessions',                 triggerCondition: 'cardio_sessions >= 10' },
   { id: 'b-006', name: 'Heavy Lifter',         icon: '💪', description: 'Set a personal record',                     triggerCondition: 'pr_logged' },
   { id: 'b-007', name: 'Consistent Member',    icon: '⭐', description: '20 visits in a single month',               triggerCondition: 'monthly_visits >= 20' },
-  { id: 'b-008', name: 'Transformation',       icon: '📸', description: 'Uploaded 2+ progress photos',               triggerCondition: 'progress_photos >= 2' },
+  { id: 'b-008', name: 'Transformation',       icon: '📸', description: 'Achieved significant body transformation',  triggerCondition: 'body_transformation' },
 ];
 
 const today = new Date();

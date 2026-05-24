@@ -1,12 +1,11 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { ArrowLeft, Activity, Dumbbell, BarChart3, Camera, Target, Calendar, CreditCard, Trophy, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Activity, Dumbbell, BarChart3, Target, Calendar, CreditCard, Trophy, MessageSquare } from 'lucide-react';
 
 import BodyProgressTab     from './tabs/BodyProgressTab';
 import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
-import ProgressPhotosTab   from './tabs/ProgressPhotosTab';
 import GoalsTab            from './tabs/GoalsTab';
 import AttendanceTab       from './tabs/AttendanceTab';
 import MembershipTab       from './tabs/MembershipTab';
@@ -17,7 +16,6 @@ const tabs = [
   { id: 'body',      label: 'Body',       icon: Activity },
   { id: 'workouts',  label: 'Workouts',   icon: Dumbbell },
   { id: 'dashboard', label: 'Charts',     icon: BarChart3 },
-  { id: 'photos',    label: 'Photos',     icon: Camera },
   { id: 'goals',     label: 'Goals',      icon: Target },
   { id: 'attend',    label: 'Attendance', icon: Calendar },
   { id: 'member',    label: 'Membership', icon: CreditCard },
@@ -36,7 +34,6 @@ export default function ProgressHub() {
       case 'body':      return <BodyProgressTab />;
       case 'workouts':  return <WorkoutProgressTab />;
       case 'dashboard': return <VisualDashboardTab />;
-      case 'photos':    return <ProgressPhotosTab />;
       case 'goals':     return <GoalsTab />;
       case 'attend':    return <AttendanceTab />;
       case 'member':    return <MembershipTab />;

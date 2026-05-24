@@ -121,14 +121,13 @@ CoreFitness/
         │   ├── ChatbotPage.tsx             # AI fitness assistant
         │   ├── Workouts.tsx                # Workout library
         │   ├── progress/
-        │   │   ├── ProgressHub.tsx         # 9-tab progress hub
+        │   │   ├── ProgressHub.tsx         # 8-tab progress hub
         │   │   ├── hooks/
         │   │   │   └── useMemberId.ts      # Member ID hook
         │   │   └── tabs/
         │   │       ├── BodyProgressTab.tsx     # Weight, BMI, measurements
         │   │       ├── WorkoutProgressTab.tsx  # Workout logs
         │   │       ├── VisualDashboardTab.tsx  # 4 charts
-        │   │       ├── ProgressPhotosTab.tsx   # Before/after photos
         │   │       ├── GoalsTab.tsx            # Goal tracking + milestones
         │   │       ├── AttendanceTab.tsx       # Visit stats + weekly grid
         │   │       ├── MembershipTab.tsx       # Membership status

@@ -93,7 +93,7 @@ npm run dev
 
 ### Member App
 - 📱 Secure time-limited QR code for gym entry
-- 🏆 9-tab Progress Hub (body, workouts, charts, photos, goals, attendance, membership, badges, trainer feedback)
+- 🏆 8-tab Progress Hub (body, workouts, charts, goals, attendance, membership, badges, trainer feedback)
 - 📅 Book trainer sessions
 - 🤖 NLP-powered AI fitness chatbot
 - 🎯 Goal tracking with milestone alerts and gamification badges
@@ -134,7 +134,7 @@ CoreFitness/
 ├── g-fitness-member/       # Member & Trainer app (mobile)
 │   ├── src/pages/          # Member pages + trainer/ subfolder
 │   ├── src/pages/trainer/  # 5 trainer-specific pages
-│   ├── src/pages/progress/ # 9-tab progress hub
+│   ├── src/pages/progress/ # 8-tab progress hub
 │   └── public/             # Static assets (gym photos, profile pics)
 │
 ├── assets/                 # Shared source images

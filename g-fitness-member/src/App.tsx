@@ -13,6 +13,8 @@ import Membership from './pages/Membership';
 import Workouts from './pages/Workouts';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import ChangePassword from './pages/ChangePassword';
 import ChatbotPage from './pages/ChatbotPage';
 import Events from './pages/Events';
 import PaymentHistory from './pages/PaymentHistory';
@@ -106,6 +108,8 @@ function App() {
           <Route path="progress" element={<ProgressHub />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/edit" element={<EditProfile />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="change-password" element={<ChangePassword />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
           <Route path="renew-membership" element={<RenewMembership />} />

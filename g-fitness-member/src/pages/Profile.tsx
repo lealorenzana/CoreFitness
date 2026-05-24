@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Phone, MapPin, Calendar, LogOut, Bell, Shield, Edit, CreditCard, ArrowLeft, Activity, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, LogOut, Bell, Shield, Edit, CreditCard, ArrowLeft, Activity, TrendingUp, Plus, Trash2, Settings } from 'lucide-react';
 import { SharedStorage } from '../utils/sharedStorage';
 import { showSuccessToast } from '../utils/errorHandler';
 
@@ -108,6 +108,7 @@ export default function Profile() {
     { label: 'Payment History', icon: CreditCard, action: () => navigate('/member/payments') },
     { label: 'Membership Details', icon: Shield, action: () => navigate('/member/membership') },
     { label: 'Attendance History', icon: Calendar, action: () => navigate('/member/attendance-history') },
+    { label: 'Settings', icon: Settings, action: () => navigate('/member/settings') },
     { label: 'Notifications', icon: Bell, action: () => showSuccessToast('Notifications are enabled!') },
   ];
 

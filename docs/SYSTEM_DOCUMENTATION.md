@@ -91,7 +91,7 @@
 | Onboarding | `/onboarding` | First-time user setup |
 | Home | `/member/home` | QR code display, quick stats, upcoming class, notifications |
 | Book Class | `/member/book-class` | Browse and book trainer sessions |
-| Progress Hub | `/member/progress` | 9-tab hub: Body, Workouts, Charts, Photos, Goals, Attendance, Membership, Badges, Trainer Feedback |
+| Progress Hub | `/member/progress` | 8-tab hub: Body, Workouts, Charts, Goals, Attendance, Membership, Badges, Trainer Feedback |
 | Trainers | `/member/trainers` | View available trainers and profiles |
 | Profile | `/member/profile` | Member profile with photo (eya.png), edit, membership info |
 | Events | `/member/events` | View and join gym events |
@@ -165,14 +165,13 @@
 
 ---
 
-## Progress Hub (9 Tabs)
+## Progress Hub (8 Tabs)
 
 | Tab | Features |
 |-----|---------|
 | **Body** | Weight, height, BMI (auto-calculated), arms/waist/chest/legs measurements, muscle Δ, fat Δ, history |
 | **Workouts** | Workout logs with exercises, sets, reps, calories |
 | **Charts** | Weight trend, workouts/week bar chart, visit days by weekday, calories burned area chart, weight journey |
-| **Photos** | Progress photos with date stamps, timeline comparison |
 | **Goals** | Create goals (weight loss, muscle gain, attendance, calories), progress bars, milestone alerts (50%/100%), achieved section |
 | **Attendance** | All-time visits, this month/week, active/inactive status, weekly grid, QR/manual check-in log |
 | **Membership** | Remaining days, renewal reminders, subscription history |

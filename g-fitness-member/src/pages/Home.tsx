@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, Trophy, ChevronRight, RefreshCw, AlertCircle, CheckCircle, Ban, ArrowRight } from 'lucide-react';
+import { Calendar, Trophy, ChevronRight, RefreshCw, AlertCircle, CheckCircle, Ban, ArrowRight, X } from 'lucide-react';
 import Notifications from '../components/Notifications';
 import { useState, useEffect, useRef } from 'react';
 import { generateSecureQR, getQRTimeRemaining } from '../utils/qrCode';
@@ -72,6 +72,7 @@ export default function Home() {
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [isExpired, setIsExpired] = useState(false);
   const [hasBeenUsed, setHasBeenUsed] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const hasGeneratedRef = useRef(false);
 
   const membershipExpired = new Date() > new Date(member.expiryDate);
@@ -177,7 +178,7 @@ export default function Home() {
           </div>
 
           {/* QR Code */}
-          <div className="relative flex-shrink-0">
+          <div className="relative flex-shrink-0 cursor-pointer" onClick={() => !membershipExpired && !hasBeenUsed && setShowQRModal(true)}>
             {membershipExpired ? (
               <div className="relative">
                 <div className="bg-white p-2 rounded-xl opacity-20 blur-sm"><QRCodeSVG value={member.qrCode} size={70} /></div>
@@ -206,14 +207,7 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-2 rounded-xl"><QRCodeSVG value={qrCode || member.qrCode} size={70} /></div>
-            )}
-
-            {!membershipExpired && !hasBeenUsed && !isExpired && (
-              <div className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full text-xs font-bold"
-                style={{ background: timeRemaining <= 10 ? 'var(--color-secondary)' : 'var(--color-primary)', color: '#fff' }}>
-                {timeRemaining}s
-              </div>
+              <div className="bg-white p-2 rounded-xl hover:scale-105 transition-transform"><QRCodeSVG value={qrCode || member.qrCode} size={70} /></div>
             )}
           </div>
         </div>
@@ -317,6 +311,57 @@ export default function Home() {
           );
         })}
       </motion.div>
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {showQRModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQRModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[90%] max-w-sm"
+            >
+              <div className="bg-[rgba(10,8,0,0.95)] border-2 rounded-3xl p-6 shadow-2xl relative"
+                style={{ borderColor: 'var(--color-primary)' }}>
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="absolute top-3 right-3 p-2 rounded-lg bg-gray-800 text-white/40 hover:text-white transition-colors z-10"
+                >
+                  <X size={18} />
+                </button>
+                
+                <div className="text-center">
+                  <h3 className="text-white font-bold text-lg mb-1">Check-In QR Code</h3>
+                  <p className="text-white/60 text-xs mb-4">Show this to staff for gym entry</p>
+                  
+                  <div className="bg-white p-4 rounded-2xl inline-block mb-4">
+                    <QRCodeSVG value={qrCode || member.qrCode} size={180} />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ background: 'var(--color-surface-raised)' }}>
+                      <span className="text-white/60 text-xs">Member ID</span>
+                      <span className="text-white font-mono font-bold text-sm">{member.qrCode}</span>
+                    </div>
+                    
+                    <p className="text-white/40 text-[10px] mt-3">
+                      Show this QR code to staff for gym check-in
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

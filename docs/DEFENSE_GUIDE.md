@@ -81,7 +81,7 @@
 
 ### 13. Member Mode
 - **Home**: QR code display, stats, upcoming class
-- **Progress Hub**: show all 9 tabs — body measurements, charts, goals, badges, trainer feedback
+- **Progress Hub**: show all 8 tabs — body measurements, charts, goals, badges, trainer feedback
 - **Book a Class**: select trainer, date, time
 - **AI Chatbot**: demonstrate conversational fitness assistant
 - **Profile**: show Eya's profile photo, membership info
@@ -145,7 +145,7 @@ A: Yes. The system supports 3 gym locations (G-Fitness, Fitness Regency, Ferrer 
 A: Rule-based detection — if a member hasn't visited in X days or their attendance rate drops below a threshold, they're automatically flagged as at-risk with a risk level (High/Medium/Low) and suggested re-engagement actions.
 
 **Q: What's in the Progress Hub?**
-A: 9 tabs covering: body measurements (weight, BMI, arms/waist/chest/legs), workout logs, visual charts (4 charts), progress photos, goal tracking with milestones, attendance analytics, membership status, achievement badges, and trainer feedback with assigned workout plans.
+A: 8 tabs covering: body measurements (weight, BMI, arms/waist/chest/legs), workout logs, visual charts (4 charts), goal tracking with milestones, attendance analytics, membership status, achievement badges, and trainer feedback with assigned workout plans.
 
 ---
 
