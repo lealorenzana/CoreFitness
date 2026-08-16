@@ -43,10 +43,15 @@ export interface MemberProfileRow {
   gender: string | null;
   /**
    * When onboarding was finished or skipped (0033). NULL = not yet.
-   * Replaces a `localStorage` flag that only existed on the one device that
-   * completed it, so every other browser or phone re-ran the whole flow.
+   *
+   * Replaced a `localStorage` flag — but until 0036 the write still could not
+   * land, because this row was created at *approval* and onboarding runs before
+   * that, so the UPDATE matched zero rows and reported success. 0036 creates the
+   * row at sign-up.
    */
   onboarding_completed_at: string | null;
+  /** Activities picked in onboarding (0036). Feeds class recommendations. */
+  interests: string[];
   created_at: string;
 }
 

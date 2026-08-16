@@ -20,7 +20,7 @@ import {
 import { getCurrentMemberId } from '../services/bookingService';
 import SectionHeader from '../components/ui/SectionHeader';
 import { panelStyle } from '../components/ui/Card';
-import { Ruler, Target, Dumbbell } from 'lucide-react';
+import { Ruler, Target, Dumbbell, Sparkles } from 'lucide-react';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; icon: LucideIcon; label: string; description: string }[] = [
@@ -184,6 +184,26 @@ export default function Settings() {
   ];
 
   const sections: { title: string; items: Row[] }[] = [
+    {
+      title: 'Training preferences',
+      items: [
+        {
+          // Onboarding had no way back into it. That was survivable while its
+          // answers went nowhere; now that experience level and interests drive
+          // what Book a Session recommends, "I picked the wrong thing" needed an
+          // answer other than "make a new account".
+          //
+          // It also matters because migration 0036 marks every member who
+          // registered before it as already onboarded — correct, so the flow
+          // stops replaying, but it means their interests are empty until they
+          // can get back here.
+          icon: Sparkles,
+          label: 'Interests & experience',
+          description: 'Change what we recommend you',
+          action: () => navigate('/onboarding'),
+        },
+      ],
+    },
     {
       title: 'Security & privacy',
       items: [

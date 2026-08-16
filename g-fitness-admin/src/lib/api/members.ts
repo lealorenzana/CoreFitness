@@ -119,17 +119,45 @@ export async function approveMemberRegistration(
   // their real row here (0031). Without this the intake details — birth date,
   // gender, emergency contact — would be collected, shown to the front desk
   // once, and then deleted with the queue entry a few lines below.
-  const { error: memberProfileError } = await supabase.from('member_profiles').insert({
-    profile_id: authUserId,
-    qr_code: authUserId,
-    date_of_birth: pending.date_of_birth,
-    gender: pending.gender,
-    address: pending.address,
-    emergency_contact_name: pending.emergency_contact_name,
-    emergency_contact_phone: pending.emergency_contact_phone,
-    emergency_contact_relationship: pending.emergency_contact_relationship,
+  //
+  // An **upsert via RPC**, not the INSERT this used to be. Since 0036 the member
+  // row is created at sign-up, so onboarding has somewhere to write its answers
+  // before approval happens — which means by the time we get here the row
+  // already exists and an INSERT would fail on the primary key. The function
+  // coalesces, so a value the member has already corrected is not overwritten by
+  // a blank from the queue.
+  const { error: rpcError } = await supabase.rpc('apply_registration_details', {
+    member: authUserId,
+    p_date_of_birth: pending.date_of_birth,
+    p_gender: pending.gender,
+    p_address: pending.address,
+    p_ec_name: pending.emergency_contact_name,
+    p_ec_phone: pending.emergency_contact_phone,
+    p_ec_relationship: pending.emergency_contact_relationship,
   });
-  if (memberProfileError) throw memberProfileError;
+
+  // Falls back to the pre-0036 INSERT when the function is not there.
+  //
+  // This project has repeatedly run ahead of its own migrations, and approving
+  // a registration is the one action the front desk cannot work around — a
+  // member who has paid and cannot be activated is a person standing at a desk.
+  // PostgREST answers `PGRST202` for a function missing from the schema cache;
+  // on that, and only that, do it the old way.
+  if (rpcError) {
+    if (rpcError.code !== 'PGRST202') throw rpcError;
+
+    const { error: insertError } = await supabase.from('member_profiles').insert({
+      profile_id: authUserId,
+      qr_code: authUserId,
+      date_of_birth: pending.date_of_birth,
+      gender: pending.gender,
+      address: pending.address,
+      emergency_contact_name: pending.emergency_contact_name,
+      emergency_contact_phone: pending.emergency_contact_phone,
+      emergency_contact_relationship: pending.emergency_contact_relationship,
+    });
+    if (insertError) throw insertError;
+  }
 
   const startDate = new Date().toISOString().slice(0, 10);
   const { error: membershipError } = await supabase.from('memberships').insert({

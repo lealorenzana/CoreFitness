@@ -11,8 +11,10 @@ import {
   type PublicTrainer,
 } from '../lib/api/directory';
 import { getMemberProfile, updateMemberProfile, NO_MEMBER_ROW } from '../lib/api/members';
+import { readParkedAnswers, parkAnswers, clearParkedAnswers } from '../lib/api/parkedAnswers';
 import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
 import type { BookingStatus, ClassLevel } from '../types/db';
+import { matchesInterests } from '../data/activities';
 
 /**
  * Everything the member's booking screens need, assembled in one place.
@@ -43,6 +45,8 @@ export interface BookableClass {
   spotsLeft: number;
   /** Matches the member's stated experience level. Never used to block a booking. */
   recommended: boolean;
+  /** Names one of the activities the member picked in onboarding (0036). */
+  matchesInterest: boolean;
   /** The member's own booking on this class, if any — drives "Booked" vs "Book". */
   myStatus: BookingStatus | null;
 }
@@ -135,49 +139,40 @@ export async function getCurrentMemberId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
-/**
- * Where an experience level waits when there is nowhere to put it yet.
- *
- * Onboarding runs immediately after sign-up, while the member is still
- * `pending_approval` and has **no `member_profiles` row** — approval creates
- * it. So the answer to "what's your experience level?" had nothing to write to
- * and was thrown away, every time, for every member.
- *
- * It is parked here instead and applied on the next read once the row exists.
- */
-const PENDING_LEVEL_KEY = 'pending_experience_level';
+// Onboarding answers wait in `parkedAnswers` (server-side, per user) whenever
+// the member row does not exist yet. Migration 0036 makes that row exist from
+// sign-up, so the parking lot should now be permanently empty — it is kept as a
+// guard, not as the mechanism.
 
-function readPendingLevel(): ExperienceLevel | null {
-  const raw = localStorage.getItem(PENDING_LEVEL_KEY);
-  return raw === 'beginner' || raw === 'intermediate' || raw === 'advanced' ? raw : null;
+function asLevel(raw: unknown): ExperienceLevel | null {
+  const v = typeof raw === 'string' ? raw.toLowerCase() : null;
+  return v === 'beginner' || v === 'intermediate' || v === 'advanced' ? v : null;
 }
 
 export async function getExperienceLevel(memberId: string): Promise<ExperienceLevel | null> {
   const member = await getMemberProfile(memberId).catch(() => null);
-  const raw = member?.member.experience_level?.toLowerCase();
-  const stored =
-    raw === 'beginner' || raw === 'intermediate' || raw === 'advanced' ? raw : null;
+  const stored = asLevel(member?.member.experience_level);
 
   if (stored) {
-    // The database is the answer; drop anything still waiting so a stale
+    // The database is the answer; drop anything still parked so a stale
     // onboarding choice can never overwrite a later, deliberate one.
-    localStorage.removeItem(PENDING_LEVEL_KEY);
+    clearParkedAnswers(['experience_level']).catch(() => undefined);
     return stored;
   }
 
   // Nothing stored — if onboarding left an answer behind, this is the first
   // moment it can actually be saved.
-  const pending = readPendingLevel();
-  if (pending && member) {
+  const parked = asLevel((await readParkedAnswers()).experience_level);
+  if (parked && member) {
     try {
-      await updateMemberProfile(memberId, { experience_level: pending });
-      localStorage.removeItem(PENDING_LEVEL_KEY);
-      return pending;
+      await updateMemberProfile(memberId, { experience_level: parked });
+      clearParkedAnswers(['experience_level']).catch(() => undefined);
+      return parked;
     } catch {
-      // Still no row (not approved yet). Keep it for next time.
+      // Still no row. Keep it for next time.
     }
   }
-  return null;
+  return parked;
 }
 
 /**
@@ -185,16 +180,58 @@ export async function getExperienceLevel(memberId: string): Promise<ExperienceLe
  * this column). It only reorders a list and adds a badge, so there is nothing
  * to gain by lying about it — and the member is the one who knows the answer.
  *
- * If the row does not exist yet the choice is parked rather than lost, and
- * `getExperienceLevel` applies it as soon as there is somewhere to put it.
+ * If the row does not exist yet the choice is parked on the **user**, not the
+ * browser — see [parkedAnswers.ts](../lib/api/parkedAnswers.ts) for why that
+ * distinction is the entire bug.
  */
 export async function setExperienceLevel(memberId: string, level: ExperienceLevel): Promise<void> {
   try {
     await updateMemberProfile(memberId, { experience_level: level });
-    localStorage.removeItem(PENDING_LEVEL_KEY);
+    clearParkedAnswers(['experience_level']).catch(() => undefined);
   } catch (err) {
     if (err instanceof Error && err.message === NO_MEMBER_ROW) {
-      localStorage.setItem(PENDING_LEVEL_KEY, level);
+      await parkAnswers({ experience_level: level });
+      return;
+    }
+    throw err;
+  }
+}
+
+// ─── Interests (0036) ────────────────────────────────────────────────────────
+//
+// The onboarding interests step wrote to `localStorage['fitness_preferences']`
+// and was read by nothing whatsoever — five screens of questions producing a
+// blob no code ever opened. Stored on the member's row they survive the device
+// and feed `recommendedClasses` below.
+
+export async function getInterests(memberId: string): Promise<string[]> {
+  const member = await getMemberProfile(memberId).catch(() => null);
+  const stored = member?.member.interests;
+  if (stored && stored.length > 0) {
+    clearParkedAnswers(['interests']).catch(() => undefined);
+    return stored;
+  }
+
+  const parked = (await readParkedAnswers()).interests ?? [];
+  if (parked.length > 0 && member) {
+    try {
+      await updateMemberProfile(memberId, { interests: parked });
+      clearParkedAnswers(['interests']).catch(() => undefined);
+      return parked;
+    } catch {
+      // No row yet.
+    }
+  }
+  return parked;
+}
+
+export async function setInterests(memberId: string, interests: string[]): Promise<void> {
+  try {
+    await updateMemberProfile(memberId, { interests });
+    clearParkedAnswers(['interests']).catch(() => undefined);
+  } catch (err) {
+    if (err instanceof Error && err.message === NO_MEMBER_ROW) {
+      await parkAnswers({ interests });
       return;
     }
     throw err;
@@ -208,20 +245,23 @@ export async function setExperienceLevel(memberId: string, level: ExperienceLeve
 // a reinstalled PWA all replayed the entire flow for someone who had finished
 // it days earlier. It is a fact about the member, so it belongs on their row.
 
-const PENDING_ONBOARDING_KEY = 'pending_onboarding_complete';
-
 /**
- * Records that onboarding is done. Parked locally when the member has no
- * profile row yet — onboarding runs while they are still `pending_approval`,
- * the same ordering problem `setExperienceLevel` has.
+ * Records that onboarding is done.
+ *
+ * Parked on the **user** when the member has no profile row yet — onboarding
+ * runs while they are still `pending_approval`, which before 0036 meant there
+ * was no row to write to. The old code parked this in `localStorage`, so the
+ * completion only ever existed on the device they registered on and the flow
+ * replayed on every other one, permanently.
  */
 export async function markOnboardingComplete(memberId: string): Promise<void> {
+  const now = new Date().toISOString();
   try {
-    await updateMemberProfile(memberId, { onboarding_completed_at: new Date().toISOString() });
-    localStorage.removeItem(PENDING_ONBOARDING_KEY);
+    await updateMemberProfile(memberId, { onboarding_completed_at: now });
+    clearParkedAnswers(['onboarding_completed_at']).catch(() => undefined);
   } catch (err) {
     if (err instanceof Error && err.message === NO_MEMBER_ROW) {
-      localStorage.setItem(PENDING_ONBOARDING_KEY, 'true');
+      await parkAnswers({ onboarding_completed_at: now });
       return;
     }
     throw err;
@@ -233,23 +273,22 @@ export async function markOnboardingComplete(memberId: string): Promise<void> {
  *
  * Fails **closed on the safe side**: if the lookup errors we say "yes", because
  * wrongly re-running onboarding for an existing member is far more annoying
- * than wrongly skipping it for a new one — and the new one can reach it again
- * from their profile.
+ * than wrongly skipping it for a new one — and Profile → "Redo onboarding"
+ * gets them back to it.
  */
 export async function isOnboardingComplete(memberId: string): Promise<boolean> {
   try {
     const member = await getMemberProfile(memberId);
-    if (member?.member.onboarding_completed_at) {
-      localStorage.removeItem(PENDING_ONBOARDING_KEY);
-      return true;
-    }
-    // Finished while still pending approval: this is the first moment it can
-    // actually be written.
-    if (member && localStorage.getItem(PENDING_ONBOARDING_KEY) === 'true') {
-      await markOnboardingComplete(memberId).catch(() => undefined);
-      return true;
-    }
-    return false;
+    if (member?.member.onboarding_completed_at) return true;
+
+    // Finished before the row existed. Server-side, so this is true on a phone
+    // the member has never opened the app on before.
+    const parkedAt = (await readParkedAnswers()).onboarding_completed_at;
+    if (!parkedAt) return false;
+
+    // First moment it can reach its real column.
+    if (member) await markOnboardingComplete(memberId).catch(() => undefined);
+    return true;
   } catch {
     return true;
   }
@@ -271,12 +310,13 @@ function isRecommended(classLevel: ClassLevel, memberLevel: ExperienceLevel | nu
 
 /** Upcoming classes only — a timetable of sessions that already ran is history, not a booking screen. */
 export async function listBookableClasses(memberId: string): Promise<BookableClass[]> {
-  const [classes, availability, trainers, myBookings, level] = await Promise.all([
+  const [classes, availability, trainers, myBookings, level, interests] = await Promise.all([
     listClasses().catch(() => []),
     listClassAvailability().catch(() => []),
     listPublicTrainers().catch(() => [] as PublicTrainer[]),
     listMemberBookings(memberId).catch(() => []),
     getExperienceLevel(memberId).catch(() => null),
+    getInterests(memberId).catch(() => [] as string[]),
   ]);
 
   const capacityById = new Map(availability.map((a) => [a.class_id, a]));
@@ -311,6 +351,7 @@ export async function listBookableClasses(memberId: string): Promise<BookableCla
         booked,
         spotsLeft: Math.max(0, capacity - booked),
         recommended: isRecommended(c.level, level),
+        matchesInterest: matchesInterests(`${c.name} ${c.class_type ?? ''}`, interests),
         myStatus: mineByClass.get(c.id) ?? null,
       };
     })

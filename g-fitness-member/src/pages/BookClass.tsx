@@ -459,6 +459,15 @@ export default function BookClass() {
                                 <Sparkles size={8} /> For you
                               </span>
                             )}
+                            {/* The onboarding interests step used to write to a
+                                localStorage blob nothing read. This badge is
+                                what makes answering it worth the member's time. */}
+                            {c.matchesInterest && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                                You picked this
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                             {LEVEL_LABEL[c.level]}{c.classType ? ` · ${c.classType}` : ''}

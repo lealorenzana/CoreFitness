@@ -544,3 +544,16 @@ input[type='number'] {
   user-select: text;
   -webkit-touch-callout: default;
 }
+
+/* ── Interest chips revealing in onboarding ────────────────────────────────
+   The base state is *visible*, and the animation only fades in from
+   transparent. That ordering is deliberate: `requestAnimationFrame` and CSS
+   animations both stop on a page that is not compositing (a backgrounded tab,
+   a phone whose screen went off mid-signup). If the animation never runs, a
+   chip written the other way round — `opacity: 0` waiting to be animated up —
+   is simply invisible and unclickable forever. Written this way the worst case
+   is that the chips appear without the flourish. */
+@keyframes chip-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}

@@ -28,14 +28,23 @@ if one statement partway through errors — always verify each step before movin
 6. [`migrations/0006_fix_rls_policies.sql`](migrations/0006_fix_rls_policies.sql) — idempotent
    rebuild of every policy/trigger from 0002. Only needed if you hit the failure mode below;
    safe to run even if 0002 applied cleanly (drops-if-exists before every create).
-7. **`0007` through `0033`** — keep going in numeric order. They are not listed individually here
+7. **`0007` through `0036`** — keep going in numeric order. They are not listed individually here
    because each one's own header explains what it does and why. The recent ones:
    `0028` earned training levels + `achievement_unlocks`, `0029` archive/clear state on
    `notifications`, `0030` weekly gym plans + the reminder job, `0031` date of birth, gender and
-   emergency contact at sign-up, `0032` member-controlled sharing with trainers, `0033` onboarding completion on the member
-   row instead of localStorage. What changed
-   is summarised in
+   emergency contact at sign-up, `0032` member-controlled sharing with trainers, `0033` onboarding
+   completion on the member row instead of localStorage, `0034` front-desk delete on `notifications`
+   (the admin "Recall" button), `0035` same-day undo of a check-in, `0036` the member row created at
+   sign-up. What changed is summarised in
    [docs/MIGRATION_STATUS.md](../docs/MIGRATION_STATUS.md).
+
+   **`0036` is not optional if members are re-seeing onboarding.** 0033 moved the completion flag
+   into `member_profiles`, but that row did not exist until approval — and onboarding runs before
+   approval, so the write matched zero rows, reported success, and the flag was never stored. 0036
+   creates the row at sign-up, backfills every existing member as already onboarded, and adds the
+   `interests` column. It also replaces the approval-time INSERT with `apply_registration_details`;
+   the admin app falls back to the old INSERT on `PGRST202` so approvals keep working until you run
+   it, but nothing else about the fix applies until you do.
 
    **`0030` wants pg_cron.** It is wrapped so the migration still succeeds without it — you get
    the plan, the policies and `send_due_gym_reminders()`, and only the scheduled nudge is missing.

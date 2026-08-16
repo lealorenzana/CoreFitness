@@ -14,7 +14,7 @@ Two independent Vite apps:
 | Member + Trainer app | `g-fitness-member/` | 5173 | Installable phone app (PWA → Android APK) |
 
 Not a monorepo — no workspaces, no shared package. Each has its own `package.json`, tsconfig,
-ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 35 SQL
+ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 36 SQL
 migrations, RLS policies and four Edge Functions (`create-trainer`, `create-member`, `create-staff`,
 `send-push`) — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
@@ -44,7 +44,7 @@ invented coaches, three invented phone numbers and plans found nowhere in `membe
 found neither. Opening the page did. The rules that keep getting violated:
 - Members are **archived, never deleted**; analytics return **zero, never a plausible invention**.
 - A missed lookup renders **nothing, never a hardcoded fallback identity** — member Profile once
-  shipped `<img src="/eya.png">`, so every member saw one real person's face on their own profile.
+  shipped `<img src="/eya.png">`, so every member saw a real person's face on their own profile.
 - Payments distinguish **`paid_on` from `created_at`**, and members store a **birth date, not an
   age** — a derived number cannot go stale, a stored one silently does.
 - **Calendar dates come from `utils/dates.ts`, never `toISOString()`.** Manila is UTC+8, so the
@@ -52,8 +52,10 @@ found neither. Opening the page did. The rules that keep getting violated:
   check-in from the admin Attendance page and from its duplicate guard.
 - **A control that writes a flag nothing reads is a lie.** Wire it to something observable, or cut.
   The whole Gym Information form was write-only from 0013 until receipts and Schedule read it.
-- **Per-user state never lives in `localStorage`.** Onboarding completion and achievement
-  celebrations both did, so both replayed on every new browser, phone or reinstall.
+- **Per-user state never lives in `localStorage`** — *and moving it to a column is not the fix
+  unless the row exists when the write runs.* 0033 moved onboarding completion to `member_profiles`
+  and it still replayed on every device, because that row was created at approval and onboarding
+  runs first (0036).
 - **A reward the client can grant itself is not a reward.** Badge rules live in SQL.
 
 The mock data hid in *chrome*, not pages — the notification bell, a shared modal, a boot-time
@@ -74,8 +76,8 @@ pages still reading `getCurrentUser()` — never treat those as real auth state.
 ### The data-access layer
 
 `src/lib/api/*.ts`, one module per table, typed against `src/types/db.ts`; per-app **services**
-above them assemble whole screens. Put multi-table screen assembly in a service, not a component.
-Most modules exist twice, once per app — **diff before you copy**, `notify.ts` differs on purpose.
+above them assemble whole screens — put multi-table assembly in a service, not a component. Most
+modules exist twice, once per app: **diff before you copy**, `notify.ts` differs on purpose.
 **[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that has cost time here**, above all
 that a **zero-row `UPDATE`/`DELETE` is not an error** — it reports success and writes nothing.
 
@@ -113,7 +115,6 @@ cannot be tapped. That shipped three times in one session, including an undismis
 
 **Full reference, including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).** The parts
 you cannot afford to rediscover:
-
 - **Admin is Tailwind v3** (no cascade layers). **Member is v4** with **no config file**: one was
   silently ignored, and classes defined only there emitted *no CSS* for months. **Unlayered author
   CSS beats every layer**, whatever the specificity.
@@ -177,18 +178,17 @@ included, are presentation-facing or historical — **not specs**.
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:
 
-- **0034 and 0035 have never been confirmed against the live project.** 0028–0033 were verified
-  present on 2026-08-17 by probing PostgREST; those two are policy-only, with no anonymous probe.
-  Without them Notifications → Recall and Attendance → Undo match no rows — the clients now throw
-  rather than report a false success. **`create-member` also needs redeploying** for its
-  birth-date/gender half (the admin writes both client-side too, so they land either way).
+- **0034, 0035 and 0036 have not been run** (0028–0033 were verified present on 2026-08-17 by
+  probing PostgREST). Without 0034/0035, Notifications → Recall and Attendance → Undo match no rows
+  and the clients throw. **0036 matters most**: it creates the member row at sign-up, which is what
+  stops onboarding replaying, and backfills existing members. Both apps degrade without it.
+  **`create-member` also needs redeploying** for its birth-date/gender half.
 - **Push has never reached a device.** Every piece is deployed and verified present, but
   `VAPID_PRIVATE_KEY` was pasted wrong once (the whole JSON file instead of the value) and its
   replacement was never verified — if wrong, rows write fine and pushes fail silently.
-- **QR scan** — compact format built, never tested on real hardware; the six-character code
+- **QR scan** — built, never tested on real hardware; the six-character code
   (`utils/checkInCode.ts`, first 6 hex of the member UUID, derived) is the fallback. **Staff
-  approving registrations** needs an Edge Function — it flips `profiles.status`, which RLS won't
-  let `staff` do directly. The member bundle is also ~1 MB in one chunk.
+  approving registrations** needs an Edge Function (RLS won't let `staff` flip `profiles.status`).
 
 ### Verifying UI work
 

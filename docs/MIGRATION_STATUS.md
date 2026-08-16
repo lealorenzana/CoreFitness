@@ -277,10 +277,41 @@ stored on the **device**.
   and failures are logged instead of swallowed. (The RLS policy was verified as *not* the cause: a
   member's `update … set seen = true` affects its row correctly.)
 
-Both write through the same deferral as `experience_level`: onboarding runs while the member is
-still `pending_approval` with **no `member_profiles` row**, so the value is parked in localStorage
-and applied on the first read after approval. localStorage is a transport for a pending write here,
-never the source of truth.
+### 0033 did not actually fix it — 0036 does
+
+The paragraph that used to sit here read:
+
+> Both write through the same deferral as `experience_level`: onboarding runs while the member is
+> still `pending_approval` with no `member_profiles` row, so the value is parked in localStorage and
+> applied on the first read after approval. localStorage is a transport for a pending write here,
+> never the source of truth.
+
+Every clause of that is true, and together they describe the bug rather than a fix. **The parking
+lot is per-browser.** "Applied on the first read after approval" can only happen on the one device
+that did the parking. Sign in on a phone after registering on a laptop and there is nothing to
+apply — so `onboarding_completed_at` stays NULL, and the login gate that reads it sends the member
+through all five steps. Again on the next device. Forever.
+
+Reported from a real phone on 2026-08-17: a member who had completed onboarding when the account
+was created was shown it again on their phone browser. The column was NULL and always would be.
+
+`experience_level` was lost the same way, and that one is worse, because Book a Session reads it to
+decide what to recommend — so a member's recommendations were based on an answer the database never
+received.
+
+**0036 fixes the ordering instead of the symptom.** `handle_new_member_signup` now creates the
+`member_profiles` row at sign-up, so onboarding has somewhere to write when it runs; approval fills
+that row in (`apply_registration_details`) instead of inserting it. Existing members are backfilled
+to "onboarded", since every row that existed then belonged to somebody who had already been walked
+through it.
+
+The client keeps a parking lot for the case where the row still somehow does not exist, but it is
+now `auth.users.raw_user_meta_data` (`lib/api/parkedAnswers.ts`) — per **user**, server-side, and
+therefore actually able to survive the trip to another device.
+
+**The lesson, since this is twice now:** moving a flag from localStorage into a column does nothing
+if the write cannot land. Check that the row exists at the moment the write happens, and remember
+that a zero-row UPDATE reports success.
 
 ## Dead files — delete, don't fix
 

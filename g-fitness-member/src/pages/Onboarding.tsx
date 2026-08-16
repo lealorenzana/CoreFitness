@@ -6,8 +6,10 @@ import MobileFrame from '../components/layout/MobileFrame';
 import Avatar from '../components/ui/Avatar';
 import { supabase } from '../lib/supabaseClient';
 import {
-  getCurrentMemberId, setExperienceLevel, markOnboardingComplete,
+  getCurrentMemberId, setExperienceLevel, getExperienceLevel,
+  setInterests as saveInterests, getInterests, markOnboardingComplete,
 } from '../services/bookingService';
+import InterestPicker from '../components/ui/InterestPicker';
 import { getMyProfile } from '../lib/api/profiles';
 import { uploadMyAvatar } from '../lib/api/avatars';
 import { errorMessage } from '../utils/errorMessage';
@@ -46,18 +48,8 @@ const SCHEDULE_OPTIONS = [
   { id: '6-7', label: '6-7 days/week', desc: 'Dedicated athlete' },
 ];
 
-const INTERESTS = [
-  { id: 'strength', label: 'Strength Training' },
-  { id: 'hiit', label: 'HIIT' },
-  { id: 'yoga', label: 'Yoga' },
-  { id: 'boxing', label: 'Boxing' },
-  { id: 'crossfit', label: 'CrossFit' },
-  { id: 'cardio', label: 'Cardio' },
-  { id: 'stretching', label: 'Stretching' },
-  { id: 'dance', label: 'Dance Fitness' },
-  { id: 'swimming', label: 'Swimming' },
-  { id: 'martial-arts', label: 'Martial Arts' },
-];
+// The interests catalogue now lives in `data/activities.ts` as a graph, so the
+// picker can cascade. Ten flat chips used to be declared here.
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -71,14 +63,28 @@ export default function Onboarding() {
   const [photoError, setPhotoError] = useState('');
   const [myName, setMyName] = useState('');
 
-  // Name is only needed for the initials preview on the photo step.
+  // Name is only needed for the initials preview on the photo step. The saved
+  // answers matter because Settings → "Interests & experience" comes back here
+  // to change them — arriving to an empty form would read as "your answers were
+  // lost" and quietly wipe them on save.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const profile = await getMyProfile().catch(() => null);
-      if (!profile || cancelled) return;
-      setMyName(`${profile.first_name} ${profile.last_name}`.trim());
-      setPhotoUrl(profile.photo_url ?? null);
+      if (profile && !cancelled) {
+        setMyName(`${profile.first_name} ${profile.last_name}`.trim());
+        setPhotoUrl(profile.photo_url ?? null);
+      }
+
+      const memberId = await getCurrentMemberId().catch(() => null);
+      if (!memberId || cancelled) return;
+      const [savedLevel, savedInterests] = await Promise.all([
+        getExperienceLevel(memberId).catch(() => null),
+        getInterests(memberId).catch(() => [] as string[]),
+      ]);
+      if (cancelled) return;
+      if (savedLevel) setExperience(savedLevel);
+      if (savedInterests.length > 0) setInterests(savedInterests);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -101,9 +107,6 @@ export default function Onboarding() {
 
   const toggleGoal = (id: string) =>
     setGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
-
-  const toggleInterest = (id: string) =>
-    setInterests(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const canProceed = () => {
     if (step === 0) return goals.length > 0;
@@ -155,29 +158,26 @@ export default function Onboarding() {
 
     // See `leave()` below for where this ends up.
 
-    // Experience level goes to member_profiles, where the class recommendations
-    // actually read it (migration 0016 lets a member set their own). Goals,
-    // schedule and interests have no column yet, so they stay in the local blob
-    // rather than being silently dropped — they feed nothing today either way.
-    if (experience === 'beginner' || experience === 'intermediate' || experience === 'advanced') {
-      const memberId = await getCurrentMemberId().catch(() => null);
-      if (memberId) {
-        // At this point the member is still `pending_approval` and has no
-        // `member_profiles` row — approval creates it. `setExperienceLevel`
-        // parks the answer and applies it the moment the row exists; it used
-        // to write into nothing and report success, so this question was
-        // decorative for every member who ever answered it.
-        //
-        // Still swallowed: onboarding must never strand someone on this screen.
-        await setExperienceLevel(memberId, experience).catch(() => undefined);
-      }
+    // Experience level and interests both go to `member_profiles`, which is
+    // where the class recommendations read them. Since 0036 that row exists
+    // from sign-up, so these writes land immediately instead of being parked.
+    //
+    // Goals and schedule still have no column and no consumer; they stay in the
+    // local blob, and that is worth remembering as a debt rather than reading
+    // as "saved".
+    const memberId = await getCurrentMemberId().catch(() => null);
+
+    if (memberId && (experience === 'beginner' || experience === 'intermediate' || experience === 'advanced')) {
+      // Swallowed deliberately: onboarding must never strand someone here.
+      await setExperienceLevel(memberId, experience).catch(() => undefined);
+    }
+    if (memberId && interests.length > 0) {
+      await saveInterests(memberId, interests).catch(() => undefined);
     }
 
-    // Recorded on the member's row, not this browser (0033). The old
-    // localStorage flag meant a second phone, a desktop or a reinstalled PWA
-    // replayed the whole flow for someone who had already finished it.
-    await markOnboardingComplete(await getCurrentMemberId() ?? '').catch(() => undefined);
-    localStorage.setItem('fitness_preferences', JSON.stringify({ goals, experience, schedule, interests }));
+    // Recorded against the member, not this browser (0033/0036).
+    await markOnboardingComplete(memberId ?? '').catch(() => undefined);
+    localStorage.setItem('fitness_preferences', JSON.stringify({ goals, schedule }));
     await leave();
   };
 
@@ -347,25 +347,10 @@ export default function Onboarding() {
                 <div>
                   <h1 className="text-2xl font-bold text-white">What interests you?</h1>
                   <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Pick activities you'd like to try
+                    Pick one and we'll show you more like it
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map(item => {
-                    const isSelected = interests.includes(item.id);
-                    return (
-                      <button key={item.id} onClick={() => toggleInterest(item.id)}
-                        className="px-4 py-2.5 rounded-full text-xs font-semibold transition-all active:scale-95"
-                        style={{
-                          background: isSelected ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                          border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                          color: isSelected ? '#fff' : 'var(--color-text-secondary)',
-                        }}>
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <InterestPicker selected={interests} onChange={setInterests} />
               </motion.div>
             )}
 
