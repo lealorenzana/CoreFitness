@@ -557,3 +557,28 @@ input[type='number'] {
   from { opacity: 0; transform: translateY(6px) scale(0.96); }
   to   { opacity: 1; transform: none; }
 }
+
+/* ── No pull-to-refresh in the installed Android app ───────────────────────
+   Reported from a real phone: dragging down at the top of a list fired
+   Chrome's pull-to-refresh and reloaded the whole web app. Inside a TWA that
+   reads as the app restarting itself — a flash, a cold boot, and whatever was
+   on screen gone.
+
+   `overscroll-behavior: none` on the document stops the gesture at the root;
+   `contain` on every inner scroller stops the scroll chaining out to the
+   document in the first place, which is what triggers it. Both are needed:
+   the roots alone still let a nested scroller hand the overscroll upward.
+
+   `height: 100%` + `overflow: hidden` on html/body keeps the document itself
+   unscrollable — the app scrolls inside <main>, never the page. */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.overflow-y-auto,
+.overflow-auto,
+.overflow-x-auto {
+  overscroll-behavior: contain;
+}

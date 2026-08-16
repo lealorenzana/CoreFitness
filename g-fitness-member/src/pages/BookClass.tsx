@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import { useLiveData } from '../hooks/useLiveData';
 import DateRail, { buildRail } from '../components/ui/DateRail';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -109,13 +110,21 @@ export default function BookClass() {
   const [confirmSlot, setConfirmSlot] = useState<OpenSlot | null>(null);
   const [notes, setNotes] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /**
+   * `quiet` is what makes the background refresh usable.
+   *
+   * A silent re-poll must not flip the screen back to skeletons, and must not
+   * raise a toast if the phone happened to be on a dead spot of wifi — the
+   * member did not ask for this fetch, so it has no business interrupting them.
+   * Only the first load, and an explicit action, are allowed to do either.
+   */
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const id = await getCurrentMemberId();
       setMemberId(id);
       if (!id) {
-        toast.error('Your session could not be verified. Please sign in again.');
+        if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
       const [bookable, lvl, coaches, ent] = await Promise.all([
@@ -129,13 +138,19 @@ export default function BookClass() {
       setTrainers(coaches);
       setEntitlement(ent);
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load the schedule'));
+      if (!quiet) toast.error(errorMessage(err, 'Could not load the schedule'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Approval happens on the front desk's screen, not this one, so the member
+  // would otherwise sit looking at a stale "Pending" until they navigated away
+  // and back. Pull-to-refresh used to be the workaround; it reloaded the entire
+  // app and is now disabled.
+  useLiveData(() => load(true), { enabled: !confirmClass && !confirmSlot });
 
   const chooseLevel = async (chosen: ExperienceLevel) => {
     if (!memberId) return;

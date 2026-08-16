@@ -20,6 +20,7 @@ import TodayPlanCard from '../components/ui/TodayPlanCard';
 import CheckInSheet from '../components/ui/CheckInSheet';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
+import { useLiveData } from '../hooks/useLiveData';
 import { membershipTerm } from '../utils/membershipTerm';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome, type MemberHome } from '../services/memberHomeService';
@@ -43,23 +44,28 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [checkInOpen, setCheckInOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const id = await getCurrentMemberId();
       if (!id) {
-        toast.error('Your session could not be verified. Please sign in again.');
+        if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
       setHome(await getMemberHome(id));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load your dashboard'));
+      if (!quiet) toast.error(errorMessage(err, 'Could not load your dashboard'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Next session, membership status and the check-in streak all move without
+  // this screen doing anything.
+  useLiveData(() => load(true));
 
   const greeting = (() => {
     const h = new Date().getHours();

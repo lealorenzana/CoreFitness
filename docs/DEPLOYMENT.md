@@ -76,6 +76,24 @@ Configured via `vite-plugin-pwa` in [vite.config.ts](../g-fitness-member/vite.co
   an honest offline error, hence `runtimeCaching: []` and the `supabase.co` navigate-fallback
   denylist. `OfflineBanner` tells the user why data screens are empty.
 
+## No pull-to-refresh inside the app
+
+Reported from a real phone: dragging down at the top of a list fired Chrome's pull-to-refresh and
+reloaded the whole web app. Inside a TWA that reads as the app restarting itself — a flash, a cold
+boot, and whatever was on screen gone. It is disabled with `overscroll-behavior: none` on
+`html, body` and on the shell, plus `contain` on every inner scroller so an overscroll never chains
+out to the document in the first place. Both halves are needed.
+
+Screens keep themselves current instead, via
+[useLiveData](../g-fitness-member/src/hooks/useLiveData.ts): refetch when the app comes back to the
+foreground (`visibilitychange`), on window focus, and on a slow poll that **stops while the document
+is hidden**. Background timers on a phone are a battery complaint and a wasted free-tier quota, and
+nobody is reading the answer. Background refreshes are `quiet` — no skeletons, no error toast — so
+an unrequested fetch never interrupts the member.
+
+Deliberately not Supabase Realtime: that needs the table added to the `supabase_realtime`
+publication, i.e. another migration, for screens where a few seconds of staleness costs nothing.
+
 ## The phone chassis — always full-screen
 
 [PhoneChassis.tsx](../g-fitness-member/src/components/layout/PhoneChassis.tsx) fills the viewport

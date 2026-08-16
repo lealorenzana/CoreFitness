@@ -7,6 +7,7 @@ import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertCircle, ArrowLeft, 
 import Modal from '../components/ui/Modal';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
+import { useLiveData } from '../hooks/useLiveData';
 import {
   getCurrentMemberId,
   listMyBookings,
@@ -53,23 +54,27 @@ export default function BookingHistory() {
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const id = await getCurrentMemberId();
       if (!id) {
-        toast.error('Your session could not be verified. Please sign in again.');
+        if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
       setRows(await listMyBookings(id));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load your bookings'));
+      if (!quiet) toast.error(errorMessage(err, 'Could not load your bookings'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // The status a member checks here is changed by the front desk, not by them.
+  useLiveData(() => load(true));
 
   const upcoming = useMemo(() => rows.filter((r) => isUpcoming(r)), [rows]);
   const past = useMemo(() => rows.filter((r) => !isUpcoming(r)), [rows]);

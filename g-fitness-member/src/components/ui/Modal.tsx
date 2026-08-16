@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -8,6 +9,21 @@ import { X } from 'lucide-react';
  *   - Header with title and close X (top-right)
  *   - Scrollable body
  *   - Footer with Cancel + Confirm buttons (full-width primary CTA at bottom)
+ *
+ * **Portalled to `#modal-root`, and that is not cosmetic.**
+ *
+ * It used to render inline, wherever `<Modal>` happened to sit in the page's
+ * JSX — which is inside `<main>`, the scrolling container, which is
+ * `position: relative`. So `absolute inset-0` resolved against main's *content
+ * box*, not the viewport: the modal was pinned to the top of the entire
+ * scrollable page. Tap Book on a class near the bottom of the schedule and the
+ * dialog opened somewhere far above you, and you had to scroll up to find the
+ * thing you had just opened. Reported from a real phone.
+ *
+ * `#modal-root` is a sibling of `#phone-screen` (see PhoneChassis), so it does
+ * not move with the scroll. It is also `pointer-events: none`, which is why the
+ * wrapper below sets `pointer-events-auto` — forget that and the modal paints
+ * perfectly and cannot be tapped.
  */
 interface ModalProps {
   isOpen: boolean;
@@ -30,7 +46,14 @@ export default function Modal({
   footer, onConfirm, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
   confirmDisabled, hideFooter,
 }: ModalProps) {
-  return (
+  // Falls back to `document.body` only so a stray render outside the phone
+  // shell cannot crash the page; in the app the root is always there.
+  const host = typeof document === 'undefined'
+    ? null
+    : document.getElementById('modal-root') ?? document.body;
+  if (!host) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="absolute inset-0 z-[200] pointer-events-auto">
@@ -107,6 +130,7 @@ export default function Modal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    host
   );
 }

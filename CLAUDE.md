@@ -40,16 +40,16 @@ migrations, RLS policies and four Edge Functions (`create-trainer`, `create-memb
 **Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is Supabase-backed.
 **"No mock data remains" was claimed twice and was wrong twice** — member Events carried six
 invented 2024 events, and the admin chatbot answered from three gyms that do not exist, four
-invented coaches, three invented phone numbers and plans found nowhere in `membership_plans`. Grep
-found neither. Opening the page did. The rules that keep getting violated:
+invented coaches, three invented phone numbers and invented prices. Grep found neither; opening the
+page did. The rules that keep getting violated:
 - Members are **archived, never deleted**; analytics return **zero, never a plausible invention**.
 - A missed lookup renders **nothing, never a hardcoded fallback identity** — member Profile once
   shipped `<img src="/eya.png">`, so every member saw a real person's face on their own profile.
 - Payments distinguish **`paid_on` from `created_at`**, and members store a **birth date, not an
   age** — a derived number cannot go stale, a stored one silently does.
-- **Calendar dates come from `utils/dates.ts`, never `toISOString()`.** Manila is UTC+8, so the
-  UTC date is yesterday for the first eight hours of every local day — which hid every pre-8am
-  check-in from the admin Attendance page and from its duplicate guard.
+- **Calendar dates come from `utils/dates.ts`, never `toISOString()`.** Manila is UTC+8, so the UTC
+  date is yesterday for the first eight hours of every local day — which hid every pre-8am check-in
+  from the admin Attendance page and from its own duplicate guard.
 - **A control that writes a flag nothing reads is a lie.** Wire it to something observable, or cut.
   The whole Gym Information form was write-only from 0013 until receipts and Schedule read it.
 - **Per-user state never lives in `localStorage`** — *and moving it to a column is not the fix
@@ -65,8 +65,7 @@ re-seed in `main.tsx`. When auditing, grep layouts and shared modals, not just `
 
 ### Auth and routing — real Supabase Auth
 
-`profiles.role` (`admin`/`staff`/`trainer`/`member`) and `profiles.status` (`active`/
-`pending_approval`/`suspended`/`archived`) are the source of truth — not localStorage flags.
+`profiles.role` (`admin`/`staff`/`trainer`/`member`) and `profiles.status` (`active`/`pending_approval`/`suspended`/`archived`) are the source of truth — not localStorage flags.
 **`staff`** is a front-desk role (0011/0012): payments, check-ins and membership extensions, but not
 plan pricing, trainers, accounts or settings — everything staff can do is a recorded, reversible
 transaction. `<ProtectedRoute adminOnly>` is convenience; **RLS is the boundary.** The member app
@@ -84,9 +83,9 @@ that a **zero-row `UPDATE`/`DELETE` is not an error** — it reports success and
 ### Notifications and web push
 
 Two channels, deliberately unequal. The `notifications` row is the **record** and is always
-awaited; the push is the **alert** — fire-and-forget, never allowed to throw, because a booking
-must not fail to approve over an uninstalled app (`lib/api/notify.ts`). **Preferences gate
-delivery, never the record.** **Push needs HTTPS — never testable on `http://localhost`.**
+awaited; the push is the **alert** — fire-and-forget, never allowed to throw, because a booking must
+not fail to approve over an uninstalled app (`lib/api/notify.ts`). **Preferences gate delivery,
+never the record.** **Push needs HTTPS — never testable on `http://localhost`.**
 
 The bell is a worktray (0029) — swipe clears, swipe archives, delete only behind a multi-select on
 `/{member,trainer}/notifications`; **the desk can delete anyone's rows only since 0034**, which the
@@ -95,8 +94,7 @@ admin "Recall" button needs. State table:
 
 **Training plans (0030)** are the one server-scheduled thing here: pg_cron calls
 `send_due_gym_reminders()`, which writes a row only if the planned time has passed, within three
-hours, and the member has not checked in. pg_cron is **optional** — check `select * from cron.job;`
-before believing it is live.
+hours, and the member has not checked in. pg_cron is **optional** — check `cron.job` first.
 
 ### Mobile shell — always full-screen
 
@@ -110,11 +108,14 @@ Pages portal by id into `#phone-screen`, `#phone-toast-root`, `#phone-overlay-ro
 `#modal-root` — all four must exist, and **all four are `pointer-events: none`**, so anything
 portalled in **must** set `pointer-events-auto` on its own container or it paints perfectly and
 cannot be tapped. That shipped three times in one session, including an undismissable modal.
+**An overlay must portal to one of those roots, never render inline**: `<main>` is `relative` and
+scrolls, so `absolute inset-0` inside a page resolves to the top of the *content*, not the screen —
+measured at −2000px on a scrolled list. `overscroll-behavior` on the shell is what stops Chrome's
+pull-to-refresh reloading the whole TWA; screens stay fresh via `hooks/useLiveData.ts` instead.
 
 ### Styling and design system
 
-**Full reference, including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).** The parts
-you cannot afford to rediscover:
+**Full reference including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).** The parts you cannot afford to rediscover:
 - **Admin is Tailwind v3** (no cascade layers). **Member is v4** with **no config file**: one was
   silently ignored, and classes defined only there emitted *no CSS* for months. **Unlayered author
   CSS beats every layer**, whatever the specificity.
@@ -183,12 +184,11 @@ rebuilt page by page on real data. Outstanding:
   and the clients throw. **0036 matters most**: it creates the member row at sign-up, which is what
   stops onboarding replaying, and backfills existing members. Both apps degrade without it.
   **`create-member` also needs redeploying** for its birth-date/gender half.
-- **Push has never reached a device.** Every piece is deployed and verified present, but
-  `VAPID_PRIVATE_KEY` was pasted wrong once (the whole JSON file instead of the value) and its
-  replacement was never verified — if wrong, rows write fine and pushes fail silently.
+- ~~Push has never reached a device.~~ **Confirmed delivering to a real Android phone on
+  2026-08-17**, so `VAPID_PRIVATE_KEY` is right and the whole chain works end to end.
 - **QR scan** — built, never tested on real hardware; the six-character code
   (`utils/checkInCode.ts`, first 6 hex of the member UUID, derived) is the fallback. **Staff
-  approving registrations** needs an Edge Function (RLS won't let `staff` flip `profiles.status`).
+  approving registrations** needs an Edge Function (RLS won't let `staff` set `profiles.status`).
 
 ### Verifying UI work
 
