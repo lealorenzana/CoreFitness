@@ -4,7 +4,10 @@
 // Postgres column names exactly; src/lib/api/*.ts maps these to the app's
 // existing camelCase UI types as each page is migrated off SharedStorage.
 
-export type UserRole = 'admin' | 'trainer' | 'member';
+/** `staff` is the front-desk role added in 0011 — it was missing here for
+ *  several migrations, so any code narrowing on this union silently excluded a
+ *  real role that exists in the database. */
+export type UserRole = 'admin' | 'staff' | 'trainer' | 'member';
 export type ProfileStatus = 'active' | 'pending_approval' | 'suspended' | 'archived';
 export type MembershipStatus = 'active' | 'expired' | 'frozen' | 'cancelled' | 'pending';
 export type PlanTier = 'free' | 'freemium' | 'premium';
@@ -188,6 +191,44 @@ export interface NotificationRow {
   archived_at: string | null;
   cleared_at: string | null;
   created_at: string;
+}
+
+/**
+ * One row of the audit trail (0037), as returned by the `activity_feed` view.
+ *
+ * Written **only** by SECURITY DEFINER triggers — `activity_log` has a SELECT
+ * policy for admins and no INSERT/UPDATE/DELETE policy at all, so there is no
+ * write path from this app and none is wanted. Anything that mutates a booking,
+ * payment, check-in, membership, profile, plan, event or class template lands
+ * here whether it came from the admin app, the member app, an Edge Function or
+ * the SQL editor.
+ */
+export interface ActivityFeedRow {
+  id: number;
+  occurred_at: string;
+  /** Dotted `subject.verb`, past tense — e.g. `booking.cancelled`. */
+  action: string;
+  subject_type: string;
+  subject_id: string | null;
+  /** Human sentence composed at write time, when the referenced names still existed. */
+  summary: string;
+  detail: Record<string, unknown> | null;
+  /**
+   * Reconstructed by 0037's backfill from timestamps that predate the log.
+   * Real events at real times, but usually with no known actor and only partial
+   * coverage — the page labels these rather than passing them off as live records.
+   */
+  reconstructed: boolean;
+  actor_id: string | null;
+  /** The role the actor held **when they acted**, not their role today. */
+  actor_role: UserRole | null;
+  /** Live name from `profiles`, falling back to the write-time snapshot. Null
+   *  when the actor is genuinely unknown — never a placeholder. */
+  actor_name: string | null;
+  actor_photo_url: string | null;
+  /** Who the entry is *about*, when that differs from who did it. */
+  member_id: string | null;
+  member_name: string | null;
 }
 
 export interface PendingRegistrationRow {

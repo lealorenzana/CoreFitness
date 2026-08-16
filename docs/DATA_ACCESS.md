@@ -92,3 +92,29 @@ curl -s "$URL/rest/v1/member_profiles?select=date_of_birth&limit=1" \
 **Policy-only migrations (0034, 0035) cannot be detected this way**; there is no anonymous probe
 for "does a DELETE policy exist". Those have to be confirmed in the SQL editor, or by using the
 feature and seeing the client's row-count guard stay quiet.
+
+### `.or()` breaks on a comma in user input
+
+PostgREST's `or=` is a **comma-separated list wrapped in parentheses**, so a comma, paren, `*`, `%`
+or backslash inside a search term is parsed as filter syntax rather than as text. Measured against
+the live project: the sanitised form returns `200`, and the same query with a raw comma in the term
+returns **`400 PGRST100`** — so a front-desk search for `Dela Cruz, Maria` would have killed the
+entire members section of the palette, silently, because the failure was caught per-section.
+
+Strip `,()*%\` from anything interpolated into `.or()` (`services/searchService.ts` does). Dots are
+safe and must survive — email addresses are the single most-searched thing here. For a **single**
+`.ilike()` call there is no list to break, so escape `%` and `_` properly instead of stripping them
+(`lib/api/activityLog.ts` does), or a member searching `50%` matches every row in the table.
+
+### `OLD` is unassigned in an INSERT trigger
+
+In PL/pgSQL, reading `OLD.anything` during an `INSERT` raises *"record \"old\" is not assigned yet"*
+and **aborts the statement**. So the innocuous-looking `coalesce(new.col, old.col)` at the top of an
+insert-or-update trigger does not fall back to NULL — it makes every INSERT on that table fail. In
+0037 that would have meant no member could ever book a class again.
+
+`NEW` is populated for both INSERT and UPDATE, so the coalesce is never needed on an
+`after insert or update` trigger. On a trigger that also handles DELETE, branch on `TG_OP` *before*
+touching either record. Note that a green `tsc` build and a SQL parser both pass this happily —
+`libpg_query` treats a plpgsql body as an opaque string literal, so only a running Postgres or a
+careful read catches it.

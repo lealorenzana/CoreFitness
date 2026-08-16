@@ -28,15 +28,29 @@ if one statement partway through errors — always verify each step before movin
 6. [`migrations/0006_fix_rls_policies.sql`](migrations/0006_fix_rls_policies.sql) — idempotent
    rebuild of every policy/trigger from 0002. Only needed if you hit the failure mode below;
    safe to run even if 0002 applied cleanly (drops-if-exists before every create).
-7. **`0007` through `0036`** — keep going in numeric order. They are not listed individually here
+7. **`0007` through `0037`** — keep going in numeric order. They are not listed individually here
    because each one's own header explains what it does and why. The recent ones:
    `0028` earned training levels + `achievement_unlocks`, `0029` archive/clear state on
    `notifications`, `0030` weekly gym plans + the reminder job, `0031` date of birth, gender and
    emergency contact at sign-up, `0032` member-controlled sharing with trainers, `0033` onboarding
    completion on the member row instead of localStorage, `0034` front-desk delete on `notifications`
    (the admin "Recall" button), `0035` same-day undo of a check-in, `0036` the member row created at
-   sign-up. What changed is summarised in
+   sign-up, `0037` the `activity_log` audit trail. What changed is summarised in
    [docs/MIGRATION_STATUS.md](../docs/MIGRATION_STATUS.md).
+
+   **`0037` is the only migration that adds triggers to tables you write to constantly** —
+   `bookings`, `payments`, `attendance`, `memberships`, `profiles`, `membership_plans`, `events`
+   and `class_templates`. Every trigger is `after`, so it cannot change what is written; each one
+   calls `log_activity()`, which is SECURITY DEFINER because `activity_log` has an admin SELECT
+   policy and **no INSERT policy at all** — nothing holding an anon or authenticated key can write
+   or forge a row. The migration ends by backfilling history from existing timestamps, flagged
+   `reconstructed = true`. Re-running it is safe: every backfill insert is guarded by `not exists`.
+
+   Booking **cancellations are deliberately not backfilled.** `bookings` stores no `cancelled_at`
+   and no `cancelled_by`, so for a row already sitting at `status = 'cancelled'` there is no honest
+   answer to "when?" or "by whom?" — dating them by `requested_at` puts the cancellation before the
+   booking existed, and dating them `now()` claims they all happened at migration time. Every
+   cancellation from 0037 onward is captured exactly, including whether the member or the desk did it.
 
    **`0036` is not optional if members are re-seeing onboarding.** 0033 moved the completion flag
    into `member_profiles`, but that row did not exist until approval — and onboarding runs before

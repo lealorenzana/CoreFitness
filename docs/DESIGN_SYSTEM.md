@@ -186,3 +186,39 @@ So anything that must be *correct* rather than merely pretty — a toast dismiss
 reaching its final width, an overlay unmounting — uses a CSS transition or `setTimeout`. Framer
 Motion is for decoration only. A rAF-driven dismissal simply never dismisses on a phone whose
 screen went off mid-animation.
+
+## Framer overwrites `transform`, so never centre with it (admin only)
+
+The admin global-search palette shipped sitting half its own width right of centre. It used the
+ordinary Tailwind idiom `fixed left-1/2 -translate-x-1/2`, and Framer Motion animated `y` and
+`scale` on the same element. Framer writes `transform` **inline, every frame**, which replaces the
+class's `translateX(-50%)` — leaving `left: 50%` with nothing pulling it back.
+
+Measured on the live page: the old markup was 0px off with no transform applied and **+340px off**
+the instant a Framer transform landed — exactly half the 680px panel.
+
+**This can only happen in the admin app**, and the reason is the v3/v4 split:
+
+| App | Tailwind | `-translate-x-1/2` compiles to | Survives Framer? |
+|---|---|---|---|
+| `g-fitness-admin` | v3 | `transform: translate(var(--tw-translate-x), …) rotate(…) …` | **No** |
+| `g-fitness-member` | v4 | `translate: var(--tw-translate-x) var(--tw-translate-y)` | **Yes** |
+
+`translate` is a separate CSS property that composes with `transform` rather than competing with it,
+so the member app's `Modal.tsx` and `CheckInSheet.tsx` — both `motion.div`s centred with
+`-translate-y-1/2` — measured a 0px shift and need no change. Verified in both built bundles, not
+in source.
+
+Two fixes, both in use:
+
+- **Let a flex parent do it.** `GlobalSearch` centres inside a `fixed inset-0 flex justify-center`
+  wrapper and the animated panel carries no positioning transform at all. Preferred: layout stops
+  depending on an animation library entirely.
+- **Hand the offset to Framer.** `style={{ x: '-50%' }}` instead of the class — Framer composes it
+  into the transform it already owns. Used by the `AdminLogin` glow orbs, which animate `scale`.
+
+An element animated with `opacity` only is unaffected (Framer never writes `transform`), which is
+why the `AdminLogin` scroll indicator still uses the class and still measures 0px off.
+
+**The general rule: anything Framer animates must not also be load-bearing for layout.** Same family
+as the `AnimatePresence` exit problem — treat Framer as decoration, never as positioning.

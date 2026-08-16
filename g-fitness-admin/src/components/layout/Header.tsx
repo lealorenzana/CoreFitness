@@ -4,6 +4,7 @@ import { useGymContext } from '../../hooks/useGymContext';
 import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin } from 'lucide-react';
 import { dashboardService, type HeaderAlert } from '../../services/dashboardService';
 import { getMyProfile } from '../../lib/api/profiles';
+import GlobalSearch from '../ui/GlobalSearch';
 
 const SURFACE        = 'var(--color-surface)';
 const SURFACE_RAISED = 'var(--color-surface-raised)';
@@ -80,11 +81,12 @@ export default function Header() {
         </div>
       </motion.div>
 
-      {/* The search box that used to sit here was never wired to anything — it
-          held its own state and no screen ever read it. A box that swallows
-          what you type is worse than no box, so it's gone until there is a
-          search to run. */}
-      <div className="flex-1" />
+      {/* A search box sat here for months holding its own state, with no screen
+          reading it — it was removed rather than left to swallow what you type.
+          This one runs a real query against nine tables. */}
+      <div className="flex-1 flex justify-center px-2">
+        <GlobalSearch />
+      </div>
 
       <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 flex-shrink-0">
         <div className="relative">

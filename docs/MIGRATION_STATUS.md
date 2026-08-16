@@ -2,6 +2,43 @@
 
 Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-08-15**.
 
+## The audit trail (0037)
+
+Added because the schema could not answer *"who cancelled this booking — the member or the front
+desk?"*. Migration 0016 lets a member self-cancel by flipping `bookings.status` to `'cancelled'`,
+and that is the entire write: **no `cancelled_at`, no `cancelled_by`**. A row cancelled by a member
+this morning is byte-identical to one the desk cancelled last month. The same hole existed for
+suspensions, freezes, price changes and deleted check-ins.
+
+`activity_log` closes it. Written **only** by SECURITY DEFINER triggers on `bookings`, `pt_sessions`,
+`payments`, `attendance`, `memberships`, `profiles`, `membership_plans`, `events` and
+`class_templates` — 41 distinct actions. There is an admin SELECT policy and **no INSERT, UPDATE or
+DELETE policy at all**, which is the point: a log the client can write is a log the client can skip
+or forge, and it would miss everything done from the member app, an Edge Function or the SQL editor.
+Same reasoning as `achievement_unlocks` in 0028.
+
+Three deliberate design choices:
+
+- **No foreign keys.** History outlives its subjects — an archived member, a deleted class, a
+  retired plan must not take the record of what happened with them, and must not block the write.
+  `actor_id` referencing `profiles` would have made the audit insert fail for any actor without a
+  profile row yet, which would have broken sign-up itself.
+- **`actor_role` is snapshotted, the name is joined.** The role at the time is a historical fact — a
+  receptionist promoted to admin next year must not retroactively become an admin in every row she
+  ever wrote. A name is not: a corrected spelling should show through, so `activity_feed` joins
+  `profiles` live and falls back to the write-time label only when the profile is gone.
+- **`classes` is not logged.** `generate_class_instances()` materialises weeks of rows at a time, so
+  logging them would bury every human action under machine noise. Templates are what a person edits.
+
+**Cancellations predating 0037 are not backfilled.** There is no honest timestamp for them — dating
+them by `requested_at` puts the cancellation before the booking existed, and `now()` claims they all
+happened at migration time. Payments, check-ins, booking requests/approvals/rejections, PT sessions,
+memberships, registrations and events *are* backfilled from their existing timestamps and flagged
+`reconstructed = true`, which the Activity page labels rather than passing off as a live record.
+
+Not yet run against the live project — `activity_log` answered `PGRST205` on 2026-08-17. Until it is
+run, the Activity page renders a panel naming the migration instead of an empty list.
+
 ## Page audit
 
 **The migration is complete. Nothing in either app reads mock data.** `SharedStorage` is deleted

@@ -20,6 +20,7 @@ import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
 import Events from './pages/Events';
 import Notifications from './pages/Notifications';
+import Activity from './pages/Activity';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -60,6 +61,11 @@ function App() {
             <Route path="bookings" element={<Bookings />} />
             <Route path="events" element={<Events />} />
             <Route path="notifications" element={<Notifications />} />
+            {/* Admin-only, and not merely for tidiness: the point of an audit
+                trail is that the owner can review a shift, so RLS gives `staff`
+                no read access to `activity_log` at all. This guard only stops
+                them landing on a page that would render empty. */}
+            <Route path="activity" element={<ProtectedRoute adminOnly><Activity /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>
