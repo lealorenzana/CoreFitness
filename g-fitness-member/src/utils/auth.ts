@@ -66,6 +66,51 @@ export const logout = async (): Promise<void> => {
   localStorage.removeItem('isAuthenticated');
 };
 
+/**
+ * Rebuild the legacy cache from a live session.
+ *
+ * Staying signed in means `login()` does not run again on the next app launch —
+ * and `login()` is the only thing that writes `localStorage['user']`. So if that
+ * key is ever missing while the Supabase session is perfectly valid, the member
+ * is *logged in* but the six pages still on `getCurrentUser()` (Home, BookClass,
+ * BookingHistory, PaymentHistory, RenewMembership, Trainers) all read null and
+ * render empty. A persistent session makes that window permanent instead of
+ * lasting until the next sign-in, so it has to be repaired on boot.
+ *
+ * Cheap: returns immediately when the cache is already there, which is the
+ * normal case. Never throws — a failure here must not block rendering.
+ */
+export const syncUserCache = async (): Promise<void> => {
+  try {
+    if (localStorage.getItem('user')) return;
+
+    const { data } = await supabase.auth.getSession();   // local read, no network
+    const userId = data.session?.user.id;
+    if (!userId) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email')
+      .eq('id', userId)
+      .single();
+    if (!profile) return;
+
+    const userData: User = {
+      id: profile.id,
+      email: profile.email,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      name: `${profile.first_name} ${profile.last_name}`,
+      membershipType: '',
+      membershipStatus: '',
+    };
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('isAuthenticated', 'true');
+  } catch {
+    /* best effort — the async lib/api layer is the real source of truth */
+  }
+};
+
 export const getCurrentUser = (): User | null => {
   const userData = localStorage.getItem('user');
   return userData ? JSON.parse(userData) : null;

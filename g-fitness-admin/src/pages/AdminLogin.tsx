@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
 import { supabase } from '../lib/supabaseClient';
+import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
 
 // Floating particles
 function Particles() {
@@ -43,7 +44,9 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  // Defaults to the last choice, and to ON for a first-time sign-in — the
+  // expectation here is Facebook-style: signed in until you press Logout.
+  const [rememberMe, setRememberMe] = useState(getSessionPersistence);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 3D tilt effect
@@ -70,6 +73,11 @@ export default function AdminLogin() {
     e.preventDefault();
     if (!email || !password) { showToast('Please enter both email and password', 'error'); return; }
     setIsLoading(true);
+
+    // BEFORE the sign-in, not after: the storage adapter is consulted when
+    // Supabase writes the token, so the choice has to be recorded first or the
+    // session lands in the wrong store.
+    setSessionPersistence(rememberMe);
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
@@ -110,12 +118,19 @@ export default function AdminLogin() {
 
       {/* Animated glow orbs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vh] h-[60vh] rounded-b-[50%]" style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(80px)' }} />
-      <motion.div className="absolute top-0 left-1/2 -translate-x-1/2 w-[100vh] h-[60vh] rounded-b-full"
-        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)' }}
+      {/* `x: '-50%'` is handed to Framer instead of using `-translate-x-1/2`.
+          Admin is Tailwind v3, where that class compiles to `transform:
+          translate(…)` — and these orbs animate `scale`, so Framer overwrites
+          `transform` every frame and the centring is silently dropped. (Member
+          is v4, which compiles to the standalone `translate` property and is
+          immune; verified in both built bundles.) Framer composes `x` into the
+          transform it owns, so the two no longer fight. */}
+      <motion.div className="absolute top-0 left-1/2 w-[100vh] h-[60vh] rounded-b-full"
+        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)', x: '-50%' }}
         animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.98, 1.02, 0.98] }}
         transition={{ duration: 8, repeat: Infinity, repeatType: 'mirror' }} />
-      <motion.div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[90vh] h-[90vh] rounded-t-full"
-        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)' }}
+      <motion.div className="absolute bottom-0 left-1/2 w-[90vh] h-[90vh] rounded-t-full"
+        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)', x: '-50%' }}
         animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.1, 1] }}
         transition={{ duration: 6, repeat: Infinity, repeatType: 'mirror', delay: 1 }} />
 

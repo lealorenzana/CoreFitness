@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
+import { syncUserCache } from './utils/auth';
 import Layout from './components/layout/Layout';
 import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
@@ -72,6 +73,10 @@ function RoleProtectedRoute({
       if (active) {
         setStatus(profile?.role === role && profile?.status === 'active' ? 'authorized' : 'unauthorized');
       }
+      // The session survives app restarts, so `login()` — the only writer of the
+      // legacy `localStorage['user']` cache — may not have run this launch.
+      // Repair it before the pages that still read it synchronously mount.
+      void syncUserCache();
     }
 
     checkAccess();
