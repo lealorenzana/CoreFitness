@@ -156,3 +156,33 @@ top half with no other symptom. Trainers get the same pill without the centre bu
 The trainers directory **lost its nav tab** to make room. It is reached from Home's shortcuts and
 the Book screen's "Coaches" button. If you remove both, put the tab back — a routed page nothing
 links to is a page nobody visits.
+
+## Popovers inside a scrolling modal
+
+`g-fitness-admin/src/components/ui/Popover.tsx` — used by the admin date and time pickers, which
+open inside modal bodies that are themselves `overflow-y-auto`.
+
+Three things are load-bearing:
+
+- **It portals to `document.body`** and positions from the anchor's `getBoundingClientRect()`.
+  Rendered in place, it would be clipped by the modal's own scroll container.
+- **The scroll listener is capture-phase** (`addEventListener('scroll', place, true)`). Scrolling
+  the modal body never reaches `window`, so a normal bubbling listener leaves the panel floating
+  where the anchor used to be.
+- **It closes on `mousedown`, not `click`.** A document-level `click` listener fires before a
+  button *inside* the panel receives its own event, so the panel closes and the click lands on
+  nothing.
+
+It also measures before painting (`visibility: hidden` until placed) and flips above the anchor
+when there is no room below, clamping to an 8px margin so it is never partly offscreen.
+`zIndex: 300`, above modals at `z-50` and `z-[200]`.
+
+## Animation you are allowed to depend on
+
+**`requestAnimationFrame` does not fire on a page that is not compositing** — a background tab, a
+locked phone, or this harness's browser pane when it is not displayed.
+
+So anything that must be *correct* rather than merely pretty — a toast dismissing, a progress bar
+reaching its final width, an overlay unmounting — uses a CSS transition or `setTimeout`. Framer
+Motion is for decoration only. A rAF-driven dismissal simply never dismisses on a phone whose
+screen went off mid-animation.

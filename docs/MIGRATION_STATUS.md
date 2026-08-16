@@ -240,12 +240,24 @@ it went unnoticed for months. Now on `events` + `event_registrations` (0014). Al
 copying nothing and setting nothing. The category filters (Classes/Workshops/Competitions/Social)
 went too — `events` has no category column, so they filtered a taxonomy that does not exist.
 
-**Admin chatbot** (`g-fitness-admin/src/data/chatbot.ts`) — *not yet fixed*. It hardcodes
-`Basic ₱800 / Standard ₱1,500 / Premium ₱2,500`, the same invented pricing purged from the member
-app, and gym hours that ignore `gym_settings.opening_time`. It also answers *member* questions
-(hours, fees, location) inside the **admin** panel, where the person reading is the one who sets
-those values. Either wire it to `membership_plans` + `gym_settings` or delete it; it should not ship
-quoting prices the database has never heard of.
+**Admin chatbot** (`g-fitness-admin/src/data/chatbot.ts`) — **fixed 2026-08-17.** It was the last
+mock data in either app, and almost all of it was mock: `Basic ₱800 / Standard ₱1,500 /
+Premium ₱2,500` (the same invented pricing purged from the member app), hours of 5:00 AM–10:00 PM
+that contradicted `gym_settings`, **three gyms that do not exist** (G-Fitness Poblacion, Fitness
+Regency, Ferrer Fitness), **four invented coaches**, **three invented phone numbers**, an invented
+class timetable and an invented facilities list including a boxing ring and a yoga studio.
+
+Now: `services/chatbotService.ts` loads `gym_settings`, active `membership_plans`, the trainer
+roster and the active `class_templates`; `data/chatbot.ts` is a pure function from that context to
+the answer table. Each source degrades independently — a failed trainer read must not blank the
+opening hours — and **a section with no data names the page that fills it rather than guessing**
+("The opening hours have not been set yet. You can set them in Settings → Gym Information.").
+Facilities has no data source at all, so it answers with the gym's own `activity_options` and says
+outright that the system keeps no equipment inventory.
+
+Two regex bugs went with it, both found by *running* the patterns rather than reading them:
+`/hi/` matched "this", "which" and "hindi", so "What is this?" was answered with a greeting; and
+`/location/` never matched "Where are you located?", which fell through to the fallback.
 
 ## Per-user state must not live in localStorage (0033)
 

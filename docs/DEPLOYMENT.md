@@ -76,21 +76,23 @@ Configured via `vite-plugin-pwa` in [vite.config.ts](../g-fitness-member/vite.co
   an honest offline error, hence `runtimeCaching: []` and the `supabase.co` navigate-fallback
   denylist. `OfflineBanner` tells the user why data screens are empty.
 
-## The responsive phone chassis
+## The phone chassis — always full-screen
 
-[PhoneChassis.tsx](../g-fitness-member/src/components/layout/PhoneChassis.tsx) owns the decorative
-375×812 frame and decides whether to draw it:
+[PhoneChassis.tsx](../g-fitness-member/src/components/layout/PhoneChassis.tsx) fills the viewport
+via `100dvh` + `env(safe-area-inset-*)`, on every surface.
 
-- **Desktop browser (≥768px, not installed)** → full chassis with fake notch/status bar, for
-  demoing the app as a phone on a laptop during the defense.
-- **Real phone or installed PWA** (`display-mode: standalone`, or viewport <768px) → chassis
-  removed, app fills the screen using `100dvh` + `env(safe-area-inset-*)`.
+**There is no decorative phone frame.** It used to draw a fake 375×812 bezel, notch and "9:41"
+status bar on desktop browsers, on the theory that it demoed better on a laptop. It was removed:
+the app ships as a real Android app, so the frame was a picture of a phone drawn inside a phone,
+and the two branches meant every layout bug had to be found twice. Use `dvh`, not `vh`.
 
-Both `Layout.tsx` (authenticated) and `MobileFrame.tsx` (login/terms/privacy) delegate to it.
+All three shells — `Layout.tsx` (authenticated), `MobileFrame.tsx` (login/terms/privacy) and
+`TrainerLayout.tsx` — delegate to it. Content scrolls inside `<main>`, not the page.
 
 **The portal roots (`#phone-screen`, `#phone-toast-root`, `#phone-overlay-root`, `#modal-root`)
-must exist in both branches** — pages portal into them by id, so dropping one silently breaks
-toasts and modals in that mode only.
+must all exist** — pages portal into them by id, so dropping one silently breaks toasts or modals.
+Those roots are `pointer-events: none`, so anything portalled in must set `pointer-events-auto` on
+its own container, or it paints perfectly and cannot be tapped.
 
 `index.html` needs `viewport-fit=cover` for the safe-area insets to resolve.
 
@@ -125,3 +127,36 @@ both were verified, but re-check them if the file ever 404s or returns HTML.
 still runs but shows a browser URL bar instead of looking native.
 
 Sideloaded APKs trigger Android's "install from unknown sources" prompt — expected, and free.
+
+**PWABuilder is a website, and the machine has no JDK.** Regenerating means uploading
+`signing.keystore` in a browser and downloading the package by hand — it cannot be scripted from
+this repo. Budget for it being a manual step, and check first whether it is needed at all: if the
+name, icon, package ID, `start_url` and `scope` are unchanged, a Vercel deploy already updated
+every installed phone.
+
+## Deploy state, last verified 2026-08-17
+
+Deployed by promoting a verified preview rather than building straight to production, so the bytes
+that went live are the bytes that were checked:
+
+```bash
+cd g-fitness-member && npx vercel deploy --yes        # preview URL
+npx vercel promote <preview-url> --yes                # same build → production
+```
+
+What was checked on the live URL after promotion — repeat these, not just an HTTP 200, because an
+unrelated SPA and a Vercel login wall both return 200:
+
+| Check | Expected |
+|---|---|
+| `<title>` | `Core Fitness` (**not** `Login – Vercel`) |
+| `/manifest.webmanifest` | `application/manifest+json`, `name: Core Fitness`, `start_url: /`, `scope: /` |
+| `/.well-known/assetlinks.json` | `application/json`, fingerprint `51:A4:…:7D:26` |
+| `/login` | 200 — the SPA rewrite, not a 404 |
+| Google digitalassetlinks | `statements` length 1, `errorCode` absent |
+| Bundle `grep sb_secret` | one hit, inside supabase-js's own key-format check — **no key** |
+| Bundle `grep service_role` / JWTs | zero |
+
+The page was also opened at 375×812 and read back: the login screen renders, no console errors,
+every asset 200. The manifest and package ID were unchanged by this deploy, so the existing APK
+needed no rebuild.
