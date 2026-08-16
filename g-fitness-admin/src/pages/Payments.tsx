@@ -1,19 +1,32 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Card from '../components/ui/Card';
 import Pagination from '../components/ui/Pagination';
-import RecordPaymentModal from '../components/ui/RecordPaymentModal';
+import RecordPaymentModal, { type RecordPaymentInput } from '../components/ui/RecordPaymentModal';
 import ViewReceiptModal from '../components/ui/ViewReceiptModal';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { DollarSign, CheckCircle, XCircle, Clock, Download, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Banknote, CheckCircle, XCircle, Clock, Download, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import { SharedStorage } from '../utils/sharedStorage';
+import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
+import { listMembers } from '../lib/api/members';
+import { listMemberships } from '../lib/api/memberships';
+import { notifyUser } from '../lib/api/notify';
 
 interface Payment {
-  id: string; memberName: string; memberId: string;
+  id: string; memberName: string; memberId: string; membershipId: string | null;
   amount: number; plan: string; method: string;
   status: 'completed' | 'pending' | 'failed';
   date: string; dueDate: string; invoiceNumber: string;
+}
+
+/** The member's current plan, shown in the Record Payment form so staff aren't
+ *  typing an amount blind against a plan they can't see. */
+export interface MemberPlanInfo {
+  membershipId: string;
+  /** NULL on a non-expiring plan (0024) — recordPayment leaves the expiry unset. */
+  durationDays: number | null;
+  planName: string;
+  planPrice: number;
 }
 
 interface MemberGroup {
@@ -32,48 +45,70 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  // memberId -> the member's current plan, for the Record Payment form
+  const [memberMembership, setMemberMembership] = useState<Record<string, MemberPlanInfo>>({});
 
-  const defaultPayments: Payment[] = [
-    { id: '1', memberName: 'Maria Santos', memberId: 'GF-2024-001', amount: 2500, plan: 'Premium', method: 'gcash', status: 'completed', date: '2024-06-01', dueDate: '2024-07-01', invoiceNumber: 'INV-2024-001' },
-    { id: '2', memberName: 'Juan Dela Cruz', memberId: 'GF-2024-002', amount: 1500, plan: 'Standard', method: 'cash', status: 'completed', date: '2024-06-02', dueDate: '2024-07-02', invoiceNumber: 'INV-2024-002' },
-    { id: '3', memberName: 'Pedro Reyes', memberId: 'GF-2024-003', amount: 800, plan: 'Basic', method: 'card', status: 'pending', date: '2024-06-03', dueDate: '2024-06-05', invoiceNumber: 'INV-2024-003' },
-    { id: '4', memberName: 'Ana Garcia', memberId: 'GF-2024-004', amount: 2500, plan: 'Premium', method: 'bank', status: 'completed', date: '2024-06-03', dueDate: '2024-07-03', invoiceNumber: 'INV-2024-004' },
-    { id: '5', memberName: 'Carlos Mendoza', memberId: 'GF-2024-005', amount: 1500, plan: 'Standard', method: 'gcash', status: 'failed', date: '2024-06-04', dueDate: '2024-06-04', invoiceNumber: 'INV-2024-005' },
-    { id: '6', memberName: 'Maria Santos', memberId: 'GF-2024-001', amount: 2500, plan: 'Premium', method: 'gcash', status: 'completed', date: '2024-05-01', dueDate: '2024-06-01', invoiceNumber: 'INV-2024-006' },
-  ];
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [paymentRows, members, memberships] = await Promise.all([
+        listPayments(),
+        listMembers(),
+        listMemberships(),
+      ]);
 
-  const [payments, setPayments] = useState<Payment[]>(() => {
-    const shared = SharedStorage.getPayments();
-    if (shared.length === 0) return defaultPayments;
-    return shared.map((p: any) => ({
-      id: p.id, memberName: p.memberName, memberId: p.memberId || p.memberEmail,
-      amount: p.amount, plan: p.plan || 'Standard',
-      method: (p.method || 'cash').toLowerCase(),
-      status: (p.status === 'Pending' || p.status === 'pending') ? 'pending' :
-              (p.status === 'Failed' || p.status === 'failed') ? 'failed' : 'completed',
-      date: p.date,
-      dueDate: p.expiryDate || new Date(new Date(p.date).setMonth(new Date(p.date).getMonth() + 1)).toISOString().split('T')[0],
-      invoiceNumber: p.invoiceNumber || `INV-${p.id}`,
-    }));
-  });
+      const nameById: Record<string, string> = {};
+      for (const m of members) nameById[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
+
+      const planByMembershipId: Record<string, string> = {};
+      const latestMembershipByMember: Record<string, MemberPlanInfo> = {};
+      // A member can renew, so there may be several rows. Take the newest — a payment
+      // must extend the current membership, never resurrect an old expired one.
+      const newestCreatedAt: Record<string, string> = {};
+      for (const m of memberships) {
+        planByMembershipId[m.id] = m.membership_plans?.name ?? 'Unknown plan';
+        if (!newestCreatedAt[m.member_id] || m.created_at > newestCreatedAt[m.member_id]) {
+          newestCreatedAt[m.member_id] = m.created_at;
+          latestMembershipByMember[m.member_id] = {
+            membershipId: m.id,
+            // `?? 30` would be wrong here: NULL is a deliberate "never expires",
+            // and coalescing it would hand the free tier a 30-day expiry. Only a
+            // missing plan join falls back.
+            durationDays: m.membership_plans ? m.membership_plans.duration_days : 30,
+            planName: m.membership_plans?.name ?? 'Unknown plan',
+            planPrice: Number(m.membership_plans?.price) || 0,
+          };
+        }
+      }
+      setMemberMembership(latestMembershipByMember);
+
+      setPayments(
+        paymentRows.map((p) => ({
+          id: p.id,
+          memberId: p.member_id,
+          membershipId: p.membership_id,
+          memberName: nameById[p.member_id] ?? 'Unknown member',
+          amount: p.amount,
+          plan: p.membership_id ? planByMembershipId[p.membership_id] ?? 'Unknown plan' : 'Unknown plan',
+          method: p.method.toLowerCase(),
+          status: p.status,
+          // The day the cash was received, not the day it was keyed in.
+          date: p.paid_on ?? p.created_at.slice(0, 10),
+          dueDate: p.due_date ?? p.paid_on ?? p.created_at.slice(0, 10),
+          invoiceNumber: p.invoice_number ?? `INV-${p.id.slice(0, 8)}`,
+        }))
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to load payments', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const shared = SharedStorage.getPayments();
-      if (shared.length > 0) {
-        setPayments(shared.map((p: any) => ({
-          id: p.id, memberName: p.memberName, memberId: p.memberId || p.memberEmail,
-          amount: p.amount, plan: p.plan || 'Standard',
-          method: (p.method || 'cash').toLowerCase(),
-          status: (p.status === 'Pending' || p.status === 'pending') ? 'pending' :
-                  (p.status === 'Failed' || p.status === 'failed') ? 'failed' : 'completed',
-          date: p.date,
-          dueDate: p.expiryDate || new Date(new Date(p.date).setMonth(new Date(p.date).getMonth() + 1)).toISOString().split('T')[0],
-          invoiceNumber: p.invoiceNumber || `INV-${p.id}`,
-        })));
-      }
-    }, 2000);
-    return () => clearInterval(interval);
+    loadData();
   }, []);
 
   // Group payments by member
@@ -95,22 +130,55 @@ export default function Payments() {
 
   useEffect(() => { setCurrentPage(1); }, [filterStatus]);
 
-  const handleRecordPayment = (data: any) => {
-    const newPayment: Payment = {
-      id: `PAY-${Date.now()}`, memberName: data.memberName, memberId: data.memberId,
-      amount: data.amount, plan: 'Standard', method: data.method.toLowerCase(),
-      status: 'completed', date: data.date,
-      dueDate: new Date(new Date(data.date).setMonth(new Date(data.date).getMonth() + 1)).toISOString().split('T')[0],
-      invoiceNumber: `INV-${String(Date.now()).slice(-6)}`,
-    };
-    SharedStorage.addPayment({ ...newPayment, memberEmail: data.memberEmail || '' });
-    setPayments([newPayment, ...payments]);
-    showToast('Payment recorded!', 'success');
+  const handleRecordPayment = async (data: RecordPaymentInput) => {
+    const membership = memberMembership[data.memberId];
+    if (!membership) {
+      showToast('This member has no membership plan assigned yet', 'error');
+      return;
+    }
+    try {
+      await recordPayment({
+        member_id: data.memberId,
+        membership_id: membership.membershipId,
+        duration_days: membership.durationDays,
+        amount: data.amount,
+        method: data.method.toLowerCase(),
+        status: 'completed',
+        paid_on: data.date,
+        due_date: null,
+        invoice_number: `INV-${String(Date.now()).slice(-6)}`,
+        notes: data.notes || null,
+        recorded_by: null,
+      });
+
+      // A cash payment at the desk extends the membership, so the receipt is
+      // the member's only proof it registered. Failing to notify must not read
+      // as a failed payment — the money has already changed hands.
+      await notifyUser({
+        userId: data.memberId,
+        type: 'payment',
+        title: 'Payment received',
+        message: `We received ₱${data.amount.toLocaleString('en-PH')}. Your membership has been extended.`,
+        actionUrl: '/member/payments',
+      }).catch(() => {
+        showToast('Payment recorded, but the member could not be notified', 'error');
+      });
+
+      showToast('Payment recorded!', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to record payment', 'error');
+    }
   };
 
-  const confirmPayment = (id: string) => {
-    setPayments(payments.map(p => p.id === id ? { ...p, status: 'completed' } : p));
-    showToast('Payment confirmed!', 'success');
+  const confirmPayment = async (id: string) => {
+    try {
+      await updatePaymentStatus(id, 'completed');
+      showToast('Payment confirmed!', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to confirm payment', 'error');
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -119,15 +187,19 @@ export default function Payments() {
     return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' };
   };
 
-  const methodIcon: Record<string, string> = { cash: '💵', card: '💳', gcash: '📱', bank: '🏦' };
+  const methodIcon: Record<string, string> = { cash: '💵' };
 
   const totalRevenue = payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
   const stats = [
-    { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'var(--color-primary)' },
+    { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote, color: 'var(--color-primary)' },
     { label: 'Completed', value: payments.filter(p => p.status === 'completed').length, icon: CheckCircle, color: 'var(--color-primary)' },
     { label: 'Pending', value: payments.filter(p => p.status === 'pending').length, icon: Clock, color: 'var(--color-secondary)' },
     { label: 'Failed', value: payments.filter(p => p.status === 'failed').length, icon: XCircle, color: 'var(--color-secondary)' },
   ];
+
+  if (loading) {
+    return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading payments…</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -217,7 +289,7 @@ export default function Payments() {
                     </div>
                     <div>
                       <p className="text-white font-semibold">{group.memberName}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{group.memberId} &bull; {group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
@@ -305,7 +377,12 @@ export default function Payments() {
         </Card>
       </motion.div>
 
-      <RecordPaymentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleRecordPayment} />
+      <RecordPaymentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleRecordPayment}
+        planByMember={memberMembership}
+      />
       <ViewReceiptModal isOpen={isReceiptModalOpen} onClose={() => { setIsReceiptModalOpen(false); setSelectedPayment(null); }} payment={selectedPayment} />
     </div>
   );

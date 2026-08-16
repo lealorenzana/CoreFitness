@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Receipt, Download, Printer, Calendar, CreditCard, User, Package, CheckCircle } from 'lucide-react';
 import Button from './Button';
+import { getGymSettings, type GymSettingsRow } from '../../lib/api/settings';
 
 interface Payment {
   id: string;
@@ -22,7 +24,31 @@ interface ViewReceiptModalProps {
 }
 
 export default function ViewReceiptModal({ isOpen, onClose, payment }: ViewReceiptModalProps) {
+  /**
+   * The gym's own details, from `gym_settings` (0013).
+   *
+   * This receipt said "G-FITNESS RECEIPT" and "G-Fitness Management System" — a
+   * name from the old prototype, on the one document a member keeps — and
+   * carried no address or phone at all, just "contact gym management".
+   *
+   * It is also the first thing that reads `gym_name` / `address` / `phone` /
+   * `email`. Settings has been collecting all four since 0013 and **nothing
+   * consumed any of them**, which makes that form a control that writes a flag
+   * nothing reads.
+   */
+  const [gym, setGym] = useState<GymSettingsRow | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    getGymSettings().then(setGym).catch(() => setGym(null));
+  }, [isOpen]);
+
   if (!payment) return null;
+
+  // Falls back to nothing rather than to a placeholder gym: an unreadable
+  // setting should leave the line off the receipt, not print someone else's name.
+  const gymName = gym?.gym_name?.trim() || 'Core Fitness';
+  const gymLines = [gym?.address, gym?.phone, gym?.email].map((v) => v?.trim()).filter(Boolean) as string[];
 
   const handlePrint = () => {
     window.print();
@@ -31,8 +57,10 @@ export default function ViewReceiptModal({ isOpen, onClose, payment }: ViewRecei
   const handleDownload = () => {
     // Create a simple text receipt
     const receiptText = `
-G-FITNESS RECEIPT
+${gymName.toUpperCase()} — OFFICIAL RECEIPT
 =====================================
+${gymLines.join('\n')}
+${gymLines.length > 0 ? '=====================================' : ''}
 Invoice: ${payment.invoiceNumber}
 Date: ${new Date(payment.date).toLocaleDateString()}
 =====================================
@@ -53,7 +81,7 @@ Expiry Date: ${new Date(payment.dueDate).toLocaleDateString()}
 
 =====================================
 Thank you for your payment!
-G-Fitness Management System
+${gymName}
 =====================================
     `;
 
@@ -113,13 +141,26 @@ G-Fitness Management System
 
               {/* Receipt Content */}
               <div className="p-8 space-y-6">
+                {/* The gym's own identity, from Settings. */}
+                <div className="text-center pb-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <p className="text-base font-bold text-white uppercase tracking-wide">{gymName}</p>
+                  {gymLines.length > 0 && (
+                    <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                      {gymLines.join(' · ')}
+                    </p>
+                  )}
+                </div>
+
                 {/* Status Badge */}
+                {/* Was a green pill with violet text — the design system has no
+                    greens, and green-on-violet was unreadable either way. */}
                 <div className="flex items-center justify-center">
-                  <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold uppercase ${
-                    payment.status === 'completed' 
-                      ? 'bg-green-500/20 text-violet border-2 border-green-500/30' 
-                      : 'bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500/30'
-                  }`}>
+                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold uppercase border-2"
+                    style={
+                      payment.status === 'completed'
+                        ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderColor: 'rgba(124,58,237,0.30)' }
+                        : { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', borderColor: 'rgba(245,158,11,0.30)' }
+                    }>
                     <CheckCircle size={20} />
                     {payment.status}
                   </div>
@@ -220,7 +261,9 @@ G-Fitness Management System
                     Thank you for your payment! This receipt serves as proof of your membership subscription.
                   </p>
                   <p className="text-gray-500 text-xs mt-2">
-                    For any inquiries, please contact gym management.
+                    {gym?.phone
+                      ? `For any inquiries, call ${gym.phone}.`
+                      : 'For any inquiries, please contact gym management.'}
                   </p>
                 </div>
               </div>

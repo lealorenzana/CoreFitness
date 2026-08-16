@@ -5,25 +5,36 @@
 <h1 align="center">Core Fitness</h1>
 
 <p align="center">
-  <strong>AI-Assisted Gym Management System</strong><br/>
-  Rule-Based Analytics • NLP Administrative Support • Role-Based Access Control
+  <strong>Gym Management System</strong><br/>
+  Supabase Backend • Role-Based Access Control • Installable Phone App
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white" />
-  <img src="https://img.shields.io/badge/Framer_Motion-11-FF0055?logo=framer&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/Supabase-Postgres_+_Auth-3ECF8E?logo=supabase&logoColor=white" />
+  <img src="https://img.shields.io/badge/PWA-Android_APK-5A0FC8?logo=pwa&logoColor=white" />
 </p>
 
 ---
 
 ## About
 
-**Core Fitness** is a cross-platform Management Information System designed for local fitness centers in Mamburao, Occidental Mindoro. It streamlines gym operations through automated attendance tracking, centralized member management, rule-based retention analytics, and an NLP-powered chatbot for member support.
+**Core Fitness** is a gym management system built for a local fitness centre in Mamburao,
+Occidental Mindoro. It replaces a paper logbook and a spreadsheet with a real database: member
+records, cash payments, QR check-in, class and personal-training bookings, and threshold-based
+retention reporting.
+
+Two applications share one Postgres database — a desktop dashboard for the gym, and a phone app
+members and trainers install on their own devices.
 
 Built as a capstone project at the **University of Occidental Mindoro**.
+
+> **On the word "AI".** This system contains **no machine learning and no NLP**. The two chatbots
+> are deterministic keyword matchers, and the retention "analytics" are threshold rules over real
+> check-in dates (21 / 14 / 7 days inactive). They are useful, and they are not AI. Earlier
+> versions of this README claimed otherwise; the claim was wrong and has been removed.
 
 ---
 
@@ -31,79 +42,74 @@ Built as a capstone project at the **University of Occidental Mindoro**.
 
 | Application | Port | Platform | Description |
 |-------------|------|----------|-------------|
-| **Admin Dashboard** | `5174` | Desktop Web | Full gym management — members, trainers, schedules, analytics, settings |
-| **Member & Trainer App** | `5173` | Mobile Web (375×812) | Unified app with role-based interfaces for members and trainers |
+| **Admin Dashboard** | `5174` | Desktop web | Members, trainers, schedule, bookings, payments, revenue, retention, settings |
+| **Member & Trainer App** | `5173` | Installable phone app (PWA → Android APK) | One app, two role-gated interfaces |
+
+Not a monorepo — each app has its own dependencies. Run `npm` from inside an app directory.
 
 ---
 
 ## Quick Start
 
+Both apps need a Supabase project. Copy `.env.example` to `.env.local` in each app and fill in
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — see [supabase/README.md](supabase/README.md)
+for schema setup and the first-admin bootstrap.
+
 ```bash
-# Clone the repository
 git clone https://github.com/lealorenzana/CoreFitness.git
 cd CoreFitness
-
-# Start Admin Dashboard
-cd g-fitness-admin
-npm install
-npm run dev
-# → http://localhost:5174
-
-# Start Member/Trainer App (in a new terminal)
-cd g-fitness-member
-npm install
-npm run dev
-# → http://localhost:5173
+```
+```bash
+cd g-fitness-admin && npm install && npm run dev     # → http://localhost:5174
+```
+```bash
+cd g-fitness-member && npm install && npm run dev    # → http://localhost:5173
 ```
 
 ---
 
-## User Roles (RBAC)
+## User Roles
 
-| Role | Access | How to Login |
-|------|--------|--------------|
-| **Admin** | Full system control | `localhost:5174/admin/login` → click Login |
-| **Member** | Workouts, bookings, progress, QR | `localhost:5173` → Login → select **Member** |
-| **Trainer** | Classes, members, bookings, schedule | `localhost:5173` → Login → select **Trainer** |
+Access is enforced by **Postgres Row Level Security**, not by the UI. Route guards are a
+convenience; the database is the boundary.
 
-### Account Flow
+| Role | Access |
+|------|--------|
+| **Admin** | Everything — pricing, trainers, accounts, settings |
+| **Staff** | Front desk: take payments, check members in, extend memberships. Every action is a recorded, reversible transaction. Cannot change pricing or accounts. |
+| **Trainer** | Own classes, assigned members, availability, booking requests |
+| **Member** | Bookings, QR check-in, progress, payment history |
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  MEMBER: Self-register → Pending → Admin approves → Active  │
-│  TRAINER: Admin creates account with credentials → Trainer logs in │
-│  ADMIN: Pre-configured account                              │
-└─────────────────────────────────────────────────────────┘
+MEMBER   self-register → pending_approval → admin approves + records payment → active
+TRAINER  admin creates the account (Edge Function) → trainer signs in
+ADMIN    bootstrapped once from the Supabase dashboard
 ```
 
 ---
 
 ## Features
 
-### Admin Dashboard
-- 📊 Business intelligence dashboard with KPI cards, charts, and activity heatmap
-- 👥 Member management with pending registration approval flow
-- 🏋️ Trainer management with login credential creation
-- 📅 Class scheduling with conflict detection and trainer availability
-- ✅ 3-column attendance: QR scan + manual check-in + log
-- 📈 Rule-based retention analytics (auto-detects at-risk members)
-- 💰 Revenue reports and membership plan management
-- 🎉 Event management with attendee tracking
-- ⚙️ 8-tab settings panel (Gym Info, Plans, Notifications, Security, Appearance, Admins, Backup)
+### Admin dashboard
+- KPI dashboard, revenue reports and an attendance heatmap — all from real rows
+- Member management with the pending-registration approval flow
+- Trainer accounts created server-side, so the admin's own session is never swapped
+- Class timetable and trainer working hours; PT slots are generated from those hours
+- Attendance: QR scan, manual check-in, and a per-visit activity tag
+- Retention worklist — threshold rules over real check-ins, **not** ML
+- Membership plans with per-plan entitlements, freeze (limited frequency) and cancel
+- Events, gym settings, and a broadcast composer
 
-### Member App
-- 📱 Secure time-limited QR code for gym entry
-- 🏆 8-tab Progress Hub (body, workouts, charts, goals, attendance, membership, badges, trainer feedback)
-- 📅 Book trainer sessions
-- 🤖 NLP-powered AI fitness chatbot
-- 🎯 Goal tracking with milestone alerts and gamification badges
-- 📋 Event viewing and registration
+### Member app
+- Time-limited QR code for gym entry
+- Book group classes and 1-on-1 personal training; classes are matched to experience level
+- 7-tab Progress Hub — measurements, workouts, charts, goals, attendance, membership, trainer notes
+- Free workout resources — curated links out to external sites, never copied content
+- Payment history and self-service renewal
 
-### Trainer App
-- 🏠 Dashboard with today's classes, stats, and recent activity
-- 👥 View assigned members and add workout recommendations
-- 📅 Toggle own availability and view class schedule
-- ✅ Accept/decline booking requests
+### Trainer app
+- Today's classes, assigned members, and booking requests to accept or decline
+- Own availability, which drives the PT slots members can book
 
 ---
 
@@ -111,14 +117,17 @@ npm run dev
 
 | Layer | Technology |
 |-------|-----------|
-| UI Framework | React 18 + TypeScript |
-| Build Tool | Vite 5 |
-| Styling | Tailwind CSS 3 + CSS Variables |
-| Animations | Framer Motion |
-| Charts | Recharts |
+| UI | React 19 + TypeScript 5 |
+| Build | Vite 8 |
+| Routing | React Router 7 |
+| Styling | Tailwind **3** (admin) / Tailwind **4** (member) + CSS custom properties |
+| Animation | Framer Motion |
+| Charts | Recharts (admin only) |
 | Icons | Lucide React |
-| Routing | React Router v6 |
-| Data Layer | localStorage (SharedStorage utility) |
+| **Database / Auth** | **Supabase — Postgres, Auth, RLS, Edge Functions (free tier)** |
+| Hosting | Vercel free tier; Android APK via PWABuilder TWA |
+
+Infrastructure cost is **₱0** — see [docs/BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md).
 
 ---
 
@@ -126,32 +135,24 @@ npm run dev
 
 ```
 CoreFitness/
-├── g-fitness-admin/        # Admin dashboard (desktop)
-│   ├── src/pages/          # 12 admin pages
-│   ├── src/components/     # Reusable UI components
-│   └── public/             # Static assets (logos, trainer photos)
+├── g-fitness-admin/          # Desktop dashboard
+│   └── src/
+│       ├── pages/            # 18 routed pages
+│       ├── lib/api/          # Typed Supabase wrappers
+│       └── services/         # Multi-table screen assembly
 │
-├── g-fitness-member/       # Member & Trainer app (mobile)
-│   ├── src/pages/          # Member pages + trainer/ subfolder
-│   ├── src/pages/trainer/  # 5 trainer-specific pages
-│   ├── src/pages/progress/ # 8-tab progress hub
-│   └── public/             # Static assets (gym photos, profile pics)
+├── g-fitness-member/         # Member + trainer phone app
+│   └── src/
+│       ├── pages/            # Member pages
+│       ├── pages/trainer/    # 6 trainer pages
+│       ├── pages/progress/   # 7-tab Progress Hub
+│       ├── lib/api/          # Same API layer, byte-identical
+│       └── services/         # bookingService, memberHomeService, …
 │
-├── assets/                 # Shared source images
-└── docs/                   # Documentation
-    ├── SYSTEM_DOCUMENTATION.md
-    ├── SETUP_GUIDE.md
-    ├── DEFENSE_GUIDE.md
-    └── PROJECT_STRUCTURE.md
+├── supabase/                 # 20 SQL migrations, RLS policies, Edge Functions
+├── assets/                   # Shared source images
+└── docs/                     # See below
 ```
-
----
-
-## Screenshots
-
-| Admin Dashboard | Member App | Trainer App |
-|:-:|:-:|:-:|
-| KPI cards, charts, heatmap | QR code, progress hub | Classes, bookings, members |
 
 ---
 
@@ -159,10 +160,13 @@ CoreFitness/
 
 | Document | Description |
 |----------|-------------|
-| [System Documentation](docs/SYSTEM_DOCUMENTATION.md) | Complete system overview — architecture, features, data flow |
-| [Setup Guide](docs/SETUP_GUIDE.md) | Installation, credentials, troubleshooting |
-| [Defense Guide](docs/DEFENSE_GUIDE.md) | Capstone demo flow, talking points, panel Q&A |
-| [Project Structure](docs/PROJECT_STRUCTURE.md) | Detailed file tree with descriptions |
+| [supabase/README.md](supabase/README.md) | Schema setup, migrations, Edge Function deployment |
+| [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md) | What's real, and the data-honesty rules |
+| [docs/BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) | Tiers, ₱0 infrastructure, maintenance flow |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Shipping the phone app (PWA → APK) |
+| [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) | Installation and troubleshooting |
+| [docs/DEFENSE_GUIDE.md](docs/DEFENSE_GUIDE.md) | Demo flow, talking points, panel Q&A |
+| [CLAUDE.md](CLAUDE.md) | Architecture and conventions, for contributors |
 
 ---
 
@@ -170,28 +174,32 @@ CoreFitness/
 
 | Element | Specification |
 |---------|--------------|
-| Primary Color | `#7C3AED` (Violet) |
-| Secondary Color | `#F59E0B` (Yellow) |
-| Background | `#0F0F1A` (Dark) |
-| Theme | Dark only, flat colors, no gradients |
-| Buttons | Pill-shaped (rounded-full), 40px height |
-| Mobile Frame | 375×812px with status bar and notch |
+| Primary | `#7C3AED` violet — selection and structure |
+| Secondary | `#F59E0B` amber — primary actions |
+| Background | `#0F0F1A` |
+| Theme | Dark only, flat colour, no gradients |
+| Buttons | Pill (`--radius-btn: 99px`) |
+| Type floor | 12px minimum — this ships on a phone |
+| Mobile shell | Full-screen `100dvh` + safe-area insets. **No decorative phone frame** — it ships as a real installed app. |
 
 ---
 
-## Trainers
+## Design Principles
 
-| Name | Specialization | Photo |
-|------|---------------|:-----:|
-| Cyrelle Joy Duhac | Strength & Conditioning | <img src="assets/duhac.png" width="40" style="border-radius:50%" /> |
-| Ana Par Iturralde | HIIT & Cardio | <img src="assets/ituralde.png" width="40" style="border-radius:50%" /> |
-| Nathanniel Ucol | Boxing & Functional Training | <img src="assets/ucol.png" width="40" style="border-radius:50%" /> |
+Three rules the codebase actually enforces:
+
+1. **A number with no source does not appear.** Where nothing is measured, screens show an empty
+   state, not a plausible-looking figure.
+2. **A missed lookup renders nothing** — never a fallback identity. Showing the wrong member's
+   name is worse than showing none.
+3. **Members are archived, never deleted.** Deleting cascades through payments and attendance and
+   destroys the gym's records.
 
 ---
 
 ## License
 
-This project is developed for academic purposes as a capstone requirement.
+Developed for academic purposes as a capstone requirement.
 
 ---
 

@@ -1,11 +1,12 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
-  LayoutDashboard, Users, CheckSquare, Target, DollarSign,
+  LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, PartyPopper, Bell,
+  LogOut, ChevronRight, PartyPopper, Bell, BookOpen,
 } from 'lucide-react';
 import { toast } from '../ui/sonner';
+import { supabase } from '../../lib/supabaseClient';
 
 const BG           = 'var(--color-bg)';
 const SURFACE      = 'var(--color-surface)';
@@ -19,16 +20,18 @@ const TEXT_MUTED   = 'var(--color-text-muted)';
 const NAV_ITEMS = [
   { label: 'Dashboard',  path: '/dashboard',  icon: LayoutDashboard, section: 'Overview' },
   { label: 'Members',    path: '/members',    icon: Users,           section: 'Management' },
-  { label: 'Trainers',   path: '/trainers',   icon: Dumbbell,        section: 'Management' },
+  { label: 'Trainers',   path: '/trainers',   icon: Dumbbell,        section: 'Management', adminOnly: true },
   { label: 'Schedule',   path: '/schedule',   icon: CalendarDays,    section: 'Management' },
   { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
   { label: 'Events',     path: '/events',     icon: PartyPopper,     section: 'Management' },
   { label: 'Notifications', path: '/notifications', icon: Bell,      section: 'Management' },
   { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
   { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
-  { label: 'Revenue',    path: '/revenue',     icon: DollarSign,      section: 'Reports' },
+  { label: 'Revenue',    path: '/revenue',     icon: Banknote,      section: 'Reports' },
   { label: 'Payments',   path: '/payments',    icon: CreditCard,      section: 'Reports' },
-  { label: 'Settings',   path: '/settings',    icon: Settings,        section: 'Settings' },
+  { label: 'Plans',      path: '/membership-plans', icon: Banknote,   section: 'Management', adminOnly: true },
+  { label: 'Resources',  path: '/resources',        icon: BookOpen,   section: 'Management' },
+  { label: 'Settings',   path: '/settings',    icon: Settings,        section: 'Settings', adminOnly: true },
 ];
 
 const SECTIONS = ['Overview', 'Management', 'Reports', 'Settings'];
@@ -44,10 +47,26 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isAdmin, setIsAdmin] = useState(true);
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminAuthenticated');
-    localStorage.removeItem('adminUser');
+  // Hide admin-only destinations from front-desk staff. Cosmetic only — the real
+  // enforcement is ProtectedRoute's adminOnly guard plus RLS. Defaults to true so
+  // an admin never sees the nav flicker while the role resolves.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (active) setIsAdmin(data?.role === 'admin');
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const navItems = NAV_ITEMS.filter((i) => isAdmin || !i.adminOnly);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     toast.success('Logged out successfully');
     navigate('/admin/login');
   };
@@ -77,7 +96,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           {/* Nav icons */}
           <div className="flex-1 flex flex-col gap-1 w-full px-2 overflow-y-auto scrollbar-hide">
-            {NAV_ITEMS.map(item => {
+            {navItems.map(item => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
@@ -144,7 +163,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-4">
           {SECTIONS.map(section => {
-            const items = NAV_ITEMS.filter(i => i.section === section);
+            const items = navItems.filter(i => i.section === section);
             if (items.length === 0) return null;
             return (
               <div key={section}>

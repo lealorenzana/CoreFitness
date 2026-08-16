@@ -1,26 +1,35 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { ArrowLeft, Activity, Dumbbell, BarChart3, Target, Calendar, CreditCard, Trophy, MessageSquare } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
+import LevelProgressCard   from '../../components/ui/LevelProgressCard';
 import BodyProgressTab     from './tabs/BodyProgressTab';
 import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
 import GoalsTab            from './tabs/GoalsTab';
-import AttendanceTab       from './tabs/AttendanceTab';
-import MembershipTab       from './tabs/MembershipTab';
-import BadgesTab           from './tabs/BadgesTab';
 import TrainerFeedbackTab  from './tabs/TrainerFeedbackTab';
 
+/**
+ * The Progress Hub.
+ *
+ * Five tabs, all visible at once. It used to carry seven in a horizontally
+ * scrolling strip, so "Membership" and "Trainer" sat off the right edge of a
+ * 375px screen where nobody found them.
+ *
+ * Two of those seven are gone rather than moved: Attendance and Membership each
+ * duplicated a full page that already exists (`/member/attendance-history` and
+ * `/member/membership`), both linked from Profile. The attendance tab also
+ * showed a "Consistency Score" computed against a **hardcoded target of 20
+ * visits a month** — a number the gym never set and no member agreed to.
+ */
+
 const tabs = [
-  { id: 'body',      label: 'Body',       icon: Activity },
-  { id: 'workouts',  label: 'Workouts',   icon: Dumbbell },
-  { id: 'dashboard', label: 'Charts',     icon: BarChart3 },
-  { id: 'goals',     label: 'Goals',      icon: Target },
-  { id: 'attend',    label: 'Attendance', icon: Calendar },
-  { id: 'member',    label: 'Membership', icon: CreditCard },
-  { id: 'badges',    label: 'Badges',     icon: Trophy },
-  { id: 'feedback',  label: 'Trainer',    icon: MessageSquare },
+  { id: 'body',      label: 'Body' },
+  { id: 'workouts',  label: 'Workouts' },
+  { id: 'goals',     label: 'Goals' },
+  { id: 'dashboard', label: 'Charts' },
+  { id: 'feedback',  label: 'Coach' },
 ] as const;
 
 type TabId = typeof tabs[number]['id'];
@@ -33,54 +42,62 @@ export default function ProgressHub() {
     switch (active) {
       case 'body':      return <BodyProgressTab />;
       case 'workouts':  return <WorkoutProgressTab />;
-      case 'dashboard': return <VisualDashboardTab />;
       case 'goals':     return <GoalsTab />;
-      case 'attend':    return <AttendanceTab />;
-      case 'member':    return <MembershipTab />;
-      case 'badges':    return <BadgesTab />;
+      case 'dashboard': return <VisualDashboardTab />;
       case 'feedback':  return <TrainerFeedbackTab />;
     }
   };
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button onClick={() => navigate('/member/home')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Progress Hub</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Track every part of your journey</p>
+        <div className="min-w-0">
+          <h1 className="display text-xl text-white">Progress</h1>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Track every part of your journey</p>
         </div>
       </motion.div>
 
-      {/* Tab strip — horizontally scrollable */}
-      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
-        <div className="flex gap-2 pb-1 w-max">
-          {tabs.map(t => {
-            const Icon = t.icon;
-            const isActive = active === t.id;
-            return (
-              <button key={t.id}
-                onClick={() => setActive(t.id)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors"
-                style={{
-                  background: isActive ? 'var(--color-secondary)' : 'var(--color-surface-raised)',
-                  border: `1px solid ${isActive ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-                  color: isActive ? '#000' : 'var(--color-text-secondary)',
-                }}>
-                <Icon size={14} />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Above the tabs rather than inside one: the level is the summary of
+          everything the five tabs break down, and burying it in a tab would
+          make it findable only by whoever already knew it existed. */}
+      <LevelProgressCard />
+
+      {/* Segmented control — five equal cells, no scrolling. Violet marks the
+          selection, per the app's colour convention. */}
+      <div
+        className="grid grid-cols-5 gap-1 p-1"
+        style={{
+          background: 'var(--color-surface-raised)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-btn)',
+        }}
+        role="tablist"
+      >
+        {tabs.map((t) => {
+          const isActive = active === t.id;
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActive(t.id)}
+              className="py-2 rounded-full text-xs font-semibold transition-colors"
+              style={{
+                background: isActive ? 'var(--color-primary)' : 'transparent',
+                color: isActive ? '#fff' : 'var(--color-text-muted)',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Active tab */}
       <motion.div key={active}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

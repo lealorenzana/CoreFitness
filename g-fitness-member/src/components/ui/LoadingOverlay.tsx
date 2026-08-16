@@ -13,7 +13,7 @@ export default function LoadingOverlay({ message = 'Please wait...' }: LoadingOv
       exit={{ opacity: 0 }}
       className="absolute inset-0 z-[120] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto"
     >
-      <Loader2 className="w-12 h-12 text-yellow animate-spin mb-4" />
+      <Loader2 className="w-12 h-12 text-[var(--color-secondary)] animate-spin mb-4" />
       <p className="text-white font-semibold text-lg">{message}</p>
     </motion.div>
   );

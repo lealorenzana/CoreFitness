@@ -77,8 +77,6 @@ export interface RevenueData {
   };
   paymentMethods: {
     Cash: number;
-    GCash: number;
-    BankTransfer: number;
   };
 }
 
@@ -135,7 +133,7 @@ export interface BookingHistory {
   memberId: string;
   amount: number;
   plan: 'Basic' | 'Standard' | 'Premium';
-  method: 'cash' | 'card' | 'gcash' | 'bank';
+  method: 'cash';
   status: 'completed' | 'pending' | 'failed';
   bookingDate: string;
   startDate: string;

@@ -97,8 +97,7 @@ export default function RatingPrompt({ isOpen, onClose, className = '', trainerN
               onChange={e => setComment(e.target.value)}
               placeholder="Leave a comment (optional)"
               rows={3}
-              className="w-full px-3 py-2 rounded-xl text-sm text-white resize-none focus:outline-none mb-4"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+              className="field-input w-full px-3 py-2 rounded-xl text-sm text-white resize-none mb-4"
             />
 
             {/* Submit */}

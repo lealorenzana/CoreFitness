@@ -72,6 +72,20 @@
   --radius:                0.625rem;
 }
 
+/* Tells the browser this app is dark, so the **native** UI it draws for us
+   follows: the date and time picker popups, select dropdowns, scrollbars and
+   autofill backgrounds. Without it Chrome renders a bright white calendar and a
+   white time-spinner over a black screen — and none of that is reachable from
+   CSS, because the picker is browser chrome, not part of the page.
+
+   Deliberately outside `@layer base`: an unlayered declaration outranks every
+   layer, so a stray `color-scheme` in a component library can't undo it. The
+   member app has carried this since its redesign; the admin never got it, which
+   is why every `<input type="date">` here opened a white panel. */
+:root {
+  color-scheme: dark;
+}
+
 @layer base {
   * { border-color: var(--color-border); }
 
@@ -81,6 +95,33 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* **No `filter: invert(1)` on ::-webkit-calendar-picker-indicator here**, and
+     that omission is deliberate. Under `color-scheme: dark` Chrome already draws
+     that glyph light; inverting it then turns it black again, i.e. invisible on
+     `--color-bg`. The invert is the fix for a *light*-scheme app, and the two
+     rules cancel each other out. Only the opacity is ours. */
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator,
+  input[type='month']::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  input[type='date']:hover::-webkit-calendar-picker-indicator,
+  input[type='time']:hover::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']:hover::-webkit-calendar-picker-indicator,
+  input[type='month']:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  /* An empty date/time field shows the UA's own "mm/dd/yyyy" text, which is not
+     a ::placeholder and so was rendering at full-strength white — reading as a
+     filled-in value. Muted to match every real placeholder in the app. */
+  input[type='date']:not(:focus):invalid::-webkit-datetime-edit,
+  input[type='time']:not(:focus):invalid::-webkit-datetime-edit {
+    color: var(--color-text-muted);
   }
 
   ::selection {
@@ -100,7 +141,13 @@
     color: var(--color-text-muted);
   }
 
-  input:focus, textarea:focus, select:focus {
+  /* Suppress the UA ring only for *pointer* focus. Scoping this to
+     `:not(:focus-visible)` keeps keyboard focus visible — the old blanket
+     `input:focus { outline: none }` removed it for everyone, and at (0,1,1) it
+     silently outranked the global focus-visible rule at the end of this file. */
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible),
+  select:focus:not(:focus-visible) {
     outline: none;
   }
 }
@@ -206,4 +253,24 @@
   }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ── Focus ring ──────────────────────────────────────────────────
+   Matches the member app. Controls here carried `focus:outline-none` with
+   nothing in its place, so keyboard focus was invisible; those have been
+   removed rather than fought with `!important`.
+
+   This is Tailwind v3, so there are no cascade layers to lean on the way the
+   member app does — ordering is plain source order and specificity, and this
+   rule sits after `@tailwind utilities`. `!important` is deliberately NOT used:
+   the shadcn button/input and ui/Button supply their own `focus-visible:ring-2`
+   and opt out with `focus-visible:outline-none` (0,2,0, which beats this rule's
+   0,1,0). Forcing the outline would double-ring them. */
+:where(button, a, [role='button'], [tabindex], input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  /* `transition-all` animates outline-color, and Chrome cannot interpolate away
+     from the UA ring's `-webkit-focus-ring-color` keyword — it pins the start
+     value and the ring renders white. Exclude outline from any transition. */
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
 }

@@ -1,11 +1,33 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { ArrowLeft, Lock, Eye, EyeOff, Check } from 'lucide-react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { supabase } from '../lib/supabaseClient';
+import { errorMessage } from '../utils/errorMessage';
 
+/**
+ * Change password — against real Supabase Auth.
+ *
+ * This screen used to be theatre. `handleSubmit` ran a `setTimeout(…, 1500)`
+ * under a `// Simulate API call` comment, showed "Password changed
+ * successfully!" and navigated away. It never contacted Supabase, so every
+ * password in the gym stayed exactly as it was while the app said otherwise —
+ * and the user would then be locked out of their own expectation at the next
+ * login. It also ignored the current-password field entirely.
+ *
+ * `updateUser` does not verify the existing password, so the current-password
+ * field is checked explicitly with `signInWithPassword` first. Without that,
+ * anyone with a borrowed unlocked phone could change the account's password
+ * without knowing it.
+ */
 export default function ChangePassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // One screen, two shells. Sending a trainer back to /member/settings drops
+  // them into a member layout they have no session role for.
+  const isTrainer = location.pathname.startsWith('/trainer');
+  const backTo = isTrainer ? '/trainer/settings' : '/member/settings';
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,28 +66,47 @@ export default function ChangePassword() {
     e.preventDefault();
     
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showErrorToast('Please fill in all fields');
+      showErrorToast({ type: 'validation', message: 'Please fill in all fields' });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showErrorToast('New passwords do not match');
+      showErrorToast({ type: 'validation', message: 'New passwords do not match' });
       return;
     }
 
     if (newPassword.length < 8) {
-      showErrorToast('Password must be at least 8 characters');
+      showErrorToast({ type: 'validation', message: 'Password must be at least 8 characters' });
       return;
     }
 
     setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('Your session has expired. Please sign in again.');
 
-    // Simulate API call
-    setTimeout(() => {
+      // Verify the current password before changing anything. `updateUser`
+      // will happily set a new password without it, which would let anyone
+      // holding an unlocked phone take the account over.
+      const { error: checkError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+      if (checkError) {
+        showErrorToast({ type: 'validation', message: 'Your current password is not correct' });
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      showSuccessToast('Password changed');
+      navigate(backTo);
+    } catch (err) {
+      showErrorToast({ type: 'validation', message: errorMessage(err, 'Could not change your password') });
+    } finally {
       setIsLoading(false);
-      showSuccessToast('Password changed successfully!');
-      navigate('/member/settings');
-    }, 1500);
+    }
   };
 
   return (
@@ -77,7 +118,7 @@ export default function ChangePassword() {
         className="flex items-center gap-3"
       >
         <button
-          onClick={() => navigate('/member/settings')}
+          onClick={() => navigate(backTo)}
           className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
           style={{ 
             background: 'var(--color-surface-raised)', 
@@ -121,11 +162,7 @@ export default function ChangePassword() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
-                className="w-full pl-10 pr-12 py-3 rounded-xl text-white text-sm focus:outline-none"
-                style={{ 
-                  background: 'var(--color-bg)', 
-                  border: '1px solid var(--color-border)' 
-                }}
+                className="field-input pl-10 pr-12 py-3"
               />
               <button
                 type="button"
@@ -155,11 +192,7 @@ export default function ChangePassword() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
-                className="w-full pl-10 pr-12 py-3 rounded-xl text-white text-sm focus:outline-none"
-                style={{ 
-                  background: 'var(--color-bg)', 
-                  border: '1px solid var(--color-border)' 
-                }}
+                className="field-input pl-10 pr-12 py-3"
               />
               <button
                 type="button"
@@ -238,11 +271,7 @@ export default function ChangePassword() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
-              className="w-full pl-10 pr-12 py-3 rounded-xl text-white text-sm focus:outline-none"
-              style={{ 
-                background: 'var(--color-bg)', 
-                border: '1px solid var(--color-border)' 
-              }}
+              className="field-input pl-10 pr-12 py-3"
             />
             <button
               type="button"

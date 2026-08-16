@@ -1,7 +1,11 @@
+import { SkeletonList } from '../components/ui/Skeleton';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, TrendingUp, Award, Flame } from 'lucide-react';
+import { getCurrentUser } from '../utils/auth';
+import { listMemberAttendance } from '../lib/api/attendance';
+import type { AttendanceRow } from '../types/db';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -9,25 +13,82 @@ const MONTHS = [
 ];
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/** Longest run of consecutive calendar days (ending today counts as "current"). */
+function computeStreaks(dateStrings: string[]): { current: number; longest: number } {
+  const days = new Set(dateStrings);
+  let longest = 0;
+  let run = 0;
+  const sorted = [...days].sort();
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0) {
+      const prev = new Date(sorted[i - 1]);
+      const cur = new Date(sorted[i]);
+      const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+      run = diffDays === 1 ? run + 1 : 1;
+    } else {
+      run = 1;
+    }
+    longest = Math.max(longest, run);
+  }
+  let current = 0;
+  const cursor = new Date();
+  while (days.has(cursor.toISOString().slice(0, 10))) {
+    current += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { current, longest };
+}
+
 export default function AttendanceHistory() {
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
+  const [records, setRecords] = useState<AttendanceRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock attendance data — days when user checked in
-  const attendanceDays = [1, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22, 24, 26, 28, 29];
-  const currentStreak = 7;
-  const longestStreak = 12;
-  const totalCheckIns = 24;
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) { setLoading(false); return; }
+    listMemberAttendance(user.id)
+      .then(setRecords)
+      .catch(() => setRecords([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const checkInDates = useMemo(() => records.map((r) => r.check_in_time.slice(0, 10)), [records]);
+  const attendanceDays = useMemo(
+    () =>
+      checkInDates
+        .filter((d) => {
+          const dt = new Date(d);
+          return dt.getFullYear() === selectedYear && dt.getMonth() === selectedMonth;
+        })
+        .map((d) => Number(d.slice(8, 10))),
+    [checkInDates, selectedMonth, selectedYear]
+  );
+  const { current: currentStreak, longest: longestStreak } = useMemo(() => computeStreaks(checkInDates), [checkInDates]);
+  const totalCheckIns = records.length;
+  const attendanceRate = useMemo(() => {
+    const uniqueDays = new Set(checkInDates);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    let recentCount = 0;
+    for (const d of uniqueDays) if (new Date(d) >= cutoff) recentCount += 1;
+    return Math.round((recentCount / 30) * 100);
+  }, [checkInDates]);
+  const recentRecords = useMemo(
+    () => [...records].sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)).slice(0, 5),
+    [records]
+  );
 
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
 
   const stats = [
-    { label: 'Total Check-ins',  value: totalCheckIns,            icon: Calendar,    color: 'var(--color-primary)' },
-    { label: 'Current Streak',   value: `${currentStreak} days`,  icon: Flame,       color: 'var(--color-secondary)' },
-    { label: 'Longest Streak',   value: `${longestStreak} days`,  icon: Award,       color: 'var(--color-primary)' },
-    { label: 'Attendance Rate',  value: '87%',                    icon: TrendingUp,  color: 'var(--color-primary)' },
+    { label: 'Total Check-ins',  value: totalCheckIns,             icon: Calendar,    color: 'var(--color-primary)' },
+    { label: 'Current Streak',   value: `${currentStreak} days`,   icon: Flame,       color: 'var(--color-secondary)' },
+    { label: 'Longest Streak',   value: `${longestStreak} days`,   icon: Award,       color: 'var(--color-primary)' },
+    { label: 'Attendance Rate',  value: `${attendanceRate}%`,      icon: TrendingUp,  color: 'var(--color-primary)' },
   ];
 
   return (
@@ -59,7 +120,7 @@ export default function AttendanceHistory() {
                 style={{ background: `${s.color}20` }}>
                 <Icon size={16} style={{ color: s.color }} />
               </div>
-              <p className="text-[11px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
+              <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           );
@@ -70,7 +131,7 @@ export default function AttendanceHistory() {
       <select
         value={selectedMonth}
         onChange={(e) => setSelectedMonth(Number(e.target.value))}
-        className="w-full px-4 rounded-xl text-white text-sm focus:outline-none"
+        className="field-input w-full px-4 rounded-xl text-white text-sm"
         style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', height: 40 }}
       >
         {MONTHS.map((m, i) => <option key={m} value={i}>{m} {selectedYear}</option>)}
@@ -80,7 +141,7 @@ export default function AttendanceHistory() {
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="grid grid-cols-7 gap-1.5 mb-2">
           {DAY_HEADERS.map((d) => (
-            <div key={d} className="text-center text-[10px] font-semibold py-1" style={{ color: 'var(--color-text-muted)' }}>{d}</div>
+            <div key={d} className="text-center text-xs font-semibold py-1" style={{ color: 'var(--color-text-muted)' }}>{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1.5">
@@ -104,7 +165,7 @@ export default function AttendanceHistory() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex items-center justify-center gap-4 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+        <div className="mt-4 flex items-center justify-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded" style={{ background: 'var(--color-secondary)' }} /> Attended
           </div>
@@ -118,24 +179,42 @@ export default function AttendanceHistory() {
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <h3 className="text-white font-semibold text-sm mb-3">Recent Check-ins</h3>
         <div className="space-y-2">
-          {attendanceDays.slice(-5).reverse().map((day) => (
-            <div key={day} className="flex items-center justify-between p-2.5 rounded-xl"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: 'var(--color-primary)' }}>
-                  <Calendar size={14} className="text-white" />
+          {loading ? (
+            <SkeletonList count={3} />
+          ) : recentRecords.length === 0 ? (
+            <p className="text-xs text-center py-4" style={{ color: 'var(--color-text-muted)' }}>
+              No check-ins yet
+            </p>
+          ) : recentRecords.map((r) => {
+            const checkIn = new Date(r.check_in_time);
+            return (
+              <div key={r.id} className="flex items-center justify-between p-2.5 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: 'var(--color-primary)' }}>
+                    <Calendar size={14} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-xs">{checkIn.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                    <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      Check-in via {r.method === 'qr' ? 'QR Code' : 'Manual'}
+                      {/* Only shown when it was actually recorded (0018). Older
+                          check-ins have no activity and get no placeholder. */}
+                      {r.activity && (
+                        <span className="px-1.5 py-0.5 rounded-full text-xs font-semibold"
+                          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                          {r.activity}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white font-semibold text-xs">{MONTHS[selectedMonth]} {day}, {selectedYear}</p>
-                  <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Check-in via QR Code</p>
-                </div>
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  {checkIn.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>
               </div>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                {(((day * 13) % 12) || 12)}:{String((day * 7) % 60).padStart(2, '0')} {day % 2 === 0 ? 'AM' : 'PM'}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

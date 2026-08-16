@@ -1,373 +1,412 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, Trophy, ChevronRight, RefreshCw, AlertCircle, CheckCircle, Ban, ArrowRight, X } from 'lucide-react';
+import {
+  CalendarCheck, Trophy, QrCode, TrendingUp,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock,
+  // Aliased: an unaliased `Infinity` import shadows the global number in this
+  // module, which would silently break any `repeat: Infinity` added later.
+  Infinity as InfinityIcon,
+} from 'lucide-react';
 import Notifications from '../components/Notifications';
-import { useState, useEffect, useRef } from 'react';
-import { generateSecureQR, getQRTimeRemaining } from '../utils/qrCode';
-import { getCurrentUser } from '../utils/auth';
-import { SharedStorage } from '../utils/sharedStorage';
-import { MOCK_HOME_QUICK_STATS, MOCK_UPCOMING_CLASS } from '../data/mockHomeDashboard';
-import { initializeMockNotifications } from '../data/mockNotifications';
+import Avatar from '../components/ui/Avatar';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { panelStyle } from '../components/ui/Card';
+import SectionHeader from '../components/ui/SectionHeader';
+import StatCard, { Pill } from '../components/ui/StatCard';
+import WeekRings from '../components/ui/WeekRings';
+import LevelProgressCard from '../components/ui/LevelProgressCard';
+import TodayPlanCard from '../components/ui/TodayPlanCard';
+import CheckInSheet from '../components/ui/CheckInSheet';
+import { toast } from '../components/ui/Toast';
+import { errorMessage } from '../utils/errorMessage';
+import { membershipTerm } from '../utils/membershipTerm';
+import { getCurrentMemberId } from '../services/bookingService';
+import { getMemberHome, type MemberHome } from '../services/memberHomeService';
 
-/** Circular progress ring used in the hero stats row. */
-function ProgressRing({ value, goal, label, unit }: { value: number; goal: number; label: string; unit?: string }) {
-  const size = 64;
-  const stroke = 5;
-  const radius = (size - stroke) / 2;
-  const circ = 2 * Math.PI * radius;
-  const pct = Math.min(1, value / Math.max(1, goal));
-  const offset = circ * (1 - pct);
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          {/* Background track */}
-          <circle cx={size / 2} cy={size / 2} r={radius}
-            stroke="rgba(255,255,255,0.12)" strokeWidth={stroke} fill="none" />
-          {/* Progress arc */}
-          <circle cx={size / 2} cy={size / 2} r={radius}
-            stroke="#F59E0B" strokeWidth={stroke} fill="none"
-            strokeDasharray={circ} strokeDashoffset={offset}
-            strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{ transition: 'stroke-dashoffset 0.8s ease-out' }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-sm font-bold text-white leading-none">{value}</span>
-          {unit && <span className="text-[8px] mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{unit}</span>}
-        </div>
-      </div>
-      <p className="text-[9px] text-center font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</p>
-    </div>
-  );
-}
-
+/**
+ * The member's home screen.
+ *
+ * Every figure here comes from a row in Postgres — check-ins from `attendance`,
+ * the plan and expiry from `memberships`, the next session from `bookings` or
+ * `pt_sessions`. There is no goal ring and no streak count, because nothing in
+ * the schema stores a target for either. An invented number on the first screen
+ * a member sees is the most expensive kind.
+ *
+ * The QR code no longer lives inline. It is the centre button of the bottom
+ * nav, reachable from anywhere in the app; the membership card here opens the
+ * same sheet.
+ */
 export default function Home() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
-  const memberEmail = localStorage.getItem('memberEmail') || currentUser?.email || 'eya.lorenzana@email.com';
+  const [home, setHome] = useState<MemberHome | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
-  const getActiveMember = () => {
-    const s = SharedStorage.getMember(memberEmail);
-    if (s) {
-      const daysLeft = Math.max(0, Math.floor((new Date(s.expiryDate).getTime() - Date.now()) / 86400000));
-      return {
-        name: s.fullName || `${s.firstName} ${s.lastName}`,
-        firstName: s.firstName || (s.fullName || '').split(' ')[0] || 'there',
-        membershipType: s.membershipType || 'Premium',
-        qrCode: s.qrCode || 'GF-2024-001',
-        expiryDate: s.expiryDate, gym: 'G-Fitness Mamburao', daysLeft,
-      };
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const id = await getCurrentMemberId();
+      if (!id) {
+        toast.error('Your session could not be verified. Please sign in again.');
+        return;
+      }
+      setHome(await getMemberHome(id));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load your dashboard'));
+    } finally {
+      setLoading(false);
     }
-    return {
-      name: currentUser?.name || 'Eya Lorenzana',
-      firstName: (currentUser?.name || 'Eya').split(' ')[0],
-      membershipType: 'Premium', qrCode: 'GF-2024-001',
-      expiryDate: 'Dec 31, 2026', gym: 'G-Fitness Mamburao', daysLeft: 591,
-    };
-  };
-
-  const member = getActiveMember();
-  const [qrCode, setQrCode] = useState('');
-  const [timeRemaining, setTimeRemaining] = useState(60);
-  const [isExpired, setIsExpired] = useState(false);
-  const [hasBeenUsed, setHasBeenUsed] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const hasGeneratedRef = useRef(false);
-
-  const membershipExpired = new Date() > new Date(member.expiryDate);
-  const expiringSoon = !membershipExpired && member.daysLeft <= 7;
-
-  // Greeting based on time-of-day
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  })();
-
-  // Initialize mock notifications on first load
-  useEffect(() => {
-    initializeMockNotifications();
   }, []);
 
-  useEffect(() => {
-    const today = new Date().toDateString();
-    const lastUsed = localStorage.getItem('qr_last_used');
-    if (lastUsed) {
-      const d = JSON.parse(lastUsed);
-      if (d.date === today && d.memberId === member.qrCode) setHasBeenUsed(true);
-    }
-  }, [member.qrCode]);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (!hasGeneratedRef.current && !hasBeenUsed && !membershipExpired) {
-      setQrCode(generateSecureQR(member.qrCode, 'gym-001'));
-      setTimeRemaining(60);
-      setIsExpired(false);
-      hasGeneratedRef.current = true;
-    }
-  }, [hasBeenUsed, membershipExpired, member.qrCode]);
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
 
-  useEffect(() => {
-    if (!qrCode || hasBeenUsed) return;
-    const interval = setInterval(() => {
-      const r = getQRTimeRemaining(qrCode);
-      setTimeRemaining(r);
-      if (r === 0) setIsExpired(true);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [qrCode, hasBeenUsed]);
+  const expiryLabel = home?.expiryDate
+    ? new Date(`${home.expiryDate}T00:00:00`).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      })
+    : '—';
 
-  const upcoming = MOCK_UPCOMING_CLASS;
+  const weekCount = home?.weekCheckIns.filter(Boolean).length ?? 0;
 
+  // Days, months, years — or no countdown at all on a lifetime plan. The free
+  // tier used to store 3650 days, which rendered as "3647 days remaining" in
+  // the biggest type on the screen.
+  const term = membershipTerm(home?.daysLeft ?? null, home?.neverExpires ?? false);
+
+  // Progress and Attendance are the two things a member opens repeatedly, and
+  // both were buried a level deep under Profile. Renewal came out: the
+  // membership card above already links there the moment it matters, and
+  // Profile → Membership covers the rest. Trainers came out too — Book a
+  // Session has a Coaches button in its own header.
   const quickActions = [
-    { title: 'Booking History',    subtitle: 'View your class bookings', icon: CheckCircle, action: () => navigate('/member/booking-history') },
-    { title: 'Renew Membership',   subtitle: 'Extend your membership',   icon: RefreshCw,   action: () => navigate('/member/renew-membership') },
-    { title: 'Browse Events',      subtitle: 'Join upcoming activities', icon: Trophy,      action: () => navigate('/member/events') },
+    { title: 'My bookings', subtitle: 'Classes and personal training', icon: CalendarCheck, to: '/member/booking-history' },
+    { title: 'Progress', subtitle: 'Measurements, workouts and goals', icon: TrendingUp, to: '/member/progress' },
+    { title: 'Attendance', subtitle: 'Every gym visit on record', icon: CalendarClock, to: '/member/attendance-history' },
+    { title: 'Events', subtitle: 'What the gym has coming up', icon: Trophy, to: '/member/events' },
   ];
 
   return (
-    <div className="space-y-5 pb-4 min-h-full">
-      {/* Top bar */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Welcome Back!</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Let's crush your goals today</p>
-        </div>
+    <div className="space-y-6 pb-4 min-h-full">
+      {/* Greeting */}
+      <motion.div
+        initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between gap-3"
+      >
+        <button onClick={() => navigate('/member/profile')} className="flex items-center gap-3 min-w-0 text-left">
+          <Avatar name={home?.fullName} photoUrl={home?.photoUrl} size={46} />
+          <div className="min-w-0">
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{greeting}</p>
+            <h1 className="display text-xl text-white truncate">{home?.firstName ?? ' '}</h1>
+          </div>
+        </button>
         <Notifications />
       </motion.div>
 
-      {/* Hero card — flat violet, white heading, yellow subtitle, yellow CTA + 3 progress rings */}
-      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
-        className="rounded-2xl p-5 overflow-hidden relative"
-        style={{ background: 'var(--color-primary)' }}>
-        {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.4) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
-
-        <div className="relative z-10">
-          <h2 className="text-lg font-bold text-white leading-tight">
-            {greeting} {member.firstName} 🔥
-          </h2>
-          <p className="text-sm font-medium mt-1" style={{ color: 'var(--color-secondary)' }}>
-            Continue your journey
-          </p>
-          <button onClick={() => navigate('/member/book-class')}
-            className="mt-3 inline-flex items-center gap-2 px-5 h-10 rounded-full font-semibold text-sm text-black transition-all active:scale-95"
-            style={{ background: 'var(--color-secondary)' }}>
-            Book a Class <ArrowRight size={14} />
-          </button>
-        </div>
-
-        {/* 3 circular progress rings */}
-        <div className="relative z-10 grid grid-cols-3 gap-2 mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          {MOCK_HOME_QUICK_STATS.map(s => (
-            <ProgressRing key={s.id} value={s.value} goal={s.goal} label={s.label} unit={s.unit} />
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Membership / QR card */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="rounded-2xl p-5"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase mb-2"
-              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-              {member.membershipType}
-            </span>
-            <h3 className="text-base font-bold text-white">{member.name}</h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{member.gym}</p>
-          </div>
-
-          {/* QR Code */}
-          <div className="relative flex-shrink-0 cursor-pointer" onClick={() => !membershipExpired && !hasBeenUsed && setShowQRModal(true)}>
-            {membershipExpired ? (
-              <div className="relative">
-                <div className="bg-white p-2 rounded-xl opacity-20 blur-sm"><QRCodeSVG value={member.qrCode} size={70} /></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--color-secondary)' }}>
-                    <Ban size={18} className="text-white" />
-                  </div>
-                </div>
-              </div>
-            ) : hasBeenUsed ? (
-              <div className="relative">
-                <div className="bg-white p-2 rounded-xl opacity-25 blur-sm"><QRCodeSVG value={member.qrCode} size={70} /></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
-                    <CheckCircle size={18} className="text-white" />
-                  </div>
-                </div>
-              </div>
-            ) : isExpired ? (
-              <div className="relative">
-                <div className="bg-white p-2 rounded-xl opacity-30 blur-sm"><QRCodeSVG value={qrCode || member.qrCode} size={70} /></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--color-secondary)' }}>
-                    <AlertCircle size={18} className="text-white" />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white p-2 rounded-xl hover:scale-105 transition-transform"><QRCodeSVG value={qrCode || member.qrCode} size={70} /></div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-3 mb-2" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <div>
-            <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Member ID</p>
-            <p className="font-mono font-bold text-sm text-white">{member.qrCode}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Valid Until</p>
-            <p className="font-bold text-sm text-white">{member.expiryDate}</p>
-          </div>
-        </div>
-
-        {/* Status messages */}
-        <div className="flex flex-wrap gap-2">
-          {membershipExpired && (
-            <div className="px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
-              <Ban size={12} style={{ color: 'var(--color-secondary)' }} />
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>Membership Expired</p>
-            </div>
-          )}
-          {expiringSoon && (
-            <div className="px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse"
-              style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
-              <AlertCircle size={12} style={{ color: 'var(--color-secondary)' }} />
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>Expires in {member.daysLeft} days</p>
-            </div>
-          )}
-          {hasBeenUsed && (
-            <div className="px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.30)' }}>
-              <CheckCircle size={12} style={{ color: 'var(--color-primary)' }} />
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Checked in today</p>
-            </div>
-          )}
-        </div>
-
-        {(membershipExpired || expiringSoon) && (
-          <button onClick={() => navigate('/member/renew-membership')}
-            className="w-full mt-3 h-10 rounded-full font-semibold text-sm text-black"
-            style={{ background: 'var(--color-secondary)' }}>
-            {membershipExpired ? 'Renew Membership Now' : 'Renew Now'}
-          </button>
-        )}
-      </motion.div>
-
-      {/* Upcoming class card — violet 4px left border */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="rounded-2xl p-4 relative overflow-hidden"
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderLeft: '4px solid var(--color-primary)',
-        }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--color-text-muted)' }}>Upcoming Class</p>
-            <h3 className="text-base font-bold text-white truncate">{upcoming.className}</h3>
-            <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--color-secondary)' }}>
-              {upcoming.day} · {upcoming.time}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{upcoming.trainer} · {upcoming.location}</p>
-          </div>
-          <button onClick={() => navigate('/member/book-class')}
-            className="h-10 px-4 rounded-full font-semibold text-sm text-white flex-shrink-0"
-            style={{ background: 'var(--color-primary)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-primary-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-primary)')}>
-            Book
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Quick Actions */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
-        <h3 className="text-white font-semibold flex items-center gap-2">
-          <Calendar size={16} style={{ color: 'var(--color-secondary)' }} /> Quick Actions
-        </h3>
-        {quickActions.map((action, i) => {
-          const Icon = action.icon;
-          return (
-            <motion.button key={action.title} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.05 }}
-              onClick={action.action}
-              className="w-full rounded-2xl p-4 flex items-center gap-4 transition-colors"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-primary-light)' }}>
-                <Icon size={20} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-white font-semibold text-sm">{action.title}</p>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{action.subtitle}</p>
-              </div>
-              <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} />
-            </motion.button>
-          );
-        })}
-      </motion.div>
-
-      {/* QR Code Modal */}
-      <AnimatePresence>
-        {showQRModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowQRModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50"
+      {loading || !home ? (
+        <SkeletonList />
+      ) : (
+        <>
+          {/* Membership + check-in */}
+          <motion.section
+            initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
+            className="p-5 relative overflow-hidden"
+            style={{
+              background: 'var(--color-primary)',
+              borderRadius: 'var(--radius-panel)',
+              boxShadow: 'var(--shadow-panel)',
+            }}
+          >
+            <div
+              className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-25 pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(245,158,11,0.55) 0%, transparent 70%)',
+                transform: 'translate(30%, -35%)',
+              }}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[90%] max-w-sm"
-            >
-              <div className="bg-[rgba(10,8,0,0.95)] border-2 rounded-3xl p-6 shadow-2xl relative"
-                style={{ borderColor: 'var(--color-primary)' }}>
+
+            <div className="relative z-10">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span
+                    className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase mb-2"
+                    style={{ background: 'rgba(0,0,0,0.28)', color: '#fff' }}
+                  >
+                    {home.planName ?? 'No plan'}
+                  </span>
+                  <h2 className="display text-2xl text-white truncate">{home.fullName}</h2>
+                  <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    Core Fitness Mamburao
+                  </p>
+                </div>
+
                 <button
-                  onClick={() => setShowQRModal(false)}
-                  className="absolute top-3 right-3 p-2 rounded-lg bg-gray-800 text-white/40 hover:text-white transition-colors z-10"
+                  onClick={() => setCheckInOpen(true)}
+                  className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform"
+                  style={{ background: 'rgba(0,0,0,0.28)' }}
+                  aria-label="Show my check-in QR code"
                 >
-                  <X size={18} />
+                  <QrCode size={22} className="text-white" />
+                  <span className="text-xs font-semibold text-white">Code</span>
                 </button>
-                
-                <div className="text-center">
-                  <h3 className="text-white font-bold text-lg mb-1">Check-In QR Code</h3>
-                  <p className="text-white/60 text-xs mb-4">Show this to staff for gym entry</p>
-                  
-                  <div className="bg-white p-4 rounded-2xl inline-block mb-4">
-                    <QRCodeSVG value={qrCode || member.qrCode} size={180} />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ background: 'var(--color-surface-raised)' }}>
-                      <span className="text-white/60 text-xs">Member ID</span>
-                      <span className="text-white font-mono font-bold text-sm">{member.qrCode}</span>
-                    </div>
-                    
-                    <p className="text-white/40 text-[10px] mt-3">
-                      Show this QR code to staff for gym check-in
+              </div>
+
+              {/* A lifetime plan has no date and no countdown, so it gets a
+                  sentence rather than a "Valid until —" beside a "— days". */}
+              {term.kind === 'unlimited' ? (
+                <div
+                  className="flex items-center gap-2 mt-4 pt-4"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}
+                >
+                  <InfinityIcon size={18} className="text-white flex-shrink-0" />
+                  <p className="text-sm font-bold text-white">{term.caption}</p>
+                </div>
+              ) : (
+                <div
+                  className="flex items-end justify-between gap-3 mt-4 pt-4"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}
+                >
+                  <div>
+                    <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                      Valid until
                     </p>
+                    <p className="font-bold text-sm text-white mt-0.5">{expiryLabel}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="flex items-baseline gap-1 justify-end">
+                      <span className="display text-3xl text-white">{term.value}</span>
+                      {term.unit && (
+                        <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                          {term.unit}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>{term.caption}</p>
                   </div>
                 </div>
+              )}
+
+              {/* Status flags — only ever rendered when true */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {home.expired && (
+                  <span className="px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-semibold"
+                    style={{ background: 'rgba(0,0,0,0.35)', color: 'var(--color-secondary)' }}>
+                    <Ban size={12} />
+                    {home.expiryDate ? 'Membership expired' : 'No active membership'}
+                  </span>
+                )}
+                {home.expiringSoon && (
+                  <span className="px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-semibold"
+                    style={{ background: 'rgba(0,0,0,0.35)', color: 'var(--color-secondary)' }}>
+                    <AlertCircle size={12} />
+                    Expires in {home.daysLeft} {home.daysLeft === 1 ? 'day' : 'days'}
+                  </span>
+                )}
+                {home.checkedInToday && (
+                  <span className="px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-semibold"
+                    style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}>
+                    <CheckCircle size={12} /> Checked in today
+                  </span>
+                )}
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+              {(home.expired || home.expiringSoon) && (
+                <button
+                  onClick={() => navigate('/member/renew-membership')}
+                  className="w-full mt-3 h-11 rounded-full font-semibold text-sm text-black"
+                  style={{ background: 'var(--color-secondary)' }}
+                >
+                  {home.expired ? 'Renew membership now' : 'Renew now'}
+                </button>
+              )}
+            </div>
+          </motion.section>
+
+          {/* What the gym has announced. High on the screen and amber, because
+              an event buried four rows down a scroll is an event nobody
+              attends. Renders nothing at all when there is no upcoming one —
+              never a placeholder card promising activity that doesn't exist. */}
+          {home.nextEvent && (
+            <motion.button
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              onClick={() => navigate('/member/events')}
+              className="w-full p-4 flex items-center gap-3 text-left"
+              style={{
+                background: 'var(--color-secondary-light)',
+                border: '1px solid rgba(245,158,11,0.35)',
+                borderRadius: 'var(--radius-panel)',
+              }}
+            >
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-secondary)' }}>
+                <Trophy size={20} className="text-black" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--color-secondary)' }}>
+                  Coming up at the gym
+                </span>
+                <span className="block text-sm font-bold text-white truncate mt-0.5">
+                  {home.nextEvent.title}
+                </span>
+                <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                  {new Date(home.nextEvent.startsAt).toLocaleDateString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric',
+                  })}
+                  {' · '}
+                  {new Date(home.nextEvent.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  {home.nextEvent.location && ` · ${home.nextEvent.location}`}
+                </span>
+              </span>
+              <ArrowRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+            </motion.button>
+          )}
+
+          {/* This week */}
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            {/* The card carries its own count once there is one, so the hint
+                only explains the mechanic on an empty week. */}
+            <SectionHeader
+              title="This week"
+              hint={
+                weekCount === 0
+                  ? 'No visits yet — a ring fills when the front desk scans you in.'
+                  : undefined
+              }
+            />
+            <div
+              className="p-4"
+              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
+            >
+              <WeekRings
+                days={home.weekCheckIns}
+                dayNumbers={home.weekDayNumbers}
+                todayIndex={home.todayIndex}
+              />
+            </div>
+          </motion.section>
+
+          {/* Is today a training day? Above the level card because it is the
+              only thing here that is about *today*. */}
+          <TodayPlanCard checkedInToday={home.checkedInToday} />
+
+          {/* Training level — the one thing on this screen that answers "am I
+              getting anywhere?", which the visit counts alone never did. */}
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+            <SectionHeader title="Your level" />
+            <LevelProgressCard />
+          </motion.section>
+
+          {/* Counters */}
+          <motion.section
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="grid grid-cols-2 gap-3"
+          >
+            <StatCard
+              value={home.checkInsThisMonth}
+              label="Gym visits this month"
+              icon={CalendarCheck}
+              pill={home.checkedInToday ? 'Today ✓' : undefined}
+              pillTone="primary"
+            />
+            <StatCard
+              value={home.upcomingCount}
+              label="Sessions coming up"
+              icon={CalendarClock}
+              onClick={() => navigate('/member/booking-history')}
+            />
+          </motion.section>
+
+          {/* Next session */}
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <SectionHeader title="Next session" />
+            <div
+              className="p-4 flex items-center justify-between gap-3"
+              style={{
+                ...panelStyle,
+                borderRadius: 'var(--radius-panel)',
+                boxShadow: 'var(--shadow-panel)',
+                borderLeft: '4px solid var(--color-primary)',
+              }}
+            >
+              <div className="flex-1 min-w-0">
+                {home.nextBooking ? (
+                  <>
+                    <p className="text-sm font-bold text-white truncate">{home.nextBooking.title}</p>
+                    <p className="text-xs mt-1 font-semibold" style={{ color: 'var(--color-secondary)' }}>
+                      {new Date(home.nextBooking.startsAt as string).toLocaleDateString('en-US', {
+                        weekday: 'long', month: 'short', day: 'numeric',
+                      })}
+                      {' · '}
+                      {new Date(home.nextBooking.startsAt as string).toLocaleTimeString([], {
+                        hour: 'numeric', minute: '2-digit',
+                      })}
+                    </p>
+                    <p className="text-xs mt-1 truncate" style={{ color: 'var(--color-text-muted)' }}>
+                      {home.nextBooking.subtitle}
+                    </p>
+                    {home.nextBooking.status === 'pending' && (
+                      <div className="mt-2"><Pill label="Awaiting approval" tone="secondary" /></div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-white">Nothing booked yet</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                      Book a class or a 1-on-1 session to see it here.
+                    </p>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => navigate(home.nextBooking ? '/member/booking-history' : '/member/book-class')}
+                className="h-10 px-4 rounded-full font-semibold text-sm text-black flex items-center gap-1.5 flex-shrink-0"
+                style={{ background: 'var(--color-secondary)' }}
+              >
+                {home.nextBooking ? 'View' : 'Book'} <ArrowRight size={14} />
+              </button>
+            </div>
+          </motion.section>
+
+          {/* Shortcuts — a 2×2 grid rather than four stacked rows, which put the
+              last one about a full screen below the fold. All four are now
+              reachable without scrolling past the fold on a 375×812 phone. */}
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <SectionHeader title="Shortcuts" />
+            <div className="grid grid-cols-2 gap-2">
+              {quickActions.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <button
+                    key={a.to}
+                    onClick={() => navigate(a.to)}
+                    className="p-3.5 text-left flex flex-col gap-2 active:scale-[0.98] transition-transform"
+                    style={{ ...panelStyle, borderRadius: 'var(--radius-card)' }}
+                  >
+                    <span className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: 'var(--color-primary-light)' }}>
+                      <Icon size={18} style={{ color: 'var(--color-primary)' }} />
+                    </span>
+                    <span className="block text-sm font-semibold text-white leading-tight">{a.title}</span>
+                    <span className="block text-xs leading-snug" style={{ color: 'var(--color-text-muted)' }}>
+                      {a.subtitle}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.section>
+        </>
+      )}
+
+      <CheckInSheet open={checkInOpen} onClose={() => setCheckInOpen(false)} />
     </div>
   );
 }

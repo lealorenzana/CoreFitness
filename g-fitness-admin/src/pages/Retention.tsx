@@ -1,52 +1,47 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import { AlertTriangle, Users, Target, Activity } from 'lucide-react';
+import { showToast } from '../utils/toast';
+import { exportToCSV } from '../utils/exportUtils';
 import {
-  TrendingDown, AlertTriangle, Users, Target, Activity,
-  ArrowUp, ArrowDown,
-} from 'lucide-react';
-import { showToast, exportToCSV } from '../utils/toast';
-import {
-  MOCK_AT_RISK_MEMBERS,
-  MOCK_RETENTION_TREND,
-  type AtRiskMember,
-} from '../data/mockRetention';
+  dashboardService,
+  type AtRiskMemberRow, type RetentionSummary,
+} from '../services/dashboardService';
 
 export default function Retention() {
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const atRiskMembers = MOCK_AT_RISK_MEMBERS;
-  const retentionTrends = MOCK_RETENTION_TREND;
-  const retentionByYear: Record<string, typeof MOCK_RETENTION_TREND> = {
-    '2024': [
-      { month: 'Jan', rate: 78 }, { month: 'Feb', rate: 80 }, { month: 'Mar', rate: 82 },
-      { month: 'Apr', rate: 79 }, { month: 'May', rate: 81 }, { month: 'Jun', rate: 83 },
-    ],
-    '2025': [
-      { month: 'Jan', rate: 82 }, { month: 'Feb', rate: 84 }, { month: 'Mar', rate: 86 },
-      { month: 'Apr', rate: 85 }, { month: 'May', rate: 83 }, { month: 'Jun', rate: 85 },
-    ],
-    '2026': MOCK_RETENTION_TREND,
-  };
-  const chartData = retentionByYear[selectedYear] || MOCK_RETENTION_TREND;
+  const years = dashboardService.getYears();
+  const [selectedYear, setSelectedYear] = useState(years[0]);
+  const [atRiskMembers, setAtRiskMembers] = useState<AtRiskMemberRow[]>([]);
+  const [summary, setSummary] = useState<RetentionSummary | null>(null);
+  const [chartData, setChartData] = useState<{ month: string; rate: number }[]>([]);
+  const [, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([dashboardService.getAtRiskMembers(), dashboardService.getRetentionSummary()])
+      .then(([rows, s]) => {
+        setAtRiskMembers(rows);
+        setSummary(s);
+      })
+      .catch((err) => showToast(err instanceof Error ? err.message : 'Failed to load retention data', 'error'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    dashboardService.getRetentionTrend(selectedYear).then(setChartData).catch(() => {});
+  }, [selectedYear]);
 
   const retentionStats = [
-    { label: 'At Risk Members', value: '12',      change: '+3',  trend: 'up' as const,   icon: AlertTriangle },
-    { label: 'Retention Rate',  value: '87%',     change: '-2%', trend: 'down' as const, icon: Target },
-    { label: 'Avg. Attendance', value: '3.2x/wk', change: '+0.3', trend: 'up' as const,   icon: Activity },
-    { label: 'Active Members',  value: '156',     change: '+8',  trend: 'up' as const,   icon: Users },
+    { label: 'At Risk Members', value: summary ? String(summary.atRisk) : '—', icon: AlertTriangle },
+    { label: 'Retention Rate',  value: summary ? `${summary.retentionRate}%` : '—', icon: Target },
+    { label: 'Avg. Attendance', value: summary ? `${summary.avgVisitsPerWeek}x/wk` : '—', icon: Activity },
+    { label: 'Active Members',  value: summary ? String(summary.activeMembers) : '—', icon: Users },
   ];
 
   const getRiskBadgeVariant = (level: string) =>
     level === 'high' ? 'Suspended' : level === 'medium' ? 'Pending' : 'Active';
-
-  const getReEngagementSuggestion = (m: AtRiskMember) => {
-    if (m.riskLevel === 'high')   return 'Send personalized message + offer free PT session';
-    if (m.riskLevel === 'medium') return 'Send motivational email + class reminder';
-    return 'Monitor attendance pattern';
-  };
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col gap-3 overflow-hidden">
@@ -59,14 +54,14 @@ export default function Retention() {
             Automated retention rules and at-risk member insights
           </p>
         </div>
-        <Button variant="secondary" onClick={() => exportToCSV(atRiskMembers, 'at-risk-members.csv')}>
+        <Button variant="secondary" onClick={() => exportToCSV(atRiskMembers, 'at-risk-members')}>
           Export List
         </Button>
       </motion.div>
 
       {/* Stats row — compact */}
       <div className="grid grid-cols-4 gap-3 flex-shrink-0">
-        {retentionStats.map((stat, i) => {
+        {retentionStats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="rounded-xl p-3 flex items-center gap-3"
@@ -77,13 +72,7 @@ export default function Retention() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</p>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-bold text-white">{stat.value}</p>
-                  <span className="text-[9px] font-semibold flex items-center"
-                    style={{ color: stat.trend === 'up' ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                    {stat.trend === 'up' ? <ArrowUp size={9} /> : <ArrowDown size={9} />}{stat.change}
-                  </span>
-                </div>
+                <p className="text-lg font-bold text-white">{stat.value}</p>
               </div>
             </div>
           );
@@ -98,19 +87,16 @@ export default function Retention() {
           <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <div>
               <h3 className="text-xs font-semibold text-white">Retention Trend</h3>
-              <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>6-month retention rate</p>
+              <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
+                Share of members who checked in that month
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-                className="text-[10px] font-semibold px-2 py-1 rounded-full focus:outline-none cursor-pointer appearance-none"
+                className="text-[10px] font-semibold px-2 py-1 rounded-full cursor-pointer appearance-none"
                 style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-              <span className="text-[9px] font-semibold flex items-center gap-0.5" style={{ color: 'var(--color-secondary)' }}>
-                <TrendingDown size={11} /> -2%
-              </span>
             </div>
           </div>
           <div className="flex-1 p-3 min-h-0">
@@ -118,8 +104,8 @@ export default function Retention() {
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="month" stroke="var(--color-text-muted)" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="var(--color-text-muted)" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} domain={[70, 100]} />
-                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: '1px solid var(--color-border)', borderRadius: 12, color: '#fff', fontSize: 11 }} formatter={(value: number) => [`${value}%`, 'Retention']} />
+                <YAxis stroke="var(--color-text-muted)" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: '1px solid var(--color-border)', borderRadius: 12, color: '#fff', fontSize: 11 }} formatter={(value) => [`${Number(value)}%`, "Retention"]} />
                 <Bar dataKey="rate" fill="#7C3AED" radius={[4, 4, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
@@ -157,7 +143,7 @@ export default function Retention() {
                           style={{ background: 'var(--color-primary)' }}>{m.name[0]}</div>
                         <div>
                           <p className="text-[10px] text-white font-semibold truncate max-w-[80px]">{m.name}</p>
-                          <p className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>{m.membershipType}</p>
+                          <p className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>{m.planName}</p>
                         </div>
                       </div>
                     </td>

@@ -151,9 +151,12 @@ If you need to decline:
 4. Member receives notification
 
 **Valid Reasons:**
-• Schedule conflict
-• Already fully booked
+• Personal emergency
+• Medical leave
 • Need more preparation time
+• Member needs assessment first
+• Insufficient booking details
+• Equipment not available
 • Member needs different trainer`,
 
   // Feedback & Evaluation

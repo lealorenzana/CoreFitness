@@ -1,481 +1,678 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, User, CheckCircle, ArrowLeft, MapPin, Star, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { trainers as trainerData } from '../data/trainers';
-import { SharedStorage } from '../utils/sharedStorage';
-import { getCurrentUser } from '../utils/auth';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { panelStyle } from '../components/ui/Card';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import DateRail, { buildRail } from '../components/ui/DateRail';
 import { toast } from '../components/ui/Toast';
-import RatingPrompt from '../components/ui/RatingPrompt';
+import { errorMessage } from '../utils/errorMessage';
+import {
+  getCurrentMemberId,
+  getExperienceLevel,
+  setExperienceLevel,
+  listBookableClasses,
+  bookClass,
+  listOpenPtSlots,
+  requestPt,
+  getEntitlement,
+  type BookableClass,
+  type ExperienceLevel,
+  type Entitlement,
+} from '../services/bookingService';
+import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import type { OpenSlot } from '../lib/api/trainerAvailability';
+import type { ClassLevel } from '../types/db';
 
-interface Trainer {
-  id: string; name: string; specialization: string;
-  photo: string; rating: number;
-  availability: { day: string; slots: string[] }[];
-}
+/**
+ * Booking, against real data.
+ *
+ * Both halves of the booking model live here because they are one question for
+ * the member — "when am I training next" — even though they are two tables:
+ * a group class has a roster and a capacity, a PT session is one member and one
+ * trainer in one slot.
+ *
+ * Neither creates a confirmed booking. Both start pending, and the front desk
+ * approves them — see the admin Bookings queue.
+ */
 
-interface ClassType {
-  id: string; name: string; icon: string; duration: string; description: string;
-}
-
-const classTypes: ClassType[] = [
-  { id: '1', name: 'Strength Training', icon: '💪', duration: '60 min', description: 'Build muscle and increase strength' },
-  { id: '2', name: 'HIIT', icon: '🔥', duration: '45 min', description: 'High-intensity interval training' },
-  { id: '3', name: 'Yoga', icon: '🧘', duration: '60 min', description: 'Flexibility and mindfulness' },
-  { id: '4', name: 'Boxing', icon: '🥊', duration: '50 min', description: 'Combat training and cardio' },
-  { id: '5', name: 'CrossFit', icon: '⚡', duration: '60 min', description: 'Functional fitness workout' },
+const LEVELS: { id: ExperienceLevel; label: string; desc: string }[] = [
+  { id: 'beginner', label: 'Beginner', desc: 'New to fitness, or back after a break' },
+  { id: 'intermediate', label: 'Intermediate', desc: '6+ months training consistently' },
+  { id: 'advanced', label: 'Advanced', desc: '2+ years of dedicated training' },
 ];
 
-const STEPS = ['Class', 'Trainer', 'Day', 'Time'];
+const LEVEL_LABEL: Record<ClassLevel, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+  all_levels: 'All levels',
+};
+
+/** Local calendar day key — never toISOString(), which shifts a Manila evening into tomorrow. */
+function dayKeyOfDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dayKey(iso: string): string {
+  return dayKeyOfDate(new Date(iso));
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (dayKey(iso) === dayKey(today.toISOString())) return 'Today';
+  if (dayKey(iso) === dayKey(tomorrow.toISOString())) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function groupByDay<T>(rows: T[], iso: (row: T) => string): [string, T[]][] {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = dayKey(iso(row));
+    const bucket = map.get(key);
+    if (bucket) bucket.push(row);
+    else map.set(key, [row]);
+  }
+  return [...map.entries()];
+}
 
 export default function BookClass() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
-  const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  // A trainer profile can deep-link straight into that coach's open slots.
+  const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
+  const [tab, setTab] = useState<'classes' | 'pt'>(deepLinkTrainerId ? 'pt' : 'classes');
+  /** Calendar filter. Null = the whole fortnight. */
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [isBooked, setIsBooked] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showRating, setShowRating] = useState(false);
+  const [memberId, setMemberId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
 
-  const trainers: Trainer[] = trainerData.map(t => ({
-    id: t.id, name: t.name, specialization: t.specialty,
-    photo: t.image, rating: t.rating, availability: t.availability,
-  }));
+  // Group classes
+  const [classes, setClasses] = useState<BookableClass[]>([]);
+  const [level, setLevel] = useState<ExperienceLevel | null>(null);
+  const [recommendedOnly, setRecommendedOnly] = useState(false);
+  const [confirmClass, setConfirmClass] = useState<BookableClass | null>(null);
 
-  const handleConfirmBooking = () => {
-    if (!selectedClass || !selectedTrainer || !selectedDay || !selectedTime) return;
-    setShowConfirm(true);
-  };
+  // Personal training
+  const [trainers, setTrainers] = useState<PublicTrainer[]>([]);
+  const [selectedTrainer, setSelectedTrainer] = useState<PublicTrainer | null>(null);
+  const [slots, setSlots] = useState<OpenSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [confirmSlot, setConfirmSlot] = useState<OpenSlot | null>(null);
+  const [notes, setNotes] = useState('');
 
-  const handleFinalize = () => {
-    if (!selectedClass || !selectedTrainer || !selectedDay || !selectedTime) return;
-    setIsLoading(true);
-
-    const currentUser = getCurrentUser();
-    const booking = {
-      id: `booking-${Date.now()}`,
-      memberId: currentUser?.email || localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com',
-      memberName: currentUser?.name || localStorage.getItem('memberName') || 'Eya Lorenzana',
-      memberEmail: currentUser?.email || localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com',
-      className: selectedClass.name,
-      classType: selectedClass.name,
-      trainerName: selectedTrainer.name,
-      trainerId: selectedTrainer.id,
-      day: selectedDay,
-      time: selectedTime,
-      date: new Date().toISOString().split('T')[0],
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-    };
-
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      SharedStorage.addBooking(booking);
-    } catch {
-      toast.error('Could not save booking. Please try again.');
-      setIsLoading(false);
-      setShowConfirm(false);
-      return;
+      const id = await getCurrentMemberId();
+      setMemberId(id);
+      if (!id) {
+        toast.error('Your session could not be verified. Please sign in again.');
+        return;
+      }
+      const [bookable, lvl, coaches, ent] = await Promise.all([
+        listBookableClasses(id),
+        getExperienceLevel(id),
+        listPublicTrainers().catch(() => [] as PublicTrainer[]),
+        getEntitlement(id),
+      ]);
+      setClasses(bookable);
+      setLevel(lvl);
+      setTrainers(coaches);
+      setEntitlement(ent);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load the schedule'));
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowConfirm(false);
-      setIsBooked(true);
-      toast.success('Booking submitted!');
-    }, 600);
+  useEffect(() => { load(); }, [load]);
+
+  const chooseLevel = async (chosen: ExperienceLevel) => {
+    if (!memberId) return;
+    setBusy(true);
+    try {
+      await setExperienceLevel(memberId, chosen);
+      setLevel(chosen);
+      setClasses(await listBookableClasses(memberId));
+      toast.success(`Matched to ${chosen} classes`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save your level'));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleDone = () => {
-    navigate('/member/booking-history');
+  const openTrainer = async (trainer: PublicTrainer) => {
+    setSelectedTrainer(trainer);
+    // Each coach has their own hours, so a date picked against the last one
+    // would filter this one's list against a day they may not even work.
+    setSelectedDay(null);
+    setSlots([]);
+    setSlotsLoading(true);
+    try {
+      setSlots(await listOpenPtSlots(trainer.id));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load open times'));
+    } finally {
+      setSlotsLoading(false);
+    }
   };
 
-  // Show rating prompt for Premium members after booking
+  // Deep link from a trainer profile: open their slots as soon as the roster
+  // arrives. Guarded on `selectedTrainer` so backing out doesn't re-open it.
   useEffect(() => {
-    if (isBooked) {
-      const userData = localStorage.getItem('currentUser');
-      let isPremium = false;
-      if (userData) {
-        try {
-          const user = JSON.parse(userData);
-          isPremium = user.plan === 'Premium' || user.membershipPlan === 'Premium';
-        } catch { /* ignore */ }
-      }
-      if (!isPremium) {
-        const plan = localStorage.getItem('memberPlan') || '';
-        isPremium = plan.toLowerCase() === 'premium';
-      }
-      if (isPremium) {
-        const timer = setTimeout(() => setShowRating(true), 2000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isBooked]);
+    if (!deepLinkTrainerId || selectedTrainer || trainers.length === 0) return;
+    const match = trainers.find((t) => t.id === deepLinkTrainerId);
+    if (match) openTrainer(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkTrainerId, trainers, selectedTrainer]);
 
-  // ─── Success screen ───
-  if (isBooked) {
-    return (
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 text-center px-2">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center"
-          style={{ background: 'var(--color-primary-light)', border: '2px solid var(--color-primary)' }}>
-          <CheckCircle size={40} style={{ color: 'var(--color-primary)' }} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Booking Submitted!</h2>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Your booking is pending admin approval.</p>
-        </div>
-        <div className="w-full rounded-2xl p-4 space-y-3 text-sm"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          {[
-            { label: 'Class', value: selectedClass?.name },
-            { label: 'Trainer', value: selectedTrainer?.name },
-            { label: 'Day', value: selectedDay },
-            { label: 'Time', value: selectedTime },
-            { label: 'Location', value: 'Core Fitness Main Studio' },
-          ].map(row => (
-            <div key={row.label} className="flex justify-between py-1"
-              style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
-              <span className="font-semibold text-white">{row.value}</span>
-            </div>
-          ))}
-        </div>
-        <button onClick={handleDone}
-          className="w-full h-12 rounded-full font-semibold text-black"
-          style={{ background: 'var(--color-secondary)' }}>
-          View My Bookings
-        </button>
-        <RatingPrompt
-          isOpen={showRating}
-          onClose={() => setShowRating(false)}
-          trainerName={selectedTrainer?.name || ''}
-        />
-      </motion.div>
-    );
-  }
+  const submitClassBooking = async () => {
+    if (!memberId || !confirmClass) return;
+    setBusy(true);
+    try {
+      await bookClass(memberId, confirmClass.id);
+      setConfirmClass(null);
+      toast.success('Requested — the front desk will confirm it');
+      // Refresh the quota alongside the list — a weekly allowance that still
+      // reads "0 of 1 booked" after booking is worse than showing no quota.
+      const [refreshed, ent] = await Promise.all([
+        listBookableClasses(memberId),
+        getEntitlement(memberId),
+      ]);
+      setClasses(refreshed);
+      setEntitlement(ent);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not book that class'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPtRequest = async () => {
+    if (!memberId || !confirmSlot || !selectedTrainer) return;
+    setBusy(true);
+    try {
+      await requestPt({
+        memberId,
+        trainerId: selectedTrainer.id,
+        startsAt: confirmSlot.startsAt,
+        durationMinutes: confirmSlot.durationMinutes,
+        notes: notes.trim() || undefined,
+      });
+      setConfirmSlot(null);
+      setNotes('');
+      toast.success('Requested — the front desk will confirm it');
+      // Re-derive: the slot just taken must disappear for everyone, including us.
+      setSlots(await listOpenPtSlots(selectedTrainer.id));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not request that session'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const visibleClasses = useMemo(
+    () => (recommendedOnly ? classes.filter((c) => c.recommended) : classes),
+    [classes, recommendedOnly]
+  );
+  const allClassDays = useMemo(() => groupByDay(visibleClasses, (c) => c.scheduledAt), [visibleClasses]);
+  const allSlotDays = useMemo(() => groupByDay(slots, (s) => s.startsAt), [slots]);
+
+  // The calendar rail. Built over a fixed fortnight rather than only the days
+  // that happen to have something on them — the empty days are the point: they
+  // are how a member sees that Thursday is free without tapping anything.
+  const rail = useMemo(() => {
+    const source = tab === 'pt' ? allSlotDays : allClassDays;
+    const counts = new Map(source.map(([key, rows]) => [key, rows.length]));
+    return buildRail(14, dayKeyOfDate, (key) => counts.get(key) ?? 0);
+  }, [tab, allClassDays, allSlotDays]);
+
+  const classDays = selectedDay ? allClassDays.filter(([key]) => key === selectedDay) : allClassDays;
+  const slotDays = selectedDay ? allSlotDays.filter(([key]) => key === selectedDay) : allSlotDays;
+
+  // Why the member can't book, in the order they'd hit it. Mirrors the trigger
+  // in 0017 — that is what actually enforces this; these are the words for it.
+  const quotaReached =
+    entitlement?.classesPerWeek != null && entitlement.classesUsedThisWeek >= entitlement.classesPerWeek;
+
+  const classBlock: string | null =
+    entitlement == null ? null
+      : entitlement.blockedReason ? entitlement.blockedReason
+      : !entitlement.canBookClasses
+        ? `${entitlement.planName ?? 'Your plan'} doesn't include group classes. Ask the front desk about upgrading.`
+      : quotaReached
+        ? `${entitlement.planName} includes ${entitlement.classesPerWeek} class${entitlement.classesPerWeek === 1 ? '' : 'es'} a week, and you've booked this week's. You can book next week.`
+        : null;
+
+  const ptBlock: string | null =
+    entitlement == null ? null
+      : entitlement.blockedReason ? entitlement.blockedReason
+      : !entitlement.canBookPt
+        ? `${entitlement.planName ?? 'Your plan'} doesn't include personal training. Ask the front desk about upgrading.`
+        : null;
+
+  const activeBlock = tab === 'pt' || selectedTrainer ? ptBlock : classBlock;
 
   return (
     <div className="space-y-5 pb-4">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3">
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
-          onClick={() => step > 1 ? setStep(step - 1) : navigate('/member/home')}
-          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+          onClick={() => (selectedTrainer ? setSelectedTrainer(null) : navigate('/member/home'))}
+          className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-white">Book a Class</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Step {step} of 4 — {STEPS[step - 1]}</p>
-        </div>
-        {/* Step indicator pills */}
-        <div className="flex items-center gap-1">
-          {STEPS.map((_, i) => (
-            <div key={i} className="w-2 h-2 rounded-full transition-all"
-              style={{
-                background: i < step ? 'var(--color-secondary)' : i === step - 1 ? 'var(--color-secondary)' : 'var(--color-border)',
-                transform: i === step - 1 ? 'scale(1.3)' : 'scale(1)',
-              }} />
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Progress bar — segmented */}
-      <div className="flex gap-1">
-        {STEPS.map((_, i) => (
-          <div key={i} className="flex-1 h-1 rounded-full overflow-hidden"
-            style={{ background: 'var(--color-border)' }}>
-            <motion.div
-              className="h-full rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: i < step ? '100%' : '0%' }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ background: 'var(--color-secondary)' }}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* ─── Step 1 — Class Type ─── */}
-      {step === 1 && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="space-y-3"
-        >
-          <h2 className="text-base font-bold text-white">Select Class Type</h2>
-          {classTypes.map((ct, i) => {
-            const isSelected = selectedClass?.id === ct.id;
-            return (
-              <motion.button
-                key={ct.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => { setSelectedClass(ct); setStep(2); }}
-                className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
-                style={{
-                  background: 'var(--color-surface-raised)',
-                  border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  {/* Icon circle */}
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--color-primary-light)' }}>
-                    <span className="text-xl leading-none">{ct.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-bold text-sm">{ct.name}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{ct.description}</p>
-                    <p className="text-[11px] mt-1 font-bold" style={{ color: 'var(--color-secondary)' }}>{ct.duration}</p>
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* ─── Step 2 — Trainer ─── */}
-      {step === 2 && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white">Select Trainer</h2>
-            {selectedClass && (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold"
-                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                {selectedClass.icon} {selectedClass.name}
-              </span>
-            )}
-          </div>
-          {trainers.map((trainer, i) => {
-            const isSelected = selectedTrainer?.id === trainer.id;
-            return (
-              <motion.button
-                key={trainer.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => { setSelectedTrainer(trainer); setStep(3); }}
-                className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
-                style={{
-                  background: 'var(--color-surface-raised)',
-                  border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold text-sm flex-shrink-0"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    {trainer.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-sm">{trainer.name}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{trainer.specialization}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex items-center gap-0.5">
-                        <Star size={11} style={{ color: 'var(--color-secondary)' }} />
-                        <span className="text-[11px] font-semibold text-white">{trainer.rating}</span>
-                      </div>
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        · {trainer.availability.length} days available
-                      </span>
-                    </div>
-                  </div>
-                  {isSelected && <CheckCircle size={18} style={{ color: 'var(--color-primary)' }} />}
-                </div>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* ─── Step 3 — Day ─── */}
-      {step === 3 && selectedTrainer && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white">Select Day</h2>
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold"
-              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-              {selectedTrainer.name}
-            </span>
-          </div>
-          {selectedTrainer.availability.map((avail, i) => {
-            const isSelected = selectedDay === avail.day;
-            return (
-              <motion.button
-                key={avail.day}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => { setSelectedDay(avail.day); setStep(4); }}
-                className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
-                style={{
-                  background: 'var(--color-surface-raised)',
-                  border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: 'var(--color-primary-light)' }}>
-                      <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
-                    </div>
-                    <span className="text-white font-semibold text-sm">{avail.day}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                      {avail.slots.length} slots
-                    </span>
-                    {isSelected && <CheckCircle size={16} style={{ color: 'var(--color-primary)' }} />}
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* ─── Step 4 — Time + Summary ─── */}
-      {step === 4 && selectedTrainer && selectedDay && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white">Select Time</h2>
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold"
-              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-              {selectedDay}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {selectedTrainer.availability.find(a => a.day === selectedDay)?.slots.map((slot, idx) => {
-              const slotsRemaining = [3, 5, 2, 8, 1, 6, 4][idx % 7];
-              const isFull = slotsRemaining === 0;
-              const isSelected = selectedTime === slot;
-              return (
-                <motion.button
-                  key={slot}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.04 }}
-                  onClick={() => !isFull && setSelectedTime(slot)}
-                  disabled={isFull}
-                  className="rounded-2xl p-3 text-center transition-all active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background: isSelected ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                    border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  }}
-                >
-                  <Clock size={16} className="mx-auto mb-1.5"
-                    style={{ color: isSelected ? '#fff' : 'var(--color-text-muted)' }} />
-                  <span className="text-sm font-bold block"
-                    style={{ color: isSelected ? '#fff' : 'var(--color-text-primary)' }}>
-                    {slot}
-                  </span>
-                  <span
-                    className="inline-block mt-2 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                    style={{
-                      background: isSelected ? 'rgba(255,255,255,0.18)' : 'var(--color-secondary-light)',
-                      color: isSelected ? '#fff' : 'var(--color-secondary)',
-                    }}>
-                    <Users size={8} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
-                    {slotsRemaining} left
-                  </span>
-                </motion.button>
-              );
-            })}
-          </div>
-
-          {/* Booking Summary */}
-          <AnimatePresence>
-            {selectedTime && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl p-4 space-y-3"
-                style={{ background: 'var(--color-surface-raised)', border: '1.5px solid var(--color-primary)' }}
-              >
-                <h3 className="text-white font-bold text-sm">Booking Summary</h3>
-                <div className="space-y-2">
-                  {[
-                    { icon: <span className="text-base">{selectedClass?.icon}</span>, label: 'Class', value: selectedClass?.name },
-                    { icon: <User size={13} style={{ color: 'var(--color-secondary)' }} />, label: 'Trainer', value: selectedTrainer.name },
-                    { icon: <Calendar size={13} style={{ color: 'var(--color-secondary)' }} />, label: 'Day', value: selectedDay },
-                    { icon: <Clock size={13} style={{ color: 'var(--color-secondary)' }} />, label: 'Time', value: selectedTime },
-                    { icon: <MapPin size={13} style={{ color: 'var(--color-secondary)' }} />, label: 'Location', value: 'Core Fitness Main Studio' },
-                  ].map(row => (
-                    <div key={row.label} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
-                        {row.icon} {row.label}
-                      </div>
-                      <span className="font-semibold text-white">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleConfirmBooking}
-                  disabled={isLoading}
-                  className="w-full h-12 rounded-full font-semibold text-black mt-2 transition-all active:scale-[0.97] disabled:opacity-60"
-                  style={{ background: 'var(--color-secondary)' }}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                      Submitting…
-                    </span>
-                  ) : 'Confirm Booking'}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      )}
-
-      {/* Confirmation modal */}
-      <Modal
-        isOpen={showConfirm}
-        onClose={() => !isLoading && setShowConfirm(false)}
-        title="Confirm your booking"
-        subtitle="Review your selection before submitting"
-        confirmLabel={isLoading ? 'Submitting…' : 'Yes, Submit'}
-        cancelLabel="Cancel"
-        confirmDisabled={isLoading}
-        onConfirm={handleFinalize}
-      >
-        <div className="space-y-2 text-sm">
-          {[
-            { label: 'Class',    value: selectedClass?.name },
-            { label: 'Trainer',  value: selectedTrainer?.name },
-            { label: 'Day',      value: selectedDay },
-            { label: 'Time',     value: selectedTime },
-            { label: 'Location', value: 'Core Fitness Main Studio' },
-          ].map(row => (
-            <div key={row.label} className="flex items-center justify-between py-2"
-              style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
-              <span className="font-semibold text-white text-right">{row.value}</span>
-            </div>
-          ))}
-          <p className="text-xs mt-3 text-center" style={{ color: 'var(--color-text-muted)' }}>
-            Your booking will be sent to admin for approval.
+        <div className="flex-1 min-w-0">
+          {/* A coach's name stays in the body face — `.display` is condensed
+              uppercase and mangles a person's name. */}
+          <h1 className={selectedTrainer ? 'text-lg font-bold text-white truncate' : 'display text-xl text-white'}>
+            {selectedTrainer ? trainerName(selectedTrainer) : 'Book a Session'}
+          </h1>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {selectedTrainer ? 'Pick an open time' : 'Group classes and 1-on-1 training'}
           </p>
         </div>
+
+        {/* The trainers directory has no bottom-nav tab of its own — the centre
+            check-in button took that slot — so this is one of its two entry
+            points. See MobileMenuDock. */}
+        {!selectedTrainer && (
+          <button
+            onClick={() => navigate('/member/trainers')}
+            className="flex-shrink-0 h-9 px-3 rounded-full text-xs font-semibold flex items-center gap-1.5"
+            style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
+            <Users size={14} /> Coaches
+          </button>
+        )}
+      </motion.div>
+
+      {/* Tabs — hidden while picking a slot, that flow has its own back button.
+          Switching clears the date filter: the rail's counts are per tab, so
+          Thursday having a class says nothing about Thursday having a free PT
+          slot. */}
+      {!selectedTrainer && (
+        <div className="grid grid-cols-2 gap-1 p-1"
+          style={{ ...panelStyle, borderRadius: 'var(--radius-btn)' }} role="tablist">
+          {([['classes', 'Group classes'], ['pt', 'Personal training']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => { setTab(id); setSelectedDay(null); }} role="tab" aria-selected={tab === id}
+              className="py-2 rounded-full font-semibold text-xs transition-colors"
+              style={{
+                background: tab === id ? 'var(--color-primary)' : 'transparent',
+                color: tab === id ? '#fff' : 'var(--color-text-muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Say why up front, rather than letting them pick a class and then fail.
+          The wording names the plan and the way out — a dead button with no
+          explanation reads as a broken app. */}
+      {!loading && activeBlock && (
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl p-4 flex items-start gap-3"
+          style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
+          <Lock size={16} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{activeBlock}</p>
+            <button onClick={() => navigate('/member/renew-membership')}
+              className="mt-2 px-3 py-1.5 rounded-full text-xs font-bold text-black"
+              style={{ background: 'var(--color-secondary)' }}>
+              See plans
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* A quota that's partly used is worth showing before it runs out. */}
+      {!loading && !activeBlock && tab === 'classes' && !selectedTrainer && entitlement?.classesPerWeek != null && (
+        <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
+          {entitlement.classesUsedThisWeek} of {entitlement.classesPerWeek} weekly class
+          {entitlement.classesPerWeek === 1 ? '' : 'es'} booked on {entitlement.planName}
+        </p>
+      )}
+
+      {loading ? (
+        <SkeletonList />
+      ) : tab === 'classes' && !selectedTrainer ? (
+        <>
+          {/* Experience level — asked here rather than guessed, because nothing
+              can be recommended without it. */}
+          {level === null ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-4 space-y-3" style={panelStyle}>
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} style={{ color: 'var(--color-secondary)' }} />
+                <p className="text-sm font-bold text-white">What's your experience level?</p>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                We'll flag the classes pitched at your level. You can still book any class you like.
+              </p>
+              <div className="space-y-2">
+                {LEVELS.map((l) => (
+                  <button key={l.id} disabled={busy} onClick={() => chooseLevel(l.id)}
+                    className="w-full rounded-xl p-3 text-left transition-all active:scale-[0.98] disabled:opacity-50"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    <p className="text-sm font-semibold text-white">{l.label}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{l.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              {/* "You chose", not "your level". Progress shows a *different*
+                  level — the one earned from check-ins here — and labelling
+                  both the same made the two screens look like they disagreed.
+                  Tapping puts the picker back so the choice is changeable. */}
+              <button
+                onClick={() => setLevel(null)}
+                className="text-xs text-left min-w-0"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                You chose <span className="font-semibold text-white capitalize">{level}</span>
+                <span className="underline ml-1" style={{ color: 'var(--color-secondary)' }}>change</span>
+              </button>
+              <button onClick={() => setRecommendedOnly((v) => !v)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1"
+                style={{
+                  background: recommendedOnly ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                  color: recommendedOnly ? '#fff' : 'var(--color-text-muted)',
+                  border: `1px solid ${recommendedOnly ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                }}>
+                <Sparkles size={11} /> For my level
+              </button>
+            </div>
+          )}
+
+          {allClassDays.length > 0 && (
+            <>
+              <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
+              {selectedDay && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                    {classDays[0]?.[1].length
+                      ? `${classDays[0][1].length} class${classDays[0][1].length === 1 ? '' : 'es'} this day`
+                      : 'No classes this day'}
+                  </p>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+                  >
+                    <X size={11} /> Show all
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {classDays.length === 0 ? (
+            <div className="rounded-2xl p-8 text-center" style={panelStyle}>
+              <Calendar size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+              <p className="font-medium text-white text-sm">
+                {selectedDay
+                  ? 'Nothing on this day'
+                  : classes.length === 0
+                    ? 'No classes scheduled yet'
+                    : 'Nothing at your level right now'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                {classes.length === 0
+                  ? 'The gym publishes the weekly timetable — check back soon.'
+                  : 'Turn off the filter to see every class on the timetable.'}
+              </p>
+            </div>
+          ) : (
+            classDays.map(([key, dayClasses]) => (
+              <div key={key} className="space-y-2">
+                <h2 className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+                  {dayLabel(dayClasses[0].scheduledAt)}
+                </h2>
+                {dayClasses.map((c, i) => {
+                  const full = c.spotsLeft === 0;
+                  const booked = c.myStatus != null;
+                  return (
+                    <motion.div key={c.id}
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(i * 0.04, 0.2) }}
+                      className="rounded-2xl p-4" style={panelStyle}>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-white font-bold text-sm">{c.name}</p>
+                            {c.recommended && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
+                                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                                <Sparkles size={8} /> For you
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            {LEVEL_LABEL[c.level]}{c.classType ? ` · ${c.classType}` : ''}
+                          </p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full font-bold flex-shrink-0"
+                          style={{
+                            background: full ? 'rgba(148,163,184,0.15)' : 'var(--color-secondary-light)',
+                            color: full ? 'var(--color-text-muted)' : 'var(--color-secondary)',
+                          }}>
+                          <Users size={9} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
+                          {full ? 'Full' : `${c.spotsLeft} left`}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                        <p className="flex items-center gap-1.5">
+                          <Clock size={12} style={{ color: 'var(--color-secondary)' }} />
+                          {timeLabel(c.scheduledAt)} · {c.durationMinutes} min
+                        </p>
+                        <p className="flex items-center gap-1.5">
+                          <User size={12} style={{ color: 'var(--color-secondary)' }} /> {c.trainerName}
+                        </p>
+                        {c.location && (
+                          <p className="flex items-center gap-1.5">
+                            <MapPin size={12} style={{ color: 'var(--color-secondary)' }} /> {c.location}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        disabled={booked || full || classBlock !== null}
+                        onClick={() => setConfirmClass(c)}
+                        className="w-full h-10 rounded-full font-semibold text-xs transition-all active:scale-[0.97] disabled:cursor-not-allowed"
+                        style={
+                          booked
+                            ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
+                            : full || classBlock
+                              ? { background: 'var(--color-bg)', color: 'var(--color-text-muted)' }
+                              : { background: 'var(--color-secondary)', color: '#000' }
+                        }>
+                        {booked
+                          ? (c.myStatus === 'approved' ? 'Confirmed' : 'Awaiting approval')
+                          : full ? 'Class full'
+                          : classBlock ? 'Not on your plan'
+                          : 'Book'}
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ))
+          )}
+        </>
+      ) : !selectedTrainer ? (
+        /* ─── Personal Training: pick a coach ─── */
+        trainers.length === 0 ? (
+          <div className="rounded-2xl p-8 text-center" style={panelStyle}>
+            <Dumbbell size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+            <p className="font-medium text-white text-sm">No trainers available yet</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+              Personal training opens once the gym adds its coaching team.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {trainers.map((t, i) => (
+              <motion.button key={t.id}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.05, 0.2) }}
+                onClick={() => openTrainer(t)}
+                className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+                style={panelStyle}>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold text-sm flex-shrink-0"
+                    style={{ background: 'var(--color-secondary)' }}>
+                    {`${t.first_name[0] ?? ''}${t.last_name[0] ?? ''}`.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm">{trainerName(t)}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      {t.specialization ?? 'General training'}
+                    </p>
+                  </div>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )
+      ) : slotsLoading ? (
+        <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>Finding open times…</p>
+      ) : (
+        <>
+          {allSlotDays.length > 0 && (
+            <>
+              <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
+              {selectedDay && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                    {slotDays[0]?.[1].length
+                      ? `${slotDays[0][1].length} open time${slotDays[0][1].length === 1 ? '' : 's'} this day`
+                      : 'No open times this day'}
+                  </p>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+                  >
+                    <X size={11} /> Show all
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {slotDays.length === 0 ? (
+            <div className="rounded-2xl p-8 text-center" style={panelStyle}>
+              <Clock size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+              <p className="font-medium text-white text-sm">
+                {selectedDay ? 'Nothing on this day' : 'No open times'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                {selectedDay
+                  ? 'Pick another date, or show all.'
+                  : `${trainerName(selectedTrainer)} has no bookable hours in the next two weeks. Try another coach.`}
+              </p>
+            </div>
+          ) : (
+            slotDays.map(([key, daySlots]) => (
+          <div key={key} className="space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+              {dayLabel(daySlots[0].startsAt)}
+            </h2>
+            <div className="grid grid-cols-3 gap-2">
+              {daySlots.map((s) => (
+                <button key={s.startsAt} onClick={() => setConfirmSlot(s)}
+                  disabled={ptBlock !== null}
+                  className="rounded-xl py-3 text-center transition-all active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={panelStyle}>
+                  <span className="text-xs font-bold text-white block">{timeLabel(s.startsAt)}</span>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{s.durationMinutes} min</span>
+                </button>
+              ))}
+            </div>
+          </div>
+            ))
+          )}
+        </>
+      )}
+
+      {/* Confirm — group class */}
+      <Modal
+        isOpen={confirmClass !== null}
+        onClose={() => !busy && setConfirmClass(null)}
+        title="Confirm your booking"
+        subtitle="The front desk approves bookings"
+        confirmLabel={busy ? 'Sending…' : 'Request booking'}
+        cancelLabel="Cancel"
+        confirmDisabled={busy}
+        onConfirm={submitClassBooking}>
+        {confirmClass && (
+          <div className="space-y-2 text-sm">
+            {[
+              { label: 'Class', value: confirmClass.name },
+              { label: 'When', value: `${dayLabel(confirmClass.scheduledAt)}, ${timeLabel(confirmClass.scheduledAt)}` },
+              { label: 'Trainer', value: confirmClass.trainerName },
+              { label: 'Location', value: confirmClass.location ?? 'Core Fitness' },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between py-2"
+                style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
+                <span className="font-semibold text-white text-right">{row.value}</span>
+              </div>
+            ))}
+            <p className="text-xs mt-3 text-center" style={{ color: 'var(--color-text-muted)' }}>
+              Your seat is held once the front desk confirms it.
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Confirm — personal training */}
+      <Modal
+        isOpen={confirmSlot !== null}
+        onClose={() => !busy && setConfirmSlot(null)}
+        title="Request this session"
+        subtitle="The front desk approves personal training"
+        confirmLabel={busy ? 'Sending…' : 'Request session'}
+        cancelLabel="Cancel"
+        confirmDisabled={busy}
+        onConfirm={submitPtRequest}>
+        {confirmSlot && selectedTrainer && (
+          <div className="space-y-2 text-sm">
+            {[
+              { label: 'Trainer', value: trainerName(selectedTrainer) },
+              { label: 'When', value: `${dayLabel(confirmSlot.startsAt)}, ${timeLabel(confirmSlot.startsAt)}` },
+              { label: 'Length', value: `${confirmSlot.durationMinutes} min` },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between py-2"
+                style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
+                <span className="font-semibold text-white text-right">{row.value}</span>
+              </div>
+            ))}
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Anything your trainer should know? (optional)"
+              className="w-full mt-2 rounded-xl p-3 text-xs text-white resize-none"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );

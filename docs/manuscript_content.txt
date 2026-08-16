@@ -1,0 +1,1730 @@
+Research Proposal Form
+Research Title: CORE Fitness: A Cross-Platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro | Research Title: CORE Fitness: A Cross-Platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro | Research Title: CORE Fitness: A Cross-Platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro | Research Title: CORE Fitness: A Cross-Platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro
+Proponents:                                                                     
+Lea R. Lorenzana
+Ana P. Ituralde
+Cyrelle Joy F. Duhac
+Nathanniel R. Ucol | Proponents:                                                                     
+Lea R. Lorenzana
+Ana P. Ituralde
+Cyrelle Joy F. Duhac
+Nathanniel R. Ucol | Adviser:           Erika Jane D. Tadeja
+Data Analyst:   Erika Jane D. Tadeja
+Critic Reader:   Krizhna Rose V. Guerra | Adviser:           Erika Jane D. Tadeja
+Data Analyst:   Erika Jane D. Tadeja
+Critic Reader:   Krizhna Rose V. Guerra
+Priority Area/s (check the applicable): 
+1. Natural & Applied Sciences
+Agriculture (Crops, Livestock, Fisheries, Forestry, Natural Resources)
+Food and Nutrition
+Health and Medicine
+Environment and Climate Change
+Energy and Infrastructure
+2. Social & Community Development
+Countryside Development
+Social Services (Welfare, housing, community programs)
+Education (Curriculum, pedagogy, e-learning, inclusive education)
+Disaster and Risk Reduction (Preparedness, resilience, recovery strategies)
+Sports, Recreation & Wellness (Sports science, physical education, community wellness)
+Digital Transformation (E-governance, fintech, smart cities, digital inclusion)
+3. Governance, Economics & Policy
+Economics and Business (Entrepreneurship, trade, finance, sustainable practices)
+Governance and Policy (Public administration, law, peace and security, human rights)
+Globalization & International Relations (Migration, trade, diplomacy, global cooperation)
+Peace & Security Studies (Conflict resolution, cybersecurity, disaster diplomacy)
+Transportation (Smart mobility, logistics, sustainable transport)
+4. Culture, Arts & Humanities
+Culture, Arts, and Humanities (History, literature, linguistics, creative industries, indigenous knowledge)
+Tourism and Hospitality (Eco-tourism, cultural tourism, sustainable tourism management)
+Other pls specify: __________________________________________________ | Priority Area/s (check the applicable): 
+1. Natural & Applied Sciences
+Agriculture (Crops, Livestock, Fisheries, Forestry, Natural Resources)
+Food and Nutrition
+Health and Medicine
+Environment and Climate Change
+Energy and Infrastructure
+2. Social & Community Development
+Countryside Development
+Social Services (Welfare, housing, community programs)
+Education (Curriculum, pedagogy, e-learning, inclusive education)
+Disaster and Risk Reduction (Preparedness, resilience, recovery strategies)
+Sports, Recreation & Wellness (Sports science, physical education, community wellness)
+Digital Transformation (E-governance, fintech, smart cities, digital inclusion)
+3. Governance, Economics & Policy
+Economics and Business (Entrepreneurship, trade, finance, sustainable practices)
+Governance and Policy (Public administration, law, peace and security, human rights)
+Globalization & International Relations (Migration, trade, diplomacy, global cooperation)
+Peace & Security Studies (Conflict resolution, cybersecurity, disaster diplomacy)
+Transportation (Smart mobility, logistics, sustainable transport)
+4. Culture, Arts & Humanities
+Culture, Arts, and Humanities (History, literature, linguistics, creative industries, indigenous knowledge)
+Tourism and Hospitality (Eco-tourism, cultural tourism, sustainable tourism management)
+Other pls specify: __________________________________________________ | Software and Emerging Technology Domains (Check the applicable)
+Data Analytics & Visualization (predictive dashboards, big data tools, business intelligence, real-time monitoring)
+Cybersecurity Solutions (authentication systems, intrusion detection, secure communication apps, digital forensics)
+Cloud Computing Applications (SaaS platforms, cloud storage management, distributed systems, serverless computing)
+Internet of Things (IoT) Systems (smart homes, sensor networks, agriculture IoT, industrial IoT)
+Blockchain Applications (cryptocurrency wallets, supply chain tracking, smart contracts, decentralized apps)
+Artificial Intelligence & Machine Learning (chatbots, recommendation engines, predictive models, natural language processing)
+Augmented Reality (AR) / Virtual Reality (VR) (immersive training, tourism, simulation systems, interactive learning)
+Software Customization (especially Free & Open-Source Software – FOSS; localization, accessibility, usability enhancements)
+Extensions (feature add-ons for browsers, IDEs, or platforms; workflow automation, productivity tools)
+Plug-ins (modular enhancements for existing applications; multimedia plug-ins, analytics plug-ins)
+Expert Systems and Decision Support Systems / Intelligent Systems (knowledge-based systems, AI-driven decision support, diagnostics)
+Systems Software (utilities, interpreters, simulators, compilers, security-related software, performance monitoring)
+Web Applications Development (e-commerce, portals, dashboards, online services, collaborative platforms)
+Mobile Computing Systems (Android/iOS apps, cross-platform solutions, mobile health, mobile banking)
+Computer Vision (image recognition, surveillance, medical imaging, gesture tracking, AR integration)
+Game Development (educational games, serious games, entertainment platforms, gamified training)
+E-learning Systems (LMS, gamified learning, adaptive learning platforms, AI tutors)
+Interactive Systems (touch interfaces, gesture-based systems, VR/AR experiences, smart classrooms)
+Information Kiosks (public service kiosks, tourism info systems, campus kiosks, healthcare kiosks) | Software and Emerging Technology Domains (Check the applicable)
+Data Analytics & Visualization (predictive dashboards, big data tools, business intelligence, real-time monitoring)
+Cybersecurity Solutions (authentication systems, intrusion detection, secure communication apps, digital forensics)
+Cloud Computing Applications (SaaS platforms, cloud storage management, distributed systems, serverless computing)
+Internet of Things (IoT) Systems (smart homes, sensor networks, agriculture IoT, industrial IoT)
+Blockchain Applications (cryptocurrency wallets, supply chain tracking, smart contracts, decentralized apps)
+Artificial Intelligence & Machine Learning (chatbots, recommendation engines, predictive models, natural language processing)
+Augmented Reality (AR) / Virtual Reality (VR) (immersive training, tourism, simulation systems, interactive learning)
+Software Customization (especially Free & Open-Source Software – FOSS; localization, accessibility, usability enhancements)
+Extensions (feature add-ons for browsers, IDEs, or platforms; workflow automation, productivity tools)
+Plug-ins (modular enhancements for existing applications; multimedia plug-ins, analytics plug-ins)
+Expert Systems and Decision Support Systems / Intelligent Systems (knowledge-based systems, AI-driven decision support, diagnostics)
+Systems Software (utilities, interpreters, simulators, compilers, security-related software, performance monitoring)
+Web Applications Development (e-commerce, portals, dashboards, online services, collaborative platforms)
+Mobile Computing Systems (Android/iOS apps, cross-platform solutions, mobile health, mobile banking)
+Computer Vision (image recognition, surveillance, medical imaging, gesture tracking, AR integration)
+Game Development (educational games, serious games, entertainment platforms, gamified training)
+E-learning Systems (LMS, gamified learning, adaptive learning platforms, AI tutors)
+Interactive Systems (touch interfaces, gesture-based systems, VR/AR experiences, smart classrooms)
+Information Kiosks (public service kiosks, tourism info systems, campus kiosks, healthcare kiosks)
+Background
+There is increasing demand for health and wellness services in Mamburao, Occidental Mindoro, with their fitness centers (G-Fitness, Fitness Regency and Ferrer Fitness) still relying on manual and paper-based processes. Administering these facilities is inefficient, as they are based on handwritten training logs, physical membership folders and analog record-keeping mechanisms, which makes it difficult to provide services and maintain the business. As shown in the related studies, manual records of small and medium fitness facilities are becoming less and less effective due to various operational gaps, which is why digitalization is becoming more and more necessary (Zhou, 2022; Alboneh & Snae, 2025).
+
+Interviews with stakeholders in the three gyms showed that manual methods are associated with a tendency towards the ‘data decay’ cycle, where paper-based records are piling up and are either thrown away or recycled on a regular basis, such as every couple of weeks. This practice leaves nearly all historical member data intact, thereby allowing owners to not be able to see member progress or trends in financial gaps. In particular, owners found that they could not access unpaid balances from previous periods, because no system was in place to identify outstanding balances. Without automated access control, unregistered individuals can enter the facility unnoticed during busy periods when staff attention is divided, leading to uncollected fees. Previous research has validated the efficiency of QR code-based attendance systems in enhancing accuracy and administrative productivity in service-oriented settings (Siew et al., 2023c), and the NLP-based automated chatbot systems in automating repetitive administrative questions and boosting service responsiveness (Ahriz et al., 2024).
+
+The researchers used a purposive sampling method to select 60 respondents from the 3 collaborating fitness centers (G-Fitness with 40 respondents, Fitness Regency with 10 respondents, Ferrer Fitness with 10 respondents) to validate these operational inefficiencies and determine the readiness of the stakeholders in using a digital solution. To ensure that data was collected from people who were actively involved in the day-to-day functioning of the gym and physical training activities, purposive sampling was used. The survey was divided into four sections: current gym process, problems and challenges faced, willingness to contribute data to the development of the system, and perceived importance of proposed features of the system. Overall, the weighted mean for Section B (Current Gym Processes and Transactions) was 4.41 (Strongly Agree) which shows that the respondents recognize the existence of the gym processes and the manual and undigitized ways of conducting transactions in the gym. In the operational problems domain Section C (Problems and Challenges) the weighted means were 2.32 (Rarely) at all three gyms, indicating that operational issues are common to all three gyms, such as: delays in membership registration, gym information not available outside of gym hours, the lack of individual fitness advice and the difficulties in keeping track of attendance. Weighted mean scores for Section D (Data Gathering for System Development) were 4.28 (Very Willing) which depicts strong stakeholder receptiveness towards sharing of personal fitness and payment data in order to develop system. The weighted mean for Section E (System Needs and features) was 3.85 (Important), indicating that the target users agree that the features that are proposed, including 24/7 access online, mobile-optimized systems, digital attendance tracking, real-time notifications and an NLP based administrative assistant, are important. Put together, these results confirm the gaps outlined from stakeholder interviews and direct field observation, and provide the empirical evidence that can support the development of the CORE Fitness system.
+
+Given these documented challenges, this study suggests the development of a cross-platform Management Information System (MIS) dubbed CORE Fitness as the digital backbone of local fitness centers. The architecture is designed to be scalable and flexible, using a relational database to store and manage data.The system is built on a Node.js and MySQL 8.0 architecture, with a focus on scalability and flexibility to accommodate the needs of a growing user base. Administered via a React based web dashboard, and a corresponding mobile app for members, operations are managed and functions of the gym can be accessed at any time without the need for physical records.
+
+The system has two features built for the local environment: Rule-Based Analytics for keeping members, and an NLP-Based Administrative Assistant for handling common questions.  The analytics feature tracks attendance to identify members who may be at risk of being lost and can be used as a Decision Support System (DSS) that allows owners to take a proactive approach to retention strategies. The research on fitness center member behavior has shown that, to maintain fitness center level membership renewal, at-risk members need to be identified through behavioral data monitoring early on in the member's experience (Yeomans et al., 2024). The NLP Administrative Assistant responds to repetitive requests about gym policies, schedules and membership verification, a function that is especially desired by owners to ease communications and alleviate administrative conflict. CORE Fitness shows that an appropriately localized technology can provide the same data-driven operational benefits to small provincial businesses as those enjoyed by larger urban businesses, when assessed against ISO/IEC 25010 quality standards.
+
+References:
+Ahriz, S., Gharbaoui, H., Benmoussa, N., Chahid, A., & Mansouri, K. (2024). Enhancing Information Technology Governance in Universities: A Smart Chatbot System based on Information Technology Infrastructure Library. Engineering Technology & Applied Science Research, 14(6), 17876–17882. https://doi.org/10.48084/etasr.8878
+Yeomans, C., Karg, A., & Nguyen, J. (2024). Who churns from fitness centres? Evidence from behavioural and attitudinal segmentation. Managing Sport and Leisure, 31(2), 388–404. https://doi.org/10.1080/23750472.2024.2305896
+Siew, E. S. K., Chong, Z. Y., Sze, S. N., & Hardi, R. (2023c). Streamlining attendance management in Education: a Web-Based system combining facial recognition and QR code technology. Journal of Advanced Research in Applied Sciences and Engineering Technology, 33(2), 198–208. https://doi.org/10.37934/araset.33.2.198208
+Alboneh, A. F. A., & Snae, M. (2025). Development of a Web-Based gym information System at Nahaga Sabu Seba. Journal of Artificial Intelligence and Engineering Applications (JAIEA), 4(3), 1907–1914. https://doi.org/10.59934/jaiea.v4i3.1080
+Zhou, D. (2022, December 9). Application of Intelligent System of Internet of Things in Management of Unmanned Gymnasium. Www.atlantis-Press.com; Atlantis Press. 
+https://doi.org/10.2991/978-94-6463-012-1_64 | Background
+There is increasing demand for health and wellness services in Mamburao, Occidental Mindoro, with their fitness centers (G-Fitness, Fitness Regency and Ferrer Fitness) still relying on manual and paper-based processes. Administering these facilities is inefficient, as they are based on handwritten training logs, physical membership folders and analog record-keeping mechanisms, which makes it difficult to provide services and maintain the business. As shown in the related studies, manual records of small and medium fitness facilities are becoming less and less effective due to various operational gaps, which is why digitalization is becoming more and more necessary (Zhou, 2022; Alboneh & Snae, 2025).
+
+Interviews with stakeholders in the three gyms showed that manual methods are associated with a tendency towards the ‘data decay’ cycle, where paper-based records are piling up and are either thrown away or recycled on a regular basis, such as every couple of weeks. This practice leaves nearly all historical member data intact, thereby allowing owners to not be able to see member progress or trends in financial gaps. In particular, owners found that they could not access unpaid balances from previous periods, because no system was in place to identify outstanding balances. Without automated access control, unregistered individuals can enter the facility unnoticed during busy periods when staff attention is divided, leading to uncollected fees. Previous research has validated the efficiency of QR code-based attendance systems in enhancing accuracy and administrative productivity in service-oriented settings (Siew et al., 2023c), and the NLP-based automated chatbot systems in automating repetitive administrative questions and boosting service responsiveness (Ahriz et al., 2024).
+
+The researchers used a purposive sampling method to select 60 respondents from the 3 collaborating fitness centers (G-Fitness with 40 respondents, Fitness Regency with 10 respondents, Ferrer Fitness with 10 respondents) to validate these operational inefficiencies and determine the readiness of the stakeholders in using a digital solution. To ensure that data was collected from people who were actively involved in the day-to-day functioning of the gym and physical training activities, purposive sampling was used. The survey was divided into four sections: current gym process, problems and challenges faced, willingness to contribute data to the development of the system, and perceived importance of proposed features of the system. Overall, the weighted mean for Section B (Current Gym Processes and Transactions) was 4.41 (Strongly Agree) which shows that the respondents recognize the existence of the gym processes and the manual and undigitized ways of conducting transactions in the gym. In the operational problems domain Section C (Problems and Challenges) the weighted means were 2.32 (Rarely) at all three gyms, indicating that operational issues are common to all three gyms, such as: delays in membership registration, gym information not available outside of gym hours, the lack of individual fitness advice and the difficulties in keeping track of attendance. Weighted mean scores for Section D (Data Gathering for System Development) were 4.28 (Very Willing) which depicts strong stakeholder receptiveness towards sharing of personal fitness and payment data in order to develop system. The weighted mean for Section E (System Needs and features) was 3.85 (Important), indicating that the target users agree that the features that are proposed, including 24/7 access online, mobile-optimized systems, digital attendance tracking, real-time notifications and an NLP based administrative assistant, are important. Put together, these results confirm the gaps outlined from stakeholder interviews and direct field observation, and provide the empirical evidence that can support the development of the CORE Fitness system.
+
+Given these documented challenges, this study suggests the development of a cross-platform Management Information System (MIS) dubbed CORE Fitness as the digital backbone of local fitness centers. The architecture is designed to be scalable and flexible, using a relational database to store and manage data.The system is built on a Node.js and MySQL 8.0 architecture, with a focus on scalability and flexibility to accommodate the needs of a growing user base. Administered via a React based web dashboard, and a corresponding mobile app for members, operations are managed and functions of the gym can be accessed at any time without the need for physical records.
+
+The system has two features built for the local environment: Rule-Based Analytics for keeping members, and an NLP-Based Administrative Assistant for handling common questions.  The analytics feature tracks attendance to identify members who may be at risk of being lost and can be used as a Decision Support System (DSS) that allows owners to take a proactive approach to retention strategies. The research on fitness center member behavior has shown that, to maintain fitness center level membership renewal, at-risk members need to be identified through behavioral data monitoring early on in the member's experience (Yeomans et al., 2024). The NLP Administrative Assistant responds to repetitive requests about gym policies, schedules and membership verification, a function that is especially desired by owners to ease communications and alleviate administrative conflict. CORE Fitness shows that an appropriately localized technology can provide the same data-driven operational benefits to small provincial businesses as those enjoyed by larger urban businesses, when assessed against ISO/IEC 25010 quality standards.
+
+References:
+Ahriz, S., Gharbaoui, H., Benmoussa, N., Chahid, A., & Mansouri, K. (2024). Enhancing Information Technology Governance in Universities: A Smart Chatbot System based on Information Technology Infrastructure Library. Engineering Technology & Applied Science Research, 14(6), 17876–17882. https://doi.org/10.48084/etasr.8878
+Yeomans, C., Karg, A., & Nguyen, J. (2024). Who churns from fitness centres? Evidence from behavioural and attitudinal segmentation. Managing Sport and Leisure, 31(2), 388–404. https://doi.org/10.1080/23750472.2024.2305896
+Siew, E. S. K., Chong, Z. Y., Sze, S. N., & Hardi, R. (2023c). Streamlining attendance management in Education: a Web-Based system combining facial recognition and QR code technology. Journal of Advanced Research in Applied Sciences and Engineering Technology, 33(2), 198–208. https://doi.org/10.37934/araset.33.2.198208
+Alboneh, A. F. A., & Snae, M. (2025). Development of a Web-Based gym information System at Nahaga Sabu Seba. Journal of Artificial Intelligence and Engineering Applications (JAIEA), 4(3), 1907–1914. https://doi.org/10.59934/jaiea.v4i3.1080
+Zhou, D. (2022, December 9). Application of Intelligent System of Internet of Things in Management of Unmanned Gymnasium. Www.atlantis-Press.com; Atlantis Press. 
+https://doi.org/10.2991/978-94-6463-012-1_64 | Background
+There is increasing demand for health and wellness services in Mamburao, Occidental Mindoro, with their fitness centers (G-Fitness, Fitness Regency and Ferrer Fitness) still relying on manual and paper-based processes. Administering these facilities is inefficient, as they are based on handwritten training logs, physical membership folders and analog record-keeping mechanisms, which makes it difficult to provide services and maintain the business. As shown in the related studies, manual records of small and medium fitness facilities are becoming less and less effective due to various operational gaps, which is why digitalization is becoming more and more necessary (Zhou, 2022; Alboneh & Snae, 2025).
+
+Interviews with stakeholders in the three gyms showed that manual methods are associated with a tendency towards the ‘data decay’ cycle, where paper-based records are piling up and are either thrown away or recycled on a regular basis, such as every couple of weeks. This practice leaves nearly all historical member data intact, thereby allowing owners to not be able to see member progress or trends in financial gaps. In particular, owners found that they could not access unpaid balances from previous periods, because no system was in place to identify outstanding balances. Without automated access control, unregistered individuals can enter the facility unnoticed during busy periods when staff attention is divided, leading to uncollected fees. Previous research has validated the efficiency of QR code-based attendance systems in enhancing accuracy and administrative productivity in service-oriented settings (Siew et al., 2023c), and the NLP-based automated chatbot systems in automating repetitive administrative questions and boosting service responsiveness (Ahriz et al., 2024).
+
+The researchers used a purposive sampling method to select 60 respondents from the 3 collaborating fitness centers (G-Fitness with 40 respondents, Fitness Regency with 10 respondents, Ferrer Fitness with 10 respondents) to validate these operational inefficiencies and determine the readiness of the stakeholders in using a digital solution. To ensure that data was collected from people who were actively involved in the day-to-day functioning of the gym and physical training activities, purposive sampling was used. The survey was divided into four sections: current gym process, problems and challenges faced, willingness to contribute data to the development of the system, and perceived importance of proposed features of the system. Overall, the weighted mean for Section B (Current Gym Processes and Transactions) was 4.41 (Strongly Agree) which shows that the respondents recognize the existence of the gym processes and the manual and undigitized ways of conducting transactions in the gym. In the operational problems domain Section C (Problems and Challenges) the weighted means were 2.32 (Rarely) at all three gyms, indicating that operational issues are common to all three gyms, such as: delays in membership registration, gym information not available outside of gym hours, the lack of individual fitness advice and the difficulties in keeping track of attendance. Weighted mean scores for Section D (Data Gathering for System Development) were 4.28 (Very Willing) which depicts strong stakeholder receptiveness towards sharing of personal fitness and payment data in order to develop system. The weighted mean for Section E (System Needs and features) was 3.85 (Important), indicating that the target users agree that the features that are proposed, including 24/7 access online, mobile-optimized systems, digital attendance tracking, real-time notifications and an NLP based administrative assistant, are important. Put together, these results confirm the gaps outlined from stakeholder interviews and direct field observation, and provide the empirical evidence that can support the development of the CORE Fitness system.
+
+Given these documented challenges, this study suggests the development of a cross-platform Management Information System (MIS) dubbed CORE Fitness as the digital backbone of local fitness centers. The architecture is designed to be scalable and flexible, using a relational database to store and manage data.The system is built on a Node.js and MySQL 8.0 architecture, with a focus on scalability and flexibility to accommodate the needs of a growing user base. Administered via a React based web dashboard, and a corresponding mobile app for members, operations are managed and functions of the gym can be accessed at any time without the need for physical records.
+
+The system has two features built for the local environment: Rule-Based Analytics for keeping members, and an NLP-Based Administrative Assistant for handling common questions.  The analytics feature tracks attendance to identify members who may be at risk of being lost and can be used as a Decision Support System (DSS) that allows owners to take a proactive approach to retention strategies. The research on fitness center member behavior has shown that, to maintain fitness center level membership renewal, at-risk members need to be identified through behavioral data monitoring early on in the member's experience (Yeomans et al., 2024). The NLP Administrative Assistant responds to repetitive requests about gym policies, schedules and membership verification, a function that is especially desired by owners to ease communications and alleviate administrative conflict. CORE Fitness shows that an appropriately localized technology can provide the same data-driven operational benefits to small provincial businesses as those enjoyed by larger urban businesses, when assessed against ISO/IEC 25010 quality standards.
+
+References:
+Ahriz, S., Gharbaoui, H., Benmoussa, N., Chahid, A., & Mansouri, K. (2024). Enhancing Information Technology Governance in Universities: A Smart Chatbot System based on Information Technology Infrastructure Library. Engineering Technology & Applied Science Research, 14(6), 17876–17882. https://doi.org/10.48084/etasr.8878
+Yeomans, C., Karg, A., & Nguyen, J. (2024). Who churns from fitness centres? Evidence from behavioural and attitudinal segmentation. Managing Sport and Leisure, 31(2), 388–404. https://doi.org/10.1080/23750472.2024.2305896
+Siew, E. S. K., Chong, Z. Y., Sze, S. N., & Hardi, R. (2023c). Streamlining attendance management in Education: a Web-Based system combining facial recognition and QR code technology. Journal of Advanced Research in Applied Sciences and Engineering Technology, 33(2), 198–208. https://doi.org/10.37934/araset.33.2.198208
+Alboneh, A. F. A., & Snae, M. (2025). Development of a Web-Based gym information System at Nahaga Sabu Seba. Journal of Artificial Intelligence and Engineering Applications (JAIEA), 4(3), 1907–1914. https://doi.org/10.59934/jaiea.v4i3.1080
+Zhou, D. (2022, December 9). Application of Intelligent System of Internet of Things in Management of Unmanned Gymnasium. Www.atlantis-Press.com; Atlantis Press. 
+https://doi.org/10.2991/978-94-6463-012-1_64 | Background
+There is increasing demand for health and wellness services in Mamburao, Occidental Mindoro, with their fitness centers (G-Fitness, Fitness Regency and Ferrer Fitness) still relying on manual and paper-based processes. Administering these facilities is inefficient, as they are based on handwritten training logs, physical membership folders and analog record-keeping mechanisms, which makes it difficult to provide services and maintain the business. As shown in the related studies, manual records of small and medium fitness facilities are becoming less and less effective due to various operational gaps, which is why digitalization is becoming more and more necessary (Zhou, 2022; Alboneh & Snae, 2025).
+
+Interviews with stakeholders in the three gyms showed that manual methods are associated with a tendency towards the ‘data decay’ cycle, where paper-based records are piling up and are either thrown away or recycled on a regular basis, such as every couple of weeks. This practice leaves nearly all historical member data intact, thereby allowing owners to not be able to see member progress or trends in financial gaps. In particular, owners found that they could not access unpaid balances from previous periods, because no system was in place to identify outstanding balances. Without automated access control, unregistered individuals can enter the facility unnoticed during busy periods when staff attention is divided, leading to uncollected fees. Previous research has validated the efficiency of QR code-based attendance systems in enhancing accuracy and administrative productivity in service-oriented settings (Siew et al., 2023c), and the NLP-based automated chatbot systems in automating repetitive administrative questions and boosting service responsiveness (Ahriz et al., 2024).
+
+The researchers used a purposive sampling method to select 60 respondents from the 3 collaborating fitness centers (G-Fitness with 40 respondents, Fitness Regency with 10 respondents, Ferrer Fitness with 10 respondents) to validate these operational inefficiencies and determine the readiness of the stakeholders in using a digital solution. To ensure that data was collected from people who were actively involved in the day-to-day functioning of the gym and physical training activities, purposive sampling was used. The survey was divided into four sections: current gym process, problems and challenges faced, willingness to contribute data to the development of the system, and perceived importance of proposed features of the system. Overall, the weighted mean for Section B (Current Gym Processes and Transactions) was 4.41 (Strongly Agree) which shows that the respondents recognize the existence of the gym processes and the manual and undigitized ways of conducting transactions in the gym. In the operational problems domain Section C (Problems and Challenges) the weighted means were 2.32 (Rarely) at all three gyms, indicating that operational issues are common to all three gyms, such as: delays in membership registration, gym information not available outside of gym hours, the lack of individual fitness advice and the difficulties in keeping track of attendance. Weighted mean scores for Section D (Data Gathering for System Development) were 4.28 (Very Willing) which depicts strong stakeholder receptiveness towards sharing of personal fitness and payment data in order to develop system. The weighted mean for Section E (System Needs and features) was 3.85 (Important), indicating that the target users agree that the features that are proposed, including 24/7 access online, mobile-optimized systems, digital attendance tracking, real-time notifications and an NLP based administrative assistant, are important. Put together, these results confirm the gaps outlined from stakeholder interviews and direct field observation, and provide the empirical evidence that can support the development of the CORE Fitness system.
+
+Given these documented challenges, this study suggests the development of a cross-platform Management Information System (MIS) dubbed CORE Fitness as the digital backbone of local fitness centers. The architecture is designed to be scalable and flexible, using a relational database to store and manage data.The system is built on a Node.js and MySQL 8.0 architecture, with a focus on scalability and flexibility to accommodate the needs of a growing user base. Administered via a React based web dashboard, and a corresponding mobile app for members, operations are managed and functions of the gym can be accessed at any time without the need for physical records.
+
+The system has two features built for the local environment: Rule-Based Analytics for keeping members, and an NLP-Based Administrative Assistant for handling common questions.  The analytics feature tracks attendance to identify members who may be at risk of being lost and can be used as a Decision Support System (DSS) that allows owners to take a proactive approach to retention strategies. The research on fitness center member behavior has shown that, to maintain fitness center level membership renewal, at-risk members need to be identified through behavioral data monitoring early on in the member's experience (Yeomans et al., 2024). The NLP Administrative Assistant responds to repetitive requests about gym policies, schedules and membership verification, a function that is especially desired by owners to ease communications and alleviate administrative conflict. CORE Fitness shows that an appropriately localized technology can provide the same data-driven operational benefits to small provincial businesses as those enjoyed by larger urban businesses, when assessed against ISO/IEC 25010 quality standards.
+
+References:
+Ahriz, S., Gharbaoui, H., Benmoussa, N., Chahid, A., & Mansouri, K. (2024). Enhancing Information Technology Governance in Universities: A Smart Chatbot System based on Information Technology Infrastructure Library. Engineering Technology & Applied Science Research, 14(6), 17876–17882. https://doi.org/10.48084/etasr.8878
+Yeomans, C., Karg, A., & Nguyen, J. (2024). Who churns from fitness centres? Evidence from behavioural and attitudinal segmentation. Managing Sport and Leisure, 31(2), 388–404. https://doi.org/10.1080/23750472.2024.2305896
+Siew, E. S. K., Chong, Z. Y., Sze, S. N., & Hardi, R. (2023c). Streamlining attendance management in Education: a Web-Based system combining facial recognition and QR code technology. Journal of Advanced Research in Applied Sciences and Engineering Technology, 33(2), 198–208. https://doi.org/10.37934/araset.33.2.198208
+Alboneh, A. F. A., & Snae, M. (2025). Development of a Web-Based gym information System at Nahaga Sabu Seba. Journal of Artificial Intelligence and Engineering Applications (JAIEA), 4(3), 1907–1914. https://doi.org/10.59934/jaiea.v4i3.1080
+Zhou, D. (2022, December 9). Application of Intelligent System of Internet of Things in Management of Unmanned Gymnasium. Www.atlantis-Press.com; Atlantis Press. 
+https://doi.org/10.2991/978-94-6463-012-1_64
+Problem Statement
+The study aims to design, develop, and evaluate CORE Fitness, a cross-platform Management Information System with Rule-based Monitoring Analytics and NLP-based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro. The system focuses on improving gym operations through automation, centralized management, attendance monitoring, and digital administrative support to enhance operational efficiency and business sustainability. 
+Specifically the study aims to address the following problems:
+Local gyms in Mamburao experience difficulties in managing member records, attendance monitoring, and payment tracking due to manual and paper-based processes, resulting in inefficiency, data inconsistency, and delays in gym operations.
+Gym owners and staff have limited capability to monitor member attendance trends and identify inactive or irregular members due to the absence of digital attendance monitoring and centralized tracking systems.
+Gym members have limited access to digital services such as mobile-based membership management, attendance tracking, digital identification, account monitoring, and automated inquiries regarding gym services and announcements.
+Existing gym management practices lack an integrated and centralized cross-platform system that provides real-time monitoring tools for membership management, financial performance, attendance tracking, staff scheduling, class management, secure web and mobile access, real-time notifications, QR code-based attendance monitoring, and centralized data management for both administrators and members. | Problem Statement
+The study aims to design, develop, and evaluate CORE Fitness, a cross-platform Management Information System with Rule-based Monitoring Analytics and NLP-based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro. The system focuses on improving gym operations through automation, centralized management, attendance monitoring, and digital administrative support to enhance operational efficiency and business sustainability. 
+Specifically the study aims to address the following problems:
+Local gyms in Mamburao experience difficulties in managing member records, attendance monitoring, and payment tracking due to manual and paper-based processes, resulting in inefficiency, data inconsistency, and delays in gym operations.
+Gym owners and staff have limited capability to monitor member attendance trends and identify inactive or irregular members due to the absence of digital attendance monitoring and centralized tracking systems.
+Gym members have limited access to digital services such as mobile-based membership management, attendance tracking, digital identification, account monitoring, and automated inquiries regarding gym services and announcements.
+Existing gym management practices lack an integrated and centralized cross-platform system that provides real-time monitoring tools for membership management, financial performance, attendance tracking, staff scheduling, class management, secure web and mobile access, real-time notifications, QR code-based attendance monitoring, and centralized data management for both administrators and members. | Problem Statement
+The study aims to design, develop, and evaluate CORE Fitness, a cross-platform Management Information System with Rule-based Monitoring Analytics and NLP-based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro. The system focuses on improving gym operations through automation, centralized management, attendance monitoring, and digital administrative support to enhance operational efficiency and business sustainability. 
+Specifically the study aims to address the following problems:
+Local gyms in Mamburao experience difficulties in managing member records, attendance monitoring, and payment tracking due to manual and paper-based processes, resulting in inefficiency, data inconsistency, and delays in gym operations.
+Gym owners and staff have limited capability to monitor member attendance trends and identify inactive or irregular members due to the absence of digital attendance monitoring and centralized tracking systems.
+Gym members have limited access to digital services such as mobile-based membership management, attendance tracking, digital identification, account monitoring, and automated inquiries regarding gym services and announcements.
+Existing gym management practices lack an integrated and centralized cross-platform system that provides real-time monitoring tools for membership management, financial performance, attendance tracking, staff scheduling, class management, secure web and mobile access, real-time notifications, QR code-based attendance monitoring, and centralized data management for both administrators and members. | Problem Statement
+The study aims to design, develop, and evaluate CORE Fitness, a cross-platform Management Information System with Rule-based Monitoring Analytics and NLP-based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro. The system focuses on improving gym operations through automation, centralized management, attendance monitoring, and digital administrative support to enhance operational efficiency and business sustainability. 
+Specifically the study aims to address the following problems:
+Local gyms in Mamburao experience difficulties in managing member records, attendance monitoring, and payment tracking due to manual and paper-based processes, resulting in inefficiency, data inconsistency, and delays in gym operations.
+Gym owners and staff have limited capability to monitor member attendance trends and identify inactive or irregular members due to the absence of digital attendance monitoring and centralized tracking systems.
+Gym members have limited access to digital services such as mobile-based membership management, attendance tracking, digital identification, account monitoring, and automated inquiries regarding gym services and announcements.
+Existing gym management practices lack an integrated and centralized cross-platform system that provides real-time monitoring tools for membership management, financial performance, attendance tracking, staff scheduling, class management, secure web and mobile access, real-time notifications, QR code-based attendance monitoring, and centralized data management for both administrators and members.
+General Objectives
+This study aims to design, develop, and evaluate Core Fitness, a cross-platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro, that improves gym operations through automated attendance tracking, centralized management, rule-based monitoring, and digital administrative support.
+
+Specific Objectives
+1. To develop a Cross-Platform Fitness Ecosystem with the following features:
+For Gym Management (Web-based Administration):
+Centralized Operational Core: A core centralized system for managing membership records, QR code-based attendance monitoring, and payment reporting automation, replacing paper-based attendance and manual record-keeping.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring module that applies predefined system rules to monitor attendance records, membership renewals, inactive, and operational insights to support gym management and decision-making.
+Business Intelligence Dashboard: A real-time analytics and reporting dashboard for monitoring membership growth, financial performance, attendance records, and facility utilization.
+Staff and Schedule Management: A module for managing gym staff, class schedules, and workflow coordination.
+Role-Based Access Control (RBAC): A multi-role access control mechanism supporting Administrator, Trainer, and Member roles with distinct permissions and system privileges.
+Membership Registration and Approval Workflow: A registration process where members may register and submit membership applications, which require administrator approval and payment verification prior to account activation.
+For Members(Mobile Application Experience):
+NLP-Based Administrative Assistant (Chatbot): A chatbot designed to respond to common inquiries regarding gym schedules, membership information, announcements, and gym policies using Natural Language Processing (NLP).
+Digital Identification and Access: A mobile interface with unique QR code for gym entry and secure access to membership profiles.
+Personal Progress Monitoring: A comprehensive mobile dashboard that enables members to monitor attendance history, membership status, body measurements(weight, BMI, arms, waist, chest, and legs), attendance consistency, membership progress, goal achievement records, achievement badges, and visual analytics related to their gym activities.
+Event and Announcement Management: A feature that allows administrators to publish gym announcements, schedules, events, and important updates accessible to members through the mobile application.
+Account Management: A platform that enables members to manage their personal information, membership details, attendance records, and fitness-related activities within the gym system.
+Trainer Rating and Evaluation System: A feature that allows members to submit trainer ratings, monthly evaluations, and feedback comments. The system generates trainer performance insights to support service quality improvement and member satisfaction.
+Goal Achievement and Gamification System: Module that enables members to set fitness goals, monitor milestones, receive achievement badges, and track goal completion progress to encourage continuous gym participation.
+For Trainers (Mobile Application - Trainer Role)
+Trainer Dashboard and Class Management: A dedicated trainer interface for viewing assigned classes, monitoring schedules, managing training sessions, and reviewing member participation records.
+Trainer Feedback and Recommendations: A feature that enables trainers to provide workout recommendations, performance evaluations, improvement suggestions, and assigned workout plans while monitoring member progress.
+Booking and Availability Management: A module that allows trainers to manage availability schedules, review bookings, and accept or decline training session requests.
+2. To build the system architecture using:
+React.js: For the web-based administration dashboard;
+React Native: For the cross-platform (Android/iOS) member mobile application;
+Node.js & Express: For the back-end API and server-side processing;
+MySQL 8.0: For centralized database management and secure storage of membership records, attendance logs, payment records, operational reports, and system transactions. 
+Firebase: For user authentication and real-time notification services.
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To assess performance of the system in terms of enhancing the efficiency of the gym and the satisfaction of the users using the system via user acceptance testing. | General Objectives
+This study aims to design, develop, and evaluate Core Fitness, a cross-platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro, that improves gym operations through automated attendance tracking, centralized management, rule-based monitoring, and digital administrative support.
+
+Specific Objectives
+1. To develop a Cross-Platform Fitness Ecosystem with the following features:
+For Gym Management (Web-based Administration):
+Centralized Operational Core: A core centralized system for managing membership records, QR code-based attendance monitoring, and payment reporting automation, replacing paper-based attendance and manual record-keeping.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring module that applies predefined system rules to monitor attendance records, membership renewals, inactive, and operational insights to support gym management and decision-making.
+Business Intelligence Dashboard: A real-time analytics and reporting dashboard for monitoring membership growth, financial performance, attendance records, and facility utilization.
+Staff and Schedule Management: A module for managing gym staff, class schedules, and workflow coordination.
+Role-Based Access Control (RBAC): A multi-role access control mechanism supporting Administrator, Trainer, and Member roles with distinct permissions and system privileges.
+Membership Registration and Approval Workflow: A registration process where members may register and submit membership applications, which require administrator approval and payment verification prior to account activation.
+For Members(Mobile Application Experience):
+NLP-Based Administrative Assistant (Chatbot): A chatbot designed to respond to common inquiries regarding gym schedules, membership information, announcements, and gym policies using Natural Language Processing (NLP).
+Digital Identification and Access: A mobile interface with unique QR code for gym entry and secure access to membership profiles.
+Personal Progress Monitoring: A comprehensive mobile dashboard that enables members to monitor attendance history, membership status, body measurements(weight, BMI, arms, waist, chest, and legs), attendance consistency, membership progress, goal achievement records, achievement badges, and visual analytics related to their gym activities.
+Event and Announcement Management: A feature that allows administrators to publish gym announcements, schedules, events, and important updates accessible to members through the mobile application.
+Account Management: A platform that enables members to manage their personal information, membership details, attendance records, and fitness-related activities within the gym system.
+Trainer Rating and Evaluation System: A feature that allows members to submit trainer ratings, monthly evaluations, and feedback comments. The system generates trainer performance insights to support service quality improvement and member satisfaction.
+Goal Achievement and Gamification System: Module that enables members to set fitness goals, monitor milestones, receive achievement badges, and track goal completion progress to encourage continuous gym participation.
+For Trainers (Mobile Application - Trainer Role)
+Trainer Dashboard and Class Management: A dedicated trainer interface for viewing assigned classes, monitoring schedules, managing training sessions, and reviewing member participation records.
+Trainer Feedback and Recommendations: A feature that enables trainers to provide workout recommendations, performance evaluations, improvement suggestions, and assigned workout plans while monitoring member progress.
+Booking and Availability Management: A module that allows trainers to manage availability schedules, review bookings, and accept or decline training session requests.
+2. To build the system architecture using:
+React.js: For the web-based administration dashboard;
+React Native: For the cross-platform (Android/iOS) member mobile application;
+Node.js & Express: For the back-end API and server-side processing;
+MySQL 8.0: For centralized database management and secure storage of membership records, attendance logs, payment records, operational reports, and system transactions. 
+Firebase: For user authentication and real-time notification services.
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To assess performance of the system in terms of enhancing the efficiency of the gym and the satisfaction of the users using the system via user acceptance testing. | General Objectives
+This study aims to design, develop, and evaluate Core Fitness, a cross-platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro, that improves gym operations through automated attendance tracking, centralized management, rule-based monitoring, and digital administrative support.
+
+Specific Objectives
+1. To develop a Cross-Platform Fitness Ecosystem with the following features:
+For Gym Management (Web-based Administration):
+Centralized Operational Core: A core centralized system for managing membership records, QR code-based attendance monitoring, and payment reporting automation, replacing paper-based attendance and manual record-keeping.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring module that applies predefined system rules to monitor attendance records, membership renewals, inactive, and operational insights to support gym management and decision-making.
+Business Intelligence Dashboard: A real-time analytics and reporting dashboard for monitoring membership growth, financial performance, attendance records, and facility utilization.
+Staff and Schedule Management: A module for managing gym staff, class schedules, and workflow coordination.
+Role-Based Access Control (RBAC): A multi-role access control mechanism supporting Administrator, Trainer, and Member roles with distinct permissions and system privileges.
+Membership Registration and Approval Workflow: A registration process where members may register and submit membership applications, which require administrator approval and payment verification prior to account activation.
+For Members(Mobile Application Experience):
+NLP-Based Administrative Assistant (Chatbot): A chatbot designed to respond to common inquiries regarding gym schedules, membership information, announcements, and gym policies using Natural Language Processing (NLP).
+Digital Identification and Access: A mobile interface with unique QR code for gym entry and secure access to membership profiles.
+Personal Progress Monitoring: A comprehensive mobile dashboard that enables members to monitor attendance history, membership status, body measurements(weight, BMI, arms, waist, chest, and legs), attendance consistency, membership progress, goal achievement records, achievement badges, and visual analytics related to their gym activities.
+Event and Announcement Management: A feature that allows administrators to publish gym announcements, schedules, events, and important updates accessible to members through the mobile application.
+Account Management: A platform that enables members to manage their personal information, membership details, attendance records, and fitness-related activities within the gym system.
+Trainer Rating and Evaluation System: A feature that allows members to submit trainer ratings, monthly evaluations, and feedback comments. The system generates trainer performance insights to support service quality improvement and member satisfaction.
+Goal Achievement and Gamification System: Module that enables members to set fitness goals, monitor milestones, receive achievement badges, and track goal completion progress to encourage continuous gym participation.
+For Trainers (Mobile Application - Trainer Role)
+Trainer Dashboard and Class Management: A dedicated trainer interface for viewing assigned classes, monitoring schedules, managing training sessions, and reviewing member participation records.
+Trainer Feedback and Recommendations: A feature that enables trainers to provide workout recommendations, performance evaluations, improvement suggestions, and assigned workout plans while monitoring member progress.
+Booking and Availability Management: A module that allows trainers to manage availability schedules, review bookings, and accept or decline training session requests.
+2. To build the system architecture using:
+React.js: For the web-based administration dashboard;
+React Native: For the cross-platform (Android/iOS) member mobile application;
+Node.js & Express: For the back-end API and server-side processing;
+MySQL 8.0: For centralized database management and secure storage of membership records, attendance logs, payment records, operational reports, and system transactions. 
+Firebase: For user authentication and real-time notification services.
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To assess performance of the system in terms of enhancing the efficiency of the gym and the satisfaction of the users using the system via user acceptance testing. | General Objectives
+This study aims to design, develop, and evaluate Core Fitness, a cross-platform Management Information System with Rule-based Analytics and NLP-Based Administrative Support for Local Fitness Centers in Mamburao, Occidental Mindoro, that improves gym operations through automated attendance tracking, centralized management, rule-based monitoring, and digital administrative support.
+
+Specific Objectives
+1. To develop a Cross-Platform Fitness Ecosystem with the following features:
+For Gym Management (Web-based Administration):
+Centralized Operational Core: A core centralized system for managing membership records, QR code-based attendance monitoring, and payment reporting automation, replacing paper-based attendance and manual record-keeping.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring module that applies predefined system rules to monitor attendance records, membership renewals, inactive, and operational insights to support gym management and decision-making.
+Business Intelligence Dashboard: A real-time analytics and reporting dashboard for monitoring membership growth, financial performance, attendance records, and facility utilization.
+Staff and Schedule Management: A module for managing gym staff, class schedules, and workflow coordination.
+Role-Based Access Control (RBAC): A multi-role access control mechanism supporting Administrator, Trainer, and Member roles with distinct permissions and system privileges.
+Membership Registration and Approval Workflow: A registration process where members may register and submit membership applications, which require administrator approval and payment verification prior to account activation.
+For Members(Mobile Application Experience):
+NLP-Based Administrative Assistant (Chatbot): A chatbot designed to respond to common inquiries regarding gym schedules, membership information, announcements, and gym policies using Natural Language Processing (NLP).
+Digital Identification and Access: A mobile interface with unique QR code for gym entry and secure access to membership profiles.
+Personal Progress Monitoring: A comprehensive mobile dashboard that enables members to monitor attendance history, membership status, body measurements(weight, BMI, arms, waist, chest, and legs), attendance consistency, membership progress, goal achievement records, achievement badges, and visual analytics related to their gym activities.
+Event and Announcement Management: A feature that allows administrators to publish gym announcements, schedules, events, and important updates accessible to members through the mobile application.
+Account Management: A platform that enables members to manage their personal information, membership details, attendance records, and fitness-related activities within the gym system.
+Trainer Rating and Evaluation System: A feature that allows members to submit trainer ratings, monthly evaluations, and feedback comments. The system generates trainer performance insights to support service quality improvement and member satisfaction.
+Goal Achievement and Gamification System: Module that enables members to set fitness goals, monitor milestones, receive achievement badges, and track goal completion progress to encourage continuous gym participation.
+For Trainers (Mobile Application - Trainer Role)
+Trainer Dashboard and Class Management: A dedicated trainer interface for viewing assigned classes, monitoring schedules, managing training sessions, and reviewing member participation records.
+Trainer Feedback and Recommendations: A feature that enables trainers to provide workout recommendations, performance evaluations, improvement suggestions, and assigned workout plans while monitoring member progress.
+Booking and Availability Management: A module that allows trainers to manage availability schedules, review bookings, and accept or decline training session requests.
+2. To build the system architecture using:
+React.js: For the web-based administration dashboard;
+React Native: For the cross-platform (Android/iOS) member mobile application;
+Node.js & Express: For the back-end API and server-side processing;
+MySQL 8.0: For centralized database management and secure storage of membership records, attendance logs, payment records, operational reports, and system transactions. 
+Firebase: For user authentication and real-time notification services.
+3. To test the application using the ISO 25010 software quality standards;
+Functional Suitability;
+Reliability;
+Performance Efficiency;
+Usability;
+Security;
+Compatibility;
+Maintainability; and
+Portability
+4. To assess performance of the system in terms of enhancing the efficiency of the gym and the satisfaction of the users using the system via user acceptance testing.
+Beneficiaries
+Gym Owners and Administrators. Gym owners such as G-Fitness, Fitness Regency, and Ferrer Fitness will benefit from a more organized and modern way of managing their gyms. Instead of using paper logs and manual records, they will use a centralized digital system that stores all information in one place. They can easily manage member registration, attendance records, payments and membership status. The system also helps them view reports and summaries of gym operations, making it easier to monitor income and overall performance. With this, gym owners can save time, reduce errors, and make faster and better decisions for their business.
+Gym Members. Gym members will benefit from a mobile application where they can easily access their personal account anytime. They can view their membership details, attendance history, and payment records without needing to ask staff. The system also allows them to track their gym visits, helping them become more aware of their attendance and consistency. This improves their experience because everything is accessible in one platform, making gym services more convenient and user-friendly.
+Gym Trainers and Staff. Trainers and staff will have an easier and more efficient workflow because the system reduces the need for manual record keeping. They can quickly access member information, attendance logs, and class schedules through the system. This helps them monitor who is attending sessions and manage training schedules more effectively. It also improves coordination between staff and administrators since information is updated in real time. As a result, trainers can focus more on guiding members and improving training quality instead of doing paperwork.
+Academic Community and Future Researchers. This study can serve as a useful reference for students, researchers, and developers who are interested in building management systems, mobile applications, or web-based platforms. It provides an example of how a centralized system can be designed using modern technologies such as web and mobile development tools. Future researchers can use this study as a guide for improving or developing similar systems in other fields such as education, health, or business management. | Beneficiaries
+Gym Owners and Administrators. Gym owners such as G-Fitness, Fitness Regency, and Ferrer Fitness will benefit from a more organized and modern way of managing their gyms. Instead of using paper logs and manual records, they will use a centralized digital system that stores all information in one place. They can easily manage member registration, attendance records, payments and membership status. The system also helps them view reports and summaries of gym operations, making it easier to monitor income and overall performance. With this, gym owners can save time, reduce errors, and make faster and better decisions for their business.
+Gym Members. Gym members will benefit from a mobile application where they can easily access their personal account anytime. They can view their membership details, attendance history, and payment records without needing to ask staff. The system also allows them to track their gym visits, helping them become more aware of their attendance and consistency. This improves their experience because everything is accessible in one platform, making gym services more convenient and user-friendly.
+Gym Trainers and Staff. Trainers and staff will have an easier and more efficient workflow because the system reduces the need for manual record keeping. They can quickly access member information, attendance logs, and class schedules through the system. This helps them monitor who is attending sessions and manage training schedules more effectively. It also improves coordination between staff and administrators since information is updated in real time. As a result, trainers can focus more on guiding members and improving training quality instead of doing paperwork.
+Academic Community and Future Researchers. This study can serve as a useful reference for students, researchers, and developers who are interested in building management systems, mobile applications, or web-based platforms. It provides an example of how a centralized system can be designed using modern technologies such as web and mobile development tools. Future researchers can use this study as a guide for improving or developing similar systems in other fields such as education, health, or business management. | Beneficiaries
+Gym Owners and Administrators. Gym owners such as G-Fitness, Fitness Regency, and Ferrer Fitness will benefit from a more organized and modern way of managing their gyms. Instead of using paper logs and manual records, they will use a centralized digital system that stores all information in one place. They can easily manage member registration, attendance records, payments and membership status. The system also helps them view reports and summaries of gym operations, making it easier to monitor income and overall performance. With this, gym owners can save time, reduce errors, and make faster and better decisions for their business.
+Gym Members. Gym members will benefit from a mobile application where they can easily access their personal account anytime. They can view their membership details, attendance history, and payment records without needing to ask staff. The system also allows them to track their gym visits, helping them become more aware of their attendance and consistency. This improves their experience because everything is accessible in one platform, making gym services more convenient and user-friendly.
+Gym Trainers and Staff. Trainers and staff will have an easier and more efficient workflow because the system reduces the need for manual record keeping. They can quickly access member information, attendance logs, and class schedules through the system. This helps them monitor who is attending sessions and manage training schedules more effectively. It also improves coordination between staff and administrators since information is updated in real time. As a result, trainers can focus more on guiding members and improving training quality instead of doing paperwork.
+Academic Community and Future Researchers. This study can serve as a useful reference for students, researchers, and developers who are interested in building management systems, mobile applications, or web-based platforms. It provides an example of how a centralized system can be designed using modern technologies such as web and mobile development tools. Future researchers can use this study as a guide for improving or developing similar systems in other fields such as education, health, or business management. | Beneficiaries
+Gym Owners and Administrators. Gym owners such as G-Fitness, Fitness Regency, and Ferrer Fitness will benefit from a more organized and modern way of managing their gyms. Instead of using paper logs and manual records, they will use a centralized digital system that stores all information in one place. They can easily manage member registration, attendance records, payments and membership status. The system also helps them view reports and summaries of gym operations, making it easier to monitor income and overall performance. With this, gym owners can save time, reduce errors, and make faster and better decisions for their business.
+Gym Members. Gym members will benefit from a mobile application where they can easily access their personal account anytime. They can view their membership details, attendance history, and payment records without needing to ask staff. The system also allows them to track their gym visits, helping them become more aware of their attendance and consistency. This improves their experience because everything is accessible in one platform, making gym services more convenient and user-friendly.
+Gym Trainers and Staff. Trainers and staff will have an easier and more efficient workflow because the system reduces the need for manual record keeping. They can quickly access member information, attendance logs, and class schedules through the system. This helps them monitor who is attending sessions and manage training schedules more effectively. It also improves coordination between staff and administrators since information is updated in real time. As a result, trainers can focus more on guiding members and improving training quality instead of doing paperwork.
+Academic Community and Future Researchers. This study can serve as a useful reference for students, researchers, and developers who are interested in building management systems, mobile applications, or web-based platforms. It provides an example of how a centralized system can be designed using modern technologies such as web and mobile development tools. Future researchers can use this study as a guide for improving or developing similar systems in other fields such as education, health, or business management.
+Scope
+The study aims to design, develop, and functionally validate CORE Fitness, a cross-platform Management Information System (MIS) with Rule-Based Analytics and NLP-Based Administrative Support for local fitness centers in Mamburao, Occidental Mindoro. The proposed system includes a web-based administration dashboard developed using React.js and a mobile application for gym members developed using React Native, integrated through Node.js and MySQL 8.0. The system focuses on automating gym operations such as QR code-based attendance monitoring, membership management, payment tracking, attendance recording, account monitoring, rule-based monitoring, analytics, and operational reporting. These processes are traditionally managed through manual and paper-based methods. The system also includes member-focused features such as personal progress monitoring, body measurement tracking (e.g., weight, BMI, arms, waist, chest, and legs), attendance consistency monitoring, membership progress monitoring, goal achievement tracking, achievement badges, trainer feedback viewing, and trainer evaluation.The system provides trainer-oriented functionalities including workout recommendations, performance feedback, workout plan assignment, class management, booking management, and availability scheduling. In addition, the system integrates an NLP-Based Administrative Assistant, or chatbot, designed to handle common administrative inquiries related to gym schedules, membership information, announcements, facility policies, account concerns, and frequently asked questions. If the chatbot cannot understand or answer a user’s inquiry, it will provide a default fallback response advising the user to contact the administrator or gym personnel for further assistance. The proposed system is intended for selected local fitness centers in Mamburao, Occidental Mindoro, specifically G-Fitness, Fitness Regency, and Ferrer Fitness. | Scope
+The study aims to design, develop, and functionally validate CORE Fitness, a cross-platform Management Information System (MIS) with Rule-Based Analytics and NLP-Based Administrative Support for local fitness centers in Mamburao, Occidental Mindoro. The proposed system includes a web-based administration dashboard developed using React.js and a mobile application for gym members developed using React Native, integrated through Node.js and MySQL 8.0. The system focuses on automating gym operations such as QR code-based attendance monitoring, membership management, payment tracking, attendance recording, account monitoring, rule-based monitoring, analytics, and operational reporting. These processes are traditionally managed through manual and paper-based methods. The system also includes member-focused features such as personal progress monitoring, body measurement tracking (e.g., weight, BMI, arms, waist, chest, and legs), attendance consistency monitoring, membership progress monitoring, goal achievement tracking, achievement badges, trainer feedback viewing, and trainer evaluation.The system provides trainer-oriented functionalities including workout recommendations, performance feedback, workout plan assignment, class management, booking management, and availability scheduling. In addition, the system integrates an NLP-Based Administrative Assistant, or chatbot, designed to handle common administrative inquiries related to gym schedules, membership information, announcements, facility policies, account concerns, and frequently asked questions. If the chatbot cannot understand or answer a user’s inquiry, it will provide a default fallback response advising the user to contact the administrator or gym personnel for further assistance. The proposed system is intended for selected local fitness centers in Mamburao, Occidental Mindoro, specifically G-Fitness, Fitness Regency, and Ferrer Fitness. | Scope
+The study aims to design, develop, and functionally validate CORE Fitness, a cross-platform Management Information System (MIS) with Rule-Based Analytics and NLP-Based Administrative Support for local fitness centers in Mamburao, Occidental Mindoro. The proposed system includes a web-based administration dashboard developed using React.js and a mobile application for gym members developed using React Native, integrated through Node.js and MySQL 8.0. The system focuses on automating gym operations such as QR code-based attendance monitoring, membership management, payment tracking, attendance recording, account monitoring, rule-based monitoring, analytics, and operational reporting. These processes are traditionally managed through manual and paper-based methods. The system also includes member-focused features such as personal progress monitoring, body measurement tracking (e.g., weight, BMI, arms, waist, chest, and legs), attendance consistency monitoring, membership progress monitoring, goal achievement tracking, achievement badges, trainer feedback viewing, and trainer evaluation.The system provides trainer-oriented functionalities including workout recommendations, performance feedback, workout plan assignment, class management, booking management, and availability scheduling. In addition, the system integrates an NLP-Based Administrative Assistant, or chatbot, designed to handle common administrative inquiries related to gym schedules, membership information, announcements, facility policies, account concerns, and frequently asked questions. If the chatbot cannot understand or answer a user’s inquiry, it will provide a default fallback response advising the user to contact the administrator or gym personnel for further assistance. The proposed system is intended for selected local fitness centers in Mamburao, Occidental Mindoro, specifically G-Fitness, Fitness Regency, and Ferrer Fitness. | Scope
+The study aims to design, develop, and functionally validate CORE Fitness, a cross-platform Management Information System (MIS) with Rule-Based Analytics and NLP-Based Administrative Support for local fitness centers in Mamburao, Occidental Mindoro. The proposed system includes a web-based administration dashboard developed using React.js and a mobile application for gym members developed using React Native, integrated through Node.js and MySQL 8.0. The system focuses on automating gym operations such as QR code-based attendance monitoring, membership management, payment tracking, attendance recording, account monitoring, rule-based monitoring, analytics, and operational reporting. These processes are traditionally managed through manual and paper-based methods. The system also includes member-focused features such as personal progress monitoring, body measurement tracking (e.g., weight, BMI, arms, waist, chest, and legs), attendance consistency monitoring, membership progress monitoring, goal achievement tracking, achievement badges, trainer feedback viewing, and trainer evaluation.The system provides trainer-oriented functionalities including workout recommendations, performance feedback, workout plan assignment, class management, booking management, and availability scheduling. In addition, the system integrates an NLP-Based Administrative Assistant, or chatbot, designed to handle common administrative inquiries related to gym schedules, membership information, announcements, facility policies, account concerns, and frequently asked questions. If the chatbot cannot understand or answer a user’s inquiry, it will provide a default fallback response advising the user to contact the administrator or gym personnel for further assistance. The proposed system is intended for selected local fitness centers in Mamburao, Occidental Mindoro, specifically G-Fitness, Fitness Regency, and Ferrer Fitness.
+Limitation
+A few boundaries have been established to maintain the feasibility and attainability of the project within the academic time frame. The proposed CORE Fitness system focuses only on gym management, attendance monitoring, membership management, payment tracking, rule-based monitoring and analytics, and administrative support functionalities. The system does not provide nutritional planning, meal recommendations, medical health assessments, or automated fitness coaching services. Any workout recommendations, performance evaluations, and workout plans available in the system are manually provided by trainers and are not automatically generated by the system. The study focuses only on software development and does not include the development of wearable devices, biometric security systems, automated turnstiles, fingerprint scanners, or other hardware-based gym technologies. The system is designed as a web-based and mobile-based platform intended for administrators, trainers, and gym members. Gym members are required to have a smartphone device to access their QR code for attendance monitoring and account management. In addition, the NLP-Based Administrative Assistant is limited only to administrative and operational inquiries such as gym schedules, membership information, announcements, and facility policies. It is not intended to provide workout programs, medical advice, or personalized fitness training recommendations. Furthermore, the proposed system does not support online payment gateway integration such as GCash, Maya, PayPal, credit card processing, or other electronic payment platforms. The payment module is limited to recording, monitoring, and managing payment transactions conducted through the existing payment procedures of the participating fitness centers. The performance of the system may also be affected by internet connectivity and network stability. Since the system operates through web and mobile platforms that rely on internet connectivity, slow or unstable internet connections may affect real-time attendance monitoring, notification delivery, data synchronization, and overall system responsiveness. | Limitation
+A few boundaries have been established to maintain the feasibility and attainability of the project within the academic time frame. The proposed CORE Fitness system focuses only on gym management, attendance monitoring, membership management, payment tracking, rule-based monitoring and analytics, and administrative support functionalities. The system does not provide nutritional planning, meal recommendations, medical health assessments, or automated fitness coaching services. Any workout recommendations, performance evaluations, and workout plans available in the system are manually provided by trainers and are not automatically generated by the system. The study focuses only on software development and does not include the development of wearable devices, biometric security systems, automated turnstiles, fingerprint scanners, or other hardware-based gym technologies. The system is designed as a web-based and mobile-based platform intended for administrators, trainers, and gym members. Gym members are required to have a smartphone device to access their QR code for attendance monitoring and account management. In addition, the NLP-Based Administrative Assistant is limited only to administrative and operational inquiries such as gym schedules, membership information, announcements, and facility policies. It is not intended to provide workout programs, medical advice, or personalized fitness training recommendations. Furthermore, the proposed system does not support online payment gateway integration such as GCash, Maya, PayPal, credit card processing, or other electronic payment platforms. The payment module is limited to recording, monitoring, and managing payment transactions conducted through the existing payment procedures of the participating fitness centers. The performance of the system may also be affected by internet connectivity and network stability. Since the system operates through web and mobile platforms that rely on internet connectivity, slow or unstable internet connections may affect real-time attendance monitoring, notification delivery, data synchronization, and overall system responsiveness. | Limitation
+A few boundaries have been established to maintain the feasibility and attainability of the project within the academic time frame. The proposed CORE Fitness system focuses only on gym management, attendance monitoring, membership management, payment tracking, rule-based monitoring and analytics, and administrative support functionalities. The system does not provide nutritional planning, meal recommendations, medical health assessments, or automated fitness coaching services. Any workout recommendations, performance evaluations, and workout plans available in the system are manually provided by trainers and are not automatically generated by the system. The study focuses only on software development and does not include the development of wearable devices, biometric security systems, automated turnstiles, fingerprint scanners, or other hardware-based gym technologies. The system is designed as a web-based and mobile-based platform intended for administrators, trainers, and gym members. Gym members are required to have a smartphone device to access their QR code for attendance monitoring and account management. In addition, the NLP-Based Administrative Assistant is limited only to administrative and operational inquiries such as gym schedules, membership information, announcements, and facility policies. It is not intended to provide workout programs, medical advice, or personalized fitness training recommendations. Furthermore, the proposed system does not support online payment gateway integration such as GCash, Maya, PayPal, credit card processing, or other electronic payment platforms. The payment module is limited to recording, monitoring, and managing payment transactions conducted through the existing payment procedures of the participating fitness centers. The performance of the system may also be affected by internet connectivity and network stability. Since the system operates through web and mobile platforms that rely on internet connectivity, slow or unstable internet connections may affect real-time attendance monitoring, notification delivery, data synchronization, and overall system responsiveness. | Limitation
+A few boundaries have been established to maintain the feasibility and attainability of the project within the academic time frame. The proposed CORE Fitness system focuses only on gym management, attendance monitoring, membership management, payment tracking, rule-based monitoring and analytics, and administrative support functionalities. The system does not provide nutritional planning, meal recommendations, medical health assessments, or automated fitness coaching services. Any workout recommendations, performance evaluations, and workout plans available in the system are manually provided by trainers and are not automatically generated by the system. The study focuses only on software development and does not include the development of wearable devices, biometric security systems, automated turnstiles, fingerprint scanners, or other hardware-based gym technologies. The system is designed as a web-based and mobile-based platform intended for administrators, trainers, and gym members. Gym members are required to have a smartphone device to access their QR code for attendance monitoring and account management. In addition, the NLP-Based Administrative Assistant is limited only to administrative and operational inquiries such as gym schedules, membership information, announcements, and facility policies. It is not intended to provide workout programs, medical advice, or personalized fitness training recommendations. Furthermore, the proposed system does not support online payment gateway integration such as GCash, Maya, PayPal, credit card processing, or other electronic payment platforms. The payment module is limited to recording, monitoring, and managing payment transactions conducted through the existing payment procedures of the participating fitness centers. The performance of the system may also be affected by internet connectivity and network stability. Since the system operates through web and mobile platforms that rely on internet connectivity, slow or unstable internet connections may affect real-time attendance monitoring, notification delivery, data synchronization, and overall system responsiveness.
+Materials and Methods
+Conceptual Framework
+The study utilizes the Input-Process-Output (IPO) model as the basis for the conceptual framework of the proposed system. The IPO model is a commonly used framework in system development and research that illustrates the relationship between the inputs, process, and outputs of a system. It provides a clear visualization of how data and resources are transformed through a series of processes to produce a desired system output.
+
+In this study, the inputs consist of the data, technologies, and resources required for the development of the system. The process includes the software development methodologies, system integration, implementation of system features, rule-based monitoring and analytics, and NLP-based administrative support functionalities. The output represents the developed CORE Fitness platform and its corresponding functionalities designed to improve gym operations, membership management, attendance monitoring, operational reporting, and administrative support services.
+
+
+Figure 1. Conceptual Framework of the CORE Fitness System Using the IPO Model
+Development Model
+
+
+Figure 2. Agile Scrum Framework of CORE Fitness
+The study utilizes the Agile Scrum Framework as the software development methodology for the development of the CORE Fitness system. Agile Scrum allows iterative and incremental development through continuous planning, development, testing, evaluation, and feedback. The methodology enables the researchers to improve the system across multiple sprint cycles while ensuring that the requirements of gym owners, staff, and members are properly addressed.
+
+Data Gathering
+The initial phase establishes the functional and technical boundaries of the system through targeted field data acquisition. The data gathering method follows a mixed-method approach designed to collect accurate qualitative and quantitative operational metrics from gym owners, personnel, and members of local fitness centers in Mamburao, Occidental Mindoro, specifically focussing on G-Fitness, Fitness Regency, and Ferrer Fitness. This data-gathering step maps out critical localized infrastructure limitations, real-time attendance tracking constraints, manual membership lifecycle management issues, and the baseline expectations of end-users regarding the proposed platform.
+
+Background of the Respondents
+To execute a targeted analysis, respondents are selected via purposive sampling from individuals who are directly involved in daily gym operations and physical training activities. The designated respondent groupS comprise:
+Gym Owners and Administrators: Selected to provide granular insights regarding macro-level membership monitoring, historical debt tracking, compliance challenges, financial reporting, and administrative workflow bottlenecks
+Trainers, and Coaches: Selected to map out the operational realities of daily desk tasks, manual check-in validation, facility resource scheduling, and customer support bottlenecks.
+Registered Gym Members: Selected to identify user-experience vulnerabilities, friction points in traditional access control methods, and payment oversight from the consumer perspective.
+The gathered information serves as the analytical foundation for identifying systemic inefficiencies in manual gym operations and determining the necessary system features, functionalities, and intelligent technologies required for development. To ensure comprehensive data collection, the researchers utilized structured and semi-structured interviews, printed survey questionnaires and institutional document reviews.
+
+Table 1. Sources and Methods of Data Collection
+
+System Analysis and Specification
+The analysis phase of CORE Fitness focuses on assessing the limitations of current gym management practices among local fitness centers in Mamburao, Occidental Mindoro, and identifying the necessary requirements for the proposed digital solution. Existing manual procedures, including paper-based attendance logging, handwritten membership records, and manual payment tracking, are analyzed and compared with the proposed automated system workflow to determine areas requiring improvement in terms of operational efficiency, data accuracy, and administrative coordination.
+Based on the identified gaps, the system requirements are categorized into functional and non-functional requirements.
+Functional Requirements
+Functional requirements include User Authentication, QR Attendance Monitoring, Membership Management, Membership Registration and Approval Workflow, Payment Recording and Status Monitoring, Administration Dashboard and Monitoring, Mobile Application Access, Rule-Based Monitoring and Analytics Dashboard, NLP-Based Administrative Support, Notification and Announcement System, Event and Announcement Management, Staff and Schedule Management, Trainer Dashboard and Class Management, Trainer Feedback and Recommendations, Booking and Availability Management, Personal Progress Monitoring, Goal Achievement and Gamification System, Trainer Rating and Evaluation System, Attendance Consistency Monitoring, Data Privacy and Security Management, Multi-gym Data Separation, Multi-Role Dashboard Management, and Database Management and Data Storage feature for handling user inquiries and system assistance.
+Table 2. Functional Requirements
+
+Non-functional requirements (ISO/ IEC 25010 based)
+Non-functional requirements focus on Performance Efficiency, Data Security, Reliability, Usability, Maintainability, Compatibility, Portability, Scalability, Interoperability, Availability, Responsiveness, Recoverability, Accessibility to ensure efficient and secure system operation.
+
+Table 3. Non-Functional Requirements
+
+Fishbone Diagram
+A Use Case Diagram is developed to illustrate the interactions between gym owners, administrators, gym members and the proposed system, while a Fishbone Diagram is utilized to analyze the causes of inefficiencies in the current gym management processes, including manual encoding delays, fragmented data handling, delayed financial reporting, and inconsistent record management.The diagram helps analyze how these factors contribute to operational inefficiencies and supports the development of the proposed CORE Fitness system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 3. Fishbone Diagram of CORE Fitness showing causes of manual inefficiencies
+
+Event Driven Architecture Flow of CORE Fitness
+The Event-Driven Architecture (EDA) of CORE Fitness illustrates how system events generated by administrators, trainers and members are processed through event channels and corresponding services. This architecture enables efficient communication between system components for membership management, attendance monitoring, payment recording, progress tracking, notifications and reporting while maintaining centralized data management.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 4. Event Driven Architecture Flow of CORE Fitness
+
+
+
+
+Data Flow Diagram (DFD)
+The Level-0 Data Flow Diagram (DFD) illustrates the overall flow of data within the CORE Fitness system. It shows how members, trainers, and administrators interact with the system process such as registration, membership management,  QR code attendance monitoring, payment tracking, analytics, and progress monitoring. The diagram also demonstrates how data is stored and managed through the centralized MySQL database to support efficient and organized gym operations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 5. Level-0 Data Flow Diagram of the CORE Fitness System
+
+System Architecture Design
+The System Architecture of CORE Fitness follows a multi-tier structure that separates the user interface, application processing, database management, and external services to ensure efficient and secure system operation. React.js and React Native are used for the web and mobile interfaces, while Node.js, Express.js, and MySQL 8.0 handle the back-end processing and database management. Firebase supports authentication and notifications, while the Rule-Based Monitoring and Analytics Module and the NLP-Based Administrative Assistant support operational monitoring, reporting, automated inquiries, and system assistance. Figure 6 illustrates the System Architecture Design of the CORE Fitness system. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 6. System Architecture Configuration of the CORE Fitness System
+
+Development
+The development stage transitions the project from system design into actual system implementation. The CORE fitness system follows an iterative development approach based on the Agile Scrum Framework to ensure continuous testing, refinement, and integration of system components throughout the development process.
+
+Development Plan and Strategies (Iterative Model)
+The system development is divided into four iterative phases to allow continuous monitoring and evaluation of system functionalities.
+Iteration 1: Core User Management and Database Integration
+Focuses on developing the database structure, user authentication, and core API configuration using MySQL 8.0, Node.js, and Express.js.
+Iteration 2: QR Code Attendance and Payment Tracking
+Focuses on implementing QR code-based attendance monitoring, payment recording, payment status monitoring, and transaction management functionalities. 
+Iteration 3: Rule-Based Monitoring, Analytics, and NLP Integration
+Focuses on integrating rule-based monitoring and analytics features, personal progress monitoring, trainer feedback and recommendations, trainer ratings, and NLP-Based Administrative Assistant for automated inquiries and responses.
+Iteration 4: Notifications System Integration
+                    Focuses on implementing Firebase notification services and integrating all front-end components of the system.
+To maintain continuous development and system quality, the researchers utilize daily stand-up meetings and sprint review sessions to monitor development progress, identify technical issues, and implement necessary refinements throughout the development process.
+
+Tools, Programming Languages, Libraries, and Hardware Requirements
+The CORE Fitness system utilizes a multi-platform development environment composed of modern web and mobile technologies. The back-end system is developed using Node.js and Express.js, while MySQL 8.0 serves as the relational database management system. React.js is used for the web-based administration dashboard, while React Native is utilized for the cross-platform mobile application. Firebase services are integrated for user authentication and real-time notification services.
+The development and testing process utilizes the following tools and resources:
+Hardware Requirements:
+Desktop and Laptop Computers
+Android Smartphones
+Internet Connection
+Web Camera and Laptop Cameras for QR Code Scanning
+Software Requirements:
+Visual Studio Code
+Git and GitHub
+Postman API Client
+MySQL Workbench
+
+Front-End Development
+The front-end development of the CORE Fitness system utilizes React.js for the web-based administration dashboard and React Native is utilized for the cross-platform mobile application designed for gym members and trainers. The system is designed to provide responsive and user-friendly interfaces for administrators, trainers, and gym members. Through the front-end interface, users can access gym services, monitor attendance records, manage memberships, view payment information, and receive real-time notifications and announcements.
+
+Key features include:
+QR code-based attendance monitoring
+Membership management and account monitoring
+Payment tracking and transaction viewing
+Real-time notifications and announcements
+Rule-based monitoring and analytics dashboard
+NLP-Based Administrative Assistant (Chatbot)
+User authentication and profile management
+Responsive web and mobile user interface
+
+
+Figure 7. Front-End Development Flow of CORE Fitness System
+
+Back-End Development
+The back-end development of the CORE Fitness system will utilize Node.js and Express.js to manage server-side operations, API integration, database communication, and overall system processing. MySQL 8.0 will serve as the relational database management system, while Firebase will be used for user authentication and real-time notification services. The back-end system is designed to support secure data handling, centralized data management, attendance monitoring, membership processing, and system-wide operational monitoring.
+
+Key features include:
+Role-Based Authorization and access control
+Password Protection
+Input Validation
+Session Handling
+RESTful API integration and server-side processing
+Membership and attendance data management
+Payment tracking and transaction processing
+QR code-based attendance verification
+Firebase authentication and notification services
+Rule-based monitoring and analytics processing
+NLP-Based Administrative Assistant processing
+Database storage and retrieval using MySQL 8.0
+Secure user authentication and access control
+
+
+Figure 8. Back-End Development Flow of CORE FItness System
+
+
+Testing and Validation
+Upon completing all development sprints, the unified platform enters an exhaustive testing pipeline structured to fulfill the panel’s explicit parameters for technical stability and user viability.
+Functional Testing 
+Functional testing is conducted to ensure that each module and feature of the CORE Fitness system performs according to the specified system requirements.
+ Unit Testing: Individual modules are tested independently to verify correct functionality and system processing.
+User Authentication Module: Validates secure login, user authentication, and account access control.
+QR Attendance Monitoring Module: Tests QR code scanning, attendance recording, and entry verification functionalities.
+Membership Management Module: Verifies membership registration, status updating, and member information management.
+Payment Tracking Module: Tests payment recording, Payment status monitoring, and Transaction history management..
+Rule-Based Monitoring and Analytics Module: Evaluates attendance monitoring, membership activity tracking, renewal monitoring and operational reporting based on predefined system rules.
+NLP-Based Administrative Assistant Module: Tests the chatbot’s ability to recognize user inquiries and generate appropriate responses.
+Notification System Module: Verifies real-time notification delivery using Firebase services.
+Web Dashboard and Mobile Application Modules: Confirms proper synchronization and display of data between the web and mobile platforms.
+Personal Progress Monitoring Module: Tests body measurement recording, attendance consistency monitoring, membership progress tracking, and goal achievement functionalities.
+Trainer Feedback and Recommendation Module: Verifies trainer recommendations, performance evaluations, workout plan assignment, and feedback management functionalities.
+Trainer Rating and Evaluation Module: Tests trainer rating submission, feedback recording, and evaluation report generation.
+Compatibility Testing: Conducted to ensure that the system functions properly across different devices, platform, and screen resolutions.
+Android Devices: Verifies system functionality and responsiveness on Android smartphones.
+Supported Browsers: Tests system accessibility and responsiveness across Google Chrome, Mozilla Firefox, Safari, and Microsoft Edge.
+Different Screen Sizes: Ensures responsive interface layout across mobile, tablet, and desktop devices.
+Security Testing: Conducted to evaluate user authentication, secure database transactions, data protection, and access control mechanisms within the system.
+Non-Functional Testing
+Non-functional testing is conducted to evaluate the overall software quality, usability, reliability, and performance efficiency of the CORE Fitness system.
+ISO/IEC 25010 Quality Evaluation: The system is evaluated based on the ISO/IEC 25010 software quality standards to assess the following quality characteristics:
+Functional Suitability
+Performance Efficiency
+Compatibility
+Usability
+Reliability
+Security
+Maintainability
+Portability
+
+User Acceptance Testing (UAT) & System Usability Scale (SUS): User Acceptance Testing is conducted with gym owners, staff members, trainers, and gym members from partner fitness centers in Mamburao, Occidental Mindoro to evaluate the effectiveness, usability, and overall user satisfaction of the system.
+
+The SUS consists of a 10- item questionnaire using a 5-point Likert scale. Individual responses are mathematically converted to yield an aggregate score out of 100, providing an objective measure of system learnability, accessibility, and user satisfaction. The final score interpretation and statistical distributions are handled via structured range guidelines:
+
+
+Table 4. Likert scale, descriptive rating, and range distribution.
+
+The evaluation of the CORE Fitness system utilizes both the System Usability Scale (SUS) and a 5-point Likert scale to measure user perception in terms of usability, satisfaction, and system effectiveness. The scale determines the level of agreement of respondents based on their experience in using the system. Each response is interpreted using corresponding numerical ranges to ensure consistent and objective analysis of user feedback. The results of this evaluation serve as a basis for determining the overall usability, acceptability, and effectiveness of the developed system among gym owners, staff, trainers, and members from the collaborating fitness centers in Mamburao, Occidental Mindoro.
+
+
+Table 5. The System Usability Scale (SUS).
+
+
+Table 6. The System Usability Scale (SUS) scoring method.
+
+Deployment
+The deployment stage transfers the fully verified software applications into a self-sustaining live operational environment. To achieve isolated system stability, a decentralized architecture separation of concerns strategy is enforced. The client-side admin React.js code layouts are distributed via edge routing mechanisms to minimize interface asset delivery latencies. Concurrently, the heavy server infrastructure components the computational Express.js API middleware instance, background analytics loops, NLP conversational text tokens parsing routines, and the underlying MySQL 8.0 database management system are hosted on an isolated, cloud-managed Virtual Private Server (VPS). This environment is set up with strict access rules, secure ports, and automated system snapshot scripts to guarantee 24/7 cross-gym operational availability, secure financial logging, and persistent data synchronization across local fitness centers. | Materials and Methods
+Conceptual Framework
+The study utilizes the Input-Process-Output (IPO) model as the basis for the conceptual framework of the proposed system. The IPO model is a commonly used framework in system development and research that illustrates the relationship between the inputs, process, and outputs of a system. It provides a clear visualization of how data and resources are transformed through a series of processes to produce a desired system output.
+
+In this study, the inputs consist of the data, technologies, and resources required for the development of the system. The process includes the software development methodologies, system integration, implementation of system features, rule-based monitoring and analytics, and NLP-based administrative support functionalities. The output represents the developed CORE Fitness platform and its corresponding functionalities designed to improve gym operations, membership management, attendance monitoring, operational reporting, and administrative support services.
+
+
+Figure 1. Conceptual Framework of the CORE Fitness System Using the IPO Model
+Development Model
+
+
+Figure 2. Agile Scrum Framework of CORE Fitness
+The study utilizes the Agile Scrum Framework as the software development methodology for the development of the CORE Fitness system. Agile Scrum allows iterative and incremental development through continuous planning, development, testing, evaluation, and feedback. The methodology enables the researchers to improve the system across multiple sprint cycles while ensuring that the requirements of gym owners, staff, and members are properly addressed.
+
+Data Gathering
+The initial phase establishes the functional and technical boundaries of the system through targeted field data acquisition. The data gathering method follows a mixed-method approach designed to collect accurate qualitative and quantitative operational metrics from gym owners, personnel, and members of local fitness centers in Mamburao, Occidental Mindoro, specifically focussing on G-Fitness, Fitness Regency, and Ferrer Fitness. This data-gathering step maps out critical localized infrastructure limitations, real-time attendance tracking constraints, manual membership lifecycle management issues, and the baseline expectations of end-users regarding the proposed platform.
+
+Background of the Respondents
+To execute a targeted analysis, respondents are selected via purposive sampling from individuals who are directly involved in daily gym operations and physical training activities. The designated respondent groupS comprise:
+Gym Owners and Administrators: Selected to provide granular insights regarding macro-level membership monitoring, historical debt tracking, compliance challenges, financial reporting, and administrative workflow bottlenecks
+Trainers, and Coaches: Selected to map out the operational realities of daily desk tasks, manual check-in validation, facility resource scheduling, and customer support bottlenecks.
+Registered Gym Members: Selected to identify user-experience vulnerabilities, friction points in traditional access control methods, and payment oversight from the consumer perspective.
+The gathered information serves as the analytical foundation for identifying systemic inefficiencies in manual gym operations and determining the necessary system features, functionalities, and intelligent technologies required for development. To ensure comprehensive data collection, the researchers utilized structured and semi-structured interviews, printed survey questionnaires and institutional document reviews.
+
+Table 1. Sources and Methods of Data Collection
+
+System Analysis and Specification
+The analysis phase of CORE Fitness focuses on assessing the limitations of current gym management practices among local fitness centers in Mamburao, Occidental Mindoro, and identifying the necessary requirements for the proposed digital solution. Existing manual procedures, including paper-based attendance logging, handwritten membership records, and manual payment tracking, are analyzed and compared with the proposed automated system workflow to determine areas requiring improvement in terms of operational efficiency, data accuracy, and administrative coordination.
+Based on the identified gaps, the system requirements are categorized into functional and non-functional requirements.
+Functional Requirements
+Functional requirements include User Authentication, QR Attendance Monitoring, Membership Management, Membership Registration and Approval Workflow, Payment Recording and Status Monitoring, Administration Dashboard and Monitoring, Mobile Application Access, Rule-Based Monitoring and Analytics Dashboard, NLP-Based Administrative Support, Notification and Announcement System, Event and Announcement Management, Staff and Schedule Management, Trainer Dashboard and Class Management, Trainer Feedback and Recommendations, Booking and Availability Management, Personal Progress Monitoring, Goal Achievement and Gamification System, Trainer Rating and Evaluation System, Attendance Consistency Monitoring, Data Privacy and Security Management, Multi-gym Data Separation, Multi-Role Dashboard Management, and Database Management and Data Storage feature for handling user inquiries and system assistance.
+Table 2. Functional Requirements
+
+Non-functional requirements (ISO/ IEC 25010 based)
+Non-functional requirements focus on Performance Efficiency, Data Security, Reliability, Usability, Maintainability, Compatibility, Portability, Scalability, Interoperability, Availability, Responsiveness, Recoverability, Accessibility to ensure efficient and secure system operation.
+
+Table 3. Non-Functional Requirements
+
+Fishbone Diagram
+A Use Case Diagram is developed to illustrate the interactions between gym owners, administrators, gym members and the proposed system, while a Fishbone Diagram is utilized to analyze the causes of inefficiencies in the current gym management processes, including manual encoding delays, fragmented data handling, delayed financial reporting, and inconsistent record management.The diagram helps analyze how these factors contribute to operational inefficiencies and supports the development of the proposed CORE Fitness system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 3. Fishbone Diagram of CORE Fitness showing causes of manual inefficiencies
+
+Event Driven Architecture Flow of CORE Fitness
+The Event-Driven Architecture (EDA) of CORE Fitness illustrates how system events generated by administrators, trainers and members are processed through event channels and corresponding services. This architecture enables efficient communication between system components for membership management, attendance monitoring, payment recording, progress tracking, notifications and reporting while maintaining centralized data management.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 4. Event Driven Architecture Flow of CORE Fitness
+
+
+
+
+Data Flow Diagram (DFD)
+The Level-0 Data Flow Diagram (DFD) illustrates the overall flow of data within the CORE Fitness system. It shows how members, trainers, and administrators interact with the system process such as registration, membership management,  QR code attendance monitoring, payment tracking, analytics, and progress monitoring. The diagram also demonstrates how data is stored and managed through the centralized MySQL database to support efficient and organized gym operations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 5. Level-0 Data Flow Diagram of the CORE Fitness System
+
+System Architecture Design
+The System Architecture of CORE Fitness follows a multi-tier structure that separates the user interface, application processing, database management, and external services to ensure efficient and secure system operation. React.js and React Native are used for the web and mobile interfaces, while Node.js, Express.js, and MySQL 8.0 handle the back-end processing and database management. Firebase supports authentication and notifications, while the Rule-Based Monitoring and Analytics Module and the NLP-Based Administrative Assistant support operational monitoring, reporting, automated inquiries, and system assistance. Figure 6 illustrates the System Architecture Design of the CORE Fitness system. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 6. System Architecture Configuration of the CORE Fitness System
+
+Development
+The development stage transitions the project from system design into actual system implementation. The CORE fitness system follows an iterative development approach based on the Agile Scrum Framework to ensure continuous testing, refinement, and integration of system components throughout the development process.
+
+Development Plan and Strategies (Iterative Model)
+The system development is divided into four iterative phases to allow continuous monitoring and evaluation of system functionalities.
+Iteration 1: Core User Management and Database Integration
+Focuses on developing the database structure, user authentication, and core API configuration using MySQL 8.0, Node.js, and Express.js.
+Iteration 2: QR Code Attendance and Payment Tracking
+Focuses on implementing QR code-based attendance monitoring, payment recording, payment status monitoring, and transaction management functionalities. 
+Iteration 3: Rule-Based Monitoring, Analytics, and NLP Integration
+Focuses on integrating rule-based monitoring and analytics features, personal progress monitoring, trainer feedback and recommendations, trainer ratings, and NLP-Based Administrative Assistant for automated inquiries and responses.
+Iteration 4: Notifications System Integration
+                    Focuses on implementing Firebase notification services and integrating all front-end components of the system.
+To maintain continuous development and system quality, the researchers utilize daily stand-up meetings and sprint review sessions to monitor development progress, identify technical issues, and implement necessary refinements throughout the development process.
+
+Tools, Programming Languages, Libraries, and Hardware Requirements
+The CORE Fitness system utilizes a multi-platform development environment composed of modern web and mobile technologies. The back-end system is developed using Node.js and Express.js, while MySQL 8.0 serves as the relational database management system. React.js is used for the web-based administration dashboard, while React Native is utilized for the cross-platform mobile application. Firebase services are integrated for user authentication and real-time notification services.
+The development and testing process utilizes the following tools and resources:
+Hardware Requirements:
+Desktop and Laptop Computers
+Android Smartphones
+Internet Connection
+Web Camera and Laptop Cameras for QR Code Scanning
+Software Requirements:
+Visual Studio Code
+Git and GitHub
+Postman API Client
+MySQL Workbench
+
+Front-End Development
+The front-end development of the CORE Fitness system utilizes React.js for the web-based administration dashboard and React Native is utilized for the cross-platform mobile application designed for gym members and trainers. The system is designed to provide responsive and user-friendly interfaces for administrators, trainers, and gym members. Through the front-end interface, users can access gym services, monitor attendance records, manage memberships, view payment information, and receive real-time notifications and announcements.
+
+Key features include:
+QR code-based attendance monitoring
+Membership management and account monitoring
+Payment tracking and transaction viewing
+Real-time notifications and announcements
+Rule-based monitoring and analytics dashboard
+NLP-Based Administrative Assistant (Chatbot)
+User authentication and profile management
+Responsive web and mobile user interface
+
+
+Figure 7. Front-End Development Flow of CORE Fitness System
+
+Back-End Development
+The back-end development of the CORE Fitness system will utilize Node.js and Express.js to manage server-side operations, API integration, database communication, and overall system processing. MySQL 8.0 will serve as the relational database management system, while Firebase will be used for user authentication and real-time notification services. The back-end system is designed to support secure data handling, centralized data management, attendance monitoring, membership processing, and system-wide operational monitoring.
+
+Key features include:
+Role-Based Authorization and access control
+Password Protection
+Input Validation
+Session Handling
+RESTful API integration and server-side processing
+Membership and attendance data management
+Payment tracking and transaction processing
+QR code-based attendance verification
+Firebase authentication and notification services
+Rule-based monitoring and analytics processing
+NLP-Based Administrative Assistant processing
+Database storage and retrieval using MySQL 8.0
+Secure user authentication and access control
+
+
+Figure 8. Back-End Development Flow of CORE FItness System
+
+
+Testing and Validation
+Upon completing all development sprints, the unified platform enters an exhaustive testing pipeline structured to fulfill the panel’s explicit parameters for technical stability and user viability.
+Functional Testing 
+Functional testing is conducted to ensure that each module and feature of the CORE Fitness system performs according to the specified system requirements.
+ Unit Testing: Individual modules are tested independently to verify correct functionality and system processing.
+User Authentication Module: Validates secure login, user authentication, and account access control.
+QR Attendance Monitoring Module: Tests QR code scanning, attendance recording, and entry verification functionalities.
+Membership Management Module: Verifies membership registration, status updating, and member information management.
+Payment Tracking Module: Tests payment recording, Payment status monitoring, and Transaction history management..
+Rule-Based Monitoring and Analytics Module: Evaluates attendance monitoring, membership activity tracking, renewal monitoring and operational reporting based on predefined system rules.
+NLP-Based Administrative Assistant Module: Tests the chatbot’s ability to recognize user inquiries and generate appropriate responses.
+Notification System Module: Verifies real-time notification delivery using Firebase services.
+Web Dashboard and Mobile Application Modules: Confirms proper synchronization and display of data between the web and mobile platforms.
+Personal Progress Monitoring Module: Tests body measurement recording, attendance consistency monitoring, membership progress tracking, and goal achievement functionalities.
+Trainer Feedback and Recommendation Module: Verifies trainer recommendations, performance evaluations, workout plan assignment, and feedback management functionalities.
+Trainer Rating and Evaluation Module: Tests trainer rating submission, feedback recording, and evaluation report generation.
+Compatibility Testing: Conducted to ensure that the system functions properly across different devices, platform, and screen resolutions.
+Android Devices: Verifies system functionality and responsiveness on Android smartphones.
+Supported Browsers: Tests system accessibility and responsiveness across Google Chrome, Mozilla Firefox, Safari, and Microsoft Edge.
+Different Screen Sizes: Ensures responsive interface layout across mobile, tablet, and desktop devices.
+Security Testing: Conducted to evaluate user authentication, secure database transactions, data protection, and access control mechanisms within the system.
+Non-Functional Testing
+Non-functional testing is conducted to evaluate the overall software quality, usability, reliability, and performance efficiency of the CORE Fitness system.
+ISO/IEC 25010 Quality Evaluation: The system is evaluated based on the ISO/IEC 25010 software quality standards to assess the following quality characteristics:
+Functional Suitability
+Performance Efficiency
+Compatibility
+Usability
+Reliability
+Security
+Maintainability
+Portability
+
+User Acceptance Testing (UAT) & System Usability Scale (SUS): User Acceptance Testing is conducted with gym owners, staff members, trainers, and gym members from partner fitness centers in Mamburao, Occidental Mindoro to evaluate the effectiveness, usability, and overall user satisfaction of the system.
+
+The SUS consists of a 10- item questionnaire using a 5-point Likert scale. Individual responses are mathematically converted to yield an aggregate score out of 100, providing an objective measure of system learnability, accessibility, and user satisfaction. The final score interpretation and statistical distributions are handled via structured range guidelines:
+
+
+Table 4. Likert scale, descriptive rating, and range distribution.
+
+The evaluation of the CORE Fitness system utilizes both the System Usability Scale (SUS) and a 5-point Likert scale to measure user perception in terms of usability, satisfaction, and system effectiveness. The scale determines the level of agreement of respondents based on their experience in using the system. Each response is interpreted using corresponding numerical ranges to ensure consistent and objective analysis of user feedback. The results of this evaluation serve as a basis for determining the overall usability, acceptability, and effectiveness of the developed system among gym owners, staff, trainers, and members from the collaborating fitness centers in Mamburao, Occidental Mindoro.
+
+
+Table 5. The System Usability Scale (SUS).
+
+
+Table 6. The System Usability Scale (SUS) scoring method.
+
+Deployment
+The deployment stage transfers the fully verified software applications into a self-sustaining live operational environment. To achieve isolated system stability, a decentralized architecture separation of concerns strategy is enforced. The client-side admin React.js code layouts are distributed via edge routing mechanisms to minimize interface asset delivery latencies. Concurrently, the heavy server infrastructure components the computational Express.js API middleware instance, background analytics loops, NLP conversational text tokens parsing routines, and the underlying MySQL 8.0 database management system are hosted on an isolated, cloud-managed Virtual Private Server (VPS). This environment is set up with strict access rules, secure ports, and automated system snapshot scripts to guarantee 24/7 cross-gym operational availability, secure financial logging, and persistent data synchronization across local fitness centers. | Materials and Methods
+Conceptual Framework
+The study utilizes the Input-Process-Output (IPO) model as the basis for the conceptual framework of the proposed system. The IPO model is a commonly used framework in system development and research that illustrates the relationship between the inputs, process, and outputs of a system. It provides a clear visualization of how data and resources are transformed through a series of processes to produce a desired system output.
+
+In this study, the inputs consist of the data, technologies, and resources required for the development of the system. The process includes the software development methodologies, system integration, implementation of system features, rule-based monitoring and analytics, and NLP-based administrative support functionalities. The output represents the developed CORE Fitness platform and its corresponding functionalities designed to improve gym operations, membership management, attendance monitoring, operational reporting, and administrative support services.
+
+
+Figure 1. Conceptual Framework of the CORE Fitness System Using the IPO Model
+Development Model
+
+
+Figure 2. Agile Scrum Framework of CORE Fitness
+The study utilizes the Agile Scrum Framework as the software development methodology for the development of the CORE Fitness system. Agile Scrum allows iterative and incremental development through continuous planning, development, testing, evaluation, and feedback. The methodology enables the researchers to improve the system across multiple sprint cycles while ensuring that the requirements of gym owners, staff, and members are properly addressed.
+
+Data Gathering
+The initial phase establishes the functional and technical boundaries of the system through targeted field data acquisition. The data gathering method follows a mixed-method approach designed to collect accurate qualitative and quantitative operational metrics from gym owners, personnel, and members of local fitness centers in Mamburao, Occidental Mindoro, specifically focussing on G-Fitness, Fitness Regency, and Ferrer Fitness. This data-gathering step maps out critical localized infrastructure limitations, real-time attendance tracking constraints, manual membership lifecycle management issues, and the baseline expectations of end-users regarding the proposed platform.
+
+Background of the Respondents
+To execute a targeted analysis, respondents are selected via purposive sampling from individuals who are directly involved in daily gym operations and physical training activities. The designated respondent groupS comprise:
+Gym Owners and Administrators: Selected to provide granular insights regarding macro-level membership monitoring, historical debt tracking, compliance challenges, financial reporting, and administrative workflow bottlenecks
+Trainers, and Coaches: Selected to map out the operational realities of daily desk tasks, manual check-in validation, facility resource scheduling, and customer support bottlenecks.
+Registered Gym Members: Selected to identify user-experience vulnerabilities, friction points in traditional access control methods, and payment oversight from the consumer perspective.
+The gathered information serves as the analytical foundation for identifying systemic inefficiencies in manual gym operations and determining the necessary system features, functionalities, and intelligent technologies required for development. To ensure comprehensive data collection, the researchers utilized structured and semi-structured interviews, printed survey questionnaires and institutional document reviews.
+
+Table 1. Sources and Methods of Data Collection
+
+System Analysis and Specification
+The analysis phase of CORE Fitness focuses on assessing the limitations of current gym management practices among local fitness centers in Mamburao, Occidental Mindoro, and identifying the necessary requirements for the proposed digital solution. Existing manual procedures, including paper-based attendance logging, handwritten membership records, and manual payment tracking, are analyzed and compared with the proposed automated system workflow to determine areas requiring improvement in terms of operational efficiency, data accuracy, and administrative coordination.
+Based on the identified gaps, the system requirements are categorized into functional and non-functional requirements.
+Functional Requirements
+Functional requirements include User Authentication, QR Attendance Monitoring, Membership Management, Membership Registration and Approval Workflow, Payment Recording and Status Monitoring, Administration Dashboard and Monitoring, Mobile Application Access, Rule-Based Monitoring and Analytics Dashboard, NLP-Based Administrative Support, Notification and Announcement System, Event and Announcement Management, Staff and Schedule Management, Trainer Dashboard and Class Management, Trainer Feedback and Recommendations, Booking and Availability Management, Personal Progress Monitoring, Goal Achievement and Gamification System, Trainer Rating and Evaluation System, Attendance Consistency Monitoring, Data Privacy and Security Management, Multi-gym Data Separation, Multi-Role Dashboard Management, and Database Management and Data Storage feature for handling user inquiries and system assistance.
+Table 2. Functional Requirements
+
+Non-functional requirements (ISO/ IEC 25010 based)
+Non-functional requirements focus on Performance Efficiency, Data Security, Reliability, Usability, Maintainability, Compatibility, Portability, Scalability, Interoperability, Availability, Responsiveness, Recoverability, Accessibility to ensure efficient and secure system operation.
+
+Table 3. Non-Functional Requirements
+
+Fishbone Diagram
+A Use Case Diagram is developed to illustrate the interactions between gym owners, administrators, gym members and the proposed system, while a Fishbone Diagram is utilized to analyze the causes of inefficiencies in the current gym management processes, including manual encoding delays, fragmented data handling, delayed financial reporting, and inconsistent record management.The diagram helps analyze how these factors contribute to operational inefficiencies and supports the development of the proposed CORE Fitness system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 3. Fishbone Diagram of CORE Fitness showing causes of manual inefficiencies
+
+Event Driven Architecture Flow of CORE Fitness
+The Event-Driven Architecture (EDA) of CORE Fitness illustrates how system events generated by administrators, trainers and members are processed through event channels and corresponding services. This architecture enables efficient communication between system components for membership management, attendance monitoring, payment recording, progress tracking, notifications and reporting while maintaining centralized data management.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 4. Event Driven Architecture Flow of CORE Fitness
+
+
+
+
+Data Flow Diagram (DFD)
+The Level-0 Data Flow Diagram (DFD) illustrates the overall flow of data within the CORE Fitness system. It shows how members, trainers, and administrators interact with the system process such as registration, membership management,  QR code attendance monitoring, payment tracking, analytics, and progress monitoring. The diagram also demonstrates how data is stored and managed through the centralized MySQL database to support efficient and organized gym operations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 5. Level-0 Data Flow Diagram of the CORE Fitness System
+
+System Architecture Design
+The System Architecture of CORE Fitness follows a multi-tier structure that separates the user interface, application processing, database management, and external services to ensure efficient and secure system operation. React.js and React Native are used for the web and mobile interfaces, while Node.js, Express.js, and MySQL 8.0 handle the back-end processing and database management. Firebase supports authentication and notifications, while the Rule-Based Monitoring and Analytics Module and the NLP-Based Administrative Assistant support operational monitoring, reporting, automated inquiries, and system assistance. Figure 6 illustrates the System Architecture Design of the CORE Fitness system. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 6. System Architecture Configuration of the CORE Fitness System
+
+Development
+The development stage transitions the project from system design into actual system implementation. The CORE fitness system follows an iterative development approach based on the Agile Scrum Framework to ensure continuous testing, refinement, and integration of system components throughout the development process.
+
+Development Plan and Strategies (Iterative Model)
+The system development is divided into four iterative phases to allow continuous monitoring and evaluation of system functionalities.
+Iteration 1: Core User Management and Database Integration
+Focuses on developing the database structure, user authentication, and core API configuration using MySQL 8.0, Node.js, and Express.js.
+Iteration 2: QR Code Attendance and Payment Tracking
+Focuses on implementing QR code-based attendance monitoring, payment recording, payment status monitoring, and transaction management functionalities. 
+Iteration 3: Rule-Based Monitoring, Analytics, and NLP Integration
+Focuses on integrating rule-based monitoring and analytics features, personal progress monitoring, trainer feedback and recommendations, trainer ratings, and NLP-Based Administrative Assistant for automated inquiries and responses.
+Iteration 4: Notifications System Integration
+                    Focuses on implementing Firebase notification services and integrating all front-end components of the system.
+To maintain continuous development and system quality, the researchers utilize daily stand-up meetings and sprint review sessions to monitor development progress, identify technical issues, and implement necessary refinements throughout the development process.
+
+Tools, Programming Languages, Libraries, and Hardware Requirements
+The CORE Fitness system utilizes a multi-platform development environment composed of modern web and mobile technologies. The back-end system is developed using Node.js and Express.js, while MySQL 8.0 serves as the relational database management system. React.js is used for the web-based administration dashboard, while React Native is utilized for the cross-platform mobile application. Firebase services are integrated for user authentication and real-time notification services.
+The development and testing process utilizes the following tools and resources:
+Hardware Requirements:
+Desktop and Laptop Computers
+Android Smartphones
+Internet Connection
+Web Camera and Laptop Cameras for QR Code Scanning
+Software Requirements:
+Visual Studio Code
+Git and GitHub
+Postman API Client
+MySQL Workbench
+
+Front-End Development
+The front-end development of the CORE Fitness system utilizes React.js for the web-based administration dashboard and React Native is utilized for the cross-platform mobile application designed for gym members and trainers. The system is designed to provide responsive and user-friendly interfaces for administrators, trainers, and gym members. Through the front-end interface, users can access gym services, monitor attendance records, manage memberships, view payment information, and receive real-time notifications and announcements.
+
+Key features include:
+QR code-based attendance monitoring
+Membership management and account monitoring
+Payment tracking and transaction viewing
+Real-time notifications and announcements
+Rule-based monitoring and analytics dashboard
+NLP-Based Administrative Assistant (Chatbot)
+User authentication and profile management
+Responsive web and mobile user interface
+
+
+Figure 7. Front-End Development Flow of CORE Fitness System
+
+Back-End Development
+The back-end development of the CORE Fitness system will utilize Node.js and Express.js to manage server-side operations, API integration, database communication, and overall system processing. MySQL 8.0 will serve as the relational database management system, while Firebase will be used for user authentication and real-time notification services. The back-end system is designed to support secure data handling, centralized data management, attendance monitoring, membership processing, and system-wide operational monitoring.
+
+Key features include:
+Role-Based Authorization and access control
+Password Protection
+Input Validation
+Session Handling
+RESTful API integration and server-side processing
+Membership and attendance data management
+Payment tracking and transaction processing
+QR code-based attendance verification
+Firebase authentication and notification services
+Rule-based monitoring and analytics processing
+NLP-Based Administrative Assistant processing
+Database storage and retrieval using MySQL 8.0
+Secure user authentication and access control
+
+
+Figure 8. Back-End Development Flow of CORE FItness System
+
+
+Testing and Validation
+Upon completing all development sprints, the unified platform enters an exhaustive testing pipeline structured to fulfill the panel’s explicit parameters for technical stability and user viability.
+Functional Testing 
+Functional testing is conducted to ensure that each module and feature of the CORE Fitness system performs according to the specified system requirements.
+ Unit Testing: Individual modules are tested independently to verify correct functionality and system processing.
+User Authentication Module: Validates secure login, user authentication, and account access control.
+QR Attendance Monitoring Module: Tests QR code scanning, attendance recording, and entry verification functionalities.
+Membership Management Module: Verifies membership registration, status updating, and member information management.
+Payment Tracking Module: Tests payment recording, Payment status monitoring, and Transaction history management..
+Rule-Based Monitoring and Analytics Module: Evaluates attendance monitoring, membership activity tracking, renewal monitoring and operational reporting based on predefined system rules.
+NLP-Based Administrative Assistant Module: Tests the chatbot’s ability to recognize user inquiries and generate appropriate responses.
+Notification System Module: Verifies real-time notification delivery using Firebase services.
+Web Dashboard and Mobile Application Modules: Confirms proper synchronization and display of data between the web and mobile platforms.
+Personal Progress Monitoring Module: Tests body measurement recording, attendance consistency monitoring, membership progress tracking, and goal achievement functionalities.
+Trainer Feedback and Recommendation Module: Verifies trainer recommendations, performance evaluations, workout plan assignment, and feedback management functionalities.
+Trainer Rating and Evaluation Module: Tests trainer rating submission, feedback recording, and evaluation report generation.
+Compatibility Testing: Conducted to ensure that the system functions properly across different devices, platform, and screen resolutions.
+Android Devices: Verifies system functionality and responsiveness on Android smartphones.
+Supported Browsers: Tests system accessibility and responsiveness across Google Chrome, Mozilla Firefox, Safari, and Microsoft Edge.
+Different Screen Sizes: Ensures responsive interface layout across mobile, tablet, and desktop devices.
+Security Testing: Conducted to evaluate user authentication, secure database transactions, data protection, and access control mechanisms within the system.
+Non-Functional Testing
+Non-functional testing is conducted to evaluate the overall software quality, usability, reliability, and performance efficiency of the CORE Fitness system.
+ISO/IEC 25010 Quality Evaluation: The system is evaluated based on the ISO/IEC 25010 software quality standards to assess the following quality characteristics:
+Functional Suitability
+Performance Efficiency
+Compatibility
+Usability
+Reliability
+Security
+Maintainability
+Portability
+
+User Acceptance Testing (UAT) & System Usability Scale (SUS): User Acceptance Testing is conducted with gym owners, staff members, trainers, and gym members from partner fitness centers in Mamburao, Occidental Mindoro to evaluate the effectiveness, usability, and overall user satisfaction of the system.
+
+The SUS consists of a 10- item questionnaire using a 5-point Likert scale. Individual responses are mathematically converted to yield an aggregate score out of 100, providing an objective measure of system learnability, accessibility, and user satisfaction. The final score interpretation and statistical distributions are handled via structured range guidelines:
+
+
+Table 4. Likert scale, descriptive rating, and range distribution.
+
+The evaluation of the CORE Fitness system utilizes both the System Usability Scale (SUS) and a 5-point Likert scale to measure user perception in terms of usability, satisfaction, and system effectiveness. The scale determines the level of agreement of respondents based on their experience in using the system. Each response is interpreted using corresponding numerical ranges to ensure consistent and objective analysis of user feedback. The results of this evaluation serve as a basis for determining the overall usability, acceptability, and effectiveness of the developed system among gym owners, staff, trainers, and members from the collaborating fitness centers in Mamburao, Occidental Mindoro.
+
+
+Table 5. The System Usability Scale (SUS).
+
+
+Table 6. The System Usability Scale (SUS) scoring method.
+
+Deployment
+The deployment stage transfers the fully verified software applications into a self-sustaining live operational environment. To achieve isolated system stability, a decentralized architecture separation of concerns strategy is enforced. The client-side admin React.js code layouts are distributed via edge routing mechanisms to minimize interface asset delivery latencies. Concurrently, the heavy server infrastructure components the computational Express.js API middleware instance, background analytics loops, NLP conversational text tokens parsing routines, and the underlying MySQL 8.0 database management system are hosted on an isolated, cloud-managed Virtual Private Server (VPS). This environment is set up with strict access rules, secure ports, and automated system snapshot scripts to guarantee 24/7 cross-gym operational availability, secure financial logging, and persistent data synchronization across local fitness centers. | Materials and Methods
+Conceptual Framework
+The study utilizes the Input-Process-Output (IPO) model as the basis for the conceptual framework of the proposed system. The IPO model is a commonly used framework in system development and research that illustrates the relationship between the inputs, process, and outputs of a system. It provides a clear visualization of how data and resources are transformed through a series of processes to produce a desired system output.
+
+In this study, the inputs consist of the data, technologies, and resources required for the development of the system. The process includes the software development methodologies, system integration, implementation of system features, rule-based monitoring and analytics, and NLP-based administrative support functionalities. The output represents the developed CORE Fitness platform and its corresponding functionalities designed to improve gym operations, membership management, attendance monitoring, operational reporting, and administrative support services.
+
+
+Figure 1. Conceptual Framework of the CORE Fitness System Using the IPO Model
+Development Model
+
+
+Figure 2. Agile Scrum Framework of CORE Fitness
+The study utilizes the Agile Scrum Framework as the software development methodology for the development of the CORE Fitness system. Agile Scrum allows iterative and incremental development through continuous planning, development, testing, evaluation, and feedback. The methodology enables the researchers to improve the system across multiple sprint cycles while ensuring that the requirements of gym owners, staff, and members are properly addressed.
+
+Data Gathering
+The initial phase establishes the functional and technical boundaries of the system through targeted field data acquisition. The data gathering method follows a mixed-method approach designed to collect accurate qualitative and quantitative operational metrics from gym owners, personnel, and members of local fitness centers in Mamburao, Occidental Mindoro, specifically focussing on G-Fitness, Fitness Regency, and Ferrer Fitness. This data-gathering step maps out critical localized infrastructure limitations, real-time attendance tracking constraints, manual membership lifecycle management issues, and the baseline expectations of end-users regarding the proposed platform.
+
+Background of the Respondents
+To execute a targeted analysis, respondents are selected via purposive sampling from individuals who are directly involved in daily gym operations and physical training activities. The designated respondent groupS comprise:
+Gym Owners and Administrators: Selected to provide granular insights regarding macro-level membership monitoring, historical debt tracking, compliance challenges, financial reporting, and administrative workflow bottlenecks
+Trainers, and Coaches: Selected to map out the operational realities of daily desk tasks, manual check-in validation, facility resource scheduling, and customer support bottlenecks.
+Registered Gym Members: Selected to identify user-experience vulnerabilities, friction points in traditional access control methods, and payment oversight from the consumer perspective.
+The gathered information serves as the analytical foundation for identifying systemic inefficiencies in manual gym operations and determining the necessary system features, functionalities, and intelligent technologies required for development. To ensure comprehensive data collection, the researchers utilized structured and semi-structured interviews, printed survey questionnaires and institutional document reviews.
+
+Table 1. Sources and Methods of Data Collection
+
+System Analysis and Specification
+The analysis phase of CORE Fitness focuses on assessing the limitations of current gym management practices among local fitness centers in Mamburao, Occidental Mindoro, and identifying the necessary requirements for the proposed digital solution. Existing manual procedures, including paper-based attendance logging, handwritten membership records, and manual payment tracking, are analyzed and compared with the proposed automated system workflow to determine areas requiring improvement in terms of operational efficiency, data accuracy, and administrative coordination.
+Based on the identified gaps, the system requirements are categorized into functional and non-functional requirements.
+Functional Requirements
+Functional requirements include User Authentication, QR Attendance Monitoring, Membership Management, Membership Registration and Approval Workflow, Payment Recording and Status Monitoring, Administration Dashboard and Monitoring, Mobile Application Access, Rule-Based Monitoring and Analytics Dashboard, NLP-Based Administrative Support, Notification and Announcement System, Event and Announcement Management, Staff and Schedule Management, Trainer Dashboard and Class Management, Trainer Feedback and Recommendations, Booking and Availability Management, Personal Progress Monitoring, Goal Achievement and Gamification System, Trainer Rating and Evaluation System, Attendance Consistency Monitoring, Data Privacy and Security Management, Multi-gym Data Separation, Multi-Role Dashboard Management, and Database Management and Data Storage feature for handling user inquiries and system assistance.
+Table 2. Functional Requirements
+
+Non-functional requirements (ISO/ IEC 25010 based)
+Non-functional requirements focus on Performance Efficiency, Data Security, Reliability, Usability, Maintainability, Compatibility, Portability, Scalability, Interoperability, Availability, Responsiveness, Recoverability, Accessibility to ensure efficient and secure system operation.
+
+Table 3. Non-Functional Requirements
+
+Fishbone Diagram
+A Use Case Diagram is developed to illustrate the interactions between gym owners, administrators, gym members and the proposed system, while a Fishbone Diagram is utilized to analyze the causes of inefficiencies in the current gym management processes, including manual encoding delays, fragmented data handling, delayed financial reporting, and inconsistent record management.The diagram helps analyze how these factors contribute to operational inefficiencies and supports the development of the proposed CORE Fitness system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 3. Fishbone Diagram of CORE Fitness showing causes of manual inefficiencies
+
+Event Driven Architecture Flow of CORE Fitness
+The Event-Driven Architecture (EDA) of CORE Fitness illustrates how system events generated by administrators, trainers and members are processed through event channels and corresponding services. This architecture enables efficient communication between system components for membership management, attendance monitoring, payment recording, progress tracking, notifications and reporting while maintaining centralized data management.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 4. Event Driven Architecture Flow of CORE Fitness
+
+
+
+
+Data Flow Diagram (DFD)
+The Level-0 Data Flow Diagram (DFD) illustrates the overall flow of data within the CORE Fitness system. It shows how members, trainers, and administrators interact with the system process such as registration, membership management,  QR code attendance monitoring, payment tracking, analytics, and progress monitoring. The diagram also demonstrates how data is stored and managed through the centralized MySQL database to support efficient and organized gym operations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 5. Level-0 Data Flow Diagram of the CORE Fitness System
+
+System Architecture Design
+The System Architecture of CORE Fitness follows a multi-tier structure that separates the user interface, application processing, database management, and external services to ensure efficient and secure system operation. React.js and React Native are used for the web and mobile interfaces, while Node.js, Express.js, and MySQL 8.0 handle the back-end processing and database management. Firebase supports authentication and notifications, while the Rule-Based Monitoring and Analytics Module and the NLP-Based Administrative Assistant support operational monitoring, reporting, automated inquiries, and system assistance. Figure 6 illustrates the System Architecture Design of the CORE Fitness system. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 6. System Architecture Configuration of the CORE Fitness System
+
+Development
+The development stage transitions the project from system design into actual system implementation. The CORE fitness system follows an iterative development approach based on the Agile Scrum Framework to ensure continuous testing, refinement, and integration of system components throughout the development process.
+
+Development Plan and Strategies (Iterative Model)
+The system development is divided into four iterative phases to allow continuous monitoring and evaluation of system functionalities.
+Iteration 1: Core User Management and Database Integration
+Focuses on developing the database structure, user authentication, and core API configuration using MySQL 8.0, Node.js, and Express.js.
+Iteration 2: QR Code Attendance and Payment Tracking
+Focuses on implementing QR code-based attendance monitoring, payment recording, payment status monitoring, and transaction management functionalities. 
+Iteration 3: Rule-Based Monitoring, Analytics, and NLP Integration
+Focuses on integrating rule-based monitoring and analytics features, personal progress monitoring, trainer feedback and recommendations, trainer ratings, and NLP-Based Administrative Assistant for automated inquiries and responses.
+Iteration 4: Notifications System Integration
+                    Focuses on implementing Firebase notification services and integrating all front-end components of the system.
+To maintain continuous development and system quality, the researchers utilize daily stand-up meetings and sprint review sessions to monitor development progress, identify technical issues, and implement necessary refinements throughout the development process.
+
+Tools, Programming Languages, Libraries, and Hardware Requirements
+The CORE Fitness system utilizes a multi-platform development environment composed of modern web and mobile technologies. The back-end system is developed using Node.js and Express.js, while MySQL 8.0 serves as the relational database management system. React.js is used for the web-based administration dashboard, while React Native is utilized for the cross-platform mobile application. Firebase services are integrated for user authentication and real-time notification services.
+The development and testing process utilizes the following tools and resources:
+Hardware Requirements:
+Desktop and Laptop Computers
+Android Smartphones
+Internet Connection
+Web Camera and Laptop Cameras for QR Code Scanning
+Software Requirements:
+Visual Studio Code
+Git and GitHub
+Postman API Client
+MySQL Workbench
+
+Front-End Development
+The front-end development of the CORE Fitness system utilizes React.js for the web-based administration dashboard and React Native is utilized for the cross-platform mobile application designed for gym members and trainers. The system is designed to provide responsive and user-friendly interfaces for administrators, trainers, and gym members. Through the front-end interface, users can access gym services, monitor attendance records, manage memberships, view payment information, and receive real-time notifications and announcements.
+
+Key features include:
+QR code-based attendance monitoring
+Membership management and account monitoring
+Payment tracking and transaction viewing
+Real-time notifications and announcements
+Rule-based monitoring and analytics dashboard
+NLP-Based Administrative Assistant (Chatbot)
+User authentication and profile management
+Responsive web and mobile user interface
+
+
+Figure 7. Front-End Development Flow of CORE Fitness System
+
+Back-End Development
+The back-end development of the CORE Fitness system will utilize Node.js and Express.js to manage server-side operations, API integration, database communication, and overall system processing. MySQL 8.0 will serve as the relational database management system, while Firebase will be used for user authentication and real-time notification services. The back-end system is designed to support secure data handling, centralized data management, attendance monitoring, membership processing, and system-wide operational monitoring.
+
+Key features include:
+Role-Based Authorization and access control
+Password Protection
+Input Validation
+Session Handling
+RESTful API integration and server-side processing
+Membership and attendance data management
+Payment tracking and transaction processing
+QR code-based attendance verification
+Firebase authentication and notification services
+Rule-based monitoring and analytics processing
+NLP-Based Administrative Assistant processing
+Database storage and retrieval using MySQL 8.0
+Secure user authentication and access control
+
+
+Figure 8. Back-End Development Flow of CORE FItness System
+
+
+Testing and Validation
+Upon completing all development sprints, the unified platform enters an exhaustive testing pipeline structured to fulfill the panel’s explicit parameters for technical stability and user viability.
+Functional Testing 
+Functional testing is conducted to ensure that each module and feature of the CORE Fitness system performs according to the specified system requirements.
+ Unit Testing: Individual modules are tested independently to verify correct functionality and system processing.
+User Authentication Module: Validates secure login, user authentication, and account access control.
+QR Attendance Monitoring Module: Tests QR code scanning, attendance recording, and entry verification functionalities.
+Membership Management Module: Verifies membership registration, status updating, and member information management.
+Payment Tracking Module: Tests payment recording, Payment status monitoring, and Transaction history management..
+Rule-Based Monitoring and Analytics Module: Evaluates attendance monitoring, membership activity tracking, renewal monitoring and operational reporting based on predefined system rules.
+NLP-Based Administrative Assistant Module: Tests the chatbot’s ability to recognize user inquiries and generate appropriate responses.
+Notification System Module: Verifies real-time notification delivery using Firebase services.
+Web Dashboard and Mobile Application Modules: Confirms proper synchronization and display of data between the web and mobile platforms.
+Personal Progress Monitoring Module: Tests body measurement recording, attendance consistency monitoring, membership progress tracking, and goal achievement functionalities.
+Trainer Feedback and Recommendation Module: Verifies trainer recommendations, performance evaluations, workout plan assignment, and feedback management functionalities.
+Trainer Rating and Evaluation Module: Tests trainer rating submission, feedback recording, and evaluation report generation.
+Compatibility Testing: Conducted to ensure that the system functions properly across different devices, platform, and screen resolutions.
+Android Devices: Verifies system functionality and responsiveness on Android smartphones.
+Supported Browsers: Tests system accessibility and responsiveness across Google Chrome, Mozilla Firefox, Safari, and Microsoft Edge.
+Different Screen Sizes: Ensures responsive interface layout across mobile, tablet, and desktop devices.
+Security Testing: Conducted to evaluate user authentication, secure database transactions, data protection, and access control mechanisms within the system.
+Non-Functional Testing
+Non-functional testing is conducted to evaluate the overall software quality, usability, reliability, and performance efficiency of the CORE Fitness system.
+ISO/IEC 25010 Quality Evaluation: The system is evaluated based on the ISO/IEC 25010 software quality standards to assess the following quality characteristics:
+Functional Suitability
+Performance Efficiency
+Compatibility
+Usability
+Reliability
+Security
+Maintainability
+Portability
+
+User Acceptance Testing (UAT) & System Usability Scale (SUS): User Acceptance Testing is conducted with gym owners, staff members, trainers, and gym members from partner fitness centers in Mamburao, Occidental Mindoro to evaluate the effectiveness, usability, and overall user satisfaction of the system.
+
+The SUS consists of a 10- item questionnaire using a 5-point Likert scale. Individual responses are mathematically converted to yield an aggregate score out of 100, providing an objective measure of system learnability, accessibility, and user satisfaction. The final score interpretation and statistical distributions are handled via structured range guidelines:
+
+
+Table 4. Likert scale, descriptive rating, and range distribution.
+
+The evaluation of the CORE Fitness system utilizes both the System Usability Scale (SUS) and a 5-point Likert scale to measure user perception in terms of usability, satisfaction, and system effectiveness. The scale determines the level of agreement of respondents based on their experience in using the system. Each response is interpreted using corresponding numerical ranges to ensure consistent and objective analysis of user feedback. The results of this evaluation serve as a basis for determining the overall usability, acceptability, and effectiveness of the developed system among gym owners, staff, trainers, and members from the collaborating fitness centers in Mamburao, Occidental Mindoro.
+
+
+Table 5. The System Usability Scale (SUS).
+
+
+Table 6. The System Usability Scale (SUS) scoring method.
+
+Deployment
+The deployment stage transfers the fully verified software applications into a self-sustaining live operational environment. To achieve isolated system stability, a decentralized architecture separation of concerns strategy is enforced. The client-side admin React.js code layouts are distributed via edge routing mechanisms to minimize interface asset delivery latencies. Concurrently, the heavy server infrastructure components the computational Express.js API middleware instance, background analytics loops, NLP conversational text tokens parsing routines, and the underlying MySQL 8.0 database management system are hosted on an isolated, cloud-managed Virtual Private Server (VPS). This environment is set up with strict access rules, secure ports, and automated system snapshot scripts to guarantee 24/7 cross-gym operational availability, secure financial logging, and persistent data synchronization across local fitness centers.
+Sustainability Plan
+
+Technologies
+React.js
+React Native
+Node.js
+Express.js
+MySQL 8.0
+
+Sustainability Strategies
+Infrastructure Management: The CORE Fitness system utilizes an open-source technology stack composed of Node.js, MySQL 8.0, React.js, and React Native to minimize software licensing costs and support long-term system sustainability. The web-based administration dashboard and mobile application are designed to provide continuous access for administrators, trainers, and gym members.
+Administrative Training: User competency and proper system utilization contribute to the sustainability of the proposed system. Orientation sessions and training activities will be conducted to guide administrators and trainers in using the web dashboard, attendance monitoring, membership management, payment tracking, trainer management, progress monitoring, booking management, and operational monitoring features of the system. 
+Data Integrity and Security: To maintain system reliability and data consistency, regular database maintenance, security updates, and backup procedures will be implemented. MySQL 8.0 supports relational data integrity for attendance records, membership information, payment records, trainer records, progress monitoring data, ratings, feedback records, and other operational data to help prevent data loss and inconsistencies. 
+Operational Cost Recovery: Local fitness centers may implement minimal technology or maintenance fees as part of gym membership services to support the maintenance and continuous operation of the digital management system as the local fitness community continues to grow.
+
+Estimated Budget Requirements for Deployment 
+To prevent unexpected costs, the system will minimize serverless function usage and enable caching for static pages and public content. 
+
+
+Server Specifications for Front-end 
+The CORE Fitness system utilizes Vercel as the primary hosting platform for the web-based front-end interface. The platform is responsible for delivering the React.js administration dashboard and handling front-end deployment and optimization services. The selected server configuration supports the operational requirements of the system, including user access, real-time interface rendering, and web application responsiveness. | Sustainability Plan
+
+Technologies
+React.js
+React Native
+Node.js
+Express.js
+MySQL 8.0
+
+Sustainability Strategies
+Infrastructure Management: The CORE Fitness system utilizes an open-source technology stack composed of Node.js, MySQL 8.0, React.js, and React Native to minimize software licensing costs and support long-term system sustainability. The web-based administration dashboard and mobile application are designed to provide continuous access for administrators, trainers, and gym members.
+Administrative Training: User competency and proper system utilization contribute to the sustainability of the proposed system. Orientation sessions and training activities will be conducted to guide administrators and trainers in using the web dashboard, attendance monitoring, membership management, payment tracking, trainer management, progress monitoring, booking management, and operational monitoring features of the system. 
+Data Integrity and Security: To maintain system reliability and data consistency, regular database maintenance, security updates, and backup procedures will be implemented. MySQL 8.0 supports relational data integrity for attendance records, membership information, payment records, trainer records, progress monitoring data, ratings, feedback records, and other operational data to help prevent data loss and inconsistencies. 
+Operational Cost Recovery: Local fitness centers may implement minimal technology or maintenance fees as part of gym membership services to support the maintenance and continuous operation of the digital management system as the local fitness community continues to grow.
+
+Estimated Budget Requirements for Deployment 
+To prevent unexpected costs, the system will minimize serverless function usage and enable caching for static pages and public content. 
+
+
+Server Specifications for Front-end 
+The CORE Fitness system utilizes Vercel as the primary hosting platform for the web-based front-end interface. The platform is responsible for delivering the React.js administration dashboard and handling front-end deployment and optimization services. The selected server configuration supports the operational requirements of the system, including user access, real-time interface rendering, and web application responsiveness. | Sustainability Plan
+
+Technologies
+React.js
+React Native
+Node.js
+Express.js
+MySQL 8.0
+
+Sustainability Strategies
+Infrastructure Management: The CORE Fitness system utilizes an open-source technology stack composed of Node.js, MySQL 8.0, React.js, and React Native to minimize software licensing costs and support long-term system sustainability. The web-based administration dashboard and mobile application are designed to provide continuous access for administrators, trainers, and gym members.
+Administrative Training: User competency and proper system utilization contribute to the sustainability of the proposed system. Orientation sessions and training activities will be conducted to guide administrators and trainers in using the web dashboard, attendance monitoring, membership management, payment tracking, trainer management, progress monitoring, booking management, and operational monitoring features of the system. 
+Data Integrity and Security: To maintain system reliability and data consistency, regular database maintenance, security updates, and backup procedures will be implemented. MySQL 8.0 supports relational data integrity for attendance records, membership information, payment records, trainer records, progress monitoring data, ratings, feedback records, and other operational data to help prevent data loss and inconsistencies. 
+Operational Cost Recovery: Local fitness centers may implement minimal technology or maintenance fees as part of gym membership services to support the maintenance and continuous operation of the digital management system as the local fitness community continues to grow.
+
+Estimated Budget Requirements for Deployment 
+To prevent unexpected costs, the system will minimize serverless function usage and enable caching for static pages and public content. 
+
+
+Server Specifications for Front-end 
+The CORE Fitness system utilizes Vercel as the primary hosting platform for the web-based front-end interface. The platform is responsible for delivering the React.js administration dashboard and handling front-end deployment and optimization services. The selected server configuration supports the operational requirements of the system, including user access, real-time interface rendering, and web application responsiveness. | Sustainability Plan
+
+Technologies
+React.js
+React Native
+Node.js
+Express.js
+MySQL 8.0
+
+Sustainability Strategies
+Infrastructure Management: The CORE Fitness system utilizes an open-source technology stack composed of Node.js, MySQL 8.0, React.js, and React Native to minimize software licensing costs and support long-term system sustainability. The web-based administration dashboard and mobile application are designed to provide continuous access for administrators, trainers, and gym members.
+Administrative Training: User competency and proper system utilization contribute to the sustainability of the proposed system. Orientation sessions and training activities will be conducted to guide administrators and trainers in using the web dashboard, attendance monitoring, membership management, payment tracking, trainer management, progress monitoring, booking management, and operational monitoring features of the system. 
+Data Integrity and Security: To maintain system reliability and data consistency, regular database maintenance, security updates, and backup procedures will be implemented. MySQL 8.0 supports relational data integrity for attendance records, membership information, payment records, trainer records, progress monitoring data, ratings, feedback records, and other operational data to help prevent data loss and inconsistencies. 
+Operational Cost Recovery: Local fitness centers may implement minimal technology or maintenance fees as part of gym membership services to support the maintenance and continuous operation of the digital management system as the local fitness community continues to grow.
+
+Estimated Budget Requirements for Deployment 
+To prevent unexpected costs, the system will minimize serverless function usage and enable caching for static pages and public content. 
+
+
+Server Specifications for Front-end 
+The CORE Fitness system utilizes Vercel as the primary hosting platform for the web-based front-end interface. The platform is responsible for delivering the React.js administration dashboard and handling front-end deployment and optimization services. The selected server configuration supports the operational requirements of the system, including user access, real-time interface rendering, and web application responsiveness.
+Timeline of Activities
+The project follows the Agile Scrum Framework, allowing for iterative development and continuous feedback. The timeline is distributed over a four-month period. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gantt Chart (Agile Development Model) | Timeline of Activities
+The project follows the Agile Scrum Framework, allowing for iterative development and continuous feedback. The timeline is distributed over a four-month period. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gantt Chart (Agile Development Model) | Timeline of Activities
+The project follows the Agile Scrum Framework, allowing for iterative development and continuous feedback. The timeline is distributed over a four-month period. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gantt Chart (Agile Development Model) | Timeline of Activities
+The project follows the Agile Scrum Framework, allowing for iterative development and continuous feedback. The timeline is distributed over a four-month period. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gantt Chart (Agile Development Model)
+Expected Output
+
+Centralized Gym Management Portal: A centralized web-based management portal for administrators to manage memberships, monitor attendance through QR code scanning, track payment records, manage schedules, and access operational reports in real time.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring and analytics dashboard that provides attendance summaries, membership activity reports, payment monitoring, renewal monitoring, attendance drop detection, inactive member monitoring, expired membership monitoring, operational reports, and data visualizations to support gym management and decision-making. The dashboard applies predefined system rules, such as flagging members with no recorded attendance for fourteen (14) consecutive days as inactive and identifying memberships nearing expiration for renewal reminders.
+Member and Trainer Mobile Application: A cross-platform mobile application for Android and iOS devices that provides secure QR code-based identification, attendance monitoring, membership status viewing, account management, announcements, notifications, personal progress monitoring, trainer feedback viewing, trainer rating submission, goal tracking, and achievement badge monitoring.
+Trainer Management and Recommendation System: A dedicated trainer module that enables trainers to manage schedules, review bookings, provide workout recommendations, submit performance evaluations, assign workout plans, and monitor member progress.
+Centralized Back-End API and Database System: A centralized back-end system developed using Node.js, Express.js, and MySQL 8.0 that supports secure data processing, real-time data synchronization, database management, and communication between the web dashboard and mobile application.
+ISO/IEC 25010 Evaluation Results: A comprehensive system evaluation report based on the ISO/IEC 25010 software quality standards, covering Functional Suitability, Reliability, Performance Efficiency, Usability, Security, Compatibility, Maintainability, and Portability.
+User Acceptance Testing (UAT) Results: A user evaluation report containing feedback and assessment results from administrators, trainers, and gym members regarding the effectiveness, usability, and overall performance of the CORE Fitness system. | Expected Output
+
+Centralized Gym Management Portal: A centralized web-based management portal for administrators to manage memberships, monitor attendance through QR code scanning, track payment records, manage schedules, and access operational reports in real time.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring and analytics dashboard that provides attendance summaries, membership activity reports, payment monitoring, renewal monitoring, attendance drop detection, inactive member monitoring, expired membership monitoring, operational reports, and data visualizations to support gym management and decision-making. The dashboard applies predefined system rules, such as flagging members with no recorded attendance for fourteen (14) consecutive days as inactive and identifying memberships nearing expiration for renewal reminders.
+Member and Trainer Mobile Application: A cross-platform mobile application for Android and iOS devices that provides secure QR code-based identification, attendance monitoring, membership status viewing, account management, announcements, notifications, personal progress monitoring, trainer feedback viewing, trainer rating submission, goal tracking, and achievement badge monitoring.
+Trainer Management and Recommendation System: A dedicated trainer module that enables trainers to manage schedules, review bookings, provide workout recommendations, submit performance evaluations, assign workout plans, and monitor member progress.
+Centralized Back-End API and Database System: A centralized back-end system developed using Node.js, Express.js, and MySQL 8.0 that supports secure data processing, real-time data synchronization, database management, and communication between the web dashboard and mobile application.
+ISO/IEC 25010 Evaluation Results: A comprehensive system evaluation report based on the ISO/IEC 25010 software quality standards, covering Functional Suitability, Reliability, Performance Efficiency, Usability, Security, Compatibility, Maintainability, and Portability.
+User Acceptance Testing (UAT) Results: A user evaluation report containing feedback and assessment results from administrators, trainers, and gym members regarding the effectiveness, usability, and overall performance of the CORE Fitness system. | Expected Output
+
+Centralized Gym Management Portal: A centralized web-based management portal for administrators to manage memberships, monitor attendance through QR code scanning, track payment records, manage schedules, and access operational reports in real time.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring and analytics dashboard that provides attendance summaries, membership activity reports, payment monitoring, renewal monitoring, attendance drop detection, inactive member monitoring, expired membership monitoring, operational reports, and data visualizations to support gym management and decision-making. The dashboard applies predefined system rules, such as flagging members with no recorded attendance for fourteen (14) consecutive days as inactive and identifying memberships nearing expiration for renewal reminders.
+Member and Trainer Mobile Application: A cross-platform mobile application for Android and iOS devices that provides secure QR code-based identification, attendance monitoring, membership status viewing, account management, announcements, notifications, personal progress monitoring, trainer feedback viewing, trainer rating submission, goal tracking, and achievement badge monitoring.
+Trainer Management and Recommendation System: A dedicated trainer module that enables trainers to manage schedules, review bookings, provide workout recommendations, submit performance evaluations, assign workout plans, and monitor member progress.
+Centralized Back-End API and Database System: A centralized back-end system developed using Node.js, Express.js, and MySQL 8.0 that supports secure data processing, real-time data synchronization, database management, and communication between the web dashboard and mobile application.
+ISO/IEC 25010 Evaluation Results: A comprehensive system evaluation report based on the ISO/IEC 25010 software quality standards, covering Functional Suitability, Reliability, Performance Efficiency, Usability, Security, Compatibility, Maintainability, and Portability.
+User Acceptance Testing (UAT) Results: A user evaluation report containing feedback and assessment results from administrators, trainers, and gym members regarding the effectiveness, usability, and overall performance of the CORE Fitness system. | Expected Output
+
+Centralized Gym Management Portal: A centralized web-based management portal for administrators to manage memberships, monitor attendance through QR code scanning, track payment records, manage schedules, and access operational reports in real time.
+Rule-Based Monitoring and Analytics Dashboard: A monitoring and analytics dashboard that provides attendance summaries, membership activity reports, payment monitoring, renewal monitoring, attendance drop detection, inactive member monitoring, expired membership monitoring, operational reports, and data visualizations to support gym management and decision-making. The dashboard applies predefined system rules, such as flagging members with no recorded attendance for fourteen (14) consecutive days as inactive and identifying memberships nearing expiration for renewal reminders.
+Member and Trainer Mobile Application: A cross-platform mobile application for Android and iOS devices that provides secure QR code-based identification, attendance monitoring, membership status viewing, account management, announcements, notifications, personal progress monitoring, trainer feedback viewing, trainer rating submission, goal tracking, and achievement badge monitoring.
+Trainer Management and Recommendation System: A dedicated trainer module that enables trainers to manage schedules, review bookings, provide workout recommendations, submit performance evaluations, assign workout plans, and monitor member progress.
+Centralized Back-End API and Database System: A centralized back-end system developed using Node.js, Express.js, and MySQL 8.0 that supports secure data processing, real-time data synchronization, database management, and communication between the web dashboard and mobile application.
+ISO/IEC 25010 Evaluation Results: A comprehensive system evaluation report based on the ISO/IEC 25010 software quality standards, covering Functional Suitability, Reliability, Performance Efficiency, Usability, Security, Compatibility, Maintainability, and Portability.
+User Acceptance Testing (UAT) Results: A user evaluation report containing feedback and assessment results from administrators, trainers, and gym members regarding the effectiveness, usability, and overall performance of the CORE Fitness system.
+Collaborating Agencies | Collaborating Agencies | Collaborating Agencies | Collaborating Agencies
+The collaborating agencies are the local fitness centers in Mamburao, specifically: 
+
+G-Fitness. G-Fitness will serve as one of the primary collaborating fitness centers that provides access to real-world gym operations, including membership registration, attendance monitoring, payment recording and status monitoring, and daily administrative workflows. The administrators will assist in validating system requirements and testing the proposed CORE Fitness functionalities within an actual gym environment.
+Fitness Regency. Fitness Regency will function as a partner fitness establishment that contributes operational data and practical insights regarding gym management processes such as membership handling, payment tracking, scheduling, and attendance monitoring. The management will help evaluate the effectiveness and usability of the proposed system in improving gym operations.
+Ferrer Fitness. Ferrer Fitness will participate as a collaborating gym that provides real-world feedback on manual record-keeping practices, attendance logging, and administrative workflows. The fitness center will support the study by assisting in system evaluation, ensuring that the developed CORE Fitness system aligns with the actual needs of local gym operations. | The collaborating agencies are the local fitness centers in Mamburao, specifically: 
+
+G-Fitness. G-Fitness will serve as one of the primary collaborating fitness centers that provides access to real-world gym operations, including membership registration, attendance monitoring, payment recording and status monitoring, and daily administrative workflows. The administrators will assist in validating system requirements and testing the proposed CORE Fitness functionalities within an actual gym environment.
+Fitness Regency. Fitness Regency will function as a partner fitness establishment that contributes operational data and practical insights regarding gym management processes such as membership handling, payment tracking, scheduling, and attendance monitoring. The management will help evaluate the effectiveness and usability of the proposed system in improving gym operations.
+Ferrer Fitness. Ferrer Fitness will participate as a collaborating gym that provides real-world feedback on manual record-keeping practices, attendance logging, and administrative workflows. The fitness center will support the study by assisting in system evaluation, ensuring that the developed CORE Fitness system aligns with the actual needs of local gym operations. | The collaborating agencies are the local fitness centers in Mamburao, specifically: 
+
+G-Fitness. G-Fitness will serve as one of the primary collaborating fitness centers that provides access to real-world gym operations, including membership registration, attendance monitoring, payment recording and status monitoring, and daily administrative workflows. The administrators will assist in validating system requirements and testing the proposed CORE Fitness functionalities within an actual gym environment.
+Fitness Regency. Fitness Regency will function as a partner fitness establishment that contributes operational data and practical insights regarding gym management processes such as membership handling, payment tracking, scheduling, and attendance monitoring. The management will help evaluate the effectiveness and usability of the proposed system in improving gym operations.
+Ferrer Fitness. Ferrer Fitness will participate as a collaborating gym that provides real-world feedback on manual record-keeping practices, attendance logging, and administrative workflows. The fitness center will support the study by assisting in system evaluation, ensuring that the developed CORE Fitness system aligns with the actual needs of local gym operations. | The collaborating agencies are the local fitness centers in Mamburao, specifically: 
+
+G-Fitness. G-Fitness will serve as one of the primary collaborating fitness centers that provides access to real-world gym operations, including membership registration, attendance monitoring, payment recording and status monitoring, and daily administrative workflows. The administrators will assist in validating system requirements and testing the proposed CORE Fitness functionalities within an actual gym environment.
+Fitness Regency. Fitness Regency will function as a partner fitness establishment that contributes operational data and practical insights regarding gym management processes such as membership handling, payment tracking, scheduling, and attendance monitoring. The management will help evaluate the effectiveness and usability of the proposed system in improving gym operations.
+Ferrer Fitness. Ferrer Fitness will participate as a collaborating gym that provides real-world feedback on manual record-keeping practices, attendance logging, and administrative workflows. The fitness center will support the study by assisting in system evaluation, ensuring that the developed CORE Fitness system aligns with the actual needs of local gym operations.
+Topic Evaluator Committee
+ (To be accomplished by evaluators) | Topic Evaluator Committee
+ (To be accomplished by evaluators) | Topic Evaluator Committee
+ (To be accomplished by evaluators) | Topic Evaluator Committee
+ (To be accomplished by evaluators)
+Evaluator | Signature | Signature | Remarks
+Karesa Faye Z. Binasahan, MSIT
+Research Chairperson
+Leonard Flores, MSIT
+RECO Member
+Ronnie N. Del Rosario, MSIT
+Panel Member (Permanent)
+Hanz C. Bausa
+Panel Member (Faculty Expert)

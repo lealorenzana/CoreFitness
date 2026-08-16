@@ -29,3 +29,20 @@ export function SkeletonText({ lines = 3 }: { lines?: number }) {
 export function SkeletonCard({ className }: SkeletonProps) {
   return <Skeleton className={cn('h-24 w-full', className)} />;
 }
+
+/**
+ * Loading state for a screen that resolves into a list of cards.
+ *
+ * Most pages used to render a centred "Loading…" instead, which collapses the
+ * layout to one line and then jerks it back open when the data lands. A stack
+ * roughly the shape of the incoming content holds the page still.
+ */
+export function SkeletonList({ count = 3, className }: { count?: number } & SkeletonProps) {
+  return (
+    <div className={cn('space-y-3', className)} aria-busy="true" aria-label="Loading">
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="h-24 w-full" />
+      ))}
+    </div>
+  );
+}

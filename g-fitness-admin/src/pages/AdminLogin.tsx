@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useScroll } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown, Users, Dumbbell, Building } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
+import { supabase } from '../lib/supabaseClient';
 
 // Floating particles
 function Particles() {
@@ -65,23 +66,32 @@ export default function AdminLogin() {
   };
   const handleMouseLeave = () => { mouseX.set(0); mouseY.set(0); };
 
-  const ADMIN_CREDENTIALS = { email: 'admin@corefitness.com', password: 'admin123' };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { showToast('Please enter both email and password', 'error'); return; }
     setIsLoading(true);
-    setTimeout(() => {
-      if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-        localStorage.setItem('adminAuthenticated', 'true');
-        localStorage.setItem('adminUser', JSON.stringify({ email, name: 'Admin User', role: 'Super Admin' }));
-        showToast('Login successful!', 'success');
-        navigate('/admin/dashboard');
-      } else {
-        showToast('Invalid email or password', 'error');
-        setIsLoading(false);
-      }
-    }, 1000);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      showToast(error?.message ?? 'Invalid email or password', 'error');
+      setIsLoading(false);
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+    if (profileError || profile?.role !== 'admin') {
+      await supabase.auth.signOut();
+      showToast('This account does not have admin access', 'error');
+      setIsLoading(false);
+      return;
+    }
+
+    showToast('Login successful!', 'success');
+    navigate('/admin/dashboard');
   };
 
   return (
@@ -235,7 +245,7 @@ export default function AdminLogin() {
                   <input type="email" placeholder="Email address" value={email}
                     onChange={e => setEmail(e.target.value)}
                     onFocus={() => setFocusedInput('email')} onBlur={() => setFocusedInput(null)}
-                    className="w-full h-10 pl-10 pr-4 rounded-lg text-sm text-white placeholder-white/30 outline-none transition-all duration-300"
+                    className="w-full h-10 pl-10 pr-4 rounded-lg text-sm text-white placeholder-white/30 transition-all duration-300"
                     style={{ background: focusedInput === 'email' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${focusedInput === 'email' ? 'rgba(255,255,255,0.2)' : 'transparent'}` }} />
                 </motion.div>
 
@@ -246,7 +256,7 @@ export default function AdminLogin() {
                   <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
                     onChange={e => setPassword(e.target.value)}
                     onFocus={() => setFocusedInput('password')} onBlur={() => setFocusedInput(null)}
-                    className="w-full h-10 pl-10 pr-10 rounded-lg text-sm text-white placeholder-white/30 outline-none transition-all duration-300"
+                    className="w-full h-10 pl-10 pr-10 rounded-lg text-sm text-white placeholder-white/30 transition-all duration-300"
                     style={{ background: focusedInput === 'password' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${focusedInput === 'password' ? 'rgba(255,255,255,0.2)' : 'transparent'}` }} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 hover:text-white"
@@ -293,63 +303,13 @@ export default function AdminLogin() {
                   </div>
                 </motion.button>
 
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}
-                  className="flex items-center gap-3 mt-2 mb-4">
-                  <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
-                  <motion.span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}
-                    animate={{ opacity: [0.7, 0.9, 0.7] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>or</motion.span>
-                  <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
-                </motion.div>
-
-                <motion.button type="button" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => { setEmail(ADMIN_CREDENTIALS.email); setPassword(ADMIN_CREDENTIALS.password); }}
-                  className="w-full relative group/demo">
-                  <div className="relative overflow-hidden h-10 rounded-lg flex items-center justify-center gap-2 transition-all duration-300"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>
-                    <span className="text-xs">Use Demo Credentials</span>
-                    <motion.div className="absolute inset-0" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)' }}
-                      initial={{ x: '-100%' }} whileHover={{ x: '100%' }} transition={{ duration: 1, ease: 'easeInOut' }} />
-                  </div>
-                </motion.button>
-
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}
-                  className="text-center text-[10px] mt-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  admin@corefitness.com / admin123
-                </motion.p>
               </form>
             </div>
           </div>
         </motion.div>
       </motion.div>
 
-      {/* Animated stats below card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.8, duration: 0.6 }}
-        className="relative z-10 mt-8 flex items-center gap-6"
-      >
-        {[
-          { icon: Users, label: 'Members', value: '500+' },
-          { icon: Dumbbell, label: 'Trainers', value: '15+' },
-          { icon: Building, label: 'Gyms', value: '3' },
-        ].map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div key={stat.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 2.0 + i * 0.15 }}
-              className="flex items-center gap-2 text-center"
-            >
-              <Icon size={14} style={{ color: 'rgba(124,58,237,0.7)' }} />
-              <span className="text-white font-bold text-sm">{stat.value}</span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{stat.label}</span>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+
 
       </motion.div>
       {/* End of scroll-animated login content */}

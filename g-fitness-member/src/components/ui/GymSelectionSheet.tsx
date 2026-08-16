@@ -46,7 +46,7 @@ export default function GymSelectionSheet({ open, onClose, onSelectGym }: GymSel
             exit={{ opacity: 0, y: 40 }}
             className="absolute bottom-0 left-0 right-0 z-[20] pointer-events-auto px-4 pb-6"
           >
-            <div className="bg-[rgba(10,8,0,0.95)] border border-[var(--color-secondary-light)] rounded-2xl p-5 shadow-2xl max-h-[70vh] overflow-y-auto">
+            <div className="bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-2xl p-5 shadow-2xl max-h-[70vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white font-bold text-lg">Choose Your Gym</h3>
                 <button

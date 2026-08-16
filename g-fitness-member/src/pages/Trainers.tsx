@@ -1,352 +1,129 @@
+import Avatar from '../components/ui/Avatar';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { Star, Award, Calendar, ArrowRight, Users, X, TrendingDown, TrendingUp, Activity } from 'lucide-react';
-import { trainers } from '../data/trainers';
-import { SharedStorage } from '../utils/sharedStorage';
-import { getCurrentUser } from '../utils/auth';
-import { getMembersForTrainer, type AssignedMember } from '../data/mockTrainerAssignments';
-import EmptyState from '../components/ui/EmptyState';
-import { createTestYesterdayBooking } from '../utils/testRatingData';
-import { showSuccessToast } from '../utils/errorHandler';
+import { Award, ArrowRight, Calendar, Dumbbell } from 'lucide-react';
+import { toast } from '../components/ui/Toast';
+import { errorMessage } from '../utils/errorMessage';
+import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import { listClasses } from '../lib/api/classes';
 
-// Detect if logged-in user is a trainer by matching name
-function useTrainerView() {
-  const currentUser = getCurrentUser();
-  const name = currentUser?.name || localStorage.getItem('memberName') || '';
-  if (name.length < 2) return null;
-  const first = name.toLowerCase().split(' ')[0];
-  return trainers.find((t) => t.name.toLowerCase().includes(first)) || null;
-}
-
-// Evaluation prompt for Premium members after a session
-function EvaluationPrompt({ booking, onEvaluate, onDismiss }: { booking: any; onEvaluate: (score: number, feedback: string) => void; onDismiss: () => void }) {
-  const [score, setScore] = useState(0);
-  const [feedback, setFeedback] = useState('');
-  
-  const scoreLabels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-  
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-secondary)' }}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-white font-semibold text-sm">Evaluate your session</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{booking.className} with {booking.trainerName}</p>
-        </div>
-        <button onClick={onDismiss} style={{ color: 'var(--color-text-muted)' }}><X size={16} /></button>
-      </div>
-      
-      <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>How would you rate this session?</p>
-      <div className="flex gap-2 mb-2">
-        {[1, 2, 3, 4, 5].map(s => (
-          <button key={s} onClick={() => setScore(s)} className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ 
-              background: s <= score ? 'var(--color-secondary)' : 'var(--color-bg)', 
-              border: `1px solid ${s <= score ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-              color: s <= score ? '#000' : 'var(--color-text-muted)'
-            }}>
-            {s}
-          </button>
-        ))}
-      </div>
-      {score > 0 && (
-        <p className="text-xs text-center mb-3 font-semibold" style={{ color: 'var(--color-secondary)' }}>
-          {scoreLabels[score - 1]}
-        </p>
-      )}
-      
-      <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
-        placeholder="Share your feedback (optional)…"
-        rows={3}
-        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none mb-3 resize-none"
-        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-      <div className="flex gap-2">
-        <button onClick={onDismiss} className="flex-1 py-2 rounded-xl text-xs font-semibold"
-          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-          Skip
-        </button>
-        <button onClick={() => score > 0 && onEvaluate(score, feedback)} disabled={score === 0}
-          className="flex-1 py-2 rounded-xl text-xs font-semibold text-black disabled:opacity-40"
-          style={{ background: 'var(--color-secondary)' }}>
-          Submit Evaluation
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-function MyMembersTab({ trainerId }: { trainerId: string }) {
-  const members: AssignedMember[] = getMembersForTrainer(trainerId);
-
-  if (members.length === 0) {
-    return <EmptyState icon={Users} title="No members assigned"
-      message="Once an admin assigns members, they'll appear here." />;
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: 'Total Members', value: members.length, color: 'var(--color-secondary)' },
-          { label: 'Avg Workouts',  value: Math.round(members.reduce((s, m) => s + m.workoutsThisMonth, 0) / members.length), color: 'var(--color-primary)' },
-          { label: 'On Track',       value: members.filter(m => m.attendanceThisMonth >= 12).length, color: 'var(--color-primary)' },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl p-3 text-center"
-            style={{ background: 'var(--color-surface-raised)', border: `1px solid ${s.color}30` }}>
-            <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {members.map(m => {
-        const lostWeight = m.weightChangeKg < 0;
-        return (
-          <div key={m.id} className="rounded-2xl p-4"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold text-base flex-shrink-0"
-                style={{ background: 'var(--color-secondary)' }}>
-                {m.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm truncate">{m.name}</p>
-                <p className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>{m.email}</p>
-                <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                  style={{
-                    background: m.membershipType === 'Premium' ? 'var(--color-secondary-light)'
-                              : m.membershipType === 'Standard' ? 'var(--color-primary-light)'
-                              : 'rgba(107,96,128,0.15)',
-                    color: m.membershipType === 'Premium' ? 'var(--color-secondary)'
-                         : m.membershipType === 'Standard' ? 'var(--color-primary)'
-                         : 'var(--color-text-secondary)',
-                  }}>
-                  {m.membershipType}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>🎯 {m.goalSummary}</p>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { icon: Calendar, label: 'Visits',     value: m.attendanceThisMonth, color: 'var(--color-secondary)' },
-                { icon: Activity, label: 'Workouts',   value: m.workoutsThisMonth,   color: 'var(--color-primary)' },
-                {
-                  icon: lostWeight ? TrendingDown : TrendingUp,
-                  label: 'Weight Δ',
-                  value: `${m.weightChangeKg > 0 ? '+' : ''}${m.weightChangeKg} kg`,
-                  color: lostWeight ? 'var(--color-primary)' : 'var(--color-secondary)',
-                },
-              ].map(s => {
-                const Icon = s.icon;
-                return (
-                  <div key={s.label} className="rounded-lg p-2 flex items-center gap-1.5"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    <Icon size={12} style={{ color: s.color }} />
-                    <div className="min-w-0">
-                      <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                      <p className="text-xs font-bold text-white truncate">{s.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
+/**
+ * The gym's coaching team, as a member sees it.
+ *
+ * This page used to be two pages in a trench coat: a member-facing directory
+ * built from `data/trainers.ts`, plus a trainer-facing roster of "assigned
+ * members" from `mockTrainerAssignments`. Which one you got was decided by
+ * `useTrainerView()`, which matched the **first word of your display name**
+ * against the mock trainer list — so any member called Ana saw a coach's client
+ * roster, and a coach whose name didn't match saw the member view.
+ *
+ * That branch is gone. Trainers have their own screens under `pages/trainer/`,
+ * behind a real role check against `profiles.role`. This is the member view,
+ * and only the member view.
+ */
 export default function Trainers() {
   const navigate = useNavigate();
-  const trainerSelf = useTrainerView();
-  const currentUser = getCurrentUser();
-  const memberEmail = currentUser?.email || localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com';
-
-  // Tab state — only relevant when logged-in user is a trainer
-  const [tab, setTab] = useState<'browse' | 'my-members'>(trainerSelf ? 'my-members' : 'browse');
-
-  // Premium-only evaluations detection
-  // FORCE Premium for Eya (demo/testing)
-  const memberData = SharedStorage.getMember(memberEmail);
-  const storedMemberType = localStorage.getItem('membershipType');
-  const isEya = memberEmail === 'eya.lorenzana@email.com';
-  const isPremium = isEya || memberData?.membershipType === 'Premium' || storedMemberType === 'Premium';
-
-  const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([]);
-  const [dismissedEvaluations, setDismissedEvaluations] = useState<string[]>(() => {
-    const s = localStorage.getItem('dismissed_evaluations');
-    return s ? JSON.parse(s) : [];
-  });
+  const [trainers, setTrainers] = useState<PublicTrainer[]>([]);
+  const [classCounts, setClassCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isPremium) return;
-    
-    // AUTO-CREATE TEST BOOKING FOR DEMO - for ANY Premium member
-    if (isPremium && memberEmail) {
-      createTestYesterdayBooking();
-    }
-    
-    const bookings = SharedStorage.getMemberBookings(memberEmail);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().split('T')[0];
-    const evaluated = JSON.parse(localStorage.getItem('evaluated_sessions') || '[]');
-    
-    const pending = bookings.filter((b: any) =>
-      b.status === 'Confirmed' &&
-      b.date === yStr &&
-      !evaluated.includes(b.id) &&
-      !dismissedEvaluations.includes(b.id)
-    );
-    
-    setPendingEvaluations(pending);
-  }, [memberEmail, isPremium, dismissedEvaluations]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [coaches, classes] = await Promise.all([
+          listPublicTrainers(),
+          listClasses().catch(() => []),
+        ]);
+        if (cancelled) return;
+        setTrainers(coaches);
 
-  const handleEvaluate = (bookingId: string, score: number, feedback: string) => {
-    const evaluated = JSON.parse(localStorage.getItem('evaluated_sessions') || '[]');
-    evaluated.push(bookingId);
-    localStorage.setItem('evaluated_sessions', JSON.stringify(evaluated));
-    const evaluations = JSON.parse(localStorage.getItem('session_evaluations') || '[]');
-    evaluations.push({ bookingId, score, feedback, date: new Date().toISOString() });
-    localStorage.setItem('session_evaluations', JSON.stringify(evaluations));
-    setPendingEvaluations(prev => prev.filter(b => b.id !== bookingId));
-    
-    const scoreLabels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-    showSuccessToast(`Thank you for your evaluation! ${scoreLabels[score - 1]} (${score}/5)`);
-  };
-
-  const handleDismiss = (bookingId: string) => {
-    const updated = [...dismissedEvaluations, bookingId];
-    setDismissedEvaluations(updated);
-    localStorage.setItem('dismissed_evaluations', JSON.stringify(updated));
-    setPendingEvaluations(prev => prev.filter(b => b.id !== bookingId));
-  };
+        // How many sessions each coach still has ahead of them — a real,
+        // checkable number, unlike the star ratings this page used to show.
+        const now = Date.now();
+        const counts: Record<string, number> = {};
+        for (const c of classes) {
+          if (!c.trainer_id || !c.scheduled_at) continue;
+          if (new Date(c.scheduled_at).getTime() <= now) continue;
+          counts[c.trainer_id] = (counts[c.trainer_id] ?? 0) + 1;
+        }
+        setClassCounts(counts);
+      } catch (err) {
+        if (!cancelled) toast.error(errorMessage(err, 'Could not load the trainers'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="space-y-5 pb-4">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-white">{trainerSelf ? 'Trainer Hub' : 'Our Trainers'}</h1>
+        <h1 className="text-2xl font-bold text-white">Our Trainers</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-          {trainerSelf ? `Welcome, ${trainerSelf.name}` : 'Expert coaches to guide your fitness journey'}
+          Find a coach and book a session
         </p>
       </motion.div>
 
-      {/* Tab strip — only for trainer-role users */}
-      {trainerSelf && (
-        <div className="flex gap-2 p-1 rounded-xl" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          {[
-            { id: 'my-members', label: 'My Members' },
-            { id: 'browse',     label: 'All Trainers' },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)}
-              className="flex-1 py-2 rounded-lg text-sm font-semibold"
-              style={{
-                background: tab === t.id ? 'var(--color-secondary)' : 'transparent',
-                color: tab === t.id ? '#000' : 'var(--color-text-muted)',
-              }}>
-              {t.label}
-            </button>
-          ))}
+      {loading ? (
+        <SkeletonList />
+      ) : trainers.length === 0 ? (
+        <div className="rounded-2xl p-8 text-center" style={panelStyle}>
+          <Dumbbell size={44} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+          <p className="font-medium text-white text-sm">No trainers yet</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            The gym hasn't added its coaching team to the app yet.
+          </p>
         </div>
-      )}
-
-      {/* Evaluation prompts for Premium members */}
-      {isPremium && pendingEvaluations.length > 0 && (
-        <div className="text-xs text-white/50 mb-2">
-          💎 Premium Feature: {pendingEvaluations.length} session(s) to evaluate
-        </div>
-      )}
-      
-      {isPremium && pendingEvaluations.map(b => (
-        <EvaluationPrompt key={b.id} booking={b} onEvaluate={(s, f) => handleEvaluate(b.id, s, f)} onDismiss={() => handleDismiss(b.id)} />
-      ))}
-
-      {/* Trainer's "My Members" view */}
-      {trainerSelf && tab === 'my-members' && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <MyMembersTab trainerId={trainerSelf.id} />
-        </motion.div>
-      )}
-
-      {/* Browse all trainers */}
-      {(!trainerSelf || tab === 'browse') && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-          {trainers.map((trainer, index) => (
-            <motion.div key={trainer.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}
-              onClick={() => navigate(`/member/trainer/${trainer.id.toLowerCase()}`)}
-              className="rounded-2xl p-4 cursor-pointer transition-colors"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-black font-bold text-xl flex-shrink-0"
-                  style={{ background: 'var(--color-secondary)' }}>
-                  {trainer.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-1">
-                    <div>
-                      <h3 className="text-white font-bold">{trainer.name}</h3>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>{trainer.specialty}</p>
-                    </div>
-                    <ArrowRight size={18} style={{ color: 'var(--color-text-muted)' }} />
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Star size={14} style={{ color: 'var(--color-secondary)', fill: 'var(--color-secondary)' }} />
-                      <span className="text-white text-sm font-bold">{trainer.rating}</span>
-                    </div>
-                    <span style={{ color: 'var(--color-border)' }}>•</span>
-                    <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{trainer.experience} experience</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                    <Award size={12} style={{ color: 'var(--color-primary)' }} />
-                    {trainer.certifications.slice(0, 2).map((cert, i) => (
-                      <span key={i} className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.20)' }}>
-                        {cert}
-                      </span>
-                    ))}
-                    {trainer.certifications.length > 2 && (
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>+{trainer.certifications.length - 2}</span>
+      ) : (
+        <div className="space-y-3">
+          {trainers.map((t, i) => {
+            const upcoming = classCounts[t.id] ?? 0;
+            return (
+              <motion.button key={t.id}
+                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.06, 0.3) }}
+                onClick={() => navigate(`/member/trainer/${t.id}`)}
+                className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+                style={panelStyle}>
+                <div className="flex items-center gap-4">
+                  <Avatar name={trainerName(t)} photoUrl={t.photo_url} size={56} tone="secondary" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-semibold">{trainerName(t)}</h3>
+                    <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <Award size={12} style={{ color: 'var(--color-secondary)' }} />
+                      {t.specialization ?? 'General training'}
+                    </p>
+                    {upcoming > 0 && (
+                      <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                        <Calendar size={11} style={{ color: 'var(--color-secondary)' }} />
+                        {upcoming} upcoming {upcoming === 1 ? 'class' : 'classes'}
+                      </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    <Calendar size={12} /> Available {trainer.availability.length} days/week
-                  </div>
+                  <ArrowRight size={18} style={{ color: 'var(--color-text-muted)' }} />
                 </div>
-              </div>
-              <p className="text-xs mt-3 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{trainer.bio}</p>
-              <button onClick={e => { e.stopPropagation(); navigate(`/member/trainer/${trainer.id.toLowerCase()}`); }}
-                className="w-full mt-3 py-2.5 rounded-xl font-semibold text-sm text-black transition-colors flex items-center justify-center gap-2"
-                style={{ background: 'var(--color-secondary)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-secondary-hover)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-secondary)')}>
-                <ArrowRight size={14} /> View Profile & Book
-              </button>
-            </motion.div>
-          ))}
 
-          {/* Help banner — flat */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="rounded-2xl p-5" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-primary)' }}>
-            <h3 className="text-white font-bold mb-1">Need Help Choosing?</h3>
-            <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-              Not sure which trainer is right for you? Our AI assistant can help.
-            </p>
-            <button onClick={() => navigate('/member/book-class')}
-              className="px-5 py-2 rounded-xl font-semibold text-sm text-black flex items-center gap-2"
-              style={{ background: 'var(--color-secondary)' }}>
-              <Calendar size={14} /> Book a Class
-            </button>
-          </motion.div>
-        </motion.div>
+                {t.bio && (
+                  <p className="text-xs mt-3 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
+                    {t.bio}
+                  </p>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
       )}
+
+      <button onClick={() => navigate('/member/book-class')}
+        className="w-full py-3.5 rounded-full font-semibold text-black flex items-center justify-center gap-2"
+        style={{ background: 'var(--color-secondary)' }}>
+        <Calendar size={18} /> Book a Session
+      </button>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useGymContext } from '../../hooks/useGymContext';
-import { Search, Mail, Bell, X, Calendar, DollarSign, AlertCircle, Clock, MapPin } from 'lucide-react';
-import { SharedStorage } from '../../utils/sharedStorage';
+import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin } from 'lucide-react';
+import { dashboardService, type HeaderAlert } from '../../services/dashboardService';
+import { getMyProfile } from '../../lib/api/profiles';
 
 const SURFACE        = 'var(--color-surface)';
 const SURFACE_RAISED = 'var(--color-surface-raised)';
@@ -14,126 +15,60 @@ const SECONDARY_BG   = 'var(--color-secondary-light)';
 const TEXT_SECOND    = 'var(--color-text-secondary)';
 const TEXT_MUTED     = 'var(--color-text-muted)';
 
-interface Notification {
-  id: string;
-  type: 'expiring' | 'expired' | 'new_member' | 'payment' | 'booking' | 'suspended';
-  title: string;
-  message: string;
-  time: string;
-  icon: any;
-  unread: boolean;
-  priority: 'high' | 'medium' | 'low';
-  actionUrl?: string;
-}
+const ICONS: Record<HeaderAlert['kind'], typeof Bell> = {
+  expired: AlertCircle,
+  expiring: Clock,
+  registration: UserPlus,
+  booking: Calendar,
+  payment: Banknote,
+};
 
 export default function Header() {
   const { selectedGym } = useGymContext();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [search, setSearch] = useState('');
+  const [alerts, setAlerts] = useState<HeaderAlert[]>([]);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [adminName, setAdminName] = useState<string | null>(null);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const generate = () => {
-      const list: Notification[] = [];
-      const members = SharedStorage.getMembers().filter((m: any) => m.gymId === selectedGym.id);
-      const today = new Date();
-
-      members.forEach((member: any) => {
-        const expiry = new Date(member.expiryDate);
-        const daysUntil = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (expiry < today && member.membershipStatus !== 'Expired') {
-          list.push({
-            id: `expired-${member.id}`,
-            type: 'expired',
-            title: 'Membership Expired',
-            message: `${member.fullName}'s membership expired ${Math.abs(daysUntil)} days ago`,
-            time: 'Now',
-            icon: AlertCircle,
-            unread: true,
-            priority: 'high',
-            actionUrl: `/members/${member.id}`,
-          });
-        } else if (daysUntil > 0 && daysUntil <= 7) {
-          list.push({
-            id: `expiring-${member.id}`,
-            type: 'expiring',
-            title: 'Expiring Soon',
-            message: `${member.fullName} expires in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
-            time: `${daysUntil}d`,
-            icon: Clock,
-            unread: true,
-            priority: 'high',
-            actionUrl: `/members/${member.id}`,
-          });
-        }
-
-        if (member.membershipStatus === 'Suspended') {
-          list.push({
-            id: `suspended-${member.id}`,
-            type: 'suspended',
-            title: 'Suspended Member',
-            message: `${member.fullName} is currently suspended`,
-            time: 'Active',
-            icon: AlertCircle,
-            unread: false,
-            priority: 'medium',
-            actionUrl: `/members/${member.id}`,
-          });
-        }
-      });
-
-      const bookings = SharedStorage.getBookings();
-      const pending = bookings.filter((b: any) => b.status === 'Pending');
-      if (pending.length > 0) {
-        list.push({
-          id: 'pending-bookings',
-          type: 'booking',
-          title: 'Pending Booking Requests',
-          message: `${pending.length} booking${pending.length > 1 ? 's' : ''} waiting for approval`,
-          time: 'Now',
-          icon: Calendar,
-          unread: true,
-          priority: 'high',
-          actionUrl: '/bookings',
-        });
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const list = await dashboardService.getHeaderAlerts();
+        if (!cancelled) setAlerts(list);
+      } catch {
+        // A failed poll must not wipe what is already on screen, and must not
+        // invent an "all caught up" state the data does not support.
       }
-
-      const payments = SharedStorage.getPayments();
-      const dayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-      const recent = payments.filter((p: any) => new Date(p.date) > dayAgo);
-      if (recent.length > 0) {
-        const total = recent.reduce((s: number, p: any) => s + p.amount, 0);
-        list.push({
-          id: 'recent-payments',
-          type: 'payment',
-          title: 'Recent Payments',
-          message: `${recent.length} payment${recent.length > 1 ? 's' : ''} received (₱${total.toLocaleString()})`,
-          time: 'Today',
-          icon: DollarSign,
-          unread: false,
-          priority: 'low',
-          actionUrl: '/payments',
-        });
-      }
-
-      list.sort((a, b) => {
-        const order = { high: 0, medium: 1, low: 2 };
-        return order[a.priority] - order[b.priority];
-      });
-      setNotifications(list);
     };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
-    generate();
-    const interval = setInterval(generate, 30000);
-    return () => clearInterval(interval);
-  }, [selectedGym.id]);
+  // Real signed-in identity. This used to be a hardcoded "Admin / Super Admin",
+  // which is exactly the fallback-identity trap the project rules call out.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const profile = await getMyProfile().catch(() => null);
+      if (!profile || cancelled) return;
+      setAdminName(`${profile.first_name} ${profile.last_name}`.trim() || null);
+      setAdminRole(profile.role);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const visible = alerts.filter((a) => !dismissed.has(a.id));
+  const unreadCount = visible.length;
+  const initials = adminName
+    ? adminName.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0]).join('').toUpperCase()
+    : '';
 
   return (
     <header
-      className="h-16 px-6 flex items-center gap-4 sticky top-0 z-30"
+      className="h-16 px-6 flex items-center gap-4 sticky top-0 z-20"
       style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}
     >
       <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 min-w-0">
@@ -145,30 +80,11 @@ export default function Header() {
         </div>
       </motion.div>
 
-      <div className="flex-1 relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }} />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search members, bookings, payments…"
-          className="w-full pl-11 pr-4 text-sm rounded-full transition-colors"
-          style={{
-            height: 40,
-            background: SURFACE_RAISED,
-            border: `1px solid ${BORDER}`,
-            color: '#fff',
-            outline: 'none',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = PRIMARY;
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.18)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = BORDER;
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        />
-      </div>
+      {/* The search box that used to sit here was never wired to anything — it
+          held its own state and no screen ever read it. A box that swallows
+          what you type is worse than no box, so it's gone until there is a
+          search to run. */}
+      <div className="flex-1" />
 
       <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 flex-shrink-0">
         <div className="relative">
@@ -215,35 +131,28 @@ export default function Header() {
                   </div>
 
                   <div className="max-h-[440px] overflow-y-auto">
-                    {notifications.length > 0 ? notifications.map((n) => {
-                      const Icon = n.icon;
+                    {visible.length > 0 ? visible.map((n) => {
+                      const Icon = ICONS[n.kind];
+                      const high = n.priority === 'high';
                       return (
                         <button
                           key={n.id}
                           onClick={() => { if (n.actionUrl) window.location.href = n.actionUrl; }}
                           className="w-full text-left p-4 transition-colors flex items-start gap-3"
-                          style={{
-                            borderBottom: `1px solid ${BORDER}`,
-                            background: n.unread ? 'rgba(124,58,237,0.06)' : 'transparent',
-                          }}
+                          style={{ borderBottom: `1px solid ${BORDER}`, background: 'transparent' }}
                           onMouseEnter={(e) => (e.currentTarget.style.background = PRIMARY_LIGHT)}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = n.unread ? 'rgba(124,58,237,0.06)' : 'transparent')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
                           <div
                             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{ background: n.priority === 'high' ? SECONDARY_BG : PRIMARY_LIGHT }}
+                            style={{ background: high ? SECONDARY_BG : PRIMARY_LIGHT }}
                           >
-                            <Icon size={16} style={{ color: n.priority === 'high' ? SECONDARY : PRIMARY }} />
+                            <Icon size={16} style={{ color: high ? SECONDARY : PRIMARY }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium text-white">{n.title}</p>
-                              {n.unread && (
-                                <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: SECONDARY }} />
-                              )}
-                            </div>
+                            <p className="text-sm font-medium text-white">{n.title}</p>
                             <p className="text-xs mt-1" style={{ color: TEXT_SECOND }}>{n.message}</p>
-                            <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>{n.time}</p>
+                            <p className="text-xs mt-1.5" style={{ color: TEXT_MUTED }}>{n.time}</p>
                           </div>
                         </button>
                       );
@@ -255,17 +164,20 @@ export default function Header() {
                     )}
                   </div>
 
-                  {notifications.length > 0 && (
+                  {visible.length > 0 && (
                     <div
                       className="p-3 flex items-center justify-center"
                       style={{ borderTop: `1px solid ${BORDER}`, background: SURFACE }}
                     >
+                      {/* Dismiss hides for this session only. These are live
+                          conditions, not messages — an expiring membership is
+                          still expiring tomorrow, so it returns on reload. */}
                       <button
-                        onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))}
+                        onClick={() => setDismissed(new Set(alerts.map((a) => a.id)))}
                         className="text-xs font-medium"
                         style={{ color: PRIMARY }}
                       >
-                        Mark all as read
+                        Dismiss for now
                       </button>
                     </div>
                   )}
@@ -282,12 +194,18 @@ export default function Header() {
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
         >
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: PRIMARY }}>
-            AD
+            {initials}
           </div>
-          <div className="hidden sm:block text-left">
-            <p className="text-xs font-semibold text-white leading-tight">Admin</p>
-            <p className="text-[10px] leading-tight" style={{ color: TEXT_MUTED }}>Super Admin</p>
-          </div>
+          {/* Renders nothing until the profile actually loads — no placeholder
+              name, per the project's no-fallback-identity rule. */}
+          {adminName && (
+            <div className="hidden sm:block text-left">
+              <p className="text-xs font-semibold text-white leading-tight">{adminName}</p>
+              {adminRole && (
+                <p className="text-xs leading-tight capitalize" style={{ color: TEXT_MUTED }}>{adminRole}</p>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
     </header>

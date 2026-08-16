@@ -1,68 +1,101 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Clock, Calendar, User } from 'lucide-react';
+import { Clock, Calendar, CalendarCheck } from 'lucide-react';
+import Avatar from '../../components/ui/Avatar';
+import { SkeletonList } from '../../components/ui/Skeleton';
+import { Pill } from '../../components/ui/StatCard';
+import { panelStyle } from '../../components/ui/Card';
+import { listTrainerBookings, type BookingWithDetails } from '../../lib/api/bookings';
+import { listMembers } from '../../lib/api/members';
+import { getCurrentTrainerId } from '../../services/trainerService';
+import { errorMessage } from '../../utils/errorMessage';
+import type { BookingStatus } from '../../types/db';
 
-type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'completed';
+/**
+ * Bookings for the classes this trainer teaches (RLS `bookings_select_trainer`).
+ *
+ * **Read-only, deliberately.** The old fixture had Accept/Decline buttons, but
+ * `bookings_update_admin` allows only an admin to change a booking's status — so
+ * wiring those buttons to real data would have produced a silent RLS failure on
+ * every tap. Approval lives with the front desk until we decide otherwise; if
+ * trainers should approve their own classes' bookings, that needs a policy
+ * change, and it belongs with the classes/personal-training booking model.
+ */
 
-interface Booking {
-  id: string;
-  memberName: string;
-  date: string;
-  time: string;
-  type: string;
-  status: BookingStatus;
-  notes?: string;
-}
-
-const INITIAL_BOOKINGS: Booking[] = [
-  { id: 'b1', memberName: 'Aaron Diwa', date: '2026-05-26', time: '6:00 AM', type: 'Personal Training', status: 'pending', notes: 'Focus on upper body' },
-  { id: 'b2', memberName: 'Clairey Anne Belen', date: '2026-05-26', time: '5:00 PM', type: '1-on-1 Session', status: 'pending' },
-  { id: 'b3', memberName: 'Ana Par Ituralde', date: '2026-05-27', time: '7:00 AM', type: 'Personal Training', status: 'confirmed' },
-  { id: 'b4', memberName: 'Aj Aguirre', date: '2026-05-25', time: '6:00 PM', type: 'Assessment', status: 'confirmed', notes: 'Initial fitness assessment' },
-  { id: 'b5', memberName: 'Arvin Dela Rosa', date: '2026-05-24', time: '5:00 PM', type: 'Personal Training', status: 'completed' },
-  { id: 'b6', memberName: 'Aaron Diwa', date: '2026-05-23', time: '6:00 AM', type: 'Personal Training', status: 'completed' },
-  { id: 'b7', memberName: 'Clairey Anne Belen', date: '2026-05-22', time: '5:00 PM', type: '1-on-1 Session', status: 'declined', notes: 'Schedule conflict' },
-];
+const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; label: string }> = {
+  pending: { bg: 'rgba(245,158,11,0.15)', color: 'var(--color-secondary)', label: 'Pending' },
+  approved: { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Approved' },
+  rejected: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Rejected' },
+  cancelled: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Cancelled' },
+};
 
 export default function TrainerBookings() {
-  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'all' | BookingStatus>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleAction = (id: string, action: 'confirmed' | 'declined') => {
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: action } : b));
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const trainerId = await getCurrentTrainerId();
+        if (!trainerId) throw new Error('Not signed in');
+        const [rows, members] = await Promise.all([
+          listTrainerBookings(trainerId),
+          listMembers().catch(() => []),
+        ]);
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const m of members) map[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
+        setNames(map);
+        setBookings(rows);
+      } catch (err) {
+        console.error('Trainer bookings load failed:', err);
+        if (!cancelled) setError(errorMessage(err, 'Failed to load bookings'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
 
-  const statusConfig: Record<BookingStatus, { bg: string; color: string; label: string }> = {
-    pending: { bg: 'rgba(245,158,11,0.15)', color: 'var(--color-secondary)', label: 'Pending' },
-    confirmed: { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Confirmed' },
-    declined: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Declined' },
-    completed: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Completed' },
-  };
+  // A centred "Loading…" collapses the layout and snaps it back open.
+  if (loading) return <SkeletonList count={4} />;
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-bold text-white">Bookings</h1>
-          <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Manage training session requests</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="display text-xl text-white">Bookings</h1>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Requests for your classes · approved at the front desk
+          </p>
         </div>
         {pendingCount > 0 && (
-          <span className="text-[10px] px-2.5 py-1 rounded-full font-bold"
-            style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--color-secondary)' }}>
-            {pendingCount} pending
-          </span>
+          <div className="flex-shrink-0 mt-1">
+            <Pill label={`${pendingCount} pending`} tone="secondary" />
+          </div>
         )}
       </div>
 
+      {error && (
+        <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p>
+        </div>
+      )}
+
       {/* Filter Tabs */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-        {(['all', 'pending', 'confirmed', 'completed', 'declined'] as const).map(f => (
+        {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className="px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap flex-shrink-0 transition-colors capitalize"
+            className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors capitalize"
             style={{
               background: filter === f ? 'var(--color-primary)' : 'var(--color-surface)',
               color: filter === f ? '#fff' : 'var(--color-text-muted)',
@@ -76,63 +109,62 @@ export default function TrainerBookings() {
       {/* Bookings List */}
       <div className="space-y-2">
         {filtered.map((booking, i) => {
-          const config = statusConfig[booking.status];
+          const config = STATUS_CONFIG[booking.status];
+          const memberName = names[booking.member_id] ?? 'Member';
+          const scheduledAt = booking.classes?.scheduled_at;
           return (
             <motion.div key={booking.id}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="p-3 rounded-xl"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
-                    style={{ background: 'var(--color-primary)' }}>
-                    {booking.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white">{booking.memberName}</p>
-                    <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{booking.type}</p>
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.04, 0.3) }}
+              className="p-4"
+              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar name={memberName} photoUrl={null} size={36} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{memberName}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
+                      {booking.classes?.name ?? 'Class'}
+                    </p>
                   </div>
                 </div>
-                <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0"
                   style={{ background: config.bg, color: config.color }}>
                   {config.label}
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                  <Calendar size={10} /> {new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={12} style={{ color: 'var(--color-secondary)' }} />
+                  {scheduledAt
+                    ? new Date(scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                    : 'Not scheduled'}
                 </span>
-                <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                  <Clock size={10} /> {booking.time}
-                </span>
+                {scheduledAt && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={12} style={{ color: 'var(--color-secondary)' }} />
+                    {new Date(scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                )}
               </div>
-
-              {booking.notes && (
-                <p className="text-[10px] px-2 py-1.5 rounded-lg mb-2" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                  Note: {booking.notes}
-                </p>
-              )}
-
-              {booking.status === 'pending' && (
-                <div className="flex gap-2">
-                  <button onClick={() => handleAction(booking.id, 'confirmed')}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-full text-[10px] font-semibold active:scale-95 transition-transform"
-                    style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>
-                    <CheckCircle size={12} /> Accept
-                  </button>
-                  <button onClick={() => handleAction(booking.id, 'declined')}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-full text-[10px] font-semibold active:scale-95 transition-transform"
-                    style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-                    <XCircle size={12} /> Decline
-                  </button>
-                </div>
-              )}
             </motion.div>
           );
         })}
-        {filtered.length === 0 && (
-          <p className="text-center py-8 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>No bookings found</p>
+        {filtered.length === 0 && !error && (
+          <div className="p-8 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+            <CalendarCheck size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+            <p className="text-sm font-semibold text-white">
+              {filter === 'all' ? 'No booking requests yet' : `Nothing ${filter}`}
+            </p>
+            {/* This used to read "Class booking isn't built yet" — it has been
+                built and working for some time. A stale apology in the UI is
+                read as a broken feature. */}
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {filter === 'all'
+                ? 'When a member requests one of your classes it appears here, and the front desk approves it.'
+                : 'Try a different filter to see the rest.'}
+            </p>
+          </div>
         )}
       </div>
     </div>

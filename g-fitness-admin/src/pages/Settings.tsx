@@ -1,728 +1,648 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import Card from '../components/ui/Card';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Modal from '../components/ui/Modal';
+import Badge from '../components/ui/Badge';
+import Avatar from '../components/ui/Avatar';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import TimePicker from '../components/ui/TimePicker';
+import FormField from '../components/ui/FormField';
 import {
-  Settings as SettingsIcon, User, Bell, Shield, Palette, Globe, Save,
-  UserPlus, X, Eye, EyeOff, Building2, CreditCard, Database, Clock,
-  MapPin, Phone, Mail, Trash2, Download, Upload, RotateCcw,
+  User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight,
+  UserX, UserCheck, Archive, Camera, Trash2, Check,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { supabase } from '../lib/supabaseClient';
+import { updateProfile } from '../lib/api/profiles';
+import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
+import {
+  getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
+  setStaffStatus,
+} from '../lib/api/settings';
+import type { ProfileRow, ProfileStatus } from '../types/db';
 
-type TabId = 'profile' | 'gym' | 'membership' | 'notifications' | 'security' | 'appearance' | 'admins' | 'backup';
+/**
+ * Admin settings — every tab here writes to the database.
+ *
+ * The previous version was localStorage throughout, and three parts of it were
+ * actively misleading rather than merely fake:
+ *
+ *   - "Change password" did `localStorage.setItem('admin_password', next)`. It
+ *     stored the new password in plaintext and never touched the real Supabase
+ *     Auth credential, so an admin who rotated their password had changed
+ *     nothing.
+ *   - "Create admin account" wrote to `localStorage['admin_accounts']`. No auth
+ *     user existed; the account could not log in.
+ *   - A second membership-plans editor lived here, separate from the real
+ *     /membership-plans page. Editing plans here reached nothing, while the real
+ *     plans kept billing members.
+ *
+ * Also removed: Appearance, Notifications preferences and Backup & Data. All
+ * three read and wrote localStorage keys that nothing else consumed — the theme
+ * never changed, no notification setting was honoured, and "backup" exported
+ * nothing. They are gone rather than left as buttons that appear to work.
+ */
+
+type TabId = 'profile' | 'gym' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
-const BORDER = 'var(--color-border)';
+
+const TABS: { id: TabId; label: string; icon: typeof User }[] = [
+  { id: 'profile', label: 'My Profile', icon: User },
+  { id: 'gym', label: 'Gym Information', icon: Building2 },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'staff', label: 'Staff Accounts', icon: UserPlus },
+];
+
+function Field({
+  label, value, onChange, type = 'text', placeholder, required, hint, error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+  hint?: string;
+  error?: string;
+}) {
+  return (
+    <FormField label={label} required={required} hint={hint} error={error}>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </FormField>
+  );
+}
+
+/** What a password must clear, shown while it's being typed rather than after. */
+function passwordChecks(pw: string) {
+  return [
+    { ok: pw.length >= 8, label: 'At least 8 characters' },
+    { ok: /[a-z]/.test(pw) && /[A-Z]/.test(pw), label: 'Upper and lower case' },
+    { ok: /\d/.test(pw), label: 'A number' },
+  ];
+}
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [profileData, setProfileData] = useState(() => {
-    const saved = localStorage.getItem('admin_profile');
-    return saved ? JSON.parse(saved) : { firstName: 'Admin', lastName: 'User', email: 'admin@gfitness.com', phone: '+63 912 345 6789', role: 'Administrator' };
+  const [me, setMe] = useState<ProfileRow | null>(null);
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '' });
+
+  const [activityOptions, setActivityOptions] = useState<string[]>([]);
+  const [newActivity, setNewActivity] = useState('');
+  const [gymForm, setGymForm] = useState({
+    gym_name: '', address: '', phone: '', email: '', opening_time: '', closing_time: '',
   });
 
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem('admin_notifications');
-    return saved ? JSON.parse(saved) : { newMember: true, paymentReceived: true, membershipExpiring: true, lowAttendance: true, systemUpdates: true };
-  });
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  const [showPw, setShowPw] = useState(false);
 
-  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
+  const [accounts, setAccounts] = useState<ProfileRow[]>([]);
+  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' });
+  const [showStaffPw, setShowStaffPw] = useState(false);
+  const [staffAction, setStaffAction] = useState<{ account: ProfileRow; next: ProfileStatus } | null>(null);
 
-  const [appearance, setAppearance] = useState(() => {
-    const saved = localStorage.getItem('admin_appearance');
-    return saved ? JSON.parse(saved) : { theme: 'Dark', language: 'English' };
-  });
+  /** Who last changed the gym information, and when — already stored, never shown. */
+  const [gymAudit, setGymAudit] = useState<{ at: string; by: string | null } | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const [admins, setAdmins] = useState<any[]>(() => {
-    const saved = localStorage.getItem('admin_accounts');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Admin User', email: 'admin@gfitness.com', role: 'Super Admin', createdAt: '2024-01-01' },
-    ];
-  });
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', role: 'Staff', password: '' });
-  const [showNewPw, setShowNewPw] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const [profileRes, gym, staff] = await Promise.all([
+        user ? supabase.from('profiles').select('*').eq('id', user.id).single() : null,
+        getGymSettings().catch(() => null),
+        listStaffAccounts().catch(() => []),
+      ]);
 
-  // Gym Info
-  const [gymInfo, setGymInfo] = useState(() => {
-    const saved = localStorage.getItem('admin_gym_info');
-    return saved ? JSON.parse(saved) : {
-      name: 'Core Fitness', address: 'Mamburao, Occidental Mindoro', phone: '+63 912 345 6789',
-      email: 'info@corefitness.com', openTime: '06:00', closeTime: '22:00',
-      description: 'A modern fitness facility offering strength training, cardio, group classes, and personal training services.',
-      maxCapacity: '50', wifiPassword: 'CoreFit2024',
-    };
-  });
+      const profile = (profileRes?.data ?? null) as ProfileRow | null;
+      if (profile) {
+        setMe(profile);
+        setProfileForm({
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          phone: profile.phone ?? '',
+        });
+      }
+      if (gym) {
+        setGymForm({
+          gym_name: gym.gym_name ?? '',
+          address: gym.address ?? '',
+          phone: gym.phone ?? '',
+          email: gym.email ?? '',
+          opening_time: gym.opening_time ?? '',
+          closing_time: gym.closing_time ?? '',
+        });
+        setActivityOptions(gym.activity_options ?? []);
+        setGymAudit({ at: gym.updated_at, by: gym.updated_by });
+      }
+      setAccounts(staff);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to load settings', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Membership Plans
-  const [plans, setPlans] = useState(() => {
-    const saved = localStorage.getItem('admin_membership_plans');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Basic', price: 800, duration: '1 month', features: 'Gym access, Locker use' },
-      { id: '2', name: 'Standard', price: 1500, duration: '1 month', features: 'Gym access, Locker, Group classes, 2 PT sessions' },
-      { id: '3', name: 'Premium', price: 2500, duration: '1 month', features: 'Unlimited access, All classes, 8 PT sessions, Sauna' },
-    ];
-  });
-  const [editingPlan, setEditingPlan] = useState<any>(null);
+  useEffect(() => { load(); }, [load]);
 
-  // Backup settings
-  const [autoBackup, setAutoBackup] = useState(() => {
-    const saved = localStorage.getItem('admin_auto_backup');
-    return saved ? JSON.parse(saved) : { enabled: true, frequency: 'daily', lastBackup: '2026-05-23 02:00 AM' };
-  });
-
-  const handleSaveProfile = () => {
-    localStorage.setItem('admin_profile', JSON.stringify(profileData));
-    showToast('Profile updated', 'success');
+  const handleSaveProfile = async () => {
+    if (!me) return;
+    if (!profileForm.firstName.trim() || !profileForm.lastName.trim()) {
+      return showToast('First and last name are required', 'error');
+    }
+    setSaving(true);
+    try {
+      await updateProfile(me.id, {
+        first_name: profileForm.firstName.trim(),
+        last_name: profileForm.lastName.trim(),
+        phone: profileForm.phone.trim() || null,
+      });
+      showToast('Profile updated', 'success');
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update profile', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
-  const handleSaveNotifications = () => {
-    localStorage.setItem('admin_notifications', JSON.stringify(notifications));
-    showToast('Notification preferences saved', 'success');
+
+  const handleSaveGym = async () => {
+    if (!gymForm.gym_name.trim()) return showToast('Gym name is required', 'error');
+    // Closing before opening is a typo, not a policy. Equal times are refused too
+    // — a zero-length day would flag every class as out-of-hours on Schedule.
+    if (gymForm.opening_time && gymForm.closing_time && gymForm.closing_time <= gymForm.opening_time) {
+      return showToast('Closing time must be after opening time', 'error');
+    }
+    setSaving(true);
+    try {
+      await updateGymSettings({
+        gym_name: gymForm.gym_name.trim(),
+        address: gymForm.address.trim() || null,
+        phone: gymForm.phone.trim() || null,
+        email: gymForm.email.trim() || null,
+        opening_time: gymForm.opening_time.trim() || null,
+        closing_time: gymForm.closing_time.trim() || null,
+        activity_options: activityOptions,
+      });
+      showToast('Gym information saved', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to save gym information', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
-  const handleChangePassword = () => {
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword)
-      return showToast('Please fill in all password fields', 'error');
-    if (passwordData.newPassword !== passwordData.confirmPassword)
-      return showToast('New passwords do not match', 'error');
-    if (passwordData.newPassword.length < 6)
-      return showToast('Password must be at least 6 characters', 'error');
-    localStorage.setItem('admin_password', passwordData.newPassword);
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    showToast('Password updated', 'success');
+
+  const handleChangePassword = async () => {
+    if (!pw.current || !pw.next) return showToast('Enter your current and new password', 'error');
+    if (pw.next.length < 8) return showToast('New password must be at least 8 characters', 'error');
+    if (pw.next !== pw.confirm) return showToast('New passwords do not match', 'error');
+    setSaving(true);
+    try {
+      await changePassword(pw.current, pw.next);
+      setPw({ current: '', next: '', confirm: '' });
+      showToast('Password changed. Use it next time you sign in.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to change password', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
-  const handleSaveAppearance = () => {
-    localStorage.setItem('admin_appearance', JSON.stringify(appearance));
-    showToast('Appearance saved', 'success');
-  };
-  const handleCreateAdmin = () => {
-    if (!newAdmin.name.trim() || !newAdmin.email.trim() || !newAdmin.password.trim())
+
+  const handleCreateStaff = async () => {
+    const { firstName, lastName, email, password } = newStaff;
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
       return showToast('Name, email and password are required', 'error');
-    if (!/\S+@\S+\.\S+/.test(newAdmin.email))
-      return showToast('Invalid email address', 'error');
-    if (newAdmin.password.length < 6)
-      return showToast('Password must be at least 6 characters', 'error');
-    const created = { id: `admin-${Date.now()}`, name: newAdmin.name, email: newAdmin.email, role: newAdmin.role, createdAt: new Date().toISOString().split('T')[0] };
-    const updated = [...admins, created];
-    setAdmins(updated);
-    localStorage.setItem('admin_accounts', JSON.stringify(updated));
-    setNewAdmin({ name: '', email: '', role: 'Staff', password: '' });
-    setShowCreateAdmin(false);
-    showToast(`Admin account created for ${created.name}`, 'success');
-  };
-  const handleDeleteAdmin = (id: string) => {
-    if (id === '1') return showToast('Cannot delete the primary admin account', 'error');
-    const updated = admins.filter((a) => a.id !== id);
-    setAdmins(updated);
-    localStorage.setItem('admin_accounts', JSON.stringify(updated));
-    showToast('Admin account removed', 'success');
-  };
-
-  const handleSaveGymInfo = () => {
-    localStorage.setItem('admin_gym_info', JSON.stringify(gymInfo));
-    showToast('Gym information updated', 'success');
+    }
+    if (password.length < 8) return showToast('Password must be at least 8 characters', 'error');
+    setSaving(true);
+    try {
+      await createStaffAccount({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: newStaff.phone.trim() || undefined,
+        password,
+      });
+      showToast(`${firstName} can now sign in with the password you set.`, 'success');
+      setNewStaff({ firstName: '', lastName: '', email: '', phone: '', password: '' });
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to create staff account', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSavePlans = () => {
-    localStorage.setItem('admin_membership_plans', JSON.stringify(plans));
-    showToast('Membership plans saved', 'success');
+  /**
+   * The admin's own photo. Members and trainers have had this since 0021; the
+   * admin was the only role that could not set one, so the header and every
+   * "recorded by" surface fell back to initials forever.
+   */
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      await uploadMyAvatar(file);
+      showToast('Photo updated', 'success');
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not upload that photo', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
-  const handleDeletePlan = (id: string) => {
-    const updated = plans.filter((p: any) => p.id !== id);
-    setPlans(updated);
-    localStorage.setItem('admin_membership_plans', JSON.stringify(updated));
-    showToast('Plan removed', 'success');
+  const handleRemovePhoto = async () => {
+    setUploadingPhoto(true);
+    try {
+      await removeMyAvatar();
+      showToast('Photo removed', 'success');
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not remove that photo', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
-  const handleAddPlan = () => {
-    const newPlan = { id: `plan-${Date.now()}`, name: '', price: 0, duration: '1 month', features: '' };
-    setPlans([...plans, newPlan]);
-    setEditingPlan(newPlan);
+  /**
+   * Suspend / reactivate / archive a staff account.
+   *
+   * A front-desk login takes payments and checks members in, so a colleague who
+   * leaves keeping one is the same problem the trainer roster had. Nothing here
+   * deletes: archive keeps every payment they recorded attributable.
+   */
+  const handleStaffStatus = async () => {
+    if (!staffAction) return;
+    const { account, next } = staffAction;
+    try {
+      await setStaffStatus(account.id, next);
+      showToast(
+        next === 'active'
+          ? `${account.first_name} reactivated`
+          : next === 'suspended'
+            ? `${account.first_name} suspended — they can no longer sign in`
+            : `${account.first_name} archived`,
+        'success'
+      );
+      setStaffAction(null);
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not update that account', 'error');
+    }
   };
 
-  const handleExportData = () => {
-    showToast('Data exported successfully! Check your downloads folder.', 'success');
-  };
-
-  const handleClearCache = () => {
-    showToast('Cache cleared successfully', 'success');
-  };
-
-  const tabs: { id: TabId; label: string; icon: any }[] = [
-    { id: 'profile',       label: 'Profile',           icon: User },
-    { id: 'gym',           label: 'Gym Information',   icon: Building2 },
-    { id: 'membership',    label: 'Membership Plans',  icon: CreditCard },
-    { id: 'notifications', label: 'Notifications',     icon: Bell },
-    { id: 'security',      label: 'Security',          icon: Shield },
-    { id: 'appearance',    label: 'Appearance',        icon: Palette },
-    { id: 'admins',        label: 'Admin Accounts',    icon: UserPlus },
-    { id: 'backup',        label: 'Backup & Data',     icon: Database },
-  ];
+  const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
 
   return (
     <div className="h-[calc(100vh-5rem)] flex gap-0 overflow-hidden rounded-xl" style={{ border: '1px solid var(--color-border)' }}>
-      {/* Left Sidebar Navigation */}
+      {/* Sidebar */}
       <div className="w-52 flex-shrink-0 flex flex-col py-5 px-3 overflow-y-auto"
         style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
         <h1 className="text-lg font-bold text-white mb-4 px-2">Settings</h1>
         <nav className="space-y-0.5">
-          {tabs.map((t) => {
+          {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = activeTab === t.id;
             return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-left"
                 style={{
                   background: isActive ? 'var(--color-primary-light)' : 'transparent',
                   color: isActive ? VIOLET : 'var(--color-text-secondary)',
-                }}
-              >
+                }}>
                 <Icon size={14} style={{ color: isActive ? VIOLET : TEXT_MUTED }} />
                 {t.label}
               </button>
             );
           })}
         </nav>
+
+        {/* Plans used to be edited here too, against localStorage. One editor only. */}
+        <Link to="/membership-plans"
+          className="mt-4 mx-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-medium"
+          style={{ background: 'var(--color-bg)', color: TEXT_MUTED, border: '1px solid var(--color-border)' }}>
+          <CreditCard size={13} />
+          <span className="flex-1">Membership Plans</span>
+          <ChevronRight size={12} />
+        </Link>
       </div>
 
-      {/* Right Content Panel */}
-      <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-dark-border" style={{ background: 'var(--color-bg)' }}>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--color-bg)' }}>
+        {loading ? (
+          <p className="text-xs" style={{ color: TEXT_MUTED }}>Loading…</p>
+        ) : (
+          <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="max-w-xl space-y-4">
 
-      {/* Profile */}
-      {activeTab === 'profile' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 max-w-2xl">
-          <div>
-            <h2 className="text-base font-bold text-white">Profile</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Set your account details</p>
-          </div>
-          <div className="flex items-start gap-5">
-            <div className="flex-1 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>First Name</label>
-                  <Input value={profileData.firstName} onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Last Name</label>
-                  <Input value={profileData.lastName} onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })} />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Email</label>
-                <Input type="email" value={profileData.email} onChange={(e) => setProfileData({ ...profileData, email: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Phone</label>
-                <Input type="tel" value={profileData.phone} onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Role</label>
-                <Input value={profileData.role} disabled />
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                style={{ background: VIOLET }}>
-                {profileData.firstName[0]}{profileData.lastName[0]}
-              </div>
-              <button className="text-[9px] font-semibold px-3 py-1 rounded-full"
-                style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}`, color: 'var(--color-text-secondary)' }}>
-                Change Photo
-              </button>
-            </div>
-          </div>
-          <Button variant="secondary" onClick={handleSaveProfile}><Save size={13} /> Save Changes</Button>
-        </motion.div>
-      )}
-
-      {/* Gym Information */}
-      {activeTab === 'gym' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 max-w-2xl">
-          <div>
-            <h2 className="text-base font-bold text-white">Gym Information</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Manage your gym's public details and operating hours</p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Gym Name</label>
-                <Input value={gymInfo.name} onChange={(e) => setGymInfo({ ...gymInfo, name: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Max Capacity</label>
-                <Input type="number" value={gymInfo.maxCapacity} onChange={(e) => setGymInfo({ ...gymInfo, maxCapacity: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>
-                <MapPin size={10} className="inline mr-1" />Address
-              </label>
-              <Input value={gymInfo.address} onChange={(e) => setGymInfo({ ...gymInfo, address: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>
-                  <Phone size={10} className="inline mr-1" />Phone
-                </label>
-                <Input value={gymInfo.phone} onChange={(e) => setGymInfo({ ...gymInfo, phone: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>
-                  <Mail size={10} className="inline mr-1" />Email
-                </label>
-                <Input value={gymInfo.email} onChange={(e) => setGymInfo({ ...gymInfo, email: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Description</label>
-              <textarea value={gymInfo.description} onChange={(e) => setGymInfo({ ...gymInfo, description: e.target.value })}
-                rows={3} className="w-full px-3 py-2 rounded-xl text-xs text-white focus:outline-none resize-none"
-                style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }} />
-            </div>
-          </div>
-
-          {/* Operating Hours */}
-          <div className="pt-2" style={{ borderTop: `1px solid ${BORDER}` }}>
-            <h3 className="text-xs font-semibold text-white mb-3 flex items-center gap-1.5">
-              <Clock size={12} style={{ color: VIOLET }} /> Operating Hours
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Opening Time</label>
-                <Input type="time" value={gymInfo.openTime} onChange={(e) => setGymInfo({ ...gymInfo, openTime: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>Closing Time</label>
-                <Input type="time" value={gymInfo.closeTime} onChange={(e) => setGymInfo({ ...gymInfo, closeTime: e.target.value })} />
-              </div>
-            </div>
-          </div>
-
-          {/* WiFi */}
-          <div className="pt-2" style={{ borderTop: `1px solid ${BORDER}` }}>
-            <h3 className="text-xs font-semibold text-white mb-3">WiFi for Members</h3>
-            <div>
-              <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>WiFi Password</label>
-              <Input value={gymInfo.wifiPassword} onChange={(e) => setGymInfo({ ...gymInfo, wifiPassword: e.target.value })} placeholder="Enter WiFi password" />
-            </div>
-          </div>
-
-          <Button variant="secondary" onClick={handleSaveGymInfo}><Save size={13} /> Save Gym Info</Button>
-        </motion.div>
-      )}
-
-      {/* Membership Plans */}
-      {activeTab === 'membership' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 max-w-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-white">Membership Plans</h2>
-              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Configure pricing and plan features</p>
-            </div>
-            <Button variant="primary" size="sm" onClick={handleAddPlan}>
-              <CreditCard size={13} /> Add Plan
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {plans.map((plan: any) => (
-              <div key={plan.id} className="p-4 rounded-xl"
-                style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-                {editingPlan?.id === plan.id ? (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-[9px] block mb-0.5 uppercase" style={{ color: TEXT_MUTED }}>Plan Name</label>
-                        <Input value={editingPlan.name} onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })} placeholder="e.g. Premium" />
-                      </div>
-                      <div>
-                        <label className="text-[9px] block mb-0.5 uppercase" style={{ color: TEXT_MUTED }}>Price (₱)</label>
-                        <Input type="number" value={editingPlan.price} onChange={(e) => setEditingPlan({ ...editingPlan, price: Number(e.target.value) })} />
-                      </div>
-                      <div>
-                        <label className="text-[9px] block mb-0.5 uppercase" style={{ color: TEXT_MUTED }}>Duration</label>
-                        <Input value={editingPlan.duration} onChange={(e) => setEditingPlan({ ...editingPlan, duration: e.target.value })} placeholder="1 month" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[9px] block mb-0.5 uppercase" style={{ color: TEXT_MUTED }}>Features (comma-separated)</label>
-                      <Input value={editingPlan.features} onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value })} placeholder="Gym access, Locker, Classes" />
-                    </div>
-                    <div className="flex gap-2 pt-1">
-                      <Button variant="secondary" size="sm" onClick={() => {
-                        const updated = plans.map((p: any) => p.id === editingPlan.id ? editingPlan : p);
-                        setPlans(updated);
-                        localStorage.setItem('admin_membership_plans', JSON.stringify(updated));
-                        setEditingPlan(null);
-                        showToast('Plan saved', 'success');
-                      }}><Save size={11} /> Save</Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditingPlan(null)}>Cancel</Button>
-                    </div>
+            {activeTab === 'profile' && (
+              <div className="rounded-xl p-5 space-y-4" style={panel}>
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-shrink-0">
+                    <Avatar name={`${me?.first_name ?? ''} ${me?.last_name ?? ''}`} photoUrl={me?.photo_url ?? null} size={56} />
+                    <label title="Change photo"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                      style={{ background: 'var(--color-primary)', color: '#fff', opacity: uploadingPhoto ? 0.5 : 1 }}>
+                      <Camera size={11} />
+                      <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto}
+                        onChange={(e) => handlePhoto(e.target.files?.[0])} />
+                    </label>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ background: 'var(--color-primary-light)' }}>
-                        <CreditCard size={16} style={{ color: VIOLET }} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white">{plan.name || 'Untitled Plan'}</p>
-                        <p className="text-[10px]" style={{ color: TEXT_MUTED }}>₱{plan.price?.toLocaleString()} / {plan.duration}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{plan.features}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setEditingPlan({ ...plan })}
-                        className="p-1.5 rounded-lg" style={{ background: 'var(--color-primary-light)', color: VIOLET }}>
-                        <Save size={11} />
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-bold text-white">My Profile</h2>
+                    <p className="text-[10px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>
+                      Signed in as {me?.email} · {me?.role}
+                    </p>
+                    {me?.photo_url && (
+                      <button onClick={handleRemovePhoto} disabled={uploadingPhoto}
+                        className="text-[10px] mt-1 flex items-center gap-1" style={{ color: 'var(--color-secondary)' }}>
+                        <Trash2 size={10} /> Remove photo
                       </button>
-                      <button onClick={() => handleDeletePlan(plan.id)}
-                        className="p-1.5 rounded-lg" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Notifications */}
-      {activeTab === 'notifications' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 max-w-2xl">
-          <div>
-            <h2 className="text-base font-bold text-white">Notifications</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Choose what alerts you receive</p>
-          </div>
-          <div className="space-y-2">
-            {[
-              { key: 'newMember',          label: 'New Member Registration',  desc: 'Get notified when a new member joins' },
-              { key: 'paymentReceived',    label: 'Payment Received',         desc: 'Receive alerts for successful payments' },
-              { key: 'membershipExpiring', label: 'Membership Expiring',      desc: 'Alert when memberships are about to expire' },
-              { key: 'lowAttendance',      label: 'Low Attendance',           desc: 'Notify when member attendance drops' },
-              { key: 'systemUpdates',      label: 'System Updates',           desc: 'Important system and feature updates' },
-            ].map((item) => {
-              const enabled = notifications[item.key as keyof typeof notifications];
-              return (
-                <div key={item.key} className="flex items-center justify-between p-3 rounded-xl"
-                  style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-                  <div>
-                    <p className="text-xs text-white font-medium">{item.label}</p>
-                    <p className="text-[10px]" style={{ color: TEXT_MUTED }}>{item.desc}</p>
-                  </div>
-                  <button onClick={() => setNotifications({ ...notifications, [item.key]: !enabled })}
-                    className="relative inline-block w-9 h-5 rounded-full transition-colors flex-shrink-0"
-                    style={{ background: enabled ? VIOLET : 'var(--color-border)' }}>
-                    <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-                      style={{ transform: enabled ? 'translateX(16px)' : 'translateX(0)' }} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <Button variant="secondary" onClick={handleSaveNotifications}><Save size={13} /> Save Preferences</Button>
-        </motion.div>
-      )}
-
-      {/* Security */}
-      {activeTab === 'security' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 max-w-md">
-          <div>
-            <h2 className="text-base font-bold text-white">Change Password</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Update your account password</p>
-          </div>
-          <div className="space-y-3">
-            {[
-              { label: 'Current Password', key: 'currentPassword', show: showPw.current, toggle: () => setShowPw((p) => ({ ...p, current: !p.current })) },
-              { label: 'New Password', key: 'newPassword', show: showPw.new, toggle: () => setShowPw((p) => ({ ...p, new: !p.new })) },
-              { label: 'Confirm New Password', key: 'confirmPassword', show: showPw.confirm, toggle: () => setShowPw((p) => ({ ...p, confirm: !p.confirm })) },
-            ].map((f) => (
-              <div key={f.key}>
-                <label className="text-[10px] block mb-1 uppercase font-medium" style={{ color: TEXT_MUTED }}>{f.label}</label>
-                <div className="relative">
-                  <Input type={f.show ? 'text' : 'password'} placeholder="••••••••"
-                    value={(passwordData as any)[f.key]}
-                    onChange={(e) => setPasswordData({ ...passwordData, [f.key]: e.target.value })}
-                    className="pr-10" />
-                  <button type="button" onClick={f.toggle}
-                    className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }}>
-                    {f.show ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Button variant="secondary" onClick={handleChangePassword}>Update Password</Button>
-        </motion.div>
-      )}
-
-      {/* Appearance */}
-      {activeTab === 'appearance' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 max-w-xl">
-          <div>
-            <h2 className="text-base font-bold text-white">Themes</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Choose your style or customize your theme</p>
-          </div>
-          {/* Theme cards with mini previews */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { id: 'Light', label: 'Light Mode', bg: '#f8f9fa', fg: '#e2e8f0', accent: '#cbd5e1' },
-              { id: 'Dark', label: 'Dark Mode', bg: '#1a1a2e', fg: '#2d2d44', accent: '#3d3d5c' },
-              { id: 'Auto', label: 'System', bg: '#1a1a2e', fg: '#2d2d44', accent: '#3d3d5c' },
-            ].map((theme) => (
-              <button key={theme.id} onClick={() => setAppearance({ ...appearance, theme: theme.id })}
-                className="rounded-xl overflow-hidden transition-all"
-                style={{ border: `2px solid ${appearance.theme === theme.id ? VIOLET : BORDER}` }}>
-                <div className="p-2.5 h-20" style={{ background: theme.bg }}>
-                  <div className="flex gap-1 mb-2">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ef4444' }} />
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#f59e0b' }} />
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="h-2 rounded" style={{ background: theme.fg, width: '80%' }} />
-                    <div className="h-2 rounded" style={{ background: theme.fg, width: '60%' }} />
-                    <div className="h-2 rounded" style={{ background: theme.accent, width: '40%' }} />
+                    )}
                   </div>
                 </div>
-                <div className="px-3 py-2 flex items-center gap-2" style={{ background: 'var(--color-surface-raised)' }}>
-                  <div className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ border: `2px solid ${appearance.theme === theme.id ? VIOLET : BORDER}`, background: appearance.theme === theme.id ? VIOLET : 'transparent' }}>
-                    {appearance.theme === theme.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                  </div>
-                  <span className="text-[10px] font-semibold text-white">{theme.label}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="First Name" value={profileForm.firstName}
+                    onChange={(v) => setProfileForm({ ...profileForm, firstName: v })} />
+                  <Field label="Last Name" value={profileForm.lastName}
+                    onChange={(v) => setProfileForm({ ...profileForm, lastName: v })} />
                 </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Accent Colors */}
-          <div>
-            <h3 className="text-xs font-semibold text-white mb-1">Accent Colors</h3>
-            <p className="text-[9px] mb-2" style={{ color: TEXT_MUTED }}>Use system or custom accent colors</p>
-            <div className="flex items-center gap-2.5">
-              {['#7C3AED', '#ef4444', '#22c55e', '#06b6d4', '#f59e0b', '#ec4899'].map(color => (
-                <button key={color} className="w-6 h-6 rounded-full transition-transform hover:scale-110"
-                  style={{ background: color, border: '2px solid rgba(255,255,255,0.15)' }}
-                  onClick={() => showToast('Accent color is fixed for this prototype', 'success')} />
-              ))}
-            </div>
-          </div>
-
-          {/* Language */}
-          <div>
-            <h3 className="text-xs font-semibold text-white mb-1">Language</h3>
-            <select value={appearance.language} onChange={(e) => setAppearance({ ...appearance, language: e.target.value })}
-              className="w-full max-w-xs px-3 py-2 rounded-xl text-xs focus:outline-none"
-              style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}`, color: '#fff' }}>
-              <option>English</option>
-              <option>Filipino</option>
-            </select>
-          </div>
-
-          <Button variant="secondary" onClick={handleSaveAppearance}><Save size={13} /> Save Preferences</Button>
-        </motion.div>
-      )}
-
-      {/* Admins */}
-      {activeTab === 'admins' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 max-w-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-white">Admin Accounts</h2>
-              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Manage who has admin access</p>
-            </div>
-            <Button variant="primary" size="sm" onClick={() => setShowCreateAdmin(true)}>
-              <UserPlus size={13} /> Add Admin
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {admins.map((admin) => (
-              <div key={admin.id} className="flex items-center justify-between p-3 rounded-xl"
-                style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px]"
-                    style={{ background: VIOLET }}>
-                    {admin.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="text-xs text-white font-semibold">{admin.name}</p>
-                    <p className="text-[10px]" style={{ color: TEXT_MUTED }}>{admin.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full font-semibold"
-                    style={{ background: 'var(--color-primary-light)', color: VIOLET }}>{admin.role}</span>
-                  {admin.id !== '1' && (
-                    <button onClick={() => handleDeleteAdmin(admin.id)}
-                      className="w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' }}>
-                      <X size={11} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <Modal isOpen={showCreateAdmin} onClose={() => setShowCreateAdmin(false)}
-            title="Create Admin Account" subtitle="Grant a new user admin access"
-            confirmLabel="Create Account" onConfirm={handleCreateAdmin}>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Full Name</label>
-                <Input value={newAdmin.name} onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })} placeholder="Juan Dela Cruz" />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Email</label>
-                <Input type="email" value={newAdmin.email} onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })} placeholder="juan@corefitness.com" />
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Role</label>
-                <select value={newAdmin.role} onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-xs focus:outline-none"
-                  style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}`, color: '#fff' }}>
-                  <option value="Super Admin">Super Admin</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Staff">Staff</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Password</label>
-                <div className="relative">
-                  <Input type={showNewPw ? 'text' : 'password'} value={newAdmin.password}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                    placeholder="Min. 6 characters" className="pr-10" />
-                  <button type="button" onClick={() => setShowNewPw(!showNewPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }}>
-                    {showNewPw ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Modal>
-        </motion.div>
-      )}
-
-      {/* Backup & Data */}
-      {activeTab === 'backup' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 max-w-2xl">
-          <div>
-            <h2 className="text-base font-bold text-white">Backup & Data</h2>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Manage data exports, backups, and system maintenance</p>
-          </div>
-
-          {/* Auto Backup */}
-          <div className="p-4 rounded-xl space-y-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-white">Automatic Backup</p>
-                <p className="text-[10px]" style={{ color: TEXT_MUTED }}>Automatically backup data on schedule</p>
-              </div>
-              <button onClick={() => {
-                const updated = { ...autoBackup, enabled: !autoBackup.enabled };
-                setAutoBackup(updated);
-                localStorage.setItem('admin_auto_backup', JSON.stringify(updated));
-              }}
-                className="relative inline-block w-9 h-5 rounded-full transition-colors flex-shrink-0"
-                style={{ background: autoBackup.enabled ? VIOLET : 'var(--color-border)' }}>
-                <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-                  style={{ transform: autoBackup.enabled ? 'translateX(16px)' : 'translateX(0)' }} />
-              </button>
-            </div>
-            {autoBackup.enabled && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[9px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Frequency</label>
-                  <select value={autoBackup.frequency} onChange={(e) => {
-                    const updated = { ...autoBackup, frequency: e.target.value };
-                    setAutoBackup(updated);
-                    localStorage.setItem('admin_auto_backup', JSON.stringify(updated));
-                  }}
-                    className="w-full px-3 py-2 rounded-xl text-xs focus:outline-none"
-                    style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}`, color: '#fff' }}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[9px] block mb-1 uppercase" style={{ color: TEXT_MUTED }}>Last Backup</label>
-                  <p className="text-xs text-white font-medium mt-2">{autoBackup.lastBackup}</p>
-                </div>
+                <Field label="Phone" value={profileForm.phone} placeholder="+63 900 000 0000"
+                  onChange={(v) => setProfileForm({ ...profileForm, phone: v })} />
+                <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
+                  Email and role are not editable here — changing either affects sign-in and access.
+                </p>
+                <Button variant="primary" onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Profile'}
+                </Button>
               </div>
             )}
-          </div>
 
-          {/* Export Data */}
-          <div className="p-4 rounded-xl space-y-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-            <h3 className="text-xs font-semibold text-white">Export Data</h3>
-            <p className="text-[10px]" style={{ color: TEXT_MUTED }}>Download your gym data as CSV or JSON files</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={handleExportData}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl text-[11px] font-semibold text-white transition-colors"
-                style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }}>
-                <Download size={13} style={{ color: VIOLET }} /> Export Members
-              </button>
-              <button onClick={handleExportData}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl text-[11px] font-semibold text-white transition-colors"
-                style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }}>
-                <Download size={13} style={{ color: VIOLET }} /> Export Payments
-              </button>
-              <button onClick={handleExportData}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl text-[11px] font-semibold text-white transition-colors"
-                style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }}>
-                <Download size={13} style={{ color: VIOLET }} /> Export Attendance
-              </button>
-              <button onClick={handleExportData}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl text-[11px] font-semibold text-white transition-colors"
-                style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }}>
-                <Download size={13} style={{ color: VIOLET }} /> Export All Data
-              </button>
-            </div>
-          </div>
+            {activeTab === 'gym' && (
+              <div className="rounded-xl p-5 space-y-4" style={panel}>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Gym Information</h2>
+                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                    Shared across the system — not just this browser.
+                  </p>
+                  {/* `updated_at` / `updated_by` have been recorded since 0013 and
+                      never shown. Who last changed the gym's phone number is
+                      exactly the question you ask when it turns out to be wrong. */}
+                  {gymAudit && (
+                    <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>
+                      Last changed {new Date(gymAudit.at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {gymAudit.by === me?.id
+                        ? ' by you'
+                        : gymAudit.by
+                          ? ` by ${accounts.find((a) => a.id === gymAudit.by)?.first_name ?? 'another admin'}`
+                          : ''}
+                    </p>
+                  )}
+                </div>
+                {/* Each field says where it shows up. Until now all four were
+                    written here and read by nothing — the receipt is the first
+                    thing that consumes them. */}
+                <Field label="Gym Name" required value={gymForm.gym_name}
+                  hint="Printed at the top of every payment receipt."
+                  onChange={(v) => setGymForm({ ...gymForm, gym_name: v })} />
+                <Field label="Address" value={gymForm.address} placeholder="Mamburao, Occidental Mindoro"
+                  hint="Appears on receipts."
+                  onChange={(v) => setGymForm({ ...gymForm, address: v })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Phone" value={gymForm.phone} placeholder="+63 900 000 0000"
+                    hint="Receipts show this as the contact number."
+                    onChange={(v) => setGymForm({ ...gymForm, phone: v })} />
+                  <Field label="Email" type="email" value={gymForm.email}
+                    onChange={(v) => setGymForm({ ...gymForm, email: v })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Opens">
+                    <TimePicker value={gymForm.opening_time.slice(0, 5)}
+                      onChange={(v) => setGymForm({ ...gymForm, opening_time: v })} />
+                  </FormField>
+                  <FormField label="Closes"
+                    error={
+                      gymForm.opening_time && gymForm.closing_time && gymForm.closing_time <= gymForm.opening_time
+                        ? 'Must be after opening.'
+                        : undefined
+                    }>
+                    <TimePicker value={gymForm.closing_time.slice(0, 5)}
+                      onChange={(v) => setGymForm({ ...gymForm, closing_time: v })} />
+                  </FormField>
+                </div>
+                <p className="text-[10px] -mt-1" style={{ color: TEXT_MUTED }}>
+                  Opening hours flag classes scheduled outside them on the Schedule page.
+                </p>
+                {/* The check-in activity list. Pre-defined at the door so the
+                    data can be aggregated, but defined here rather than in code
+                    so it describes this gym rather than the one it was built for. */}
+                <div className="rounded-xl p-3 space-y-2"
+                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <div>
+                    <p className="text-xs font-semibold text-white">Check-in activities</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      What the front desk can tag a check-in with. Members can always check in without one.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activityOptions.map((opt) => (
+                      <span key={opt} className="px-2.5 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1.5"
+                        style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                        {opt}
+                        <button onClick={() => setActivityOptions(activityOptions.filter((a) => a !== opt))}
+                          title={`Remove ${opt}`} className="opacity-70 hover:opacity-100">×</button>
+                      </span>
+                    ))}
+                    {activityOptions.length === 0 && (
+                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        None — the picker is hidden at check-in.
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={newActivity} onChange={(e) => setNewActivity(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        const v = newActivity.trim();
+                        // Silently ignoring a duplicate is friendlier than an error
+                        // and keeps the list from growing near-identical entries.
+                        if (v && !activityOptions.includes(v)) setActivityOptions([...activityOptions, v]);
+                        setNewActivity('');
+                      }}
+                      placeholder="Add an activity, then press Enter"
+                      className="flex-1 px-3 py-2 rounded-xl text-xs text-white"
+                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                  </div>
+                </div>
 
-          {/* Import Data */}
-          <div className="p-4 rounded-xl space-y-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}>
-            <h3 className="text-xs font-semibold text-white">Import Data</h3>
-            <p className="text-[10px]" style={{ color: TEXT_MUTED }}>Restore data from a previous backup file</p>
-            <button onClick={() => showToast('Import feature available in production', 'success')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-semibold text-white transition-colors"
-              style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }}>
-              <Upload size={13} style={{ color: 'var(--color-secondary)' }} /> Upload Backup File
-            </button>
-          </div>
+                <Button variant="primary" onClick={handleSaveGym} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Gym Information'}
+                </Button>
+              </div>
+            )}
 
-          {/* Danger Zone */}
-          <div className="p-4 rounded-xl space-y-3" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <h3 className="text-xs font-semibold" style={{ color: '#ef4444' }}>Danger Zone</h3>
-            <p className="text-[10px]" style={{ color: TEXT_MUTED }}>These actions are irreversible. Proceed with caution.</p>
-            <div className="flex gap-2">
-              <button onClick={handleClearCache}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold transition-colors"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                <RotateCcw size={11} /> Clear Cache
-              </button>
-              <button onClick={() => showToast('Reset requires confirmation from Super Admin', 'error')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold transition-colors"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                <Trash2 size={11} /> Reset All Data
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
+            {activeTab === 'security' && (
+              <div className="rounded-xl p-5 space-y-4" style={panel}>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Change Password</h2>
+                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                    Changes your real sign-in password.
+                  </p>
+                </div>
+                <Field label="Current Password" type={showPw ? 'text' : 'password'} value={pw.current}
+                  onChange={(v) => setPw({ ...pw, current: v })} />
+                <Field label="New Password" type={showPw ? 'text' : 'password'} value={pw.next}
+                  onChange={(v) => setPw({ ...pw, next: v })} />
+                <Field label="Confirm New Password" type={showPw ? 'text' : 'password'} value={pw.confirm}
+                  error={pw.confirm && pw.confirm !== pw.next ? 'Does not match.' : undefined}
+                  onChange={(v) => setPw({ ...pw, confirm: v })} />
+
+                {/* Requirements shown while typing rather than as a rejection
+                    after submitting — the old page only told you the rule once
+                    you had already got it wrong. */}
+                {pw.next.length > 0 && (
+                  <div className="rounded-xl p-3 space-y-1"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    {passwordChecks(pw.next).map((c) => (
+                      <p key={c.label} className="text-[10px] flex items-center gap-1.5"
+                        style={{ color: c.ok ? 'var(--color-primary)' : TEXT_MUTED }}>
+                        <Check size={10} style={{ opacity: c.ok ? 1 : 0.3 }} /> {c.label}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="flex items-center gap-1.5 text-[10px]" style={{ color: TEXT_MUTED }}>
+                  {showPw ? <EyeOff size={12} /> : <Eye size={12} />} {showPw ? 'Hide' : 'Show'} passwords
+                </button>
+                <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
+                  Changing this signs you out of nothing — but you will need the new password next time.
+                </p>
+                <Button variant="primary" onClick={handleChangePassword} disabled={saving}>
+                  {saving ? 'Changing…' : 'Change Password'}
+                </Button>
+              </div>
+            )}
+
+            {activeTab === 'staff' && (
+              <>
+                <div className="rounded-xl p-5 space-y-3" style={panel}>
+                  <h2 className="text-sm font-bold text-white">Accounts</h2>
+                  {accounts.length === 0 ? (
+                    <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No accounts found.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {accounts.map((a) => {
+                        const isMe = a.id === me?.id;
+                        return (
+                        <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl group"
+                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                          <Avatar name={`${a.first_name} ${a.last_name}`} photoUrl={a.photo_url} size={32} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-white truncate">
+                              {a.first_name} {a.last_name}
+                              {/* Without this you cannot tell which row is your own
+                                  account — and the one row you must not suspend. */}
+                              {isMe && <span className="ml-1.5 font-normal" style={{ color: TEXT_MUTED }}>(you)</span>}
+                            </p>
+                            <p className="text-[10px] truncate" style={{ color: TEXT_MUTED }}>{a.email}</p>
+                          </div>
+                          {a.status !== 'active' && (
+                            <Badge variant="Suspended" className="!text-[9px] !px-2 !py-0.5">{a.status.replace('_', ' ')}</Badge>
+                          )}
+                          <Badge variant={a.role === 'admin' ? 'Premium' : 'Standard'} className="!text-[9px] !px-2 !py-0.5 capitalize">
+                            {a.role}
+                          </Badge>
+                          {/* Never offered on your own account: suspending yourself
+                              locks you out of the only screen that could undo it. */}
+                          {!isMe && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setStaffAction({ account: a, next: a.status === 'suspended' ? 'active' : 'suspended' })}
+                                title={a.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                                className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                                {a.status === 'suspended' ? <UserCheck size={12} /> : <UserX size={12} />}
+                              </button>
+                              <button onClick={() => setStaffAction({ account: a, next: 'archived' })}
+                                title="Archive" className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                                <Archive size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl p-5 space-y-4" style={panel}>
+                  <div>
+                    <h2 className="text-sm font-bold text-white">Add Front-Desk Staff</h2>
+                    <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                      Staff can take payments, check members in and extend memberships. They cannot
+                      change plan pricing, manage trainers, or create accounts.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="First Name" value={newStaff.firstName}
+                      onChange={(v) => setNewStaff({ ...newStaff, firstName: v })} />
+                    <Field label="Last Name" value={newStaff.lastName}
+                      onChange={(v) => setNewStaff({ ...newStaff, lastName: v })} />
+                  </div>
+                  <Field label="Email" type="email" value={newStaff.email}
+                    onChange={(v) => setNewStaff({ ...newStaff, email: v })} />
+                  <Field label="Phone (optional)" value={newStaff.phone}
+                    onChange={(v) => setNewStaff({ ...newStaff, phone: v })} />
+                  <Field label="Password" type={showStaffPw ? 'text' : 'password'} value={newStaff.password}
+                    placeholder="At least 8 characters"
+                    onChange={(v) => setNewStaff({ ...newStaff, password: v })} />
+                  <button type="button" onClick={() => setShowStaffPw(!showStaffPw)}
+                    className="flex items-center gap-1.5 text-[10px]" style={{ color: TEXT_MUTED }}>
+                    {showStaffPw ? <EyeOff size={12} /> : <Eye size={12} />} {showStaffPw ? 'Hide' : 'Show'} password
+                  </button>
+                  <Button variant="primary" onClick={handleCreateStaff} disabled={saving}>
+                    {saving ? 'Creating…' : 'Create Staff Account'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!staffAction}
+        onClose={() => setStaffAction(null)}
+        onConfirm={handleStaffStatus}
+        title={
+          staffAction?.next === 'active' ? 'Reactivate Account'
+            : staffAction?.next === 'suspended' ? 'Suspend Account'
+              : 'Archive Account'
+        }
+        message={
+          staffAction
+            ? staffAction.next === 'active'
+              ? `Let ${staffAction.account.first_name} sign in again? They get their front-desk access back immediately.`
+              : staffAction.next === 'suspended'
+                ? `Suspend ${staffAction.account.first_name}? A front-desk login takes payments and checks members in, so this stops both at once. Every payment they have already recorded stays exactly as it is, and this is reversible.`
+                : `Archive ${staffAction.account.first_name}? They drop off this list and can no longer sign in. Nothing they recorded is deleted — every payment stays attributable to them.`
+            : ''
+        }
+        confirmText={
+          staffAction?.next === 'active' ? 'Reactivate'
+            : staffAction?.next === 'suspended' ? 'Suspend' : 'Archive'
+        }
+        type={staffAction?.next === 'active' ? 'info' : staffAction?.next === 'suspended' ? 'warning' : 'danger'}
+      />
     </div>
   );
 }

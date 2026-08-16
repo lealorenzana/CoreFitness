@@ -1,229 +1,238 @@
+import { SkeletonList } from '../components/ui/Skeleton';
+import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react';
-import { SharedStorage } from '../utils/sharedStorage';
-import { getCurrentUser } from '../utils/auth';
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertCircle, ArrowLeft, Trash2, User, Dumbbell } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import { toast } from '../components/ui/Toast';
+import { errorMessage } from '../utils/errorMessage';
+import {
+  getCurrentMemberId,
+  listMyBookings,
+  cancelMyBooking,
+  isUpcoming,
+  type MyBooking,
+} from '../services/bookingService';
+import type { BookingStatus } from '../types/db';
+
+/**
+ * The member's own bookings — group classes and personal training in one list,
+ * because "what am I doing this week" is one question.
+ *
+ * Upcoming vs past is decided by the session's own time, not its status. A
+ * booking that was approved for last Tuesday belongs in history even though it
+ * is still `approved`; the old screen filed it under Upcoming forever.
+ */
+
+const STATUS_LABEL: Record<BookingStatus, string> = {
+  pending: 'Awaiting approval',
+  approved: 'Confirmed',
+  rejected: 'Declined',
+  cancelled: 'Cancelled',
+};
+
+const STATUS_STYLE: Record<BookingStatus, { color: string; background: string }> = {
+  pending: { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' },
+  approved: { color: 'var(--color-primary)', background: 'var(--color-primary-light)' },
+  rejected: { color: '#ef4444', background: 'rgba(239,68,68,0.15)' },
+  cancelled: { color: 'var(--color-text-muted)', background: 'rgba(148,163,184,0.15)' },
+};
+
+function statusIcon(status: BookingStatus) {
+  if (status === 'pending') return <AlertCircle size={13} />;
+  if (status === 'approved') return <CheckCircle size={13} />;
+  return <XCircle size={13} />;
+}
 
 export default function BookingHistory() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [rows, setRows] = useState<MyBooking[]>([]);
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [loading, setLoading] = useState(true);
+  const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const userEmail = currentUser?.email || localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com';
-
-  const loadBookings = useCallback(() => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const all = SharedStorage.getMemberBookings(userEmail);
-      setBookings(Array.isArray(all) ? all : []);
-    } catch {
-      setBookings([]);
-    }
-  }, [userEmail]);
-
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
-
-  // Refresh every 2 seconds to see admin updates
-  useEffect(() => {
-    const interval = setInterval(loadBookings, 2000);
-    return () => clearInterval(interval);
-  }, [loadBookings]);
-
-  const upcomingBookings = bookings.filter(b =>
-    b.status === 'Pending' || b.status === 'Confirmed'
-  );
-  const pastBookings = bookings.filter(b =>
-    b.status === 'Cancelled' || b.status === 'Completed' || b.status === 'Rejected'
-  );
-
-  const displayBookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
-
-  const handleCancelBooking = (bookingId: string) => {
-    if (window.confirm('Cancel this booking?')) {
-      try {
-        SharedStorage.updateBooking(bookingId, {
-          status: 'Cancelled',
-          cancelledAt: new Date().toISOString(),
-        });
-        setBookings(prev =>
-          prev.map(b => b.id === bookingId ? { ...b, status: 'Cancelled' } : b)
-        );
-      } catch {
-        // silently handle
+      const id = await getCurrentMemberId();
+      if (!id) {
+        toast.error('Your session could not be verified. Please sign in again.');
+        return;
       }
+      setRows(await listMyBookings(id));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load your bookings'));
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Pending': return <AlertCircle size={18} style={{ color: 'var(--color-secondary)' }} />;
-      case 'Confirmed': return <CheckCircle size={18} style={{ color: 'var(--color-primary)' }} />;
-      case 'Rejected': return <XCircle size={18} style={{ color: 'var(--color-secondary)' }} />;
-      case 'Completed': return <CheckCircle size={18} style={{ color: 'var(--color-primary)' }} />;
-      default: return <XCircle size={18} style={{ color: 'var(--color-text-muted)' }} />;
+  useEffect(() => { load(); }, [load]);
+
+  const upcoming = useMemo(() => rows.filter((r) => isUpcoming(r)), [rows]);
+  const past = useMemo(() => rows.filter((r) => !isUpcoming(r)), [rows]);
+  const visible = tab === 'upcoming' ? upcoming : past;
+
+  const confirmCancel = async () => {
+    if (!pendingCancel) return;
+    setBusy(true);
+    try {
+      await cancelMyBooking(pendingCancel);
+      toast.success(pendingCancel.kind === 'pt' ? 'Request withdrawn' : 'Booking cancelled');
+      setPendingCancel(null);
+      await load();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not cancel that booking'));
+    } finally {
+      setBusy(false);
     }
-  };
-
-  const getStatusStyle = (status: string) => {
-    if (status === 'Pending') return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' };
-    if (status === 'Confirmed') return { color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.30)' };
-    if (status === 'Rejected') return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' };
-    if (status === 'Completed') return { color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.30)' };
-    return { color: 'var(--color-text-muted)', background: 'rgba(107,96,128,0.1)', border: '1px solid rgba(107,96,128,0.3)' };
-  };
-
-  const classIcon: Record<string, string> = {
-    'Strength Training': '💪', 'HIIT': '🔥', 'Yoga': '🧘',
-    'Boxing': '🥊', 'CrossFit': '⚡', 'Personal Training': '👤',
   };
 
   return (
     <div className="space-y-5 pb-4">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
-          onClick={() => {
-            // Guard against empty history (e.g. opened from a deep link / refresh)
-            if (window.history.length > 1) navigate(-1);
-            else navigate('/member/home');
-          }}
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
-        >
-          <ArrowLeft size={20} />
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
+          <ArrowLeft size={18} />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white">My Bookings</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>View and manage your class bookings</p>
+        <div className="min-w-0">
+          <h1 className="display text-xl text-white">My Bookings</h1>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Classes and personal training
+          </p>
         </div>
       </motion.div>
 
-      {/* Tabs */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="flex gap-2 p-1 rounded-xl" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-        {[
-          { id: 'upcoming', label: `Upcoming (${upcomingBookings.length})` },
-          { id: 'past', label: `Past (${pastBookings.length})` },
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className="flex-1 py-2.5 rounded-lg font-semibold text-sm transition-colors"
+      {/* Violet marks the selection, matching the Progress Hub control. */}
+      <div className="grid grid-cols-2 gap-1 p-1"
+        style={{ ...panelStyle, borderRadius: 'var(--radius-btn)' }} role="tablist">
+        {([['upcoming', 'Upcoming', upcoming.length], ['past', 'Past', past.length]] as const).map(([id, label, count]) => (
+          <button key={id} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
+            className="py-2 rounded-full font-semibold text-xs transition-colors"
             style={{
-              background: activeTab === tab.id ? 'var(--color-secondary)' : 'transparent',
-              color: activeTab === tab.id ? '#000' : 'var(--color-text-muted)',
+              background: tab === id ? 'var(--color-primary)' : 'transparent',
+              color: tab === id ? '#fff' : 'var(--color-text-muted)',
             }}>
-            {tab.label}
+            {label} ({count})
           </button>
         ))}
-      </motion.div>
-
-      {/* Booking Cards */}
-      <div className="space-y-3">
-        {displayBookings.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="rounded-2xl p-8 text-center" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-            <Calendar size={44} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-            <p className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>No {activeTab} bookings</p>
-            <button onClick={() => navigate('/member/book-class')}
-              className="mt-4 px-6 py-2 rounded-xl font-semibold text-sm text-black"
-              style={{ background: 'var(--color-secondary)' }}>
-              Book a Class
-            </button>
-          </motion.div>
-        ) : (
-          displayBookings.map((booking, index) => (
-            <motion.div key={booking.id}
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }}
-              className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-
-              {/* Top row */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{classIcon[booking.classType] || classIcon[booking.className] || '⚡'}</span>
-                  <div>
-                    <h3 className="text-white font-semibold">{booking.className}</h3>
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{booking.classType}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase" style={getStatusStyle(booking.status)}>
-                  {getStatusIcon(booking.status)}
-                  {booking.status}
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="space-y-1.5 text-sm mb-3">
-                <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  <User size={14} style={{ color: 'var(--color-secondary)' }} />
-                  <span>{booking.trainerName || booking.trainer || 'TBA'}</span>
-                </div>
-                <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  <Calendar size={14} style={{ color: 'var(--color-secondary)' }} />
-                  <span>{booking.day || new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-                </div>
-                <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  <Clock size={14} style={{ color: 'var(--color-secondary)' }} />
-                  <span>{booking.time}</span>
-                </div>
-                <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  <MapPin size={14} style={{ color: 'var(--color-secondary)' }} />
-                  <span>Core Fitness Main Studio</span>
-                </div>
-              </div>
-
-              {/* Admin note / rejection reason */}
-              {booking.status === 'Confirmed' && booking.adminNote && (
-                <div className="mb-3 p-2.5 rounded-xl text-xs" style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(34,197,94,0.25)', color: 'var(--color-primary)' }}>
-                  <span className="font-semibold">Admin note: </span>{booking.adminNote}
-                </div>
-              )}
-              {booking.status === 'Rejected' && booking.rejectionReason && (
-                <div className="mb-3 p-2.5 rounded-xl text-xs" style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
-                  <span className="font-semibold">Reason: </span>{booking.rejectionReason}
-                </div>
-              )}
-
-              {/* Actions */}
-              {(booking.status === 'Pending' || booking.status === 'Confirmed') && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => booking.trainerId ? navigate(`/member/trainer/${booking.trainerId}`) : navigate('/member/trainers')}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                    View Trainer
-                  </button>
-                  <button onClick={() => handleCancelBooking(booking.id)}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-colors"
-                    style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)', color: 'var(--color-secondary)' }}>
-                    <Trash2 size={14} /> Cancel
-                  </button>
-                </div>
-              )}
-              {(booking.status === 'Rejected' || booking.status === 'Completed') && (
-                <button onClick={() => navigate('/member/book-class')}
-                  className="w-full py-2 rounded-xl text-sm font-semibold text-black"
-                  style={{ background: 'var(--color-secondary)' }}>
-                  Book Again
-                </button>
-              )}
-            </motion.div>
-          ))
-        )}
       </div>
 
-      {/* Quick Book */}
-      <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+      {loading ? (
+        <SkeletonList />
+      ) : visible.length === 0 ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center"
+          style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+          <Calendar size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+          <p className="text-sm font-semibold text-white">
+            {tab === 'upcoming' ? 'Nothing booked yet' : 'No past sessions'}
+          </p>
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            {tab === 'upcoming'
+              ? 'Book a class or a 1-on-1 session and it appears here straight away, even before the desk approves it.'
+              : 'Sessions move here once their time has passed.'}
+          </p>
+          {tab === 'upcoming' && (
+            <button onClick={() => navigate('/member/book-class')}
+              className="mt-4 px-6 h-10 rounded-full font-semibold text-sm text-black"
+              style={{ background: 'var(--color-secondary)' }}>
+              Book a session
+            </button>
+          )}
+        </motion.div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((row, i) => {
+            const style = STATUS_STYLE[row.status];
+            return (
+              <motion.div key={`${row.kind}-${row.id}`}
+                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.05, 0.3) }}
+                className="p-4"
+                style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: row.kind === 'pt' ? 'var(--color-secondary-light)' : 'var(--color-primary-light)' }}>
+                      {row.kind === 'pt'
+                        ? <User size={16} style={{ color: 'var(--color-secondary)' }} />
+                        : <Dumbbell size={16} style={{ color: 'var(--color-primary)' }} />}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-white font-semibold text-sm truncate">{row.title}</h3>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{row.subtitle}</p>
+                    </div>
+                  </div>
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0"
+                    style={style}>
+                    {statusIcon(row.status)} {STATUS_LABEL[row.status]}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  <div className="flex items-center gap-2">
+                    <Calendar size={13} style={{ color: 'var(--color-secondary)' }} />
+                    <span>
+                      {row.startsAt
+                        ? new Date(row.startsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+                        : 'Not scheduled yet'}
+                    </span>
+                  </div>
+                  {row.startsAt && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={13} style={{ color: 'var(--color-secondary)' }} />
+                      <span>
+                        {new Date(row.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {row.durationMinutes} min
+                      </span>
+                    </div>
+                  )}
+                  {row.location && (
+                    <div className="flex items-center gap-2">
+                      <MapPin size={13} style={{ color: 'var(--color-secondary)' }} />
+                      <span>{row.location}</span>
+                    </div>
+                  )}
+                </div>
+
+                {row.cancellable && isUpcoming(row) && (
+                  <button onClick={() => setPendingCancel(row)}
+                    className="mt-3 w-full py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                    <Trash2 size={13} /> {row.kind === 'pt' ? 'Withdraw request' : 'Cancel booking'}
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      <motion.button initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
         onClick={() => navigate('/member/book-class')}
-        className="w-full py-3.5 rounded-xl font-semibold text-black"
+        className="w-full py-3.5 rounded-full font-semibold text-black"
         style={{ background: 'var(--color-secondary)' }}>
-        + Book New Class
+        + Book a Session
       </motion.button>
+
+      <Modal
+        isOpen={pendingCancel !== null}
+        onClose={() => !busy && setPendingCancel(null)}
+        title={pendingCancel?.kind === 'pt' ? 'Withdraw this request?' : 'Cancel this booking?'}
+        subtitle={pendingCancel?.title}
+        confirmLabel={busy ? 'Working…' : 'Yes, cancel it'}
+        cancelLabel="Keep it"
+        confirmDisabled={busy}
+        onConfirm={confirmCancel}>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          {pendingCancel?.kind === 'pt'
+            ? 'Your trainer will be free at that time again. You can request another slot afterwards.'
+            : 'Your seat is released back to the class. You can book it again if it stays open.'}
+        </p>
+      </Modal>
     </div>
   );
 }

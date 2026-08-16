@@ -5,19 +5,17 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  Users, DollarSign, Activity, CalendarDays, ArrowUpRight, ChevronRight,
-  Star, Target, Dumbbell as DumbbellIcon, Scale, Sparkles, ChevronDown,
+  Users, Banknote, Activity, CalendarDays, ArrowUpRight, ChevronRight,
+  Star, Sparkles, ChevronDown,
 } from 'lucide-react';
 
 import Card from '../components/ui/Card';
-import { useGymContext } from '../hooks/useGymContext';
-import { MEMBERS } from '../data/members';
 import { formatCurrency } from '../utils/formatters';
-import { SharedStorage } from '../utils/sharedStorage';
 import {
   dashboardService,
   type RevenuePoint, type MembersPoint, type AttendancePt,
   type HeatmapCell, type TopTrainer, type ProgressKpis,
+  type DashboardSummary, type ExpiringMember,
 } from '../services/dashboardService';
 
 const VIOLET     = '#7C3AED';
@@ -34,7 +32,7 @@ function FilterSelect({ value, options, onChange }: {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none pl-3 pr-7 py-1.5 rounded-full text-xs font-medium focus:outline-none cursor-pointer"
+        className="appearance-none pl-3 pr-7 py-1.5 rounded-full text-xs font-medium cursor-pointer"
         style={{
           background: 'var(--color-surface-raised)',
           border: `1px solid ${BORDER}`,
@@ -170,12 +168,13 @@ function HeatmapGrid({ cells }: { cells: HeatmapCell[] }) {
 
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { selectedGym } = useGymContext();
   const navigate = useNavigate();
 
   const years = dashboardService.getYears();
-  const [revenueYear, setRevenueYear] = useState(years[years.length - 1]);
-  const [memberYear,  setMemberYear]  = useState(years[years.length - 1]);
+  const [revenueYear, setRevenueYear] = useState(years[0]);
+  const [memberYear,  setMemberYear]  = useState(years[0]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [expiringSoon, setExpiringSoon] = useState<ExpiringMember[]>([]);
   const [attendanceScope, setAttendanceScope] = useState<'weekly' | 'monthly'>('weekly');
   const [pendingBookings, setPendingBookings] = useState(0);
 
@@ -187,10 +186,14 @@ export default function Dashboard() {
   const [progressKpis,   setProgressKpis]   = useState<ProgressKpis | null>(null);
 
   useEffect(() => {
-    const refresh = () => setPendingBookings(SharedStorage.getBookings().filter((b: any) => b.status === 'Pending').length);
-    refresh();
-    const i = setInterval(refresh, 2000);
-    return () => clearInterval(i);
+    dashboardService
+      .getSummary()
+      .then((s) => {
+        setSummary(s);
+        setPendingBookings(s.pendingApprovals);
+      })
+      .catch(() => {});
+    dashboardService.getExpiringSoon().then(setExpiringSoon).catch(() => {});
   }, []);
 
   useEffect(() => { dashboardService.getRevenueByYear(revenueYear).then(setRevenueData); }, [revenueYear]);
@@ -202,20 +205,13 @@ export default function Dashboard() {
     dashboardService.getProgressKpis().then(setProgressKpis);
   }, []);
 
-  // Derived KPIs
-  const gymMembers      = MEMBERS.filter((m) => m.gymId === selectedGym.id);
-  const activeMembers   = gymMembers.filter((m) => m.membershipStatus === 'Active');
-  const todayAttendance = Math.floor(activeMembers.length * 0.6);
-  const monthlyRevenue  = activeMembers.reduce((sum, m) => {
-    const prices = { Basic: 800, Standard: 1500, Premium: 2500 };
-    return sum + prices[m.membershipType];
-  }, 0);
-
+  // Real KPIs — no invented deltas. A "+12%" badge next to a real number is worse
+  // than no badge, because it looks authoritative while being made up.
   const kpis = [
-    { label: 'Total Members',    value: gymMembers.length,             delta: '+12%', icon: Users,        tooltip: 'Total number of registered gym members across all membership types' },
-    { label: 'Monthly Revenue',  value: formatCurrency(monthlyRevenue), delta: '+15%', icon: DollarSign,   tooltip: 'Estimated monthly revenue based on active membership fees' },
-    { label: 'Active Classes',   value: progressKpis?.totalClasses ?? '—', delta: '+2', icon: CalendarDays, tooltip: 'Number of scheduled classes currently running this week' },
-    { label: 'Attendance Today', value: todayAttendance,                delta: '+5%',  icon: Activity,     tooltip: 'Number of members who checked in today via QR or manual entry' },
+    { label: 'Total Members',    value: summary ? summary.totalMembers : '—',                 icon: Users,        tooltip: 'Registered members, excluding archived accounts' },
+    { label: 'Revenue This Month', value: summary ? formatCurrency(summary.monthlyRevenue) : '—', icon: Banknote,     tooltip: 'Sum of completed payments recorded since the 1st of this month' },
+    { label: 'Active Memberships', value: summary ? summary.activeMembers : '—',              icon: CalendarDays, tooltip: 'Memberships currently in active status (paid and not expired)' },
+    { label: 'Attendance Today', value: summary ? summary.attendanceToday : '—',              icon: Activity,     tooltip: 'Members checked in today via QR or manual entry' },
   ];
 
   return (
@@ -507,19 +503,12 @@ export default function Dashboard() {
             <h3 className="text-xs font-semibold text-white">Expiring Soon</h3>
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
               style={{ background: 'var(--color-secondary-light)', color: YELLOW }}>
-              {gymMembers.filter(m => {
-                const days = Math.ceil((new Date(m.expiryDate).getTime() - Date.now()) / 86400000);
-                return days > 0 && days <= 7;
-              }).length} members
+              {expiringSoon.length} members
             </span>
           </div>
         }>
           {(() => {
-            const expiring = gymMembers
-              .map(m => ({ ...m, daysLeft: Math.ceil((new Date(m.expiryDate).getTime() - Date.now()) / 86400000) }))
-              .filter(m => m.daysLeft > 0 && m.daysLeft <= 7)
-              .sort((a, b) => a.daysLeft - b.daysLeft)
-              .slice(0, 4);
+            const expiring = expiringSoon.slice(0, 4);
             if (expiring.length === 0) return (
               <p className="text-center py-4 text-[11px]" style={{ color: TEXT_MUTED }}>No expiring memberships</p>
             );

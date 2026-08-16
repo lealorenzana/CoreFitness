@@ -18,9 +18,6 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
 
-  const start = (currentPage - 1) * itemsPerPage + 1;
-  const end   = Math.min(currentPage * itemsPerPage, totalItems);
-
   const pages: (number | '...')[] = [];
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i);

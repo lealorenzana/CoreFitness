@@ -1,0 +1,26 @@
+-- Core Fitness — add a 'staff' role for front-desk accounts.
+--
+-- ============================================================================
+--  RUN THIS FILE ON ITS OWN, AS THE ONLY STATEMENT IN THE QUERY.
+--  Then run 0012 separately.
+-- ============================================================================
+--
+-- Postgres will not let a new enum value be added and then *used* in the same
+-- transaction. Supabase's SQL Editor runs a multi-statement query as one
+-- transaction, so pasting this together with 0012 (which references 'staff' in
+-- policy expressions) fails with:
+--
+--   unsafe use of new value "staff" of enum type user_role
+--
+-- Splitting them is the fix. This file adds the value; 0012 uses it.
+--
+-- Note `profiles.role` is a genuine enum (`user_role`), unlike `profiles.status`
+-- which is plain text in the live database — that's why status needed no
+-- migration for 'archived' but this does.
+--
+-- What 'staff' is for: a front-desk account that runs day-to-day operations
+-- (take a payment, check a member in, approve a registration) without being able
+-- to change plan pricing, create accounts, or manage trainers. The permission
+-- matrix lives in 0012.
+
+alter type user_role add value if not exists 'staff';

@@ -1,68 +1,230 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import { useGymContext } from '../hooks/useGymContext';
-import { TRAINERS } from '../data/trainers';
-import { MEMBERS } from '../data/members';
-import { MOCK_TRAINER_FEEDBACK } from '../data/mockTrainerFeedback';
-import { UserPlus, Star, Users, X, Calendar, MessageSquare, ChevronDown, ChevronUp, Edit2, Eye, EyeOff, KeyRound, Copy, CheckCircle2 } from 'lucide-react';
+import Avatar from '../components/ui/Avatar';
+import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
+import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Search, Archive, UserX, UserCheck, Clock } from 'lucide-react';
+import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
+import {
+  createTrainer,
+  listTrainers,
+  listArchivedTrainers,
+  setTrainerStatus,
+  updateTrainerProfile,
+} from '../lib/api/trainers';
+import { listAllAvailability } from '../lib/api/trainerAvailability';
+import { updateProfile } from '../lib/api/profiles';
+import type { ProfileStatus } from '../types/db';
+
+interface TrainerDisplay {
+  id: string;
+  name: string;
+  specialization: string;
+  email: string;
+  phone: string | null;
+  bio: string | null;
+  photoUrl: string | null;
+  /** Free-text weekday labels from `trainer_profiles.availability` — display
+   *  only. The hours members actually book live in `trainer_availability`. */
+  availabilityDays: string[];
+  /** How many real bookable-hour windows this trainer has set (0015). */
+  bookableWindows: number;
+  status: ProfileStatus;
+}
+
+/** The weekday chips in both modals. Display labels for the free-text
+ *  `trainer_profiles.availability` blurb — not bookable hours. */
+const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
+const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
+/** Violet outline marks the two fields that create the actual login. */
+const CREDENTIAL_STYLE = {
+  background: 'var(--color-bg)',
+  border: '1px solid var(--color-primary)',
+  boxShadow: '0 0 0 1px rgba(124,58,237,0.1)',
+};
 
 export default function Trainers() {
-  const { selectedGym } = useGymContext();
-  const gymTrainers = TRAINERS.filter(t => t.gymId === selectedGym.id);
-  const gymMembers = MEMBERS.filter(m => m.gymId === selectedGym.id && m.membershipStatus === 'Active');
+  const [trainers, setTrainers] = useState<TrainerDisplay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState('');
 
-  const [selectedTrainer, setSelectedTrainer] = useState<any | null>(null);
-  const [detailTab, setDetailTab] = useState<'profile' | 'members' | 'schedule' | 'feedback'>('profile');
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[], loginEmail: '', loginPassword: '' });
+  const [addForm, setAddForm] = useState({ name: '', specialty: '', phone: '', bio: '', availability: [] as string[], loginEmail: '', loginPassword: '' });
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[] });
+  const [saving, setSaving] = useState(false);
+  const [toSuspend, setToSuspend] = useState<TrainerDisplay | null>(null);
+  const [toArchive, setToArchive] = useState<TrainerDisplay | null>(null);
+  const [addErrors, setAddErrors] = useState<Record<string, string>>({});
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
-  // Simulate assigned members per trainer (round-robin for demo)
-  const getAssignedMembers = (trainerId: string) => {
-    const idx = gymTrainers.findIndex(t => t.id === trainerId);
-    return gymMembers.filter((_, i) => i % gymTrainers.length === idx).slice(0, 5);
+  const loadTrainers = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Bookable-hour windows come from the real table, in one query for the
+      // whole roster — the card needs to say whether a trainer is actually
+      // bookable, and the CSV on trainer_profiles cannot answer that.
+      const [rows, availability] = await Promise.all([
+        showArchived ? listArchivedTrainers() : listTrainers(),
+        listAllAvailability().catch(() => []),
+      ]);
+      const windowsByTrainer = new Map<string, number>();
+      for (const a of availability) {
+        windowsByTrainer.set(a.trainer_id, (windowsByTrainer.get(a.trainer_id) ?? 0) + 1);
+      }
+
+      setTrainers(
+        rows.map(({ profile, trainer }) => ({
+          id: profile.id,
+          name: `${profile.first_name} ${profile.last_name}`.trim(),
+          specialization: trainer.specialization || 'General Training',
+          email: profile.email,
+          phone: profile.phone,
+          bio: trainer.bio,
+          photoUrl: profile.photo_url,
+          availabilityDays: trainer.availability
+            ? trainer.availability.split(',').map((d) => d.trim()).filter(Boolean)
+            : [],
+          bookableWindows: windowsByTrainer.get(profile.id) ?? 0,
+          status: profile.status,
+        }))
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to load trainers', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showArchived]);
+
+  useEffect(() => {
+    loadTrainers();
+  }, [loadTrainers]);
+
+  const visible = trainers.filter((t) => {
+    const q = search.trim().toLowerCase();
+    return (
+      !q ||
+      t.name.toLowerCase().includes(q) ||
+      t.email.toLowerCase().includes(q) ||
+      t.specialization.toLowerCase().includes(q)
+    );
+  });
+
+  /**
+   * Suspend / reactivate / archive.
+   *
+   * None of this existed: a coach who left the gym stayed on the roster with a
+   * working login forever, and the only lever was editing their name. Archive
+   * keeps every class and session they ever ran — a delete would orphan them.
+   */
+  const changeStatus = async (trainer: TrainerDisplay, status: ProfileStatus, message: string) => {
+    try {
+      await setTrainerStatus(trainer.id, status);
+      showToast(message, 'success');
+      setToSuspend(null);
+      setToArchive(null);
+      await loadTrainers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not update that account', 'error');
+    }
   };
 
-  const getTrainerFeedback = (trainerId: string) =>
-    MOCK_TRAINER_FEEDBACK.filter(f => f.trainerId === trainerId);
+  const handleAddTrainer = async () => {
+    // Marked against the field, not just announced in a toast that disappears
+    // before you've worked out which of the seven boxes it meant.
+    const next: Record<string, string> = {};
+    if (!addForm.name.trim()) next.name = 'Required.';
+    if (!addForm.specialty.trim()) next.specialty = 'Required.';
+    if (!addForm.loginEmail.trim()) next.loginEmail = 'Without this they cannot sign in.';
+    if (!addForm.loginPassword.trim()) next.loginPassword = 'Set a password for them.';
+    else if (addForm.loginPassword.length < 6) next.loginPassword = 'Supabase needs at least 6 characters.';
+    setAddErrors(next);
+    if (Object.keys(next).length > 0) {
+      showToast('Some required details are missing', 'error');
+      return;
+    }
 
-  const openDetail = (trainer: any) => {
-    setSelectedTrainer(trainer);
-    setDetailTab('profile');
+    const [firstName, ...rest] = addForm.name.trim().split(/\s+/);
+    const lastName = rest.join(' ') || firstName;
+
+    setSaving(true);
+    try {
+      await createTrainer({
+        email: addForm.loginEmail,
+        password: addForm.loginPassword,
+        firstName,
+        lastName,
+        phone: addForm.phone || undefined,
+        specialization: addForm.specialty,
+        bio: addForm.bio || undefined,
+        availability: addForm.availability.join(', ') || undefined,
+      });
+      showToast(`${addForm.name} added! They can now log in with the credentials you set.`, 'success');
+      setAddForm({ name: '', specialty: '', phone: '', bio: '', availability: [], loginEmail: '', loginPassword: '' });
+      setShowAddModal(false);
+      await loadTrainers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to create trainer account', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAddTrainer = () => {
-    if (!addForm.name.trim() || !addForm.specialty.trim()) {
+  const openEdit = (trainer: TrainerDisplay) => {
+    setEditErrors({});
+    setEditForm({
+      id: trainer.id,
+      name: trainer.name,
+      specialty: trainer.specialization,
+      email: trainer.email,
+      phone: trainer.phone || '',
+      bio: trainer.bio || '',
+      availability: trainer.availabilityDays,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    const next: Record<string, string> = {};
+    if (!editForm.name.trim()) next.name = 'Required.';
+    if (!editForm.specialty.trim()) next.specialty = 'Required.';
+    setEditErrors(next);
+    if (Object.keys(next).length > 0) {
       showToast('Name and specialization are required', 'error');
       return;
     }
-    if (!addForm.loginEmail.trim() || !addForm.loginPassword.trim()) {
-      showToast('Login credentials are required for the trainer to access the app', 'error');
-      return;
+    const [firstName, ...rest] = editForm.name.trim().split(/\s+/);
+    const lastName = rest.join(' ') || firstName;
+
+    setSaving(true);
+    try {
+      await updateProfile(editForm.id, {
+        first_name: firstName,
+        last_name: lastName,
+        phone: editForm.phone || null,
+      });
+      await updateTrainerProfile(editForm.id, {
+        specialization: editForm.specialty,
+        bio: editForm.bio || null,
+        availability: editForm.availability.join(', ') || null,
+      });
+      showToast(`${editForm.name} updated successfully!`, 'success');
+      setShowEditModal(false);
+      await loadTrainers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update trainer', 'error');
+    } finally {
+      setSaving(false);
     }
-    // Save trainer credentials to localStorage so trainer can log in
-    const trainerAccounts = JSON.parse(localStorage.getItem('trainer_accounts') || '[]');
-    trainerAccounts.push({
-      id: `trainer-${Date.now()}`,
-      name: addForm.name,
-      specialization: addForm.specialty,
-      email: addForm.loginEmail,
-      password: addForm.loginPassword,
-      phone: addForm.phone,
-      bio: addForm.bio,
-      availability: addForm.availability,
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem('trainer_accounts', JSON.stringify(trainerAccounts));
-    showToast(`${addForm.name} added! Credentials: ${addForm.loginEmail} / ${addForm.loginPassword}`, 'success');
-    setAddForm({ name: '', specialty: '', email: '', phone: '', bio: '', availability: [], loginEmail: '', loginPassword: '' });
-    setShowAddModal(false);
   };
 
   return (
@@ -71,21 +233,37 @@ export default function Trainers() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Trainers</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Manage gym trainers and assigned members</p>
+          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            {showArchived ? 'Archived trainers — classes and sessions retained' : 'Manage gym trainers'}
+          </p>
         </div>
-        <button onClick={() => setShowAddModal(true)}
-          className="px-4 h-9 rounded-full font-semibold text-xs flex items-center gap-2 text-black transition-colors"
-          style={{ background: 'var(--color-secondary)' }}>
-          <UserPlus size={14} /> Add Trainer
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+            <input type="text" placeholder="Search name or specialty…" value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-52 pl-9 pr-3 h-9 rounded-full text-xs text-white"
+              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
+            <Archive size={14} /> {showArchived ? 'Active Roster' : 'Archived'}
+          </Button>
+          <button onClick={() => setShowAddModal(true)}
+            className="px-4 h-9 rounded-full font-semibold text-xs flex items-center gap-2 text-black transition-colors"
+            style={{ background: 'var(--color-secondary)' }}>
+            <UserPlus size={14} /> Add Trainer
+          </button>
+        </div>
       </motion.div>
 
-      {/* Stats */}
+      {/* Stats. "Bookable" counts real trainer_availability windows — the old
+          "Availability Set" counted the free-text weekday blurb, which produces
+          no slots, so it reported trainers as available who could not be booked. */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Trainers', value: gymTrainers.length, color: 'var(--color-primary)' },
-          { label: 'Avg Rating', value: (gymTrainers.reduce((s, t) => s + t.rating, 0) / gymTrainers.length).toFixed(1), color: 'var(--color-secondary)' },
-          { label: 'Total Sessions', value: gymTrainers.reduce((s, t) => s + t.sessionsCompleted, 0), color: 'var(--color-primary)' },
+          { label: 'Total Trainers', value: trainers.length, color: 'var(--color-primary)' },
+          { label: 'Active', value: trainers.filter(t => t.status === 'active').length, color: 'var(--color-secondary)' },
+          { label: 'Bookable Hours Set', value: trainers.filter(t => t.bookableWindows > 0).length, color: 'var(--color-primary)' },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}>
             <div className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${s.color}30` }}>
@@ -97,248 +275,139 @@ export default function Trainers() {
       </div>
 
       {/* Trainer Cards — 2 columns */}
-      <div className="grid grid-cols-2 gap-4">
-        {gymTrainers.map((trainer, index) => {
-          const assigned = getAssignedMembers(trainer.id);
-          return (
+      {loading ? (
+        <p className="text-center py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading trainers…</p>
+      ) : visible.length === 0 ? (
+        <p className="text-center py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          {search
+            ? `No trainer matches "${search}".`
+            : showArchived
+              ? 'No archived trainers.'
+              : 'No trainers yet — click "Add Trainer" to create one.'}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4">
+          {visible.map((trainer, index) => (
             <motion.div key={trainer.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + index * 0.1 }}>
               <Card className="group !p-4">
                 <div className="flex items-start gap-3">
-                  {/* Avatar */}
-                  <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0" style={{ border: '2px solid var(--color-secondary)' }}>
-                    {trainer.photoUrl ? (
-                      <img src={trainer.photoUrl} alt={trainer.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-black text-lg font-bold" style={{ background: 'var(--color-secondary)' }}>
-                        {trainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                      </div>
-                    )}
-                  </div>
-                  {/* Info */}
+                  <Avatar name={trainer.name} photoUrl={trainer.photoUrl} size={56} tone="secondary" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white truncate">{trainer.name}</h3>
-                    <Badge variant="Premium" className="mt-0.5 inline-block !text-[9px] !px-2 !py-0.5">{trainer.specialization}</Badge>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <div className="flex items-center gap-1.5">
-                        <Star size={11} style={{ color: 'var(--color-secondary)' }} />
-                        <span className="text-[11px] text-white font-semibold">{trainer.rating}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={11} style={{ color: 'var(--color-primary)' }} />
-                        <span className="text-[11px] text-white font-semibold">{trainer.sessionsCompleted}</span>
-                      </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-sm font-bold text-white truncate">{trainer.name}</h3>
+                      {trainer.status !== 'active' && (
+                        <Badge variant="Suspended" className="!text-[9px] !px-2 !py-0.5">{trainer.status.replace('_', ' ')}</Badge>
+                      )}
                     </div>
+                    <Badge variant="Premium" className="mt-0.5 inline-block !text-[9px] !px-2 !py-0.5">{trainer.specialization}</Badge>
+                    <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
                   </div>
                 </div>
 
-                {/* Availability days */}
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {trainer.availability?.map((a: any) => (
-                    <span key={a.day} className="text-[9px] px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      {a.day.slice(0, 3)}
-                    </span>
-                  ))}
+                {/* Whether members can actually book this trainer. The weekday
+                    blurb below is a label with no times — showing only that made
+                    every trainer look bookable. */}
+                <div className="mt-3 flex items-center gap-1.5 text-[10px]"
+                  style={{ color: trainer.bookableWindows > 0 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
+                  <Clock size={11} />
+                  {trainer.bookableWindows > 0
+                    ? `${trainer.bookableWindows} bookable window${trainer.bookableWindows === 1 ? '' : 's'} set`
+                    : 'No bookable hours — members cannot request a session'}
                 </div>
 
-                {/* Assigned members expandable */}
-                <button onClick={() => setExpanded(expanded === trainer.id ? null : trainer.id)}
-                  className="w-full flex items-center justify-between mt-2 p-2 rounded-lg transition-colors text-left"
-                  style={{ background: 'var(--color-bg)' }}>
-                  <span className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                    <Users size={11} style={{ color: 'var(--color-primary)' }} /> Assigned Members
-                  </span>
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                    {assigned.length}
-                    {expanded === trainer.id ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                  </span>
-                </button>
-
-                {expanded === trainer.id && assigned.length > 0 && (
-                  <div className="mt-1.5 space-y-1 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                    {assigned.map(m => (
-                      <div key={m.id} className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ background: 'var(--color-bg)' }}>
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-black text-[8px] font-bold" style={{ background: 'var(--color-secondary)' }}>
-                          {m.firstName[0]}
-                        </div>
-                        <span className="text-[11px] text-white truncate">{m.fullName}</span>
-                        <span className="ml-auto text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{m.membershipType}</span>
-                      </div>
+                {trainer.availabilityDays.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {trainer.availabilityDays.map((day) => (
+                      <span key={day} className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                        {day.slice(0, 3)}
+                      </span>
                     ))}
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => openDetail(trainer)}
+                  <button onClick={() => setViewingId(trainer.id)}
                     className="flex-1 py-2 rounded-full font-semibold text-[11px] text-black transition-colors"
                     style={{ background: 'var(--color-secondary)' }}>
                     View Profile
                   </button>
-                  <button
-                    onClick={() => {
-                      const trainerAvail = trainer.availability?.map((a: any) => a.day) || [];
-                      setEditForm({ id: trainer.id, name: trainer.name, specialty: trainer.specialization, email: '', phone: '', bio: '', availability: trainerAvail });
-                      setShowEditModal(true);
-                    }}
-                    className="p-2 rounded-full transition-colors" title="Edit trainer"
-                    style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)', color: 'var(--color-primary)' }}>
-                    <Edit2 size={13} />
+                  {!showArchived && (
+                    <>
+                      <button onClick={() => openEdit(trainer)}
+                        className="p-2 rounded-full transition-colors" title="Edit trainer"
+                        style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)', color: 'var(--color-primary)' }}>
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => setToSuspend(trainer)}
+                        title={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
+                        className="p-2 rounded-full transition-colors"
+                        style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
+                        {trainer.status === 'suspended' ? <UserCheck size={13} /> : <UserX size={13} />}
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => setToArchive(trainer)}
+                    title={showArchived ? 'Restore trainer' : 'Archive trainer'}
+                    className="p-2 rounded-full transition-colors"
+                    style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
+                    <Archive size={13} />
                   </button>
                 </div>
               </Card>
             </motion.div>
+          ))}
+        </div>
+      )}
+
+      <TrainerDetailDrawer trainerId={viewingId} onClose={() => setViewingId(null)} onChanged={loadTrainers} />
+
+      <ConfirmDialog
+        isOpen={!!toSuspend}
+        onClose={() => setToSuspend(null)}
+        onConfirm={() => {
+          if (!toSuspend) return;
+          const next: ProfileStatus = toSuspend.status === 'suspended' ? 'active' : 'suspended';
+          void changeStatus(
+            toSuspend,
+            next,
+            next === 'suspended'
+              ? `${toSuspend.name} suspended — they can no longer log in`
+              : `${toSuspend.name} reactivated`
           );
-        })}
-      </div>
+        }}
+        title={toSuspend?.status === 'suspended' ? 'Reactivate Trainer' : 'Suspend Trainer'}
+        message={
+          toSuspend?.status === 'suspended'
+            ? `Let ${toSuspend?.name ?? 'this trainer'} log in again? Their classes and sessions are untouched — this only restores access.`
+            : `Suspend ${toSuspend?.name ?? 'this trainer'}? They will not be able to log in to the trainer app. Their classes and booked sessions stay exactly as they are, so anything already scheduled still needs handling at the desk. Reversible at any time.`
+        }
+        confirmText={toSuspend?.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+        type={toSuspend?.status === 'suspended' ? 'info' : 'warning'}
+      />
 
-      {/* Trainer Detail Modal */}
-      <AnimatePresence>
-        {selectedTrainer && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 z-50" onClick={() => setSelectedTrainer(null)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', maxHeight: '88vh' }}
-                onClick={e => e.stopPropagation()}>
-
-                {/* Header */}
-                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0" style={{ border: '2px solid var(--color-secondary)' }}>
-                      {selectedTrainer.photoUrl ? (
-                        <img src={selectedTrainer.photoUrl} alt={selectedTrainer.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-black font-bold text-lg" style={{ background: 'var(--color-secondary)' }}>
-                          {selectedTrainer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">{selectedTrainer.name}</h2>
-                      <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{selectedTrainer.specialization}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setSelectedTrainer(null)} style={{ color: 'var(--color-text-muted)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}>
-                    <X size={22} />
-                  </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b" style={{ borderColor: 'var(--color-border)' }}>
-                  {[
-                    { id: 'profile',  label: 'Profile',          icon: Star },
-                    { id: 'members',  label: 'Assigned Members', icon: Users },
-                    { id: 'schedule', label: 'Schedule',         icon: Calendar },
-                    { id: 'feedback', label: 'Feedback Given',   icon: MessageSquare },
-                  ].map(t => {
-                    const Icon = t.icon;
-                    const isActive = detailTab === t.id;
-                    return (
-                      <button key={t.id} onClick={() => setDetailTab(t.id as any)}
-                        className="flex items-center gap-2 px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors border-b-2"
-                        style={{
-                          borderColor: isActive ? 'var(--color-secondary)' : 'transparent',
-                          color: isActive ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                        }}>
-                        <Icon size={14} /> {t.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Body */}
-                <div className="p-5 overflow-y-auto">
-                  {detailTab === 'profile' && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { label: 'Avg. Rating',         value: `${selectedTrainer.rating} / 5.0` },
-                          { label: 'Sessions Completed',  value: selectedTrainer.sessionsCompleted },
-                          { label: 'Assigned Members',    value: getAssignedMembers(selectedTrainer.id).length },
-                          { label: 'Specialization',      value: selectedTrainer.specialization },
-                        ].map(row => (
-                          <div key={row.label} className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                            <p className="text-[11px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{row.label}</p>
-                            <p className="text-lg font-bold text-white mt-0.5">{row.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {detailTab === 'members' && (
-                    <div className="space-y-2">
-                      {getAssignedMembers(selectedTrainer.id).map(m => (
-                        <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-black text-sm font-bold" style={{ background: 'var(--color-secondary)' }}>
-                            {m.firstName[0]}{m.lastName[0]}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-white font-medium">{m.fullName}</p>
-                            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.email}</p>
-                          </div>
-                          <Badge variant={m.membershipType}>{m.membershipType}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {detailTab === 'schedule' && (
-                    <div className="space-y-2">
-                      {selectedTrainer.availability?.map((a: any) => (
-                        <div key={a.day} className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                          <p className="text-sm font-semibold text-white mb-1.5">{a.day}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {a.slots.map((s: string) => (
-                              <span key={s} className="text-xs px-2 py-1 rounded-full"
-                                style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {detailTab === 'feedback' && (
-                    <div className="space-y-2">
-                      {getTrainerFeedback(selectedTrainer.id).length === 0 ? (
-                        <p className="text-center py-8 text-sm" style={{ color: 'var(--color-text-muted)' }}>No feedback given yet.</p>
-                      ) : (
-                        getTrainerFeedback(selectedTrainer.id).map(f => (
-                          <div key={f.id} className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs font-semibold uppercase" style={{ color: 'var(--color-secondary)' }}>{f.type}</p>
-                              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{new Date(f.date).toLocaleDateString()}</span>
-                            </div>
-                            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{f.content}</p>
-                            <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>For: {f.memberName}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 flex items-center justify-end" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <button onClick={() => setSelectedTrainer(null)}
-                    className="px-4 py-2 rounded-xl font-semibold text-sm text-black"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    Close
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={!!toArchive}
+        onClose={() => setToArchive(null)}
+        onConfirm={() => {
+          if (!toArchive) return;
+          void changeStatus(
+            toArchive,
+            showArchived ? 'active' : 'archived',
+            showArchived
+              ? `${toArchive.name} restored to the active roster`
+              : `${toArchive.name} archived. Their classes and session history are kept.`
+          );
+        }}
+        title={showArchived ? 'Restore Trainer' : 'Archive Trainer'}
+        message={
+          showArchived
+            ? `Restore ${toArchive?.name ?? 'this trainer'} to the active roster? They will be able to log in again.`
+            : `Archive ${toArchive?.name ?? 'this trainer'}? They drop off the roster and can no longer log in, but every class they taught and every session they ran is kept — deleting them would orphan all of it. You can restore them later.`
+        }
+        confirmText={showArchived ? 'Restore' : 'Archive'}
+        type={showArchived ? 'info' : 'danger'}
+      />
 
       {/* Add Trainer Modal */}
       <AnimatePresence>
@@ -368,49 +437,50 @@ export default function Trainers() {
                 </div>
 
                 {/* Form */}
-                <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Full Name *</label>
+                <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                  <SectionLabel>Who they are</SectionLabel>
+                  <FormField label="Full name" required error={addErrors.name}>
                     <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
                       placeholder="e.g. Coach Maria"
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Specialization *</label>
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Specialization" required error={addErrors.specialty}
+                    hint="Shown to members as their headline — what they coach.">
                     <input value={addForm.specialty} onChange={e => setAddForm({ ...addForm, specialty: e.target.value })}
                       placeholder="e.g. Yoga, Boxing, HIIT"
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Email</label>
-                      <input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })}
-                        placeholder="trainer@email.com"
-                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Phone</label>
-                      <input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })}
-                        placeholder="+63 917 000 0000"
-                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Bio / Description</label>
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  {/* There was a second "Email" field here, above Phone. It was
+                      bound to `addForm.email` and never sent anywhere —
+                      handleAddTrainer only ever passed `loginEmail`. Whatever
+                      the front desk typed into it was discarded on submit.
+                      There is one email on a profile, and it is the login one
+                      collected below. */}
+                  <FormField label="Phone">
+                    <input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })}
+                      placeholder="+63 917 000 0000"
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Bio / description" hint="Members read this on the trainer's profile.">
                     <textarea value={addForm.bio} onChange={e => setAddForm({ ...addForm, bio: e.target.value })}
-                      placeholder="Brief description about the trainer..."
+                      placeholder="Background, certifications, how they like to coach…"
                       rows={2}
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none resize-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] block mb-1.5 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Available Days</label>
+                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
+                  </FormField>
+
+                  <FieldDivider />
+                  <SectionLabel>Availability</SectionLabel>
+                  {/* Renamed and explained. As "Available Days" this read like the
+                      switch that makes a trainer bookable — it isn't. It writes a
+                      free-text weekday blurb with no times, and no slot can be
+                      generated from it. Bookable hours live in
+                      `trainer_availability`, which only the trainer may write. */}
+                  <FormField
+                    label="Days they usually coach"
+                    hint="Display only — it appears on their profile. Bookable time slots are set by the trainer in the app, under Schedule → Availability."
+                  >
                     <div className="flex flex-wrap gap-1.5">
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                      {WEEKDAY_LABELS.map(day => {
                         const isSelected = addForm.availability.includes(day);
                         return (
                           <button key={day} type="button"
@@ -426,53 +496,47 @@ export default function Trainers() {
                         );
                       })}
                     </div>
-                  </div>
+                  </FormField>
 
-                  {/* Login Credentials Section */}
-                  <div className="pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <KeyRound size={13} style={{ color: 'var(--color-primary)' }} />
-                      <p className="text-[11px] font-semibold text-white">App Login Credentials</p>
-                    </div>
-                    <p className="text-[10px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
-                      These credentials will be given to the trainer to log in to the mobile app as Trainer.
-                    </p>
-                    <div className="space-y-2">
-                      <div>
-                        <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Login Email *</label>
-                        <input value={addForm.loginEmail} onChange={e => setAddForm({ ...addForm, loginEmail: e.target.value })}
-                          placeholder="e.g. cyrelle@corefitness.com"
-                          className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-primary)', boxShadow: '0 0 0 1px rgba(124,58,237,0.1)' }} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Login Password *</label>
-                        <div className="relative">
-                          <input type={showLoginPw ? 'text' : 'password'} value={addForm.loginPassword}
-                            onChange={e => setAddForm({ ...addForm, loginPassword: e.target.value })}
-                            placeholder="Min. 6 characters"
-                            className="w-full px-3 py-2 pr-16 rounded-xl text-white text-xs focus:outline-none"
-                            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-primary)', boxShadow: '0 0 0 1px rgba(124,58,237,0.1)' }} />
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                            <button type="button" onClick={() => setShowLoginPw(!showLoginPw)}
-                              className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
-                              {showLoginPw ? <EyeOff size={12} /> : <Eye size={12} />}
-                            </button>
-                            <button type="button" title="Copy password"
-                              onClick={() => { navigator.clipboard.writeText(addForm.loginPassword); showToast('Password copied!', 'success'); }}
-                              className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 p-2 rounded-lg" style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)' }}>
-                      <p className="text-[9px]" style={{ color: 'var(--color-primary)' }}>
-                        ⚠️ Share these credentials with the trainer. They will use them to log in and select "Trainer" role on the mobile app.
-                      </p>
-                    </div>
+                  <FieldDivider />
+                  <div className="flex items-center gap-2">
+                    <KeyRound size={13} style={{ color: 'var(--color-secondary)' }} />
+                    <SectionLabel>App login</SectionLabel>
                   </div>
+                  <p className="text-[10px] -mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                    You are setting the trainer's password for them. Write it down before you save —
+                    it is not recoverable from this screen afterwards.
+                  </p>
+                  <FormField label="Login email" required error={addErrors.loginEmail}
+                    hint="They sign in with this on the phone app.">
+                    <input value={addForm.loginEmail} onChange={e => setAddForm({ ...addForm, loginEmail: e.target.value })}
+                      placeholder="e.g. cyrelle@corefitness.com"
+                      className={FIELD_CLASS} style={CREDENTIAL_STYLE} />
+                  </FormField>
+                  <FormField label="Login password" required error={addErrors.loginPassword} hint="At least 6 characters.">
+                    <div className="relative">
+                      <input type={showLoginPw ? 'text' : 'password'} value={addForm.loginPassword}
+                        onChange={e => setAddForm({ ...addForm, loginPassword: e.target.value })}
+                        placeholder="Min. 6 characters"
+                        className={`${FIELD_CLASS} !pr-16`} style={CREDENTIAL_STYLE} />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <button type="button" onClick={() => setShowLoginPw(!showLoginPw)}
+                          title={showLoginPw ? 'Hide password' : 'Show password'}
+                          className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
+                          {showLoginPw ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                        <button type="button" title="Copy password"
+                          onClick={() => {
+                            if (!addForm.loginPassword) return showToast('Nothing to copy yet', 'error');
+                            navigator.clipboard.writeText(addForm.loginPassword);
+                            showToast('Password copied', 'success');
+                          }}
+                          className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </FormField>
                 </div>
 
                 {/* Footer */}
@@ -482,10 +546,13 @@ export default function Trainers() {
                     style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                     Cancel
                   </button>
-                  <button onClick={handleAddTrainer}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors"
+                  {/* Creating a trainer is an Edge Function round trip that can
+                      take a second or two. Without a disabled state an impatient
+                      second click creates a second auth account. */}
+                  <button onClick={handleAddTrainer} disabled={saving}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors disabled:opacity-60"
                     style={{ background: 'var(--color-secondary)' }}>
-                    Add Trainer
+                    {saving ? 'Creating…' : 'Add Trainer'}
                   </button>
                 </div>
               </motion.div>
@@ -517,47 +584,45 @@ export default function Trainers() {
                     <X size={18} />
                   </button>
                 </div>
-                <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Full Name *</label>
+                <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                  <SectionLabel>Who they are</SectionLabel>
+                  <FormField label="Full name" required error={editErrors.name}>
                     <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Specialization *</label>
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Specialization" required error={editErrors.specialty}
+                    hint="Shown to members as their headline — what they coach.">
                     <input value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Email</label>
-                      <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                        placeholder="trainer@email.com"
-                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Phone</label>
+                    <FormField label="Login email" hint="Cannot be changed here.">
+                      <input value={editForm.email} disabled
+                        title="Changing a login email means changing the auth account, which this form does not do"
+                        className={`${FIELD_CLASS} cursor-not-allowed`}
+                        style={{ ...FIELD_STYLE, color: 'var(--color-text-muted)' }} />
+                    </FormField>
+                    <FormField label="Phone">
                       <input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                         placeholder="+63 917 000 0000"
-                        className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </div>
+                        className={FIELD_CLASS} style={FIELD_STYLE} />
+                    </FormField>
                   </div>
-                  <div>
-                    <label className="text-[10px] block mb-1 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Bio / Description</label>
+                  <FormField label="Bio / description" hint="Members read this on the trainer's profile.">
                     <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-                      placeholder="Brief description about the trainer..."
+                      placeholder="Background, certifications, how they like to coach…"
                       rows={2}
-                      className="w-full px-3 py-2 rounded-xl text-white text-xs focus:outline-none resize-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] block mb-1.5 font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Available Days</label>
+                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
+                  </FormField>
+
+                  <FieldDivider />
+                  <SectionLabel>Availability</SectionLabel>
+                  <FormField
+                    label="Days they usually coach"
+                    hint="Display only — it appears on their profile. Bookable time slots are set by the trainer in the app, under Schedule → Availability."
+                  >
                     <div className="flex flex-wrap gap-1.5">
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                      {WEEKDAY_LABELS.map(day => {
                         const isSelected = editForm.availability.includes(day);
                         return (
                           <button key={day} type="button"
@@ -573,7 +638,7 @@ export default function Trainers() {
                         );
                       })}
                     </div>
-                  </div>
+                  </FormField>
                 </div>
                 <div className="p-5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
                   <button onClick={() => setShowEditModal(false)}
@@ -581,17 +646,10 @@ export default function Trainers() {
                     style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                     Cancel
                   </button>
-                  <button onClick={() => {
-                    if (!editForm.name.trim() || !editForm.specialty.trim()) {
-                      showToast('Name and specialization are required', 'error');
-                      return;
-                    }
-                    showToast(`${editForm.name} updated successfully!`, 'success');
-                    setShowEditModal(false);
-                  }}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors"
+                  <button onClick={handleSaveEdit} disabled={saving}
+                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors disabled:opacity-60"
                     style={{ background: 'var(--color-secondary)' }}>
-                    Save Changes
+                    {saving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </motion.div>

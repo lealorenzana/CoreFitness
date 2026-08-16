@@ -1,94 +1,172 @@
+import { SkeletonList } from '../components/ui/Skeleton';
+import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Clock, Flame, Dumbbell, ArrowLeft } from 'lucide-react';
-import { showSuccessToast } from '../utils/errorHandler';
+import { ArrowLeft, ExternalLink, BookOpen, Sparkles } from 'lucide-react';
+import { toast } from '../components/ui/Toast';
+import { errorMessage } from '../utils/errorMessage';
+import {
+  listWorkoutResources,
+  linkHost,
+  type WorkoutResourceRow,
+} from '../lib/api/workoutResources';
+import { getCurrentMemberId, getExperienceLevel, type ExperienceLevel } from '../services/bookingService';
+import type { ClassLevel } from '../types/db';
+
+/**
+ * Free workout resources, curated by the gym (migration 0019).
+ *
+ * This screen used to list four invented routines — "HIIT Cardio Blast · 30 min
+ * · 400 kcal" — with calorie figures typed by hand, and a "Start Workout" button
+ * that navigated to the progress page without starting anything.
+ *
+ * What replaced it links out to material the gym has chosen, credited to whoever
+ * wrote it. Nothing here claims to be Core Fitness's own programming, and no
+ * number appears that nobody measured.
+ */
+
+const LEVEL_LABEL: Record<ClassLevel, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+  all_levels: 'All levels',
+};
 
 export default function Workouts() {
   const navigate = useNavigate();
+  const [resources, setResources] = useState<WorkoutResourceRow[]>([]);
+  const [level, setLevel] = useState<ExperienceLevel | null>(null);
+  const [category, setCategory] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
 
-  const handleStartWorkout = (workoutName: string) => {
-    showSuccessToast(`Starting ${workoutName}...`);
-    setTimeout(() => navigate('/member/progress'), 1500);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listWorkoutResources();
+        if (cancelled) return;
+        setResources(rows);
+        const id = await getCurrentMemberId().catch(() => null);
+        if (id && !cancelled) setLevel(await getExperienceLevel(id).catch(() => null));
+      } catch (err) {
+        if (!cancelled) toast.error(errorMessage(err, 'Could not load the resource library'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const workouts = [
-    { name: 'Full Body Strength', duration: '45 min', calories: '350 kcal', difficulty: 'Intermediate', color: 'var(--color-secondary)' },
-    { name: 'HIIT Cardio Blast', duration: '30 min', calories: '400 kcal', difficulty: 'Advanced', color: 'var(--color-primary)' },
-    { name: 'Core & Abs', duration: '20 min', calories: '180 kcal', difficulty: 'Beginner', color: 'var(--color-primary)' },
-    { name: 'Upper Body Power', duration: '40 min', calories: '320 kcal', difficulty: 'Intermediate', color: 'var(--color-primary)' },
-  ];
+  const categories = useMemo(
+    () => [...new Set(resources.map((r) => r.category).filter((c): c is string => !!c))],
+    [resources]
+  );
 
-  const difficultyStyle = (d: string) => {
-    if (d === 'Beginner') return { background: 'var(--color-primary-light)', color: 'var(--color-primary)' };
-    if (d === 'Intermediate') return { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' };
-    return { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' };
-  };
+  const visible = useMemo(
+    () => (category === 'all' ? resources : resources.filter((r) => r.category === category)),
+    [resources, category]
+  );
+
+  // Same rule as class matching: suggest, never restrict.
+  const suits = (r: WorkoutResourceRow) =>
+    level != null && (r.level === 'all_levels' || r.level === level);
 
   return (
     <div className="space-y-5 pb-4">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => navigate('/member/home')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
+        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
+          className="w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-white">Workouts</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Choose your training program</p>
+          <h1 className="text-2xl font-bold text-white">Workout Resources</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+            Free training material, picked by your gym
+          </p>
         </div>
       </motion.div>
 
-      {/* Today's Workout — flat violet */}
-      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-        className="rounded-2xl p-5" style={{ background: 'var(--color-primary)', border: '1px solid var(--color-primary-hover)' }}>
-        <p className="text-white/70 text-xs font-semibold uppercase tracking-wide">Today's Workout</p>
-        <h2 className="text-xl font-bold text-white mt-1 mb-4">Chest & Triceps</h2>
-        <div className="flex gap-4 mb-4">
-          <div className="flex items-center gap-1.5 text-sm text-white/80"><Clock size={15} /> 60 min</div>
-          <div className="flex items-center gap-1.5 text-sm text-white/80"><Flame size={15} /> 450 kcal</div>
+      {categories.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {['all', ...categories].map((c) => (
+            <button key={c} onClick={() => setCategory(c)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize"
+              style={{
+                background: category === c ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                color: category === c ? '#fff' : 'var(--color-text-muted)',
+                border: `1px solid ${category === c ? 'var(--color-primary)' : 'var(--color-border)'}`,
+              }}>
+              {c === 'all' ? 'Everything' : c}
+            </button>
+          ))}
         </div>
-        <button onClick={() => handleStartWorkout('Chest & Triceps')}
-          className="w-full py-3 rounded-xl font-semibold text-sm text-black flex items-center justify-center gap-2"
-          style={{ background: 'var(--color-secondary)' }}>
-          <Play size={18} fill="currentColor" /> Start Workout
-        </button>
-      </motion.div>
+      )}
 
-      {/* Workout Library */}
-      <div className="space-y-3">
-        <h3 className="text-white font-semibold">Workout Library</h3>
-        {workouts.map((w, i) => (
-          <motion.div key={w.name} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.08 }}
-            className="rounded-2xl p-4 transition-colors"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${w.color}20` }}>
-                <Dumbbell size={24} style={{ color: w.color }} />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-white font-semibold text-sm">{w.name}</h4>
-                <div className="flex gap-2 mt-1.5 flex-wrap">
-                  <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}><Clock size={11} /> {w.duration}</span>
-                  <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}><Flame size={11} /> {w.calories}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={difficultyStyle(w.difficulty)}>{w.difficulty}</span>
+      {loading ? (
+        <SkeletonList />
+      ) : visible.length === 0 ? (
+        <div className="rounded-2xl p-8 text-center" style={panelStyle}>
+          <BookOpen size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
+          <p className="font-medium text-white text-sm">Nothing here yet</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            Your gym hasn't added any resources to this category.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((r, i) => (
+            <motion.a key={r.id}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.05, 0.3) }}
+              href={r.url}
+              target="_blank"
+              // noreferrer alongside noopener: the destination has no business
+              // knowing which member app screen sent the member there.
+              rel="noopener noreferrer"
+              className="block rounded-2xl p-4 transition-all active:scale-[0.98]"
+              style={panelStyle}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-white font-semibold text-sm">{r.title}</h3>
+                    {suits(r) && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
+                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                        <Sparkles size={8} /> For you
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-secondary)' }}>
+                    {r.provider}
+                  </p>
+                  {r.description && (
+                    <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      {r.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+                      {LEVEL_LABEL[r.level]}
+                    </span>
+                    {/* Show where the tap goes before it's tapped. */}
+                    <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                      <ExternalLink size={9} /> {linkHost(r.url)}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => handleStartWorkout(w.name)}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', border: '1px solid rgba(245,158,11,0.20)' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-secondary)'; e.currentTarget.style.color = '#000'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-secondary-light)'; e.currentTarget.style.color = 'var(--color-secondary)'; }}>
-                <Play size={16} fill="currentColor" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.a>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-center px-4" style={{ color: 'var(--color-text-muted)' }}>
+        These are free resources published by others, not Core Fitness programmes.
+        Check with a trainer before starting something new.
+      </p>
     </div>
   );
 }

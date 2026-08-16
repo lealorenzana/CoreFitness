@@ -33,7 +33,11 @@ export default function TrainerBottomNav() {
         return i;
       }
     }
-    return 0;
+    // -1, not 0. Falling back to the first tab lit up **Home** on every route
+    // that isn't in the bar — /trainer/chatbot, /trainer/settings and
+    // /trainer/availability all claimed to be Home while showing something
+    // else. No match means no tab is current, which is the truth.
+    return -1;
   }, [location.pathname]);
 
   return (
@@ -47,11 +51,12 @@ export default function TrainerBottomNav() {
               className={`dock__item ${isActive ? 'dock__item--active' : ''}`}
               onClick={() => { if (location.pathname !== navRoutes[idx]) navigate(navRoutes[idx]); }}
               aria-label={labels[idx]}
+              aria-current={isActive ? 'page' : undefined}
             >
-              <span className="dock__dot" />
               <span className="dock__icon-wrap">
-                <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                <Icon size={20} strokeWidth={isActive ? 2.3 : 1.8} />
               </span>
+              <span className="dock__label">{labels[idx]}</span>
             </button>
           );
         })}

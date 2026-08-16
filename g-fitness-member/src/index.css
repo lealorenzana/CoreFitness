@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Inter for body; Anton for display headings.
+   Anton is a single weight (400) heavy condensed face — it carries the
+   uppercase section headers that give the design its punch, and costs one
+   small file because there are no other weights to load. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Anton&display=swap');
 
 @import "tailwindcss";
 
@@ -9,9 +13,15 @@
 
 @layer base {
   :root {
-    --color-bg:              #0F0F1A;
-    --color-surface:         #161622;
-    --color-surface-raised:  #1E1B30;
+    /* Deeper than the admin app's #0F0F1A on purpose. The reference gets its
+       separation from white cards on light grey; the dark equivalent needs the
+       background pushed down and the cards lifted, or every surface merges.
+       Admin keeps the original values — the two apps are allowed to differ. */
+    --color-bg:              #08080E;
+    --color-surface:         #12121C;
+    --color-surface-raised:  #191826;
+    /* One step above raised, for cards sitting on a raised panel. */
+    --color-surface-high:    #221F33;
 
     --color-primary:         #7C3AED;
     --color-primary-light:   #1E1333;
@@ -25,11 +35,16 @@
     --color-text-secondary:  #9CA3AF;
     --color-text-muted:      #6B7280;
 
-    --color-border:          #1F1F2E;
+    /* Lifted with the surfaces so edges stay visible against the deeper bg. */
+    --color-border:          #26243A;
 
+    /* The reference's cards are large and softly rounded. */
     --radius-card:           16px;
+    --radius-panel:          24px;
     --radius-btn:            99px;
     --shadow-card:           0 2px 16px rgba(0,0,0,0.4);
+    /* Cards read as lifted rather than outlined, like the reference. */
+    --shadow-panel:          0 8px 28px rgba(0,0,0,0.55);
 
     /* Legacy aliases — keep older class names alive */
     --brand-yellow:          var(--color-secondary);
@@ -65,6 +80,15 @@
     --accent-foreground:              var(--color-primary);
   }
 
+  /* Tells the browser this app is dark, so **native** UI it draws for us
+     follows: the date/time picker popup, select dropdowns, scrollbars, and
+     autofill backgrounds. Without it Chrome renders a bright white calendar
+     over a black screen — none of which is styleable from CSS, because the
+     picker is browser chrome rather than part of the page. */
+  :root {
+    color-scheme: dark;
+  }
+
   body {
     background-color: var(--color-bg);
     color: var(--color-text-primary);
@@ -78,11 +102,70 @@
     color: #fff;
   }
 
+  /* Focus ring lives outside the layers — see the bottom of this file. */
+
   /* Strip decorative font usage */
   .font-orbitron {
     font-family: 'Inter', system-ui, sans-serif !important;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+}
+
+/* Form controls.
+   Every input/select/textarea in the app should carry `.field-input` rather than
+   re-declaring the same background + border inline, which is how the focus ring
+   got lost in the first place. Sits inset (--color-bg) because controls live
+   inside raised panels.
+
+   Deliberately in `components`, not `utilities`: Tailwind orders components
+   *before* utilities, so a caller passing `className="py-3"` still wins. In the
+   utilities layer this class would silently beat it. */
+@layer components {
+  /* Display headings: heavy, condensed, uppercase — the single biggest reason
+     the reference reads the way it does. Body copy stays Inter; this is opt-in
+     per heading rather than a global override, so long strings (a member's own
+     name, a class title) never get squeezed into all-caps. */
+  .display {
+    font-family: 'Anton', 'Inter', system-ui, sans-serif;
+    font-weight: 400;      /* Anton ships one weight; 400 IS the heavy cut */
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 1.05;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    border-radius: 12px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.25);
+  }
+  .field-input::placeholder { color: var(--color-text-muted); }
+  .field-input:disabled { opacity: 0.55; }
+
+  /* Native date/time picker glyph.
+
+     This used to carry `filter: invert(1)`, which fights the `color-scheme:
+     dark` set on :root above: that already makes Chrome draw the glyph light,
+     so inverting turned it black again — invisible on our background. The
+     invert is the fix for a *light*-scheme app; with color-scheme declared it
+     is the bug. Only the opacity is ours. */
+  .field-input::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  .field-input:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
   }
 }
 
@@ -135,20 +218,6 @@
     color: var(--color-primary);
   }
 
-  /* Inputs */
-  .gold-input {
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-  .gold-input:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.18);
-    outline: none;
-  }
-  .gold-input::placeholder { color: var(--color-text-muted); }
-
   /* Buttons */
   .btn-gold {
     background: var(--color-secondary);
@@ -190,75 +259,183 @@
   .border-theme         { border-color: var(--color-border); }
 }
 
-/* ── Bottom nav dock ─────────────────────────────────────────── */
+/* ── Bottom nav dock ─────────────────────────────────────────────
+   A floating pill rather than a full-width bar: it reads as an object
+   sitting on the app instead of a border welded to the bottom edge, which
+   is most of why the reference design feels light.
+
+   `overflow: visible` is load-bearing — the centre check-in button breaks
+   out above the pill, and a stray `overflow: hidden` here clips its top
+   half off with no other symptom. */
 .dock-wrapper {
-  padding: 0 0.5rem 0.5rem;
+  padding: 0 0.75rem 0.75rem;
 }
 
+/* ── The dock, second design ──────────────────────────────────────
+   Was: a row of equal icon buttons, the active one marked by a 5px amber dot
+   and a faint tinted square. Two problems. The dot was the only thing telling
+   you where you were — 5 pixels, above the icon, easy to miss entirely — and
+   nothing was ever labelled, so every tab was a guess from a glyph.
+
+   Now: the active tab **opens into a pill** carrying its icon and its name,
+   and the others collapse back to icons. One element moves and grows, which
+   reads as a single object travelling along the bar rather than a dot blinking
+   on and off. The label costs nothing at rest because only one is ever open.
+
+   All of it is CSS transitions on class changes — no JS animation loop. That
+   matters here: this bar is on screen during route changes and app resume, and
+   a frame-driven animation that stalls leaves the nav showing the wrong tab. */
 .dock {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
+  gap: 0.125rem;
   width: 100%;
-  height: 60px;
-  background: var(--color-surface-raised);
-  border-radius: 1.25rem;
+  height: 64px;
+  /* Glassy rather than solid: content scrolling underneath stays faintly
+     visible, so the bar sits on the app instead of cutting it off.
+     No hand-written fallback needed — checked the built CSS: Lightning CSS
+     emits the flat colour in the base rule and hoists this into
+     `@supports (color: color-mix(...))`, so a WebView that lacks it gets the
+     opaque bar rather than a transparent one. */
+  background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 999px;
   border: 1px solid var(--color-border);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
-  padding: 0 0.5rem;
+  box-shadow: var(--shadow-panel), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 0 0.375rem;
+  overflow: visible;
 }
 
 .dock__item {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  height: 100%;
+  /* Not `flex: 1` — items must be free to size to their content so the active
+     one can grow and the rest give way. */
+  flex: 0 1 auto;
+  min-width: 42px;
+  height: 46px;
+  padding: 0 0.5rem;
+  border-radius: 999px;
   background: transparent;
   border: none;
   cursor: pointer;
   color: var(--color-text-muted);
-  transition: color 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.4s cubic-bezier(0.34, 1.3, 0.64, 1),
+    box-shadow 0.4s ease,
+    color 0.25s ease,
+    padding 0.4s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
+
+.dock__item:active { transform: scale(0.94); }
 
 .dock__item--active {
-  color: var(--color-primary);
+  color: #fff;
+  padding: 0 0.875rem;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.42);
 }
 
-/* Yellow dot above active icon */
-.dock__dot {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-secondary);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* The name, revealed only on the active tab. `max-width` rather than `width`
+   so it animates from nothing to whatever the word needs, without any tab
+   having to declare its own size. */
+.dock__label {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    max-width 0.4s cubic-bezier(0.34, 1.3, 0.64, 1),
+    margin-left 0.4s cubic-bezier(0.34, 1.3, 0.64, 1),
+    opacity 0.28s ease;
 }
 
-.dock__item--active .dock__dot {
-  transform: translateX(-50%) scale(1);
+.dock__item--active .dock__label {
+  max-width: 84px;
+  margin-left: 0.375rem;
+  opacity: 1;
 }
 
-/* Icon wrapper — subtle glow bg on active */
+/* Keeps the centre check-in button in the centre.
+   The tabs live in two groups of equal flex basis, so whichever side has the
+   open pill absorbs the growth within its own half instead of shoving the
+   button across. Before this the FAB slid sideways as you changed tabs — most
+   obvious on "Progress", the widest label. `flex-basis: 0` is what makes the
+   halves equal regardless of their contents; `flex: 1` alone would size them
+   from their content and reintroduce the same drift. */
+.dock__side {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .dock__icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  transition: background 0.2s ease;
+  flex-shrink: 0;
 }
 
+/* One hop as the tab takes over. Keyed to the class, so it replays on every
+   change of tab and never runs at rest. */
 .dock__item--active .dock__icon-wrap {
-  background: var(--color-primary-light);
+  animation: dock-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+@keyframes dock-pop {
+  0%   { transform: translateY(0) scale(1); }
+  38%  { transform: translateY(-3px) scale(1.16); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* The dot the old design leaned on. Kept as a selector so any stray markup
+   can't reappear as a rogue speck once the pill took over its job. */
+.dock__dot { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dock__item,
+  .dock__label { transition-duration: 0.01ms; }
+  .dock__item--active .dock__icon-wrap { animation: none; }
+}
+
+/* Centre check-in button — the one action a member performs every visit.
+   Amber, because the colour convention makes amber the primary action; it is
+   deliberately the only amber thing in the nav. Raised out of the pill with a
+   ring of page background so it reads as floating above it rather than as an
+   oversized tab. */
+.dock__fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  margin-top: -26px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  color: #000;
+  border: 4px solid var(--color-bg);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.dock__fab:hover  { background: var(--color-secondary-hover); }
+.dock__fab:active { transform: scale(0.93); }
 
 /* Toast animations */
 .phone-toast { animation: phoneToastIn 0.3s ease-out; }
@@ -271,4 +448,99 @@
 @keyframes feature-strip-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+/* ── Focus ring ──────────────────────────────────────────────────
+   One treatment for the whole app. Without it nothing here is usable by
+   keyboard or switch access: most controls carry `focus:outline-none` with
+   nothing in its place, so the cursor simply vanishes as you tab.
+
+   Deliberately UNLAYERED. Unlayered author CSS outranks every cascade layer,
+   which matters twice over:
+     • `.transition-all` (utilities layer) would otherwise win the
+       transition-property fight below;
+     • `focus:outline-none` on individual elements can't silently delete the
+       ring again as the app grows.
+   `:where()` still keeps specificity at zero, so a component that genuinely
+   needs a different ring can override it with its own unlayered rule.
+
+   The transition-property re-list is not cosmetic: Tailwind's `transition-all`
+   animates outline-color, and Chrome cannot interpolate away from the UA ring's
+   `-webkit-focus-ring-color` keyword — it pins the start value, so the ring
+   renders permanently WHITE instead of violet. Omitting `outline` from the list
+   opts the ring out while leaving each element's own hover animation intact. */
+:where(button, a, [role='button'], [tabindex], input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+}
+
+/* ── Number inputs ───────────────────────────────────────────────
+   No stepper arrows, anywhere. They are a desktop affordance: on a phone
+   they are two ~8px targets nobody can hit, they steal width from the value,
+   and `inputMode="decimal"` already brings up the right keyboard. Firefox
+   needs the `appearance` reset as well as WebKit's pseudo-elements. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Big number field ────────────────────────────────────────────
+   The ring belongs on the panel, not on the bare input inside it — an outline
+   drawn tight around a transparent, centred field reads as a stray box rather
+   than as focus. Unlayered and after the rule above, at higher specificity, so
+   it actually wins; the panel then shows the same violet the ring would have.
+   Focus is still visible, which is the part that must not regress. */
+.bignum:focus-visible {
+  outline: none;
+}
+
+/* The base border lives here, NOT inline on the component. An inline
+   `border: 1px solid var(--color-border)` outranks every stylesheet rule, so
+   the focus colour below would silently never apply — the box-shadow would
+   appear and the border would stay grey, which looks like a half-broken state
+   rather than a deliberate one. */
+.bignum-panel {
+  border: 1px solid var(--color-border);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bignum-panel:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+}
+
+/* ─── Text selection ────────────────────────────────────────────────────────
+   This ships as an installed Android/iOS app, not a document. A long-press or
+   a stray drag was selecting the interface itself — headings, stat labels,
+   button text — and painting a highlight across the screen. Native apps do not
+   do that, and neither should this.
+
+   Unlayered on purpose: it has to beat the `@layer base` rules above, per the
+   cascade note at the top of this file.
+
+   The exceptions matter as much as the rule. Anything a member has a genuine
+   reason to copy stays selectable: form fields, and anything tagged
+   `.selectable` (the check-in code, a notification's full message). Blanket
+   `user-select: none` would make the six-character desk code impossible to
+   copy, which is the one string in the app most worth copying. */
+#phone-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  /* Stops iOS showing the copy/define callout on a long press. */
+  -webkit-touch-callout: none;
+}
+
+#phone-screen input,
+#phone-screen textarea,
+#phone-screen [contenteditable='true'],
+#phone-screen .selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }

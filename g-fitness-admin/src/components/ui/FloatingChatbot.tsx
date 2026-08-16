@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Bot, User, Sparkles } from 'lucide-react';
-import { CHATBOT_RESPONSES, FALLBACK_RESPONSE } from '../../data/chatbot';
+import { buildChatbotResponses, buildGreeting, FALLBACK_RESPONSE } from '../../data/chatbot';
+import { loadChatbotContext, EMPTY_CONTEXT, type ChatbotContext } from '../../services/chatbotService';
 import type { ChatMessage } from '../../types';
 
 const PRIMARY        = 'var(--color-primary)';
@@ -13,24 +14,39 @@ const TEXT_MUTED     = 'var(--color-text-muted)';
 
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      sender: 'bot',
-      message: "Hello! I'm your Core Fitness admin assistant. How can I help you today?",
-      timestamp: new Date(),
-      language: 'en',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [language, setLanguage] = useState<'en' | 'fil'>('en');
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+  /**
+   * The assistant's answers come from the database, so it cannot speak until
+   * they have loaded.
+   *
+   * `null` means "not loaded yet" and is deliberately distinct from
+   * `EMPTY_CONTEXT` ("loaded, and there is nothing there"). Answering from an
+   * unloaded context would report every section as unconfigured — the assistant
+   * would tell an admin their gym has no plans and no trainers purely because a
+   * fetch was still in flight.
+   */
+  const [ctx, setCtx] = useState<ChatbotContext | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || ctx) return;
+    loadChatbotContext().then(setCtx).catch(() => setCtx(EMPTY_CONTEXT));
+  }, [isOpen, ctx]);
+
+  const rules = useMemo(() => (ctx ? buildChatbotResponses(ctx) : []), [ctx]);
+
+  // Re-rendered rather than stored, so switching language rewrites the opening
+  // line too — it used to be a fixed English string in the initial state.
+  const greeting = ctx ? buildGreeting(ctx)[language] : null;
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping, greeting]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !ctx) return;
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
@@ -42,7 +58,7 @@ export default function FloatingChatbot() {
     setInput('');
     setIsTyping(true);
     setTimeout(() => {
-      const matched = CHATBOT_RESPONSES.find((r) => r.pattern.test(userMsg.message));
+      const matched = rules.find((r) => r.pattern.test(userMsg.message));
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
@@ -119,6 +135,23 @@ export default function FloatingChatbot() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-dark-border">
+              {greeting === null ? (
+                <p className="text-[11px] px-1 py-2" style={{ color: TEXT_MUTED }}>
+                  Reading the gym's settings, plans, trainers and timetable…
+                </p>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: PRIMARY }}>
+                    <Bot size={12} className="text-white" />
+                  </div>
+                  <div
+                    className="max-w-[78%] px-3 py-2 text-xs leading-relaxed whitespace-pre-line rounded-2xl text-white"
+                    style={{ background: SURFACE, border: `1px solid ${BORDER}` }}
+                  >
+                    {greeting}
+                  </div>
+                </div>
+              )}
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div
@@ -168,13 +201,14 @@ export default function FloatingChatbot() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Type a message…"
-                  className="flex-1 px-3 text-xs rounded-full focus:outline-none"
+                  placeholder={ctx ? 'Type a message…' : 'Loading…'}
+                  disabled={!ctx}
+                  className="flex-1 px-3 text-xs rounded-full disabled:opacity-50"
                   style={{ height: 36, background: SURFACE, border: `1px solid ${BORDER}`, color: '#fff' }}
                 />
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || !ctx}
                   className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
                   style={{ background: PRIMARY }}
                 >

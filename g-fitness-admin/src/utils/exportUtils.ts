@@ -1,6 +1,12 @@
-// Export utilities for generating CSV and PDF reports
+// Export utilities for generating CSV reports.
+import { todayKey } from './dates';
 
-export const exportToCSV = (data: any[], filename: string) => {
+/**
+ * @param stampDate append today's date to the filename. Pass `false` when the
+ *   caller has already put the relevant date in the name — otherwise exporting
+ *   last Tuesday's attendance produces `attendance_2026-08-11_2026-08-16.csv`.
+ */
+export const exportToCSV = (data: any[], filename: string, stampDate = true) => {
   if (data.length === 0) {
     alert('No data to export');
     return;
@@ -30,7 +36,9 @@ export const exportToCSV = (data: any[], filename: string) => {
   const url = URL.createObjectURL(blob);
   
   link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+  // `todayKey()`, not `toISOString()` — the latter is UTC, so a file exported at
+  // 7am in Manila was stamped with yesterday's date.
+  link.setAttribute('download', stampDate ? `${filename}_${todayKey()}.csv` : `${filename}.csv`);
   link.style.visibility = 'hidden';
   
   document.body.appendChild(link);
@@ -38,17 +46,54 @@ export const exportToCSV = (data: any[], filename: string) => {
   document.body.removeChild(link);
 };
 
-export const exportMembersToCSV = (members: any[]) => {
+/**
+ * The roster, as the roster actually is.
+ *
+ * This used to read `member.membershipType` and `member.joinDate`, neither of
+ * which has existed on the row shape since it was migrated to Supabase — so two
+ * columns exported blank for every member, every time, and nothing said so. The
+ * `as never[]` cast at the call site is what kept TypeScript quiet about it.
+ */
+export interface MemberCsvRow {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  dateOfBirth: string;
+  gender: string;
+  experienceLevel: string;
+  accountStatus: string;
+  planName: string;
+  membershipStatus: string | null;
+  expiryDate: string | null;
+  neverExpires: boolean;
+  joinedOn: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
+  checkInCode: string;
+}
+
+export const exportMembersToCSV = (members: MemberCsvRow[]) => {
   const exportData = members.map(member => ({
-    'Member ID': member.qrCode,
+    'Check-in Code': member.checkInCode,
     'Full Name': member.fullName,
     'Email': member.email,
     'Phone': member.phone,
     'Address': member.address,
-    'Membership Type': member.membershipType,
-    'Status': member.membershipStatus,
-    'Join Date': member.joinDate,
-    'Expiry Date': member.expiryDate,
+    'Date of Birth': member.dateOfBirth,
+    'Gender': member.gender,
+    'Experience Level': member.experienceLevel,
+    'Account Status': member.accountStatus,
+    'Plan': member.planName,
+    'Membership Status': member.membershipStatus ?? 'none',
+    // A blank expiry means two different things (0024), so the export spells
+    // out which one rather than exporting an ambiguous empty cell.
+    'Expiry Date': member.expiryDate ?? (member.neverExpires ? 'never expires' : 'not activated'),
+    'Joined': member.joinedOn.slice(0, 10),
+    'Emergency Contact': member.emergencyContactName,
+    'Emergency Phone': member.emergencyContactPhone,
+    'Emergency Relationship': member.emergencyContactRelationship,
   }));
 
   exportToCSV(exportData, 'members_report');
@@ -70,36 +115,10 @@ export const exportPaymentsToCSV = (payments: any[]) => {
   exportToCSV(exportData, 'payments_report');
 };
 
-export const exportAttendanceToCSV = (attendance: any[]) => {
-  const exportData = attendance.map(record => ({
-    'Date': record.date,
-    'Time': record.time,
-    'Member Name': record.memberName,
-    'Member ID': record.memberId,
-    'Method': record.method,
-  }));
+/* Deleted with them: `exportAttendanceToCSV` and `exportRevenueToCSV`, which read
+   fields (`record.date`, `record.time`, `record.memberName`) that no current row
+   shape carries — they would have written files of empty columns, exactly as the
+   members export did. Attendance builds its own rows from `AttendanceRow` now.
 
-  exportToCSV(exportData, 'attendance_report');
-};
-
-export const exportRevenueToCSV = (revenueData: any[]) => {
-  const exportData = revenueData.map(record => ({
-    'Month': record.month,
-    'Revenue': `₱${record.revenue.toLocaleString()}`,
-    'Members': record.members,
-    'Growth': record.growth,
-  }));
-
-  exportToCSV(exportData, 'revenue_report');
-};
-
-// Mock PDF generation (shows success message)
-export const generatePDFReport = (reportType: string) => {
-  // In production, this would use jsPDF or similar library
-  alert(`PDF Report Generated!\n\nReport Type: ${reportType}\nDate: ${new Date().toLocaleDateString()}\n\nIn production, this would download a PDF file.`);
-  
-  // Simulate download delay
-  return new Promise((resolve) => {
-    setTimeout(resolve, 500);
-  });
-};
+   Also deleted: `generatePDFReport`, which alerted "In production, this would
+   download a PDF file" and was wired to nothing. */

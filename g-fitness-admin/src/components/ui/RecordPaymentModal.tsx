@@ -1,23 +1,43 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
-import { X, CreditCard, User, Calendar, DollarSign, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, CreditCard, User, Calendar, Banknote, Search } from 'lucide-react';
 import Button from './Button';
 import Input from './Input';
-import { MEMBERS } from '../../data/members';
-import { useGymContext } from '../../hooks/useGymContext';
-import type { PaymentData } from '../../types/member';
+import { listMembers, type MemberWithProfile } from '../../lib/api/members';
 
-export type { PaymentData };
+export interface RecordPaymentInput {
+  memberId: string;
+  memberName: string;
+  amount: number;
+  method: string;
+  date: string;
+  notes: string;
+}
+
+/**
+ * Imported rather than redeclared. This was a second, identical copy of the
+ * shape defined in Payments.tsx, and the two silently drifted the moment
+ * `durationDays` learned to be null for a non-expiring plan (0024).
+ */
+import type { MemberPlanInfo } from '../../pages/Payments';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (payment: PaymentData) => void;
+  onSubmit: (payment: RecordPaymentInput) => void;
+  /** memberId -> their current plan. Missing entry = no membership to bill against. */
+  planByMember: Record<string, MemberPlanInfo>;
 }
 
-export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: RecordPaymentModalProps) {
-  const { selectedGym } = useGymContext();
-  const gymMembers = MEMBERS.filter(m => m.gymId === selectedGym.id);
+export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember }: RecordPaymentModalProps) {
+  const [members, setMembers] = useState<MemberWithProfile[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      listMembers().then(setMembers).catch(() => setMembers([]));
+    }
+  }, [isOpen]);
 
   const [formData, setFormData] = useState({
     memberId: '',
@@ -32,22 +52,29 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
   const [memberSearch, setMemberSearch] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
-  const paymentMethods = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Debit Card'];
+  const paymentMethods = ['Cash'];
 
-  // Filter members based on search
-  const filteredMembers = gymMembers.filter(m =>
-    m.fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
-    m.qrCode.toLowerCase().includes(memberSearch.toLowerCase()) ||
-    m.email.toLowerCase().includes(memberSearch.toLowerCase())
-  );
+  const filteredMembers = members.filter(m => {
+    const fullName = `${m.profile.first_name} ${m.profile.last_name}`;
+    return (
+      fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      m.profile.email.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      (m.member.qr_code ?? '').toLowerCase().includes(memberSearch.toLowerCase())
+    );
+  });
 
-  const selectedMember = gymMembers.find(m => m.id === formData.memberId);
+  const selectedMember = members.find(m => m.profile.id === formData.memberId);
+  const selectedPlan = formData.memberId ? planByMember[formData.memberId] : undefined;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.memberId) {
       newErrors.memberId = 'Please select a member';
+    } else if (!planByMember[formData.memberId]) {
+      // recordPayment needs a membership to extend; without one it would fail
+      // after submit. Catch it here while the member is still on screen.
+      newErrors.memberId = 'This member has no membership plan assigned yet';
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = 'Please enter a valid amount';
@@ -60,65 +87,65 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
     return Object.keys(newErrors).length === 0;
   };
 
+  const resetForm = () => {
+    setFormData({
+      memberId: '',
+      amount: '',
+      method: 'Cash',
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+    setMemberSearch('');
+    setShowMemberDropdown(false);
+    setErrors({});
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateForm() || !selectedMember) {
       return;
     }
 
     setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
+    try {
       onSubmit({
         memberId: formData.memberId,
-        memberName: selectedMember?.fullName || '',
+        memberName: `${selectedMember.profile.first_name} ${selectedMember.profile.last_name}`,
         amount: parseFloat(formData.amount),
         method: formData.method,
         date: formData.date,
         notes: formData.notes,
       });
-
-      // Reset form
-      setFormData({
-        memberId: '',
-        amount: '',
-        method: 'Cash',
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
-      });
-      setMemberSearch('');
-      setErrors({});
-      setIsLoading(false);
+      resetForm();
       onClose();
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
     if (!isLoading) {
-      setFormData({
-        memberId: '',
-        amount: '',
-        method: 'Cash',
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
-      });
-      setMemberSearch('');
-      setShowMemberDropdown(false);
-      setErrors({});
+      resetForm();
       onClose();
     }
   };
 
-  const handleSelectMember = (member: typeof gymMembers[0]) => {
-    setFormData({ ...formData, memberId: member.id });
-    setMemberSearch(member.fullName);
+  const handleSelectMember = (member: MemberWithProfile) => {
+    // Prefill the plan's price rather than leaving staff to type an amount blind.
+    // Still editable — partial and advance payments are normal at a cash desk.
+    const plan = planByMember[member.profile.id];
+    setFormData({
+      ...formData,
+      memberId: member.profile.id,
+      amount: plan && plan.planPrice > 0 ? String(plan.planPrice) : formData.amount,
+    });
+    setMemberSearch(`${member.profile.first_name} ${member.profile.last_name}`);
     setShowMemberDropdown(false);
     if (errors.memberId) setErrors({ ...errors, memberId: '' });
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -128,11 +155,11 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200]"
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -182,38 +209,28 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                         }
                       }}
                       onFocus={() => setShowMemberDropdown(true)}
-                      placeholder="Search by name, email, or ID..."
+                      placeholder="Search by name, email, or QR code..."
                       className={`pl-12 ${errors.memberId ? 'border-red-500' : ''}`}
                     />
-                    
+
                     {/* Dropdown List */}
                     {showMemberDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-dark border border-dark-border rounded-xl shadow-2xl max-h-60 overflow-y-auto z-20">
                         {filteredMembers.length > 0 ? (
                           filteredMembers.map((member) => (
                             <button
-                              key={member.id}
+                              key={member.profile.id}
                               type="button"
                               onClick={() => handleSelectMember(member)}
                               className="w-full text-left px-4 py-3 hover:bg-dark-border transition-colors flex items-center gap-3 border-b border-dark-border last:border-b-0"
                             >
                               <div className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold flex-shrink-0"
                                 style={{ background: 'var(--color-secondary)' }}>
-                                {member.firstName[0]}{member.lastName[0]}
+                                {member.profile.first_name[0]}{member.profile.last_name[0]}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-white font-semibold truncate">{member.fullName}</p>
-                                <p className="text-gray-400 text-xs truncate">{member.email}</p>
-                                <p className="text-gray-500 text-xs font-mono">{member.qrCode}</p>
-                              </div>
-                              <div className="flex-shrink-0">
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  member.membershipType === 'Premium' ? 'bg-purple-500/20 text-violet' :
-                                  member.membershipType === 'Standard' ? 'bg-blue-500/20 text-violet' :
-                                  'bg-gray-500/20 text-gray-400'
-                                }`}>
-                                  {member.membershipType}
-                                </span>
+                                <p className="text-white font-semibold truncate">{member.profile.first_name} {member.profile.last_name}</p>
+                                <p className="text-gray-400 text-xs truncate">{member.profile.email}</p>
                               </div>
                             </button>
                           ))
@@ -221,7 +238,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                           <div className="px-4 py-8 text-center text-gray-400">
                             <User size={32} className="mx-auto mb-2 opacity-50" />
                             <p className="text-sm">No members found</p>
-                            <p className="text-xs mt-1">Try a different search term</p>
+                            <p className="text-xs mt-1">Only approved members can receive payments</p>
                           </div>
                         )}
                       </div>
@@ -230,18 +247,18 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                   {errors.memberId && (
                     <p className="text-yellow text-xs mt-1">{errors.memberId}</p>
                   )}
-                  
+
                   {/* Selected Member Display */}
                   {selectedMember && (
                     <div className="mt-3 p-3 bg-dark rounded-xl border border-primary-start/30">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold"
                           style={{ background: 'var(--color-secondary)' }}>
-                          {selectedMember.firstName[0]}{selectedMember.lastName[0]}
+                          {selectedMember.profile.first_name[0]}{selectedMember.profile.last_name[0]}
                         </div>
                         <div className="flex-1">
-                          <p className="text-white font-semibold text-sm">{selectedMember.fullName}</p>
-                          <p className="text-gray-400 text-xs">{selectedMember.membershipType} Member</p>
+                          <p className="text-white font-semibold text-sm">{selectedMember.profile.first_name} {selectedMember.profile.last_name}</p>
+                          <p className="text-gray-400 text-xs">{selectedMember.profile.email}</p>
                         </div>
                         <button
                           type="button"
@@ -254,6 +271,28 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                           <X size={16} />
                         </button>
                       </div>
+
+                      {/* What this member is actually on. Without it, staff bill a
+                          plan they can't see — which is how ₱600 ends up recorded
+                          against a ₱0 plan. */}
+                      <div className="mt-3 pt-3 border-t border-dark-border">
+                        {selectedPlan ? (
+                          <p className="text-xs text-gray-400">
+                            Plan:{' '}
+                            <span className="text-white font-semibold">{selectedPlan.planName}</span>
+                            {' — '}
+                            <span className="text-white">₱{selectedPlan.planPrice.toLocaleString()}</span>
+                            {' / '}
+                            {selectedPlan.durationDays == null
+                              ? 'no expiry'
+                              : `${selectedPlan.durationDays} days`}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-yellow">
+                            No membership assigned — assign a plan before recording a payment.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -261,7 +300,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                 {/* Amount */}
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
-                    <DollarSign size={16} />
+                    <Banknote size={16} />
                     Amount (₱)
                   </label>
                   <Input
@@ -290,7 +329,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                   <select
                     value={formData.method}
                     onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-                    className="w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors"
+                    className="w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white focus:border-primary-start transition-colors"
                   >
                     {paymentMethods.map((method) => (
                       <option key={method} value={method}>
@@ -330,7 +369,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Add any additional notes..."
                     rows={3}
-                    className="w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-start transition-colors resize-none"
+                    className="w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white focus:border-primary-start transition-colors resize-none"
                   />
                 </div>
 
@@ -366,6 +405,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit }: Record
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

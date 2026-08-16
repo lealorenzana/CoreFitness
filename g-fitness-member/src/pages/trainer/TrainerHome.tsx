@@ -1,148 +1,406 @@
+import { SkeletonList } from '../../components/ui/Skeleton';
+import Avatar from '../../components/ui/Avatar';
+import SectionHeader from '../../components/ui/SectionHeader';
+import { panelStyle } from '../../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { Users, Calendar, Clock, Star, TrendingUp, ChevronRight, Dumbbell } from 'lucide-react';
-import { initializeMockNotifications } from '../../data/mockNotifications';
+import { useEffect, useState } from 'react';
+import {
+  Users, Calendar, Clock, ChevronRight, CalendarOff, ArrowRight,
+  CheckCircle2, XCircle, CircleDashed, Trophy, CalendarClock, type LucideIcon,
+} from 'lucide-react';
+import {
+  getCurrentTrainerId,
+  getTrainerOverview,
+  type TrainerOverview,
+} from '../../services/trainerService';
+import type { BookingStatus } from '../../types/db';
+import { errorMessage } from '../../utils/errorMessage';
 
-const TRAINER = {
-  name: 'Cyrelle Joy Duhac',
-  specialization: 'Strength & Conditioning',
-  photoUrl: '/trainer-duhac.png',
-  rating: 4.8,
-  sessionsCompleted: 342,
-  membersAssigned: 5,
-  classesToday: 2,
-  pendingBookings: 2,
+/**
+ * The trainer's home screen.
+ *
+ * The previous version was five stat tiles — Members / Classes today /
+ * Awaiting approval, then Sessions taught / Members trained — and on a real
+ * account four of the five read `0`. A wall of zeros is not a dashboard; it is
+ * a screen that has nothing to say taking up the space of one that does.
+ *
+ * The rebuild is organised by **what needs doing**, not by what can be counted:
+ *
+ *   1. Anything waiting on the trainer, as a button. `pendingBookings` was a
+ *      dead tile showing `0`; it is now an amber card that appears only when
+ *      the number is non-zero and takes you straight to the queue.
+ *   2. Today, as the hero. Either the next class with its time, or a real empty
+ *      state — not a flat grey bar reading "No classes scheduled today."
+ *   3. The week's numbers, condensed into one banded card instead of two more
+ *      panels.
+ *
+ * Every figure still comes from `getTrainerOverview`. Nothing here invents a
+ * number to fill the space the zeros used to occupy.
+ */
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning, Coach';
+  if (h < 18) return 'Good afternoon, Coach';
+  return 'Good evening, Coach';
+}
+
+/** Status drives icon and colour — the thing a trainer scans this list for. */
+const ACTIVITY: Record<BookingStatus, { icon: LucideIcon; color: string; tint: string; verb: string }> = {
+  approved:  { icon: CheckCircle2,  color: '#22C55E', tint: 'rgba(34,197,94,0.14)',  verb: 'Approved' },
+  pending:   { icon: CircleDashed,  color: '#F59E0B', tint: 'rgba(245,158,11,0.14)', verb: 'New request' },
+  rejected:  { icon: XCircle,       color: '#EF4444', tint: 'rgba(239,68,68,0.14)',  verb: 'Declined' },
+  cancelled: { icon: XCircle,       color: '#EF4444', tint: 'rgba(239,68,68,0.14)',  verb: 'Cancelled' },
 };
 
-const TODAY_CLASSES = [
-  { id: '1', name: 'Morning Strength', time: '6:00 AM', members: 8, capacity: 12 },
-  { id: '2', name: 'Power Hour', time: '5:00 PM', members: 10, capacity: 12 },
-];
+/**
+ * The `Record<BookingStatus, …>` above makes a missing key impossible *at
+ * compile time*, which is not the same as impossible. The status arrives from
+ * Postgres, and a value this build doesn't know about — a future enum member,
+ * a bad row — would make `meta.icon` throw and take the whole home screen down
+ * with it. A neutral row is a far better failure than a white screen.
+ */
+function activityMeta(status: BookingStatus) {
+  return ACTIVITY[status] ?? {
+    icon: CircleDashed,
+    color: 'var(--color-text-muted)',
+    tint: 'var(--color-surface-high)',
+    verb: String(status),
+  };
+}
 
-const RECENT_ACTIVITY = [
-  { id: '1', text: 'Aaron Diwa completed Strength Basics', time: '2h ago', type: 'progress' },
-  { id: '2', text: 'New booking from Clairey Anne Belen', time: '3h ago', type: 'booking' },
-  { id: '3', text: 'Ana Par Ituralde hit weekly goal', time: '5h ago', type: 'achievement' },
-];
+function timeOf(iso: string | null): string {
+  if (!iso) return 'Time not set';
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function TrainerHome() {
   const navigate = useNavigate();
+  const [overview, setOverview] = useState<TrainerOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Initialize mock notifications on first load
   useEffect(() => {
-    initializeMockNotifications();
+    let cancelled = false;
+    (async () => {
+      try {
+        const id = await getCurrentTrainerId();
+        if (!id) throw new Error('Not signed in');
+        const data = await getTrainerOverview(id);
+        if (cancelled) return;
+        if (!data) throw new Error('No trainer profile found for this account');
+        setOverview(data);
+      } catch (err) {
+        console.error('Trainer dashboard load failed:', err);
+        if (!cancelled) setError(errorMessage(err, 'Failed to load'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
+  if (loading) return <SkeletonList count={4} />;
+
+  if (error || !overview) {
+    return (
+      <div className="py-16 text-center px-6">
+        <p className="text-xs text-white mb-1">Couldn't load your dashboard</p>
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
+      </div>
+    );
+  }
+
+  const { profile, trainer } = overview.trainer;
+  const fullName = `${profile.first_name} ${profile.last_name}`;
+
+  // Earliest first, so "next" is genuinely next rather than whatever the query
+  // happened to return first.
+  const todaySorted = [...overview.todayClasses].sort((a, b) =>
+    (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? '')
+  );
+  const nextClass = todaySorted[0] ?? null;
+  const laterToday = Math.max(0, todaySorted.length - 1);
+
+  const weekStats = [
+    { label: 'Sessions', value: overview.sessionsThisWeek, icon: Calendar },
+    { label: 'Members trained', value: overview.membersTrainedThisWeek, icon: Users },
+    { label: 'Total members', value: overview.membersAssigned, icon: Users },
+  ];
+
   return (
-    <div className="space-y-4 pb-4">
-      {/* Greeting */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0" style={{ border: '2px solid var(--color-primary)' }}>
-            <img src={TRAINER.photoUrl} alt={TRAINER.name} className="w-full h-full object-cover" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Good morning, Coach</p>
-            <p className="text-base font-bold text-white">{TRAINER.name.split(' ')[0]}</p>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ background: 'var(--color-primary-light)' }}>
-            <Star size={11} style={{ color: 'var(--color-secondary)', fill: 'var(--color-secondary)' }} />
-            <span className="text-[11px] font-bold text-white">{TRAINER.rating}</span>
-          </div>
+    <div className="space-y-5 pb-4">
+      {/* ── Hero ───────────────────────────────────────────────────────────
+          Bigger than before, and the specialisation is a pill rather than a
+          line of loose violet text — as bare text a one-word specialisation
+          read like a rendering error sitting under the name. */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3.5"
+      >
+        <div className="relative flex-shrink-0">
+          <Avatar name={fullName} photoUrl={profile.photo_url} size={56} />
+          <span
+            className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full"
+            style={{ background: '#22C55E', border: '2px solid var(--color-bg)' }}
+            aria-hidden
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{greeting()}</p>
+          <h1 className="display text-2xl text-white truncate leading-tight">{profile.first_name}</h1>
+          {trainer.specialization && (
+            <span
+              className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold truncate max-w-full"
+              style={{
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                border: '1px solid rgba(124,58,237,0.30)',
+              }}
+            >
+              {trainer.specialization}
+            </span>
+          )}
         </div>
       </motion.div>
 
-      {/* Quick Stats */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="grid grid-cols-3 gap-2">
-        {[
-          { label: 'Members', value: TRAINER.membersAssigned, icon: Users, color: 'var(--color-primary)' },
-          { label: 'Classes Today', value: TRAINER.classesToday, icon: Calendar, color: 'var(--color-secondary)' },
-          { label: 'Pending', value: TRAINER.pendingBookings, icon: Clock, color: '#22c55e' },
-        ].map((stat, i) => (
-          <div key={stat.label} className="rounded-xl p-3 text-center"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-            <stat.icon size={16} className="mx-auto mb-1" style={{ color: stat.color }} />
-            <p className="text-lg font-bold text-white">{stat.value}</p>
-            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</p>
-          </div>
-        ))}
-      </motion.div>
+      {/* ── Needs you ──────────────────────────────────────────────────────
+          Renders only when there is something to act on. The old tile showed
+          "Awaiting approval — 0", which is a number nobody can do anything
+          with; when it mattered it looked identical to when it didn't. */}
+      {overview.pendingBookings > 0 && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+          onClick={() => navigate('/trainer/bookings')}
+          className="w-full p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+          style={{
+            background: 'var(--color-secondary-light)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: 'var(--radius-panel)',
+            boxShadow: '0 0 24px -8px rgba(245,158,11,0.35)',
+          }}
+        >
+          <span
+            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--color-secondary)', color: '#000' }}
+          >
+            <Clock size={20} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-bold text-white">
+              {overview.pendingBookings} booking {overview.pendingBookings === 1 ? 'request' : 'requests'}
+            </span>
+            <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+              Waiting on your approval
+            </span>
+          </span>
+          <ArrowRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+        </motion.button>
+      )}
 
-      {/* Today's Classes */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-bold text-white">Today's Classes</p>
-          <button onClick={() => navigate('/trainer/schedule')} className="text-[10px] font-semibold flex items-center gap-0.5"
-            style={{ color: 'var(--color-primary)' }}>
-            View All <ChevronRight size={11} />
-          </button>
-        </div>
-        <div className="space-y-2">
-          {TODAY_CLASSES.map(cls => (
-            <div key={cls.id} className="flex items-center gap-3 p-3 rounded-xl"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: 'var(--color-primary-light)' }}>
-                <Dumbbell size={14} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-white">{cls.name}</p>
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{cls.time}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] font-bold" style={{ color: 'var(--color-primary)' }}>{cls.members}/{cls.capacity}</p>
-                <p className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>enrolled</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+      {/* ── Today ──────────────────────────────────────────────────────────*/}
+      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <SectionHeader
+          title="Today"
+          action={
+            <button onClick={() => navigate('/trainer/schedule')}
+              className="text-xs font-semibold flex items-center gap-0.5"
+              style={{ color: 'var(--color-secondary)' }}>
+              Schedule <ChevronRight size={12} />
+            </button>
+          }
+        />
 
-      {/* Recent Activity */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <p className="text-xs font-bold text-white mb-2">Recent Activity</p>
-        <div className="space-y-1.5">
-          {RECENT_ACTIVITY.map(act => (
-            <div key={act.id} className="flex items-center gap-2.5 p-2.5 rounded-xl"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: act.type === 'progress' ? 'var(--color-primary-light)' : act.type === 'booking' ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)' }}>
-                {act.type === 'progress' && <TrendingUp size={12} style={{ color: 'var(--color-primary)' }} />}
-                {act.type === 'booking' && <Clock size={12} style={{ color: 'var(--color-secondary)' }} />}
-                {act.type === 'achievement' && <Star size={12} style={{ color: '#22c55e' }} />}
-              </div>
+        {nextClass ? (
+          <button
+            onClick={() => navigate('/trainer/schedule')}
+            className="w-full p-4 text-left active:scale-[0.99] transition-transform"
+            style={{
+              ...panelStyle,
+              borderRadius: 'var(--radius-panel)',
+              boxShadow: 'var(--shadow-panel)',
+              borderLeft: '4px solid var(--color-primary)',
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}
+              >
+                <CalendarClock size={20} />
+              </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-white truncate">{act.text}</p>
-                <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{act.time}</p>
+                <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>
+                  {timeOf(nextClass.scheduled_at)}
+                </p>
+                <p className="text-base font-bold text-white truncate mt-0.5">{nextClass.name}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                  {nextClass.location ? `${nextClass.location} · ` : ''}
+                  {nextClass.capacity} places · {nextClass.duration_minutes} min
+                </p>
               </div>
+              <ChevronRight size={18} className="flex-shrink-0 mt-1" style={{ color: 'var(--color-text-muted)' }} />
+            </div>
+
+            {laterToday > 0 && (
+              <p
+                className="text-xs mt-3 pt-3 font-semibold"
+                style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                + {laterToday} more {laterToday === 1 ? 'class' : 'classes'} later today
+              </p>
+            )}
+          </button>
+        ) : (
+          /* A designed empty state, not a grey bar. It says what would fill the
+             space and gives the one control that leads there. */
+          <div
+            className="p-6 flex flex-col items-center text-center"
+            style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
+          >
+            <span
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}
+            >
+              <CalendarOff size={20} />
+            </span>
+            <p className="text-sm font-bold text-white">No classes today</p>
+            <p className="text-xs mt-1 leading-relaxed max-w-[16rem]" style={{ color: 'var(--color-text-muted)' }}>
+              Nothing on your schedule. Members can still book you one-to-one in your bookable hours.
+            </p>
+            <button
+              onClick={() => navigate('/trainer/availability')}
+              className="mt-4 h-10 px-5 rounded-full text-xs font-bold text-black"
+              style={{ background: 'var(--color-secondary)' }}
+            >
+              Check my hours
+            </button>
+          </div>
+        )}
+      </motion.section>
+
+      {/* ── This week ──────────────────────────────────────────────────────
+          One banded card rather than three separate panels. Three empty boxes
+          in a row read as three things that are broken; one card with three
+          columns reads as a summary that happens to be quiet.
+
+          The old third figure here was a hardcoded "96% attendance". There is
+          no per-trainer attendance source, so it stays gone. */}
+      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <SectionHeader title="This week" />
+        <div
+          className="flex items-stretch"
+          style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
+        >
+          {weekStats.map((s, i) => (
+            <div
+              key={s.label}
+              className="flex-1 min-w-0 p-4 flex flex-col items-center text-center"
+              style={i > 0 ? { borderLeft: '1px solid var(--color-border)' } : undefined}
+            >
+              <s.icon size={15} style={{ color: 'var(--color-secondary)' }} className="mb-1.5" />
+              <span className="display text-2xl text-white leading-none">{s.value}</span>
+              <span className="text-xs mt-1.5 leading-tight" style={{ color: 'var(--color-text-muted)' }}>
+                {s.label}
+              </span>
             </div>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* Sessions Summary */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-        className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-        <p className="text-xs font-bold text-white mb-2">This Week</p>
-        <div className="flex items-center justify-between">
-          <div className="text-center">
-            <p className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>12</p>
-            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Sessions</p>
+      {/* ── Shortcuts ──────────────────────────────────────────────────────
+          Only the two destinations the bottom bar does *not* carry. Repeating
+          Members/Schedule/Bookings here would be four taps to the same place. */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+        className="grid grid-cols-2 gap-2"
+      >
+        {[
+          { title: 'Bookable hours', subtitle: 'When members can book you', icon: Clock, to: '/trainer/availability' },
+          { title: 'Achievements', subtitle: 'Milestones from your coaching', icon: Trophy, to: '/trainer/achievements' },
+        ].map((a) => (
+          <button
+            key={a.to}
+            onClick={() => navigate(a.to)}
+            className="p-3.5 text-left flex flex-col gap-2 active:scale-[0.98] transition-transform"
+            style={{ ...panelStyle, borderRadius: 'var(--radius-card)' }}
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--color-primary-light)' }}>
+              <a.icon size={17} style={{ color: 'var(--color-primary)' }} />
+            </span>
+            <span className="block text-sm font-semibold text-white leading-tight">{a.title}</span>
+            <span className="block text-xs leading-snug" style={{ color: 'var(--color-text-muted)' }}>
+              {a.subtitle}
+            </span>
+          </button>
+        ))}
+      </motion.section>
+
+      {/* ── Recent activity ────────────────────────────────────────────────
+          Every row used to be the same amber clock whether the booking was
+          approved, cancelled or waiting — the status was buried mid-sentence
+          in a pre-baked string. It now drives the icon and the colour. */}
+      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <SectionHeader
+          title="Recent activity"
+          action={
+            overview.recentActivity.length > 0 ? (
+              <button onClick={() => navigate('/trainer/bookings')}
+                className="text-xs font-semibold flex items-center gap-0.5"
+                style={{ color: 'var(--color-secondary)' }}>
+                All <ChevronRight size={12} />
+              </button>
+            ) : undefined
+          }
+        />
+        {overview.recentActivity.length === 0 ? (
+          <div className="p-5 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              No booking activity yet.
+            </p>
           </div>
-          <div className="w-px h-8" style={{ background: 'var(--color-border)' }} />
-          <div className="text-center">
-            <p className="text-xl font-bold" style={{ color: 'var(--color-secondary)' }}>48</p>
-            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Members Trained</p>
+        ) : (
+          <div
+            className="overflow-hidden"
+            style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
+          >
+            {overview.recentActivity.map((act, i) => {
+              const meta = activityMeta(act.status);
+              const Icon = meta.icon;
+              return (
+                <div
+                  key={act.id}
+                  className="px-4 py-3 flex items-center gap-3"
+                  style={i > 0 ? { borderTop: '1px solid var(--color-border)' } : undefined}
+                >
+                  <span
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: meta.tint, color: meta.color }}
+                  >
+                    <Icon size={17} />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-white truncate">
+                      {act.className}
+                    </span>
+                    <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      {new Date(act.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0"
+                    style={{ background: meta.tint, color: meta.color }}
+                  >
+                    {meta.verb}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <div className="w-px h-8" style={{ background: 'var(--color-border)' }} />
-          <div className="text-center">
-            <p className="text-xl font-bold text-white">96%</p>
-            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Attendance</p>
-          </div>
-        </div>
-      </motion.div>
+        )}
+      </motion.section>
     </div>
   );
 }

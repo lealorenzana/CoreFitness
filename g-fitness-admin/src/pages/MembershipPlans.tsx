@@ -1,205 +1,177 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Plus, Edit2, Trash2, X, Check, Users, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Check, Users, Banknote } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { listPlans, createPlan, updatePlan, deletePlan } from '../lib/api/membershipPlans';
+import { listMemberships } from '../lib/api/memberships';
+import type { MembershipPlanRow, PlanTier } from '../types/db';
 
-interface MembershipPlan {
-  id: string;
-  name: string;
-  type: 'Basic' | 'Standard' | 'Premium';
-  price: number;
-  duration: number; // in months
-  features: string[];
-  activeMembers: number;
-  status: 'Active' | 'Inactive';
-  description: string;
+/** `durationMonths` is a form string, so NULL needs a value the <select> can hold. */
+const NEVER = 'never';
+
+/** "/ 1 month", "/ never expires" — one wording for the cards and the list. */
+function durationLabel(days: number | null): string {
+  if (days == null) return 'never expires';
+  const months = Math.round(days / 30);
+  return months <= 1 ? `${months || 1} month` : `${months} months`;
 }
-
-const MOCK_PLANS: MembershipPlan[] = [
-  {
-    id: 'plan-001',
-    name: 'Basic Plan',
-    type: 'Basic',
-    price: 500,
-    duration: 1,
-    features: [
-      'Access to gym equipment',
-      'Locker room access',
-      'Basic workout guidance',
-    ],
-    activeMembers: 45,
-    status: 'Active',
-    description: 'Perfect for beginners starting their fitness journey',
-  },
-  {
-    id: 'plan-002',
-    name: 'Standard Plan',
-    type: 'Standard',
-    price: 1200,
-    duration: 1,
-    features: [
-      'All Basic features',
-      'Group fitness classes',
-      'Nutrition consultation',
-      'Progress tracking',
-      'Free gym merchandise',
-    ],
-    activeMembers: 78,
-    status: 'Active',
-    description: 'Most popular choice for regular gym-goers',
-  },
-  {
-    id: 'plan-003',
-    name: 'Premium Plan',
-    type: 'Premium',
-    price: 2500,
-    duration: 1,
-    features: [
-      'All Standard features',
-      'Personal training sessions',
-      'Customized workout plans',
-      'Priority booking',
-      'Trainer evaluation access',
-      'Guest passes (2/month)',
-      'Spa & sauna access',
-    ],
-    activeMembers: 32,
-    status: 'Active',
-    description: 'Complete fitness experience with personal attention',
-  },
-  {
-    id: 'plan-004',
-    name: 'Basic Quarterly',
-    type: 'Basic',
-    price: 1350,
-    duration: 3,
-    features: [
-      'Access to gym equipment',
-      'Locker room access',
-      'Basic workout guidance',
-      '10% discount vs monthly',
-    ],
-    activeMembers: 28,
-    status: 'Active',
-    description: '3-month commitment with savings',
-  },
-];
 
 const emptyForm = {
   name: '',
-  type: 'Standard' as const,
+  tier: 'premium' as PlanTier,
   price: '',
-  duration: '1',
+  durationMonths: '1',
   description: '',
-  status: 'Active' as const,
+  isActive: true,
+  // What the plan actually includes (0017). Kept as strings because they're
+  // form fields; '' means "no limit", which is what NULL means in the column.
+  canBookClasses: true,
+  classesPerWeek: '',
+  canBookPt: true,
+  ptPerMonth: '',
 };
 
 export default function MembershipPlans() {
-  const [plans, setPlans] = useState<MembershipPlan[]>(() => {
-    try {
-      const s = localStorage.getItem('admin_membership_plans');
-      if (s) return JSON.parse(s);
-    } catch {}
-    localStorage.setItem('admin_membership_plans', JSON.stringify(MOCK_PLANS));
-    return MOCK_PLANS;
-  });
+  const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  const [activeMembersByPlan, setActiveMembersByPlan] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
+  const [editingPlan, setEditingPlan] = useState<MembershipPlanRow | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [features, setFeatures] = useState<string[]>([]);
+  const [featureLines, setFeatureLines] = useState<string[]>([]);
   const [newFeature, setNewFeature] = useState('');
 
-  const savePlans = (updated: MembershipPlan[]) => {
-    setPlans(updated);
-    localStorage.setItem('admin_membership_plans', JSON.stringify(updated));
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [planRows, membershipRows] = await Promise.all([listPlans(), listMemberships()]);
+      setPlans(planRows);
+      const counts: Record<string, number> = {};
+      for (const m of membershipRows) {
+        if (m.status === 'active') counts[m.plan_id] = (counts[m.plan_id] ?? 0) + 1;
+      }
+      setActiveMembersByPlan(counts);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to load membership plans', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const openAdd = () => {
     setEditingPlan(null);
     setForm(emptyForm);
-    setFeatures([]);
+    setFeatureLines([]);
     setShowModal(true);
   };
 
-  const openEdit = (plan: MembershipPlan) => {
+  const openEdit = (plan: MembershipPlanRow) => {
     setEditingPlan(plan);
     setForm({
       name: plan.name,
-      type: plan.type,
+      tier: plan.tier,
       price: String(plan.price),
-      duration: String(plan.duration),
-      description: plan.description,
-      status: plan.status,
+      durationMonths:
+        plan.duration_days == null ? NEVER : String(Math.max(1, Math.round(plan.duration_days / 30))),
+      description: '',
+      isActive: plan.is_active,
+      canBookClasses: plan.can_book_classes,
+      classesPerWeek: plan.class_bookings_per_week == null ? '' : String(plan.class_bookings_per_week),
+      canBookPt: plan.can_book_pt,
+      ptPerMonth: plan.pt_sessions_per_month == null ? '' : String(plan.pt_sessions_per_month),
     });
-    setFeatures([...plan.features]);
+    setFeatureLines((plan.description ?? '').split('\n').filter((l) => l.trim().length > 0));
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!form.name.trim() || !form.price || features.length === 0) {
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.price || featureLines.length === 0) {
       showToast('Name, price, and at least one feature are required', 'error');
       return;
     }
 
-    if (editingPlan) {
-      const updated = plans.map(p =>
-        p.id === editingPlan.id
-          ? { ...p, ...form, price: Number(form.price), duration: Number(form.duration), features }
-          : p
-      );
-      savePlans(updated);
-      showToast('Plan updated!', 'success');
-    } else {
-      const created: MembershipPlan = {
-        id: `plan-${Date.now()}`,
-        ...form,
-        price: Number(form.price),
-        duration: Number(form.duration),
-        features,
-        activeMembers: 0,
-      };
-      savePlans([created, ...plans]);
-      showToast('Plan created!', 'success');
+    const payload = {
+      name: form.name,
+      tier: form.tier,
+      price: Number(form.price),
+      duration_days: form.durationMonths === NEVER ? null : Number(form.durationMonths) * 30,
+      description: featureLines.join('\n'),
+      is_active: form.isActive,
+      // A blank quota means unlimited, which the column stores as NULL. A plan
+      // that can't book at all carries no quota — the boolean already said no,
+      // and leaving a stale number behind would resurface if it's re-enabled.
+      can_book_classes: form.canBookClasses,
+      can_book_pt: form.canBookPt,
+      class_bookings_per_week:
+        form.canBookClasses && form.classesPerWeek.trim() !== '' ? Number(form.classesPerWeek) : null,
+      pt_sessions_per_month:
+        form.canBookPt && form.ptPerMonth.trim() !== '' ? Number(form.ptPerMonth) : null,
+    };
+
+    try {
+      if (editingPlan) {
+        await updatePlan(editingPlan.id, payload);
+        showToast('Plan updated!', 'success');
+      } else {
+        await createPlan(payload);
+        showToast('Plan created!', 'success');
+      }
+      setShowModal(false);
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to save plan', 'error');
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    const plan = plans.find(p => p.id === id);
-    if (plan && plan.activeMembers > 0) {
-      showToast(`Cannot delete plan with ${plan.activeMembers} active members`, 'error');
+  const handleDelete = async (plan: MembershipPlanRow) => {
+    const activeMembers = activeMembersByPlan[plan.id] ?? 0;
+    if (activeMembers > 0) {
+      showToast(`Cannot delete plan with ${activeMembers} active members`, 'error');
       return;
     }
     if (!window.confirm('Delete this membership plan?')) return;
-    savePlans(plans.filter(p => p.id !== id));
-    showToast('Plan deleted', 'success');
+    try {
+      await deletePlan(plan.id);
+      showToast('Plan deleted', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to delete plan', 'error');
+    }
   };
 
   const addFeature = () => {
     if (!newFeature.trim()) return;
-    setFeatures([...features, newFeature.trim()]);
+    setFeatureLines([...featureLines, newFeature.trim()]);
     setNewFeature('');
   };
 
   const removeFeature = (index: number) => {
-    setFeatures(features.filter((_, i) => i !== index));
+    setFeatureLines(featureLines.filter((_, i) => i !== index));
   };
 
-  const getPlanColor = (type: string) => {
-    switch (type) {
-      case 'Basic': return 'var(--color-text-muted)';
-      case 'Standard': return 'var(--color-primary)';
-      case 'Premium': return 'var(--color-secondary)';
+  const getTierColor = (tier: PlanTier) => {
+    switch (tier) {
+      case 'free': return 'var(--color-text-muted)';
+      case 'freemium': return 'var(--color-primary)';
+      case 'premium': return 'var(--color-secondary)';
       default: return 'var(--color-text-muted)';
     }
   };
 
-  const totalRevenue = plans.reduce((sum, p) => sum + (p.price * p.activeMembers), 0);
-  const totalMembers = plans.reduce((sum, p) => sum + p.activeMembers, 0);
+  const totalRevenue = plans.reduce((sum, p) => sum + p.price * (activeMembersByPlan[p.id] ?? 0), 0);
+  const totalMembers = plans.reduce((sum, p) => sum + (activeMembersByPlan[p.id] ?? 0), 0);
+
+  if (loading) {
+    return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading plans…</div>;
+  }
 
   return (
     <div className="space-y-5">
@@ -217,10 +189,10 @@ export default function MembershipPlans() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Total Plans', value: plans.length, icon: DollarSign },
+          { label: 'Total Plans', value: plans.length, icon: Banknote },
           { label: 'Active Members', value: totalMembers, icon: Users },
-          { label: 'Monthly Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: DollarSign },
-          { label: 'Avg Price', value: `₱${Math.round(plans.reduce((s, p) => s + p.price, 0) / plans.length)}`, icon: DollarSign },
+          { label: 'Monthly Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote },
+          { label: 'Avg Price', value: plans.length ? `₱${Math.round(plans.reduce((s, p) => s + p.price, 0) / plans.length)}` : '₱0', icon: Banknote },
         ].map(s => {
           const Icon = s.icon;
           return (
@@ -238,70 +210,72 @@ export default function MembershipPlans() {
 
       {/* Plans Grid */}
       <div className="grid grid-cols-2 gap-4">
-        {plans.map((plan, i) => (
-          <motion.div key={plan.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="!p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-white mb-1">{plan.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: `${getPlanColor(plan.type)}20`, color: getPlanColor(plan.type) }}>
-                      {plan.type}
-                    </span>
-                    <Badge variant={plan.status === 'Active' ? 'Active' : 'Expired'}>{plan.status}</Badge>
+        {plans.map((plan, i) => {
+          const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
+          const activeMembers = activeMembersByPlan[plan.id] ?? 0;
+          return (
+            <motion.div key={plan.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <Card className="!p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white mb-1">{plan.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase"
+                        style={{ background: `${getTierColor(plan.tier)}20`, color: getTierColor(plan.tier) }}>
+                        {plan.tier}
+                      </span>
+                      <Badge variant={plan.is_active ? 'Active' : 'Expired'}>{plan.is_active ? 'Active' : 'Inactive'}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                    <button onClick={() => openEdit(plan)} className="p-1.5 rounded-lg"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      <Edit2 size={11} />
+                    </button>
+                    <button onClick={() => handleDelete(plan)} className="p-1.5 rounded-lg"
+                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                  <button onClick={() => openEdit(plan)} className="p-1.5 rounded-lg"
-                    style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                    <Edit2 size={11} />
-                  </button>
-                  <button onClick={() => handleDelete(plan.id)} className="p-1.5 rounded-lg"
-                    style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-              </div>
 
-              <p className="text-[10px] mb-3 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{plan.description}</p>
-
-              <div className="flex items-baseline gap-1 mb-3">
-                <span className="text-2xl font-bold text-white">₱{plan.price}</span>
-                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  / {plan.duration} {plan.duration === 1 ? 'month' : 'months'}
-                </span>
-              </div>
-
-              <div className="space-y-1.5 mb-3">
-                {plan.features.slice(0, 4).map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-                    <span className="flex-1">{feature}</span>
-                  </div>
-                ))}
-                {plan.features.length > 4 && (
-                  <p className="text-[9px] pl-4" style={{ color: 'var(--color-text-muted)' }}>
-                    +{plan.features.length - 4} more features
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Active Members</span>
-                  <span className="text-sm font-bold text-white">{plan.activeMembers}</span>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Monthly Revenue</span>
-                  <span className="text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
-                    ₱{(plan.price * plan.activeMembers).toLocaleString()}
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-2xl font-bold text-white">₱{plan.price}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                    / {durationLabel(plan.duration_days)}
                   </span>
                 </div>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+
+                <div className="space-y-1.5 mb-3">
+                  {features.slice(0, 4).map((feature, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+                      <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+                      <span className="flex-1">{feature}</span>
+                    </div>
+                  ))}
+                  {features.length > 4 && (
+                    <p className="text-[9px] pl-4" style={{ color: 'var(--color-text-muted)' }}>
+                      +{features.length - 4} more features
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Active Members</span>
+                    <span className="text-sm font-bold text-white">{activeMembers}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Monthly Revenue</span>
+                    <span className="text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
+                      ₱{(plan.price * activeMembers).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Create/Edit Modal */}
@@ -324,63 +298,106 @@ export default function MembershipPlans() {
                     <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Plan Name *</label>
                     <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                       placeholder="e.g. Premium Plan"
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                       style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Type *</label>
-                      <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })}
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Tier *</label>
+                      <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value as PlanTier })}
+                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        <option value="Basic">Basic</option>
-                        <option value="Standard">Standard</option>
-                        <option value="Premium">Premium</option>
+                        <option value="free">Free</option>
+                        <option value="freemium">Freemium</option>
+                        <option value="premium">Premium</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Price (₱) *</label>
                       <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
                         placeholder="1200"
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                     </div>
                     <div>
                       <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Duration</label>
-                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                      <select value={form.durationMonths} onChange={e => setForm({ ...form, durationMonths: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
                         <option value="1">1 month</option>
                         <option value="3">3 months</option>
                         <option value="6">6 months</option>
                         <option value="12">12 months</option>
+                        {/* Stored as duration_days = NULL (0024). The free tier
+                            used to fake this with 3650 days, which the member
+                            app then counted down from. */}
+                        <option value={NEVER}>Never expires</option>
                       </select>
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Description</label>
-                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                      placeholder="Brief description of the plan..."
-                      rows={2}
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none resize-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div>
                     <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Status</label>
-                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none"
+                    <select value={form.isActive ? 'Active' : 'Inactive'} onChange={e => setForm({ ...form, isActive: e.target.value === 'Active' })}
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                       style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
                     </select>
                   </div>
+                  {/* Entitlements — what this plan actually lets a member do.
+                      Enforced by triggers in migration 0017, not just here, so
+                      these switches are the real rules rather than a description. */}
+                  <div className="rounded-xl p-3 space-y-3"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    <div>
+                      <p className="text-xs font-semibold text-white">What this plan includes</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                        Enforced when a member books. Leave a limit blank for unlimited.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-xs text-white flex-1">Can book group classes</label>
+                      <select value={form.canBookClasses ? 'yes' : 'no'}
+                        onChange={e => setForm({ ...form, canBookClasses: e.target.value === 'yes' })}
+                        className="px-3 py-1.5 rounded-lg text-white text-xs"
+                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                      <input type="number" min="1" value={form.classesPerWeek}
+                        disabled={!form.canBookClasses}
+                        onChange={e => setForm({ ...form, classesPerWeek: e.target.value })}
+                        placeholder="∞ / week"
+                        className="w-24 px-3 py-1.5 rounded-lg text-white text-xs disabled:opacity-40"
+                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-xs text-white flex-1">Can book personal training</label>
+                      <select value={form.canBookPt ? 'yes' : 'no'}
+                        onChange={e => setForm({ ...form, canBookPt: e.target.value === 'yes' })}
+                        className="px-3 py-1.5 rounded-lg text-white text-xs"
+                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                      <input type="number" min="1" value={form.ptPerMonth}
+                        disabled={!form.canBookPt}
+                        onChange={e => setForm({ ...form, ptPerMonth: e.target.value })}
+                        placeholder="∞ / month"
+                        className="w-24 px-3 py-1.5 rounded-lg text-white text-xs disabled:opacity-40"
+                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-xs block mb-2" style={{ color: 'var(--color-text-muted)' }}>Features *</label>
                     <div className="flex gap-2 mb-2">
                       <input value={newFeature} onChange={e => setNewFeature(e.target.value)}
                         onKeyPress={e => e.key === 'Enter' && addFeature()}
                         placeholder="Add a feature..."
-                        className="flex-1 px-4 py-2 rounded-xl text-white text-sm focus:outline-none"
+                        className="flex-1 px-4 py-2 rounded-xl text-white text-sm"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
                       <button onClick={addFeature}
                         className="px-4 py-2 rounded-xl text-sm font-semibold text-black"
@@ -389,7 +406,7 @@ export default function MembershipPlans() {
                       </button>
                     </div>
                     <div className="space-y-1.5">
-                      {features.map((feature, idx) => (
+                      {featureLines.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2 p-2 rounded-lg"
                           style={{ background: 'var(--color-bg)' }}>
                           <Check size={12} style={{ color: 'var(--color-secondary)' }} />

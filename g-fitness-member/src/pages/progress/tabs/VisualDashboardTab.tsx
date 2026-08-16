@@ -28,9 +28,16 @@ export default function VisualDashboardTab() {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
 
-  // Weight trend (chronological)
+  // Weight trend (chronological). Entries with no weight recorded are skipped
+  // rather than plotted as zero — a missing measurement is not a 0 kg member,
+  // and one such point would flatten the whole chart.
   const weightChart: ChartPoint[] = useMemo(
-    () => body.map(b => ({ label: new Date(b.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: b.weight })),
+    () => body
+      .filter((b): b is typeof b & { weight: number } => b.weight != null)
+      .map(b => ({
+        label: new Date(`${b.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        value: b.weight,
+      })),
     [body],
   );
 
@@ -60,17 +67,19 @@ export default function VisualDashboardTab() {
     });
   }, [attendance]);
 
-  // Calories burned (last 30 days, summed per 5-day bucket)
-  const caloriesChart: ChartPoint[] = useMemo(() => {
+  // Minutes trained per 5-day bucket. This replaced a calories chart: calories
+  // need body mass and heart rate, neither of which anything here measures, so
+  // the old figures were invented. Minutes are recorded by the member.
+  const minutesChart: ChartPoint[] = useMemo(() => {
     const now = new Date();
     return Array.from({ length: 6 }).map((_, idx) => {
       const i = 5 - idx;
       const start = new Date(now.getTime() - (i + 1) * 5 * 86400000);
       const end   = new Date(now.getTime() - i * 5 * 86400000);
       const total = logs.filter(l => {
-        const d = new Date(l.date);
+        const d = new Date(`${l.date}T00:00:00`);
         return d >= start && d < end;
-      }).reduce((s, l) => s + l.calories, 0);
+      }).reduce((s, l) => s + (l.duration ?? 0), 0);
       return { label: `${(i + 1) * 5}d`, value: total };
     });
   }, [logs]);
@@ -92,7 +101,7 @@ export default function VisualDashboardTab() {
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold text-sm">Weight Trend</h3>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>last {body.length} entries</span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>last {body.length} entries</span>
         </div>
         <LineMini data={weightChart} color="var(--color-secondary)" height={160} />
       </div>
@@ -101,7 +110,7 @@ export default function VisualDashboardTab() {
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold text-sm">Workouts per Week</h3>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>last 6 weeks</span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>last 6 weeks</span>
         </div>
         <BarMini data={workoutsChart} color="var(--color-primary)" height={160} />
       </div>
@@ -110,18 +119,18 @@ export default function VisualDashboardTab() {
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold text-sm">Visit Days</h3>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>by weekday</span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>by weekday</span>
         </div>
         <BarMini data={attendanceChart} color="var(--color-secondary)" height={140} />
       </div>
 
-      {/* Calories burned area */}
+      {/* Minutes trained */}
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white font-semibold text-sm">Calories Burned</h3>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>last 30 days</span>
+          <h3 className="text-white font-semibold text-sm">Minutes Trained</h3>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>last 30 days</span>
         </div>
-        <AreaMini data={caloriesChart} color="var(--color-primary)" height={140} />
+        <AreaMini data={minutesChart} color="var(--color-primary)" height={140} />
       </div>
 
       {/* Weight start → current → goal */}
@@ -129,7 +138,7 @@ export default function VisualDashboardTab() {
         <h3 className="text-white font-semibold text-sm mb-3">Weight Journey</h3>
         <div className="flex items-center justify-between text-center">
           <div>
-            <p className="text-[11px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Start</p>
+            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Start</p>
             <p className="text-lg font-bold text-white">{startWeight} kg</p>
           </div>
           <div className="flex-1 mx-2 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }}>
@@ -139,12 +148,12 @@ export default function VisualDashboardTab() {
             }} />
           </div>
           <div>
-            <p className="text-[11px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Current</p>
+            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Current</p>
             <p className="text-lg font-bold" style={{ color: 'var(--color-secondary)' }}>{currentWeight} kg</p>
           </div>
           <div className="flex-1 mx-2 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }} />
           <div>
-            <p className="text-[11px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Goal</p>
+            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Goal</p>
             <p className="text-lg font-bold text-white">{goalWeight} kg</p>
           </div>
         </div>

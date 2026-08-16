@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import ChatbotPopup from './ChatbotPopup';
 
@@ -22,6 +22,8 @@ export default function FloatingChathead() {
   // Container dimensions for snapping
   const [containerWidth, setContainerWidth] = useState(375);
   const bubbleSize = 48;
+  /** Must match the `right`/`bottom` inset the bubble is parked at. */
+  const EDGE_GAP = 12;
 
   useEffect(() => {
     const el = constraintsRef.current;
@@ -37,19 +39,27 @@ export default function FloatingChathead() {
     }
   }, []);
 
+  /**
+   * Magnet to whichever side it was let go nearest.
+   *
+   * The old version never worked, for two reasons.
+   *
+   * The bubble is anchored `right: 12`, so `x` is an offset *from the right
+   * edge*: `x = 0` is already the right side and left is **negative**. The
+   * snap treated `x` as a left-anchored coordinate and sent it to
+   * `containerWidth - bubbleSize`, i.e. most of a screen further right, off
+   * the edge. In practice the only way to reach the left was to physically
+   * drag it all the way there and have the constraint stop it.
+   *
+   * And it used `x.set()`, which teleports. Snapping is the whole feel of a
+   * chat head, so it animates.
+   */
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
-    // Snap to nearest horizontal edge
-    const currentX = x.get();
-    const midpoint = (containerWidth - bubbleSize) / 2;
-    const snapLeft = 0;
-    const snapRight = containerWidth - bubbleSize;
-
-    if (currentX < midpoint) {
-      x.set(snapLeft);
-    } else {
-      x.set(snapRight);
-    }
+    // 0 = parked right, -travel = parked left.
+    const travel = Math.max(0, containerWidth - bubbleSize - EDGE_GAP * 2);
+    const target = x.get() < -travel / 2 ? -travel : 0;
+    animate(x, target, { type: 'spring', stiffness: 420, damping: 32, mass: 0.7 });
   }, [x, containerWidth]);
 
   const handleTap = () => {
@@ -84,8 +94,12 @@ export default function FloatingChathead() {
           className="pointer-events-auto cursor-grab active:cursor-grabbing"
           whileTap={{ scale: 0.92 }}
           initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300, delay: 0.5 }}
+          /* The head hands over to the panel: it drops away as the window
+             grows out of this exact corner, and comes back as it collapses.
+             Leaving it sitting on top of its own expanded window is what gave
+             the old version away as a dialog rather than a bubble. */
+          animate={{ scale: chatOpen ? 0 : 1, opacity: chatOpen ? 0 : 1 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 320, delay: chatOpen ? 0 : 0.12 }}
         >
           {/* The bubble */}
           <div

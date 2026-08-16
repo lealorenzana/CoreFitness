@@ -1,96 +1,62 @@
-// Enhanced QR Code generation with security features
-// For prototype: Shows the concept
-// For production: Would use crypto library and backend validation
+// Check-in QR payload.
+//
+// Format: `CF1.<timestamp base36>.<member id>`, uppercased.
+//
+// This used to be base64(JSON) carrying memberId, timestamp, gymId, expiresIn
+// and nonce — about 196 characters. That produced a QR dense enough (~57 modules
+// across) that a webcam at the front desk could not reliably decode it off a
+// phone screen. The scanner only ever read `memberId` and `timestamp`; gymId,
+// expiresIn and nonce were dead weight, so they're gone.
+//
+// Uppercase, digits, '-' and '.' all live inside QR *alphanumeric* mode, which
+// packs far tighter than the mixed-case base64 this replaces. The result is
+// roughly a third of the previous module count.
+//
+// Member ids are lowercase UUIDs in Postgres, so parsing lowercases them again
+// before they're used as a lookup key.
 
-interface QRData {
+/** Seconds a generated code stays valid. Mirrored in the admin scanner. */
+export const QR_TTL_SECONDS = 60;
+
+const QR_PREFIX = 'CF1';
+
+export interface QRData {
   memberId: string;
   timestamp: number;
-  gymId: string;
-  expiresIn: number; // seconds
-  nonce: string; // unique identifier for each QR
 }
 
-export const generateSecureQR = (memberId: string, gymId: string): string => {
-  const timestamp = Date.now();
-  const expiresIn = 60; // 60 seconds validity
-  const nonce = Math.random().toString(36).substring(2, 15); // unique random string
-  
-  const qrData: QRData = {
-    memberId,
-    timestamp,
-    gymId,
-    expiresIn,
-    nonce
-  };
-  
-  // In production: Encrypt with AES-256
-  // const encrypted = CryptoJS.AES.encrypt(JSON.stringify(qrData), SECRET_KEY);
-  // return encrypted.toString();
-  
-  // For prototype: Base64 encode (shows the concept)
-  const encoded = btoa(JSON.stringify(qrData));
-  return encoded;
+export const generateSecureQR = (memberId: string): string =>
+  `${QR_PREFIX}.${Date.now().toString(36)}.${memberId}`.toUpperCase();
+
+/** Returns null when the string isn't one of our codes at all. */
+export const parseQR = (qrCode: string): QRData | null => {
+  const parts = qrCode.trim().split('.');
+  if (parts.length !== 3) return null;
+  if (parts[0].toUpperCase() !== QR_PREFIX) return null;
+
+  const timestamp = parseInt(parts[1], 36);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+  if (!parts[2]) return null;
+
+  return { memberId: parts[2].toLowerCase(), timestamp };
 };
 
-export const validateQR = (qrCode: string): { valid: boolean; reason?: string; data?: QRData } => {
-  try {
-    // Decode QR data
-    const decoded = atob(qrCode);
-    const qrData: QRData = JSON.parse(decoded);
-    
-    // Check expiration
-    const now = Date.now();
-    const expirationTime = qrData.timestamp + (qrData.expiresIn * 1000);
-    
-    if (now > expirationTime) {
-      return { valid: false, reason: 'QR Code expired. Please generate a new one.' };
-    }
-    
-    // Check if used recently (prevent duplicate scans)
-    const lastScan = localStorage.getItem(`last_scan_${qrData.memberId}`);
-    if (lastScan) {
-      const lastScanTime = parseInt(lastScan);
-      if (now - lastScanTime < 5000) { // 5 seconds cooldown
-        return { valid: false, reason: 'Already checked in. Please wait 5 seconds.' };
-      }
-    }
-    
-    // Store scan time
-    localStorage.setItem(`last_scan_${qrData.memberId}`, now.toString());
-    
-    return { valid: true, data: qrData };
-    
-  } catch (error) {
-    return { valid: false, reason: 'Invalid QR Code format' };
+export const validateQR = (
+  qrCode: string
+): { valid: boolean; reason?: string; data?: QRData } => {
+  const data = parseQR(qrCode);
+  if (!data) return { valid: false, reason: 'Invalid QR Code format' };
+
+  if (Date.now() > data.timestamp + QR_TTL_SECONDS * 1000) {
+    return { valid: false, reason: 'QR Code expired. Please generate a new one.' };
   }
+
+  return { valid: true, data };
 };
 
 export const getQRTimeRemaining = (qrCode: string): number => {
-  try {
-    const decoded = atob(qrCode);
-    const qrData: QRData = JSON.parse(decoded);
-    
-    const now = Date.now();
-    const expirationTime = qrData.timestamp + (qrData.expiresIn * 1000);
-    const remaining = Math.max(0, Math.floor((expirationTime - now) / 1000));
-    
-    return remaining;
-  } catch {
-    return 0;
-  }
+  const data = parseQR(qrCode);
+  if (!data) return 0;
+  const expiresAt = data.timestamp + QR_TTL_SECONDS * 1000;
+  return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
 };
-
-// Defense Points:
-// ✅ Time-based expiration (60 seconds)
-// ✅ Duplicate scan prevention (5 second cooldown)
-// ✅ Timestamp validation
-// ✅ Gym-specific QR codes
-// ✅ Unique nonce for each QR (prevents reuse)
-// 
-// Production Enhancements:
-// - AES-256 encryption with rotating keys
-// - Server-side validation
-// - Device fingerprinting
-// - Geolocation verification
-// - Rate limiting (max 10 scans per day)
-// - Audit logging with IP address

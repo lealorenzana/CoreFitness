@@ -1,6 +1,6 @@
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
-import { Dumbbell, Users, QrCode, CalendarDays, TrendingUp, MessageSquare, Shield, ArrowUp, Activity, Bell, CreditCard, Target } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { Dumbbell, Users, QrCode, CalendarDays, TrendingUp, MessageSquare, Shield, ArrowUp } from 'lucide-react';
 
 const FEATURES = [
   { icon: Users, title: 'Member Management', desc: 'Track memberships, body progress, and attendance in one place.' },
@@ -9,20 +9,6 @@ const FEATURES = [
   { icon: TrendingUp, title: 'Progress Tracking', desc: 'BMI, body measurements, workout logs, and goal achievement.' },
   { icon: MessageSquare, title: 'Trainer Feedback', desc: 'Workout recommendations, performance comments, and plans.' },
   { icon: Shield, title: 'Role-Based Access', desc: 'Admin, Staff, and Member views with appropriate permissions.' },
-];
-
-// Feature strip items — based on actual system capabilities
-const FEATURE_STRIP = [
-  { icon: QrCode, label: 'QR Check-in' },
-  { icon: TrendingUp, label: 'Progress Tracking' },
-  { icon: CalendarDays, label: 'Class Booking' },
-  { icon: Users, label: 'Member Portal' },
-  { icon: Bell, label: 'Smart Alerts' },
-  { icon: CreditCard, label: 'Payments' },
-  { icon: Dumbbell, label: 'Workout Logs' },
-  { icon: Target, label: 'Goal System' },
-  { icon: Activity, label: 'Body Analytics' },
-  { icon: Shield, label: 'Badge Rewards' },
 ];
 
 const MARQUEE_ITEMS = [

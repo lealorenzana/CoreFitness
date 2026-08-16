@@ -1,36 +1,70 @@
+import { panelStyle } from '../../../components/ui/Card';
+import { Field, TextInput } from '../../../components/ui/Field';
+import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
-import { Plus, X } from 'lucide-react';
-import { progressService, calcBmi, bmiLabel, type BodyProgressEntry } from '../../../services/progressService';
+import { Activity, Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
-import ErrorState from '../../../components/ui/ErrorState';
-import { Activity } from 'lucide-react';
+import { toast } from '../../../components/ui/Toast';
+import { errorMessage } from '../../../utils/errorMessage';
+import {
+  progressService, calcBmi, bmiLabel, bmiColor, type BodyProgressEntry,
+} from '../../../services/progressService';
 
-interface FormState {
-  weight: string; height: string; arms: string;
-  waist: string; chest: string; legs: string; bodyFatPct: string;
+/**
+ * Body measurements, from `body_measurements` (migration 0020).
+ *
+ * Every field is optional. A member who only ever weighs themselves gets a
+ * weight chart and blank measurements — not zeroes, which would read as "0 cm"
+ * and drag any trend line to the floor.
+ */
+
+const FIELDS = [
+  { key: 'weight', label: 'Weight', unit: 'kg' },
+  { key: 'height', label: 'Height', unit: 'cm' },
+  { key: 'bodyFatPct', label: 'Body fat', unit: '%' },
+  { key: 'chest', label: 'Chest', unit: 'cm' },
+  { key: 'waist', label: 'Waist', unit: 'cm' },
+  { key: 'arms', label: 'Arms', unit: 'cm' },
+  { key: 'legs', label: 'Legs', unit: 'cm' },
+] as const;
+
+type FieldKey = typeof FIELDS[number]['key'];
+
+/** Change between two readings, or null when either is missing. */
+function delta(current: number | null, previous: number | null): number | null {
+  if (current == null || previous == null) return null;
+  return Number((current - previous).toFixed(1));
 }
 
-const emptyForm: FormState = {
-  weight: '', height: '', arms: '', waist: '', chest: '', legs: '', bodyFatPct: '',
-};
+function Trend({ value, unit }: { value: number | null; unit: string }) {
+  if (value == null) return null;
+  const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
+  return (
+    <span className="text-xs flex items-center gap-0.5" style={{ color: 'var(--color-text-muted)' }}>
+      <Icon size={10} />
+      {value > 0 ? '+' : ''}{value} {unit}
+    </span>
+  );
+}
 
 export default function BodyProgressTab() {
   const memberId = useMemberId();
-  const [entries, setEntries]   = useState<BodyProgressEntry[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(false);
+  const [entries, setEntries] = useState<BodyProgressEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<FieldKey, string>>({
+    weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '',
+  });
 
   const load = async () => {
-    setLoading(true); setError(false);
+    setLoading(true);
     try {
-      const data = await progressService.getBodyProgress(memberId);
-      setEntries(data);
-    } catch {
-      setError(true);
+      setEntries(await progressService.getBodyProgress(memberId));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load your measurements'));
     } finally {
       setLoading(false);
     }
@@ -38,155 +72,182 @@ export default function BodyProgressTab() {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
 
-  const latest = entries[entries.length - 1];
-  const previous = entries[entries.length - 2];
-  const bmi = latest ? calcBmi(latest.height, latest.weight) : 0;
-  const bmiInfo = bmiLabel(bmi);
-
-  const muscleDelta = latest && previous && latest.muscleMassKg && previous.muscleMassKg
-    ? +(latest.muscleMassKg - previous.muscleMassKg).toFixed(1)
-    : 0;
-  const fatDelta = latest && previous
-    ? +(latest.bodyFatPct - previous.bodyFatPct).toFixed(1)
-    : 0;
-
-  const handleSubmit = async () => {
-    const weight = Number(form.weight); const height = Number(form.height);
-    if (!weight || !height) return;
-    const entry = {
-      date: new Date().toISOString().split('T')[0],
-      weight, height,
-      bmi: calcBmi(height, weight),
-      arms: Number(form.arms) || 0,
-      waist: Number(form.waist) || 0,
-      chest: Number(form.chest) || 0,
-      legs: Number(form.legs) || 0,
-      bodyFatPct: Number(form.bodyFatPct) || 0,
-    };
-    await progressService.addBodyProgress(memberId, entry);
-    setForm(emptyForm); setShowForm(false);
-    load();
+  const save = async () => {
+    // A blank field means "didn't measure this", which must reach the database
+    // as NULL. Number('') is 0, so every blank would silently become a real zero.
+    const num = (v: string) => (v.trim() === '' ? null : Number(v));
+    if (FIELDS.every((f) => form[f.key].trim() === '')) {
+      return toast.error('Fill in at least one measurement');
+    }
+    setSaving(true);
+    try {
+      await progressService.addBodyProgress(memberId, {
+        weight: num(form.weight), height: num(form.height), bodyFatPct: num(form.bodyFatPct),
+        chest: num(form.chest), waist: num(form.waist), arms: num(form.arms), legs: num(form.legs),
+      });
+      toast.success('Measurement saved');
+      setShowForm(false);
+      setForm({ weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '' });
+      await load();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save that measurement'));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-      </div>
-    );
-  }
-  if (error) return <ErrorState onRetry={load} />;
+  // One question per screen. Every measurement is optional, so no step declares
+  // `valid` — each can be skipped, and the save itself is what enforces "at
+  // least one". Pairs share a step where they're naturally measured together.
+  const set = (key: FieldKey) => (v: string) => setForm((f) => ({ ...f, [key]: v }));
+  const filled = (...keys: FieldKey[]) => keys.some((k) => form[k].trim() !== '');
+
+  // The member's own last reading, offered as a starting point — never filled
+  // in for them. Most measurements barely move week to week, so typing a whole
+  // number from scratch each time is the wrong default.
+  const last = entries.length ? entries[entries.length - 1] : null;
+  const seedOf = (key: FieldKey) => (last ? last[key] : null);
+  const seedText = (key: FieldKey, unit: string) => {
+    const v = seedOf(key);
+    return v == null ? undefined : `Last logged ${v} ${unit}`;
+  };
+
+  const steps: FlowStep[] = [
+    {
+      id: 'weight',
+      title: 'What do you weigh?',
+      hint: 'Skip any step you did not measure — a blank is stored as "not measured", never as zero.',
+      answered: filled('weight'),
+      render: <BigNumberInput value={form.weight} onChange={set('weight')} unit="kg" step={0.5}
+        seed={seedOf('weight')} seedLabel={seedText('weight', 'kg')} autoFocus />,
+    },
+    {
+      id: 'height',
+      title: 'How tall are you?',
+      hint: 'Only needed once — it is what turns your weight into a BMI.',
+      answered: filled('height'),
+      render: <BigNumberInput value={form.height} onChange={set('height')} unit="cm"
+        seed={seedOf('height')} seedLabel={seedText('height', 'cm')} />,
+    },
+    {
+      id: 'bodyfat',
+      title: 'Body fat?',
+      hint: 'If a caliper or smart scale gave you a number. Otherwise skip it.',
+      answered: filled('bodyFatPct'),
+      render: <BigNumberInput value={form.bodyFatPct} onChange={set('bodyFatPct')} unit="%" step={0.5}
+        seed={seedOf('bodyFatPct')} seedLabel={seedText('bodyFatPct', '%')} />,
+    },
+    {
+      id: 'upper',
+      title: 'Upper body',
+      hint: 'Tape measure, relaxed, same spot each time.',
+      answered: filled('chest', 'arms'),
+      render: (
+        <div className="space-y-3">
+          <Field label="Chest (cm)"><TextInput type="number" inputMode="decimal" value={form.chest} onChange={(e) => set('chest')(e.target.value)} /></Field>
+          <Field label="Arms (cm)"><TextInput type="number" inputMode="decimal" value={form.arms} onChange={(e) => set('arms')(e.target.value)} /></Field>
+        </div>
+      ),
+    },
+    {
+      id: 'lower',
+      title: 'Lower body',
+      hint: 'Waist at the navel, legs at the widest point of the thigh.',
+      answered: filled('waist', 'legs'),
+      render: (
+        <div className="space-y-3">
+          <Field label="Waist (cm)"><TextInput type="number" inputMode="decimal" value={form.waist} onChange={(e) => set('waist')(e.target.value)} /></Field>
+          <Field label="Legs (cm)"><TextInput type="number" inputMode="decimal" value={form.legs} onChange={(e) => set('legs')(e.target.value)} /></Field>
+        </div>
+      ),
+    },
+  ];
+
+  if (loading) return <div className="space-y-3"><Skeleton className="h-32" /><Skeleton className="h-40" /></div>;
+
+  const latest = last;
+  const previous = entries.length > 1 ? entries[entries.length - 2] : null;
+  const latestBmi = latest ? calcBmi(latest.weight, latest.height) : null;
 
   return (
     <div className="space-y-4">
-      {/* Latest snapshot */}
-      {latest ? (
-        <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-white font-semibold">Latest Snapshot</h3>
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${bmiInfo.color}20`, color: bmiInfo.color }}>
-              BMI {bmi} — {bmiInfo.label}
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Weight', value: `${latest.weight} kg` },
-              { label: 'Height', value: `${latest.height} cm` },
-              { label: 'Body Fat', value: `${latest.bodyFatPct}%` },
-              { label: 'Arms',  value: `${latest.arms} cm` },
-              { label: 'Chest', value: `${latest.chest} cm` },
-              { label: 'Waist', value: `${latest.waist} cm` },
-              { label: 'Legs',  value: `${latest.legs} cm` },
-            ].map(s => (
-              <div key={s.label} className="rounded-lg p-2 text-center" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                <p className="text-sm font-bold text-white mt-0.5">{s.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Indicators */}
-          <div className="flex gap-2 mt-3">
-            <div className="flex-1 rounded-lg p-2 text-center" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Muscle Δ</p>
-              <p className="text-sm font-bold mt-0.5" style={{ color: muscleDelta >= 0 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                {muscleDelta > 0 ? '+' : ''}{muscleDelta} kg
-              </p>
-            </div>
-            <div className="flex-1 rounded-lg p-2 text-center" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Fat Δ</p>
-              <p className="text-sm font-bold mt-0.5" style={{ color: fatDelta <= 0 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                {fatDelta > 0 ? '+' : ''}{fatDelta}%
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <EmptyState icon={Activity} title="No measurements yet" message="Log your first measurement to start tracking." />
-      )}
-
-      {/* Add button */}
-      <button onClick={() => setShowForm(s => !s)}
-        className="w-full py-3 rounded-xl font-semibold text-black flex items-center justify-center gap-2"
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
         style={{ background: 'var(--color-secondary)' }}>
-        {showForm ? <X size={18} /> : <Plus size={18} />} {showForm ? 'Close' : 'Log New Entry'}
+        <Plus size={15} /> Log a measurement
       </button>
 
-      {/* Form */}
-      {showForm && (
-        <div className="rounded-2xl p-4 space-y-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ['weight', 'Weight (kg) *'],
-              ['height', 'Height (cm) *'],
-              ['arms', 'Arms (cm)'],
-              ['chest', 'Chest (cm)'],
-              ['waist', 'Waist (cm)'],
-              ['legs', 'Legs (cm)'],
-              ['bodyFatPct', 'Body Fat %'],
-            ].map(([key, label]) => (
-              <div key={key}>
-                <label className="text-[11px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>{label}</label>
-                <input type="number" value={(form as any)[key]}
-                  onChange={e => setForm({ ...form, [key]: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-white text-sm focus:outline-none"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', height: 40 }} />
-              </div>
-            ))}
-          </div>
-          <button onClick={handleSubmit}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm text-black"
-            style={{ background: 'var(--color-secondary)' }}>
-            Save Entry
-          </button>
-        </div>
-      )}
+      <StepFlow
+        open={showForm}
+        title="Log a measurement"
+        steps={steps}
+        submitLabel="Save measurement"
+        saving={saving}
+        onClose={() => setShowForm(false)}
+        onSubmit={save}
+      />
 
-      {/* History */}
-      <div>
-        <h4 className="text-white font-semibold mb-2 px-1">History</h4>
-        {entries.length === 0 ? (
-          <EmptyState icon={Activity} title="No history" message="Logged measurements appear here." />
-        ) : (
-          <div className="space-y-2">
-            {[...entries].reverse().map(e => (
-              <div key={e.id} className="rounded-xl p-3 flex items-center justify-between" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+      {!latest ? (
+        <EmptyState icon={Activity} title="No measurements yet"
+          message="Log your first one to start tracking. Nothing is shared without your trainer asking." />
+      ) : (
+        <>
+          {latestBmi != null && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">{e.weight} kg</p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {new Date(e.date).toLocaleDateString()} • Fat {e.bodyFatPct}% • BMI {e.bmi}
-                  </p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>BMI</p>
+                  <p className="text-3xl font-bold text-white">{latestBmi}</p>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{
-                  background: `${bmiLabel(e.bmi).color}20`, color: bmiLabel(e.bmi).color,
-                }}>{bmiLabel(e.bmi).label}</span>
+                <span className="px-3 py-1 rounded-full text-xs font-bold"
+                  style={{ background: 'var(--color-bg)', color: bmiColor(latestBmi) }}>
+                  {bmiLabel(latestBmi)}
+                </span>
               </div>
-            ))}
+              <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                A general indicator only — it doesn't distinguish muscle from fat.
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-2xl p-4 space-y-2" style={panelStyle}>
+            <p className="text-xs font-semibold text-white mb-1">
+              Latest · {new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+            {FIELDS.map((f) => {
+              const value = latest[f.key];
+              if (value == null) return null;
+              return (
+                <div key={f.key} className="flex items-center justify-between py-1"
+                  style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{f.label}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">{value} {f.unit}</span>
+                    <Trend value={delta(value, previous ? previous[f.key] : null)} unit={f.unit} />
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          <div>
+            <h3 className="text-white font-semibold mb-2 px-1 text-sm">History</h3>
+            <div className="space-y-2">
+              {[...entries].reverse().map((e) => (
+                <div key={e.id} className="rounded-xl p-3 flex items-center justify-between" style={panelStyle}>
+                  <span className="text-xs text-white">
+                    {new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    {e.weight != null ? `${e.weight} kg` : '—'}
+                    {e.bodyFatPct != null && ` · ${e.bodyFatPct}% fat`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

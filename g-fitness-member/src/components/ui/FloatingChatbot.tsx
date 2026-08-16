@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { listPlans } from '../../lib/api/membershipPlans';
+import type { MembershipPlanRow } from '../../types/db';
 import { MessageSquare, X, Send, Bot, User, Sparkles } from 'lucide-react';
 
 interface Message {
@@ -9,16 +11,29 @@ interface Message {
   timestamp: Date;
 }
 
-const getBotResponse = (msg: string): string => {
+const getBotResponse = (msg: string, plans: MembershipPlanRow[]): string => {
   const m = msg.toLowerCase();
   if (m.includes('hour') || m.includes('open') || m.includes('close'))
     return 'Our gym is open 5:00 AM – 10:00 PM Monday to Sunday.';
   if (m.includes('price') || m.includes('cost') || m.includes('membership') || m.includes('fee'))
-    return 'We offer:\n• Basic: ₱800/month\n• Standard: ₱1,500/month\n• Premium: ₱2,500/month';
+    return plans.length === 0
+      ? 'I could not load the current plans. Ask at the front desk, or open Membership from your profile.'
+      : ['Current plans:']
+          .concat(
+            plans.map(
+              (p) =>
+                `• ${p.name}: ₱${Number(p.price).toLocaleString()} — ` +
+                (p.duration_days == null ? 'no expiry' : `${p.duration_days} days`)
+            )
+          )
+          .join('\n');
   if (m.includes('trainer') || m.includes('coach'))
-    return 'Personal trainers are available with our Premium plan. Book a session from the Book a Class page.';
+    // Which plans include PT is decided by `plan_entitlements` (migration 0017),
+    // not by a plan's name. Naming one here would go stale the moment the gym
+    // renames a tier or changes what it includes.
+    return 'Personal training depends on your plan. Open Book a Session — it shows what yours includes, and the front desk can explain your options.';
   if (m.includes('amenities') || m.includes('facilities'))
-    return 'Free weights, cardio, locker rooms, showers, group classes, and personal training (Premium).';
+    return 'Free weights, cardio, locker rooms, showers, group classes, and personal training.';
   if (m.includes('qr') || m.includes('check in'))
     return 'Your QR code is on the Home page. Show it to staff for quick check-in.';
   if (m.includes('book') || m.includes('class') || m.includes('schedule'))
@@ -42,6 +57,17 @@ export default function FloatingChatbot() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Real plans, loaded once. A failed load leaves the list empty and the
+  // pricing reply says so rather than inventing figures.
+  const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listPlans()
+      .then((rows) => { if (!cancelled) setPlans(rows.filter((p) => p.is_active)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,7 +84,7 @@ export default function FloatingChatbot() {
     setTimeout(() => {
       setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
-        text: getBotResponse(q),
+        text: getBotResponse(q, plans),
         sender: 'bot',
         timestamp: new Date(),
       }]);
@@ -171,7 +197,7 @@ export default function FloatingChatbot() {
                   <input value={input} onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Type a message…"
-                    className="flex-1 px-3 py-2 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none"
+                    className="field-input flex-1 px-3 py-2 rounded-xl text-xs text-white placeholder-gray-500"
                     style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', height: 36 }} />
                   <button onClick={handleSend} disabled={!input.trim()}
                     className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-40"

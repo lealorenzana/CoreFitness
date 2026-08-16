@@ -1,8 +1,36 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Bot, User } from 'lucide-react';
+import { ArrowLeft, Send, Bot } from 'lucide-react';
+import { panelStyle } from '../../components/ui/Card';
+import RichText from '../../components/ui/RichText';
 import { TRAINER_CHATBOT_RESPONSES } from '../../data/trainerChatbot';
+
+/**
+ * The trainer's assistant.
+ *
+ * Three things were wrong with this screen.
+ *
+ * **It didn't fill the phone.** The root was `h-full` inside a wrapper with no
+ * height of its own, so it collapsed to its content: the composer sat halfway
+ * up the screen with several hundred pixels of bare background beneath it. The
+ * wrapper in TrainerLayout is now a `min-h-full` flex column and this page is
+ * `flex-1`, so the message list takes the slack and the composer sits on the
+ * dock where a composer belongs.
+ *
+ * **It rendered markdown as literal asterisks.** Every entry in
+ * `TRAINER_CHATBOT_RESPONSES` opens with a `**Heading:**`, and the bubble
+ * printed the stars. `renderRich` below handles the two marks the data actually
+ * uses — `**bold**` and `•` bullets — rather than pulling in a markdown parser
+ * for a file we control.
+ *
+ * **It called itself AI.** It is a keyword lookup over a fixed table of
+ * answers: no model, no inference, and it cannot answer anything outside the
+ * list. Naming it "AI Training Assistant" and having it open with "I'm your AI
+ * training assistant" oversells it to the one person who will notice fastest —
+ * the trainer using it every day. It now says what it is, and the empty-input
+ * fallback offers the topics it genuinely covers.
+ */
 
 interface Message {
   id: string;
@@ -11,285 +39,189 @@ interface Message {
   timestamp: Date;
 }
 
+const GREETING =
+  "I'm the training assistant. I answer from a set of prepared guides on member management, workout planning, scheduling, bookings and feedback. Ask me about any of those, or tap a question below.";
+
+const QUICK_ASKS = [
+  'How do I create a workout plan?',
+  'Availability',
+  'Member progress',
+  'Booking management',
+];
+
 export default function TrainerChatbot() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: "Hi! I'm your AI training assistant. I can help you with member management, workout planning, scheduling, and training tips. How can I assist you today?",
-      sender: 'bot',
-      timestamp: new Date(),
-    },
+    { id: '1', text: GREETING, sender: 'bot', timestamp: new Date() },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isTyping]);
 
   const getBotResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-
-    // Check for matches in trainer chatbot responses
+    const lower = userMessage.toLowerCase();
     for (const [key, response] of Object.entries(TRAINER_CHATBOT_RESPONSES)) {
-      if (lowerMessage.includes(key)) {
-        return response;
-      }
+      if (lower.includes(key)) return response;
     }
-
-    // Default response
-    return "I'm here to help! You can ask me about:\n\n• Managing your assigned members\n• Creating workout plans\n• Scheduling and availability\n• Training techniques and tips\n• Member progress tracking\n• Booking management\n\nWhat would you like to know?";
+    // Names the topics it can actually answer instead of "I didn't understand",
+    // which leaves the trainer guessing at the vocabulary.
+    return "I don't have an answer for that one. I can help with:\n\n• Members and assignments\n• Workout plans and exercises\n• Schedule and availability\n• Classes and bookings\n• Feedback, evaluations and recommendations\n\nTry one of those words.";
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+  const send = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), text: trimmed, sender: 'user', timestamp: new Date() },
+    ]);
     setInput('');
     setIsTyping(true);
-
-    // Simulate bot typing delay
     setTimeout(() => {
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: getBotResponse(input),
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botResponse]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          text: getBotResponse(trimmed),
+          sender: 'bot',
+          timestamp: new Date(),
+        },
+      ]);
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    }, 500 + Math.random() * 500);
   };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const quickActions = [
-    'How do I create a workout plan?',
-    'Show my schedule',
-    'Member progress tips',
-    'Booking management',
-  ];
 
   return (
-    <div className="flex flex-col h-full -mx-4 -my-4">
-      {/* Header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 border-b"
-        style={{
-          background: 'var(--color-surface)',
-          borderColor: 'var(--color-border)',
-        }}
-      >
+    // flex-1 against TrainerLayout's min-h-full column. min-h-0 is what lets
+    // the message list scroll instead of stretching the whole page.
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex items-center gap-3 flex-shrink-0 pb-3">
         <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-          }}
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/trainer/home'))}
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+          aria-label="Back"
         >
           <ArrowLeft size={18} />
         </button>
-        <div className="flex items-center gap-2 flex-1">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            <Bot size={18} className="text-white" />
-          </div>
-          <div>
-            <h2 className="text-white font-semibold text-sm">AI Training Assistant</h2>
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              Always here to help
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h1 className="display text-xl text-white leading-none">Assistant</h1>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            Prepared coaching answers — not a live AI
+          </p>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <AnimatePresence>
-          {messages.map((message) => (
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 py-1">
+        <AnimatePresence initial={false}>
+          {messages.map((m) => (
             <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 10 }}
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`flex gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.sender === 'bot' && (
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-primary)' }}
+              {m.sender === 'bot' && (
+                <span
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: 'var(--color-primary-light)' }}
                 >
-                  <Bot size={16} className="text-white" />
-                </div>
+                  <Bot size={15} style={{ color: 'var(--color-primary)' }} />
+                </span>
               )}
               <div
-                className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
-                  message.sender === 'user'
-                    ? 'rounded-tr-sm'
-                    : 'rounded-tl-sm'
-                }`}
+                className="max-w-[80%] px-3.5 py-2.5 text-xs leading-relaxed space-y-0.5"
                 style={{
                   background:
-                    message.sender === 'user'
-                      ? 'var(--color-primary)'
-                      : 'var(--color-surface-raised)',
-                  color: 'white',
+                    m.sender === 'user' ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                  color: m.sender === 'user' ? '#fff' : 'var(--color-text-secondary)',
+                  border: m.sender === 'bot' ? '1px solid var(--color-border)' : 'none',
+                  borderRadius:
+                    m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                 }}
               >
-                <p className="text-sm whitespace-pre-line">{message.text}</p>
-                <p
-                  className="text-[10px] mt-1"
-                  style={{
-                    color:
-                      message.sender === 'user'
-                        ? 'rgba(255,255,255,0.7)'
-                        : 'var(--color-text-muted)',
-                  }}
-                >
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
+                {m.sender === 'bot' ? <RichText text={m.text} /> : m.text}
               </div>
-              {message.sender === 'user' && (
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-secondary)' }}
-                >
-                  <User size={16} className="text-black" />
-                </div>
-              )}
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* Typing Indicator */}
         {isTyping && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex gap-2"
-          >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'var(--color-primary)' }}
+          <div className="flex gap-2">
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: 'var(--color-primary-light)' }}
             >
-              <Bot size={16} className="text-white" />
-            </div>
+              <Bot size={15} style={{ color: 'var(--color-primary)' }} />
+            </span>
             <div
-              className="px-4 py-3 rounded-2xl rounded-tl-sm"
-              style={{ background: 'var(--color-surface-raised)' }}
+              className="px-3.5 py-3 rounded-2xl"
+              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
             >
               <div className="flex gap-1">
-                <div
-                  className="w-2 h-2 rounded-full animate-bounce"
-                  style={{
-                    background: 'var(--color-text-muted)',
-                    animationDelay: '0ms',
-                  }}
-                />
-                <div
-                  className="w-2 h-2 rounded-full animate-bounce"
-                  style={{
-                    background: 'var(--color-text-muted)',
-                    animationDelay: '150ms',
-                  }}
-                />
-                <div
-                  className="w-2 h-2 rounded-full animate-bounce"
-                  style={{
-                    background: 'var(--color-text-muted)',
-                    animationDelay: '300ms',
-                  }}
-                />
+                {[0, 150, 300].map((d) => (
+                  <span
+                    key={d}
+                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                    style={{ background: 'var(--color-text-muted)', animationDelay: `${d}ms` }}
+                  />
+                ))}
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-
-        <div ref={messagesEndRef} />
+        <div ref={endRef} />
       </div>
 
-      {/* Quick Actions */}
-      {messages.length <= 2 && (
-        <div className="px-4 pb-2">
-          <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
-            Quick questions:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {quickActions.map((action, index) => (
+      {/* Composer. Tapping a suggestion sends it rather than filling the box —
+          one tap to an answer instead of two. */}
+      <div className="flex-shrink-0 pt-2">
+        {messages.length <= 1 && (
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2">
+            {QUICK_ASKS.map((q) => (
               <button
-                key={index}
-                onClick={() => {
-                  setInput(action);
-                  setTimeout(() => handleSend(), 100);
-                }}
-                className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                key={q}
+                onClick={() => send(q)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold active:scale-95 transition-transform"
                 style={{
-                  background: 'var(--color-surface-raised)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text-secondary)',
+                  background: 'var(--color-primary-light)',
+                  color: 'var(--color-primary)',
+                  border: '1px solid rgba(124,58,237,0.25)',
                 }}
               >
-                {action}
+                {q}
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Input */}
-      <div
-        className="px-4 py-3 border-t"
-        style={{
-          background: 'var(--color-surface)',
-          borderColor: 'var(--color-border)',
-        }}
-      >
-        <div className="flex items-end gap-2">
-          <textarea
+        <div className="flex gap-2 items-center">
+          <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me anything..."
-            rows={1}
-            className="flex-1 px-4 py-2.5 rounded-2xl text-sm text-white resize-none focus:outline-none"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              maxHeight: '100px',
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send(input);
+              }
             }}
+            placeholder="Ask about members, plans, bookings…"
+            className="field-input flex-1 h-11 px-4 rounded-full text-xs text-white"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
           />
           <button
-            onClick={handleSend}
+            onClick={() => send(input)}
             disabled={!input.trim()}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-40"
+            aria-label="Send"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 active:scale-95 transition-transform"
             style={{ background: 'var(--color-primary)' }}
           >
-            <Send size={18} className="text-white" />
+            <Send size={16} className="text-white" />
           </button>
         </div>
       </div>

@@ -13,7 +13,7 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
   ({ className, style, onFocus, onBlur, ...props }, ref) => (
     <input
       ref={ref}
-      className={cn('w-full px-4 text-sm rounded-xl transition-colors focus:outline-none', className)}
+      className={cn('w-full px-4 text-sm rounded-xl transition-colors', className)}
       style={{
         height: 40,
         background: SURFACE_RAISED,

@@ -3,11 +3,149 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>g-fitness-member</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0F0F1A" />
+    <meta name="description" content="Core Fitness gym membership, classes, and attendance for members and trainers." />
+
+    <!-- iOS has no manifest support for installed appearance; these are what make
+         Safari's "Add to Home Screen" launch full-screen with the right icon. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Core Fitness" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+
+    <title>Core Fitness</title>
+
+    <!--
+      Boot splash.
+
+      Deliberately inline HTML and CSS with no JavaScript, so it paints on the
+      first response rather than waiting on a ~900 KB module graph to download,
+      parse and mount. On gym wifi that gap is seconds of blank screen, and on
+      an installed Android app a blank launch reads as a crash.
+
+      Everything here is duplicated from the design tokens on purpose:
+      `index.css` has not loaded either at this point, so `var(--color-bg)`
+      would resolve to nothing and the screen would flash white before going
+      dark. The literals must stay in step with `--color-bg` and
+      `--color-primary`.
+
+      `main.tsx` adds `.is-gone` once React has rendered; the element removes
+      itself on transitionend.
+    -->
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: #08080e;
+        transition: opacity 0.45s ease, visibility 0.45s ease;
+      }
+      #boot.is-gone { opacity: 0; visibility: hidden; }
+
+      /* Violet bloom behind the mark, the same ambient glow the app uses. */
+      #boot .bloom {
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.22) 0%, transparent 70%);
+        animation: boot-breathe 3.2s ease-in-out infinite;
+      }
+
+      #boot .mark {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        display: grid;
+        place-items: center;
+      }
+      #boot .mark img {
+        width: 76px;
+        height: 76px;
+        object-fit: contain;
+        border-radius: 20px;
+        animation: boot-rise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+      }
+      /* Two counter-rotating arcs — a ring that reads as motion without
+         pretending to measure progress it cannot know. */
+      #boot .ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: #7c3aed;
+        border-right-color: rgba(124, 58, 237, 0.35);
+        animation: boot-spin 1.1s linear infinite;
+      }
+      #boot .ring.inner {
+        inset: 10px;
+        border-top-color: transparent;
+        border-bottom-color: #f59e0b;
+        border-left-color: rgba(245, 158, 11, 0.3);
+        animation-duration: 1.7s;
+        animation-direction: reverse;
+      }
+
+      #boot .wordmark {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.32em;
+        text-indent: 0.32em;
+        color: #fff;
+        opacity: 0;
+        animation: boot-rise 0.6s ease-out 0.18s both;
+      }
+      #boot .sub {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.32);
+        margin-top: -18px;
+        animation: boot-rise 0.6s ease-out 0.3s both;
+      }
+
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @keyframes boot-breathe {
+        0%, 100% { opacity: 0.55; transform: scale(0.94); }
+        50%      { opacity: 1;    transform: scale(1.06); }
+      }
+      @keyframes boot-rise {
+        from { opacity: 0; transform: translateY(8px) scale(0.94); }
+        to   { opacity: 1; transform: none; }
+      }
+
+      /* A spinner is motion for its own sake to anyone who asked not to see it.
+         The mark and the wordmark still say which app is starting. */
+      @media (prefers-reduced-motion: reduce) {
+        #boot .bloom,
+        #boot .mark img,
+        #boot .wordmark,
+        #boot .sub { animation: none; opacity: 1; transform: none; }
+        #boot .ring { animation-duration: 3s; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <div id="boot" role="status" aria-label="Core Fitness is starting">
+      <div class="bloom"></div>
+      <div class="mark">
+        <div class="ring"></div>
+        <div class="ring inner"></div>
+        <img src="/logo.png" alt="" />
+      </div>
+      <div class="wordmark">CORE FITNESS</div>
+      <div class="sub">Mamburao, Occidental Mindoro</div>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

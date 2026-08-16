@@ -1,0 +1,14 @@
+Panel Members and Comments
+
+Mr. Leonard Flores 
+Reco	
+
+• Attendance: Pre-defined format or User-based inputs
+• Gym Class based on user-experience
+• Integrate free workout websites
+• Cancellation process (Freeze frequency)
+• Access for each Membership: Freemium (3 months), Premium, Free tier for Regular Members with no fund for payment yet. (Business plan)
+
+Mr. Ronnie N. Del Rosario
+Panel	
+• Make it startup idea (Business flow: Maintenance ng system flow)

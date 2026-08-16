@@ -1,124 +1,135 @@
 /**
  * Notification Service
- * Manages notifications for members and trainers
+ * Thin facade over src/lib/api/notifications.ts (Supabase-backed) — preserves
+ * the original localStorage-era method signatures so existing callers
+ * (Notifications.tsx, notificationHelpers.ts) didn't need to change.
+ * `userId` must be a real profile UUID now, not an email address.
  */
 
-export type NotificationType = 
-  | 'payment' 
-  | 'event' 
-  | 'achievement' 
-  | 'info' 
-  | 'booking' 
-  | 'membership' 
+import * as notificationsApi from '../lib/api/notifications';
+import type { NotificationRow } from '../types/db';
+
+export type NotificationType =
+  | 'payment'
+  | 'event'
+  | 'achievement'
+  | 'info'
+  | 'booking'
+  | 'membership'
   | 'trainer_feedback'
   | 'goal_milestone'
   | 'attendance'
+  /** Server-generated training-plan nudge (0030). */
+  | 'gym_plan'
   | 'system';
 
 export interface Notification {
   id: string;
-  userId: string; // member or trainer email
+  userId: string;
   type: NotificationType;
   title: string;
   message: string;
   timestamp: string; // ISO date
   read: boolean;
-  actionUrl?: string; // Optional link to navigate to
-  metadata?: Record<string, any>; // Additional data
+  actionUrl?: string;
+  metadata?: Record<string, any>;
+  /** Swiped right: dealt with, moved out of the inbox into Archived (0029). */
+  archived: boolean;
+  /** Swiped left: out of the bell, still in the inbox list. */
+  cleared: boolean;
 }
 
-const STORAGE_KEY = (userId: string) => `notifications_${userId}`;
+/**
+ * What a sender supplies. Inbox state belongs to the recipient — the tamper
+ * guard in 0029 rejects a sender trying to set it, so it is excluded rather
+ * than defaulted.
+ */
+export type NewNotificationInput = Omit<
+  Notification,
+  'id' | 'timestamp' | 'read' | 'archived' | 'cleared'
+>;
 
-// Simulate network delay
-const delay = <T>(value: T, ms = 100): Promise<T> =>
-  new Promise(resolve => setTimeout(() => resolve(value), ms));
+function toNotification(row: NotificationRow): Notification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type as NotificationType,
+    title: row.title,
+    message: row.message,
+    timestamp: row.created_at,
+    read: row.read,
+    actionUrl: row.action_url ?? undefined,
+    metadata: row.metadata ?? undefined,
+    archived: row.archived_at != null,
+    cleared: row.cleared_at != null,
+  };
+}
 
 export const notificationService = {
-  /**
-   * Get all notifications for a user
-   */
+  /** Everything, archived included — the full-list screen does the filtering. */
   async getNotifications(userId: string): Promise<Notification[]> {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY(userId));
-      const notifications = stored ? JSON.parse(stored) : [];
-      // Sort by timestamp (newest first)
-      return delay(notifications.sort((a: Notification, b: Notification) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      ));
-    } catch {
-      return delay([]);
-    }
+    const rows = await notificationsApi.listNotifications(userId);
+    return rows.map(toNotification);
   },
 
-  /**
-   * Get unread notification count
-   */
+  /** Just what belongs in the bell: neither cleared nor archived. */
+  async getBellNotifications(userId: string): Promise<Notification[]> {
+    const rows = await notificationsApi.listBellNotifications(userId);
+    return rows.map(toNotification);
+  },
+
+  async setRead(ids: string[], read: boolean): Promise<void> {
+    await notificationsApi.setRead(ids, read);
+  },
+
+  async setCleared(ids: string[], cleared: boolean): Promise<void> {
+    await notificationsApi.setCleared(ids, cleared);
+  },
+
+  async setArchived(ids: string[], archived: boolean): Promise<void> {
+    await notificationsApi.setArchived(ids, archived);
+  },
+
+  async deleteMany(ids: string[]): Promise<void> {
+    await notificationsApi.deleteNotifications(ids);
+  },
+
   async getUnreadCount(userId: string): Promise<number> {
-    const notifications = await this.getNotifications(userId);
-    return notifications.filter(n => !n.read).length;
+    return notificationsApi.getUnreadCount(userId);
   },
 
   /**
-   * Add a new notification
+   * Returns void, not the created row — see `addNotification` in
+   * `lib/api/notifications.ts` for why reading it back breaks for trainers.
+   * No caller ever used the return value.
    */
-  async addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>): Promise<Notification> {
-    const notifications = await this.getNotifications(notification.userId);
-    const newNotification: Notification = {
-      ...notification,
-      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-    
-    notifications.unshift(newNotification);
-    localStorage.setItem(STORAGE_KEY(notification.userId), JSON.stringify(notifications));
-    
-    return delay(newNotification, 50);
+  async addNotification(notification: NewNotificationInput): Promise<void> {
+    await notificationsApi.addNotification({
+      user_id: notification.userId,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      action_url: notification.actionUrl ?? null,
+      metadata: notification.metadata ?? null,
+    });
   },
 
-  /**
-   * Mark notification as read
-   */
-  async markAsRead(userId: string, notificationId: string): Promise<void> {
-    const notifications = await this.getNotifications(userId);
-    const updated = notifications.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    );
-    localStorage.setItem(STORAGE_KEY(userId), JSON.stringify(updated));
-    await delay(undefined, 50);
+  async markAsRead(_userId: string, notificationId: string): Promise<void> {
+    await notificationsApi.markAsRead(notificationId);
   },
 
-  /**
-   * Mark all notifications as read
-   */
   async markAllAsRead(userId: string): Promise<void> {
-    const notifications = await this.getNotifications(userId);
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    localStorage.setItem(STORAGE_KEY(userId), JSON.stringify(updated));
-    await delay(undefined, 50);
+    await notificationsApi.markAllAsRead(userId);
   },
 
-  /**
-   * Delete a notification
-   */
-  async deleteNotification(userId: string, notificationId: string): Promise<void> {
-    const notifications = await this.getNotifications(userId);
-    const filtered = notifications.filter(n => n.id !== notificationId);
-    localStorage.setItem(STORAGE_KEY(userId), JSON.stringify(filtered));
-    await delay(undefined, 50);
+  async deleteNotification(_userId: string, notificationId: string): Promise<void> {
+    await notificationsApi.deleteNotification(notificationId);
   },
 
-  /**
-   * Delete all notifications
-   */
   async deleteAllNotifications(userId: string): Promise<void> {
-    localStorage.removeItem(STORAGE_KEY(userId));
-    await delay(undefined, 50);
+    await notificationsApi.deleteAllNotifications(userId);
   },
 
-  /**
-   * Send notification to user (simulated)
-   */
   async sendNotification(
     userId: string,
     type: NotificationType,
@@ -126,20 +137,10 @@ export const notificationService = {
     message: string,
     actionUrl?: string,
     metadata?: Record<string, any>
-  ): Promise<Notification> {
-    return this.addNotification({
-      userId,
-      type,
-      title,
-      message,
-      actionUrl,
-      metadata,
-    });
+  ): Promise<void> {
+    await this.addNotification({ userId, type, title, message, actionUrl, metadata });
   },
 
-  /**
-   * Send bulk notifications (e.g., to all members)
-   */
   async sendBulkNotifications(
     userIds: string[],
     type: NotificationType,
@@ -147,10 +148,7 @@ export const notificationService = {
     message: string,
     actionUrl?: string
   ): Promise<void> {
-    const promises = userIds.map(userId =>
-      this.addNotification({ userId, type, title, message, actionUrl })
-    );
-    await Promise.all(promises);
+    await Promise.all(userIds.map((userId) => this.addNotification({ userId, type, title, message, actionUrl })));
   },
 };
 

@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { X, Camera, QrCode, AlertCircle } from 'lucide-react';
 import Button from './Button';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -16,65 +16,124 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const [hasCamera, setHasCamera] = useState(true);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [manualInput, setManualInput] = useState('');
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+  const [cameraId, setCameraId] = useState('');
 
+  // Step 1: find the cameras. The admin dashboard runs on a desktop, which has
+  // only a front-facing webcam — the old `facingMode: 'environment'` constraint
+  // asks for a rear camera that doesn't exist there. Enumerate instead and start
+  // an explicit device, preferring a rear lens when the desk uses a tablet.
   useEffect(() => {
-    if (isOpen && isScanning) {
-      startScanner();
-    }
+    if (!isOpen || !isScanning) return;
+    let cancelled = false;
+
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (cancelled) return;
+        if (!devices || devices.length === 0) {
+          setHasCamera(false);
+          setError('No camera found. Please use manual entry.');
+          return;
+        }
+        setHasCamera(true);
+        setError('');
+        setCameras(devices.map((d) => ({ id: d.id, label: d.label })));
+        const rear = devices.find((d) => /back|rear|environment/i.test(d.label));
+        setCameraId((current) => current || rear?.id || devices[0].id);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Camera enumeration failed:', err);
+        setHasCamera(false);
+        setError('Unable to access camera. Please allow camera permission, or use manual entry.');
+      });
 
     return () => {
-      stopScanner();
+      cancelled = true;
     };
   }, [isOpen, isScanning]);
 
-  const startScanner = async () => {
-    try {
-      setError('');
-      
-      // Check if camera is available
-      const devices = await Html5Qrcode.getCameras();
-      if (!devices || devices.length === 0) {
-        setHasCamera(false);
-        setError('No camera found. Please use manual entry.');
-        return;
-      }
+  // Step 2: run the scanner on the chosen device. Re-runs when the user picks a
+  // different camera from the dropdown.
+  useEffect(() => {
+    if (!isOpen || !isScanning || !cameraId) return;
+    let cancelled = false;
 
-      // Initialize scanner
-      const scanner = new Html5Qrcode('qr-reader');
-      scannerRef.current = scanner;
+    const scanner = new Html5Qrcode('qr-reader', {
+      verbose: false,
+      // Only look for QR codes. Without this it also runs every 1D barcode
+      // decoder on each frame, which costs time we'd rather spend on retries.
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      // Chrome's native BarcodeDetector is far more tolerant of glare and the
+      // moiré you get pointing a webcam at another screen than the JS fallback.
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    });
+    scannerRef.current = scanner;
 
-      // Start scanning
-      await scanner.start(
-        { facingMode: 'environment' }, // Use back camera
+    scanner
+      .start(
+        cameraId,
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          // Crop to most of the viewfinder rather than a fixed 250px box: a
+          // tight crop can clip the QR's quiet zone, which alone breaks decoding.
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+            return { width: size, height: size };
+          },
+          // Resolution belongs here, NOT in the first argument — html5-qrcode
+          // rejects a `cameraIdOrConfig` object with more than one key. A webcam
+          // otherwise defaults to ~640x480, where this QR's modules are only a
+          // few pixels wide and the decode fails. When these constraints are
+          // valid the library uses them in place of the first argument, so the
+          // deviceId has to be repeated here.
+          videoConstraints: {
+            deviceId: { exact: cameraId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
         },
         (decodedText) => {
-          // QR code successfully scanned
           onScan(decodedText);
           stopScanner();
           onClose();
         },
         () => {
-          // Scanning error (ignore, happens continuously)
+          // Per-frame decode misses fire constantly while aiming — not an error.
         }
-      );
-    } catch (err: any) {
-      console.error('Scanner error:', err);
-      setHasCamera(false);
-      setError('Unable to access camera. Please use manual entry.');
-    }
-  };
+      )
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Scanner error:', err);
+        setHasCamera(false);
+        setError('Unable to start that camera. Try another, or use manual entry.');
+      });
+
+    return () => {
+      cancelled = true;
+      stopScanner();
+    };
+    // onScan/onClose are called, not observed — re-subscribing on every parent
+    // render would tear down the live camera stream mid-scan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isScanning, cameraId]);
 
   const stopScanner = async () => {
     if (scannerRef.current) {
+      const scanner = scannerRef.current;
+      scannerRef.current = null;
       try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-        scannerRef.current = null;
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
+        // Throws when start() never succeeded (bad camera, denied permission).
+        // That's the expected path on teardown after a failed start, not an error
+        // worth logging — it only buries the real message above it.
+        await scanner.stop();
+      } catch {
+        /* not running */
+      }
+      try {
+        scanner.clear();
+      } catch {
+        /* nothing rendered */
       }
     }
   };
@@ -169,8 +228,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                           value={manualInput}
                           onChange={(e) => setManualInput(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
-                          placeholder="Enter member ID (e.g., GF-2024-001)"
-                          className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-start transition-colors"
+                          placeholder="Paste QR payload or member ID"
+                          className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
                         />
                         <Button
                           onClick={handleManualSubmit}
@@ -185,14 +244,30 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                 ) : (
                   // Scanner Screen
                   <div className="space-y-4">
+                    {/* Camera picker — laptops often expose several (built-in, external, virtual) */}
+                    {cameras.length > 1 && (
+                      <select
+                        value={cameraId}
+                        onChange={(e) => setCameraId(e.target.value)}
+                        className="w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm focus:border-primary-start transition-colors"
+                      >
+                        {cameras.map((c, i) => (
+                          <option key={c.id} value={c.id}>
+                            {c.label || `Camera ${i + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     {/* Scanner Container */}
                     <div className="relative bg-black rounded-2xl overflow-hidden">
                       <div id="qr-reader" className="w-full"></div>
                       
-                      {/* Scanning Overlay */}
+                      {/* Scanning overlay. Only the outer edge — html5-qrcode draws
+                          its own shaded box at the real crop bounds, and a second
+                          fixed-size square on top of it just misleads your aim. */}
                       <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute inset-0 border-4 border-primary-start/50 rounded-2xl animate-pulse"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-primary-start rounded-2xl"></div>
                       </div>
                     </div>
 
@@ -232,8 +307,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                             value={manualInput}
                             onChange={(e) => setManualInput(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
-                            placeholder="Enter member ID"
-                            className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-start transition-colors"
+                            placeholder="Paste QR payload or member ID"
+                            className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
                           />
                           <Button
                             onClick={handleManualSubmit}

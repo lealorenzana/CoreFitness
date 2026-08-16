@@ -92,8 +92,8 @@ function DockItem({ mouseX, path, label, Icon }: DockItemProps) {
             </motion.div>
             <span
               className={cn(
-                'text-[9px] font-medium text-center w-full truncate transition-colors',
-                isActive ? 'text-yellow' : 'text-gray-500'
+                'text-xs font-medium text-center w-full truncate transition-colors',
+                isActive ? 'text-[var(--color-secondary)]' : 'text-gray-500'
               )}
             >
               {label}
