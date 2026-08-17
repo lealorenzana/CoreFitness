@@ -125,12 +125,14 @@ you cannot afford to rediscover:
   **Amber = primary action, violet = selection/structure. Type floor is 12px.** No greens or reds.
   Headings opt into `.display` (Anton, uppercase) — never globally. Primitives: member `Card`,
   `StepFlow`; admin `FormField`, `DatePicker`, `TimePicker`, `Popover` — reach for one first.
-- **`requestAnimationFrame` does not fire on a page that isn't compositing** (background tab, locked
-  phone, this harness), so anything that must be *correct* uses a CSS transition or `setTimeout`.
-  Framer is decoration only. Corollary: **`AnimatePresence` never unmounts an exiting child there** —
-  measured, an Escape-dismissed dialog animated to `opacity: 0` and stayed in the DOM forever, its
-  invisible backdrop still eating every click. Put an always-mounted wrapper *outside*
-  `AnimatePresence` and drive `pointer-events` off state, so a stuck node is inert, not a trap.
+- **On a page that isn't compositing (background tab, locked phone, this harness), neither `rAF`
+  **nor CSS transitions** run** — measured, `transition: opacity 200ms` still read `0` after 900ms
+  (`playState: "running"`, `currentTime: 0`). Only `setTimeout` + a direct state write is safe:
+  **never gate visibility or correctness on an animation having run.** Framer is decoration only.
+  Corollaries, both measured: **`AnimatePresence` never unmounts an exiting child** (a dismissed
+  dialog stayed forever, invisible backdrop eating every click — always-mounted wrapper *outside*
+  it, `pointer-events` off state); **a transitioned SVG presentation attribute sticks** at its old
+  computed value while the attribute reads the new one, so tap feedback must snap.
 - Wrong twice each: **native pickers** (`color-scheme: dark` only — never `filter: invert(1)`),
   **focus rings**, **popovers inside scrolling modals**.
 
@@ -157,7 +159,6 @@ sets it rather than guessing. **Test these regexes by running them:** `\bamenit\
 located?" — all three shipped.
 
 ## Conventions and docs
-
 React 19 + React Router v7 + TypeScript, function components, default exports for pages/layouts.
 Framer Motion for transitions; Recharts (admin only); Lucide for icons. Pages in `src/pages/`;
 member app nests `pages/trainer/` and `pages/progress/`. Import alias `@/*` → `./src/*` in **admin
@@ -173,7 +174,6 @@ VAPID) · `WHAT SHOULD BE IMPLEMENTED…txt` (panel feedback). Root-level `*.md`
 included, are presentation-facing or historical — **not specs**.
 
 ## Roadmap
-
 **Backend/logic**, **the six panel features** and **design/frontend** are done — registration →
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:

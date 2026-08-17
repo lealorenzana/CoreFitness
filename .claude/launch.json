@@ -4,13 +4,15 @@
     {
       "name": "member",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "g-fitness-member"],
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "g-fitness-member",
       "port": 5173
     },
     {
       "name": "admin",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "g-fitness-admin"],
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "g-fitness-admin",
       "port": 5174
     }
   ]

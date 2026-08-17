@@ -1,4 +1,5 @@
 import { panelStyle } from '../../../components/ui/Card';
+import BodyMap, { type BodyMapData } from '../../../components/ui/BodyMap';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
@@ -36,6 +37,25 @@ type FieldKey = typeof FIELDS[number]['key'];
 function delta(current: number | null, previous: number | null): number | null {
   if (current == null || previous == null) return null;
   return Number((current - previous).toFixed(1));
+}
+
+/**
+ * The last two readings that actually exist for one measurement.
+ *
+ * Not `entries[len-1]` and `entries[len-2]`: every field is independently
+ * optional, so a member who logged only their weight yesterday would blank out
+ * a chest reading they took last week and lose the comparison. Walks back over
+ * the nulls instead.
+ */
+function lastTwo(
+  entries: BodyProgressEntry[], key: 'chest' | 'arms' | 'waist' | 'legs'
+): { latest: number | null; previous: number | null } {
+  const seen: number[] = [];
+  for (let i = entries.length - 1; i >= 0 && seen.length < 2; i--) {
+    const v = entries[i][key];
+    if (v != null) seen.push(v);
+  }
+  return { latest: seen[0] ?? null, previous: seen[1] ?? null };
 }
 
 function Trend({ value, unit }: { value: number | null; unit: string }) {
@@ -169,6 +189,16 @@ export default function BodyProgressTab() {
   const previous = entries.length > 1 ? entries[entries.length - 2] : null;
   const latestBmi = latest ? calcBmi(latest.weight, latest.height) : null;
 
+  // The four circumferences the map can draw. Weight, height and body fat have
+  // no place on a body — they are whole-body numbers, and the cards below
+  // already carry them.
+  const mapData: BodyMapData = {
+    chest: lastTwo(entries, 'chest'),
+    arms: lastTwo(entries, 'arms'),
+    waist: lastTwo(entries, 'waist'),
+    legs: lastTwo(entries, 'legs'),
+  };
+
   return (
     <div className="space-y-4">
       <button onClick={() => setShowForm(true)}
@@ -186,6 +216,18 @@ export default function BodyProgressTab() {
         onClose={() => setShowForm(false)}
         onSubmit={save}
       />
+
+      {/* The map is drawn whether or not anything has been logged — an outlined
+          figure saying "log one to light this up" is a better empty state than
+          a generic icon, and it shows what the reward for logging looks like. */}
+      <div className="rounded-2xl p-4"
+        style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] mb-2"
+          style={{ color: 'var(--color-text-secondary)' }}>
+          Your measurements
+        </p>
+        <BodyMap data={mapData} />
+      </div>
 
       {!latest ? (
         <EmptyState icon={Activity} title="No measurements yet"

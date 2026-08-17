@@ -4,6 +4,7 @@ import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import ErrorState from '../../../components/ui/ErrorState';
 import { LineMini, BarMini, AreaMini, type ChartPoint } from '../../../components/ui/MiniCharts';
+import ProgressRail from '../../../components/ui/ProgressRail';
 
 export default function VisualDashboardTab() {
   const memberId = useMemberId();
@@ -91,12 +92,21 @@ export default function VisualDashboardTab() {
   );
   if (error) return <ErrorState onRetry={load} />;
 
-  const startWeight   = body[0]?.weight ?? 0;
-  const currentWeight = body[body.length - 1]?.weight ?? startWeight;
-  const goalWeight    = Math.max(60, currentWeight - 4);
+  // First and last readings that actually exist. `?? 0` would put a real 0 kg
+  // on the card for a member who has only ever logged measurements.
+  const weighed      = body.filter((b) => b.weight != null);
+  const startWeight  = weighed.length ? weighed[0].weight : null;
+  const currentWeight = weighed.length ? weighed[weighed.length - 1].weight : null;
+  const weightDelta  = startWeight != null && currentWeight != null
+    ? Number((currentWeight - startWeight).toFixed(1))
+    : null;
 
   return (
     <div className="space-y-4">
+      {/* The streak and the counters, above the charts: the charts show shape,
+          these show where the member actually stands. */}
+      <ProgressRail />
+
       {/* Weight Trend */}
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-2">
@@ -133,30 +143,40 @@ export default function VisualDashboardTab() {
         <AreaMini data={minutesChart} color="var(--color-primary)" height={140} />
       </div>
 
-      {/* Weight start → current → goal */}
+      {/* Weight start → current.
+          There used to be a third column here labelled "Goal", holding
+          `Math.max(60, currentWeight - 4)` — a number nobody set. It told every
+          member, whatever their build or reason for training, that they ought
+          to be four kilos lighter, and it moved down every time they weighed
+          in, so it could never be reached. Real targets live in `fitness_goals`
+          and have their own tab; this card states what was measured and
+          nothing else. */}
       <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-        <h3 className="text-white font-semibold text-sm mb-3">Weight Journey</h3>
-        <div className="flex items-center justify-between text-center">
-          <div>
-            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Start</p>
-            <p className="text-lg font-bold text-white">{startWeight} kg</p>
-          </div>
-          <div className="flex-1 mx-2 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }}>
-            <div className="h-full rounded-full" style={{
-              background: 'var(--color-secondary)',
-              width: `${Math.min(100, Math.max(0, ((startWeight - currentWeight) / Math.max(1, startWeight - goalWeight)) * 100))}%`,
-            }} />
-          </div>
-          <div>
-            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Current</p>
-            <p className="text-lg font-bold" style={{ color: 'var(--color-secondary)' }}>{currentWeight} kg</p>
-          </div>
-          <div className="flex-1 mx-2 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }} />
-          <div>
-            <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Goal</p>
-            <p className="text-lg font-bold text-white">{goalWeight} kg</p>
-          </div>
-        </div>
+        <h3 className="text-white font-semibold text-sm mb-3">Weight journey</h3>
+        {startWeight == null || currentWeight == null ? (
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Log your weight twice to see the change between readings.
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-center">
+              <div>
+                <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>First</p>
+                <p className="text-lg font-bold text-white">{startWeight} kg</p>
+              </div>
+              <div className="flex-1 mx-3 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }} />
+              <div>
+                <p className="text-xs uppercase" style={{ color: 'var(--color-text-muted)' }}>Latest</p>
+                <p className="text-lg font-bold" style={{ color: 'var(--color-secondary)' }}>{currentWeight} kg</p>
+              </div>
+            </div>
+            <p className="text-xs mt-3 text-center" style={{ color: 'var(--color-text-muted)' }}>
+              {weightDelta === 0
+                ? 'No change across your logged readings.'
+                : `${weightDelta! > 0 ? '+' : ''}${weightDelta} kg across ${weighed.length} readings.`}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

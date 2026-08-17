@@ -182,10 +182,28 @@ when there is no room below, clamping to an 8px margin so it is never partly off
 **`requestAnimationFrame` does not fire on a page that is not compositing** — a background tab, a
 locked phone, or this harness's browser pane when it is not displayed.
 
-So anything that must be *correct* rather than merely pretty — a toast dismissing, a progress bar
-reaching its final width, an overlay unmounting — uses a CSS transition or `setTimeout`. Framer
-Motion is for decoration only. A rAF-driven dismissal simply never dismisses on a phone whose
-screen went off mid-animation.
+**CSS transitions freeze there too.** This page used to say a CSS transition was a safe substitute
+for rAF. It is not, and the correction cost a bug: measured on a hidden page, a plain
+`transition: opacity 200ms linear` driven from `0` to `1` still read `opacity: 0` **900ms later**,
+with `getAnimations()[0]` reporting `playState: "running"` and `currentTime: 0`. The transition is
+registered and simply never advances, exactly like rAF.
+
+So the only mechanism you may depend on is **`setTimeout` plus a direct state write**. And the
+stronger rule, which does not depend on remembering any of this:
+
+> **Nothing whose visibility or correctness matters may be gated on an animation having run.**
+
+Render the final value, then let an animation decorate it. The first draft of `ProgressRail`'s
+streak card faded in from `opacity: 0` on a timer — on a non-compositing page that is a card
+permanently at zero opacity, holding the one number the component exists to show. Same failure
+shape as the `AnimatePresence` dialog that animated to `opacity: 0` and never unmounted.
+
+Corollary for SVG: **a transitioned presentation attribute is worse than an untransitioned one.**
+`BodyMap`'s selection ring set `stroke-width` to `2.5` and transitioned it; the attribute read
+`2.5` while `getComputedStyle` read `1px` forever, so the tap had no visible effect. Tap feedback
+snaps; only the decorative `fill` is allowed to ease.
+
+Framer Motion remains decoration only.
 
 ## Framer overwrites `transform`, so never centre with it (admin only)
 
