@@ -12,7 +12,7 @@ Two independent Vite apps:
 | Member + Trainer app | `g-fitness-member/` | 5173 | Installable phone app (PWA → Android APK) |
 
 Not a monorepo — no workspaces, no shared package. Each has its own `package.json`, tsconfig,
-ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 39 SQL
+ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 40 SQL
 migrations, RLS policies and four Edge Functions (`create-trainer`, `create-member`, `create-staff`,
 `send-push`) — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
