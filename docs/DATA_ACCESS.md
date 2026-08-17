@@ -118,3 +118,39 @@ insert-or-update trigger does not fall back to NULL — it makes every INSERT on
 touching either record. Note that a green `tsc` build and a SQL parser both pass this happily —
 `libpg_query` treats a plpgsql body as an opaque string literal, so only a running Postgres or a
 careful read catches it.
+
+## `<>` against a nullable role skips the guard entirely
+
+Every role check in this codebase was written as:
+
+```sql
+if get_my_role() <> 'admin' then raise exception 'Only admins can …'; end if;
+```
+
+`get_my_role()` returns NULL for any caller with no `profiles` row — an anonymous request holding
+the public anon key, or a user mid-sign-up. **`NULL <> 'admin'` is NULL, not TRUE**, so the `if`
+body never runs and the guard is skipped. Three-valued logic: the comparison is "unknown", and
+plpgsql treats unknown as not-true.
+
+This shipped in 0038 and was **live and exploitable**, confirmed against the real project with
+nothing but the anon key that ships in the deployed bundle:
+
+```
+POST /rest/v1/rpc/revoke_achievement  →  204 No Content
+```
+
+204 is success — an unauthenticated caller ran a DELETE against `achievement_unlocks`. 0039 fixes
+it with `IS DISTINCT FROM`, the NULL-safe comparison: `NULL IS DISTINCT FROM 'admin'` is TRUE, so
+an unknown role is treated as "not an admin" rather than as "no opinion".
+
+**Why it mattered there and not in the five older instances** (0006, 0016, 0018, all fixed anyway):
+those are triggers, and a trigger only fires once RLS has already allowed the write — a caller with
+no profile row cannot pass the `profiles` or `memberships` UPDATE policies. `award_achievement` and
+`revoke_achievement` are **SECURITY DEFINER functions reachable directly at `/rest/v1/rpc/…`**.
+SECURITY DEFINER bypasses RLS, so the check inside the function is the only boundary there is.
+
+The rule: **inside a SECURITY DEFINER function, the role check is load-bearing — write it NULL-safe,
+and probe it as anon before believing it.** A green build and a passing SQL parse both say nothing
+about this; only the live 204 did.
+
+Note when probing: PostgREST maps `insufficient_privilege` (42501) to **401**, not 403.

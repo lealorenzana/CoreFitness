@@ -12,7 +12,7 @@ Two independent Vite apps:
 | Member + Trainer app | `g-fitness-member/` | 5173 | Installable phone app (PWA → Android APK) |
 
 Not a monorepo — no workspaces, no shared package. Each has its own `package.json`, tsconfig,
-ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 38 SQL
+ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 39 SQL
 migrations, RLS policies and four Edge Functions (`create-trainer`, `create-member`, `create-staff`,
 `send-push`) — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
@@ -48,12 +48,11 @@ Audit layouts, shared modals and `data/`, not just `pages/`. The rules that keep
   nothing read, on a login form, where that is a security claim. Wire it, or cut it.
 - **Per-user state never lives in `localStorage`** — *and a column is not the fix unless the row
   exists when the write runs* (0033 → 0036, onboarding replayed anyway).
-- **Anything the client can grant or skip proves nothing.** Badge rules and the audit log live in
-  SQL, unreachable from a browser.
+- **Anything the client can grant or skip proves nothing** — badge rules and the audit log live in
+  SQL. But **probe a SECURITY DEFINER guard as anon before believing it** (0038 → 0039).
 - **A failed section says so.** Degrading to empty makes "couldn't load" read as "nothing here".
 
 ## Architecture
-
 ### Auth and routing — real Supabase Auth
 `profiles.role` (`admin`/`staff`/`trainer`/`member`) and `profiles.status`
 (`active`/`pending_approval`/`suspended`/`archived`) are the source of truth — not localStorage
@@ -74,7 +73,9 @@ modules exist twice, once per app: **diff before you copy**, `notify.ts` differs
 **[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that has cost time here**: a
 **zero-row `UPDATE`/`DELETE` is not an error** (reports success, writes nothing); **`OLD` is
 unassigned in an INSERT trigger**, so `coalesce(new.x, old.x)` aborts every insert; **a comma in a
-`.or()` term is filter syntax**, returning 400 and killing that whole section.
+`.or()` term is filter syntax**, returning 400; and **`get_my_role() <> 'admin'` is NULL for a
+caller with no profile row, so the guard is skipped** — use `IS DISTINCT FROM`. That one shipped
+live in 0038 and let anon DELETE badges (0039).
 
 **The audit trail and global search are admin-only.** `activity_log` (0037) answers what the schema
 could not: `bookings` records a cancellation by flipping `status`, keeping **no timestamp and no
@@ -176,12 +177,11 @@ included, are presentation-facing or historical — **not specs**.
 **Backend/logic**, **the six panel features** and **design/frontend** are done — registration →
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:
-- **0034–0038 have not been run** (0028–0033 probed present 2026-08-17; `activity_log` and
-  `achievements` both answered `PGRST205`). Without 0034/0035, Notifications → Recall and Attendance
-  → Undo match no rows and the clients throw. **0036 matters most** — it creates the member row at
-  sign-up, which stops onboarding replaying. Without 0037/0038 the Activity and Achievements pages
-  render honest "not available yet" panels naming the migration; the 33 built-in achievements keep
-  working from 0028 until 0038 runs. **`create-member` needs redeploying** for birth date/gender.
+- ~~0034–0038 unrun.~~ **All applied 2026-08-17**, verified two ways: the migration's own
+  verification grid (33 achievements seeded, 5 badges kept, **0 orphaned unlocks**) and an
+  independent PostgREST probe — every object that answered `PGRST205` now answers `200`.
+  **0039 followed as a security fix** and is also applied. **`create-member` still needs
+  redeploying** for its birth-date/gender half — the last outstanding backend task.
 - **QR scan** — built, never tested on real hardware; the six-character code
   (`utils/checkInCode.ts`, first 6 hex of the member UUID, derived) is the fallback. **Staff
   approving registrations** needs an Edge Function (RLS won't let `staff` set `profiles.status`).
