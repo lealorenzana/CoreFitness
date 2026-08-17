@@ -21,6 +21,7 @@ import Bookings from './pages/Bookings';
 import Events from './pages/Events';
 import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
+import Achievements from './pages/Achievements';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -66,6 +67,10 @@ function App() {
                 no read access to `activity_log` at all. This guard only stops
                 them landing on a page that would render empty. */}
             <Route path="activity" element={<ProtectedRoute adminOnly><Activity /></ProtectedRoute>} />
+            {/* Admin-only: inventing a badge changes what the gym rewards, the
+                same class of decision as plan pricing. RLS agrees — `staff` may
+                read the catalogue but not write it. */}
+            <Route path="achievements" element={<ProtectedRoute adminOnly><Achievements /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>

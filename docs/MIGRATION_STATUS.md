@@ -2,6 +2,34 @@
 
 Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-08-15**.
 
+## Achievements became data (0038)
+
+Panel-adjacent request: the admin should be able to add, edit and delete achievements, including
+custom ones for members and trainers.
+
+The blocker was that 0028 put the earning rules in code — 33 lines of
+`if s.training_days >= 25 then earned := earned || 'days_25'` — and the titles and icons in a
+TypeScript array in the member app. Adding one meant editing two files in two languages and
+shipping a deploy, which is why none were ever added.
+
+0038 makes the catalogue a table and the evaluator generic. The trick is
+`row_to_json(stats)::jsonb ->> metric_name`, which reads a column chosen at runtime; every value is
+then coerced to a number, so a boolean stat like `profile_complete` compares against a threshold of
+1 without needing its own branch. `achievement_metrics` is the whitelist of stats a rule may use —
+a table rather than a CHECK constraint, so the admin's dropdown is populated from the database and
+cannot offer something the evaluator would fail to read.
+
+`member_since` is deliberately **not** a metric: it is a date, and a date cannot meet a numeric
+threshold. It is exposed as the derived `days_as_member`, which is the question the two loyalty
+badges were actually asking of it.
+
+**What did not change, and must not:** `achievement_unlocks` still has no INSERT policy.
+`sync_my_achievements()` is still SECURITY DEFINER, still takes no uid, and still grades only its
+caller. An admin editing which rules exist is a different act from a member granting themselves a
+badge — only the second was ever the threat, and it is still impossible.
+
+Trainers already had 11 `coach_*` achievements from 0028; both audiences are editable.
+
 ## The audit trail (0037)
 
 Added because the schema could not answer *"who cancelled this booking — the member or the front

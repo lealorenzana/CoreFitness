@@ -1,9 +1,7 @@
 # CLAUDE.md
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this is
-
 A gym management capstone for a real gym in Mamburao, Occidental Mindoro. It began as a
 localStorage prototype; **that migration is complete** — everything runs on Supabase, free tier.
 Two independent Vite apps:
@@ -14,12 +12,11 @@ Two independent Vite apps:
 | Member + Trainer app | `g-fitness-member/` | 5173 | Installable phone app (PWA → Android APK) |
 
 Not a monorepo — no workspaces, no shared package. Each has its own `package.json`, tsconfig,
-ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 37 SQL
+ESLint and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 38 SQL
 migrations, RLS policies and four Edge Functions (`create-trainer`, `create-member`, `create-staff`,
 `send-push`) — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
-
 ```bash
 (cd g-fitness-admin  && npm install && npm run dev)   # → localhost:5174
 (cd g-fitness-member && npm install && npm run dev)   # → localhost:5173
@@ -27,14 +24,13 @@ migrations, RLS policies and four Edge Functions (`create-trainer`, `create-memb
 
 - `npm run build` — `tsc -b && vite build`. Both build clean. Both tsconfigs set `noUnusedLocals`/
   `noUnusedParameters`, so **an unused import fails the build** though `npm run dev` is happy.
-- `npm run lint` (flat-config ESLint) · `npm run preview` · `npm run check:achievements` (member,
-  diffs the SQL earning rules against the TS catalogue). No test framework — see *Verifying work*.
+- `npm run lint` · `npm run preview` · `npm run check:achievements` (member — verifies stored icon
+  and metric names resolve). No test framework — see *Verifying work*.
 - Both apps need `.env.local` (copy `.env.example`). Deploy member by promoting a verified preview,
   never straight to prod; env vars must exist in Vercel *before* deploying — Vite inlines them.
   Commands and the post-deploy checklist: [DEPLOYMENT](docs/DEPLOYMENT.md).
 
 ## Data honesty — read this before touching a page
-
 **Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is Supabase-backed.
 **"No mock data remains" was claimed twice and wrong twice** — invented events, then a chatbot
 answering from gyms, coaches, numbers and prices that do not exist. Grep found neither; opening the
@@ -63,10 +59,10 @@ Audit layouts, shared modals and `data/`, not just `pages/`. The rules that keep
 (`active`/`pending_approval`/`suspended`/`archived`) are the source of truth — not localStorage
 flags. **`staff`** is front desk (0011/0012): payments, check-ins and extensions, but not pricing,
 trainers, accounts, settings or the audit log — everything staff do is recorded and reversible.
-`<ProtectedRoute adminOnly>` is convenience; **RLS is the boundary.** The
-member app also caches a legacy user object into `localStorage['user']`/`isLoggedIn`/`trainerMode`
-for the ~6 pages still reading `getCurrentUser()` — never treat those as real auth state;
-`syncUserCache()` rebuilds it on boot, since a persisted session means `login()` never reruns.
+`<ProtectedRoute adminOnly>` is convenience; **RLS is the boundary.** The member app also caches a
+legacy user object into `localStorage['user']`/`isLoggedIn`/`trainerMode` for the ~6 pages still on
+`getCurrentUser()` — never real auth state; `syncUserCache()` rebuilds it on boot, since a
+persisted session means `login()` never reruns.
 **Sessions last until Logout** — `persistSession`/`autoRefreshToken` set explicitly in both clients,
 not inherited. Admin's **"Remember me" is real** (`lib/authStorage.ts`: on → localStorage, off →
 sessionStorage, default on); the phone app has no such box on purpose.
@@ -83,8 +79,8 @@ unassigned in an INSERT trigger**, so `coalesce(new.x, old.x)` aborts every inse
 **The audit trail and global search are admin-only.** `activity_log` (0037) answers what the schema
 could not: `bookings` records a cancellation by flipping `status`, keeping **no timestamp and no
 actor**, so a self-cancel and a desk cancel were indistinguishable. Written **only** by SECURITY
-DEFINER triggers — admin SELECT, **no INSERT policy at all** — so it catches the member app and
-Edge Functions too and cannot be forged from a browser. Read via the `activity_feed` view
+DEFINER triggers — admin SELECT, **no INSERT policy** — so it catches the member app and Edge
+Functions too and cannot be forged from a browser. Read via the `activity_feed` view
 (**`security_invoker`**, or the policy is bypassed). Cancellations predating 0037 are **not**
 backfilled — no honest timestamp exists. Global search (`services/searchService.ts`, Ctrl+K) fires
 11 parallel queries over nine entity types from **one** character up; a failed section is **named**.
@@ -141,13 +137,16 @@ you cannot afford to rediscover:
 
 **Two different levels exist and must be named apart on screen.** `experience_level` is
 self-declared and drives class recommendations; the *earned* level comes from `member_progression()`
-— labelling both "level" made Home and Book a Session look self-contradictory. **Earning rules live
-in SQL** (0028): `sync_my_achievements()` is SECURITY DEFINER and the only thing that can write
-`achievement_unlocks`, which has no INSERT policy — same shape as `activity_log` in 0037.
-`src/data/achievements.ts` is presentation only, joined by a string key nothing type-checks —
-**`npm run check:achievements` must stay green.** **Members choose what trainers see** (0032):
-`trainer_may_see()` gates measurements, goals and workout logs in RLS, not the UI. Admin/staff
-ungated; default shared.
+— labelling both "level" made Home and Book a Session look self-contradictory. **Grading lives in
+SQL**: `sync_my_achievements()` is SECURITY DEFINER and the only writer of `achievement_unlocks`,
+which has no INSERT policy — same shape as `activity_log` in 0037. **0038 moved the *catalogue*
+into the `achievements` table** so the admin can add, edit and retire them; the evaluator loops over
+it (`row_to_json(stats)->>metric`) instead of a 33-branch `if` ladder. Rules are `metric`, `manual`
+(hand-awarded via admin-only `award_achievement()`) or `builtin` — only the two level badges, whose
+thresholds must keep matching `level_thresholds()`. `src/data/achievements.ts` is now just the icon
+registry; **`npm run check:achievements` must stay green** — it verifies stored icon and metric
+names resolve. **Members choose what trainers see** (0032): `trainer_may_see()` gates measurements,
+goals and workout logs in RLS, not the UI. Admin/staff ungated; default shared.
 
 **The "AI" features are deterministic and rule-based, not model calls** — keep the vocabulary
 honest. Admin [chatbot.ts](g-fitness-admin/src/data/chatbot.ts) plus `trainerChatbot.ts`/`memberAssistant.ts`;
@@ -177,11 +176,12 @@ included, are presentation-facing or historical — **not specs**.
 **Backend/logic**, **the six panel features** and **design/frontend** are done — registration →
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:
-- **0034–0037 have not been run** (0028–0033 probed present 2026-08-17; `activity_log` answered
-  `PGRST205` the same day, confirming 0037 absent). Without 0034/0035, Notifications → Recall and
-  Attendance → Undo match no rows and the clients throw. **0036 matters most** — it creates the
-  member row at sign-up, which stops onboarding replaying. Without 0037 the Activity page renders an
-  honest "not available yet" panel. **`create-member` needs redeploying** for birth date/gender.
+- **0034–0038 have not been run** (0028–0033 probed present 2026-08-17; `activity_log` and
+  `achievements` both answered `PGRST205`). Without 0034/0035, Notifications → Recall and Attendance
+  → Undo match no rows and the clients throw. **0036 matters most** — it creates the member row at
+  sign-up, which stops onboarding replaying. Without 0037/0038 the Activity and Achievements pages
+  render honest "not available yet" panels naming the migration; the 33 built-in achievements keep
+  working from 0028 until 0038 runs. **`create-member` needs redeploying** for birth date/gender.
 - **QR scan** — built, never tested on real hardware; the six-character code
   (`utils/checkInCode.ts`, first 6 hex of the member UUID, derived) is the fallback. **Staff
   approving registrations** needs an Edge Function (RLS won't let `staff` set `profiles.status`).

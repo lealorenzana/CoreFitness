@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import AchievementUnlockOverlay from './AchievementUnlockOverlay';
-import { achievementByKey, type AchievementDef } from '../../data/achievements';
-import { listUnlocks, markSeen, syncAchievements } from '../../lib/api/achievements';
+import { type AchievementDef } from '../../data/achievements';
+import {
+  achievementByKey, listUnlocks, loadCatalogue, markSeen, syncAchievements,
+} from '../../lib/api/achievements';
 import { getCurrentMemberId } from '../../services/bookingService';
 
 /**
@@ -42,7 +44,10 @@ export default function AchievementWatcher() {
         const uid = await getCurrentMemberId();
         if (!uid || cancelled) return;
 
-        await syncAchievements();
+        // The catalogue is a table since 0038, so it has to be in memory before
+        // `achievementByKey` can name anything. Fetched in parallel with the
+        // sync — they do not depend on each other.
+        await Promise.all([syncAchievements(), loadCatalogue()]);
         const unlocks = await listUnlocks(uid);
         if (cancelled) return;
 

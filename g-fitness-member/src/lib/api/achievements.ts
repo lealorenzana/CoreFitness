@@ -1,4 +1,8 @@
 import { supabase } from '../supabaseClient';
+import {
+  iconByName,
+  type AchievementDef, type AchievementRole, type AchievementTier,
+} from '../../data/achievements';
 
 /**
  * Progression and achievements (migration 0028).
@@ -12,7 +16,11 @@ import { supabase } from '../supabaseClient';
  * policy at all; rows only ever arrive from `sync_my_achievements()`, which
  * runs as definer and grades the caller against the real tables. A badge cannot
  * be awarded from the client, which is the whole reason the old badges tab was
- * deleted in 0020.
+ * deleted in 0020. (0038 added an admin-only `award_achievement()` RPC for
+ * hand-given badges — still server-side, still not reachable from this app.)
+ *
+ * Since 0038 the **catalogue** is a table too, so the definitions are fetched
+ * rather than compiled in. `loadCatalogue()` caches them for the session.
  */
 
 export type TrainingLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -140,3 +148,109 @@ export const LEVEL_ACCENT: Record<TrainingLevel, string> = {
   intermediate: '#F59E0B',
   advanced: '#A78BFA',
 };
+
+// ─── The catalogue (migration 0038) ──────────────────────────────────────────
+
+/** Row shape of `achievements`. */
+export interface AchievementRow {
+  key: string;
+  audience: AchievementRole;
+  title: string;
+  description: string;
+  requirement: string;
+  icon: string;
+  tier: AchievementTier;
+  category: string;
+  rule_kind: 'metric' | 'builtin' | 'manual';
+  metric: string | null;
+  threshold: number | null;
+  metric2: string | null;
+  threshold2: number | null;
+  active: boolean;
+  builtin: boolean;
+  sort_order: number;
+}
+
+/**
+ * Session cache. The catalogue changes when an admin edits it, which is rare,
+ * and re-fetching it on every screen would make the gallery flicker for no
+ * reason. A page that must be current can pass `force`.
+ */
+let cache: AchievementDef[] | null = null;
+let cacheByKey = new Map<string, AchievementDef>();
+let inflight: Promise<AchievementDef[]> | null = null;
+
+function toDef(row: AchievementRow): AchievementDef & { audience: AchievementRole } {
+  return {
+    key: row.key,
+    title: row.title,
+    description: row.description,
+    requirement: row.requirement,
+    icon: iconByName(row.icon),
+    tier: row.tier,
+    category: row.category,
+    audience: row.audience,
+  };
+}
+
+const withAudience: Array<AchievementDef & { audience: AchievementRole }> = [];
+
+/**
+ * Loads every active achievement once per session.
+ *
+ * Concurrent callers share one request — the watcher and the gallery both call
+ * this on mount, and two identical queries on app start is waste the free tier
+ * does not need to absorb.
+ */
+export async function loadCatalogue(force = false): Promise<AchievementDef[]> {
+  if (cache && !force) return cache;
+  if (inflight && !force) return inflight;
+
+  inflight = (async () => {
+    const { data, error } = await supabase
+      .from('achievements')
+      .select('*')
+      .eq('active', true)
+      .order('audience', { ascending: true })
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+
+    const defs = (data ?? []).map((r) => toDef(r as AchievementRow));
+    withAudience.length = 0;
+    withAudience.push(...defs);
+    cache = defs;
+    cacheByKey = new Map(defs.map((d) => [d.key, d]));
+    return defs;
+  })();
+
+  try {
+    return await inflight;
+  } finally {
+    inflight = null;
+  }
+}
+
+/**
+ * The set for one role. Synchronous, so the screens that already called it stay
+ * unchanged — but it reads the cache, so **`loadCatalogue()` must have resolved
+ * first** or it returns empty. Every caller awaits it in the same effect.
+ */
+export function catalogFor(role: AchievementRole): AchievementDef[] {
+  return withAudience.filter((a) => a.audience === role);
+}
+
+/**
+ * Undefined for a key the catalogue has no row for — a retired achievement
+ * somebody still holds, or a database a migration ahead of this build. Callers
+ * skip those rather than rendering an empty tile.
+ */
+export function achievementByKey(key: string): AchievementDef | undefined {
+  return cacheByKey.get(key);
+}
+
+/** Catalogue order, so the gallery groups do not jump around between loads. */
+export function categoriesFor(role: AchievementRole): string[] {
+  const seen: string[] = [];
+  for (const a of catalogFor(role)) if (!seen.includes(a.category)) seen.push(a.category);
+  return seen;
+}

@@ -28,14 +28,15 @@ if one statement partway through errors — always verify each step before movin
 6. [`migrations/0006_fix_rls_policies.sql`](migrations/0006_fix_rls_policies.sql) — idempotent
    rebuild of every policy/trigger from 0002. Only needed if you hit the failure mode below;
    safe to run even if 0002 applied cleanly (drops-if-exists before every create).
-7. **`0007` through `0037`** — keep going in numeric order. They are not listed individually here
+7. **`0007` through `0038`** — keep going in numeric order. They are not listed individually here
    because each one's own header explains what it does and why. The recent ones:
    `0028` earned training levels + `achievement_unlocks`, `0029` archive/clear state on
    `notifications`, `0030` weekly gym plans + the reminder job, `0031` date of birth, gender and
    emergency contact at sign-up, `0032` member-controlled sharing with trainers, `0033` onboarding
    completion on the member row instead of localStorage, `0034` front-desk delete on `notifications`
    (the admin "Recall" button), `0035` same-day undo of a check-in, `0036` the member row created at
-   sign-up, `0037` the `activity_log` audit trail. What changed is summarised in
+   sign-up, `0037` the `activity_log` audit trail, `0038` the achievement catalogue as data.
+   What changed is summarised in
    [docs/MIGRATION_STATUS.md](../docs/MIGRATION_STATUS.md).
 
    **`0037` is the only migration that adds triggers to tables you write to constantly** —
@@ -182,3 +183,20 @@ Run both dev servers and log in as the admin account you just bootstrapped. See 
 verification checklist in the approved plan for the full end-to-end test sequence
 (trainer creation, member registration + approval, booking, payment, QR check-in, RLS
 negative tests).
+
+   **`0038` moves the achievement rules out of code.** 0028 hardcoded 33 earning rules as an `if`
+   ladder inside `sync_my_achievements()`, so the gym could not add one without a developer. 0038
+   creates `achievements` + `achievement_metrics`, seeds the same 33 into them, and rewrites the
+   evaluator as a single loop over the table. The security property is unchanged:
+   `achievement_unlocks` still has **no INSERT policy**, and the evaluator is still SECURITY DEFINER
+   and still grades only the caller. Editing the rules is an admin act; granting yourself a badge is
+   still impossible from a browser. Hand-awards go through the admin-only `award_achievement()`.
+
+   Two rules stay in code as `rule_kind = 'builtin'` — the Intermediate and Advanced level badges.
+   Their thresholds come from `level_thresholds()`, the same function `member_progression()` uses
+   for the level on the member's Home screen; copying those numbers into the table would let the
+   badge and the level disagree. Their copy and icon are editable, their rule is not.
+
+   Re-running is safe: the seed is `on conflict … do update … where achievements.builtin`, so an
+   admin's own achievements are never clobbered. Deleting one anybody has earned is blocked by a
+   trigger — retire it instead, which keeps existing badges and stops new ones.

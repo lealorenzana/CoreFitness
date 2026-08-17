@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -12,10 +12,11 @@ import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
-  catalogFor, categoriesFor, TIER_STYLE,
-  type AchievementDef, type AchievementRole,
+  TIER_STYLE, type AchievementDef, type AchievementRole,
 } from '../data/achievements';
-import { listUnlocks, syncAchievements } from '../lib/api/achievements';
+import {
+  catalogFor, categoriesFor, listUnlocks, loadCatalogue, syncAchievements,
+} from '../lib/api/achievements';
 import { getCurrentMemberId } from '../services/bookingService';
 
 /**
@@ -41,8 +42,14 @@ export default function Achievements() {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<AchievementDef | null>(null);
 
-  const catalog = useMemo(() => catalogFor(role), [role]);
-  const categories = useMemo(() => categoriesFor(role), [role]);
+  /**
+   * Held in state, not `useMemo`. The catalogue is a table since 0038, so
+   * `catalogFor` reads a cache that is empty until `loadCatalogue()` resolves —
+   * a memo keyed on `role` would compute empty once and never recompute, and
+   * the gallery would stay blank forever.
+   */
+  const [catalog, setCatalog] = useState<AchievementDef[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,8 +57,11 @@ export default function Achievements() {
       const uid = await getCurrentMemberId();
       if (!uid) return;
       // Re-graded on open, so a badge earned since the app launched shows up
-      // here without a restart.
-      await syncAchievements().catch(() => {});
+      // here without a restart. `force` on the catalogue so an achievement the
+      // admin added while the app was open appears without a relaunch.
+      await Promise.all([syncAchievements().catch(() => {}), loadCatalogue(true)]);
+      setCatalog(catalogFor(role));
+      setCategories(categoriesFor(role));
       const rows = await listUnlocks(uid);
       setUnlocked(new Map(rows.map((r) => [r.achievement_key, r.unlocked_on])));
     } catch (err) {
@@ -59,7 +69,7 @@ export default function Achievements() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => { load(); }, [load]);
 
