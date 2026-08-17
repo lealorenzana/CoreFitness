@@ -24,6 +24,24 @@ import { useLiveData } from '../hooks/useLiveData';
 import { membershipTerm } from '../utils/membershipTerm';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome, type MemberHome } from '../services/memberHomeService';
+import MotionIcon from '../components/ui/MotionIcon';
+
+/**
+ * Is this timestamp on today's local calendar day?
+ *
+ * Compared component by component in local time, never by slicing an ISO
+ * string. Manila is UTC+8, so `toISOString()` reports yesterday's date for the
+ * first eight hours of every local day — the shift that once hid every pre-8am
+ * check-in from the admin Attendance page.
+ */
+function isToday(startsAt: string): boolean {
+  const d = new Date(startsAt);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+}
 
 /**
  * The member's home screen.
@@ -346,14 +364,25 @@ export default function Home() {
                 {home.nextBooking ? (
                   <>
                     <p className="text-sm font-bold text-white truncate">{home.nextBooking.title}</p>
-                    <p className="text-xs mt-1 font-semibold" style={{ color: 'var(--color-secondary)' }}>
-                      {new Date(home.nextBooking.startsAt as string).toLocaleDateString('en-US', {
-                        weekday: 'long', month: 'short', day: 'numeric',
-                      })}
-                      {' · '}
-                      {new Date(home.nextBooking.startsAt as string).toLocaleTimeString([], {
-                        hour: 'numeric', minute: '2-digit',
-                      })}
+                    <p className="text-xs mt-1 font-semibold flex items-center gap-1.5"
+                      style={{ color: 'var(--color-secondary)' }}>
+                      {/* Only ticks when the session is *today*. A booking three
+                          weeks out is a fact, not something happening now, and
+                          a clock ticking beside it would be movement with no
+                          event behind it. */}
+                      {isToday(home.nextBooking.startsAt as string) && (
+                        <MotionIcon icon={CalendarClock} motion="tick" size={13}
+                          color="var(--color-secondary)" />
+                      )}
+                      <span>
+                        {new Date(home.nextBooking.startsAt as string).toLocaleDateString('en-US', {
+                          weekday: 'long', month: 'short', day: 'numeric',
+                        })}
+                        {' · '}
+                        {new Date(home.nextBooking.startsAt as string).toLocaleTimeString([], {
+                          hour: 'numeric', minute: '2-digit',
+                        })}
+                      </span>
                     </p>
                     <p className="text-xs mt-1 truncate" style={{ color: 'var(--color-text-muted)' }}>
                       {home.nextBooking.subtitle}

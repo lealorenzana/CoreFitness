@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CalendarPlus, CheckCircle2, Dumbbell, ChevronRight } from 'lucide-react';
 import { panelStyle } from './Card';
+import MotionIcon from './MotionIcon';
 import {
   listMyPlan, todayDow, formatRemindAt, DAY_LABELS,
 } from '../../lib/api/gymPlans';
@@ -120,7 +121,12 @@ export default function TodayPlanCard({ checkedInToday }: { checkedInToday: bool
           color: done ? '#22C55E' : 'var(--color-secondary)',
         }}
       >
-        {done ? <CheckCircle2 size={20} /> : <Dumbbell size={20} />}
+        {/* The dumbbell only moves while the session is still outstanding.
+            Once it is done the tick is a settled fact and sits still — motion
+            on a completed state would keep nagging about nothing. */}
+        {done
+          ? <CheckCircle2 size={20} />
+          : <MotionIcon icon={Dumbbell} motion="hop" size={20} duration="1.8s" />}
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-sm font-bold text-white">

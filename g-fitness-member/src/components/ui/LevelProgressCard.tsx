@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Check, ChevronRight, Flame, Shield, Sparkles, TrendingUp } from 'lucide-react';
+import MotionIcon, { type IconMotion } from './MotionIcon';
 import { panelStyle } from './Card';
 import { Skeleton } from './Skeleton';
 import {
@@ -112,6 +113,10 @@ export default function LevelProgressCard({
   const accent = LEVEL_ACCENT[prog.level];
   const isTop = prog.nextLevel == null;
   const Emblem = prog.level === 'advanced' ? Sparkles : prog.level === 'intermediate' ? Shield : TrendingUp;
+  // Each level's glyph gets the motion that suits its shape: the arrow hops,
+  // the shield swings from its top edge, the sparkle flicks.
+  const emblemMotion: IconMotion =
+    prog.level === 'advanced' ? 'flick' : prog.level === 'intermediate' ? 'swing' : 'hop';
 
   // Only ever offers to raise it. Nothing here may lower what a member said
   // about themselves.
@@ -151,7 +156,7 @@ export default function LevelProgressCard({
           className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
           style={{ background: `${accent}1F`, border: `1px solid ${accent}59` }}
         >
-          <Emblem size={22} style={{ color: accent }} />
+          <MotionIcon icon={Emblem} motion={emblemMotion} size={22} color={accent} />
         </span>
         <span className="flex-1 min-w-0">
           <span className="display text-xl block leading-tight" style={{ color: accent }}>
@@ -197,7 +202,9 @@ export default function LevelProgressCard({
           {prog.currentWeekStreak > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold"
               style={{ color: 'var(--color-secondary)' }}>
-              <Flame size={13} />
+              {/* Already inside `currentWeekStreak > 0`, so the flame only ever
+                  moves while a streak is actually running. */}
+              <MotionIcon icon={Flame} motion="flick" size={13} duration="1.5s" />
               {prog.currentWeekStreak}-week streak
             </span>
           )}

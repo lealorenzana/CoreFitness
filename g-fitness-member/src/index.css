@@ -558,6 +558,31 @@ input[type='number'] {
   to   { opacity: 1; transform: none; }
 }
 
+/* ── Looping icon motion (`MotionIcon`) ────────────────────────────────────
+   Every one of these starts and ends at the resting glyph, for the reason
+   spelled out above `chip-in`: on a page that is not compositing the animation
+   never runs, and the only safe worst case is "the icon sits still". None of
+   them may touch colour — amber marks an action and violet marks structure, and
+   an animation that recoloured a glyph would be making a claim about state. */
+@keyframes mi-hop   { 0%,100% { transform: translateY(0) }      40% { transform: translateY(-4px) } }
+/* Rests upright, then swings to both extremes — NOT `0%,100% { rotate(-14deg) }`,
+   which is where this started. A frozen animation renders its 0% frame, so that
+   version left the shield sitting permanently tilted 14° on any page that was
+   not compositing: measured as matrix(0.970296, -0.241922, …), unchanged after
+   1.5s with currentTime stuck at 0, while every other glyph rested at identity.
+   Same ±14° of travel, but the resting frame is now the honest one. */
+@keyframes mi-swing { 0%,100% { transform: rotate(0deg) }
+                      25%     { transform: rotate(-14deg) }
+                      75%     { transform: rotate(14deg) } }
+@keyframes mi-flick { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.1) translateY(-2px); opacity: 1 } }
+@keyframes mi-tick  { 0%,100% { transform: scale(1) }           50% { transform: scale(1.08) } }
+
+/* Belt and braces with `useReducedMotion()` in the component: the hook covers
+   React renders, this covers a preference flipped after mount. */
+@media (prefers-reduced-motion: reduce) {
+  [style*="animation: mi-"] { animation: none !important; }
+}
+
 /* ── No pull-to-refresh in the installed Android app ───────────────────────
    Reported from a real phone: dragging down at the top of a list fired
    Chrome's pull-to-refresh and reloaded the whole web app. Inside a TWA that

@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Flame, Dumbbell } from 'lucide-react';
+import MotionIcon from './MotionIcon';
 
 /**
  * Seven rings, Sun→Sat, one per day of the current week.
@@ -193,7 +194,10 @@ export default function WeekRings({
           <span className="flex items-center gap-1.5 text-xs font-semibold">
             {run >= 2 ? (
               <>
-                <Flame size={14} style={{ color: 'var(--color-secondary)' }} />
+                {/* Inside the existing `run >= 2` branch — the flame moves only
+                    while a run is actually going. The `<Check />` below is a
+                    settled count and stays still. */}
+                <MotionIcon icon={Flame} motion="flick" size={14} color="var(--color-secondary)" />
                 <span style={{ color: 'var(--color-secondary)' }}>{run} days in a row</span>
               </>
             ) : (
