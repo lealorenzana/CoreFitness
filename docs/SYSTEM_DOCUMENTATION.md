@@ -208,11 +208,15 @@ admin_auto_backup          — Backup schedule settings
 
 ## Trainers
 
-| Name | Specialization | Login Email | Photo |
-|------|---------------|-------------|-------|
-| Cyrelle Joy Duhac | Strength & Conditioning | cyrelle@corefitness.com | `/trainer-duhac.png` |
-| Ana Par Iturralde | HIIT & Cardio | ana@corefitness.com | `/trainer-ituralde.png` |
-| Nathanniel Ucol | Boxing & Functional Training | nathanniel@corefitness.com | `/trainer-ucol.png` |
+There is no fixed trainer roster. Trainers are rows in `profiles`
+(`role = 'trainer'`) plus `trainer_profiles`, created by an admin through the
+`create-trainer` Edge Function, and each uploads their own photo to the
+`avatars` bucket.
+
+This section used to list three named trainers with login emails and static
+photo paths. They were the proponents' own names and faces used as sample data —
+the same mistake as the hardcoded `/eya.png` avatar on member Profile. Both the
+files and the roster are gone.
 
 ---
 

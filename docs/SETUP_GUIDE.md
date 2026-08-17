@@ -67,12 +67,10 @@ npm run dev
 1. Open the app → select a gym → click "Login"
 2. Select **Trainer** role card
 3. Enter trainer credentials (created by admin in Trainers page)
-4. Default trainer credentials:
-   - Cyrelle Joy Duhac: `cyrelle@corefitness.com`
-   - Ana Par Iturralde: `ana@corefitness.com`
-   - Nathanniel Ucol: `nathanniel@corefitness.com`
 
-> **Note:** In the prototype, any credentials work for login. Role selection determines which dashboard loads.
+> There is no default trainer and no seeded roster. Every trainer account is
+> created by an admin through the `create-trainer` Edge Function, which sets a
+> real Supabase Auth password — a wrong password is rejected.
 
 ---
 
@@ -82,18 +80,16 @@ npm run dev
 | File | Description |
 |------|-------------|
 | `core-fitness-logo.png` | Sidebar logo |
-| `trainer-duhac.png` | Cyrelle Joy Duhac photo |
-| `trainer-ituralde.png` | Ana Par Iturralde photo |
-| `trainer-ucol.png` | Nathanniel Ucol photo |
+
+Trainer photos are **not** shipped as static files. A trainer uploads their own
+through the `avatars` storage bucket (migration 0021); `profiles.photo_url` is
+the only source. The three `trainer-*.png` files that used to sit here were
+photos of the proponents seeded as fake trainers, and were deleted.
 
 ### Member App (`g-fitness-member/public/`)
 | File | Description |
 |------|-------------|
 | `assets/micajoy-fitness.jpg.png` | Splash screen hero image |
-| `trainer-duhac.png` | Trainer photo (copied from admin) |
-| `trainer-ituralde.png` | Trainer photo (copied from admin) |
-| `trainer-ucol.png` | Trainer photo (copied from admin) |
-| `eya.png` | Member profile photo |
 | `g-fitness-logo.jpg` | G-Fitness gym logo |
 | `fitness-regency-logo.jpg` | Fitness Regency logo |
 | `ferrer-fitness-logo.png` | Ferrer Fitness logo |

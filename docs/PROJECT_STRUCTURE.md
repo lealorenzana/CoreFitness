@@ -11,18 +11,14 @@ CoreFitness/
 │
 ├── assets/                         # Shared image assets
 │   ├── eya.png                     # Member profile photo
-│   ├── duhac.png                   # Trainer photo source
-│   ├── ituralde.png                # Trainer photo source
-│   ├── ucol.png                    # Trainer photo source
 │   ├── LOGO CORE FITNESS.png       # Main logo
 │   └── ...                         # Gym covers and logos
 │
 ├── g-fitness-admin/                # ── ADMIN DASHBOARD APP ──
 │   ├── public/
-│   │   ├── core-fitness-logo.png   # Sidebar logo
-│   │   ├── trainer-duhac.png       # Trainer photo
-│   │   ├── trainer-ituralde.png    # Trainer photo
-│   │   └── trainer-ucol.png        # Trainer photo
+│   │   └── core-fitness-logo.png   # Sidebar logo
+│   │                               # No trainer photos: people upload their own
+│   │                               # to the `avatars` bucket (migration 0021).
 │   └── src/
 │       ├── components/
 │       │   ├── layout/
@@ -41,11 +37,9 @@ CoreFitness/
 │       │       ├── MemberDetailModal.tsx
 │       │       ├── QRScanner.tsx
 │       │       └── LandingFooter.tsx   # Cinematic footer on login page
-│       ├── data/
-│       │   ├── members.ts              # 10 mock members (Aaron Diwa, Eya, etc.)
-│       │   ├── trainers.ts             # 3 trainers (Duhac, Iturralde, Ucol)
-│       │   ├── mockRetention.ts        # At-risk members mock data
-│       │   └── mockTrainerFeedback.ts  # Trainer feedback records
+│       ├── data/                       # The four mock files that lived here
+│       │   ├── chatbot.ts              #   (members, trainers, mockRetention,
+│       │   └── gyms.ts                 #   mockTrainerFeedback) are deleted.
 │       ├── hooks/
 │       │   └── useGymContext.ts        # Gym selection context hook
 │       ├── pages/
@@ -75,9 +69,6 @@ CoreFitness/
     ├── public/
     │   ├── assets/
     │   │   └── micajoy-fitness.jpg.png # Splash screen hero image
-    │   ├── trainer-duhac.png           # Trainer photo (copied from admin)
-    │   ├── trainer-ituralde.png        # Trainer photo (copied from admin)
-    │   ├── trainer-ucol.png            # Trainer photo (copied from admin)
     │   ├── eya.png                     # Member profile photo
     │   ├── g-fitness-logo.jpg          # G-Fitness logo
     │   ├── fitness-regency-logo.jpg    # Fitness Regency logo
