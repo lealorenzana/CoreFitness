@@ -9,6 +9,7 @@
 // those fields will populate once each consuming page migrates.
 
 import { supabase } from '../lib/supabaseClient';
+import { clearPushOnSignOut } from '../lib/api/push';
 
 interface User {
   id: string;
@@ -60,10 +61,36 @@ export const login = async (email: string, password: string): Promise<LoginResul
   return { success: true, user: userData, role: profile.role, status: profile.status };
 };
 
+/**
+ * Every per-user key the app writes to `localStorage`.
+ *
+ * Kept in one place because it was previously five: Profile, TrainerProfile,
+ * TrainerSettings, Onboarding and this function each cleared their own ad-hoc
+ * subset, and they disagreed. `TrainerProfile` dropped only `isLoggedIn` and
+ * `trainerMode`, leaving `memberId`, `memberEmail` and `memberName` behind — the
+ * previous account's identity, sitting on a phone now in someone else's hands.
+ *
+ * `selectedGym` is deliberately absent: which branch you are looking at is a
+ * property of the device, not of the person holding it.
+ */
+const PER_USER_KEYS = [
+  'user', 'isAuthenticated', 'isLoggedIn', 'trainerMode',
+  'memberId', 'memberEmail', 'memberName',
+] as const;
+
+/**
+ * The single sign-out path. Order is load-bearing.
+ *
+ * Push is cleared *first*, while the session still belongs to the person
+ * leaving — `push_subscriptions` deletes are gated on `user_id = auth.uid()`,
+ * so after `signOut()` the delete matches nothing and still reports success.
+ * That was the bug: the outgoing member's subscription survived, and their
+ * notifications kept landing on the phone after a trainer signed in.
+ */
 export const logout = async (): Promise<void> => {
+  await clearPushOnSignOut();
   await supabase.auth.signOut();
-  localStorage.removeItem('user');
-  localStorage.removeItem('isAuthenticated');
+  PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
 };
 
 /**

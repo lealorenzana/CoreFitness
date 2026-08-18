@@ -166,3 +166,51 @@ export async function disablePush(): Promise<void> {
   if (error) throw error;
   await sub.unsubscribe().catch(() => {});
 }
+
+/**
+ * Drop this device's push subscription as part of signing out.
+ *
+ * `push_subscriptions.endpoint` is UNIQUE — one row per install — and nothing
+ * used to clear it on logout. So a phone kept delivering the previous account's
+ * notifications to whoever signed in next: log out as a member, log in as a
+ * trainer, and the member's booking alerts still arrive, with their content, on
+ * a screen they no longer control. Reported from a real phone.
+ *
+ * Three things about the order matter:
+ *
+ *  1. **Before `signOut()`, never after.** The delete policy is
+ *     `user_id = auth.uid()`, so it only works while the session is still the
+ *     one that owns the row. Run it afterwards and PostgREST deletes zero rows
+ *     and reports success — the documented trap that makes a no-op look done.
+ *  2. **`unsubscribe()` happens even when the delete fails**, which is the
+ *     opposite of `disablePush()`. Killing the browser subscription is the
+ *     guarantee that actually stops delivery to this handset; the row is
+ *     bookkeeping. `send-push` prunes on the 410 the dead endpoint now returns,
+ *     so the row cleans itself up on the next send.
+ *  3. **It never throws.** A member on a bad connection must still be able to
+ *     sign out — refusing to log out is worse than a stale row, especially on
+ *     the shared phone this bug is about.
+ */
+export async function clearPushOnSignOut(): Promise<void> {
+  let sub: PushSubscription | null = null;
+  try {
+    sub = await currentSubscription();
+  } catch {
+    return; // no service worker, nothing subscribed — nothing to clear
+  }
+  if (!sub) return;
+
+  try {
+    await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+  } catch {
+    // Network failure. Deliberately swallowed and NOT allowed to skip the
+    // unsubscribe below — the first draft awaited both in one try block, so a
+    // rejected delete jumped past unsubscribe() and left the handset still
+    // receiving. The row surviving is recoverable; the live subscription is
+    // the actual leak.
+  }
+
+  // Always. This is what stops delivery to this device, and the 410 it now
+  // returns is what makes send-push prune the row on its next send.
+  await sub.unsubscribe().catch(() => {});
+}

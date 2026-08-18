@@ -13,6 +13,7 @@ import InterestPicker from '../components/ui/InterestPicker';
 import { getMyProfile } from '../lib/api/profiles';
 import { uploadMyAvatar } from '../lib/api/avatars';
 import { errorMessage } from '../utils/errorMessage';
+import { logout } from '../utils/auth';
 
 /**
  * The photo step lives here rather than in Register on purpose.
@@ -145,8 +146,9 @@ export default function Onboarding() {
 
     // Not usable yet. Sign out so the app isn't left holding a session that
     // every guard will reject, and land on Login with the reason showing.
-    await supabase.auth.signOut().catch(() => undefined);
-    ['isLoggedIn', 'trainerMode', 'memberId'].forEach((k) => localStorage.removeItem(k));
+    // Through logout(), not a bare signOut: that is the one path that also
+    // drops this device's push subscription and clears every per-user key.
+    await logout().catch(() => undefined);
     navigate('/login', { replace: true, state: { pendingApproval: true } });
   };
 
