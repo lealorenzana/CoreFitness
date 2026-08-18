@@ -192,7 +192,10 @@ export async function disablePush(): Promise<void> {
  *     the shared phone this bug is about.
  */
 export async function clearPushOnSignOut(): Promise<void> {
-  let sub: PushSubscription | null = null;
+  // Declared without an initialiser: the catch below returns, so `sub` is
+  // always assigned before it is read, and a dead `= null` trips
+  // no-useless-assignment.
+  let sub: PushSubscription | null;
   try {
     sub = await currentSubscription();
   } catch {
