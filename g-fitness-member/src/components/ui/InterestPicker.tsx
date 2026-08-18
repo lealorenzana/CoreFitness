@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Check, Plus, Sparkles } from 'lucide-react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { Check, CornerDownRight, Plus } from 'lucide-react';
 import {
   ACTIVITIES, ACTIVITY_BY_ID, STARTER_IDS, suggestionsFor, activitiesByGroup,
 } from '../../data/activities';
@@ -9,43 +9,97 @@ import {
  *
  * Sixty-odd activities shown at once is a scrolling chore on a phone and reads
  * as a form. Shown a dozen at a time, where each pick pulls in the things next
- * to it in the graph, it reads as a conversation: pick Yoga and Pilates,
- * Stretching, Mobility and Breathwork arrive under "Because you picked Yoga";
- * pick Mobility and Foam Rolling arrives.
+ * to it in the graph, it reads as a conversation.
+ *
+ * ## Suggestions open *beside* the chip, not at the bottom
+ *
+ * The first version pushed each new wave onto the end of a flat list under a
+ * "Because you picked X" heading. Two or three picks and the step was a column
+ * of stacked sections: the member tapped something near the top and the result
+ * appeared a screen and a half below, so every choice cost a scroll, and the
+ * connection between the tap and the new options was lost entirely.
+ *
+ * Suggestions now render **inline, immediately after the chip that produced
+ * them**, in the same wrapping flow and marked with a bracket. The relationship
+ * is spatial instead of textual — no heading needed to explain where the chips
+ * came from, because they are attached to the thing you touched.
  *
  * **Nothing is ever removed.** Deselecting keeps the chips that a pick
- * surfaced, and keeps the heading — a group of chips vanishing from under the
- * thumb that just tapped one is disorienting, and the member may well want the
- * neighbour rather than the thing they tried first. "Browse all" is always
- * there for anyone who would rather just see the list.
+ * surfaced: a group vanishing from under the thumb that just tapped one is
+ * disorienting, and the member may well want the neighbour rather than the
+ * thing they tried first.
  */
 interface Props {
   selected: string[];
   onChange: (next: string[]) => void;
 }
 
-interface Wave {
-  /** The pick that surfaced these, or null for the opening set. */
-  fromId: string | null;
-  ids: string[];
-}
+/** How deep the bracket keeps indenting before it flattens out. Past two the
+ *  indent eats the row on a 375px screen and the chips start to wrap one per
+ *  line, which is the scrolling problem again in a different shape. */
+const MAX_INDENT_DEPTH = 2;
 
 export default function InterestPicker({ selected, onChange }: Props) {
-  const [waves, setWaves] = useState<Wave[]>([{ fromId: null, ids: STARTER_IDS }]);
+  /** parent id → the ids that pick surfaced. Insertion order is irrelevant;
+   *  position on screen comes from the parent, not from when it was added. */
+  const [expansions, setExpansions] = useState<Record<string, string[]>>({});
   const [browseAll, setBrowseAll] = useState(false);
 
-  const shown = useMemo(() => new Set(waves.flatMap((w) => w.ids)), [waves]);
+  const shown = useMemo(() => {
+    const s = new Set<string>(STARTER_IDS);
+    for (const ids of Object.values(expansions)) ids.forEach((id) => s.add(id));
+    return s;
+  }, [expansions]);
 
   const toggle = (id: string) => {
     const isSelected = selected.includes(id);
     onChange(isSelected ? selected.filter((v) => v !== id) : [...selected, id]);
 
-    // Only a *new* pick cascades. Re-selecting something already explored
-    // should not stack a second identical block of suggestions.
-    if (isSelected) return;
+    // Only a *new* pick cascades, and only once. Re-selecting something already
+    // explored must not surface a second identical branch under it.
+    if (isSelected || expansions[id]) return;
     const next = suggestionsFor(id, shown);
-    if (next.length > 0) setWaves((prev) => [...prev, { fromId: id, ids: next }]);
+    if (next.length > 0) setExpansions((prev) => ({ ...prev, [id]: next }));
   };
+
+  /**
+   * A plain function, not a nested component: declaring a component inside
+   * render remounts its whole subtree every keystroke and trips
+   * react-hooks/static-components.
+   */
+  const renderBranch = (ids: string[], depth: number): ReactNode =>
+    ids.map((id, n) => {
+      const children = expansions[id];
+      return (
+        <Fragment key={id}>
+          <Chip
+            id={id}
+            selected={selected.includes(id)}
+            onToggle={toggle}
+            delayMs={depth === 0 ? 0 : n * 40}
+            animate={depth > 0}
+          />
+          {children && children.length > 0 && (
+            <span
+              className="inline-flex flex-wrap items-center gap-2 py-0.5"
+              style={{
+                paddingLeft: 8,
+                marginLeft: depth < MAX_INDENT_DEPTH ? 2 : 0,
+                borderLeft: '2px solid var(--color-primary)',
+              }}
+            >
+              <CornerDownRight
+                size={13}
+                className="flex-shrink-0"
+                style={{ color: 'var(--color-primary)' }}
+                aria-label={`Suggested from ${ACTIVITY_BY_ID.get(id)?.label ?? 'your pick'}`}
+              />
+              {renderBranch(children, depth + 1)}
+            </span>
+          )}
+        </Fragment>
+      );
+    });
 
   const remaining = useMemo(
     () => activitiesByGroup()
@@ -55,32 +109,10 @@ export default function InterestPicker({ selected, onChange }: Props) {
   );
 
   return (
-    <div className="space-y-5">
-      {waves.map((wave, i) => (
-        <section key={`${wave.fromId ?? 'start'}-${i}`} className="space-y-2">
-          {wave.fromId && (
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide"
-              style={{ color: 'var(--color-secondary)' }}>
-              <Sparkles size={12} />
-              Because you picked {ACTIVITY_BY_ID.get(wave.fromId)?.label}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {wave.ids.map((id, n) => (
-              <Chip
-                key={id}
-                id={id}
-                selected={selected.includes(id)}
-                onToggle={toggle}
-                // Only the cascaded waves stagger; the opening set is already
-                // on screen when the step mounts.
-                delayMs={wave.fromId ? n * 40 : 0}
-                animate={Boolean(wave.fromId)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {renderBranch(STARTER_IDS, 0)}
+      </div>
 
       {remaining.length > 0 && !browseAll && (
         <button
@@ -98,17 +130,18 @@ export default function InterestPicker({ selected, onChange }: Props) {
 
       {browseAll && remaining.map(([group, list]) => (
         <section key={group} className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide"
+          <p className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: 'var(--color-text-muted)' }}>{group}</p>
           <div className="flex flex-wrap gap-2">
             {list.map((a) => (
-              <Chip key={a.id} id={a.id} selected={selected.includes(a.id)} onToggle={toggle} delayMs={0} animate={false} />
+              <Chip key={a.id} id={a.id} selected={selected.includes(a.id)}
+                onToggle={toggle} delayMs={0} animate={false} />
             ))}
           </div>
         </section>
       ))}
 
-      <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
         {selected.length === 0
           ? 'Pick at least one so we can point you at the right classes.'
           : `${selected.length} selected`}
