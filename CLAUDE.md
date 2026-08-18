@@ -177,13 +177,12 @@ included, are presentation-facing or historical — **not specs**.
 **Backend/logic**, **the six panel features** and **design/frontend** are done — registration →
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:
-- ~~0034–0040 unrun.~~ **All applied**; `create-member` redeployed (v6). **The backend is done.**
-  Audited 2026-08-19 as anon: all 27 tables/views and 9 RPCs answer, no secret in either bundle,
-  and every write attempt — activate a membership, self-promote to admin, forge an audit row,
-  erase check-ins — changed **0 rows**. Two false alarms worth remembering: a blocked
-  `UPDATE`/`DELETE` still returns **204**, so re-run it with `Prefer: return=representation` and
-  read the rows; and an RPC called with the wrong argument signature answers **404**, which is not
-  a missing function.
+- ~~0034–0040 unrun.~~ **All applied**; `create-member` redeployed (v6). **Backend is done.**
+  Audited 2026-08-19 as anon: 27 tables/views and 9 RPCs answer, no secret in either bundle, and
+  every hostile write — activate a membership, self-promote to admin, forge an audit row, erase
+  check-ins — changed **0 rows**. Two false alarms: a blocked `UPDATE`/`DELETE` still returns
+  **204** (re-run with `Prefer: return=representation` and read the rows), and an RPC called with
+  the wrong argument signature answers **404** — neither is a bug.
 - **QR scan** — built, never tested on real hardware; the six-character code
   (`utils/checkInCode.ts`, first 6 hex of the member UUID, derived) is the fallback. **Staff
   approving registrations** needs an Edge Function (RLS won't let `staff` set `profiles.status`).
