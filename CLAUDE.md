@@ -113,7 +113,6 @@ the top of the *content* — measured at −2000px on a scrolled list. `overscro
 Chrome's pull-to-refresh reloading the TWA; `hooks/useLiveData.ts` keeps screens fresh instead.
 
 ### Styling and design system
-
 **Full reference including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).** The parts
 you cannot afford to rediscover:
 - **Admin is Tailwind v3** (no cascade layers). **Member is v4** with **no config file**: one was
