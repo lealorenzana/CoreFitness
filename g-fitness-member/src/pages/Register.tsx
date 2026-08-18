@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Mail, Phone, Lock, ArrowLeft, ArrowRight, CheckCircle, Check,
-  Eye, EyeOff, User, Dumbbell, Info, Cake, ShieldAlert, Users, MapPin,
+  Eye, EyeOff, User, Dumbbell, Info, ShieldAlert, Users, MapPin,
 } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
@@ -12,6 +12,7 @@ import { showErrorToast } from '../utils/errorHandler';
 import { registerMember, isEmailTaken, isPhoneTaken } from '../lib/api/members';
 import { listPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
+import BirthDateField from '../components/ui/BirthDateField';
 
 /**
  * Member sign-up, as a three-step onboarding flow.
@@ -430,9 +431,8 @@ export default function Register() {
                       "You are N" line is the confirmation that the date was
                       typed the way they meant it. */}
                   <div>
-                    <Field label="Date of birth" icon={Cake} type="date" value={formData.dateOfBirth}
-                      autoComplete="bday"
-                      onChange={(e: any) => update('dateOfBirth', e.target.value)} />
+                    <BirthDateField value={formData.dateOfBirth}
+                      onChange={(v) => update('dateOfBirth', v)} />
                     {formData.dateOfBirth && ageFrom(formData.dateOfBirth) != null && (
                       <p className="text-xs mt-1.5 font-semibold" style={{ color: 'var(--color-secondary)' }}>
                         You are {ageFrom(formData.dateOfBirth)} years old
