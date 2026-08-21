@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated from public/core-fitness-logo.png by desktop/make-icon.ps1
+desktop/core-fitness-admin.ico

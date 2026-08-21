@@ -38,7 +38,11 @@ this project. Verify any deploy by checking the page `<title>` and manifest, nev
 ## Deploying
 
 Only `g-fitness-member/` is deployed. The admin dashboard stays local/desktop (it's used on a
-laptop during the defense).
+laptop during the defense) — and it has **no public URL by design**: the only way to reach the
+admin UI is to be at that machine. It still opens from a desktop icon rather than a terminal;
+see [g-fitness-admin/desktop/README.md](../g-fitness-admin/desktop/README.md), installed once with
+`.\desktop\install-shortcut.ps1`. That launcher serves `dist/`, so **admin changes need
+`npm run build` before they show up in the window.**
 
 ```bash
 cd g-fitness-member && npx vercel deploy --prod --yes
