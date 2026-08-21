@@ -154,3 +154,36 @@ and probe it as anon before believing it.** A green build and a passing SQL pars
 about this; only the live 204 did.
 
 Note when probing: PostgREST maps `insufficient_privilege` (42501) to **401**, not 403.
+
+**Two probe results that look like holes and are not** — both cost time in the 2026-08-19 anon
+audit, on top of the real 0038 bug above:
+
+- **A *blocked* `UPDATE`/`DELETE` also answers `204 No Content`.** RLS filters rows rather than
+  raising, so "policy refused everything" and "wrote the row" are the same status code. Re-run with
+  `Prefer: return=representation` and read the body: `[]` means zero rows changed. Never conclude a
+  write succeeded from a 204 alone — and note this cuts the other way too, which is exactly how the
+  0039 hole hid.
+- **An RPC called with the wrong argument signature answers `404` (`PGRST202`).** PostgREST resolves
+  functions by name *and* arguments, so `POST /rpc/foo` with `{}` 404s on a function that plainly
+  exists. Send the real signature before reporting a function missing.
+
+
+## The audit trail and global search (admin-only)
+
+`activity_log` (0037) answers what the schema could not. `bookings` records a cancellation by
+flipping `status`, keeping **no timestamp and no actor** — so a member cancelling their own class
+and the front desk cancelling it for them were indistinguishable after the fact.
+
+It is written **only** by SECURITY DEFINER triggers: admin has SELECT, and there is **no INSERT
+policy at all**. That is what makes it trustworthy — the member app and the Edge Functions are
+caught by the same triggers, and nothing reachable from a browser can forge a row.
+
+Read it through the `activity_feed` view, which **must** stay `security_invoker`; without that the
+view runs as its owner and the admin-only SELECT policy is bypassed.
+
+Cancellations from before 0037 are **not** backfilled. No honest timestamp exists for them, and
+inventing one would defeat the point of having the log.
+
+Global search (`services/searchService.ts`, Ctrl+K) fires 11 parallel queries across nine entity
+types from **one** character up. A section that fails is **named in the results** rather than shown
+empty — "couldn't load bookings" and "no bookings" are different answers.

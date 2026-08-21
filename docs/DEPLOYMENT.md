@@ -53,6 +53,21 @@ The Vercel project is already linked (`.vercel/` in `g-fitness-member/`) and
 Only the **publishable** key is ever deployed — verified absent from the bundle: no
 `sb_secret_*` value, no service-role JWT.
 
+### Verifying a deploy — two false alarms, both cost time on 2026-08-22
+
+- **The root URL keeps serving the old build for ~30 seconds after a promote.** Vercel invalidates
+  the edge per node, so `/` answered `X-Vercel-Cache: HIT` with `Age: 261943` and the *previous*
+  bundle immediately after promotion, then corrected itself. **`?cb=<random>` does not help — the
+  query string is not part of the cache key** for the SPA rewrite. Request a random *path*
+  (`/verify-12345`, which the catch-all rewrites to `index.html`) to force a `MISS`, or skip HTML
+  entirely and check the asset: the new `index-<hash>.js` returns `application/javascript`, while
+  the retired one returns **200 `text/html`** — the catch-all serving `index.html` for a file that
+  no longer exists. Content-type, never status.
+- **`sb_secret_` always appears in the member bundle, and is never a key.** It is supabase-js's own
+  classifier, `e.startsWith('sb_publishable_') || e.startsWith('sb_secret_')`. Grep for the prefix
+  *followed by characters*, for `service_role`, and for JWTs whose decoded payload contains
+  `service_role` — those are the real checks, and all three are clean.
+
 ### Two settings that bite
 
 - **Deployment Protection must stay OFF.** Vercel enables "Vercel Authentication" by default on
