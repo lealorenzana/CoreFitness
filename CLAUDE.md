@@ -184,8 +184,8 @@ rebuilt page by page on real data. Outstanding:
   change** — the TWA loads the live URL, and `autoUpdate` + `must-revalidate` make phones self-update.
   Admin opens from a desktop icon (`g-fitness-admin/desktop/`) serving `dist/`, so **admin changes need
   `npm run build`**. **Two deploy-verification false alarms:** [DEPLOYMENT](docs/DEPLOYMENT.md).
-- **Nothing is pushed to GitHub.** `origin/main` is 22+ commits behind; the credential helper needs
-  a UI no agent session can show. `git push origin main` from a real terminal is the whole fix.
+- **Pushing is the user's to run, always.** Git's credential helper needs a UI no agent session can
+  show, so `git push origin main` from a real terminal is the last step of a hand-off. Synced 08-22.
 
 ### Verifying work
 **A green build proves nothing.** Every visual bug here — wrong cascade layer, focus ring resolving
