@@ -10,6 +10,8 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { clearPushOnSignOut } from '../lib/api/push';
+import { clearPageCache } from '../lib/pageCache';
+import { clearScrollMemory } from '../hooks/useScrollMemory';
 
 interface User {
   id: string;
@@ -86,11 +88,19 @@ const PER_USER_KEYS = [
  * so after `signOut()` the delete matches nothing and still reports success.
  * That was the bug: the outgoing member's subscription survived, and their
  * notifications kept landing on the phone after a trainer signed in.
+ *
+ * The two in-memory caches go with them, for the same reason. Both are keyed by
+ * screen, not by account, so whatever the member last saw on Home would be the
+ * first frame the next person to sign in on this phone renders — their numbers,
+ * their name, their next session — before the first query comes back and
+ * replaces it. The same leak as the push subscription, in a different place.
  */
 export const logout = async (): Promise<void> => {
   await clearPushOnSignOut();
   await supabase.auth.signOut();
   PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
+  clearPageCache();
+  clearScrollMemory();
 };
 
 /**

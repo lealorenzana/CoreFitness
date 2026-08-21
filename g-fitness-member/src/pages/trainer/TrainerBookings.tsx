@@ -9,6 +9,7 @@ import { listTrainerBookings, type BookingWithDetails } from '../../lib/api/book
 import { listMembers } from '../../lib/api/members';
 import { getCurrentTrainerId } from '../../services/trainerService';
 import { errorMessage } from '../../utils/errorMessage';
+import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 
 /**
@@ -29,11 +30,20 @@ const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; label: s
   cancelled: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Cancelled' },
 };
 
+/** Rows and the member-name lookup they are rendered against, cached together. */
+interface BookingsSnapshot {
+  bookings: BookingWithDetails[];
+  names: Record<string, string>;
+}
+
+const CACHE_KEY = 'trainer:bookings';
+
 export default function TrainerBookings() {
-  const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const cached = readCache<BookingsSnapshot>(CACHE_KEY);
+  const [bookings, setBookings] = useState<BookingWithDetails[]>(cached?.bookings ?? []);
+  const [names, setNames] = useState<Record<string, string>>(cached?.names ?? {});
   const [filter, setFilter] = useState<'all' | BookingStatus>('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -51,9 +61,11 @@ export default function TrainerBookings() {
         for (const m of members) map[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
         setNames(map);
         setBookings(rows);
+        writeCache<BookingsSnapshot>(CACHE_KEY, { bookings: rows, names: map });
       } catch (err) {
         console.error('Trainer bookings load failed:', err);
-        if (!cancelled) setError(errorMessage(err, 'Failed to load bookings'));
+        // Quiet when the queue is already on screen — see TrainerHome.
+        if (!cancelled && !cached) setError(errorMessage(err, 'Failed to load bookings'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -61,6 +73,9 @@ export default function TrainerBookings() {
     return () => {
       cancelled = true;
     };
+    // `cached` is the mount-time snapshot; re-running on it would refetch on
+    // every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);

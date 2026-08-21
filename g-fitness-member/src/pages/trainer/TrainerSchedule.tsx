@@ -10,6 +10,7 @@ import { listTrainerBookings } from '../../lib/api/bookings';
 import { listTrainerAvailability, type TrainerAvailabilityRow } from '../../lib/api/trainerAvailability';
 import { getCurrentTrainerId } from '../../services/trainerService';
 import { errorMessage } from '../../utils/errorMessage';
+import { readCache, writeCache } from '../../lib/pageCache';
 import type { ClassRow } from '../../types/db';
 
 /**
@@ -164,13 +165,29 @@ function ClassRowCard({
   );
 }
 
+/**
+ * The schedule's three queries, cached as one.
+ *
+ * `bookedByClass` keeps its null-vs-empty distinction through the cache: a
+ * restored screen must not turn "couldn't read the bookings" into "nobody is
+ * booked", which is the entire reason that field is nullable.
+ */
+interface ScheduleSnapshot {
+  classes: ClassRow[];
+  availability: TrainerAvailabilityRow[];
+  bookedByClass: Map<string, number> | null;
+}
+
+const CACHE_KEY = 'trainer:schedule';
+
 export default function TrainerSchedule() {
   const navigate = useNavigate();
-  const [classes, setClasses] = useState<ClassRow[]>([]);
-  const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>([]);
+  const cached = readCache<ScheduleSnapshot>(CACHE_KEY);
+  const [classes, setClasses] = useState<ClassRow[]>(cached?.classes ?? []);
+  const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>(cached?.availability ?? []);
   /** classId → live bookings. Null means the query failed, which is not zero. */
-  const [bookedByClass, setBookedByClass] = useState<Map<string, number> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [bookedByClass, setBookedByClass] = useState<Map<string, number> | null>(cached?.bookedByClass ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -192,8 +209,9 @@ export default function TrainerSchedule() {
         if (cancelled) return;
         setClasses(rows);
         setAvailability(hours);
+        let counts: Map<string, number> | null = null;
         if (bookings) {
-          const counts = new Map<string, number>();
+          counts = new Map<string, number>();
           for (const b of bookings) {
             // A rejected or cancelled booking is not a person turning up.
             if (b.status !== 'pending' && b.status !== 'approved') continue;
@@ -201,9 +219,13 @@ export default function TrainerSchedule() {
           }
           setBookedByClass(counts);
         }
+        writeCache<ScheduleSnapshot>(CACHE_KEY, {
+          classes: rows, availability: hours, bookedByClass: counts,
+        });
       } catch (err) {
         console.error('Trainer schedule load failed:', err);
-        if (!cancelled) setError(errorMessage(err, 'Failed to load schedule'));
+        // Quiet when a schedule is already on screen — see TrainerHome.
+        if (!cancelled && !cached) setError(errorMessage(err, 'Failed to load schedule'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -211,6 +233,9 @@ export default function TrainerSchedule() {
     return () => {
       cancelled = true;
     };
+    // `cached` is the mount-time snapshot; re-running on it would refetch on
+    // every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return <SkeletonList count={4} />;

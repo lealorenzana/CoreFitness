@@ -11,6 +11,15 @@ import {
 } from '../../lib/api/achievements';
 import { getCurrentMemberId, getExperienceLevel, setExperienceLevel } from '../../services/bookingService';
 import { toast } from './Toast';
+import { readCache, writeCache } from '../../lib/pageCache';
+
+/** The earned progression and the member's own declared level, cached together. */
+interface LevelSnapshot {
+  prog: Progression | null;
+  declared: TrainingLevel | null;
+}
+
+const CACHE_KEY = 'member:level-progress';
 
 /**
  * Beginner → Intermediate → Advanced, earned rather than declared.
@@ -74,9 +83,13 @@ export default function LevelProgressCard({
   linkToAchievements = true,
 }: { linkToAchievements?: boolean } = {}) {
   const navigate = useNavigate();
-  const [prog, setProg] = useState<Progression | null>(null);
-  const [declared, setDeclared] = useState<TrainingLevel | null>(null);
-  const [loading, setLoading] = useState(true);
+  // This card fetches for itself, so it kept flashing its own 176px skeleton on
+  // a screen the page cache had already filled — measured on a warm Home, where
+  // it was the only thing left still loading. Cached on the same terms.
+  const cached = readCache<LevelSnapshot>(CACHE_KEY);
+  const [prog, setProg] = useState<Progression | null>(cached?.prog ?? null);
+  const [declared, setDeclared] = useState<TrainingLevel | null>(cached?.declared ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [grown, setGrown] = useState(false);
   const [adopting, setAdopting] = useState(false);
 
@@ -89,13 +102,21 @@ export default function LevelProgressCard({
       ]);
       setProg(p);
       setDeclared(d);
+      writeCache<LevelSnapshot>(CACHE_KEY, { prog: p, declared: d });
     } catch {
       // A missing progression is not worth a toast on the home screen — the
       // card simply doesn't render. Every other number on the page is real.
-      setProg(null);
+      //
+      // Unless the cache already put a real card on screen: blanking it on a
+      // dropped packet would make the member's level vanish from Home, which
+      // reads as having lost it. Keep what was last true and try again.
+      if (!cached) setProg(null);
     } finally {
       setLoading(false);
     }
+    // `cached` is the mount-time snapshot; re-running on it would refetch on
+    // every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);

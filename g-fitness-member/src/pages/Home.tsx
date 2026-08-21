@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,7 +24,11 @@ import { useLiveData } from '../hooks/useLiveData';
 import { membershipTerm } from '../utils/membershipTerm';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome, type MemberHome } from '../services/memberHomeService';
+import { readCache, writeCache } from '../lib/pageCache';
 import MotionIcon from '../components/ui/MotionIcon';
+
+/** Cache slot for this screen — see lib/pageCache.ts. */
+const CACHE_KEY = 'member:home';
 
 /**
  * Is this timestamp on today's local calendar day?
@@ -58,8 +62,12 @@ function isToday(startsAt: string): boolean {
  */
 export default function Home() {
   const navigate = useNavigate();
-  const [home, setHome] = useState<MemberHome | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // Seeded from the last dashboard this session rendered, so coming back from
+  // Book a Session paints content on the first frame instead of skeletons.
+  const cached = readCache<MemberHome>(CACHE_KEY);
+  const [home, setHome] = useState<MemberHome | null>(cached ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [checkInOpen, setCheckInOpen] = useState(false);
 
   /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
@@ -71,7 +79,7 @@ export default function Home() {
         if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
-      setHome(await getMemberHome(id));
+      setHome(writeCache(CACHE_KEY, await getMemberHome(id)));
     } catch (err) {
       if (!quiet) toast.error(errorMessage(err, 'Could not load your dashboard'));
     } finally {
@@ -79,7 +87,11 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // The mount fetch is quiet when there is something to look at meanwhile —
+  // a loud one would set `loading` back to true and reintroduce the flash the
+  // cache exists to remove.
+  const revisit = useRef(cached !== undefined);
+  useEffect(() => { load(revisit.current); }, [load]);
 
   // Next session, membership status and the check-in streak all move without
   // this screen doing anything.

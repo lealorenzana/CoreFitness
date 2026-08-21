@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot } from 'lucide-react';
 import TrainerBottomNav from './TrainerBottomNav';
@@ -7,6 +7,7 @@ import AchievementWatcher from '../ui/AchievementWatcher';
 import { Toaster } from '../ui/Toast';
 import Notifications from '../Notifications';
 import PhoneChassis from './PhoneChassis';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 
 /**
  * The trainer shell.
@@ -36,11 +37,9 @@ export default function TrainerLayout() {
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo(0, 0);
-    }
-  }, [location.pathname]);
+  // See Layout.tsx — the same scroll reset lived here, with the same effect on
+  // a trainer flicking between Schedule and Members.
+  useScrollMemory(mainRef, location.pathname);
 
   return (
     <PhoneChassis>

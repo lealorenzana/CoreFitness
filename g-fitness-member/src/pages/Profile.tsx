@@ -16,6 +16,21 @@ import { Pill } from '../components/ui/StatCard';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentMembership } from '../lib/api/memberships';
+import { readCache, writeCache } from '../lib/pageCache';
+
+/** The flattened identity + plan this screen renders. */
+interface MemberSummary {
+  name: string;
+  email: string;
+  phone: string;
+  photoUrl: string | null;
+  gym: string;
+  joinDate: string;
+  planName: string;
+  status: string;
+}
+
+const CACHE_KEY = 'member:profile';
 
 /**
  * The member's own profile.
@@ -40,9 +55,12 @@ import { getCurrentMembership } from '../lib/api/memberships';
 export default function Profile() {
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [member, setMember] = useState({
-    name: '', email: '', phone: '', photoUrl: null as string | null,
+  // Identity and plan barely move, and this is a bottom-nav tab, so the
+  // skeleton-on-every-visit was pure cost. See lib/pageCache.ts.
+  const cached = readCache<MemberSummary>(CACHE_KEY);
+  const [loading, setLoading] = useState(cached === undefined);
+  const [member, setMember] = useState<MemberSummary>(cached ?? {
+    name: '', email: '', phone: '', photoUrl: null,
     gym: 'Core Fitness Mamburao',
     joinDate: '', planName: '', status: '',
   });
@@ -58,7 +76,7 @@ export default function Profile() {
           getCurrentMembership(id).catch(() => null),
         ]);
         if (cancelled || !profile) return;
-        setMember({
+        setMember(writeCache<MemberSummary>(CACHE_KEY, {
           name: `${profile.profile.first_name} ${profile.profile.last_name}`.trim(),
           email: profile.profile.email,
           phone: profile.profile.phone ?? '',
@@ -69,7 +87,7 @@ export default function Profile() {
           }),
           planName: membership?.membership_plans?.name ?? '',
           status: membership?.status ?? '',
-        });
+        }));
       } finally {
         if (!cancelled) setLoading(false);
       }

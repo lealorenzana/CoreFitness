@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, X, Send, ChevronRight, Users, Target, Ruler, Dumbbell, EyeOff,
@@ -18,6 +18,7 @@ import {
 } from '../../services/trainerService';
 import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
+import { readCache, writeCache } from '../../lib/pageCache';
 
 /**
  * One block of a member's own data in the trainer's view.
@@ -80,9 +81,14 @@ interface RosterMember {
   visitsLast30: number;
 }
 
+const CACHE_KEY = 'trainer:roster';
+
 export default function TrainerMembers() {
-  const [members, setMembers] = useState<RosterMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  // See lib/pageCache.ts — the roster is three queries and a join, and it is a
+  // bottom-nav tab a trainer bounces in and out of all day.
+  const cached = readCache<RosterMember[]>(CACHE_KEY);
+  const [members, setMembers] = useState<RosterMember[]>(cached ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
   const [selectedMember, setSelectedMember] = useState<RosterMember | null>(null);
   const [detail, setDetail] = useState<MemberDetailForTrainer | null>(null);
@@ -114,8 +120,8 @@ export default function TrainerMembers() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const [rows, memberships, attendance] = await Promise.all([
         listMembers(),
@@ -140,7 +146,7 @@ export default function TrainerMembers() {
       }
 
       setMembers(
-        rows.map(({ profile, member }) => {
+        writeCache(CACHE_KEY, rows.map(({ profile, member }) => {
           const ms = newest.get(profile.id);
           return {
             id: profile.id,
@@ -151,18 +157,20 @@ export default function TrainerMembers() {
             lastVisit: lastVisit.get(profile.id) ?? null,
             visitsLast30: visits30.get(profile.id) ?? 0,
           };
-        })
+        }))
       );
     } catch (err) {
       console.error('Member roster load failed:', err);
-      setError(errorMessage(err, 'Failed to load members'));
+      // A failed refresh over a roster already on screen stays quiet.
+      if (!quiet) setError(errorMessage(err, 'Failed to load members'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
+  const revisit = useRef(cached !== undefined);
   useEffect(() => {
-    load();
+    load(revisit.current);
   }, [load]);
 
   /** Sends a real notification the member sees in their 🔔 — the old version

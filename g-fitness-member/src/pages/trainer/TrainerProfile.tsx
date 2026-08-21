@@ -16,14 +16,18 @@ import { logout } from '../../utils/auth';
 import {
   getCurrentTrainerId,
   getTrainerOverview,
+  TRAINER_OVERVIEW_CACHE_KEY,
   type TrainerOverview,
 } from '../../services/trainerService';
+import { readCache, writeCache } from '../../lib/pageCache';
 import { errorMessage } from '../../utils/errorMessage';
 
 export default function TrainerProfile() {
   const navigate = useNavigate();
-  const [overview, setOverview] = useState<TrainerOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Same slot Trainer Home fills — one query, two screens.
+  const cached = readCache<TrainerOverview>(TRAINER_OVERVIEW_CACHE_KEY);
+  const [overview, setOverview] = useState<TrainerOverview | null>(cached ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -36,10 +40,11 @@ export default function TrainerProfile() {
         const data = await getTrainerOverview(id);
         if (cancelled) return;
         if (!data) throw new Error('No trainer profile found for this account');
-        setOverview(data);
+        setOverview(writeCache(TRAINER_OVERVIEW_CACHE_KEY, data));
       } catch (err) {
         console.error('Trainer profile load failed:', err);
-        if (!cancelled) setError(errorMessage(err, 'Failed to load'));
+        // Quiet when there is already a profile on screen — see TrainerHome.
+        if (!cancelled && !cached) setError(errorMessage(err, 'Failed to load'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -47,6 +52,9 @@ export default function TrainerProfile() {
     return () => {
       cancelled = true;
     };
+    // `cached` is the mount-time snapshot; re-running on it would refetch on
+    // every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = async () => {

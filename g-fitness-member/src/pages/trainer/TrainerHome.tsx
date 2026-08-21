@@ -12,8 +12,10 @@ import {
 import {
   getCurrentTrainerId,
   getTrainerOverview,
+  TRAINER_OVERVIEW_CACHE_KEY,
   type TrainerOverview,
 } from '../../services/trainerService';
+import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 import { errorMessage } from '../../utils/errorMessage';
 
@@ -77,8 +79,10 @@ function timeOf(iso: string | null): string {
 
 export default function TrainerHome() {
   const navigate = useNavigate();
-  const [overview, setOverview] = useState<TrainerOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Shared with Trainer Profile — same query, two views. See lib/pageCache.ts.
+  const cached = readCache<TrainerOverview>(TRAINER_OVERVIEW_CACHE_KEY);
+  const [overview, setOverview] = useState<TrainerOverview | null>(cached ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -90,15 +94,21 @@ export default function TrainerHome() {
         const data = await getTrainerOverview(id);
         if (cancelled) return;
         if (!data) throw new Error('No trainer profile found for this account');
-        setOverview(data);
+        setOverview(writeCache(TRAINER_OVERVIEW_CACHE_KEY, data));
       } catch (err) {
         console.error('Trainer dashboard load failed:', err);
-        if (!cancelled) setError(errorMessage(err, 'Failed to load'));
+        // A failed *refresh* over good cached content stays quiet — the screen
+        // is not empty, and an error banner replacing a working dashboard on a
+        // dropped packet is worse than a few seconds of staleness.
+        if (!cancelled && !cached) setError(errorMessage(err, 'Failed to load'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
+    // `cached` is the mount-time snapshot; re-running on it would refetch on
+    // every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return <SkeletonList count={4} />;

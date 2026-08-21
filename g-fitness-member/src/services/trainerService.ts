@@ -109,6 +109,15 @@ export async function getCurrentTrainerId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
+/**
+ * Cache slot for `getTrainerOverview` — see lib/pageCache.ts.
+ *
+ * Shared on purpose. Trainer Home and Trainer Profile are two tabs rendering
+ * two views of *the same query*, so they fill each other's first paint: a
+ * trainer who has opened either one gets the other instantly.
+ */
+export const TRAINER_OVERVIEW_CACHE_KEY = 'trainer:overview';
+
 export async function getTrainerOverview(trainerId: string): Promise<TrainerOverview | null> {
   const trainer = await getTrainer(trainerId);
   if (!trainer) return null;

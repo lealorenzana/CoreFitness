@@ -1,21 +1,23 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
 import FloatingChathead from '../ui/FloatingChathead';
 import AchievementWatcher from '../ui/AchievementWatcher';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo(0, 0);
-    }
-  }, [location.pathname]);
+  // Was `mainRef.current.scrollTo(0, 0)` on every pathname change — a deliberate
+  // reset that sent the member back to the top of Home every time they came
+  // back to it. A screen visited before now resumes where it was left; a screen
+  // seen for the first time still starts at the top, which is all the old line
+  // was ever getting right.
+  useScrollMemory(mainRef, location.pathname);
 
   return (
     <PhoneChassis>

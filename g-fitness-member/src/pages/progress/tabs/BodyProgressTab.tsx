@@ -2,7 +2,7 @@ import { panelStyle } from '../../../components/ui/Card';
 import BodyMap, { type BodyMapData } from '../../../components/ui/BodyMap';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Activity, Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -12,6 +12,7 @@ import { errorMessage } from '../../../utils/errorMessage';
 import {
   progressService, calcBmi, bmiLabel, bmiColor, type BodyProgressEntry,
 } from '../../../services/progressService';
+import { readCache, writeCache } from '../../../lib/pageCache';
 
 /**
  * Body measurements, from `body_measurements` (migration 0020).
@@ -69,28 +70,38 @@ function Trend({ value, unit }: { value: number | null; unit: string }) {
   );
 }
 
+/** Progress is a bottom-nav tab and this is the tab it opens on. */
+const CACHE_KEY = 'member:progress:body';
+
 export default function BodyProgressTab() {
   const memberId = useMemberId();
-  const [entries, setEntries] = useState<BodyProgressEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = readCache<BodyProgressEntry[]>(CACHE_KEY);
+  const [entries, setEntries] = useState<BodyProgressEntry[]>(cached ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<FieldKey, string>>({
     weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '',
   });
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
-      setEntries(await progressService.getBodyProgress(memberId));
+      setEntries(writeCache(CACHE_KEY, await progressService.getBodyProgress(memberId)));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load your measurements'));
+      if (!quiet) toast.error(errorMessage(err, 'Could not load your measurements'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
+  const revisit = useRef(cached !== undefined);
+  // Refetches when the member id resolves. `load` is rebuilt every render and is
+  // deliberately not a dependency. (The suppression used to sit *inside* the
+  // effect body as a block comment, where `disable-next-line` pointed at the
+  // line below and silenced nothing — it has been warning ever since.)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(revisit.current); }, [memberId]);
 
   const save = async () => {
     // A blank field means "didn't measure this", which must reach the database

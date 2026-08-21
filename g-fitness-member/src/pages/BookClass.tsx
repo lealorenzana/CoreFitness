@@ -1,6 +1,6 @@
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X } from 'lucide-react';
@@ -23,8 +23,32 @@ import {
   type Entitlement,
 } from '../services/bookingService';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import { readCache, writeCache } from '../lib/pageCache';
 import type { OpenSlot } from '../lib/api/trainerAvailability';
 import type { ClassLevel } from '../types/db';
+
+/**
+ * Everything the first paint of this screen needs, cached as one object.
+ *
+ * Four queries fan out on mount and all four have to land before the page is
+ * worth looking at, so they are remembered together — a half-restored screen
+ * showing classes but no entitlement would render the booking buttons in the
+ * wrong state.
+ *
+ * Only `load()` writes it. `chooseLevel` deliberately does not: it changes the
+ * class list in place, which leaves this snapshot one level behind until the
+ * next visit's background refresh corrects it, and that is the whole contract
+ * of the cache — stale for exactly one round trip, never authoritative.
+ */
+interface BookClassSnapshot {
+  memberId: string | null;
+  classes: BookableClass[];
+  level: ExperienceLevel | null;
+  trainers: PublicTrainer[];
+  entitlement: Entitlement | null;
+}
+
+const CACHE_KEY = 'member:book-class';
 
 /**
  * Booking, against real data.
@@ -91,19 +115,20 @@ export default function BookClass() {
   const [tab, setTab] = useState<'classes' | 'pt'>(deepLinkTrainerId ? 'pt' : 'classes');
   /** Calendar filter. Null = the whole fortnight. */
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [memberId, setMemberId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readCache<BookClassSnapshot>(CACHE_KEY);
+  const [memberId, setMemberId] = useState<string | null>(cached?.memberId ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [busy, setBusy] = useState(false);
-  const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
+  const [entitlement, setEntitlement] = useState<Entitlement | null>(cached?.entitlement ?? null);
 
   // Group classes
-  const [classes, setClasses] = useState<BookableClass[]>([]);
-  const [level, setLevel] = useState<ExperienceLevel | null>(null);
+  const [classes, setClasses] = useState<BookableClass[]>(cached?.classes ?? []);
+  const [level, setLevel] = useState<ExperienceLevel | null>(cached?.level ?? null);
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [confirmClass, setConfirmClass] = useState<BookableClass | null>(null);
 
   // Personal training
-  const [trainers, setTrainers] = useState<PublicTrainer[]>([]);
+  const [trainers, setTrainers] = useState<PublicTrainer[]>(cached?.trainers ?? []);
   const [selectedTrainer, setSelectedTrainer] = useState<PublicTrainer | null>(null);
   const [slots, setSlots] = useState<OpenSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -137,6 +162,9 @@ export default function BookClass() {
       setLevel(lvl);
       setTrainers(coaches);
       setEntitlement(ent);
+      writeCache<BookClassSnapshot>(CACHE_KEY, {
+        memberId: id, classes: bookable, level: lvl, trainers: coaches, entitlement: ent,
+      });
     } catch (err) {
       if (!quiet) toast.error(errorMessage(err, 'Could not load the schedule'));
     } finally {
@@ -144,7 +172,9 @@ export default function BookClass() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Quiet when the cache already put a schedule on screen — see Home.tsx.
+  const revisit = useRef(cached !== undefined);
+  useEffect(() => { load(revisit.current); }, [load]);
 
   // Approval happens on the front desk's screen, not this one, so the member
   // would otherwise sit looking at a stale "Pending" until they navigated away
