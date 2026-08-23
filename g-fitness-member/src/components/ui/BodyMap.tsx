@@ -277,9 +277,19 @@ interface BodyMapProps {
   data: BodyMapData;
   /** Rendered under the figure. Omit to show only the diagram. */
   showLegend?: boolean;
+  /**
+   * Opens the logging flow for one region. Omit and the map stays read-only.
+   *
+   * Without this the map was a readout that *looked* interactive: tapping a
+   * region highlighted it, and on a member with nothing logged — which is every
+   * member on day one — the highlight revealed "Not measured" and there was
+   * nowhere to go. The only route to logging was a button above the card that
+   * started at "What do you weigh?", four steps away from the part they tapped.
+   */
+  onLogRegion?: (key: BodyRegionKey) => void;
 }
 
-export default function BodyMap({ data, showLegend = true }: BodyMapProps) {
+export default function BodyMap({ data, showLegend = true, onLogRegion }: BodyMapProps) {
   const states = useMemo(() => buildStates(data), [data]);
   const [selected, setSelected] = useState<BodyRegionKey | null>(null);
 
@@ -345,19 +355,45 @@ export default function BodyMap({ data, showLegend = true }: BodyMapProps) {
             })}
           </div>
 
-          <p className="text-xs mt-2.5 px-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            {measured === 0
-              ? 'Log a measurement to light up the map.'
-              : 'Brighter means that measurement moved more than your others — not that it moved the right way.'}
-          </p>
-
-          {active && active.delta != null && (
-            <p className="text-xs mt-1 px-1 font-semibold" style={{ color: 'var(--color-secondary)' }}>
-              {active.label}{' '}
-              {active.delta === 0
-                ? 'has not changed since your last reading.'
-                : `${active.delta > 0 ? 'up' : 'down'} ${Math.abs(active.delta)} cm since your last reading.`}
+          {/* The standing hint, shown only while nothing is selected — once a
+              region is picked, the panel below says something specific and two
+              paragraphs of guidance is one too many on a phone. */}
+          {!active && (
+            <p className="text-xs mt-2.5 px-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {measured === 0
+                ? onLogRegion
+                  ? 'Tap a body part to log it.'
+                  : 'Log a measurement to light up the map.'
+                : 'Brighter means that measurement moved more than your others — not that it moved the right way.'}
             </p>
+          )}
+
+          {active && (
+            <div className="mt-2.5 p-3 rounded-xl"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              <p className="text-xs font-semibold text-white">{active.label}</p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                {active.latest == null
+                  ? 'Not measured yet.'
+                  : active.delta == null
+                    // One reading and nothing to compare it to. Saying "no
+                    // change" here would be a claim about a comparison that
+                    // does not exist.
+                    ? `${active.latest} cm — your first reading, so there is nothing to compare it to yet.`
+                    : active.delta === 0
+                      ? `${active.latest} cm — unchanged since your last reading.`
+                      : `${active.latest} cm — ${active.delta > 0 ? 'up' : 'down'} ${Math.abs(active.delta)} cm since your last reading.`}
+              </p>
+              {onLogRegion && (
+                <button
+                  onClick={() => onLogRegion(active.key)}
+                  className="mt-2.5 w-full h-9 rounded-full text-xs font-bold text-black"
+                  style={{ background: 'var(--color-secondary)' }}
+                >
+                  {active.latest == null ? `Log ${active.label.toLowerCase()}` : `Update ${active.label.toLowerCase()}`}
+                </button>
+              )}
+            </div>
           )}
         </>
       )}

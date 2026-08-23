@@ -54,9 +54,25 @@ export default function Modal({
   if (!host) return null;
 
   return createPortal(
+    // Always mounted, and the only thing here that declares pointer-events.
+    //
+    // `#modal-root` is `pointer-events: none`, so a portalled dialog has to opt
+    // back in — and that used to happen on a node *inside* `{isOpen && …}`.
+    // **AnimatePresence keeps an exiting subtree mounted until its animation
+    // finishes**, and on a page that is not compositing the animation never
+    // finishes. Measured after Close: 14 descendants still reporting
+    // `pointer-events: auto`, invisible, over the whole screen.
+    //
+    // Deriving it inside the conditional does not work either — an exiting
+    // child is re-rendered with its *last* props, so `isOpen ? … : …` stays
+    // frozen at true. Only a node that never unmounts observes the change.
+    <div
+      className="absolute inset-0 z-[200]"
+      style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
+    >
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-[200] pointer-events-auto">
+        <div className="absolute inset-0">
           {/* Backdrop — constrained to phone screen */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -130,7 +146,8 @@ export default function Modal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    </div>,
     host
   );
 }

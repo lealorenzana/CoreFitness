@@ -130,8 +130,12 @@ cannot afford to rediscover:
   **CSS transitions** run** — `transition: opacity 200ms` read `0` after 900ms (`playState:
   "running"`, `currentTime: 0`). Only `setTimeout` + a direct state write is safe: **never gate
   visibility or correctness on an animation having run**; Framer is decoration. Both measured:
-  **`AnimatePresence` never unmounts an exiting child** (invisible backdrop ate clicks forever —
-  always-mounted wrapper *outside* it); **a transitioned SVG presentation attribute sticks** at its
+  **`AnimatePresence` never unmounts an exiting child** — measured again: Close left `Modal` with
+  **14** descendants still `pointer-events: auto`, invisible, over the whole screen. `open ? … : …`
+  on the child does **not** fix it (an exiting child keeps its *last* props); the fix is an
+  always-mounted wrapper **outside** `AnimatePresence` owning the only pointer-events declaration,
+  with the child declaring none. Both fixed; **other overlays still carry the old shape** —
+  [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md). **A transitioned SVG presentation attribute sticks** at its
   old computed value while the attribute reads the new one.
 - Wrong twice each: **native pickers** (`color-scheme: dark`, not `filter: invert(1)`), **focus rings**,
   **popovers inside scrolling modals**.

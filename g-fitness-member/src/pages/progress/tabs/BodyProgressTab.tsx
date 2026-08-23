@@ -34,6 +34,17 @@ const FIELDS = [
 
 type FieldKey = typeof FIELDS[number]['key'];
 
+/**
+ * Which step of the logging flow each body region lives on.
+ *
+ * Chest and arms share the `upper` screen and waist and legs share `lower`,
+ * because those are the pairs a person measures in one go with one tape. The
+ * map only ever sends someone to a step that contains what they tapped.
+ */
+const REGION_STEP: Record<'chest' | 'arms' | 'waist' | 'legs', string> = {
+  chest: 'upper', arms: 'upper', waist: 'lower', legs: 'lower',
+};
+
 /** Change between two readings, or null when either is missing. */
 function delta(current: number | null, previous: number | null): number | null {
   if (current == null || previous == null) return null;
@@ -79,6 +90,14 @@ export default function BodyProgressTab() {
   const [entries, setEntries] = useState<BodyProgressEntry[]>(cached ?? []);
   const [loading, setLoading] = useState(cached === undefined);
   const [showForm, setShowForm] = useState(false);
+  /**
+   * Which step the flow opens on.
+   *
+   * The button above the card starts at the beginning; a tap on the body map
+   * starts at the part that was tapped. Both regions of a step share it — chest
+   * and arms are one screen, so either sends you to `upper`.
+   */
+  const [startStep, setStartStep] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<FieldKey, string>>({
     weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '',
@@ -212,7 +231,7 @@ export default function BodyProgressTab() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => setShowForm(true)}
+      <button onClick={() => { setStartStep(undefined); setShowForm(true); }}
         className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
         style={{ background: 'var(--color-secondary)' }}>
         <Plus size={15} /> Log a measurement
@@ -224,6 +243,7 @@ export default function BodyProgressTab() {
         steps={steps}
         submitLabel="Save measurement"
         saving={saving}
+        initialStepId={startStep}
         onClose={() => setShowForm(false)}
         onSubmit={save}
       />
@@ -237,12 +257,18 @@ export default function BodyProgressTab() {
           style={{ color: 'var(--color-text-secondary)' }}>
           Your measurements
         </p>
-        <BodyMap data={mapData} />
+        <BodyMap
+          data={mapData}
+          onLogRegion={(region) => {
+            setStartStep(REGION_STEP[region]);
+            setShowForm(true);
+          }}
+        />
       </div>
 
       {!latest ? (
         <EmptyState icon={Activity} title="No measurements yet"
-          message="Log your first one to start tracking. Nothing is shared without your trainer asking." />
+          message="Tap a body part above to log it, or use the button at the top. Nothing is shared without your trainer asking." />
       ) : (
         <>
           {latestBmi != null && (

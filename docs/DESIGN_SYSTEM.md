@@ -295,3 +295,64 @@ const INPUTS = ['touchstart', 'wheel', 'pointerdown', 'keydown'] as const;
 All four are needed. With only `touchstart`/`wheel`, dragging the scrollbar or pressing space fought
 the restore loop and dragged the view back for a whole second. Positions are memory-only and cleared
 in `logout()` alongside the page cache.
+
+
+## An exiting dialog keeps eating taps
+
+`#modal-root`, `#phone-overlay-root` and the other portal roots are
+`pointer-events: none`, so anything portalled in has to opt back in. The obvious
+place to do that is the dialog itself:
+
+```jsx
+<AnimatePresence>
+  {isOpen && <motion.div exit={…} className="absolute inset-0 pointer-events-auto">…}
+</AnimatePresence>
+```
+
+That is wrong, and it is wrong in a way nothing on screen reveals.
+**AnimatePresence keeps an exiting subtree mounted until its exit animation
+completes**, and on a page that is not compositing — a backgrounded tab, a locked
+phone, this harness — the animation never completes. The dialog stays in the DOM
+at `opacity: 0`, full-screen, still claiming pointer events, and silently
+swallows every tap on the screen underneath.
+
+Measured after pressing Close: `StepFlow` left one such node; `Modal` left
+**fourteen** descendants still reporting `pointer-events: auto`, 2.5 seconds
+later and indefinitely.
+
+### Deriving it from `open` does not fix it
+
+```jsx
+{/* still broken */}
+<motion.div style={{ pointerEvents: isOpen ? 'auto' : 'none' }} …>
+```
+
+An exiting child is re-rendered with its **last** props, so the ternary is frozen
+at `isOpen === true` and never re-evaluated. Only a node that stays mounted
+observes the flip.
+
+### The fix: one always-mounted wrapper, outside AnimatePresence
+
+```jsx
+<div className="absolute inset-0" style={{ pointerEvents: isOpen ? 'auto' : 'none' }}>
+  <AnimatePresence>
+    {isOpen && <motion.div exit={…} className="absolute inset-0">…</motion.div>}
+  </AnimatePresence>
+</div>
+```
+
+The inner dialog declares **no** pointer-events at all and inherits. A child with
+an explicit `pointer-events: auto` still receives events even when its parent is
+`none`, so the declaration has to be removed, not just overridden.
+
+The exit animation still plays on a phone that is awake; a stuck child on one
+that is not is inert. This is the same rule as the progress bars and the body
+map: **the moment a property carries correctness rather than decoration, write
+it — never animate it.**
+
+Both fixed. **Other overlays still carry the old shape** — `Notifications`,
+`CheckInSheet`, `ChatbotPopup`, `AuthChoiceSheet`, `GymSelectionSheet`,
+`NotificationDetail`, `AchievementUnlockOverlay`, the trainer sheets. Anything
+whose direct AnimatePresence child is a `motion` component with `exit` *and* a
+`pointer-events-auto` class is a candidate; measure before assuming, because a
+plain `<div>` as the direct child unmounts immediately and does not leak.

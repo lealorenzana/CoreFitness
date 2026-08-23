@@ -40,6 +40,7 @@ export default function StepFlow({
   steps,
   submitLabel = 'Save',
   saving = false,
+  initialStepId,
   onClose,
   onSubmit,
 }: {
@@ -49,6 +50,17 @@ export default function StepFlow({
   steps: FlowStep[];
   submitLabel?: string;
   saving?: boolean;
+  /**
+   * Which step to open on. Defaults to the first.
+   *
+   * This exists so a caller can open the flow *at the thing the member just
+   * tapped* — the body map sends someone who tapped their waist straight to the
+   * lower-body step rather than making them page past weight, height and body
+   * fat to reach it. An unknown id falls back to the first step rather than
+   * throwing, because the step list is built per render and can legitimately
+   * lose a step between the tap and the open.
+   */
+  initialStepId?: string;
   onClose: () => void;
   onSubmit: () => void;
 }) {
@@ -56,7 +68,14 @@ export default function StepFlow({
 
   // Reset on each open, and clamp if the step list shrinks underneath us —
   // the goals flow drops a step when the metric changes to "something else".
-  useEffect(() => { if (open) setIndex(0); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const start = initialStepId ? steps.findIndex((s) => s.id === initialStepId) : 0;
+    setIndex(start >= 0 ? start : 0);
+    // `steps` is rebuilt every render by every caller, so depending on it here
+    // would reset the member to step one on each keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialStepId]);
   useEffect(() => {
     setIndex((i) => Math.min(i, Math.max(0, steps.length - 1)));
   }, [steps.length]);
@@ -73,6 +92,31 @@ export default function StepFlow({
   const next = () => (isLast ? onSubmit() : setIndex((i) => i + 1));
 
   return createPortal(
+    // An always-mounted wrapper, OUTSIDE AnimatePresence, carrying the only
+    // pointer-events declaration in the dialog.
+    //
+    // `#phone-overlay-root` is `pointer-events: none`, so a portalled child has
+    // to opt back in. That used to be a static `pointer-events-auto` class on
+    // the motion.div itself, which meant the *exiting* copy kept eating taps:
+    // **AnimatePresence does not unmount an exiting child until its animation
+    // completes**, and on a page that is not compositing — a backgrounded tab,
+    // a locked phone — it never completes. Measured: the dialog was still in
+    // the DOM at opacity 0 with pointer-events auto 2.5 seconds after Close,
+    // silently swallowing every tap on the screen underneath.
+    //
+    // Moving the declaration onto the motion.div as `open ? 'auto' : 'none'`
+    // does **not** fix it, and that failure is the point worth remembering:
+    // AnimatePresence re-renders an exiting child with its *last* props, so the
+    // ternary is frozen at `open === true` and never re-evaluated. Only a node
+    // that stays mounted sees `open` flip.
+    //
+    // The inner dialog therefore declares no pointer-events at all and inherits
+    // from here. The exit animation still plays on a phone that is awake; a
+    // stuck child on one that is not is inert.
+    <div
+      className="absolute inset-0"
+      style={{ pointerEvents: open ? 'auto' : 'none' }}
+    >
     <AnimatePresence>
       {open && (
         <motion.div
@@ -80,7 +124,8 @@ export default function StepFlow({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-          className="absolute inset-0 flex flex-col pointer-events-auto"
+          // No pointer-events here on purpose — see the wrapper above.
+          className="absolute inset-0 flex flex-col"
           style={{ background: 'var(--color-bg)' }}
           role="dialog"
           aria-modal="true"
@@ -172,7 +217,8 @@ export default function StepFlow({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    </div>,
     root
   );
 }
