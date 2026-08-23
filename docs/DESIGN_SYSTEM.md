@@ -356,3 +356,61 @@ Both fixed. **Other overlays still carry the old shape** — `Notifications`,
 whose direct AnimatePresence child is a `motion` component with `exit` *and* a
 `pointer-events-auto` class is a candidate; measure before assuming, because a
 plain `<div>` as the direct child unmounts immediately and does not leak.
+
+
+## The body map is an anatomy chart, not a person icon
+
+Three versions. The first drew a dozen detached `<rect rx>` pills — symmetric to
+a tenth of a pixel and reading as nothing at all, because disconnected capsules
+never merge into a figure. The second joined them into one silhouette with four
+blobs on it: chest, arms, waist, legs. It was still a grey clip-art person with
+four grey areas over it, and on a member who had logged nothing, the whole card
+was dead.
+
+The current one draws **nine muscle groups across a front and a back view**,
+built to eight head-heights with a real V-taper (104px shoulders, 62px waist).
+
+### Why not 3D
+
+A rigged model with individually selectable muscles is a 3–15 MB `.glb` against
+a ~1 MB bundle, and workbox **hard-fails the build on any precache entry over
+2 MB** — the limit that already excludes the gym photos. It would be a runtime
+download on Philippine mobile data, on mid-range Android, inside a TWA, to
+render nine circumference numbers that a flat chart shows more legibly at 375px.
+Strong, Hevy and Fitbod all use flat anatomical SVG for the same reason. The
+front/back toggle delivers the part of 3D that actually helps — seeing the other
+side — for nothing.
+
+### Mirror, don't hand-match
+
+Every muscle is defined **once, for the left side**, and drawn twice: the second
+copy under `transform="translate(240,0) scale(-1,1)"`. Symmetry becomes
+structural instead of something you maintain by eye across two coordinate lists.
+
+### Verify containment by point-sampling, not by looking
+
+Screenshots time out in this harness, so the geometry is checked programmatically:
+walk each muscle path with `getPointAtLength`, map it through its own transform,
+and test it against the silhouette with `isPointInFill`.
+
+**Two traps in that test, both hit on the first run:**
+
+- `isPointInFill` operates in the element's **own** user space. A mirrored
+  silhouette part needs the point mapped back through the inverse of its
+  transform first — without that, every muscle on the right-hand side reads as
+  floating outside the body and you go chasing geometry that was already correct.
+- The first honest run then found real problems: quads 37% outside, shins 62%.
+  The legs were simply too thin for the muscles drawn on them — which also
+  looked spindly under 104px shoulders. Thickening the legs fixed the look and
+  the containment in one change.
+
+Final: front 0% outside, back 1% on the glutes — a sliver inside the stroke width.
+
+### One reading lights the front and the back muscle
+
+**A tape measure produces a circumference, and a circumference goes all the way
+around.** One reading around the upper arm covers biceps *and* triceps; one
+around the torso covers pectorals *and* lats. So the two views share a
+measurement, the label changes with the view, and the detail panel names the
+site. Storing a separate "triceps" number would be inventing a measurement
+nobody can take — the same class of lie as a hardcoded 4.9 star rating.

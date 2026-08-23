@@ -41,6 +41,13 @@ export interface BodyProgressEntry {
   chest: number | null;
   legs: number | null;
   bodyFatPct: number | null;
+  /** The four sites added in 0043, plus `hips`, which existed in the table from
+   *  0020 and was hardcoded to null on every write until now. */
+  neck: number | null;
+  shoulders: number | null;
+  forearms: number | null;
+  hips: number | null;
+  calves: number | null;
 }
 
 export interface WorkoutLog {
@@ -106,6 +113,11 @@ function toEntry(r: BodyMeasurementRow): BodyProgressEntry {
     chest: r.chest_cm,
     legs: r.thighs_cm,
     bodyFatPct: r.body_fat_pct,
+    neck: r.neck_cm,
+    shoulders: r.shoulders_cm,
+    forearms: r.forearm_cm,
+    hips: r.hips_cm,
+    calves: r.calf_cm,
   };
 }
 
@@ -169,9 +181,15 @@ export const progressService = {
       body_fat_pct: entry.bodyFatPct ?? null,
       chest_cm: entry.chest ?? null,
       waist_cm: entry.waist ?? null,
-      hips_cm: null,
+      // Was `hips_cm: null` — a column written as a literal null on every save
+      // since 0020, so the field existed and could never hold anything.
+      hips_cm: entry.hips ?? null,
       arms_cm: entry.arms ?? null,
       thighs_cm: entry.legs ?? null,
+      neck_cm: entry.neck ?? null,
+      shoulders_cm: entry.shoulders ?? null,
+      forearm_cm: entry.forearms ?? null,
+      calf_cm: entry.calves ?? null,
       notes: null,
     });
     return toEntry(saved);

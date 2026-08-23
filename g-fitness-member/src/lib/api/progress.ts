@@ -21,6 +21,12 @@ export interface BodyMeasurementRow {
   hips_cm: number | null;
   arms_cm: number | null;
   thighs_cm: number | null;
+  /** 0043. `hips_cm` predates them but was written as a literal null for years —
+   *  the column existed and never held a value until the map needed it. */
+  neck_cm: number | null;
+  shoulders_cm: number | null;
+  forearm_cm: number | null;
+  calf_cm: number | null;
   notes: string | null;
   created_at: string;
 }

@@ -1,5 +1,5 @@
 import { panelStyle } from '../../../components/ui/Card';
-import BodyMap, { type BodyMapData } from '../../../components/ui/BodyMap';
+import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../components/ui/BodyMap';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
@@ -26,24 +26,38 @@ const FIELDS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
   { key: 'height', label: 'Height', unit: 'cm' },
   { key: 'bodyFatPct', label: 'Body fat', unit: '%' },
+  { key: 'neck', label: 'Neck', unit: 'cm' },
+  { key: 'shoulders', label: 'Shoulders', unit: 'cm' },
   { key: 'chest', label: 'Chest', unit: 'cm' },
+  { key: 'arms', label: 'Upper arms', unit: 'cm' },
+  { key: 'forearms', label: 'Forearms', unit: 'cm' },
   { key: 'waist', label: 'Waist', unit: 'cm' },
-  { key: 'arms', label: 'Arms', unit: 'cm' },
-  { key: 'legs', label: 'Legs', unit: 'cm' },
+  { key: 'hips', label: 'Hips', unit: 'cm' },
+  { key: 'legs', label: 'Thighs', unit: 'cm' },
+  { key: 'calves', label: 'Calves', unit: 'cm' },
 ] as const;
 
 type FieldKey = typeof FIELDS[number]['key'];
 
 /**
- * Which step of the logging flow each body region lives on.
+ * Which step of the logging flow each muscle group sends you to.
  *
- * Chest and arms share the `upper` screen and waist and legs share `lower`,
- * because those are the pairs a person measures in one go with one tape. The
- * map only ever sends someone to a step that contains what they tapped.
+ * Grouped by where the tape goes, not by anatomy: neck and shoulders are one
+ * reach, the two arm sites another, torso another, legs another. The map only
+ * ever opens a step that contains the site behind the muscle you tapped.
  */
-const REGION_STEP: Record<'chest' | 'arms' | 'waist' | 'legs', string> = {
-  chest: 'upper', arms: 'upper', waist: 'lower', legs: 'lower',
+const REGION_STEP: Record<BodyRegionKey, string> = {
+  neck: 'upperbody', shoulders: 'upperbody', chest: 'torso',
+  arms: 'arms', forearms: 'arms',
+  core: 'torso', hips: 'torso',
+  thighs: 'legs', calves: 'legs',
 };
+
+/** Blank means "not measured" and must reach the database as NULL — `Number('')`
+ *  is 0, which would store a real and alarming zero. */
+function num(v: string): number | null {
+  return v.trim() === '' ? null : Number(v);
+}
 
 /** Change between two readings, or null when either is missing. */
 function delta(current: number | null, previous: number | null): number | null {
@@ -59,8 +73,11 @@ function delta(current: number | null, previous: number | null): number | null {
  * a chest reading they took last week and lose the comparison. Walks back over
  * the nulls instead.
  */
+type MeasuredKey = 'neck' | 'shoulders' | 'chest' | 'arms' | 'forearms'
+  | 'waist' | 'hips' | 'legs' | 'calves';
+
 function lastTwo(
-  entries: BodyProgressEntry[], key: 'chest' | 'arms' | 'waist' | 'legs'
+  entries: BodyProgressEntry[], key: MeasuredKey
 ): { latest: number | null; previous: number | null } {
   const seen: number[] = [];
   for (let i = entries.length - 1; i >= 0 && seen.length < 2; i--) {
@@ -99,9 +116,9 @@ export default function BodyProgressTab() {
    */
   const [startStep, setStartStep] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<FieldKey, string>>({
-    weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '',
-  });
+  const blankForm = (): Record<FieldKey, string> =>
+    Object.fromEntries(FIELDS.map((f) => [f.key, ''])) as Record<FieldKey, string>;
+  const [form, setForm] = useState<Record<FieldKey, string>>(blankForm);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -123,9 +140,6 @@ export default function BodyProgressTab() {
   useEffect(() => { load(revisit.current); }, [memberId]);
 
   const save = async () => {
-    // A blank field means "didn't measure this", which must reach the database
-    // as NULL. Number('') is 0, so every blank would silently become a real zero.
-    const num = (v: string) => (v.trim() === '' ? null : Number(v));
     if (FIELDS.every((f) => form[f.key].trim() === '')) {
       return toast.error('Fill in at least one measurement');
     }
@@ -134,10 +148,12 @@ export default function BodyProgressTab() {
       await progressService.addBodyProgress(memberId, {
         weight: num(form.weight), height: num(form.height), bodyFatPct: num(form.bodyFatPct),
         chest: num(form.chest), waist: num(form.waist), arms: num(form.arms), legs: num(form.legs),
+        neck: num(form.neck), shoulders: num(form.shoulders), forearms: num(form.forearms),
+        hips: num(form.hips), calves: num(form.calves),
       });
       toast.success('Measurement saved');
       setShowForm(false);
-      setForm({ weight: '', height: '', bodyFatPct: '', chest: '', waist: '', arms: '', legs: '' });
+      setForm(blankForm());
       await load();
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save that measurement'));
@@ -188,26 +204,53 @@ export default function BodyProgressTab() {
         seed={seedOf('bodyFatPct')} seedLabel={seedText('bodyFatPct', '%')} />,
     },
     {
-      id: 'upper',
-      title: 'Upper body',
-      hint: 'Tape measure, relaxed, same spot each time.',
-      answered: filled('chest', 'arms'),
+      id: 'upperbody',
+      title: 'Neck and shoulders',
+      hint: 'Neck below the Adam’s apple, shoulders at their widest with arms relaxed.',
+      answered: filled('neck', 'shoulders'),
       render: (
         <div className="space-y-3">
-          <Field label="Chest (cm)"><TextInput type="number" inputMode="decimal" value={form.chest} onChange={(e) => set('chest')(e.target.value)} /></Field>
-          <Field label="Arms (cm)"><TextInput type="number" inputMode="decimal" value={form.arms} onChange={(e) => set('arms')(e.target.value)} /></Field>
+          <Field label="Neck (cm)"><TextInput type="number" inputMode="decimal" value={form.neck} onChange={(e) => set('neck')(e.target.value)} /></Field>
+          <Field label="Shoulders (cm)" hint="The one site that is awkward alone — skip it if nobody can help.">
+            <TextInput type="number" inputMode="decimal" value={form.shoulders} onChange={(e) => set('shoulders')(e.target.value)} />
+          </Field>
         </div>
       ),
     },
     {
-      id: 'lower',
-      title: 'Lower body',
-      hint: 'Waist at the navel, legs at the widest point of the thigh.',
-      answered: filled('waist', 'legs'),
+      id: 'arms',
+      title: 'Arms',
+      hint: 'One reading around the upper arm covers biceps and triceps — there is no separate number for each.',
+      answered: filled('arms', 'forearms'),
       render: (
         <div className="space-y-3">
+          <Field label="Upper arms (cm)"><TextInput type="number" inputMode="decimal" value={form.arms} onChange={(e) => set('arms')(e.target.value)} /></Field>
+          <Field label="Forearms (cm)"><TextInput type="number" inputMode="decimal" value={form.forearms} onChange={(e) => set('forearms')(e.target.value)} /></Field>
+        </div>
+      ),
+    },
+    {
+      id: 'torso',
+      title: 'Torso',
+      hint: 'Chest at the nipple line, waist at the navel, hips at their widest.',
+      answered: filled('chest', 'waist', 'hips'),
+      render: (
+        <div className="space-y-3">
+          <Field label="Chest (cm)"><TextInput type="number" inputMode="decimal" value={form.chest} onChange={(e) => set('chest')(e.target.value)} /></Field>
           <Field label="Waist (cm)"><TextInput type="number" inputMode="decimal" value={form.waist} onChange={(e) => set('waist')(e.target.value)} /></Field>
-          <Field label="Legs (cm)"><TextInput type="number" inputMode="decimal" value={form.legs} onChange={(e) => set('legs')(e.target.value)} /></Field>
+          <Field label="Hips (cm)"><TextInput type="number" inputMode="decimal" value={form.hips} onChange={(e) => set('hips')(e.target.value)} /></Field>
+        </div>
+      ),
+    },
+    {
+      id: 'legs',
+      title: 'Legs',
+      hint: 'Thigh and calf at their widest points, standing.',
+      answered: filled('legs', 'calves'),
+      render: (
+        <div className="space-y-3">
+          <Field label="Thighs (cm)"><TextInput type="number" inputMode="decimal" value={form.legs} onChange={(e) => set('legs')(e.target.value)} /></Field>
+          <Field label="Calves (cm)"><TextInput type="number" inputMode="decimal" value={form.calves} onChange={(e) => set('calves')(e.target.value)} /></Field>
         </div>
       ),
     },
@@ -223,10 +266,15 @@ export default function BodyProgressTab() {
   // no place on a body — they are whole-body numbers, and the cards below
   // already carry them.
   const mapData: BodyMapData = {
+    neck: lastTwo(entries, 'neck'),
+    shoulders: lastTwo(entries, 'shoulders'),
     chest: lastTwo(entries, 'chest'),
     arms: lastTwo(entries, 'arms'),
-    waist: lastTwo(entries, 'waist'),
-    legs: lastTwo(entries, 'legs'),
+    forearms: lastTwo(entries, 'forearms'),
+    core: lastTwo(entries, 'waist'),
+    hips: lastTwo(entries, 'hips'),
+    thighs: lastTwo(entries, 'legs'),
+    calves: lastTwo(entries, 'calves'),
   };
 
   return (
