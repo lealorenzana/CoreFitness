@@ -21,6 +21,14 @@ export interface PublicTrainer {
   specialization: string | null;
   bio: string | null;
   availability: string | null;
+  /** Background, added to the view in 0041. Every field is the trainer's own
+   *  statement about themselves and every one is optional — a coach who has
+   *  filled nothing in renders exactly as they did before, not as a page of
+   *  empty headings. */
+  years_experience: number | null;
+  certifications: string[] | null;
+  focus_areas: string[] | null;
+  achievements: string | null;
 }
 
 export interface ClassAvailability {

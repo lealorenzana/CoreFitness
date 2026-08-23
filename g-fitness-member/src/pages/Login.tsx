@@ -454,16 +454,30 @@ export default function Login() {
 
           {/* Footer */}
           <div className="text-center space-y-1.5">
-            <p className="text-white/40 text-xs">
-              Don&apos;t have an account?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="font-semibold hover:text-violet-300 transition-colors"
-                style={{ color: 'var(--color-primary)' }}
-              >
-                Sign Up
-              </button>
-            </p>
+            {/* Only members sign themselves up. A trainer account is created by
+                the gym through the `create-trainer` Edge Function, which is the
+                only path that can set `profiles.role = 'trainer'`. Self-signup
+                cannot: `handle_new_member_signup` (0005) writes the literal
+                'member', so a coach who followed this link would have created a
+                member account and then been turned away by the role check above
+                on the very next screen. Offering the link on this tab was an
+                invitation into a dead end. */}
+            {isTrainer ? (
+              <p className="text-white/40 text-xs">
+                Trainer accounts are created by the gym — ask the front desk.
+              </p>
+            ) : (
+              <p className="text-white/40 text-xs">
+                Don&apos;t have an account?{' '}
+                <button
+                  onClick={() => navigate('/register')}
+                  className="font-semibold hover:text-violet-300 transition-colors"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  Sign Up
+                </button>
+              </p>
+            )}
             <p className="text-xs text-white/25">
               <button onClick={() => navigate('/terms')} className="hover:text-white/40">
                 Terms of Service

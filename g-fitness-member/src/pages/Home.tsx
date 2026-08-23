@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarCheck, Trophy, QrCode, TrendingUp,
-  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
   Infinity as InfinityIcon,
@@ -229,6 +229,37 @@ export default function Home() {
                 </div>
               )}
 
+              {/* What the plan actually opens.
+
+                  This is the answer to a question the card kept provoking and
+                  never addressing: a Free Access member saw "This membership
+                  does not expire" and nothing else, so the tier that grants the
+                  least advertised itself with the most generous-sounding
+                  sentence on the screen. The entitlements have been enforced in
+                  SQL since 0017 — the member simply had no way to read them.
+
+                  Both halves are shown. Listing only what is included would
+                  leave "why can't I book this class?" to be discovered at the
+                  point of failure, which is the worst possible place. */}
+              {home.access && (
+                <div className="mt-3 pt-3 space-y-1.5"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}>
+                  {home.access.included.map((item) => (
+                    <p key={item} className="text-xs flex items-center gap-1.5 text-white">
+                      <Check size={12} className="flex-shrink-0" />
+                      {item}
+                    </p>
+                  ))}
+                  {home.access.excluded.map((item) => (
+                    <p key={item} className="text-xs flex items-center gap-1.5"
+                      style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      <X size={12} className="flex-shrink-0" />
+                      {item} — not on this plan
+                    </p>
+                  ))}
+                </div>
+              )}
+
               {/* Status flags — only ever rendered when true */}
               <div className="flex flex-wrap gap-2 mt-3">
                 {home.expired && (
@@ -260,6 +291,20 @@ export default function Home() {
                   style={{ background: 'var(--color-secondary)' }}
                 >
                   {home.expired ? 'Renew membership now' : 'Renew now'}
+                </button>
+              )}
+
+              {/* A member who is neither expired nor expiring has no reason to
+                  see "Renew", but a member missing half the gym does need a way
+                  out of the tier. Only offered when something is actually held
+                  back — on full access this would be an upsell to nowhere. */}
+              {!home.expired && !home.expiringSoon && home.access && !home.access.isFullAccess && (
+                <button
+                  onClick={() => navigate('/member/renew-membership')}
+                  className="w-full mt-3 h-11 rounded-full font-semibold text-sm text-black"
+                  style={{ background: 'var(--color-secondary)' }}
+                >
+                  Compare membership plans
                 </button>
               )}
             </div>

@@ -10,14 +10,17 @@ import Badge from './Badge';
 import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { recordPayment } from '../../lib/api/payments';
-import { freezeMembership, unfreezeMembership, cancelMembership } from '../../lib/api/memberships';
+import {
+  freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
+} from '../../lib/api/memberships';
+import { listPlans } from '../../lib/api/membershipPlans';
 import { notifyUser } from '../../lib/api/notify';
 import { bmi, bmiBand, goalProgress } from '../../lib/api/progress';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
-import type { MembershipStatus } from '../../types/db';
+import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 
 /**
  * The whole of one member, on one screen.
@@ -453,8 +456,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                 memberId={detail.identity.profile.id}
                 firstName={detail.identity.profile.first_name}
                 membershipId={current.id}
-                planPrice={Number(current.membership_plans?.price ?? 0)}
-                durationDays={current.membership_plans?.duration_days ?? null}
+                currentPlanId={current.plan_id}
                 onDone={async () => { setShowPayment(false); await onRefresh(); }}
               />
             )}
@@ -514,13 +516,12 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
  * `recordPayment` call, so activation and expiry-extension behave identically.
  */
 function RecordPaymentInline({
-  memberId, firstName, membershipId, planPrice, durationDays, onDone,
+  memberId, firstName, membershipId, currentPlanId, onDone,
 }: {
   memberId: string;
   firstName: string;
   membershipId: string;
-  planPrice: number;
-  durationDays: number | null;
+  currentPlanId: string;
   onDone: () => Promise<void>;
 }) {
   const today = (() => {
@@ -528,10 +529,44 @@ function RecordPaymentInline({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
 
-  const [amount, setAmount] = useState(planPrice > 0 ? String(planPrice) : '');
+  const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  const [planId, setPlanId] = useState(currentPlanId);
+  /**
+   * `null` means "follow the selected plan"; a string is what the desk typed.
+   *
+   * Derived rather than synced by an effect. The amount has to track the plan
+   * dropdown, and an effect doing that is both a cascading render and a race:
+   * it would overwrite a hand-entered figure — a part payment, a haggled rate —
+   * one tick after it was typed, which is the software correcting the person
+   * who counted the cash.
+   */
+  const [typedAmount, setTypedAmount] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(today);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // The plan list is loaded here rather than threaded down from the drawer,
+  // because the form is the only thing that needs it and it opens on demand.
+  useEffect(() => {
+    let cancelled = false;
+    listPlans()
+      .then((all) => {
+        if (cancelled) return;
+        // Retired plans stay selectable *only* if the member is already on one.
+        // Hiding it would silently move them off a plan the gym still honours
+        // the moment the desk took a payment.
+        setPlans(all.filter((p) => p.is_active || p.id === currentPlanId));
+      })
+      .catch(() => showToast('Could not load the plan list', 'error'));
+    return () => { cancelled = true; };
+  }, [currentPlanId]);
+
+  const plan = plans.find((p) => p.id === planId) ?? null;
+  const durationDays = plan?.duration_days ?? null;
+  const changingPlan = planId !== currentPlanId;
+
+  const planPrice = plan && Number(plan.price) > 0 ? String(Number(plan.price)) : '';
+  const amount = typedAmount ?? planPrice;
 
   const submit = async () => {
     const value = parseFloat(amount);
@@ -541,6 +576,19 @@ function RecordPaymentInline({
     }
     setSaving(true);
     try {
+      // Plan first, then payment. `recordPayment` reads the membership to work
+      // out where the new term starts and writes `never_expires` from the
+      // duration it is handed, so the row has to already be on the new plan or
+      // the member ends up paying Premium rates for a Free Access term.
+      //
+      // If this throws — the Freemium trigger from 0041 refusing a second
+      // trial is the case that will actually happen — nothing has been
+      // recorded yet, and the cash has not been taken on the strength of a
+      // half-applied change.
+      if (changingPlan) {
+        await changeMembershipPlan(membershipId, planId);
+      }
+
       await recordPayment({
         member_id: memberId,
         membership_id: membershipId,
@@ -561,11 +609,18 @@ function RecordPaymentInline({
         userId: memberId,
         type: 'payment',
         title: 'Payment received',
-        message: `We received ₱${value.toLocaleString('en-PH')}. Your membership has been extended.`,
+        message: changingPlan
+          ? `We received ₱${value.toLocaleString('en-PH')}. You are now on ${plan?.name ?? 'your new plan'}.`
+          : `We received ₱${value.toLocaleString('en-PH')}. Your membership has been extended.`,
         actionUrl: '/member/payments',
       }).catch(() => showToast('Payment recorded, but the member could not be notified', 'error'));
 
-      showToast(`₱${value.toLocaleString('en-PH')} recorded — ${firstName}'s membership is active`, 'success');
+      showToast(
+        changingPlan
+          ? `₱${value.toLocaleString('en-PH')} recorded — ${firstName} is now on ${plan?.name ?? 'the new plan'}`
+          : `₱${value.toLocaleString('en-PH')} recorded — ${firstName}'s membership is active`,
+        'success'
+      );
       await onDone();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not record that payment', 'error');
@@ -576,10 +631,29 @@ function RecordPaymentInline({
 
   return (
     <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+      {/* Taking the money and moving the plan are one action at a real front
+          desk — a member upgrades *by* paying. Splitting them into two screens
+          is how a member ends up paid-up on the wrong tier. */}
+      <div>
+        <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Plan</label>
+        <select value={planId} onChange={(e) => setPlanId(e.target.value)}
+          className="w-full px-3 py-2 rounded-xl text-white text-xs"
+          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+          {plans.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {Number(p.price) > 0 ? ` — ₱${Number(p.price).toLocaleString('en-PH')}` : ' — free'}
+              {p.id === currentPlanId ? ' (current)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Amount (₱)</label>
-          <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
+          <input type="number" min="0" step="0.01" value={amount}
+            onChange={(e) => setTypedAmount(e.target.value)}
             className="w-full px-3 py-2 rounded-xl text-white text-xs"
             style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
         </div>
@@ -601,6 +675,16 @@ function RecordPaymentInline({
           ? 'This plan does not expire, so no end date is set.'
           : `Adds ${durationDays} days — from today, or from the current expiry if it has not passed.`}
       </p>
+      {/* Two consequences of a plan change that are invisible until they have
+          happened, so they are stated before the button rather than after. */}
+      {changingPlan && (
+        <p className="text-[10px]" style={{ color: 'var(--color-secondary)' }}>
+          This moves {firstName} onto {plan?.name ?? 'the selected plan'}.
+          {durationDays == null
+            ? ' Any days remaining on the old plan are not carried over — the new one has no end date to add them to.'
+            : ' Unused days on the current plan carry over.'}
+        </p>
+      )}
       <Button size="sm" variant="secondary" disabled={saving} onClick={submit} className="w-full">
         {saving ? 'Recording…' : 'Record payment'}
       </Button>

@@ -240,3 +240,58 @@ why the `AdminLogin` scroll indicator still uses the class and still measures 0p
 
 **The general rule: anything Framer animates must not also be load-bearing for layout.** Same family
 as the `AnimatePresence` exit problem — treat Framer as decoration, never as positioning.
+
+## Tab switches must not flash, or lose your place
+
+Two separate defects, both reported from a real phone, both fixed in the shells rather than page by
+page.
+
+### The flash: `lib/pageCache.ts`
+
+Every page switch re-mounted a screen with empty state, painted skeletons, then popped content in.
+The cache seeds `useState` from the last render of that screen, so a revisit paints immediately and
+refetches quietly behind it.
+
+```ts
+const cached = readCache<T>(KEY);
+const [data, setData] = useState(cached ?? null);
+const [loading, setLoading] = useState(cached === undefined);
+const revisit = useRef(cached !== undefined);
+useEffect(() => { load(revisit.current); }, [load]);   // `quiet` on a cache hit
+```
+
+Three rules it depends on:
+
+- **Pass `quiet` on a cache hit.** A loud refetch sets `loading` back to true and reintroduces the
+  exact flash the cache exists to remove.
+- **Memory only, never `localStorage`.** It is keyed by *screen*, not by user, so a cache that
+  outlived the process would hand the next person the previous member's Home. `logout()` calls
+  `clearPageCache()` — the same shape of leak as the push subscription that used to survive sign-out.
+- **Guard the error branch.** `if (!cancelled && !cached) setError(…)`, and likewise for any
+  `setState(null)` in a `catch`. Blanking a populated screen on one dropped packet reads to the
+  member as having *lost* something.
+
+Components that fetch for themselves need their own entry, or they keep flashing on an otherwise warm
+screen — `LevelProgressCard` was the last one, measured as a lone `h-44` skeleton on a filled Home.
+Where two screens render the same query they **share one key** (`TRAINER_OVERVIEW_CACHE_KEY`).
+
+### The lost scroll: `hooks/useScrollMemory.ts`
+
+Scrolling Home, switching to Booking and coming back put you at the top. **The browser cannot help
+here** — native scroll restoration applies to the *document* scroller, and nothing scrolls the
+document: `<main>` scrolls inside a `100dvh` chassis.
+
+A single `scrollTop` write does not work either. It clamps against the short skeleton that is on
+screen at that instant and the offset is lost the moment real content makes the page taller. So the
+hook re-applies the target on a **`setInterval`** while content settles — not `requestAnimationFrame`,
+which does not tick on a page that is not compositing.
+
+It stops as soon as it lands with room to spare, and yields immediately to a real user gesture:
+
+```ts
+const INPUTS = ['touchstart', 'wheel', 'pointerdown', 'keydown'] as const;
+```
+
+All four are needed. With only `touchstart`/`wheel`, dragging the scrollbar or pressing space fought
+the restore loop and dragged the view back for a whole second. Positions are memory-only and cleared
+in `logout()` alongside the page cache.

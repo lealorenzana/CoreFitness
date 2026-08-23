@@ -3,6 +3,7 @@ import { getCurrentMembership } from '../lib/api/memberships';
 import { listMemberAttendance } from '../lib/api/attendance';
 import { listMyBookings, isUpcoming, type MyBooking } from './bookingService';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
+import { planAccess, type PlanAccess } from '../utils/planAccess';
 
 /**
  * The member's home screen, assembled from real rows.
@@ -26,6 +27,15 @@ export interface MemberHome {
   /** The value encoded into the check-in QR. Always the member's auth id. */
   memberId: string;
   planName: string | null;
+  /**
+   * What the plan includes and, more to the point, what it does not (0017).
+   *
+   * The card used to show the plan's *name* and its *term* and nothing else,
+   * which on the free tier meant its only statement was "this membership does
+   * not expire" — the one true fact that reads as generous while the tier
+   * cannot book a class or a trainer. Null when there is no membership.
+   */
+  access: PlanAccess | null;
   /** 'YYYY-MM-DD', null on a lifetime plan, and null before activation. */
   expiryDate: string | null;
   /** Lifetime plan (0024) — `expiryDate` and `daysLeft` are null by design. */
@@ -120,6 +130,7 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     photoUrl: member?.profile.photo_url ?? null,
     memberId,
     planName: membership?.membership_plans?.name ?? null,
+    access: planAccess(membership?.membership_plans),
     expiryDate,
     neverExpires,
     daysLeft,

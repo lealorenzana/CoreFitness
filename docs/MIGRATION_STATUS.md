@@ -742,3 +742,71 @@ live password requirement checklist, and closing-before-opening validation.
   `lib/api/trainers.ts` unwraps `error.context` to get the real message.
 - Admin notification **broadcasts** insert one `notifications` row per recipient; reading that
   history back needs `notifications_select_admin` (0007). Members still see only their own rows.
+
+## Achievements as data (0038), and membership tiers (0017/0024/0041)
+
+Both follow the same principle: **the rule lives in a row the admin can edit, and the enforcement
+lives in SQL.** Neither is inferred from a name in the source.
+
+### The badge catalogue
+
+0038 moved the catalogue out of a 33-branch `if` ladder and into the `achievements` table, so the
+gym can add, edit and retire badges without a deploy. The evaluator loops over the rows and reads
+each badge's metric off the stats record (`row_to_json(stats)->>metric`).
+
+A rule is one of three kinds:
+
+| `rule_kind` | Meaning |
+|---|---|
+| `metric` | A threshold against a named stat. The normal case. |
+| `manual` | Awarded by hand through the admin-only `award_achievement()`. |
+| `builtin` | The two level badges only. Their thresholds **must** keep matching `level_thresholds()`. |
+
+`sync_my_achievements()` is `SECURITY DEFINER` and the only writer of `achievement_unlocks`, which
+has **no INSERT policy** — the same shape as `activity_log` in 0037, and for the same reason: a badge
+a client can grant itself is not an achievement.
+
+`src/data/achievements.ts` is *only* an icon registry. It maps stored icon and metric names to
+components, so a badge added in SQL with a name nothing resolves renders blank.
+**`npm run check:achievements` verifies exactly that, and must stay green.**
+
+### What a plan includes
+
+`membership_plans` carries `can_book_classes`, `can_book_pt`, `class_bookings_per_week` and
+`pt_sessions_per_month`. **The tier is a label; the columns are the rules** — a gym that wants
+classes on its free tier changes a setting rather than the source.
+
+Enforcement is `enforce_class_booking_entitlement` / `enforce_pt_entitlement`, triggers on `bookings`
+and `pt_sessions`. The front desk bypasses the PT quota (`is_front_desk()`) because staff are making
+a judgment call in person, usually having just taken payment for it.
+
+Members read the same columns through `utils/planAccess.ts`, which is what puts the included and
+excluded lists on the Home card and the membership screen. Until 0041 they could not: the entitlements
+bound every booking and appeared nowhere, so the free tier's only on-screen statement was "this
+membership does not expire".
+
+### The Freemium trial is once per member, ever
+
+`freemium_trials` (0041) holds one row per member — the primary key *is* the rule. It is written only
+by `claim_freemium_trial()`, a `SECURITY DEFINER` trigger on `memberships` with no INSERT policy.
+
+Two details that were got wrong first time and are easy to get wrong again:
+
+- **Only a plan *transition* consumes the trial.** An earlier draft also claimed on activation, which
+  meant a freeze/unfreeze cycle re-entered the trial the member was already on.
+- **There is no "same membership row" exemption.** A plan change is an in-place `UPDATE` of one row,
+  so Free → Freemium → Premium → Freemium is all the same `id`; exempting it handed back exactly the
+  second trial the table exists to prevent. Caught by a round-trip assertion in a container, not by
+  reading the code.
+
+Granting a second trial is deliberately not a button: an admin deletes the row in the SQL editor.
+
+### Changing a plan
+
+`plan_id` was written once at registration and never again, so before 0041 **no member could ever
+move tier** — the apps listed the plans and the upgrade had nowhere to land. `changeMembershipPlan()`
+now does it, and the front desk picks the plan on the same form that records the cash.
+
+**Order matters: change the plan, then record the payment.** `recordPayment()` reads the membership
+to decide where the new term starts and writes `never_expires` from the duration it is handed, so a
+payment taken before the switch buys a Premium-priced Free Access term.

@@ -63,8 +63,34 @@ changes a setting, not the source.
 This is what makes it a *product* rather than one gym's software. The pricing above is Core
 Fitness's; the system doesn't assume it.
 
+### The ladder actually works now
+
+Three things were missing until 0041, and together they meant the tiers existed in the database
+and nowhere a member could act on them:
+
+- **Members could not see what their plan included.** The entitlement columns were read in exactly
+  one place — to grey out a booking button. The Home card showed the plan's *name* and its *term*,
+  which on the free tier meant its single statement was "this membership does not expire": true,
+  and the most misleading thing it could have said, because the tier that never runs out is also
+  the tier that cannot book a class. Both apps now state included **and** excluded access wherever
+  a plan is shown.
+- **Nothing could change a member's plan.** `plan_id` was written once at registration and never
+  again, so a Free Access member could never become Premium no matter what either app displayed.
+  The front desk now picks the plan on the same form that records the cash — because at a real
+  desk, upgrading *is* paying.
+- **The trial could be taken twice.** A retakeable trial is not a trial; it is an indefinite free
+  tier that duplicates Free Access while carrying class access Free Access deliberately lacks.
+  `freemium_trials` holds one row per member, forever, written only by a SECURITY DEFINER trigger
+  with no INSERT policy. The member app explains the lock; the trigger enforces it.
+
+The conversion path the panel asked about is therefore a real path: **Free → Freemium (once) →
+Premium**, with each step visible to the member and executable by the desk.
+
 ### Freeze and cancel
 
+- **Freemium** — once per member, ever, enforced in SQL. Granting a second one is deliberately not
+  a button: an admin deletes the `freemium_trials` row in the SQL editor, which makes it a decision
+  someone has to mean.
 - **Freeze** — one per membership period, front-desk only. Frozen days are credited back to the
   expiry when it resumes. The limit exists because an unlimited freeze lets a member stretch 30
   paid days across a year; the counter resets on renewal, which is the natural period boundary.

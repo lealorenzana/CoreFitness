@@ -141,3 +141,31 @@ export function membershipIsUsable(
   if (status === 'cancelled') return withinTerm;
   return false;
 }
+
+/**
+ * Has this member already spent their one Freemium trial? (0041)
+ *
+ * `freemium_trials` holds one row per member, forever, written only by the
+ * SECURITY DEFINER trigger on `memberships` — there is no INSERT policy, so a
+ * browser cannot forge or clear a claim. The member's own SELECT policy is what
+ * lets this read succeed.
+ *
+ * This is for *explaining* a disabled plan card, never for enforcing anything.
+ * The trigger is the boundary: a member who called PostgREST directly to switch
+ * onto the trial a second time still gets the exception, whatever this returns.
+ *
+ * Failure is treated as "not used". The alternative is worse — a dropped packet
+ * would tell a member who has never touched the trial that they have already
+ * had it, and there is no way for them to argue with that. The trigger refuses
+ * a genuine second attempt regardless, so a false negative costs a clear error
+ * message at the front desk while a false positive costs a sale.
+ */
+export async function hasUsedFreemiumTrial(memberId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('freemium_trials')
+    .select('member_id')
+    .eq('member_id', memberId)
+    .maybeSingle();
+  if (error) return false;
+  return data != null;
+}

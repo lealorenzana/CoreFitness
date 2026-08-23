@@ -4,7 +4,9 @@ import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Award, Calendar, Clock, MapPin, Dumbbell } from 'lucide-react';
+import {
+  ArrowLeft, Award, BadgeCheck, Calendar, Clock, MapPin, Dumbbell, Target, Trophy,
+} from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
@@ -19,9 +21,20 @@ import type { ClassRow } from '../types/db';
  * table behind any of it, and the page fell back to `trainers[0]` when the id
  * didn't match, so an unknown link silently rendered somebody else's profile.
  *
- * What's left is what actually exists: name, specialization, bio, and the
- * classes they teach. Ratings and certifications reappear here when there is
- * somewhere to store them.
+ * Everything shown now has a column behind it. 0041 gave the background its
+ * own storage — years coaching, focus areas, certifications, achievements — so
+ * the page answers the questions the fake version was inventing answers to.
+ *
+ * **Ratings are still not here, and that is the point.** They were the loudest
+ * thing on the old page (4.9, two glowing reviews, both fabricated) and they
+ * are the one item deliberately left out: a rating needs reviews, reviews need
+ * moderation, and on a four-trainer gym an unmoderated score turns one bad
+ * afternoon into a permanent number. Everything above is the trainer's own
+ * statement about themselves, which is a claim the system can honestly attribute.
+ *
+ * Every field is optional, and each renders only when filled. A coach who has
+ * entered nothing gets the same clean profile they had before rather than a
+ * page of empty headings.
  */
 export default function TrainerProfile() {
   const navigate = useNavigate();
@@ -94,12 +107,85 @@ export default function TrainerProfile() {
                 <Award size={14} /> {trainer.specialization}
               </p>
             )}
+            {/* Years sits in the header because it is the one fact a member
+                weighs before anything else. `!= null` and not a truthiness
+                check: a coach in their first year has `0`, which is a real
+                answer, and `{0 && …}` would render a bare "0" on the card. */}
+            {trainer.years_experience != null && (
+              <p className="text-xs text-white/70 mt-2 flex items-center justify-center gap-1.5">
+                <Clock size={12} />
+                {trainer.years_experience === 0
+                  ? 'In their first year of coaching'
+                  : `${trainer.years_experience} ${trainer.years_experience === 1 ? 'year' : 'years'} coaching`}
+              </p>
+            )}
           </motion.div>
+
+          {/* What they coach best. Chips rather than a sentence — a member
+              scanning four coaches for "someone who does rehab" is matching a
+              word, not reading a paragraph. */}
+          {trainer.focus_areas != null && trainer.focus_areas.length > 0 && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <h3 className="text-white font-semibold mb-3 text-sm flex items-center gap-2">
+                <Target size={16} style={{ color: 'var(--color-secondary)' }} /> Trains for
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {trainer.focus_areas.map((area) => (
+                  <span
+                    key={area}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                    style={{
+                      background: 'var(--color-primary-light)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-primary)',
+                    }}
+                  >
+                    {area}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {trainer.bio && (
             <div className="rounded-2xl p-4" style={panelStyle}>
               <h3 className="text-white font-semibold mb-2 text-sm">About</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{trainer.bio}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line"
+                style={{ color: 'var(--color-text-secondary)' }}>{trainer.bio}</p>
+            </div>
+          )}
+
+          {/* Self-declared, and labelled as such. The gym does not verify these
+              and saying so costs nothing, whereas a certifications list
+              presented as vetted is a claim the system cannot back. */}
+          {trainer.certifications != null && trainer.certifications.length > 0 && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <h3 className="text-white font-semibold mb-3 text-sm flex items-center gap-2">
+                <BadgeCheck size={16} style={{ color: 'var(--color-secondary)' }} /> Certifications
+              </h3>
+              <ul className="space-y-2">
+                {trainer.certifications.map((cert) => (
+                  <li key={cert} className="text-sm flex items-start gap-2"
+                    style={{ color: 'var(--color-text-secondary)' }}>
+                    <BadgeCheck size={14} className="flex-shrink-0 mt-0.5"
+                      style={{ color: 'var(--color-primary)' }} />
+                    {cert}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>
+                As stated by the trainer.
+              </p>
+            </div>
+          )}
+
+          {trainer.achievements && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <h3 className="text-white font-semibold mb-2 text-sm flex items-center gap-2">
+                <Trophy size={16} style={{ color: 'var(--color-secondary)' }} /> Background
+              </h3>
+              <p className="text-sm leading-relaxed whitespace-pre-line"
+                style={{ color: 'var(--color-text-secondary)' }}>{trainer.achievements}</p>
             </div>
           )}
 

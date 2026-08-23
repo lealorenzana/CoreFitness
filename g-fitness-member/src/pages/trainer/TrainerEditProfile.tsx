@@ -25,6 +25,24 @@ import { getCurrentTrainerId } from '../../services/trainerService';
  * (trainer_profiles_update_self, added in 0010). Email is not editable here —
  * it is the login identity and changing it needs a confirmation round-trip.
  */
+/**
+ * One comma-separated line <-> a Postgres text[].
+ *
+ * Empty entries are dropped rather than stored, so a trailing comma — which is
+ * what you get the moment someone pauses mid-typing and hits Save — does not
+ * become a blank chip on their public profile. An empty result is stored as
+ * NULL, not as `[]`: the member page tests `length > 0` either way, but NULL is
+ * the honest value for "not stated" and keeps the column's meaning single.
+ */
+function toList(value: string): string[] | null {
+  const items = value.split(',').map((v) => v.trim()).filter(Boolean);
+  return items.length > 0 ? items : null;
+}
+
+function fromList(value: string[] | null | undefined): string {
+  return (value ?? []).join(', ');
+}
+
 export default function TrainerEditProfile() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -34,6 +52,7 @@ export default function TrainerEditProfile() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', specialization: '', bio: '', availability: '',
+    yearsExperience: '', certifications: '', focusAreas: '', achievements: '',
   });
 
   useEffect(() => {
@@ -55,6 +74,17 @@ export default function TrainerEditProfile() {
           specialization: trainer?.trainer.specialization ?? '',
           bio: trainer?.trainer.bio ?? '',
           availability: trainer?.trainer.availability ?? '',
+          // Arrays are edited as one comma-separated line, which is what a
+          // phone keyboard is good at. `?? ''` and not `?.join() ?? ''`: a
+          // null column and an empty array both have to arrive as an empty
+          // string, or the field renders the word "null".
+          yearsExperience:
+            trainer?.trainer.years_experience != null
+              ? String(trainer.trainer.years_experience)
+              : '',
+          certifications: fromList(trainer?.trainer.certifications),
+          focusAreas: fromList(trainer?.trainer.focus_areas),
+          achievements: trainer?.trainer.achievements ?? '',
         });
       } catch (err) {
         toast.error(errorMessage(err, 'Could not load your profile'));
@@ -99,6 +129,15 @@ export default function TrainerEditProfile() {
       toast.error('Name cannot be empty');
       return;
     }
+    // Checked here as well as by the CHECK constraint in 0041, because a
+    // constraint violation surfaces as a Postgres error string and "new row
+    // violates check constraint trainer_profiles_years_sane" is not a sentence
+    // to show a trainer who typed their birth year.
+    const years = form.yearsExperience.trim() === '' ? null : Number(form.yearsExperience);
+    if (years != null && (!Number.isInteger(years) || years < 0 || years > 70)) {
+      toast.error('Years coaching must be a whole number between 0 and 70');
+      return;
+    }
     setSaving(true);
     try {
       const id = await getCurrentTrainerId();
@@ -112,6 +151,10 @@ export default function TrainerEditProfile() {
         specialization: form.specialization.trim() || null,
         bio: form.bio.trim() || null,
         availability: form.availability.trim() || null,
+        years_experience: years,
+        certifications: toList(form.certifications),
+        focus_areas: toList(form.focusAreas),
+        achievements: form.achievements.trim() || null,
       });
       toast.success('Profile updated');
       navigate('/trainer/profile');
@@ -209,6 +252,37 @@ export default function TrainerEditProfile() {
         <Field label="About you" hint="A short introduction members will read">
           <TextArea rows={4} value={form.bio}
             onChange={(e) => setForm({ ...form, bio: e.target.value })} />
+        </Field>
+
+        {/* Background. Every one of these is optional and the member profile
+            renders each section only when it is filled, so a coach who skips
+            the lot gets the same clean page as before rather than a column of
+            empty headings. */}
+        <Field label="Years coaching" hint="Leave blank rather than guessing — blank shows nothing at all">
+          <TextInput
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={70}
+            value={form.yearsExperience}
+            placeholder="e.g. 5"
+            onChange={(e) => setForm({ ...form, yearsExperience: e.target.value })}
+          />
+        </Field>
+
+        <Field label="Trains for" hint="Separate with commas — e.g. Weight Loss, Strength, Rehab">
+          <TextInput value={form.focusAreas} placeholder="Weight Loss, Strength"
+            onChange={(e) => setForm({ ...form, focusAreas: e.target.value })} />
+        </Field>
+
+        <Field label="Certifications" hint="Separate with commas. Shown as your own statement — the gym does not verify them">
+          <TextInput value={form.certifications} placeholder="NASM-CPT, First Aid / CPR"
+            onChange={(e) => setForm({ ...form, certifications: e.target.value })} />
+        </Field>
+
+        <Field label="Background & achievements" hint="Competitions, athletic background, results you are proud of">
+          <TextArea rows={4} value={form.achievements}
+            onChange={(e) => setForm({ ...form, achievements: e.target.value })} />
         </Field>
 
         {/* Still description only — nothing generates a bookable slot from this

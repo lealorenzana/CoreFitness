@@ -74,9 +74,18 @@ export interface GymPlanRow {
 
 export interface TrainerProfileRow {
   profile_id: string;
+  /** The one-line title under their name, e.g. "Strength & Conditioning". */
   specialization: string | null;
   bio: string | null;
   availability: string | null;
+  /** 0041. NULL = not stated, and renders as nothing rather than "0 years". */
+  years_experience: number | null;
+  /** 0041. Postgres text[] — arrays, not newline-delimited text, so nothing has
+   *  to guess whether a separator is a real newline or a literal backslash-n
+   *  the way `membership_plans.description` still forces every consumer to. */
+  certifications: string[] | null;
+  focus_areas: string[] | null;
+  achievements: string | null;
 }
 
 export interface MembershipPlanRow {

@@ -157,3 +157,34 @@ export function membershipIsUsable(
   if (status === 'cancelled') return withinTerm;
   return false;
 }
+
+/**
+ * Moves a member onto a different plan.
+ *
+ * Until this existed there was no way to change a plan at all: `plan_id` was
+ * written once when the member was created and never again, so a Free Access
+ * member could never actually become Premium no matter what either app showed
+ * them. The member app has always listed the plans; the upgrade simply had
+ * nowhere to land.
+ *
+ * `.select()` is not decoration. A zero-row UPDATE — wrong id, or a row RLS
+ * hides — reports success and writes nothing, which is how "Recalled" and
+ * "Removed" both used to lie on other screens. `RETURNING` plus a row count is
+ * the only way to tell the two apart.
+ *
+ * This does **not** set status or expiry. Recording the payment is what
+ * activates a membership and computes its term from the new plan's
+ * `duration_days`, and keeping that in one place is what stops a plan change
+ * quietly granting access nobody paid for.
+ */
+export async function changeMembershipPlan(membershipId: string, planId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .update({ plan_id: planId })
+    .eq('id', membershipId)
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That membership could not be updated. Refresh and try again.');
+  }
+}

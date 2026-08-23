@@ -31,6 +31,12 @@ interface TrainerDisplay {
   /** Free-text weekday labels from `trainer_profiles.availability` — display
    *  only. The hours members actually book live in `trainer_availability`. */
   availabilityDays: string[];
+  /** Background from 0041. All optional, all the trainer's own statement —
+   *  the admin can fill them in for a coach who has not opened the app yet. */
+  yearsExperience: number | null;
+  certifications: string[];
+  focusAreas: string[];
+  achievements: string | null;
   /** How many real bookable-hour windows this trainer has set (0015). */
   bookableWindows: number;
   status: ProfileStatus;
@@ -39,6 +45,19 @@ interface TrainerDisplay {
 /** The weekday chips in both modals. Display labels for the free-text
  *  `trainer_profiles.availability` blurb — not bookable hours. */
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/**
+ * One comma-separated line -> a Postgres text[], matching the trainer's own
+ * editor in the member app so both write the same shape.
+ *
+ * Blank entries are dropped, so the trailing comma left behind by someone who
+ * paused mid-typing never becomes an empty chip on a public profile. An empty
+ * result stores NULL rather than `[]` — "not stated" has one representation.
+ */
+function toList(value: string): string[] | null {
+  const items = value.split(',').map((v) => v.trim()).filter(Boolean);
+  return items.length > 0 ? items : null;
+}
 
 const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
 const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
@@ -60,7 +79,10 @@ export default function Trainers() {
   const [addForm, setAddForm] = useState({ name: '', specialty: '', phone: '', bio: '', availability: [] as string[], loginEmail: '', loginPassword: '' });
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[] });
+  const [editForm, setEditForm] = useState({
+    id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[],
+    yearsExperience: '', certifications: '', focusAreas: '', achievements: '',
+  });
   const [saving, setSaving] = useState(false);
   const [toSuspend, setToSuspend] = useState<TrainerDisplay | null>(null);
   const [toArchive, setToArchive] = useState<TrainerDisplay | null>(null);
@@ -91,6 +113,10 @@ export default function Trainers() {
           phone: profile.phone,
           bio: trainer.bio,
           photoUrl: profile.photo_url,
+          yearsExperience: trainer.years_experience ?? null,
+          certifications: trainer.certifications ?? [],
+          focusAreas: trainer.focus_areas ?? [],
+          achievements: trainer.achievements ?? null,
           availabilityDays: trainer.availability
             ? trainer.availability.split(',').map((d) => d.trim()).filter(Boolean)
             : [],
@@ -189,6 +215,12 @@ export default function Trainers() {
       phone: trainer.phone || '',
       bio: trainer.bio || '',
       availability: trainer.availabilityDays,
+      // Arrays edit as one comma-separated line. `!= null` on the number: a
+      // trainer in their first year stores 0, and `|| ''` would blank it.
+      yearsExperience: trainer.yearsExperience != null ? String(trainer.yearsExperience) : '',
+      certifications: trainer.certifications.join(', '),
+      focusAreas: trainer.focusAreas.join(', '),
+      achievements: trainer.achievements || '',
     });
     setShowEditModal(true);
   };
@@ -197,9 +229,24 @@ export default function Trainers() {
     const next: Record<string, string> = {};
     if (!editForm.name.trim()) next.name = 'Required.';
     if (!editForm.specialty.trim()) next.specialty = 'Required.';
+
+    // Mirrors the CHECK constraint in 0041. Validated here as well because a
+    // constraint violation arrives as "new row violates check constraint
+    // trainer_profiles_years_sane", which is not a sentence to put in front of
+    // someone who typed a birth year into a duration field.
+    const editYears = editForm.yearsExperience.trim() === '' ? null : Number(editForm.yearsExperience);
+    if (editYears != null && (!Number.isInteger(editYears) || editYears < 0 || editYears > 70)) {
+      next.yearsExperience = 'Whole number, 0-70.';
+    }
+
     setEditErrors(next);
     if (Object.keys(next).length > 0) {
-      showToast('Name and specialization are required', 'error');
+      showToast(
+        next.yearsExperience && !next.name && !next.specialty
+          ? 'Years coaching must be a whole number between 0 and 70'
+          : 'Name and specialization are required',
+        'error'
+      );
       return;
     }
     const [firstName, ...rest] = editForm.name.trim().split(/\s+/);
@@ -216,6 +263,10 @@ export default function Trainers() {
         specialization: editForm.specialty,
         bio: editForm.bio || null,
         availability: editForm.availability.join(', ') || null,
+        years_experience: editYears,
+        certifications: toList(editForm.certifications),
+        focus_areas: toList(editForm.focusAreas),
+        achievements: editForm.achievements.trim() || null,
       });
       showToast(`${editForm.name} updated successfully!`, 'success');
       setShowEditModal(false);
@@ -610,7 +661,42 @@ export default function Trainers() {
                   </div>
                   <FormField label="Bio / description" hint="Members read this on the trainer's profile.">
                     <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-                      placeholder="Background, certifications, how they like to coach…"
+                      placeholder="How they like to coach, who they work best with…"
+                      rows={2}
+                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
+                  </FormField>
+
+                  <FieldDivider />
+                  <SectionLabel>Background</SectionLabel>
+                  {/* Editable from both sides on purpose. The trainer owns this
+                      in the app, but a coach who has never opened it would
+                      otherwise have an empty profile that nobody can fill —
+                      and at a gym this size the admin is often the one holding
+                      the certificates. Every field is optional and the member
+                      profile renders each only when set. */}
+                  <FormField label="Years coaching" error={editErrors.yearsExperience}
+                    hint="Leave blank rather than guessing — blank shows nothing at all.">
+                    <input type="number" min={0} max={70} value={editForm.yearsExperience}
+                      onChange={e => setEditForm({ ...editForm, yearsExperience: e.target.value })}
+                      placeholder="e.g. 5"
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Trains for" hint="Comma separated — e.g. Weight Loss, Strength, Rehab.">
+                    <input value={editForm.focusAreas}
+                      onChange={e => setEditForm({ ...editForm, focusAreas: e.target.value })}
+                      placeholder="Weight Loss, Strength"
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Certifications"
+                    hint="Comma separated. Shown to members as the trainer's own statement — the gym does not verify them.">
+                    <input value={editForm.certifications}
+                      onChange={e => setEditForm({ ...editForm, certifications: e.target.value })}
+                      placeholder="NASM-CPT, First Aid / CPR"
+                      className={FIELD_CLASS} style={FIELD_STYLE} />
+                  </FormField>
+                  <FormField label="Achievements" hint="Competitions, athletic background, notable results.">
+                    <textarea value={editForm.achievements}
+                      onChange={e => setEditForm({ ...editForm, achievements: e.target.value })}
                       rows={2}
                       className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
                   </FormField>
