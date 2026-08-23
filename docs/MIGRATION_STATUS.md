@@ -810,3 +810,70 @@ now does it, and the front desk picks the plan on the same form that records the
 **Order matters: change the plan, then record the payment.** `recordPayment()` reads the membership
 to decide where the new term starts and writes `never_expires` from the duration it is handed, so a
 payment taken before the switch buys a Premium-priced Free Access term.
+
+## Coach ratings (0042)
+
+The trainer profile this replaces showed **4.9 stars and two five-star reviews from "John Doe" and
+"Maria Santos"** — hardcoded, no table. 0041 gave the trainer's background real columns and left
+ratings out deliberately, because a rating needs two things a text column does not.
+
+### Who may rate: `may_rate_trainer()`
+
+**A member may rate a coach once they have completed a session with them** — an *approved* class
+that coach taught, or an *approved* 1-on-1, whose time has *passed*. A pending request is not
+experience of a coach, and neither is a class next Tuesday.
+
+Deliberately **not** "after a month of membership": that would let someone rate a coach they have
+never met, which is the single thing a rating system most needs to prevent. A member who did eight
+sessions in three weeks has more to say than one who has been a member a year and never booked.
+
+The rule is one function so it stays cheap to change. A gym that wants three sessions, or a tenure
+requirement, edits `may_rate_trainer()` and nothing else moves.
+
+**The same function is called inside the INSERT and UPDATE policies.** `canRate()` in the app is
+there to explain why a form is absent — a member calling PostgREST directly still gets `42501`.
+
+`p_member` defaults to the caller, and passing someone else's id is refused unless
+`is_front_desk()`. Without that, a member could probe another member's training history one trainer
+at a time.
+
+### What is shown: `trainer_rating_summary`
+
+`average_stars` is **NULL until three ratings exist**. Core Fitness has four trainers; with a
+threshold of one, a member having a bad week hands a coach a 2.0 that every future member sees and
+the coach cannot answer.
+
+- The **count is always public**, even below the threshold — "2 ratings so far" is honest and tells
+  the member the feature works.
+- Below the threshold the view still **returns the row** with a null average, so the app can say
+  "Not rated yet" rather than rendering nothing and leaving the member wondering if it failed.
+- **The admin sees the same withheld average.** Showing the gym a number the member app hides would
+  make the threshold a display trick rather than a policy — and that is the version that gets
+  repeated to the coach.
+- The view must stay **`security_invoker`**, like `activity_feed` in 0037, or the SELECT policy is
+  bypassed.
+
+Ratings are **one editable row per member per trainer** (composite primary key), not an append-only
+log. A member whose opinion changes after ten more sessions should be able to say so, and stacking
+their old and new ratings would double their weight in the average. A member may delete their own;
+**the desk cannot delete one it dislikes**, which is what would make the whole score worthless.
+
+Partial fill in the UI is a clipped overlay, not a half-star glyph: 4.3 renders as 4.3 rather than
+rounding to 4.5 and quietly flattering everyone. Measured — the fifth star fills 4.79px of 16px.
+
+## Two features that existed and could not be reached
+
+Both were reported as missing. Neither was.
+
+- **Trainer recommendations** have written a `notifications` row since 0025, and Progress → Coach
+  has always read them back (matching all three type spellings — see `getTrainerFeedback`). But
+  Coach is the *fifth* tab of a screen one level down, so a note could sit unread for weeks and the
+  whole feature read as broken. Home now surfaces the newest unread one and links to
+  `/member/progress?tab=feedback`.
+- **Free workout resources** (0019) were seeded with real free sites — Darebee, FitnessBlender —
+  routed at `/member/workouts`, and **linked from nowhere in the entire app**. The only reference to
+  the path was the nav dock's highlight table. A curated library nobody can navigate to is the same
+  as not having one; it is now a Home shortcut.
+
+The lesson both share: **a feature is not shipped when the query works, it is shipped when a route
+leads to it.** Grep for the path, not just the component.

@@ -122,3 +122,45 @@ export async function createTrainer(input: {
   }
   return data as { id: string; email: string };
 }
+
+export interface TrainerRatingSummary {
+  trainer_id: string;
+  rating_count: number;
+  /** NULL until three ratings exist (0042) — the gym sees the same withheld
+   *  average members do, on purpose. An admin view that revealed a 1-rating
+   *  average would make the threshold a display trick rather than a policy, and
+   *  the number would leak back out in conversation with the coach. */
+  average_stars: number | null;
+}
+
+/** Every coach's score, keyed by trainer id. */
+export async function getRatingSummaries(): Promise<Map<string, TrainerRatingSummary>> {
+  const { data, error } = await supabase.from('trainer_rating_summary').select('*');
+  if (error) throw error;
+  return new Map((data ?? []).map((r) => [r.trainer_id, r as TrainerRatingSummary]));
+}
+
+export interface TrainerRatingRow {
+  member_id: string;
+  stars: number;
+  comment: string | null;
+  updated_at: string;
+}
+
+/**
+ * The individual ratings behind one coach's average, newest first.
+ *
+ * Admin-only in practice: the SELECT policy on `trainer_ratings` is open to any
+ * authenticated user, because a rating is a public statement and a member must
+ * be able to read their own row back to edit it. What makes this admin-shaped is
+ * where it is surfaced, not a secret.
+ */
+export async function listTrainerRatings(trainerId: string): Promise<TrainerRatingRow[]> {
+  const { data, error } = await supabase
+    .from('trainer_ratings')
+    .select('member_id, stars, comment, updated_at')
+    .eq('trainer_id', trainerId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as TrainerRatingRow[];
+}

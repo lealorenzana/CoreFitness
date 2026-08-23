@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarCheck, Trophy, QrCode, TrendingUp,
-  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X, BookOpen, MessageSquare,
+  ChevronRight,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
   Infinity as InfinityIcon,
@@ -125,6 +126,12 @@ export default function Home() {
   const quickActions = [
     { title: 'My bookings', subtitle: 'Classes and personal training', icon: CalendarCheck, to: '/member/booking-history' },
     { title: 'Progress', subtitle: 'Measurements, workouts and goals', icon: TrendingUp, to: '/member/progress' },
+    // `/member/workouts` was routed, seeded (0019) and reachable by typing the
+    // URL — and linked from nowhere in the entire app. A curated free-resource
+    // library nobody can navigate to is the same as not having one, and it is
+    // the answer to "is there anything I can do at home", which is exactly the
+    // question the free tier creates.
+    { title: 'Free workouts', subtitle: 'Routines and videos the gym recommends', icon: BookOpen, to: '/member/workouts' },
     { title: 'Attendance', subtitle: 'Every gym visit on record', icon: CalendarClock, to: '/member/attendance-history' },
     { title: 'Events', subtitle: 'What the gym has coming up', icon: Trophy, to: '/member/events' },
   ];
@@ -309,6 +316,49 @@ export default function Home() {
               )}
             </div>
           </motion.section>
+
+          {/* A note from a coach, when one is unread.
+
+              This is not a new feature — trainer recommendations have written a
+              `notifications` row since 0025 and Progress → Coach has always read
+              them back. But that is the fifth tab of a screen one level down, so
+              a note could sit unread for weeks and the whole thing read as
+              broken. Violet rather than amber: it is someone talking to you, not
+              an action the gym wants you to take. */}
+          {home.unreadCoachNote && (
+            <motion.button
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
+              onClick={() => navigate('/member/progress?tab=feedback')}
+              className="w-full p-4 flex items-center gap-3 text-left"
+              style={{
+                background: 'var(--color-primary-light)',
+                border: '1px solid var(--color-primary)',
+                borderRadius: 'var(--radius-panel)',
+              }}
+            >
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-primary)' }}>
+                <MessageSquare size={20} className="text-white" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--color-primary)' }}>
+                  {home.unreadCoachNote.count === 1
+                    ? 'New note from your coach'
+                    : `${home.unreadCoachNote.count} new coach notes`}
+                </span>
+                <span className="block text-sm font-bold text-white truncate mt-0.5">
+                  {home.unreadCoachNote.title}
+                </span>
+                {home.unreadCoachNote.from && (
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    {home.unreadCoachNote.from}
+                  </span>
+                )}
+              </span>
+              <ChevronRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+            </motion.button>
+          )}
 
           {/* What the gym has announced. High on the screen and amber, because
               an event buried four rows down a scroll is an event nobody

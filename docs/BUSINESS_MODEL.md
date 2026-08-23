@@ -86,6 +86,20 @@ and nowhere a member could act on them:
 The conversion path the panel asked about is therefore a real path: **Free → Freemium (once) →
 Premium**, with each step visible to the member and executable by the desk.
 
+### Coach ratings, and why they are gated
+
+Members rate the coaches they trained with (0042), and the score appears on the coach list and
+profile. Two rules keep it from becoming a liability rather than an asset:
+
+- **Only members who completed a session with that coach may rate them.** Not "members of a month" —
+  that would let someone score a coach they never met.
+- **The average is hidden until three ratings exist.** With four trainers, a single bad week would
+  otherwise become one coach's permanent public number, visible to every future member and
+  unanswerable by the coach.
+
+For the gym this is retention data it has never had: which coach keeps people coming back is
+currently a matter of the owner's impression.
+
 ### Freeze and cancel
 
 - **Freemium** — once per member, ever, enforced in SQL. Granting a second one is deliberately not

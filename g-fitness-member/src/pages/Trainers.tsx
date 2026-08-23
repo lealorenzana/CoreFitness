@@ -8,6 +8,8 @@ import { Award, ArrowRight, Calendar, Dumbbell } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import { getRatingSummaries, type TrainerRatingSummary } from '../lib/api/trainerRatings';
+import { RatingLine } from '../components/ui/StarRating';
 import { listClasses } from '../lib/api/classes';
 
 /**
@@ -28,21 +30,32 @@ export default function Trainers() {
   const navigate = useNavigate();
   const [trainers, setTrainers] = useState<PublicTrainer[]>([]);
   const [classCounts, setClassCounts] = useState<Record<string, number>>({});
+  const [ratings, setRatings] = useState<Map<string, TrainerRatingSummary>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [coaches, classes] = await Promise.all([
+        const [coaches, classes, scores] = await Promise.all([
           listPublicTrainers(),
           listClasses().catch(() => []),
+          // One query for every coach's score, not one per row. A failure leaves
+          // the map empty and the rows simply carry no rating line — a coach
+          // list that fails to render because the scores are down would be a
+          // worse trade than a coach list with no scores.
+          getRatingSummaries().catch(() => new Map<string, TrainerRatingSummary>()),
         ]);
         if (cancelled) return;
         setTrainers(coaches);
+        setRatings(scores);
 
-        // How many sessions each coach still has ahead of them — a real,
-        // checkable number, unlike the star ratings this page used to show.
+        // How many sessions each coach still has ahead of them.
+        //
+        // This comment used to end "unlike the star ratings this page used to
+        // show" — those were hardcoded 4.9s with no table behind them. Ratings
+        // are real as of 0042: written by members who completed a session with
+        // the coach, and withheld until three exist.
         const now = Date.now();
         const counts: Record<string, number> = {};
         for (const c of classes) {
@@ -97,6 +110,12 @@ export default function Trainers() {
                     <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
                       <Award size={12} style={{ color: 'var(--color-secondary)' }} />
                       {t.specialization ?? 'General training'}
+                    </p>
+                    <p className="mt-1.5">
+                      <RatingLine
+                        average={ratings.get(t.id)?.average_stars ?? null}
+                        count={ratings.get(t.id)?.rating_count ?? 0}
+                      />
                     </p>
                     {upcoming > 0 && (
                       <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>

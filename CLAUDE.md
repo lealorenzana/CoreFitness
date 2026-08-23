@@ -9,7 +9,7 @@ from a desktop icon and never deployed; **`g-fitness-member/`** (`:5173`) is the
 app (PWA → Android TWA) and hosts the **trainer** role as well as the member one.
 
 Not a monorepo — no workspaces, no shared package. Each has its own `package.json`, tsconfig, ESLint
-and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 41 SQL migrations, RLS
+and Tailwind setup; run `npm` from inside the app directory. `supabase/` holds 42 SQL migrations, RLS
 policies and four Edge Functions (`create-trainer`, `create-member`, `create-staff`, `send-push`) —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
@@ -36,6 +36,7 @@ gyms, coaches and prices that do not exist. Grep found neither; opening the page
 - Members are **archived, never deleted**; analytics return **zero, never a plausible invention**.
 - A missed lookup renders **nothing, never a hardcoded fallback identity** — member Profile once
   shipped `<img src="/eya.png">`, so every member saw a real person's face on their own profile.
+  Same rule for scores: a withheld average is **NULL and says so**, never 0 stars.
 - Payments distinguish **`paid_on` from `created_at`**; members store a **birth date, not an age** (a
   derived number cannot go stale, a stored one silently does).
 - **Calendar dates come from `utils/dates.ts`, never `toISOString()`.** Manila is UTC+8, so the UTC
@@ -51,13 +52,16 @@ gyms, coaches and prices that do not exist. Grep found neither; opening the page
 - **Anything the client can grant or skip proves nothing** — badge rules and the audit log live in
   SQL. But **probe a SECURITY DEFINER guard as anon before believing it** (0038 → 0039).
 - **A failed section says so.** Degrading to empty makes "couldn't load" read as "nothing here".
+- **A feature ships when a route leads to it, not when the query works.** Trainer recommendations
+  (0025) and the free-workout library (0019) were both reported missing; both were built, seeded and
+  correct, and `/member/workouts` was linked from nowhere. Grep the path, not just the component.
 
 ## Architecture
 ### Auth and routing — real Supabase Auth
 `profiles.role` (`admin`/`staff`/`trainer`/`member`) and `profiles.status` (`active`/
-`pending_approval`/`suspended`/`archived`) are the source of truth, not localStorage flags. **`staff`**
-is front desk (0011/0012): payments, check-ins and extensions, but not pricing, trainers, accounts,
-settings or the audit log — everything staff do is recorded and reversible.
+`pending_approval`/`suspended`/`archived`) are the source of truth, not localStorage flags.
+**`staff`** is front desk (0011/0012): payments, check-ins, extensions — not pricing, trainers,
+accounts, settings or the audit log; everything staff do is recorded and reversible.
 `<ProtectedRoute adminOnly>` is convenience; **RLS is the boundary.** The member app also caches a
 legacy user object into `localStorage['user']`/`isLoggedIn`/`trainerMode` for the ~6 pages still on
 `getCurrentUser()` — never real auth state; `syncUserCache()` rebuilds it on boot, since a persisted
@@ -116,8 +120,8 @@ cannot afford to rediscover:
 - **Admin is Tailwind v3** (no cascade layers). **Member is v4** with **no config file**: one was
   silently ignored, and classes defined only there emitted *no CSS* for months. **Unlayered author CSS
   beats every layer**, whatever the specificity.
-- **If a class looks like it does nothing, it probably does nothing.** Verify against the built
-  bundle, never the source — `npm run build`, then grep `dist/assets/*.css`.
+- **If a class looks like it does nothing, it probably does nothing.** Verify against the built bundle,
+  never the source — `npm run build`, then grep `dist/assets/*.css`.
 - Tokens are CSS custom properties in each `src/index.css`; never `brand-*`/`dark-*`. **Amber =
   primary action, violet = selection/structure. Type floor is 12px.** No greens or reds. Headings opt
   into `.display` (Anton, uppercase) — never globally. Primitives first: member `Card`, `StepFlow`;
@@ -129,20 +133,23 @@ cannot afford to rediscover:
   **`AnimatePresence` never unmounts an exiting child** (invisible backdrop ate clicks forever —
   always-mounted wrapper *outside* it); **a transitioned SVG presentation attribute sticks** at its
   old computed value while the attribute reads the new one.
-- Wrong twice each: **native pickers** (`color-scheme: dark`, never `filter: invert(1)`), **focus
-  rings**, **popovers inside scrolling modals**.
+- Wrong twice each: **native pickers** (`color-scheme: dark`, not `filter: invert(1)`), **focus rings**,
+  **popovers inside scrolling modals**.
 
 ### Levels, achievements and what a trainer may see
 
 **Two different levels exist and must be named apart on screen.** `experience_level` is self-declared
 and drives class recommendations; the *earned* level comes from `member_progression()` — calling both
-"level" made Home and Book a Session contradict each other. **Grading lives in SQL**:
-`sync_my_achievements()` is SECURITY DEFINER and the only writer of `achievement_unlocks` (no INSERT
-policy, same shape as `activity_log`); 0038 made the *catalogue* a table. **Membership tiers** work
-the same way: access is **columns, not the tier name**, enforced by triggers and surfaced to members
-through `utils/planAccess.ts`; **`freemium_trials` is one row per member, ever**; and **a plan change
-must precede `recordPayment`**, which reads the membership to compute the new term. Both in full:
-[MIGRATION_STATUS](docs/MIGRATION_STATUS.md) · [BUSINESS_MODEL](docs/BUSINESS_MODEL.md).
+"level" made Home and Book a Session contradict each other.
+
+**Everything a client could fake lives in SQL, and the pattern repeats:** a SECURITY DEFINER writer,
+no INSERT policy, a table the admin edits for the *rules*. `achievement_unlocks` (0038 made the
+catalogue a table) · `freemium_trials`, one per member ever · `trainer_ratings`, which needs a
+*completed* session via `may_rate_trainer()`, re-checked inside the write policies, and withholds the
+average below three ratings — for admin too. Plan access is **columns, not the tier name**, surfaced
+by `utils/planAccess.ts`; **a plan change must precede `recordPayment`**, which reads the membership
+to compute the new term. All in full: [MIGRATION_STATUS](docs/MIGRATION_STATUS.md) ·
+[BUSINESS_MODEL](docs/BUSINESS_MODEL.md).
 **`npm run check:achievements` must stay green.** **Members choose what trainers see** (0032):
 `trainer_may_see()` gates measurements, goals and workout logs in RLS, not the UI. Admin/staff
 ungated; default shared.
@@ -172,9 +179,11 @@ testing, PostgREST traps) · [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md) · [DEPLOYME
 **Backend/logic**, **the six panel features** and **design/frontend** are done — registration →
 approval → payment → activation and the booking round trip verified by hand, admin dashboard
 rebuilt page by page on real data. Outstanding:
-- **0041 is written and unrun** — trainer background columns + `freemium_trials`. Verified in a
-  `postgres:16-alpine` container (11 assertions, forging refused as `app_user`), **not** against the
-  live project: run it in the SQL Editor. 0034–0040 are applied. Audited 2026-08-19 as anon: 27
+- **0041 and 0042 are written and unrun** — trainer background + `freemium_trials`, then
+  `trainer_ratings`. Verified in a `postgres:16-alpine` container as a non-superuser (11 and 12
+  assertions), **not** against the live project: run both in the SQL Editor, in order. An agent
+  session cannot — `db push` would re-run all 42 (the ledger is empty; these were applied by hand)
+  and the credential store is not readable. 0034–0040 are applied. Audited 2026-08-19 as anon: 27
   tables/views and 9 RPCs answer, no secret in either bundle, and every hostile write — activate a
   membership, self-promote to admin, forge an audit row, erase check-ins — changed **0 rows**. Two
   probe results that look like holes and are not (a blocked write returns **204**; a wrong-signature
@@ -190,12 +199,9 @@ rebuilt page by page on real data. Outstanding:
   show, so `git push origin main` from a real terminal is the last step of a hand-off. Synced 08-22.
 
 ### Verifying work
-**A green build proves nothing** — every visual bug here compiled perfectly. **Full playbook:
-[docs/VERIFYING.md](docs/VERIFYING.md).** Run `preview_start` and measure with `getComputedStyle`;
-the pane is often not compositing, so **screenshots time out — read the DOM instead**. Pure functions
-and **components** both run in the dev server: `createRoot` a scratch div in a `MemoryRouter`, and
-reach login-gated screens by **stubbing `window.fetch` per REST path and planting a session**, which
-runs the real services end-to-end. **SQL:** a throwaway `postgres:16-alpine` container as a
-**non-superuser** — a table owner bypasses RLS, and `SET LOCAL ROLE` outside a transaction silently
-does nothing, so both make a broken policy pass. Without Docker, `npx pgsql-parser` checks top-level
-syntax but **plpgsql bodies are opaque to it**. Say plainly what ran and what did not.
+**A green build proves nothing** — every visual bug here compiled perfectly. **Recipes, traps and the
+SQL harness: [docs/VERIFYING.md](docs/VERIFYING.md).** In short: `preview_start` and measure with
+`getComputedStyle` (screenshots time out — the pane rarely composites); render real components in a
+`MemoryRouter`, reaching login-gated screens by **stubbing `window.fetch` and planting a session**;
+run SQL in a throwaway `postgres:16-alpine` container **as a non-superuser**, since an owner bypasses
+RLS and makes a broken policy pass. Say plainly what ran and what did not.

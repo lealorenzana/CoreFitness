@@ -5,12 +5,18 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Award, BadgeCheck, Calendar, Clock, MapPin, Dumbbell, Target, Trophy,
+  ArrowLeft, Award, BadgeCheck, Calendar, Clock, MapPin, Dumbbell, Target, Trophy, Star,
 } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
 import { listTrainerClasses } from '../lib/api/classes';
+import {
+  getRatingSummary, getMyRating, canRate, saveMyRating, deleteMyRating,
+  type TrainerRatingSummary, type MyTrainerRating,
+} from '../lib/api/trainerRatings';
+import { getCurrentMemberId } from '../services/bookingService';
+import { Stars, StarInput } from '../components/ui/StarRating';
 import type { ClassRow } from '../types/db';
 
 /**
@@ -43,6 +49,17 @@ export default function TrainerProfile() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Ratings (0042). Kept separate from the profile fetch: a coach with no
+  // ratings, or a summary that fails to load, must still render a full profile.
+  const [summary, setSummary] = useState<TrainerRatingSummary | null>(null);
+  const [mine, setMine] = useState<MyTrainerRating | null>(null);
+  const [eligible, setEligible] = useState(false);
+  const [memberId, setMemberId] = useState<string | null>(null);
+  const [draftStars, setDraftStars] = useState(0);
+  const [draftComment, setDraftComment] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -53,7 +70,27 @@ export default function TrainerProfile() {
         const found = all.find((t) => t.id === trainerId) ?? null;
         if (cancelled) return;
         setTrainer(found);
-        if (found) setClasses(await listTrainerClasses(found.id).catch(() => []));
+        if (found) {
+          setClasses(await listTrainerClasses(found.id).catch(() => []));
+
+          const id = await getCurrentMemberId().catch(() => null);
+          if (cancelled) return;
+          setMemberId(id);
+
+          const [sum, own, may] = await Promise.all([
+            getRatingSummary(found.id).catch(() => null),
+            id ? getMyRating(id, found.id).catch(() => null) : Promise.resolve(null),
+            canRate(found.id),
+          ]);
+          if (cancelled) return;
+          setSummary(sum);
+          setMine(own);
+          setEligible(may);
+          if (own) {
+            setDraftStars(own.stars);
+            setDraftComment(own.comment ?? '');
+          }
+        }
       } catch (err) {
         if (!cancelled) toast.error(errorMessage(err, 'Could not load this trainer'));
       } finally {
@@ -62,6 +99,46 @@ export default function TrainerProfile() {
     })();
     return () => { cancelled = true; };
   }, [trainerId]);
+
+  const submitRating = async () => {
+    if (!trainer || !memberId || draftStars < 1) return;
+    setSaving(true);
+    try {
+      await saveMyRating(memberId, trainer.id, draftStars, draftComment.trim() || null);
+      setMine({
+        trainer_id: trainer.id, stars: draftStars,
+        comment: draftComment.trim() || null, updated_at: new Date().toISOString(),
+      });
+      setEditing(false);
+      // Re-read rather than adjusting the average locally. The threshold rule
+      // lives in the view, so guessing the new average here would be a second
+      // implementation of it that starts disagreeing the moment it changes.
+      setSummary(await getRatingSummary(trainer.id).catch(() => summary));
+      toast.success('Thanks — your rating has been saved');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save your rating'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeRating = async () => {
+    if (!trainer || !memberId) return;
+    setSaving(true);
+    try {
+      await deleteMyRating(memberId, trainer.id);
+      setMine(null);
+      setDraftStars(0);
+      setDraftComment('');
+      setEditing(false);
+      setSummary(await getRatingSummary(trainer.id).catch(() => summary));
+      toast.success('Your rating was removed');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not remove your rating'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const upcoming = classes
     .filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > Date.now())
@@ -119,7 +196,127 @@ export default function TrainerProfile() {
                   : `${trainer.years_experience} ${trainer.years_experience === 1 ? 'year' : 'years'} coaching`}
               </p>
             )}
+            {/* On the violet header the muted token would vanish, so the
+                below-threshold wording is rendered here in white/70 rather than
+                reusing <RatingLine>, which is tuned for panel backgrounds. */}
+            {summary && (
+              <div className="mt-3 pt-3 flex items-center justify-center gap-2"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                {summary.average_stars == null ? (
+                  <p className="text-xs text-white/70">
+                    {summary.rating_count === 0
+                      ? 'Not rated yet'
+                      : `Not rated yet · ${summary.rating_count} so far`}
+                  </p>
+                ) : (
+                  <>
+                    <Stars value={summary.average_stars} size={16} />
+                    <span className="text-sm font-bold text-white">
+                      {summary.average_stars.toFixed(1)}
+                    </span>
+                    <span className="text-xs text-white/70">
+                      ({summary.rating_count} {summary.rating_count === 1 ? 'rating' : 'ratings'})
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </motion.div>
+
+          {/* Rating. Shown only to members the database says may rate this coach
+              — `may_rate_trainer()` requires a *completed* session with them, so
+              a member who has never trained with this coach sees nothing here
+              rather than a form that would be rejected on submit.
+
+              The same function is re-checked inside the INSERT and UPDATE
+              policies, so this is an explanation of the rule, never the rule. */}
+          {eligible && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <h3 className="text-white font-semibold mb-1 text-sm flex items-center gap-2">
+                <Star size={16} style={{ color: 'var(--color-secondary)' }} />
+                {mine ? 'Your rating' : 'Rate this coach'}
+              </h3>
+              <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+                {mine
+                  ? 'You can change this any time — your latest rating replaces the old one.'
+                  : 'You trained with them, so you can rate them. Only your most recent rating counts.'}
+              </p>
+
+              {mine && !editing ? (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Stars value={mine.stars} size={18} />
+                    <span className="text-sm font-bold text-white">{mine.stars}.0</span>
+                  </div>
+                  {mine.comment && (
+                    <p className="text-sm mt-2 leading-relaxed whitespace-pre-line"
+                      style={{ color: 'var(--color-text-secondary)' }}>
+                      {mine.comment}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-3">
+                    <button onClick={() => setEditing(true)}
+                      className="px-4 h-9 rounded-full text-xs font-bold text-black"
+                      style={{ background: 'var(--color-secondary)' }}>
+                      Change
+                    </button>
+                    <button onClick={removeRating} disabled={saving}
+                      className="px-4 h-9 rounded-full text-xs font-semibold disabled:opacity-50"
+                      style={{
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-secondary)',
+                      }}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <StarInput value={draftStars} onChange={setDraftStars} disabled={saving} />
+                  <textarea
+                    value={draftComment}
+                    onChange={(e) => setDraftComment(e.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                    placeholder="What were the sessions like? (optional)"
+                    className="w-full mt-3 px-3 py-2 rounded-xl text-white text-sm resize-none"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                  />
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={submitRating}
+                      disabled={saving || draftStars < 1}
+                      className="px-5 h-10 rounded-full text-sm font-bold text-black disabled:opacity-50"
+                      style={{ background: 'var(--color-secondary)' }}>
+                      {saving ? 'Saving…' : mine ? 'Save changes' : 'Submit rating'}
+                    </button>
+                    {mine && (
+                      <button
+                        onClick={() => {
+                          setEditing(false);
+                          setDraftStars(mine.stars);
+                          setDraftComment(mine.comment ?? '');
+                        }}
+                        className="px-4 h-10 rounded-full text-sm font-semibold"
+                        style={{
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          color: 'var(--color-text-secondary)',
+                        }}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                  {draftStars < 1 && (
+                    <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                      Pick a star rating to continue.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* What they coach best. Chips rather than a sentence — a member
               scanning four coaches for "someone who does rehab" is matching a

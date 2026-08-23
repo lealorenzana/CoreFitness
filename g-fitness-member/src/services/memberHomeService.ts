@@ -4,6 +4,7 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import { listMyBookings, isUpcoming, type MyBooking } from './bookingService';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { planAccess, type PlanAccess } from '../utils/planAccess';
+import { progressService } from './progressService';
 
 /**
  * The member's home screen, assembled from real rows.
@@ -61,6 +62,18 @@ export interface MemberHome {
    * the space is never spent on an empty promise.
    */
   nextEvent: { id: string; title: string; startsAt: string; location: string | null } | null;
+  /**
+   * An unread note from a trainer, if there is one.
+   *
+   * Trainer recommendations have always worked — the trainer app writes a
+   * `notifications` row and the member can read it in the bell or under
+   * Progress → Coach. The problem was that Coach is the *fifth* tab of a screen
+   * one level down, so unless the member happened to open the bell in time, a
+   * coach's note could sit unread indefinitely and read as "the feature does
+   * not work". Surfacing the newest unread one here is the fix; it links
+   * straight to the tab rather than reproducing the note.
+   */
+  unreadCoachNote: { count: number; title: string; from: string | null } | null;
 }
 
 /** Local calendar date as YYYY-MM-DD. Never toISOString() — that shifts to UTC. */
@@ -69,13 +82,19 @@ function toDateString(d: Date): string {
 }
 
 export async function getMemberHome(memberId: string): Promise<MemberHome> {
-  const [member, membership, attendance, bookings, events] = await Promise.all([
+  const [member, membership, attendance, bookings, events, coachNotes] = await Promise.all([
     getMemberProfile(memberId).catch(() => null),
     getCurrentMembership(memberId).catch(() => null),
     listMemberAttendance(memberId).catch(() => []),
     listMyBookings(memberId).catch(() => []),
     listEvents().catch(() => [] as EventRow[]),
+    // Reused rather than re-filtered here: `getTrainerFeedback` owns the list of
+    // three type spellings a recommendation has been written under, and a second
+    // copy of that list would drift and start hiding notes again.
+    progressService.getTrainerFeedback(memberId).catch(() => []),
   ]);
+
+  const unread = coachNotes.filter((n) => !n.read);
 
   const firstName = member?.profile.first_name ?? '';
   const lastName = member?.profile.last_name ?? '';
@@ -154,5 +173,10 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
         .filter((e) => eventStatus(e) === 'Upcoming')
         .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
         .map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, location: e.location }))[0] ?? null,
+    // Newest first — getTrainerFeedback already sorts that way.
+    unreadCoachNote:
+      unread.length === 0
+        ? null
+        : { count: unread.length, title: unread[0].title, from: unread[0].trainerName ?? null },
   };
 }

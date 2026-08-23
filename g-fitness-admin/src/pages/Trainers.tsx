@@ -6,7 +6,7 @@ import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
-import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Search, Archive, UserX, UserCheck, Clock } from 'lucide-react';
+import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Search, Archive, UserX, UserCheck, Clock, Star } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
@@ -15,6 +15,7 @@ import {
   listArchivedTrainers,
   setTrainerStatus,
   updateTrainerProfile,
+  getRatingSummaries,
 } from '../lib/api/trainers';
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { updateProfile } from '../lib/api/profiles';
@@ -37,6 +38,10 @@ interface TrainerDisplay {
   certifications: string[];
   focusAreas: string[];
   achievements: string | null;
+  /** Member ratings (0042). `ratingAverage` is null until three exist — the
+   *  admin sees the same withheld number members do. */
+  ratingAverage: number | null;
+  ratingCount: number;
   /** How many real bookable-hour windows this trainer has set (0015). */
   bookableWindows: number;
   status: ProfileStatus;
@@ -95,9 +100,12 @@ export default function Trainers() {
       // Bookable-hour windows come from the real table, in one query for the
       // whole roster — the card needs to say whether a trainer is actually
       // bookable, and the CSV on trainer_profiles cannot answer that.
-      const [rows, availability] = await Promise.all([
+      const [rows, availability, scores] = await Promise.all([
         showArchived ? listArchivedTrainers() : listTrainers(),
         listAllAvailability().catch(() => []),
+        // Degrades to an empty map rather than failing the roster: the gym needs
+        // its trainer list far more than it needs the scores on it.
+        getRatingSummaries().catch(() => new Map()),
       ]);
       const windowsByTrainer = new Map<string, number>();
       for (const a of availability) {
@@ -113,6 +121,8 @@ export default function Trainers() {
           phone: profile.phone,
           bio: trainer.bio,
           photoUrl: profile.photo_url,
+          ratingAverage: scores.get(profile.id)?.average_stars ?? null,
+          ratingCount: scores.get(profile.id)?.rating_count ?? 0,
           yearsExperience: trainer.years_experience ?? null,
           certifications: trainer.certifications ?? [],
           focusAreas: trainer.focus_areas ?? [],
@@ -351,6 +361,19 @@ export default function Trainers() {
                       )}
                     </div>
                     <Badge variant="Premium" className="mt-0.5 inline-block !text-[9px] !px-2 !py-0.5">{trainer.specialization}</Badge>
+                    {/* Member ratings (0042). The average is withheld below three
+                        ratings for the admin too — showing the gym a number the
+                        member app hides would turn a policy into a display trick,
+                        and it is the version that would get repeated to the coach. */}
+                    <p className="text-[10px] mt-1 flex items-center gap-1"
+                      style={{ color: 'var(--color-text-muted)' }}>
+                      <Star size={10} style={{ color: 'var(--color-secondary)' }} fill="currentColor" />
+                      {trainer.ratingAverage != null
+                        ? `${trainer.ratingAverage.toFixed(1)} from ${trainer.ratingCount} ${trainer.ratingCount === 1 ? 'rating' : 'ratings'}`
+                        : trainer.ratingCount === 0
+                          ? 'No ratings yet'
+                          : `${trainer.ratingCount} of 3 ratings — average hidden until 3`}
+                    </p>
                     <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
                   </div>
                 </div>

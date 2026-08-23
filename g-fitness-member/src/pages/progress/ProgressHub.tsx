@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
@@ -34,9 +34,19 @@ const tabs = [
 
 type TabId = typeof tabs[number]['id'];
 
+function isTabId(value: string | null): value is TabId {
+  return value != null && tabs.some((t) => t.id === value);
+}
+
 export default function ProgressHub() {
   const navigate = useNavigate();
-  const [active, setActive] = useState<TabId>('body');
+  // `?tab=` lets Home link straight to Coach when a note is waiting. Read once
+  // into state rather than driven from the URL: the tab strip is local
+  // navigation, and pushing five history entries for five taps would turn the
+  // phone's back gesture into a tour of the tabs instead of a way out.
+  const [params] = useSearchParams();
+  const requested = params.get('tab');
+  const [active, setActive] = useState<TabId>(isTabId(requested) ? requested : 'body');
 
   const renderTab = () => {
     switch (active) {
