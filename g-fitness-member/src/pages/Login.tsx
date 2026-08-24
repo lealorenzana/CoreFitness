@@ -143,7 +143,7 @@ export default function Login() {
       {overlayRoot && isLoading && createPortal(<LoadingOverlay message="Logging you in..." />, overlayRoot)}
 
       <div
-        className="px-6 pt-9 pb-8 min-h-full flex flex-col relative overflow-hidden"
+        className="px-6 pt-10 pb-6 min-h-full flex flex-col relative overflow-hidden"
         style={{
           backgroundColor: 'var(--color-bg)',
           ['--role' as string]: roleTheme.accent,
@@ -180,11 +180,17 @@ export default function Login() {
 
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          // `flex-1` + column is what gives the footer's `mt-auto` something
-          // to push against; without it the auto margin has no free space to
-          // consume and the footer just sits under the button.
-          className="space-y-5 relative z-10 flex-1 flex flex-col"
+          // The reference fills its frame because of four rows this app does
+          // not have — Google, Gym QR, Forgot, Keep me signed in — worth about
+          // 160px together. Nothing rearranges that back into existence, so the
+          // leftover height is *split* rather than concentrated: `my-auto` on
+          // the content group pushes equal space above and below it, and the
+          // small print rests on the bottom edge. `justify-between` was tried
+          // first and put 189px between the greeting and the form, which read
+          // as two unrelated screens.
+          className="relative z-10 flex-1 flex flex-col"
         >
+          <div className="my-auto space-y-6">
           {/* Brand row, left-aligned.
 
               The mark and the wordmark used to be stacked and centred, which ate
@@ -211,8 +217,15 @@ export default function Login() {
               not. It also states what signing in is *for*, which the centred
               version never did. */}
           <div>
-            <h1 className="display text-3xl text-white leading-none">Welcome back</h1>
-            <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            {/* Deliberately NOT `.display`. Anton is condensed and uppercase, so
+                "WELCOME BACK" shouts where this line should just greet — and the
+                wordmark two rows above is already carrying the brand face. The
+                design system says headings *opt into* `.display`; this is one
+                opting out. */}
+            <h1 className="text-[26px] font-bold text-white leading-tight tracking-tight">
+              Welcome back
+            </h1>
+            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
               {isTrainer
                 ? 'Sign in for your schedule, your members and your coaching tools.'
                 : 'Sign in to book sessions, check in and track your progress.'}
@@ -262,7 +275,7 @@ export default function Login() {
               precisely on the second half.
             */}
             <div
-              className="relative flex p-1 rounded-full"
+              className="relative flex p-1 rounded-2xl"
               style={{
                 // Black alpha rather than the opaque surface token: the track
                 // reads as a groove cut into the background, so the gradient
@@ -276,7 +289,7 @@ export default function Login() {
             >
               <span
                 aria-hidden
-                className="absolute top-1 bottom-1 left-1 rounded-full pointer-events-none"
+                className="absolute top-1 bottom-1 left-1 rounded-xl pointer-events-none"
                 style={{
                   width: 'calc(50% - 0.25rem)',
                   background: 'var(--role)',
@@ -310,7 +323,7 @@ export default function Login() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setSelectedRole(role)}
-                    className="relative z-10 flex-1 h-10 rounded-full flex items-center justify-center gap-1.5 text-xs font-bold"
+                    className="relative z-10 flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
                     style={{
                       // Amber needs black ink, violet needs white — the label
                       // has to flip with the accent or the active tab becomes
@@ -351,7 +364,7 @@ export default function Login() {
             transition={{ delay: 0.08 }}
           >
               <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
                   Email
                 </label>
                 <div className="relative">
@@ -377,7 +390,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
                   Password
                 </label>
                 <div className="relative">
@@ -411,7 +424,7 @@ export default function Login() {
                 type="submit"
                 disabled={isLoading}
                 whileTap={{ scale: 0.985 }}
-                className="w-full h-12 rounded-full font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 /* This button follows the role rather than staying amber.
                    Elsewhere the app reserves amber for primary actions and
                    violet for selection — here the role *is* the subject of the
@@ -446,13 +459,16 @@ export default function Login() {
               </motion.button>
           </motion.form>
 
-          {/* Footer, pushed to the bottom of the screen.
+          {/* Sign-up sits directly under the button, where someone who has just
+              realised they have no account is looking.
 
-              `mt-auto` inside a column that is `min-h-full` is what turns this
-              from a block of content trailing off into a page with a floor. The
-              legal links belong at the bottom of the screen, not eight pixels
-              under the button. */}
-          <div className="text-center space-y-1.5 pt-2 mt-auto">
+              Only the legal line goes to the floor, below. Pinning the *whole*
+              footer down there opened a dead band of roughly 40% of the screen
+              between the button and the links — there is not enough content to
+              reach the bottom once the reference's four absent controls are
+              taken out. Small print resting on the bottom edge is a familiar
+              shape; a sign-up prompt stranded down there is not. */}
+          <div className="text-center pt-1">
             {/* Only members sign themselves up. A trainer account is created by
                 the gym through the `create-trainer` Edge Function, which is the
                 only path that can set `profiles.role = 'trainer'`. Self-signup
@@ -477,16 +493,20 @@ export default function Login() {
                 </button>
               </p>
             )}
-            <p className="text-xs text-white/25">
-              <button onClick={() => navigate('/terms')} className="hover:text-white/40">
-                Terms of Service
-              </button>
-              <span className="mx-1.5">•</span>
-              <button onClick={() => navigate('/privacy')} className="hover:text-white/40">
-                Privacy Policy
-              </button>
-            </p>
           </div>
+
+          </div>
+
+          {/* ── Small print, resting on the bottom edge ──────────────────── */}
+          <p className="text-xs text-white/25 text-center">
+            <button onClick={() => navigate('/terms')} className="hover:text-white/40">
+              Terms of Service
+            </button>
+            <span className="mx-1.5">•</span>
+            <button onClick={() => navigate('/privacy')} className="hover:text-white/40">
+              Privacy Policy
+            </button>
+          </p>
         </motion.div>
       </div>
     </MobileFrame>

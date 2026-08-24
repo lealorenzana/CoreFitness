@@ -74,16 +74,25 @@ export default function BrandMark({
       {/* Base circle — the thing that makes a stationary ring read as a ring. */}
       <span
         className="absolute inset-0 rounded-full pointer-events-none"
-        style={{ border: `${ring}px solid rgba(255,255,255,0.10)` }}
+        style={{ borderWidth: ring, borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.10)' }}
       />
 
       {/* Outer arc, in the selected role's colour. */}
       <span
         className="absolute inset-0 rounded-full pointer-events-none"
         style={{
-          border: `${ring}px solid transparent`,
+          // Width and style as shorthands, but **every side's colour stated
+          // explicitly**. Mixing the `border` shorthand with `borderTopColor`
+          // makes React warn, and the warning is real: this component
+          // re-renders on every role toggle, and on a re-render the shorthand
+          // and the longhand can be applied out of step, leaving an arc painted
+          // in the colour it had before the switch.
+          borderWidth: ring,
+          borderStyle: 'solid',
           borderTopColor: accent,
           borderRightColor: `${accent}59`,
+          borderBottomColor: 'transparent',
+          borderLeftColor: 'transparent',
           transform: 'rotate(-38deg)',
           transition,
         }}
@@ -94,7 +103,10 @@ export default function BrandMark({
         className="absolute rounded-full pointer-events-none"
         style={{
           inset: innerInset,
-          border: `${ring}px solid transparent`,
+          borderWidth: ring,
+          borderStyle: 'solid',
+          borderTopColor: 'transparent',
+          borderRightColor: 'transparent',
           borderBottomColor: counter,
           borderLeftColor: `${counter}4D`,
           transform: 'rotate(20deg)',
