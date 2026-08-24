@@ -7,6 +7,8 @@ import {
 } from '../lib/api/progress';
 import { listMemberAttendance } from '../lib/api/attendance';
 import { listNotifications } from '../lib/api/notifications';
+import { getMemberProfile, updateMemberProfile } from '../lib/api/members';
+import { asFocus, type TrainingFocus } from '../utils/trainingFocus';
 
 /**
  * The Progress Hub, backed by real tables (migration 0020).
@@ -160,6 +162,27 @@ function toGoal(r: FitnessGoalRow, latest: BodyMeasurementRow | null): Goal {
     createdAt: r.created_at,
     achievedAt: r.achieved_on,
   };
+}
+
+/**
+ * The member's current bulk/cut/maintain phase (0044).
+ *
+ * No parked-answer fallback, unlike `experience_level`: that one is collected
+ * during onboarding, which can run before the member row exists (0033 -> 0036).
+ * This is set from the Progress tab, which is only reachable once the member is
+ * signed in and their row is long since created, so there is nothing to park.
+ */
+export async function getTrainingFocus(memberId: string): Promise<TrainingFocus | null> {
+  if (!memberId) return null;
+  const member = await getMemberProfile(memberId).catch(() => null);
+  return asFocus(member?.member.training_focus);
+}
+
+export async function setTrainingFocus(
+  memberId: string,
+  focus: TrainingFocus | null
+): Promise<void> {
+  await updateMemberProfile(memberId, { training_focus: focus });
 }
 
 export const progressService = {

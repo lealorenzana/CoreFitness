@@ -10,8 +10,12 @@ import EmptyState from '../../../components/ui/EmptyState';
 import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
 import {
-  progressService, calcBmi, bmiLabel, bmiColor, type BodyProgressEntry,
+  progressService, getTrainingFocus, setTrainingFocus,
+  calcBmi, bmiLabel, bmiColor, type BodyProgressEntry,
 } from '../../../services/progressService';
+import {
+  FOCUS_LABEL, FOCUS_BLURB, type TrainingFocus,
+} from '../../../utils/trainingFocus';
 import { readCache, writeCache } from '../../../lib/pageCache';
 
 /**
@@ -116,6 +120,8 @@ export default function BodyProgressTab() {
    */
   const [startStep, setStartStep] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  /** Bulk / cut / maintain (0044). Null until the member says. */
+  const [focus, setFocus] = useState<TrainingFocus | null>(null);
   const blankForm = (): Record<FieldKey, string> =>
     Object.fromEntries(FIELDS.map((f) => [f.key, ''])) as Record<FieldKey, string>;
   const [form, setForm] = useState<Record<FieldKey, string>>(blankForm);
@@ -123,6 +129,9 @@ export default function BodyProgressTab() {
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
+      // Independent of the measurements: a focus that fails to load must not
+      // blank the readings, and readings that fail must not lose the focus.
+      getTrainingFocus(memberId).then(setFocus).catch(() => undefined);
       setEntries(writeCache(CACHE_KEY, await progressService.getBodyProgress(memberId)));
     } catch (err) {
       if (!quiet) toast.error(errorMessage(err, 'Could not load your measurements'));
@@ -279,6 +288,54 @@ export default function BodyProgressTab() {
 
   return (
     <div className="space-y-4">
+      {/* What the member is training for.
+          Placed here rather than in Settings because this is the screen whose
+          numbers it reinterprets — the body map reads it to say whether a change
+          is the one being trained for, and a control that changes what you are
+          looking at belongs next to it. */}
+      <div className="rounded-2xl p-3" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] mb-2"
+          style={{ color: 'var(--color-text-secondary)' }}>
+          Right now I'm
+        </p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(['bulking', 'cutting', 'maintaining'] as TrainingFocus[]).map((f) => {
+            const on = focus === f;
+            return (
+              <button
+                key={f}
+                onClick={async () => {
+                  // Tapping the current one clears it — "not stated" has to stay
+                  // reachable, or a mis-tap is permanent.
+                  const next = on ? null : f;
+                  const previous = focus;
+                  setFocus(next);
+                  try {
+                    await setTrainingFocus(memberId, next);
+                  } catch (err) {
+                    setFocus(previous);
+                    toast.error(errorMessage(err, 'Could not save that'));
+                  }
+                }}
+                className="h-9 rounded-full text-xs font-bold"
+                style={{
+                  background: on ? 'var(--color-primary)' : 'var(--color-bg)',
+                  color: on ? '#FFFFFF' : 'var(--color-text-muted)',
+                  border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                }}
+              >
+                {FOCUS_LABEL[f]}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          {focus
+            ? FOCUS_BLURB[focus]
+            : 'Tell us and the map will say whether a change is the one you are training for.'}
+        </p>
+      </div>
+
       <button onClick={() => { setStartStep(undefined); setShowForm(true); }}
         className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
         style={{ background: 'var(--color-secondary)' }}>
@@ -307,6 +364,7 @@ export default function BodyProgressTab() {
         </p>
         <BodyMap
           data={mapData}
+          focus={focus}
           onLogRegion={(region) => {
             setStartStep(REGION_STEP[region]);
             setShowForm(true);

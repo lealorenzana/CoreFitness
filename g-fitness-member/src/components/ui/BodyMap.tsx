@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   ART_WIDTH, ART_HEIGHT, BODY_ART, SHARED_REGIONS, TORSO_REGIONS,
 } from './bodyRegions';
+import { interpretChange, SITE_KIND, type TrainingFocus } from '../../utils/trainingFocus';
 
 /**
  * An anatomy chart, tinted from the member's own tape-measure readings.
@@ -183,9 +184,17 @@ interface BodyMapProps {
    * revealed "Not measured" and there was nowhere to go.
    */
   onLogRegion?: (key: BodyRegionKey) => void;
+  /**
+   * What the member is training for (0044), or null when they have not said.
+   *
+   * This is the fact that lets the panel say whether a change is the one being
+   * trained for. It deliberately does **not** touch the colour ramp — see
+   * `utils/trainingFocus.ts` for why direction stays in words.
+   */
+  focus?: TrainingFocus | null;
 }
 
-export default function BodyMap({ data, showLegend = true, onLogRegion }: BodyMapProps) {
+export default function BodyMap({ data, showLegend = true, onLogRegion, focus = null }: BodyMapProps) {
   const states = useMemo(() => buildStates(data), [data]);
   const [view, setView] = useState<BodyView>('front');
   const [selected, setSelected] = useState<BodyRegionKey | null>(null);
@@ -316,6 +325,19 @@ export default function BodyMap({ data, showLegend = true, onLogRegion }: BodyMa
                       ? 'Unchanged since your last reading.'
                       : `${active.delta > 0 ? 'Up' : 'Down'} ${Math.abs(active.delta)} cm since your last reading.`}
               </p>
+              {/* What the change means, given what the member said they are
+                  training for. Null whenever no honest claim can be made — an
+                  unstated focus, a first reading, or no change at all — and the
+                  panel simply reports the number, exactly as it did before. */}
+              {(() => {
+                const verdict = interpretChange(focus, SITE_KIND[active.key], active.delta);
+                return verdict ? (
+                  <p className="text-xs mt-1.5 font-semibold leading-relaxed"
+                    style={{ color: 'var(--color-secondary)' }}>
+                    {verdict}
+                  </p>
+                ) : null;
+              })()}
               <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                 {SITE_NOTE[active.key]}
               </p>

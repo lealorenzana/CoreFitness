@@ -35,6 +35,15 @@ export interface MemberProfileRow {
   qr_code: string | null;
   experience_level: string | null;
   /**
+   * What the member is currently training for (0044):
+   * 'bulking' | 'cutting' | 'maintaining', or NULL for not stated.
+   *
+   * This is the fact the body map spent three rewrites refusing to guess. It
+   * turns "waist down 5 cm" from a number into either progress or a warning,
+   * and only the member can supply it.
+   */
+  training_focus: string | null;
+  /**
    * A birth date, never a stored age (0031). An `age` column is correct for one
    * year and then quietly lies; `age_years()` derives it on read.
    */
