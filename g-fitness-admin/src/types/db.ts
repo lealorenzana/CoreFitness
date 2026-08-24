@@ -146,7 +146,8 @@ export interface PaymentRow {
   method: string;
   status: PaymentStatus;
   due_date: string | null;
-  invoice_number: string | null;
+  /** `INV-<year>-<seq>`, assigned by a trigger and NOT NULL since 0045. */
+  invoice_number: string;
   notes: string | null;
   recorded_by: string | null;
   /** Business date the cash was received (0008). Revenue is computed from this. */

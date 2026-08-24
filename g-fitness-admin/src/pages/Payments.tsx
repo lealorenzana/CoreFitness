@@ -97,7 +97,11 @@ export default function Payments() {
           // The day the cash was received, not the day it was keyed in.
           date: p.paid_on ?? p.created_at.slice(0, 10),
           dueDate: p.due_date ?? p.paid_on ?? p.created_at.slice(0, 10),
-          invoiceNumber: p.invoice_number ?? `INV-${p.id.slice(0, 8)}`,
+          // No `?? INV-${id.slice(0,8)}` fallback. That invented an invoice
+          // number at render time which was never stored, so the receipt modal
+          // and this table could show different identifiers for one payment.
+          // 0045 makes the column NOT NULL, so there is nothing to fall back to.
+          invoiceNumber: p.invoice_number,
         }))
       );
     } catch (err) {
@@ -146,7 +150,6 @@ export default function Payments() {
         status: 'completed',
         paid_on: data.date,
         due_date: null,
-        invoice_number: `INV-${String(Date.now()).slice(-6)}`,
         notes: data.notes || null,
         recorded_by: null,
       });

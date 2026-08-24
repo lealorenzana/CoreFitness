@@ -40,7 +40,13 @@ function addDays(dateString: string, days: number): string {
  * the member's actual membership status.
  */
 export async function recordPayment(
-  payment: Omit<PaymentRow, 'id' | 'created_at' | 'paid_on'> & {
+  // `invoice_number` is omitted because the database assigns it (0045). It used
+  // to be built here as `INV-${String(Date.now()).slice(-6)}`, a space of a
+  // million values that cycles every 16m40s — two payments recorded that far
+  // apart got the same number, on a column with no unique constraint, so the
+  // collision was silent. A trigger now issues `INV-<year>-<seq>` and overwrites
+  // anything a caller sends, so passing one here would be a lie either way.
+  payment: Omit<PaymentRow, 'id' | 'created_at' | 'paid_on' | 'invoice_number'> & {
     membership_id: string;
     /** NULL on a non-expiring plan (0024) — the membership gets no end date. */
     duration_days: number | null;

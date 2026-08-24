@@ -598,7 +598,6 @@ function RecordPaymentInline({
         status: 'completed',
         paid_on: paidOn,
         due_date: null,
-        invoice_number: `INV-${String(Date.now()).slice(-6)}`,
         notes: notes || null,
         recorded_by: null,
       });
