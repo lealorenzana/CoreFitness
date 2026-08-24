@@ -146,27 +146,29 @@ export default function Login() {
         className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
         style={{ backgroundColor: 'var(--color-bg)', ['--role' as string]: roleTheme.accent }}
       >
-        {/* One full-bleed gradient instead of the two blurred blooms that used
-            to sit here. The blooms swapped corners as well as colour so the
-            light appeared to *travel* when you switched tabs, which was the
-            best thing about them — so the gradient's origin still slides,
-            rather than only its hue. */}
+        {/* One full-bleed gradient, centred.
+
+            An earlier pass slid the origin 32% -> 68% with the selected tab, to
+            keep the travelling light the old corner blooms had. It worked, and
+            it also meant the screen was never symmetric in either state — the
+            glow pooled toward one side and the logo sat off the axis of its own
+            background. Colour alone carries the role now; the geometry stays
+            still and centred. */}
         <AuthBackground
           accent={roleTheme.accent}
-          originX={isTrainer ? '68%' : '32%'}
-          transition={`background .7s cubic-bezier(0.4,0,0.2,1)`}
+          transition="background .7s cubic-bezier(0.4,0,0.2,1)"
         />
 
-        {/* A single soft bloom kept from the old treatment, low and opposite the
-            glow, so the bottom of the screen is not a flat field. */}
+        {/* A low bloom for depth, centred on the same axis. Pinned to a corner
+            it was the other half of the asymmetry. */}
         <div
           className="absolute -bottom-32 w-[340px] h-[340px] rounded-full pointer-events-none"
           style={{
             zIndex: 0,
             background: `radial-gradient(circle, ${tint(0.14)} 0%, transparent 70%)`,
-            left: isTrainer ? '-5rem' : 'auto',
-            right: isTrainer ? 'auto' : '-5rem',
-            transition: `${morph}, left .7s cubic-bezier(0.4,0,0.2,1), right .7s cubic-bezier(0.4,0,0.2,1)`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            transition: morph,
           }}
         />
 
