@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, Mail, ArrowRight, Eye, EyeOff, Dumbbell, Clock } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
+import AuthBackground from '../components/ui/AuthBackground';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { login, logout } from '../utils/auth';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
@@ -144,23 +145,24 @@ export default function Login() {
         className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
         style={{ backgroundColor: 'var(--color-bg)', ['--role' as string]: roleTheme.accent }}
       >
-        {/* Ambient blooms. They swap corners as well as colour, so the light
-            appears to travel across the screen rather than just change hue —
-            the strong one leads from the side the selected tab sits on. */}
-        <div
-          className="absolute w-[420px] h-[420px] rounded-full pointer-events-none"
-          style={{
-            background: `radial-gradient(circle, ${tint(0.2)} 0%, transparent 70%)`,
-            top: '-6rem',
-            left: isTrainer ? 'auto' : '-6rem',
-            right: isTrainer ? '-6rem' : 'auto',
-            transition: `${morph}, left .7s cubic-bezier(0.4,0,0.2,1), right .7s cubic-bezier(0.4,0,0.2,1)`,
-          }}
+        {/* One full-bleed gradient instead of the two blurred blooms that used
+            to sit here. The blooms swapped corners as well as colour so the
+            light appeared to *travel* when you switched tabs, which was the
+            best thing about them — so the gradient's origin still slides,
+            rather than only its hue. */}
+        <AuthBackground
+          accent={roleTheme.accent}
+          originX={isTrainer ? '68%' : '32%'}
+          transition={`background .7s cubic-bezier(0.4,0,0.2,1)`}
         />
+
+        {/* A single soft bloom kept from the old treatment, low and opposite the
+            glow, so the bottom of the screen is not a flat field. */}
         <div
           className="absolute -bottom-32 w-[340px] h-[340px] rounded-full pointer-events-none"
           style={{
-            background: `radial-gradient(circle, ${tint(0.12)} 0%, transparent 70%)`,
+            zIndex: 0,
+            background: `radial-gradient(circle, ${tint(0.14)} 0%, transparent 70%)`,
             left: isTrainer ? '-5rem' : 'auto',
             right: isTrainer ? 'auto' : '-5rem',
             transition: `${morph}, left .7s cubic-bezier(0.4,0,0.2,1), right .7s cubic-bezier(0.4,0,0.2,1)`,
