@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, Mail, ArrowRight, Eye, EyeOff, Dumbbell, Clock } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
 import AuthBackground from '../components/ui/AuthBackground';
+import BrandMark from '../components/ui/BrandMark';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { login, logout } from '../utils/auth';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
@@ -174,28 +175,17 @@ export default function Login() {
               used to sit above this said the same thing twice, directly above a
               logo and the word CORE FITNESS. */}
           <div className="text-center">
-            <motion.div
-              className="relative w-24 h-24 mx-auto mb-4"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-            >
-              <motion.span
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{
-                  background: `radial-gradient(circle, ${tint(0.4)} 0%, transparent 70%)`,
-                  transition: morph,
-                }}
-                animate={{ scale: [1, 1.18, 1], opacity: [0.55, 0.9, 0.55] }}
-                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+            {/* The ringed mark from the boot splash. The login screen used to
+                show a rounded square with a glow, one frame after the splash
+                had shown a ringed disc — the app changing its own logo between
+                two consecutive screens. */}
+            <div className="mb-4">
+              <BrandMark
+                accent={roleTheme.accent}
+                counter={isTrainer ? '#7C3AED' : '#F59E0B'}
+                transition={morph}
               />
-              <img
-                src="/logo.png"
-                alt="Core Fitness"
-                className="relative w-20 h-20 m-auto object-contain rounded-2xl"
-                style={{ boxShadow: `0 0 40px ${tint(0.3)}`, transition: morph }}
-              />
-            </motion.div>
+            </div>
             <h1 className="display text-3xl text-white leading-none">Core Fitness</h1>
             <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
               Mamburao, Occidental Mindoro
