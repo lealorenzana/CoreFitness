@@ -42,9 +42,17 @@ export default function BrandMark({
   transition?: string;
   size?: number;
 }) {
+  // Everything is a fraction of `size`, taken from the splash's 96px values, so
+  // the mark holds together when it shrinks. A hardcoded 10px inner inset works
+  // at 96 and swallows the whole disc at 48.
+  const ring = Math.max(1.5, size * 0.021);
+  const innerInset = size * 0.104;
   return (
     <motion.div
-      className="relative mx-auto"
+      // No `mx-auto`: centring is the caller's decision, and baked in here it
+      // quietly overrode the left-aligned brand row with an auto margin.
+      // `shrink-0` so the mark keeps its size inside a flex row.
+      className="relative shrink-0"
       style={{ width: size, height: size }}
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -66,14 +74,14 @@ export default function BrandMark({
       {/* Base circle — the thing that makes a stationary ring read as a ring. */}
       <span
         className="absolute inset-0 rounded-full pointer-events-none"
-        style={{ border: '2px solid rgba(255,255,255,0.10)' }}
+        style={{ border: `${ring}px solid rgba(255,255,255,0.10)` }}
       />
 
       {/* Outer arc, in the selected role's colour. */}
       <span
         className="absolute inset-0 rounded-full pointer-events-none"
         style={{
-          border: '2px solid transparent',
+          border: `${ring}px solid transparent`,
           borderTopColor: accent,
           borderRightColor: `${accent}59`,
           transform: 'rotate(-38deg)',
@@ -85,8 +93,8 @@ export default function BrandMark({
       <span
         className="absolute rounded-full pointer-events-none"
         style={{
-          inset: 10,
-          border: '2px solid transparent',
+          inset: innerInset,
+          border: `${ring}px solid transparent`,
           borderBottomColor: counter,
           borderLeftColor: `${counter}4D`,
           transform: 'rotate(20deg)',
@@ -99,10 +107,10 @@ export default function BrandMark({
         alt="Core Fitness"
         className="absolute object-contain"
         style={{
-          inset: size * 0.104,
+          inset: innerInset,
           width: size * 0.792,
           height: size * 0.792,
-          borderRadius: 20,
+          borderRadius: size * 0.208,
           boxShadow: `0 0 40px ${accent}4D`,
           transition,
         }}

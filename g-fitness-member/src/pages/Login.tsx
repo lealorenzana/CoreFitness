@@ -143,7 +143,7 @@ export default function Login() {
       {overlayRoot && isLoading && createPortal(<LoadingOverlay message="Logging you in..." />, overlayRoot)}
 
       <div
-        className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
+        className="px-6 pt-9 pb-8 min-h-full flex flex-col relative overflow-hidden"
         style={{
           backgroundColor: 'var(--color-bg)',
           ['--role' as string]: roleTheme.accent,
@@ -178,25 +178,44 @@ export default function Login() {
           }}
         />
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 relative z-10">
-          {/* Logo + wordmark. The separate "Welcome to Core Fitness" badge that
-              used to sit above this said the same thing twice, directly above a
-              logo and the word CORE FITNESS. */}
-          <div className="text-center">
-            {/* The ringed mark from the boot splash. The login screen used to
-                show a rounded square with a glow, one frame after the splash
-                had shown a ringed disc — the app changing its own logo between
-                two consecutive screens. */}
-            <div className="mb-4">
-              <BrandMark
-                accent={roleTheme.accent}
-                counter={isTrainer ? '#7C3AED' : '#F59E0B'}
-                transition={morph}
-              />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          // `flex-1` + column is what gives the footer's `mt-auto` something
+          // to push against; without it the auto margin has no free space to
+          // consume and the footer just sits under the button.
+          className="space-y-5 relative z-10 flex-1 flex flex-col"
+        >
+          {/* Brand row, left-aligned.
+
+              The mark and the wordmark used to be stacked and centred, which ate
+              most of the first screenful before the form began. As an identity
+              strip it says the same thing in a quarter of the height, and the
+              screen can lead with the sentence that actually addresses the
+              person reading it. */}
+          <div className="flex items-center gap-3">
+            <BrandMark
+              accent={roleTheme.accent}
+              counter={isTrainer ? '#7C3AED' : '#F59E0B'}
+              transition={morph}
+              size={48}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white leading-tight">Core Fitness</p>
+              <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
+                Mamburao, Occidental Mindoro
+              </p>
             </div>
-            <h1 className="display text-3xl text-white leading-none">Core Fitness</h1>
-            <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-              Mamburao, Occidental Mindoro
+          </div>
+
+          {/* The greeting carries the display face now that the wordmark does
+              not. It also states what signing in is *for*, which the centred
+              version never did. */}
+          <div>
+            <h1 className="display text-3xl text-white leading-none">Welcome back</h1>
+            <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {isTrainer
+                ? 'Sign in for your schedule, your members and your coaching tools.'
+                : 'Sign in to book sessions, check in and track your progress.'}
             </p>
           </div>
 
@@ -316,24 +335,6 @@ export default function Login() {
               })}
             </div>
 
-            {/* Crossfades with the pill instead of swapping instantly. `mode="wait"`
-                would leave the line blank for its exit, which on two lines of
-                similar length reads as a flicker. */}
-            <div className="h-4 mt-2 relative">
-              <AnimatePresence initial={false}>
-                <motion.p
-                  key={selectedRole}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-xs text-center absolute inset-x-0"
-                  style={{ color: 'var(--color-text-muted)' }}
-                >
-                  {isTrainer ? 'Coaching tools, your schedule and your members' : 'Bookings, check-in and your progress'}
-                </motion.p>
-              </AnimatePresence>
-            </div>
           </div>
 
           {/* Login Form.
@@ -349,28 +350,6 @@ export default function Login() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
           >
-            <div
-              className="rounded-2xl p-5 space-y-4"
-              style={{
-                // White alpha, not the opaque surface token — the card lifts off
-                // the gradient instead of punching a dark hole in it, and the
-                // accent behind it tints the glass as the role changes.
-                //
-                // Deliberately no `backdrop-filter`. Blur is what sells glass
-                // over *detailed* backdrops; behind this card is a smooth radial
-                // gradient with nothing to smear, so it would cost GPU on a
-                // mid-range phone in a TWA and change almost no pixels.
-                background: 'rgba(255,255,255,0.05)',
-                // A whisper of the accent on the card edge — enough that the
-                // card belongs to the role without competing with the fields.
-                border: `1px solid ${tint(0.22)}`,
-                boxShadow:
-                  // Light catching the top edge, the way a real pane would.
-                  `inset 0 1px 0 rgba(255,255,255,0.10), ` +
-                  `0 24px 64px rgba(0,0,0,0.45), 0 0 0 1px ${tint(0.06)}`,
-                transition: morph,
-              }}
-            >
               <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                   Email
@@ -465,11 +444,15 @@ export default function Login() {
                 </span>
                 {!isLoading && <ArrowRight size={16} />}
               </motion.button>
-            </div>
           </motion.form>
 
-          {/* Footer */}
-          <div className="text-center space-y-1.5">
+          {/* Footer, pushed to the bottom of the screen.
+
+              `mt-auto` inside a column that is `min-h-full` is what turns this
+              from a block of content trailing off into a page with a floor. The
+              legal links belong at the bottom of the screen, not eight pixels
+              under the button. */}
+          <div className="text-center space-y-1.5 pt-2 mt-auto">
             {/* Only members sign themselves up. A trainer account is created by
                 the gym through the `create-trainer` Edge Function, which is the
                 only path that can set `profiles.role = 'trainer'`. Self-signup
