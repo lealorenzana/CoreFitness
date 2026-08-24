@@ -150,6 +150,29 @@
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(124,58,237,0.25);
   }
+  /* A field that follows the surrounding role accent instead of the app's
+     primary. Used on the login screen, where the whole surface re-tints between
+     Member (violet) and Trainer (amber) — without this the focus ring stayed
+     violet on an amber screen, which is the one element loudly disagreeing with
+     everything around it.
+
+     Two classes, so it beats plain `.field-input:focus` on specificity while
+     sitting in the same layer; `--role` and `--role-ring` are set by the login
+     wrapper and there is a violet fallback for any other caller. */
+  /* The resting look lives here too, NOT inline on the element. An inline
+     `border` beats every stylesheet rule including `:focus`, which is exactly
+     how the focus ring got lost the first time and how it was lost again the
+     moment these fields were made translucent. Anything a focus state needs to
+     override has to be reachable by a selector. */
+  .field-input.field-role {
+    background: rgba(0, 0, 0, 0.28);
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+  .field-input.field-role:focus {
+    border-color: var(--role, var(--color-primary));
+    box-shadow: 0 0 0 3px var(--role-ring, rgba(124, 58, 237, 0.25));
+  }
+
   .field-input::placeholder { color: var(--color-text-muted); }
   .field-input:disabled { opacity: 0.55; }
 

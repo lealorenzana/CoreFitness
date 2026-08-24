@@ -144,7 +144,13 @@ export default function Login() {
 
       <div
         className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
-        style={{ backgroundColor: 'var(--color-bg)', ['--role' as string]: roleTheme.accent }}
+        style={{
+          backgroundColor: 'var(--color-bg)',
+          ['--role' as string]: roleTheme.accent,
+          // Fed to `.field-role:focus` in index.css, which cannot build an rgba
+          // from `--role` on its own.
+          ['--role-ring' as string]: tint(0.25),
+        }}
       >
         {/* One full-bleed gradient, centred.
 
@@ -238,7 +244,15 @@ export default function Login() {
             */}
             <div
               className="relative flex p-1 rounded-full"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              style={{
+                // Black alpha rather than the opaque surface token: the track
+                // reads as a groove cut into the background, so the gradient
+                // still shows through it and the bright pill has something dark
+                // to sit against.
+                background: 'rgba(0,0,0,0.30)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45)',
+              }}
               role="tablist"
             >
               <span
@@ -338,12 +352,22 @@ export default function Login() {
             <div
               className="rounded-2xl p-5 space-y-4"
               style={{
-                background: 'var(--color-surface)',
-                // A whisper of the accent on the card edge and in its shadow —
-                // enough that the card belongs to the role without competing
-                // with the fields inside it.
+                // White alpha, not the opaque surface token — the card lifts off
+                // the gradient instead of punching a dark hole in it, and the
+                // accent behind it tints the glass as the role changes.
+                //
+                // Deliberately no `backdrop-filter`. Blur is what sells glass
+                // over *detailed* backdrops; behind this card is a smooth radial
+                // gradient with nothing to smear, so it would cost GPU on a
+                // mid-range phone in a TWA and change almost no pixels.
+                background: 'rgba(255,255,255,0.05)',
+                // A whisper of the accent on the card edge — enough that the
+                // card belongs to the role without competing with the fields.
                 border: `1px solid ${tint(0.22)}`,
-                boxShadow: `0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px ${tint(0.06)}`,
+                boxShadow:
+                  // Light catching the top edge, the way a real pane would.
+                  `inset 0 1px 0 rgba(255,255,255,0.10), ` +
+                  `0 24px 64px rgba(0,0,0,0.45), 0 0 0 1px ${tint(0.06)}`,
                 transition: morph,
               }}
             >
@@ -367,8 +391,7 @@ export default function Login() {
                        shown to every user as the example, the same mistake the
                        member profile made with her photo. */
                     placeholder="you@example.com"
-                    className="field-input w-full rounded-xl pl-10 pr-4 h-12 text-sm text-white"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    className="field-input field-role w-full rounded-xl pl-10 pr-4 h-12 text-sm text-white"
                     readOnly={isLoading}
                   />
                 </div>
@@ -390,8 +413,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="field-input w-full rounded-xl pl-10 pr-11 h-12 text-sm text-white"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    className="field-input field-role w-full rounded-xl pl-10 pr-11 h-12 text-sm text-white"
                     readOnly={isLoading}
                   />
                   <button
