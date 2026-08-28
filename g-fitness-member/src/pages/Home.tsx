@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  CalendarCheck, Trophy, QrCode, TrendingUp,
-  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X, BookOpen, MessageSquare,
+  QrCode,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X, MessageSquare,
   ChevronRight,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
@@ -14,9 +14,7 @@ import Avatar from '../components/ui/Avatar';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
 import SectionHeader from '../components/ui/SectionHeader';
-import StatCard, { Pill } from '../components/ui/StatCard';
-import WeekRings from '../components/ui/WeekRings';
-import LevelProgressCard from '../components/ui/LevelProgressCard';
+import { Pill } from '../components/ui/StatCard';
 import TodayPlanCard from '../components/ui/TodayPlanCard';
 import CheckInSheet from '../components/ui/CheckInSheet';
 import { toast } from '../components/ui/Toast';
@@ -111,8 +109,6 @@ export default function Home() {
       })
     : '—';
 
-  const weekCount = home?.weekCheckIns.filter(Boolean).length ?? 0;
-
   // Days, months, years — or no countdown at all on a lifetime plan. The free
   // tier used to store 3650 days, which rendered as "3647 days remaining" in
   // the biggest type on the screen.
@@ -121,20 +117,6 @@ export default function Home() {
   // Progress and Attendance are the two things a member opens repeatedly, and
   // both were buried a level deep under Profile. Renewal came out: the
   // membership card above already links there the moment it matters, and
-  // Profile → Membership covers the rest. Trainers came out too — Book a
-  // Session has a Coaches button in its own header.
-  const quickActions = [
-    { title: 'My bookings', subtitle: 'Classes and personal training', icon: CalendarCheck, to: '/member/booking-history' },
-    { title: 'Progress', subtitle: 'Measurements, workouts and goals', icon: TrendingUp, to: '/member/progress' },
-    // `/member/workouts` was routed, seeded (0019) and reachable by typing the
-    // URL — and linked from nowhere in the entire app. A curated free-resource
-    // library nobody can navigate to is the same as not having one, and it is
-    // the answer to "is there anything I can do at home", which is exactly the
-    // question the free tier creates.
-    { title: 'Free workouts', subtitle: 'Routines and videos the gym recommends', icon: BookOpen, to: '/member/workouts' },
-    { title: 'Attendance', subtitle: 'Every gym visit on record', icon: CalendarClock, to: '/member/attendance-history' },
-    { title: 'Events', subtitle: 'What the gym has coming up', icon: Trophy, to: '/member/events' },
-  ];
 
   return (
     <div className="space-y-6 pb-4 min-h-full">
@@ -360,100 +342,8 @@ export default function Home() {
             </motion.button>
           )}
 
-          {/* What the gym has announced. High on the screen and amber, because
-              an event buried four rows down a scroll is an event nobody
-              attends. Renders nothing at all when there is no upcoming one —
-              never a placeholder card promising activity that doesn't exist. */}
-          {home.nextEvent && (
-            <motion.button
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-              onClick={() => navigate('/member/events')}
-              className="w-full p-4 flex items-center gap-3 text-left"
-              style={{
-                background: 'var(--color-secondary-light)',
-                border: '1px solid rgba(245,158,11,0.35)',
-                borderRadius: 'var(--radius-panel)',
-              }}
-            >
-              <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-secondary)' }}>
-                <Trophy size={20} className="text-black" />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-xs font-bold uppercase tracking-wider"
-                  style={{ color: 'var(--color-secondary)' }}>
-                  Coming up at the gym
-                </span>
-                <span className="block text-sm font-bold text-white truncate mt-0.5">
-                  {home.nextEvent.title}
-                </span>
-                <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                  {new Date(home.nextEvent.startsAt).toLocaleDateString('en-US', {
-                    weekday: 'short', month: 'short', day: 'numeric',
-                  })}
-                  {' · '}
-                  {new Date(home.nextEvent.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  {home.nextEvent.location && ` · ${home.nextEvent.location}`}
-                </span>
-              </span>
-              <ArrowRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-            </motion.button>
-          )}
-
-          {/* This week */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            {/* The card carries its own count once there is one, so the hint
-                only explains the mechanic on an empty week. */}
-            <SectionHeader
-              title="This week"
-              hint={
-                weekCount === 0
-                  ? 'No visits yet — a ring fills when the front desk scans you in.'
-                  : undefined
-              }
-            />
-            <div
-              className="p-4"
-              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
-            >
-              <WeekRings
-                days={home.weekCheckIns}
-                dayNumbers={home.weekDayNumbers}
-                todayIndex={home.todayIndex}
-              />
-            </div>
-          </motion.section>
-
-          {/* Is today a training day? Above the level card because it is the
-              only thing here that is about *today*. */}
+          {/* Is today a training day? */}
           <TodayPlanCard checkedInToday={home.checkedInToday} />
-
-          {/* Training level — the one thing on this screen that answers "am I
-              getting anywhere?", which the visit counts alone never did. */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-            <SectionHeader title="Your level" />
-            <LevelProgressCard />
-          </motion.section>
-
-          {/* Counters */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="grid grid-cols-2 gap-3"
-          >
-            <StatCard
-              value={home.checkInsThisMonth}
-              label="Gym visits this month"
-              icon={CalendarCheck}
-              pill={home.checkedInToday ? 'Today ✓' : undefined}
-              pillTone="primary"
-            />
-            <StatCard
-              value={home.upcomingCount}
-              label="Sessions coming up"
-              icon={CalendarClock}
-              onClick={() => navigate('/member/booking-history')}
-            />
-          </motion.section>
 
           {/* Next session */}
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -517,34 +407,6 @@ export default function Home() {
             </div>
           </motion.section>
 
-          {/* Shortcuts — a 2×2 grid rather than four stacked rows, which put the
-              last one about a full screen below the fold. All four are now
-              reachable without scrolling past the fold on a 375×812 phone. */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <SectionHeader title="Shortcuts" />
-            <div className="grid grid-cols-2 gap-2">
-              {quickActions.map((a) => {
-                const Icon = a.icon;
-                return (
-                  <button
-                    key={a.to}
-                    onClick={() => navigate(a.to)}
-                    className="p-3.5 text-left flex flex-col gap-2 active:scale-[0.98] transition-transform"
-                    style={{ ...panelStyle, borderRadius: 'var(--radius-card)' }}
-                  >
-                    <span className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: 'var(--color-primary-light)' }}>
-                      <Icon size={18} style={{ color: 'var(--color-primary)' }} />
-                    </span>
-                    <span className="block text-sm font-semibold text-white leading-tight">{a.title}</span>
-                    <span className="block text-xs leading-snug" style={{ color: 'var(--color-text-muted)' }}>
-                      {a.subtitle}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.section>
         </>
       )}
 

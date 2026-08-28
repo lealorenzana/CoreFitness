@@ -3,7 +3,7 @@ import { panelStyle } from '../components/ui/Card';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X, Trophy, ArrowRight } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import { useLiveData } from '../hooks/useLiveData';
 import DateRail, { buildRail } from '../components/ui/DateRail';
@@ -23,6 +23,7 @@ import {
   type Entitlement,
 } from '../services/bookingService';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import { listEvents } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
 import type { OpenSlot } from '../lib/api/trainerAvailability';
 import type { ClassLevel } from '../types/db';
@@ -309,6 +310,31 @@ export default function BookClass() {
 
   const activeBlock = tab === 'pt' || selectedTrainer ? ptBlock : classBlock;
 
+  // The gym's next announcement. This used to sit on Home, which had grown to
+  // ten stacked sections; it belongs on the screen where members plan what they
+  // are going to do. Renders nothing when there is no upcoming event - never a
+  // placeholder card promising activity that does not exist.
+  const [nextEvent, setNextEvent] = useState<{ title: string; startsAt: string; location: string | null } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listEvents();
+        const now = Date.now();
+        const soonest = rows
+          .filter((e) => e.starts_at && new Date(e.starts_at).getTime() > now)
+          .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())[0];
+        if (!cancelled && soonest) {
+          setNextEvent({ title: soonest.title, startsAt: soonest.starts_at!, location: soonest.location ?? null });
+        }
+      } catch {
+        // A banner is a nudge, not a section. If it cannot load, the Events
+        // page is still one tap away from Profile - no error is warranted.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="space-y-5 pb-4">
       {/* Header */}
@@ -342,6 +368,39 @@ export default function BookClass() {
           </button>
         )}
       </motion.div>
+
+      {/* Coming up at the gym */}
+      {!selectedTrainer && nextEvent && (
+        <motion.button
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          onClick={() => navigate('/member/events')}
+          className="w-full p-4 flex items-center gap-3 text-left"
+          style={{
+            background: 'var(--color-secondary-light)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: 'var(--radius-panel)',
+          }}
+        >
+          <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--color-secondary)' }}>
+            <Trophy size={20} className="text-black" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-xs font-bold uppercase tracking-wider"
+              style={{ color: 'var(--color-secondary)' }}>
+              Coming up at the gym
+            </span>
+            <span className="block text-sm font-bold text-white truncate mt-0.5">{nextEvent.title}</span>
+            <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
+              {new Date(nextEvent.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {new Date(nextEvent.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              {nextEvent.location && ` · ${nextEvent.location}`}
+            </span>
+          </span>
+          <ArrowRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+        </motion.button>
+      )}
 
       {/* Tabs — hidden while picking a slot, that flow has its own back button.
           Switching clears the date filter: the rail's counts are per tab, so

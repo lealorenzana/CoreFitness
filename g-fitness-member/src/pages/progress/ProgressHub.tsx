@@ -1,9 +1,15 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, CalendarCheck, CalendarClock, AlertTriangle } from 'lucide-react';
 
 import LevelProgressCard   from '../../components/ui/LevelProgressCard';
+import WeekRings           from '../../components/ui/WeekRings';
+import StatCard            from '../../components/ui/StatCard';
+import SectionHeader       from '../../components/ui/SectionHeader';
+import { panelStyle }      from '../../components/ui/Card';
+import { getCurrentMemberId } from '../../services/bookingService';
+import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
 import BodyProgressTab     from './tabs/BodyProgressTab';
 import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
@@ -48,6 +54,29 @@ export default function ProgressHub() {
   const requested = params.get('tab');
   const [active, setActive] = useState<TabId>(isTabId(requested) ? requested : 'body');
 
+  // This week's visits and the two counters moved here from Home, which was
+  // carrying ten stacked sections. They belong with the level card: all three
+  // answer "am I getting anywhere", which is what this screen is for.
+  const [home, setHome] = useState<MemberHome | null>(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const id = await getCurrentMemberId();
+        if (!id) { if (!cancelled) setSummaryFailed(true); return; }
+        const data = await getMemberHome(id);
+        if (!cancelled) setHome(data);
+      } catch {
+        // Named, not degraded to zeros. A silent 0 here would read as "you did
+        // not train this week", which is a different and much worse claim than
+        // "this did not load".
+        if (!cancelled) setSummaryFailed(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const renderTab = () => {
     switch (active) {
       case 'body':      return <BodyProgressTab />;
@@ -76,6 +105,50 @@ export default function ProgressHub() {
           everything the five tabs break down, and burying it in a tab would
           make it findable only by whoever already knew it existed. */}
       <LevelProgressCard />
+
+      {summaryFailed && (
+        <div
+          className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
+        >
+          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+          <span>Could not load this week&apos;s visits. Pull down to try again.</span>
+        </div>
+      )}
+
+      {home && (
+        <>
+          <div>
+            <SectionHeader title="This week" />
+            <div
+              className="p-4"
+              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
+            >
+              <WeekRings
+                days={home.weekCheckIns}
+                dayNumbers={home.weekDayNumbers}
+                todayIndex={home.todayIndex}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              value={home.checkInsThisMonth}
+              label="Gym visits this month"
+              icon={CalendarCheck}
+              pill={home.checkedInToday ? 'Today ✓' : undefined}
+              pillTone="primary"
+            />
+            <StatCard
+              value={home.upcomingCount}
+              label="Sessions coming up"
+              icon={CalendarClock}
+              onClick={() => navigate('/member/booking-history')}
+            />
+          </div>
+        </>
+      )}
 
       {/* Segmented control — five equal cells, no scrolling. Violet marks the
           selection, per the app's colour convention. */}

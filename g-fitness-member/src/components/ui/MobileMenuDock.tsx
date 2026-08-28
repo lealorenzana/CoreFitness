@@ -29,14 +29,27 @@ const navRoutes = [
 const icons = [Home, Calendar, TrendingUp, User];
 const labels = ['Home', 'Book', 'Progress', 'Profile'];
 
-/** Every route that should light up each tab, including its sub-pages. */
+/**
+ * Every route that should light up each tab, including its sub-pages.
+ *
+ * Re-grouped when Home was thinned out. Home had grown to ten stacked sections
+ * and was the launch point for almost every sub-page in the app, so this list
+ * had it owning bookings, payments, workouts and attendance. Those are reached
+ * from Profile -> Your account now, and a tab bar that highlights Home while
+ * you are reading your payment history is telling you something untrue about
+ * where you are.
+ */
 const tabSubPaths: string[][] = [
-  ['/member/home', '/member/booking-history', '/member/attendance-history',
-   '/member/payments', '/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/workouts', '/member/events', '/member/notifications'],
-  ['/member/book-class', '/member/chatbot', '/member/trainers', '/member/trainer/'],
+  // Home is only "right now": today, your membership, your next session.
+  ['/member/home', '/member/notifications'],
+  // Book is anything forward-looking, including what the gym has announced.
+  ['/member/book-class', '/member/chatbot', '/member/trainers', '/member/trainer/',
+   '/member/events'],
   ['/member/progress', '/member/achievements'],
-  ['/member/profile'],
+  // Profile is the account: everything about you, your history and your plan.
+  ['/member/profile', '/member/booking-history', '/member/attendance-history',
+   '/member/payments', '/member/membership', '/member/renew', '/member/renew-membership',
+   '/member/workouts', '/member/plan', '/member/settings'],
 ];
 
 export default function MobileMenuDock() {

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Mail, Phone, MapPin, Calendar, LogOut, Shield, Edit, CreditCard,
   ArrowLeft, Activity, Settings as SettingsIcon,
+  CalendarCheck, BookOpen, ClipboardList, Trophy,
 } from 'lucide-react';
 import { logout } from '../utils/auth';
 import Avatar from '../components/ui/Avatar';
@@ -223,6 +224,30 @@ export default function Profile() {
                 title="Attendance"
                 subtitle="Every gym visit on record"
                 onClick={() => navigate('/member/attendance-history')}
+              />
+              <ListRow
+                icon={CalendarCheck} tone="primary"
+                title="My bookings"
+                subtitle="Classes and personal training"
+                onClick={() => navigate('/member/booking-history')}
+              />
+              <ListRow
+                icon={ClipboardList} tone="primary"
+                title="Training plan"
+                subtitle="Your generated week, and how to rebuild it"
+                onClick={() => navigate('/member/plan')}
+              />
+              <ListRow
+                icon={BookOpen} tone="primary"
+                title="Free workouts"
+                subtitle="Routines and videos the gym recommends"
+                onClick={() => navigate('/member/workouts')}
+              />
+              <ListRow
+                icon={Trophy} tone="primary"
+                title="Events"
+                subtitle="What the gym has coming up"
+                onClick={() => navigate('/member/events')}
               />
               <ListRow
                 icon={SettingsIcon} tone="muted"
