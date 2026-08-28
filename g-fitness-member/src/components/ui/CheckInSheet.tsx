@@ -60,11 +60,28 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
     return () => { cancelled = true; };
   }, [open, regenerate]);
 
+  // The code rolls over on its own rather than dying on screen.
+  //
+  // This used to only count down: after 60 seconds the QR blurred out and the
+  // member had to notice the "get a new one" button and tap it. In a queue at
+  // the desk that is exactly the wrong moment to need an extra tap, and a member
+  // holding out a dead code reads to everyone involved as the scanner being
+  // broken. The desk cannot tell the difference either — it just sees a code
+  // that will not validate.
+  //
+  // Regenerating is free: it is a template string and a `Date.now()`, no network
+  // and no database. The manual button stays for the case this cannot cover —
+  // the sheet having been left open and backgrounded, where timers are throttled.
   useEffect(() => {
-    if (!open || !qr) return;
-    const t = setInterval(() => setRemaining(getQRTimeRemaining(qr)), 1000);
+    if (!open || !qr || !home) return;
+    const live = !home.expired && !home.checkedInToday;
+    const t = setInterval(() => {
+      const left = getQRTimeRemaining(qr);
+      if (left <= 0 && live) regenerate(home.memberId);
+      else setRemaining(left);
+    }, 1000);
     return () => clearInterval(t);
-  }, [open, qr]);
+  }, [open, qr, home, regenerate]);
 
   const root = typeof document !== 'undefined' ? document.getElementById('phone-overlay-root') : null;
   if (!root) return null;
@@ -140,7 +157,28 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                   </p>
                   <div className="bg-white p-4 rounded-2xl inline-block mb-4"
                     style={{ opacity: expired ? 0.3 : 1, filter: expired ? 'blur(2px)' : undefined }}>
-                    <QRCodeSVG value={qr || home.memberId} size={180} />
+                    {/* `level` and `marginSize` are both stated, because
+                        qrcode.react's defaults are wrong for scanning a phone
+                        screen with a desk webcam:
+
+                        - Default level is "L" — 7% error correction, the
+                          weakest of the four. Measured on this exact payload:
+                          "M" (15%) still encodes to version 3, 29x29, the same
+                          module count as "L". Double the error correction for
+                          no extra density is free, so there is no reason to
+                          stay on the default.
+
+                        - Default marginSize is 0. The white `p-4` wrapper below
+                          gave about 2.6 modules of quiet zone; the spec asks for
+                          4. Stating it puts the light border inside the SVG
+                          where it cannot be clipped by a layout change.
+
+                        `size` counts the margin: qrcode.react renders a
+                        `viewBox` of `modules + margin*2` at `size` px, so
+                        leaving it at 180 would have SHRUNK each module from
+                        6.2px to 4.9px and made scanning harder, not easier.
+                        224/37 keeps modules at ~6px. */}
+                    <QRCodeSVG value={qr || home.memberId} size={224} level="M" marginSize={4} />
                   </div>
 
                   {expired ? (

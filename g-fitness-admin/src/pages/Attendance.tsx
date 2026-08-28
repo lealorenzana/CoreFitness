@@ -52,13 +52,56 @@ const parseLegacyQr = (qrCode: string): ParsedQr | null => {
   }
 };
 
-const validateQR = (qrCode: string) => {
+/**
+ * Tolerance, in each direction, for the member's phone and this PC disagreeing
+ * about what time it is.
+ *
+ * The timestamp exists to stop a screenshot being reused, and nothing else. It
+ * was compared against a bare 60-second window, which quietly assumed two
+ * unsynchronised devices agree on the current time to within a minute. They
+ * often do not: `Date.now()` is UTC epoch so time zones are irrelevant, but a
+ * desk PC that has been off for a while, or whose clock service has not run,
+ * drifts by minutes.
+ *
+ * The failure that produces is the nastiest kind. If this PC's clock is more
+ * than 60 seconds AHEAD of the phone, every code the member generates is
+ * already expired by the time it is scanned — so the desk tells them to refresh,
+ * they refresh, it fails again, forever. Nothing about that loop points at the
+ * clock.
+ *
+ * Three minutes of grace keeps a stolen screenshot useless while absorbing the
+ * drift that actually occurs. When a code falls outside even that, the desk is
+ * told the measured offset instead of "expired", because at that point the clock
+ * is the thing to fix and no amount of refreshing will help.
+ */
+const CLOCK_SKEW_GRACE_SECONDS = 180;
+
+type QrVerdict =
+  | { kind: 'ok'; data: ParsedQr }
+  /** Not one of our payloads at all — a short code or a UUID may still follow. */
+  | { kind: 'not-ours' }
+  | { kind: 'stale'; ageSeconds: number }
+  | { kind: 'future'; aheadSeconds: number };
+
+const validateQR = (qrCode: string): QrVerdict => {
   const data = parseCompactQr(qrCode) ?? parseLegacyQr(qrCode);
-  if (!data) return { valid: false, reason: 'Invalid QR Code format', data: null };
-  if (Date.now() > data.timestamp + QR_TTL_SECONDS * 1000) {
-    return { valid: false, reason: 'QR Code expired', data: null };
+  if (!data) return { kind: 'not-ours' };
+
+  const ageMs = Date.now() - data.timestamp;
+  if (ageMs < -CLOCK_SKEW_GRACE_SECONDS * 1000) {
+    return { kind: 'future', aheadSeconds: Math.round(-ageMs / 1000) };
   }
-  return { valid: true, data };
+  if (ageMs > (QR_TTL_SECONDS + CLOCK_SKEW_GRACE_SECONDS) * 1000) {
+    return { kind: 'stale', ageSeconds: Math.round(ageMs / 1000) };
+  }
+  return { kind: 'ok', data };
+};
+
+/** "4 minutes" / "40 seconds" — for a message the desk can act on. */
+const describeGap = (seconds: number): string => {
+  const s = Math.abs(seconds);
+  if (s < 90) return `${s} seconds`;
+  return `${Math.round(s / 60)} minutes`;
 };
 
 export default function Attendance() {
@@ -207,14 +250,43 @@ export default function Attendance() {
     //   2. the six-character check-in code the member reads out when the camera
     //      won't focus or their battery is flat,
     //   3. a full member UUID, pasted from the Members page.
-    const validation = validateQR(qr);
-    if (!validation.valid && validation.reason?.startsWith('QR Code expired')) {
-      return showToast('That QR code has expired. Ask the member to refresh it.', 'error');
+    const verdict = validateQR(qr);
+
+    if (verdict.kind === 'stale') {
+      // Distinguished from a genuine expiry on purpose. Past the grace window
+      // the member refreshing again cannot help, so saying "ask them to refresh"
+      // would send the desk round a loop that never terminates.
+      return showToast(
+        verdict.ageSeconds > (QR_TTL_SECONDS + CLOCK_SKEW_GRACE_SECONDS) * 2
+          ? `That code was made ${describeGap(verdict.ageSeconds)} ago. If the member just refreshed it, this PC's clock is wrong.`
+          : 'That QR code has expired. Ask the member to refresh it.',
+        'error'
+      );
     }
 
-    if (validation.valid) {
-      const member = await getMemberByQrCode(validation.data?.memberId ?? '').catch(() => null);
-      if (!member) return showToast('No member matches that code.', 'error');
+    if (verdict.kind === 'future') {
+      return showToast(
+        `That code is stamped ${describeGap(verdict.aheadSeconds)} in the future — this PC's clock is behind the member's phone.`,
+        'error'
+      );
+    }
+
+    if (verdict.kind === 'ok') {
+      // Not `.catch(() => null)`. That reported a permission error, a dropped
+      // connection and an unknown member as the same sentence, which is how a
+      // broken lookup can look like a member who does not exist.
+      let member: MemberWithProfile | null;
+      try {
+        member = await getMemberByQrCode(verdict.data.memberId);
+      } catch (err) {
+        return showToast(
+          `Could not look that member up: ${err instanceof Error ? err.message : 'unknown error'}`,
+          'error'
+        );
+      }
+      if (!member) {
+        return showToast('That code is valid but no member matches it.', 'error');
+      }
       return doCheckIn(member, 'qr');
     }
 
@@ -231,8 +303,26 @@ export default function Attendance() {
       return showToast(`No member has the code ${typed.toUpperCase()}.`, 'error');
     }
 
-    const member = await getMemberByQrCode(qr).catch(() => null);
-    if (!member) return showToast('No member matches that code.', 'error');
+    // A full member UUID, pasted from the Members page. Same reasoning as above:
+    // a failed lookup and an unknown member are different problems and must not
+    // share a message.
+    let member: MemberWithProfile | null;
+    try {
+      member = await getMemberByQrCode(qr);
+    } catch (err) {
+      return showToast(
+        `Could not look that member up: ${err instanceof Error ? err.message : 'unknown error'}`,
+        'error'
+      );
+    }
+    if (!member) {
+      return showToast(
+        typed.length > 6
+          ? 'No member matches that. Six-character codes go in as-is; anything longer must be a full member ID.'
+          : 'No member matches that code.',
+        'error'
+      );
+    }
     await doCheckIn(member, 'manual');
   };
 

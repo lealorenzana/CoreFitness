@@ -10,11 +10,39 @@ interface QRScannerProps {
   onScan: (qrCode: string) => void;
 }
 
+/**
+ * Release one scanner instance and its camera stream.
+ *
+ * `stop()` throws when `start()` never succeeded — a denied permission, a camera
+ * already in use by Teams. That is the expected path on teardown after a failed
+ * start, not an error worth logging: it would bury the real message above it.
+ */
+async function stopInstance(scanner: Html5Qrcode): Promise<void> {
+  try {
+    await scanner.stop();
+  } catch {
+    /* never started */
+  }
+  try {
+    scanner.clear();
+  } catch {
+    /* nothing rendered */
+  }
+}
+
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
   const [hasCamera, setHasCamera] = useState(true);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  // Serialises camera teardown against the next start. Switching cameras used to
+  // construct a second Html5Qrcode on the same `qr-reader` element while the
+  // first was still releasing its stream — the library then either refuses to
+  // start ("scanner is already running") or leaves an orphaned <video> behind,
+  // and the picker appears to do nothing. A laptop commonly exposes several
+  // devices (built-in, external, and the virtual cameras Teams and OBS install),
+  // so this path is reached more often than it looks.
+  const teardownRef = useRef<Promise<void>>(Promise.resolve());
   const [manualInput, setManualInput] = useState('');
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [cameraId, setCameraId] = useState('');
@@ -59,83 +87,96 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
     if (!isOpen || !isScanning || !cameraId) return;
     let cancelled = false;
 
-    const scanner = new Html5Qrcode('qr-reader', {
-      verbose: false,
-      // Only look for QR codes. Without this it also runs every 1D barcode
-      // decoder on each frame, which costs time we'd rather spend on retries.
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      // Chrome's native BarcodeDetector is far more tolerant of glare and the
-      // moiré you get pointing a webcam at another screen than the JS fallback.
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    });
-    scannerRef.current = scanner;
+    let mine: Html5Qrcode | null = null;
 
-    scanner
-      .start(
-        cameraId,
-        {
-          fps: 10,
-          // Crop to most of the viewfinder rather than a fixed 250px box: a
-          // tight crop can clip the QR's quiet zone, which alone breaks decoding.
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
-            return { width: size, height: size };
+    const startWhenFree = async () => {
+      // Wait for the previous camera to actually let go before touching the DOM
+      // node again. Without this the two overlap and the second start fails.
+      await teardownRef.current;
+      if (cancelled) return;
+
+      const scanner = new Html5Qrcode('qr-reader', {
+        verbose: false,
+        // Only look for QR codes. Without this it also runs every 1D barcode
+        // decoder on each frame, which costs time we'd rather spend on retries.
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        // Chrome's native BarcodeDetector is far more tolerant of glare and the
+        // moiré you get pointing a webcam at another screen than the JS fallback.
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      });
+      mine = scanner;
+      scannerRef.current = scanner;
+
+      try {
+        await scanner.start(
+          cameraId,
+          {
+            fps: 10,
+            // Crop to most of the viewfinder rather than a fixed 250px box: a
+            // tight crop can clip the QR's quiet zone, which alone breaks decoding.
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+              return { width: size, height: size };
+            },
+            // Resolution belongs here, NOT in the first argument — html5-qrcode
+            // rejects a `cameraIdOrConfig` object with more than one key. A webcam
+            // otherwise defaults to ~640x480, where this QR's modules are only a
+            // few pixels wide and the decode fails. When these constraints are
+            // valid the library uses them in place of the first argument, so the
+            // deviceId has to be repeated here.
+            videoConstraints: {
+              deviceId: { exact: cameraId },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
           },
-          // Resolution belongs here, NOT in the first argument — html5-qrcode
-          // rejects a `cameraIdOrConfig` object with more than one key. A webcam
-          // otherwise defaults to ~640x480, where this QR's modules are only a
-          // few pixels wide and the decode fails. When these constraints are
-          // valid the library uses them in place of the first argument, so the
-          // deviceId has to be repeated here.
-          videoConstraints: {
-            deviceId: { exact: cameraId },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+          (decodedText) => {
+            onScan(decodedText);
+            stopScanner();
+            onClose();
           },
-        },
-        (decodedText) => {
-          onScan(decodedText);
-          stopScanner();
-          onClose();
-        },
-        () => {
-          // Per-frame decode misses fire constantly while aiming — not an error.
-        }
-      )
-      .catch((err) => {
+          () => {
+            // Per-frame decode misses fire constantly while aiming — not an error.
+          }
+        );
+        if (cancelled) return;
+        // A camera that started is a camera that works — clear the failure left
+        // by a previous device so the error box does not outlive the problem.
+        setError('');
+        setHasCamera(true);
+      } catch (err) {
         if (cancelled) return;
         console.error('Scanner error:', err);
         setHasCamera(false);
         setError('Unable to start that camera. Try another, or use manual entry.');
-      });
+      }
+    };
+
+    const running = startWhenFree();
 
     return () => {
       cancelled = true;
-      stopScanner();
+      // Hand the next start something to wait on, rather than tearing down in
+      // the background and hoping it finishes first.
+      teardownRef.current = running
+        .then(() => (mine ? stopInstance(mine) : undefined))
+        .catch(() => undefined);
+      if (scannerRef.current === mine) scannerRef.current = null;
     };
     // onScan/onClose are called, not observed — re-subscribing on every parent
     // render would tear down the live camera stream mid-scan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isScanning, cameraId]);
 
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      const scanner = scannerRef.current;
-      scannerRef.current = null;
-      try {
-        // Throws when start() never succeeded (bad camera, denied permission).
-        // That's the expected path on teardown after a failed start, not an error
-        // worth logging — it only buries the real message above it.
-        await scanner.stop();
-      } catch {
-        /* not running */
-      }
-      try {
-        scanner.clear();
-      } catch {
-        /* nothing rendered */
-      }
-    }
+  const stopScanner = () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    scannerRef.current = null;
+    // Recorded on the same ref the start path waits on, so an explicit stop and
+    // an unmount-driven one cannot race each other either.
+    teardownRef.current = teardownRef.current
+      .then(() => stopInstance(scanner))
+      .catch(() => undefined);
   };
 
   const handleClose = () => {
