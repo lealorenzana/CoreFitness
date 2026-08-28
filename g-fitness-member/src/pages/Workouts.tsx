@@ -3,7 +3,7 @@ import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowLeft, ExternalLink, BookOpen, Sparkles, ClipboardList, ChevronRight } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
@@ -87,6 +87,33 @@ export default function Workouts() {
           </p>
         </div>
       </motion.div>
+
+      {/* The plan builder. This library is material to read; the builder turns
+          it into a week you can actually start on. Linked from here because a
+          feature ships when a route leads to it - the free-workout library and
+          the trainer recommendations were both built, correct, and reachable
+          from nowhere. */}
+      <motion.button
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        onClick={() => navigate('/member/plan')}
+        className="w-full p-4 rounded-2xl flex items-center gap-3 text-left"
+        style={panelStyle}
+      >
+        <span
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'var(--color-primary-light)' }}
+        >
+          <ClipboardList size={20} style={{ color: 'var(--color-primary)' }} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-white">Build your training week</p>
+          <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            Five questions, then a plan built around your days and your goal
+          </p>
+        </div>
+        <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
+      </motion.button>
 
       {categories.length > 1 && (
         <div className="flex gap-1.5 flex-wrap">

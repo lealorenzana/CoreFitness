@@ -11,6 +11,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Home from './pages/Home';
 import Workouts from './pages/Workouts';
+import PlanBuilder from './pages/PlanBuilder';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -205,6 +206,7 @@ function App() {
               still land somewhere sensible. */}
           <Route path="membership" element={<Navigate to="/member/renew-membership" replace />} />
           <Route path="workouts" element={<Workouts />} />
+          <Route path="plan" element={<PlanBuilder />} />
           <Route path="progress" element={<ProgressHub />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="notifications" element={<NotificationsAll />} />
