@@ -53,6 +53,54 @@ const PREFERENCES: { id: Preference; label: string }[] = [
 
 const MINUTES: PlanInputs['sessionMinutes'][] = [30, 45, 60, 90];
 
+/**
+ * One question: a label and a row of mutually exclusive chips.
+ *
+ * Defined at module scope, NOT inside PlanBuilder. Declaring a component in
+ * the render body creates a brand-new component *type* on every render, so
+ * React unmounts and remounts the whole subtree each time instead of updating
+ * it - throwing away DOM state and any focus inside it. It renders correctly
+ * either way, which is what makes the mistake easy to keep.
+ */
+function Choice<T extends string | number>({
+  label, options, value, onPick,
+}: {
+  label: string;
+  options: { id: T; label: string; hint?: string }[];
+  value: T;
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div className="p-4 rounded-2xl" style={panelStyle}>
+    <p className="text-xs font-bold text-white mb-2.5">{label}</p>
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const on = o.id === value;
+        return (
+          <button
+            key={String(o.id)}
+            onClick={() => onPick(o.id)}
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors"
+            style={{
+              background: on ? 'var(--color-primary)' : 'var(--color-surface-high)',
+              color: on ? '#fff' : 'var(--color-text-secondary)',
+              border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+            }}
+          >
+            {o.label}
+            {o.hint && (
+              <span className="block text-[10px] font-normal mt-0.5" style={{ color: on ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}>
+                {o.hint}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+}
+
 export default function PlanBuilder() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('intro');
@@ -293,39 +341,7 @@ export default function PlanBuilder() {
     );
   }
 
-  // ── Questions ─────────────────────────────────────────────────────────────
-  const Choice = <T extends string | number>({
-    label, options, value, onPick,
-  }: { label: string; options: { id: T; label: string; hint?: string }[]; value: T; onPick: (v: T) => void }) => (
-    <div className="p-4 rounded-2xl" style={panelStyle}>
-      <p className="text-xs font-bold text-white mb-2.5">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => {
-          const on = o.id === value;
-          return (
-            <button
-              key={String(o.id)}
-              onClick={() => onPick(o.id)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors"
-              style={{
-                background: on ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                color: on ? '#fff' : 'var(--color-text-secondary)',
-                border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              }}
-            >
-              {o.label}
-              {o.hint && (
-                <span className="block text-[10px] font-normal mt-0.5" style={{ color: on ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}>
-                  {o.hint}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
+  // ── Questions ──────────────────────────────────────────
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       {Header}
