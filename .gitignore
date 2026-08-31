@@ -1,3 +1,8 @@
 
 # Supabase CLI scratch (login state, linked project)
 supabase/.temp/
+
+# Generated system documentation. 3.5 MB, self-contained, and rebuildable
+# at any time - committing it would put every future revision in history
+# forever for a file nobody diffs.
+CoreFitness-System-Documentation.html
