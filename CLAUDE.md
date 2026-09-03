@@ -121,20 +121,19 @@ credentials in a **private** bucket (0054), computed goal presets (0055).
 
 ### Mobile shell — always full-screen
 [PhoneChassis.tsx](g-fitness-member/src/components/layout/PhoneChassis.tsx) fills the viewport via
-`100dvh` + safe-area insets; all three shells delegate to it and content scrolls inside `<main>`, not
-the page. Use `dvh`, not `vh`. **There is no decorative phone frame** — it ships as a real Android
-**TWA** loading the live URL, so a redeploy updates installed phones. Pages portal by id into
-`#phone-screen`, `#phone-toast-root`, `#phone-overlay-root`, `#modal-root` — all four exist and **all
-four are `pointer-events: none`**, so anything portalled in **must** set `pointer-events-auto` or it
-paints perfectly and cannot be tapped (shipped three times, once an undismissable modal). **Overlays
-portal to a root, never inline**: `<main>` is `relative` and scrolls, so `absolute inset-0` resolves
-to the top of the *content* — −2000px on a scrolled list. `overscroll-behavior` stops pull-to-refresh
-reloading the TWA; `hooks/useLiveData.ts` keeps screens fresh.
-**Home is *today* only** — greeting, membership, coach note, today, next session. Counters and the
-level card live on Progress, events on Book, the rest in Profile → Your account; the dock's
-`tabSubPaths` must match or the bar highlights a tab you are not on. **Tab switches must not flash or
-lose your place** — `lib/pageCache.ts` and `hooks/useScrollMemory.ts`, memory-only and **cleared in
-`logout()`** (keyed by *screen*, they would otherwise hand the next person the last member's Home).
+`100dvh` + safe-area insets; content scrolls inside `<main>`, not the page. Use `dvh`, not `vh`.
+**No decorative phone frame** — it ships as a real Android **TWA** loading the live URL, so a
+redeploy updates installed phones. Pages portal by id into `#phone-screen`, `#phone-toast-root`,
+`#phone-overlay-root`, `#modal-root` — **all four are `pointer-events: none`**, so anything portalled
+in **must** set `pointer-events-auto` or it paints perfectly and cannot be tapped (shipped three
+times, once an undismissable modal). **Overlays portal to a root, never inline**: `<main>` is
+`relative` and scrolls, so `absolute inset-0` resolves to the top of the *content* — −2000px on a
+scrolled list. `overscroll-behavior` stops pull-to-refresh reloading the TWA.
+**Home is *today* only** — greeting, membership, coach note, today, next session. Counters, the level
+card and **MY CORE** live on Progress, events and challenges on Book, the rest in Profile → Your
+account; the dock's `tabSubPaths` must match or the bar highlights a tab you are not on. **Per-member
+caches are memory-only and cleared in `logout()`** — `lib/pageCache.ts`, `hooks/useScrollMemory.ts`
+and `hooks/useFeatures.ts`; keyed by *screen*, they would hand the next person the last member's.
 
 ### Styling and design system
 **Full reference including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).** The parts you
