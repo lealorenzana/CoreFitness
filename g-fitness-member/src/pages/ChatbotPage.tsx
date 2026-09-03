@@ -9,12 +9,14 @@ import { getMemberHome } from '../services/memberHomeService';
 import { listPlans } from '../lib/api/membershipPlans';
 import { getGymSettings } from '../lib/api/settings';
 import {
-  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext,
+  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback,
+  type AssistantContext,
 } from '../data/memberAssistant';
 import {
   listConversations, listMessages, createConversation, appendMessage,
   deleteConversation, titleFrom, type Conversation,
 } from '../lib/api/assistantChats';
+import { askFitnessAssistant } from '../lib/api/fitnessAssistant';
 import { errorMessage } from '../utils/errorMessage';
 
 /**
@@ -65,6 +67,9 @@ export default function ChatbotPage() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  // The model call is awaited, so `messages` inside that closure would be stale
+  // by the time it resolves. The ref always reads current.
+  const messagesRef = useRef<Message[]>([]);
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -143,6 +148,7 @@ export default function ChatbotPage() {
   }, [greeting, refreshList]);
 
   useEffect(() => {
+    messagesRef.current = messages;
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isTyping]);
 
@@ -178,7 +184,26 @@ export default function ChatbotPage() {
     // work. Keeping it means the reply does not appear before the question has
     // finished animating in.
     setTimeout(async () => {
-      const answer = answerFor(trimmed, ctx);
+      // Rules first, always. They own every fact about this gym — prices,
+      // hours, your membership — so the model is never in a position to state
+      // one. It only ever sees a question the table could not answer.
+      let answer = answerFor(trimmed, ctx);
+
+      if (isRuleFallback(answer)) {
+        // The last few turns, so "and for legs?" still makes sense. The typing
+        // indicator deliberately stays up across this: the member is waiting on
+        // a real request, and hiding it would look like the app had stopped.
+        const history = messagesRef.current
+          .filter((m) => m.id !== GREETING_ID)
+          .slice(-6)
+          .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
+        const fromModel = await askFitnessAssistant(trimmed, history);
+        // null covers not-configured, offline, rate-limited and timed out. In
+        // every one of them the member gets the message they got before this
+        // existed, which is why adding this cannot make the assistant worse.
+        if (fromModel) answer = fromModel;
+      }
+
       setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: answer, sender: 'bot' }]);
       setIsTyping(false);
       try {

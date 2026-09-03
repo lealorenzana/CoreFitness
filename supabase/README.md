@@ -141,6 +141,7 @@ would swap the admin's own browser session for the newly created account.
 | `create-member` | Admin registers a **walk-in** member at the front desk (Members page). Created already `active`, skipping the self-registration approval queue |
 | `create-staff` | Admin creates a front-desk staff account. The only way one can exist — staff have no write access to `profiles` |
 | `send-push` | Delivers a web push notification to a member's registered devices. Needs the VAPID secrets below |
+| `fitness-assistant` | **Optional.** General fitness questions the rule table cannot answer. Needs the three assistant secrets below. Not deploying it is a supported state |
 
 **Easiest path — no CLI needed**, repeat for each:
 1. Dashboard → **Edge Functions → Create a new function**, name it exactly `create-trainer`
@@ -169,6 +170,32 @@ supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=ma
 ```
 
 (Dashboard equivalent: **Edge Functions → Secrets**.)
+
+### The fitness assistant model (optional)
+
+`fitness-assistant` is the **fallback behind the rule table**, and the app works fully without it.
+The rules in `data/memberAssistant.ts` answer everything factual about the gym — prices, hours,
+your membership, your check-in code — and only questions they cannot answer reach the model. That
+ordering is the safety property: the model is never given gym data, so it can never state a wrong
+price. A test asserts it (`0 gym-fact questions reach the model`).
+
+Three secrets, none of them provider-specific:
+
+```bash
+supabase secrets set   ASSISTANT_API_URL=https://api.groq.com/openai/v1/chat/completions   ASSISTANT_API_KEY=...   ASSISTANT_MODEL=llama-3.3-70b-versatile
+```
+
+Any **OpenAI-compatible** `/chat/completions` endpoint works — Groq, OpenRouter, Together, or a
+self-hosted Ollama (`http://host:11434/v1/chat/completions`). Switching provider is three secret
+changes and no code, which matters because free tiers change their terms.
+
+**If the secrets are absent the function returns 503 and the app silently shows its own fallback
+message.** Nothing breaks, nothing looks broken, and a demo cannot fail because a free tier was
+busy. Verify the fallback path by simply not setting them.
+
+Note that Ollama on a desk machine **cannot** serve the member app: the phone app is HTTPS, Ollama
+is HTTP on localhost, and browsers block mixed content outright. Ollama is only an option for
+something running on the same machine.
 
 The **public** half also goes in `g-fitness-member/.env.local` as `VITE_VAPID_PUBLIC_KEY` — it is
 sent to the browser by design, since that is what the subscription is keyed to. Leave it unset to

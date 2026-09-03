@@ -227,7 +227,10 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
         : "You've got nothing booked at the moment. Open **Book a Session** to pick a class or a 1-on-1.",
   },
   {
-    match: /\b(?:how many|visits?|attendance|been to the gym|ilang beses|pumunta)\b/,
+    // NOT a bare `how many`: it swallowed "how many times a week should I train
+    // legs" — a programming question — and answered it with this month's
+    // check-in count. The phrase has to actually be about visiting.
+    match: /\b(?:visits?|attendance|been to the gym|how many times have i|ilang beses|pumunta)\b/,
     reply: (ctx) =>
       ctx.checkInsThisMonth == null
         ? NO_CONTEXT
@@ -351,7 +354,9 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
       'Core Fitness takes **cash at the front desk**. Your membership extends the moment staff record the payment, and the receipt appears under Profile → Payments.',
   },
   {
-    match: /\b(?:progress|weights?|measurement|goal|log|body ?map)s?\b/,
+    // NOT a bare `weights`: "should I do cardio before or after weights" is a
+    // programming question, not a request to open the logging screen.
+    match: /\b(?:progress|my weight|weigh ?-?ins?|measurement|body ?map|log my|goals?)s?\b/,
     reply: () =>
       '**Tracking progress**\n\n• Log measurements, workouts and goals under **Progress**\n• Build a training week under **Profile → Training plan**\n• Your trainer can leave recommendations there too\n\nCharts fill in as you add entries.',
   },
@@ -368,6 +373,16 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
 
 const FALLBACK =
   "I don't have an answer for that one. I can help with:\n\n• Your membership, days left and payments\n• Your check-in code and visits\n• Booking classes and trainers\n• Prices, opening hours and where the gym is\n• Tracking your progress\n\nFor anything else, the front desk is the fastest route.";
+
+/**
+ * True when `answerFor` had nothing and returned the catch-all.
+ *
+ * Compared against the constant rather than sniffing for a phrase, so editing
+ * the fallback's wording cannot silently stop the model fallback from firing.
+ */
+export function isRuleFallback(answer: string): boolean {
+  return answer === FALLBACK;
+}
 
 export function answerFor(question: string, ctx: AssistantContext): string {
   const q = question.toLowerCase();
