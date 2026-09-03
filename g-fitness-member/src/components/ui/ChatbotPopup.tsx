@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { listPlans } from '../../lib/api/membershipPlans';
+import { getGymSettings } from '../../lib/api/settings';
 import RichText from './RichText';
-import { answerFor, EMPTY_CONTEXT, type AssistantContext } from '../../data/memberAssistant';
+import { answerFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
 import { X, Send, Bot } from 'lucide-react';
 
 /**
@@ -42,11 +43,15 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
   const [ctx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
   useEffect(() => {
     let cancelled = false;
-    listPlans()
-      .then((rows) => {
-        if (!cancelled) setCtx((c) => ({ ...c, plans: rows.filter((p) => p.is_active) }));
-      })
-      .catch(() => {});
+    // Plans AND gym settings: the hours, address and contact answers read from
+    // `gym_settings` now, so the popup has to load it as well or those answers
+    // would report "not on record" on this surface only.
+    Promise.all([
+      listPlans().then((rows) => rows.filter((p) => p.is_active)).catch(() => []),
+      getGymSettings().catch(() => null),
+    ]).then(([plans, gym]) => {
+      if (!cancelled) setCtx((c) => ({ ...c, plans, gym: toGymFacts(gym) }));
+    });
     return () => { cancelled = true; };
   }, []);
   const endRef = useRef<HTMLDivElement>(null);

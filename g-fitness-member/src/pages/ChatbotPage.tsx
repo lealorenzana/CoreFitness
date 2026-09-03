@@ -7,8 +7,9 @@ import { panelStyle } from '../components/ui/Card';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome } from '../services/memberHomeService';
 import { listPlans } from '../lib/api/membershipPlans';
+import { getGymSettings } from '../lib/api/settings';
 import {
-  answerFor, suggestionsFor, EMPTY_CONTEXT, type AssistantContext,
+  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext,
 } from '../data/memberAssistant';
 import {
   listConversations, listMessages, createConversation, appendMessage,
@@ -99,13 +100,17 @@ export default function ChatbotPage() {
     (async () => {
       // Personalise the greeting only once the data is in, so it never opens
       // with a name-shaped gap.
-      const [home, plans] = await Promise.all([
+      const [home, plans, gym] = await Promise.all([
         getCurrentMemberId()
           .then((id) => (id ? getMemberHome(id) : null))
           .catch(() => null),
         listPlans()
           .then((rows) => rows.filter((p) => p.is_active))
           .catch(() => []),
+        // Hours, address and contact used to be hardcoded in the answers, so a
+        // change at the desk never reached the member. A failure here leaves
+        // `gym` null and those answers say the value is not on record.
+        getGymSettings().catch(() => null),
       ]);
       if (cancelled) return;
 
@@ -126,8 +131,9 @@ export default function ChatbotPage() {
               : null,
             checkInsThisMonth: home.checkInsThisMonth,
             plans,
+            gym: toGymFacts(gym),
           }
-        : { ...EMPTY_CONTEXT, plans };
+        : { ...EMPTY_CONTEXT, plans, gym: toGymFacts(gym) };
 
       setCtx(next);
       setMessages([greeting(next)]);
