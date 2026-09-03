@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, CalendarCheck, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 
 import LevelProgressCard   from '../../components/ui/LevelProgressCard';
 import WeekRings           from '../../components/ui/WeekRings';
-import StatCard            from '../../components/ui/StatCard';
 import SectionHeader       from '../../components/ui/SectionHeader';
+import MyCoreCard          from '../../components/ui/MyCoreCard';
 import { panelStyle }      from '../../components/ui/Card';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
@@ -132,21 +132,10 @@ export default function ProgressHub() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              value={home.checkInsThisMonth}
-              label="Gym visits this month"
-              icon={CalendarCheck}
-              pill={home.checkedInToday ? 'Today ✓' : undefined}
-              pillTone="primary"
-            />
-            <StatCard
-              value={home.upcomingCount}
-              label="Sessions coming up"
-              icon={CalendarClock}
-              onClick={() => navigate('/member/booking-history')}
-            />
-          </div>
+          {/* These two counters used to be their own StatCards here. MyCoreCard
+              carries them now, alongside workouts logged and goals reached, so
+              the screen states each number once instead of twice. */}
+          <MyCoreCard home={home} memberId={home.memberId} />
         </>
       )}
 

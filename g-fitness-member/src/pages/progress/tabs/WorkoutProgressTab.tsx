@@ -2,6 +2,7 @@ import { panelStyle } from '../../../components/ui/Card';
 import { Field, TextInput, TextArea } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dumbbell, Plus } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -15,9 +16,15 @@ import { getGymSettings } from '../../../lib/api/settings';
  * The member's own workout log, from `workout_logs` (migration 0020).
  *
  * The old version tracked calories burned and a "personal record" flag. Both
- * are gone: calories need body mass and heart rate, a PR needs per-exercise
- * weights, and this schema models neither. The numbers in the old fixture were
- * simply typed in.
+ * were removed because the numbers in the old fixture were simply typed in:
+ * calories need body mass and heart rate, which this schema still does not
+ * model and will not guess.
+ *
+ * Per-exercise weight is a different story now. 0050 added `workout_sets`, so
+ * "Track a workout" below records exercise, sets, reps and load, and a session
+ * logged there appears in this list like any other. This screen stays the quick
+ * version — "Cardio, 30 minutes" — because that is all most sessions need and
+ * it is the one every tier can use.
  *
  * Activity choices come from the same `gym_settings.activity_options` list the
  * front desk tags check-ins with, so a member's log and the gym's attendance
@@ -26,6 +33,7 @@ import { getGymSettings } from '../../../lib/api/settings';
 
 export default function WorkoutProgressTab() {
   const memberId = useMemberId();
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,11 +147,21 @@ export default function WorkoutProgressTab() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
-        style={{ background: 'var(--color-secondary)' }}>
-        <Plus size={15} /> Log a workout
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => setShowForm(true)}
+          className="py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-1.5"
+          style={{ background: 'var(--color-secondary)' }}>
+          <Plus size={15} /> Quick log
+        </button>
+        {/* The set-by-set tracker (0050). Reached from here because this is
+            where a member already comes to record training — a route with
+            nothing pointing at it is a feature that does not exist. */}
+        <button onClick={() => navigate('/member/track')}
+          className="py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5"
+          style={{ background: 'var(--color-primary)', color: '#fff' }}>
+          <Dumbbell size={15} /> Track sets
+        </button>
+      </div>
 
       <StepFlow
         open={showForm}

@@ -22,6 +22,7 @@ import Events from './pages/Events';
 import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
 import Achievements from './pages/Achievements';
+import Exercises from './pages/Exercises';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -71,6 +72,9 @@ function App() {
                 same class of decision as plan pricing. RLS agrees — `staff` may
                 read the catalogue but not write it. */}
             <Route path="achievements" element={<ProtectedRoute adminOnly><Achievements /></ProtectedRoute>} />
+            {/* Admin-only: the catalogue defines what every member's training
+                history is measured in, the same class of decision as a badge. */}
+            <Route path="exercises" element={<ProtectedRoute adminOnly><Exercises /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>

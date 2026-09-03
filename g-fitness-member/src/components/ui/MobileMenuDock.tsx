@@ -45,7 +45,7 @@ const tabSubPaths: string[][] = [
   // Book is anything forward-looking, including what the gym has announced.
   ['/member/book-class', '/member/chatbot', '/member/trainers', '/member/trainer/',
    '/member/events'],
-  ['/member/progress', '/member/achievements'],
+  ['/member/progress', '/member/achievements', '/member/track'],
   // Profile is the account: everything about you, your history and your plan.
   ['/member/profile', '/member/booking-history', '/member/attendance-history',
    '/member/payments', '/member/membership', '/member/renew', '/member/renew-membership',
