@@ -14,6 +14,7 @@ import Workouts from './pages/Workouts';
 import PlanBuilder from './pages/PlanBuilder';
 import WorkoutTracker from './pages/WorkoutTracker';
 import Rewards from './pages/Rewards';
+import Challenges from './pages/Challenges';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -211,6 +212,7 @@ function App() {
           <Route path="plan" element={<PlanBuilder />} />
           <Route path="track" element={<WorkoutTracker />} />
           <Route path="rewards" element={<Rewards />} />
+          <Route path="challenges" element={<Challenges />} />
           <Route path="progress" element={<ProgressHub />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="notifications" element={<NotificationsAll />} />

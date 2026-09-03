@@ -24,6 +24,7 @@ import Activity from './pages/Activity';
 import Achievements from './pages/Achievements';
 import Exercises from './pages/Exercises';
 import Rewards from './pages/Rewards';
+import Challenges from './pages/Challenges';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -79,6 +80,7 @@ function App() {
             {/* Staff can SEE the queue (RLS lets them), but approving commits the
                 gym to giving something away, so the page is admin-only. */}
             <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />
+            <Route path="challenges" element={<ProtectedRoute adminOnly><Challenges /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>

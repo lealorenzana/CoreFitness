@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Mail, Phone, MapPin, Calendar, LogOut, Shield, Edit, CreditCard,
   ArrowLeft, Activity, Settings as SettingsIcon,
-  CalendarCheck, BookOpen, ClipboardList, Trophy, Gift,
+  CalendarCheck, BookOpen, ClipboardList, Trophy, Gift, Flag,
 } from 'lucide-react';
 import { logout } from '../utils/auth';
 import Avatar from '../components/ui/Avatar';
@@ -257,6 +257,12 @@ export default function Profile() {
                 title="Events"
                 subtitle="What the gym has coming up"
                 onClick={() => navigate('/member/events')}
+              />
+              <ListRow
+                icon={Flag} tone="primary"
+                title="Challenges"
+                subtitle="Targets counted from your real check-ins"
+                onClick={() => navigate('/member/challenges')}
               />
               <ListRow
                 icon={SettingsIcon} tone="muted"
