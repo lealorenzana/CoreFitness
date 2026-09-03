@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarCheck, CalendarClock, Dumbbell, Target, AlertTriangle } from 'lucide-react';
 import { panelStyle } from './Card';
 import { listGoals, listWorkoutLogs } from '../../lib/api/progress';
+import { getBalance } from '../../lib/api/points';
+import { useFeatures } from '../../hooks/useFeatures';
+import { isEnabled } from '../../lib/api/planFeatures';
 import type { MemberHome } from '../../services/memberHomeService';
 
 /**
@@ -31,8 +34,6 @@ import type { MemberHome } from '../../services/memberHomeService';
 interface Props {
   home: MemberHome;
   memberId: string;
-  /** CORE Points balance. Undefined until the points feature lands (0051). */
-  points?: number | null;
 }
 
 interface Extras {
@@ -41,9 +42,15 @@ interface Extras {
   goalsTotal: number | null;
 }
 
-export default function MyCoreCard({ home, memberId, points }: Props) {
+export default function MyCoreCard({ home, memberId }: Props) {
   const navigate = useNavigate();
+  const { features } = useFeatures();
+  // Only shown to a member whose plan actually earns points. A 0 on a plan that
+  // cannot earn would read as "you have earned nothing", which is a different
+  // and much worse statement than "this is not part of your membership".
+  const earnsPoints = isEnabled(features, 'points_earn');
   const [extra, setExtra] = useState<Extras>({ workouts: null, goalsAchieved: null, goalsTotal: null });
+  const [points, setPoints] = useState<number | null>(null);
   const [partial, setPartial] = useState(false);
 
   useEffect(() => {
@@ -63,6 +70,17 @@ export default function MyCoreCard({ home, memberId, points }: Props) {
     })();
     return () => { alive = false; };
   }, [memberId]);
+
+  useEffect(() => {
+    if (!earnsPoints) return;
+    let alive = true;
+    getBalance(memberId)
+      .then((b) => alive && setPoints(b))
+      // Left null, so the row is absent rather than showing a balance of 0 the
+      // member has not got.
+      .catch(() => alive && setPartial(true));
+    return () => { alive = false; };
+  }, [memberId, earnsPoints]);
 
   const goalLabel =
     extra.goalsTotal == null ? '—'
@@ -123,8 +141,9 @@ export default function MyCoreCard({ home, memberId, points }: Props) {
       </div>
 
       {points != null && (
-        <div
-          className="mt-2.5 p-3 rounded-xl flex items-center justify-between"
+        <button
+          onClick={() => navigate('/member/rewards')}
+          className="mt-2.5 p-3 rounded-xl flex items-center justify-between w-full"
           style={{ background: 'var(--color-primary-light)' }}
         >
           <span className="text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>
@@ -133,7 +152,7 @@ export default function MyCoreCard({ home, memberId, points }: Props) {
           <span className="text-lg font-bold leading-none" style={{ color: 'var(--color-primary)' }}>
             {points.toLocaleString()}
           </span>
-        </div>
+        </button>
       )}
 
       {partial && (

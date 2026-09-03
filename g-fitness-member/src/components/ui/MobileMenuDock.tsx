@@ -49,7 +49,7 @@ const tabSubPaths: string[][] = [
   // Profile is the account: everything about you, your history and your plan.
   ['/member/profile', '/member/booking-history', '/member/attendance-history',
    '/member/payments', '/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/workouts', '/member/plan', '/member/settings'],
+   '/member/workouts', '/member/plan', '/member/rewards', '/member/settings'],
 ];
 
 export default function MobileMenuDock() {

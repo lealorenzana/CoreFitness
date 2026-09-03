@@ -23,6 +23,7 @@ import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
 import Achievements from './pages/Achievements';
 import Exercises from './pages/Exercises';
+import Rewards from './pages/Rewards';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -75,6 +76,9 @@ function App() {
             {/* Admin-only: the catalogue defines what every member's training
                 history is measured in, the same class of decision as a badge. */}
             <Route path="exercises" element={<ProtectedRoute adminOnly><Exercises /></ProtectedRoute>} />
+            {/* Staff can SEE the queue (RLS lets them), but approving commits the
+                gym to giving something away, so the page is admin-only. */}
+            <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>

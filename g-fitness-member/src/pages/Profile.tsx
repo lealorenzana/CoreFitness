@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Mail, Phone, MapPin, Calendar, LogOut, Shield, Edit, CreditCard,
   ArrowLeft, Activity, Settings as SettingsIcon,
-  CalendarCheck, BookOpen, ClipboardList, Trophy,
+  CalendarCheck, BookOpen, ClipboardList, Trophy, Gift,
 } from 'lucide-react';
 import { logout } from '../utils/auth';
 import Avatar from '../components/ui/Avatar';
@@ -236,6 +236,15 @@ export default function Profile() {
                 title="Training plan"
                 subtitle="Your generated week, and how to rebuild it"
                 onClick={() => navigate('/member/plan')}
+              />
+              {/* Always listed, on every tier. A member whose plan does not
+                  include points sees the locked card explaining what it is —
+                  which is the point of locking rather than hiding (0049). */}
+              <ListRow
+                icon={Gift} tone="primary"
+                title="CORE Points"
+                subtitle="What you have earned, and what it buys"
+                onClick={() => navigate('/member/rewards')}
               />
               <ListRow
                 icon={BookOpen} tone="primary"
