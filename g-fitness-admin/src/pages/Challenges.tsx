@@ -61,8 +61,9 @@ export default function Challenges() {
     target: '10', starts_on: today(), ends_on: inDays(30), reward_points: '250',
   });
 
+  /** Fetch and apply. `loading` is owned by the caller, so this is safe to
+   *  call again from a button without flashing the whole screen away. */
   const load = async () => {
-    setLoading(true);
     const [m, c, p] = await Promise.all([
       supabase.from('achievement_metrics')
         .select('key, label, unit').eq('challengeable', true).order('sort_order'),
@@ -86,10 +87,20 @@ export default function Challenges() {
       setCounts(agg);
       setFailed(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let alive = true;
+    // The first statement is an await, so every setState below it is deferred
+    // rather than synchronous — which is what react-hooks/set-state-in-effect
+    // is actually asking for, and it is better code besides.
+    (async () => {
+      await load();
+      if (!alive) return;
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const add = async () => {
     const target = Number(form.target);

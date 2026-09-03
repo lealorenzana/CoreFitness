@@ -7,6 +7,7 @@ import { Field, TextInput, TextArea } from '../../components/ui/Field';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
+import CredentialsSection from '../../components/ui/CredentialsSection';
 import { panelStyle } from '../../components/ui/Card';
 import { getMyProfile, updateMyProfile } from '../../lib/api/profiles';
 import { getTrainer, updateTrainerProfile } from '../../lib/api/trainers';
@@ -50,6 +51,7 @@ export default function TrainerEditProfile() {
   const [photoBusy, setPhotoBusy] = useState(false);
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', specialization: '', bio: '', availability: '',
     yearsExperience: '', certifications: '', focusAreas: '', achievements: '',
@@ -61,6 +63,7 @@ export default function TrainerEditProfile() {
       try {
         const id = await getCurrentTrainerId();
         if (!id) throw new Error('Not signed in');
+        if (!cancelled) setTrainerId(id);
         const [profile, trainer] = await Promise.all([
           getMyProfile(),
           getTrainer(id).catch(() => null),
@@ -279,6 +282,11 @@ export default function TrainerEditProfile() {
           <TextInput value={form.certifications} placeholder="NASM-CPT, First Aid / CPR"
             onChange={(e) => setForm({ ...form, certifications: e.target.value })} />
         </Field>
+
+        {/* The document, next to the claim (0054). The field above is still the
+            trainer's own statement and still says so; this is the separate
+            thing the gym can actually check. */}
+        {trainerId && <CredentialsSection trainerId={trainerId} />}
 
         <Field label="Background & achievements" hint="Competitions, athletic background, results you are proud of">
           <TextArea rows={4} value={form.achievements}

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, PartyPopper, Bell, BookOpen, History, Trophy, ListChecks, Gift, Flag,
+  LogOut, ChevronRight, PartyPopper, Bell, BookOpen, History, Trophy, ListChecks, Gift, Flag, ShieldCheck,
 } from 'lucide-react';
 import { toast } from '../ui/sonner';
 import { supabase } from '../../lib/supabaseClient';
@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { label: 'Exercises',  path: '/exercises',        icon: ListChecks, section: 'Management', adminOnly: true },
   { label: 'Rewards',    path: '/rewards',          icon: Gift,       section: 'Management', adminOnly: true },
   { label: 'Challenges', path: '/challenges',       icon: Flag,       section: 'Management', adminOnly: true },
+  { label: 'Credentials',path: '/credentials',      icon: ShieldCheck,section: 'Management', adminOnly: true },
   { label: 'Settings',   path: '/settings',    icon: Settings,        section: 'Settings', adminOnly: true },
 ];
 

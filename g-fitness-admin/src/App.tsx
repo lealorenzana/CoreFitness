@@ -25,6 +25,7 @@ import Achievements from './pages/Achievements';
 import Exercises from './pages/Exercises';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
+import Credentials from './pages/Credentials';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -81,6 +82,9 @@ function App() {
                 gym to giving something away, so the page is admin-only. */}
             <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />
             <Route path="challenges" element={<ProtectedRoute adminOnly><Challenges /></ProtectedRoute>} />
+            {/* Not staff: RLS refuses them these rows outright, and the route
+                matches so the two cannot disagree. */}
+            <Route path="credentials" element={<ProtectedRoute adminOnly><Credentials /></ProtectedRoute>} />
             <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>

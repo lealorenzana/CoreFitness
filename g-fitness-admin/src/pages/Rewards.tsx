@@ -56,8 +56,9 @@ export default function Rewards() {
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState<string | null>(null);
 
+  /** Fetch and apply. `loading` is owned by the caller, so this is safe to
+   *  call again from a button without flashing the whole screen away. */
   const load = async () => {
-    setLoading(true);
     const [r, q] = await Promise.all([
       supabase.from('rewards')
         .select('id, name, description, cost_points, stock, is_active')
@@ -74,10 +75,20 @@ export default function Rewards() {
       setQueue((q.data ?? []) as unknown as Redemption[]);
       setFailed(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let alive = true;
+    // The first statement is an await, so every setState below it is deferred
+    // rather than synchronous — which is what react-hooks/set-state-in-effect
+    // is actually asking for, and it is better code besides.
+    (async () => {
+      await load();
+      if (!alive) return;
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const addReward = async () => {
     const cost = Number(form.cost_points);
