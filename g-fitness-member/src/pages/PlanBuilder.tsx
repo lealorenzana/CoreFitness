@@ -10,6 +10,9 @@ import { buildPlan, type PlanInputs, type Experience, type Preference } from '..
 import { renderPlan } from '../utils/planRender';
 import { asFocus, FOCUS_LABEL, type TrainingFocus } from '../utils/trainingFocus';
 import { errorMessage } from '../utils/errorMessage';
+import FeatureLock from '../components/ui/FeatureLock';
+import { useFeatures } from '../hooks/useFeatures';
+import { isEnabled } from '../lib/api/planFeatures';
 
 /**
  * The training plan builder.
@@ -108,6 +111,11 @@ export default function PlanBuilder() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedPlan | null>(null);
   const [saving, setSaving] = useState(false);
+  // Building a plan is a paid feature (0049). Reading one you already have is
+  // not — the RLS split in that migration allows select/update/delete and gates
+  // only insert, and this screen mirrors it exactly.
+  const { features } = useFeatures();
+  const mayBuild = isEnabled(features, 'plan_builder');
   const [error, setError] = useState<string | null>(null);
 
   const [answers, setAnswers] = useState<PlanInputs>({
@@ -190,7 +198,7 @@ export default function PlanBuilder() {
           A training week built around your answers
         </p>
       </div>
-      {step === 'plan' && saved && (
+      {step === 'plan' && saved && mayBuild && (
         <button
           onClick={() => setStep('questions')}
           className="px-3 h-10 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
@@ -298,6 +306,22 @@ export default function PlanBuilder() {
           >
             Book a coach to review this <ArrowRight size={16} />
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not on this plan ──────────────────────────────────────────────────────
+  // Reached only when there is no saved plan to show, because the `step ===
+  // 'plan'` branch above returns first. A member who built a plan while
+  // subscribed keeps reading it — which is exactly what 0049's policy split
+  // allows, and the reason that split exists.
+  if (!mayBuild) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col">
+        {Header}
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+          <FeatureLock feature="plan_builder">{null}</FeatureLock>
         </div>
       </div>
     );

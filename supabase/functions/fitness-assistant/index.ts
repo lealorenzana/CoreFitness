@@ -92,6 +92,32 @@ Deno.serve(async (req: Request) => {
     });
     if (!whoami.ok) return json({ error: "Invalid session" }, 401);
 
+    // ── …and their plan must include the model (0049) ──────────────────────
+    // The app skips this call when it knows the answer, so reaching here
+    // usually means the member is entitled. Usually is not a control: the
+    // client can be edited, and this endpoint spends the gym's quota. Asked as
+    // the caller, so `plan_allows` resolves auth.uid() to the person who
+    // actually sent the request.
+    //
+    // A failure to *ask* is treated as a refusal. The alternative — assume
+    // entitled when the check breaks — turns any outage into free model access
+    // for every tier, which is the one failure mode that costs the gym money.
+    const gate = await fetch(`${supabaseUrl}/rest/v1/rpc/plan_allows`, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        apikey: anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_member: (await whoami.json())?.id, p_feature: "ai_model" }),
+    });
+    if (!gate.ok || (await gate.json()) !== true) {
+      // Not an error the member should see as a failure — the app has a real
+      // answer to fall back to, and `askFitnessAssistant` maps any non-2xx to
+      // null, which shows it.
+      return json({ entitled: false, error: "Not included in this membership" }, 403);
+    }
+
     // ── Input ──────────────────────────────────────────────────────────────
     const body = await req.json().catch(() => null);
     const question = typeof body?.question === "string" ? body.question.trim() : "";

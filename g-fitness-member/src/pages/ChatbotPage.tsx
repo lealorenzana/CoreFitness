@@ -18,6 +18,8 @@ import {
 } from '../lib/api/assistantChats';
 import { askFitnessAssistant } from '../lib/api/fitnessAssistant';
 import { errorMessage } from '../utils/errorMessage';
+import { useFeatures } from '../hooks/useFeatures';
+import { isEnabled } from '../lib/api/planFeatures';
 
 /**
  * The member assistant.
@@ -70,6 +72,8 @@ export default function ChatbotPage() {
   // The model call is awaited, so `messages` inside that closure would be stale
   // by the time it resolves. The ref always reads current.
   const messagesRef = useRef<Message[]>([]);
+  const { features } = useFeatures();
+  const mayUseModel = isEnabled(features, 'ai_model');
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -189,7 +193,13 @@ export default function ChatbotPage() {
       // one. It only ever sees a question the table could not answer.
       let answer = answerFor(trimmed, ctx);
 
-      if (isRuleFallback(answer)) {
+      // The escalation is a paid feature (0049) — the rules are not. Everyone
+      // keeps the assistant and the ~98% it answers; only the model call is
+      // withheld, so a free member is never locked out of asking a question,
+      // they just get the free answer. Skipping the call here saves a round
+      // trip; the Edge Function checks the same entitlement itself, because
+      // this check is an optimisation and not the boundary.
+      if (isRuleFallback(answer) && mayUseModel) {
         // The last few turns, so "and for legs?" still makes sense. The typing
         // indicator deliberately stays up across this: the member is waiting on
         // a real request, and hiding it would look like the app had stopped.

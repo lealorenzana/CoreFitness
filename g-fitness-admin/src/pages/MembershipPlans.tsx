@@ -7,6 +7,7 @@ import { Plus, Edit2, Trash2, X, Check, Users, Banknote } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPlans, createPlan, updatePlan, deletePlan } from '../lib/api/membershipPlans';
 import { listMemberships } from '../lib/api/memberships';
+import PlanFeatureMatrix from '../components/PlanFeatureMatrix';
 import type { MembershipPlanRow, PlanTier } from '../types/db';
 
 /** `durationMonths` is a form string, so NULL needs a value the <select> can hold. */
@@ -277,6 +278,11 @@ export default function MembershipPlans() {
           );
         })}
       </div>
+
+      {/* What each plan unlocks in the member app (0049). Below the grid rather
+          than inside the edit modal: it is a comparison across plans, and the
+          gym reads it as one table when deciding what a tier is worth. */}
+      {plans.length > 0 && <PlanFeatureMatrix plans={plans} />}
 
       {/* Create/Edit Modal */}
       <AnimatePresence>

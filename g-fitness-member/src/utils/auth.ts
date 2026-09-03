@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabaseClient';
 import { clearPushOnSignOut } from '../lib/api/push';
 import { clearPageCache } from '../lib/pageCache';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
+import { clearFeatureCache } from '../hooks/useFeatures';
 
 interface User {
   id: string;
@@ -101,6 +102,9 @@ export const logout = async (): Promise<void> => {
   PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
   clearPageCache();
   clearScrollMemory();
+  // Entitlements are per-member and the cache is not keyed by one. Two people
+  // on one phone would otherwise inherit the last member's plan.
+  clearFeatureCache();
 };
 
 /**
