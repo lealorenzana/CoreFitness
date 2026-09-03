@@ -4,6 +4,7 @@ import StepFlow, { ChoiceTile, type FlowStep } from '../../../components/ui/Step
 import { useEffect, useState } from 'react';
 import { Target, Plus, Check, Trash2 } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
+import PresetGoals from '../../../components/ui/PresetGoals';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
 import { toast } from '../../../components/ui/Toast';
@@ -256,6 +257,12 @@ export default function GoalsTab() {
         style={{ background: 'var(--color-secondary)' }}>
         <Plus size={15} /> Set a goal
       </button>
+
+      {/* The five presets (0055). Below the numeric form rather than replacing
+          it: a member tracking weight keeps exactly what they had, and these
+          cover the goals people actually say out loud, which the numeric
+          schema could only ever store as `custom` with no progress. */}
+      {memberId && <PresetGoals memberId={memberId} onCreated={load} />}
 
       <StepFlow
         open={showForm}

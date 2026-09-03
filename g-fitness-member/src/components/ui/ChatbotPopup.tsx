@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { listPlans } from '../../lib/api/membershipPlans';
 import { getGymSettings } from '../../lib/api/settings';
+import { getCurrentPlan } from '../../lib/api/workoutPlans';
+import { getCurrentMemberId } from '../../services/bookingService';
 import RichText from './RichText';
 import { answerFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
 import { X, Send, Bot } from 'lucide-react';
@@ -49,8 +51,16 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
     Promise.all([
       listPlans().then((rows) => rows.filter((p) => p.is_active)).catch(() => []),
       getGymSettings().catch(() => null),
-    ]).then(([plans, gym]) => {
-      if (!cancelled) setCtx((c) => ({ ...c, plans, gym: toGymFacts(gym) }));
+      // The member's saved training plan (0047), so "what is my workout today"
+      // answers from their own row here too. A failure leaves it null and the
+      // answer points at the builder rather than inventing a week.
+      getCurrentMemberId()
+        .then((id) => (id ? getCurrentPlan(id) : null))
+        .catch(() => null),
+    ]).then(([plans, gym, saved]) => {
+      if (!cancelled) {
+        setCtx((c) => ({ ...c, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null }));
+      }
     });
     return () => { cancelled = true; };
   }, []);

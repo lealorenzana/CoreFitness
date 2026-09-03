@@ -1,4 +1,5 @@
 import type { MembershipPlanRow } from '../types/db';
+import type { PlanSpec } from '../utils/planBuilder';
 import { formatCheckInCode } from '../utils/checkInCode';
 import { membershipTerm } from '../utils/membershipTerm';
 
@@ -66,6 +67,15 @@ export interface AssistantContext {
   plans: MembershipPlanRow[];
   /** From `gym_settings` (0013). Null when it could not be read. */
   gym: GymFacts | null;
+  /**
+   * The member's saved training plan (0047), if they have built one.
+   *
+   * Read here so "what is my workout today" is answered from the member's own
+   * row rather than guessed. The spec is rendered straight — never reworded —
+   * for the same reason `planRender` never touches the exercise table: anything
+   * that can rephrase "4 x 5-6" can change it.
+   */
+  plan: PlanSpec | null;
 }
 
 export const EMPTY_CONTEXT: AssistantContext = {
@@ -78,6 +88,7 @@ export const EMPTY_CONTEXT: AssistantContext = {
   nextBooking: null,
   checkInsThisMonth: null,
   plans: [],
+  plan: null,
   gym: null,
 };
 
@@ -192,7 +203,79 @@ function contactAnswer(ctx: AssistantContext): string {
  *    session and was told how to pause their membership. Booking now wins when
  *    the sentence mentions a booking.
  */
+
+/**
+ * "What is my workout today?" — from the member's own saved plan (0047).
+ *
+ * The exercise lines are printed straight from the spec. Nothing here rewords a
+ * set count, a rep range or a load: `planRender` has the same rule, and for the
+ * same reason — a sentence that can rephrase "4 x 5-6" can change it, and the
+ * member would have no way to tell.
+ *
+ * A member with no plan is told where to build one rather than being given a
+ * generic week. Inventing a workout would be the same failure as inventing an
+ * opening time.
+ */
+function planAnswer(ctx: AssistantContext, wantToday: boolean): string {
+  const spec = ctx.plan;
+  if (!spec) {
+    return 'You have not built a training plan yet.\n\nOpen **Profile → Training plan** — five questions and it builds a week around your days and your goal.';
+  }
+
+  const days = spec.days;
+  if (days.length === 0) {
+    return 'Your saved plan has no training days in it. Rebuild it from **Profile → Training plan**.';
+  }
+
+  // "Today" is which planned day, not which calendar day: the plan is a week
+  // shape ("Day 1, Day 2"), not a Monday-to-Sunday calendar, so claiming a
+  // specific day is today would be making it up.
+  if (wantToday) {
+    return [
+      `**Your ${spec.splitName}**`,
+      '',
+      `Your plan has ${days.length} training day${days.length === 1 ? '' : 's'} a week. Pick the next one you have not done:`,
+      '',
+      ...days.map((d) => `• **${d.label}** — ${d.focus} (${d.exercises.length} exercise${d.exercises.length === 1 ? '' : 's'})`),
+      '',
+      'Tap **Profile → Training plan** for the full sets and reps, or **Track sets** to record it as you go.',
+    ].join('\n');
+  }
+
+  return [
+    `**Your ${spec.splitName}**`,
+    '',
+    ...days.flatMap((d) => [
+      `**${d.label} — ${d.focus}**`,
+      ...d.exercises.map((x) => `• ${x.name} — ${x.sets} x ${x.reps}`),
+      '',
+    ]),
+    'That is the plan as saved. Your coach can adjust any of it.',
+  ].join('\n');
+}
+
 const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
+  {
+    // Above the workout-logging rule further down: "what is my workout today"
+    // asks about the member's saved plan, not for somewhere to record one.
+    //
+    // `my plan` is deliberately NOT in this alternation. That phrase means the
+    // *membership* plan far more often, and 0047 aside, answering it here would
+    // tell someone asking about their subscription to go and do squats.
+    // The leading lookahead is load-bearing, and running the regex is how it
+    // was found: "how do I **log** my workout" contains "my workout" and was
+    // being answered with the training plan instead of the logging screen.
+    // Same class as the three regexes this project has already shipped broken.
+    //
+    // `my training split` needed `training` in the alternation too — the word
+    // after "my" is not always the noun.
+    match: /^(?!.*\b(?:log|logg\w*|record|track|save)\b).*\b(?:my (?:training )?(?:workout|programme|program|routine|split|week)|workout today|training today|what (?:do|should) i (?:do|train)|ano ang workout ko|anong gagawin ko)\b/,
+    reply: (ctx: AssistantContext) => planAnswer(ctx, true),
+  },
+  {
+    match: /\b(?:exercises? in my|what exercises|my exercises|full (?:training )?plan|whole plan|buong plano)\b/,
+    reply: (ctx: AssistantContext) => planAnswer(ctx, false),
+  },
   {
     // Above the membership freeze rule: "cancel my booking" is a different
     // question from "cancel my membership", and answering the wrong one is

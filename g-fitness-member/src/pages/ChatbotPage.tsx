@@ -8,6 +8,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome } from '../services/memberHomeService';
 import { listPlans } from '../lib/api/membershipPlans';
 import { getGymSettings } from '../lib/api/settings';
+import { getCurrentPlan } from '../lib/api/workoutPlans';
 import {
   answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback,
   type AssistantContext,
@@ -109,7 +110,7 @@ export default function ChatbotPage() {
     (async () => {
       // Personalise the greeting only once the data is in, so it never opens
       // with a name-shaped gap.
-      const [home, plans, gym] = await Promise.all([
+      const [home, plans, gym, saved] = await Promise.all([
         getCurrentMemberId()
           .then((id) => (id ? getMemberHome(id) : null))
           .catch(() => null),
@@ -120,6 +121,12 @@ export default function ChatbotPage() {
         // change at the desk never reached the member. A failure here leaves
         // `gym` null and those answers say the value is not on record.
         getGymSettings().catch(() => null),
+        // The member's own plan (0047), so "what is my workout today" is
+        // answered from their row rather than guessed. Needs the member id, so
+        // it is resolved after it — a failure here just leaves `plan` null.
+        getCurrentMemberId()
+          .then((id) => (id ? getCurrentPlan(id) : null))
+          .catch(() => null),
       ]);
       if (cancelled) return;
 
@@ -141,8 +148,9 @@ export default function ChatbotPage() {
             checkInsThisMonth: home.checkInsThisMonth,
             plans,
             gym: toGymFacts(gym),
+            plan: saved?.spec ?? null,
           }
-        : { ...EMPTY_CONTEXT, plans, gym: toGymFacts(gym) };
+        : { ...EMPTY_CONTEXT, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null };
 
       setCtx(next);
       setMessages([greeting(next)]);
