@@ -9,6 +9,36 @@ export async function listAttendance(gymId?: string): Promise<AttendanceRow[]> {
   return data ?? [];
 }
 
+/**
+ * Every check-in between two dates, newest first.
+ *
+ * The whole table was being pulled to show one day, which is fine at this gym's
+ * size and stops being fine the moment it is not — and it made "show me last
+ * month" impossible without loading everything ever recorded.
+ *
+ * The bounds are **Manila dates**, converted to timestamps here rather than
+ * compared as dates in SQL. `check_in_time` is a `timestamptz`, so comparing it
+ * to a bare date compares against UTC midnight — which is 8am Manila, and would
+ * silently drop every check-in before 8am from the first day of any range. That
+ * is the same off-by-eight-hours that hid every early check-in until 0045.
+ */
+export async function listAttendanceBetween(
+  fromDate: string, toDate: string
+): Promise<AttendanceRow[]> {
+  // `toDate` is inclusive: the day the user picked should be *in* the range.
+  const fromTs = new Date(`${fromDate}T00:00:00+08:00`).toISOString();
+  const toTs = new Date(`${toDate}T23:59:59.999+08:00`).toISOString();
+
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .gte('check_in_time', fromTs)
+    .lte('check_in_time', toTs)
+    .order('check_in_time', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listMemberAttendance(memberId: string): Promise<AttendanceRow[]> {
   const { data, error } = await supabase
     .from('attendance')

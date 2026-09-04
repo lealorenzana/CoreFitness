@@ -26,6 +26,7 @@ import Exercises from './pages/Exercises';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
+import AttendanceHistory from './pages/AttendanceHistory';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -49,6 +50,9 @@ function App() {
             <Route path="members" element={<Members />} />
             <Route path="members/:memberId" element={<MemberDetail />} />
             <Route path="attendance" element={<Attendance />} />
+            {/* Staff see it too: "did this member come in last week" is a
+                front-desk question, and the data is already theirs to read. */}
+            <Route path="attendance-history" element={<AttendanceHistory />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="retention" element={<Retention />} />
             <Route path="revenue" element={<Revenue />} />

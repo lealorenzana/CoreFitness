@@ -482,9 +482,9 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
 
             {/* Freezing and cancelling both need a reason now (0057), so both go
                 through the same dialog rather than a yes/no confirm. */}
-            <MembershipActionDialog
-              open={action !== null}
-              kind={action ?? 'freeze'}
+            {action && <MembershipActionDialog
+              key={action}
+              kind={action}
               memberName={`${detail.identity.profile.first_name} ${detail.identity.profile.last_name}`.trim()}
               memberId={detail.identity.profile.id}
               neverExpires={current.never_expires ?? false}
@@ -499,7 +499,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                   : 'Membership cancelled — access runs to expiry', 'success');
                 await onRefresh();
               }}
-            />
+            />}
           </div>
         ) : (
           <Empty text="No membership assigned. Approve a registration or assign a plan before recording a payment." />

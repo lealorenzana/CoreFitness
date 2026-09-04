@@ -3,7 +3,10 @@ import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, BookOpen, Sparkles, ClipboardList, ChevronRight } from 'lucide-react';
+import {
+  ArrowLeft, ExternalLink, BookOpen, Sparkles, ClipboardList, ChevronRight,
+  PlayCircle, HeartPulse, Dumbbell,
+} from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
@@ -25,6 +28,38 @@ import type { ClassLevel } from '../types/db';
  * wrote it. Nothing here claims to be Core Fitness's own programming, and no
  * number appears that nobody measured.
  */
+
+/**
+ * A colour and an icon per category.
+ *
+ * Keyed on a *substring* of the category rather than an exact match, because
+ * `workout_resources.category` is free text the gym edits — an exact map would
+ * silently fall back to grey the first time someone typed "Beginner Programs"
+ * with a capital P. Anything unrecognised gets the neutral mark, which is a
+ * fine outcome rather than a broken one.
+ *
+ * Only two hues are used, per the app's convention: violet for structure,
+ * amber for the things that are the point (the programmes a member follows).
+ */
+const CATEGORY_TONES: { match: string; icon: typeof BookOpen; bg: string; fg: string }[] = [
+  { match: 'beginner',  icon: Sparkles,      bg: 'var(--color-secondary-light)', fg: 'var(--color-secondary)' },
+  { match: 'strength',  icon: Dumbbell,      bg: 'var(--color-secondary-light)', fg: 'var(--color-secondary)' },
+  { match: 'bodyweight',icon: Dumbbell,      bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'follow',    icon: PlayCircle,    bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'guidance',  icon: HeartPulse,    bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'reference', icon: BookOpen,      bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+];
+
+function categoryTone(category: string | null) {
+  const c = (category ?? '').toLowerCase();
+  return (
+    CATEGORY_TONES.find((t) => c.includes(t.match)) ?? {
+      icon: BookOpen,
+      bg: 'var(--color-bg)',
+      fg: 'var(--color-text-muted)',
+    }
+  );
+}
 
 const LEVEL_LABEL: Record<ClassLevel, string> = {
   beginner: 'Beginner',
@@ -117,17 +152,24 @@ export default function Workouts() {
 
       {categories.length > 1 && (
         <div className="flex gap-1.5 flex-wrap">
-          {['all', ...categories].map((c) => (
-            <button key={c} onClick={() => setCategory(c)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize"
-              style={{
-                background: category === c ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                color: category === c ? '#fff' : 'var(--color-text-muted)',
-                border: `1px solid ${category === c ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              }}>
-              {c === 'all' ? 'Everything' : c}
-            </button>
-          ))}
+          {['all', ...categories].map((c) => {
+            // The count is the useful half: "Follow-along 3" tells you whether
+            // a filter is worth tapping, which a bare label never did.
+            const n = c === 'all' ? resources.length : resources.filter((r) => r.category === c).length;
+            const active = category === c;
+            return (
+              <button key={c} onClick={() => setCategory(c)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize flex items-center gap-1.5"
+                style={{
+                  background: active ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                  color: active ? '#fff' : 'var(--color-text-muted)',
+                  border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                }}>
+                {c === 'all' ? 'Everything' : c}
+                <span className="tabular-nums" style={{ opacity: 0.7 }}>{n}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -154,7 +196,21 @@ export default function Workouts() {
               rel="noopener noreferrer"
               className="block rounded-2xl p-4 transition-all active:scale-[0.98]"
               style={panelStyle}>
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                {/* A category mark, so twelve links stop reading as one list.
+                    Colour and icon come from the category, which is a real
+                    column the gym edits — not a hardcoded per-title map that
+                    would go blank the moment they added a category. */}
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: categoryTone(r.category).bg }}
+                  aria-hidden
+                >
+                  {(() => {
+                    const Icon = categoryTone(r.category).icon;
+                    return <Icon size={17} style={{ color: categoryTone(r.category).fg }} />;
+                  })()}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-white font-semibold text-sm">{r.title}</h3>

@@ -637,8 +637,10 @@ export default function Members() {
         <EditMemberForm member={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load(); }} />
       )}
 
-      <MembershipActionDialog
-        open={!!toFreeze}
+      {/* Mounted only while open, with a key, so each decision starts from a
+          blank form without a reset effect. */}
+      {toFreeze && <MembershipActionDialog
+        key={`freeze-${toFreeze.id}`}
         kind="freeze"
         memberName={toFreeze?.fullName ?? 'this member'}
         memberId={toFreeze?.id ?? ''}
@@ -646,10 +648,10 @@ export default function Members() {
         expiryLabel={toFreeze?.expiryDate ? formatDate(toFreeze.expiryDate) : null}
         onClose={() => setToFreeze(null)}
         onConfirm={handleFreeze}
-      />
+      />}
 
-      <MembershipActionDialog
-        open={!!toCancel}
+      {toCancel && <MembershipActionDialog
+        key={`cancel-${toCancel.id}`}
         kind="cancel"
         memberName={toCancel?.fullName ?? 'this member'}
         memberId={toCancel?.id ?? ''}
@@ -657,7 +659,7 @@ export default function Members() {
         expiryLabel={toCancel?.expiryDate ? formatDate(toCancel.expiryDate) : null}
         onClose={() => setToCancel(null)}
         onConfirm={handleCancel}
-      />
+      />}
 
       <ConfirmDialog
         isOpen={!!toSuspend}

@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
   { label: 'Events',     path: '/events',     icon: PartyPopper,     section: 'Management' },
   { label: 'Notifications', path: '/notifications', icon: Bell,      section: 'Management' },
+  { label: 'Attendance history', path: '/attendance-history', icon: History, section: 'Reports' },
   { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
   { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
   { label: 'Revenue',    path: '/revenue',     icon: Banknote,      section: 'Reports' },

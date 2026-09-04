@@ -33,7 +33,16 @@ const FREEZE_REASONS = ['Injury', 'Travelling', 'Working away', 'Medical', 'Fina
 const CANCEL_REASONS = ['Moving away', 'Too expensive', 'Not using it', 'Injury', 'Went elsewhere', 'Other'];
 
 interface Props {
-  open: boolean;
+  /**
+   * Mounted only while a decision is being made — the caller renders it as
+   * `{action && <MembershipActionDialog … />}` with a `key`.
+   *
+   * There is no `open` prop and no reset effect. Resetting six fields from an
+   * effect when a boolean flipped is the pattern
+   * `react-hooks/set-state-in-effect` exists to catch, and React already has
+   * the answer: a component that should start fresh gets remounted. The key
+   * does that, and the state simply initialises correctly.
+   */
   kind: 'freeze' | 'cancel';
   memberName: string;
   memberId: string;
@@ -45,7 +54,7 @@ interface Props {
 }
 
 export default function MembershipActionDialog({
-  open, kind, memberName, memberId, neverExpires, expiryLabel, onClose, onConfirm,
+  kind, memberName, memberId, neverExpires, expiryLabel, onClose, onConfirm,
 }: Props) {
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -55,16 +64,13 @@ export default function MembershipActionDialog({
   const [error, setError] = useState<string | null>(null);
   const [used, setUsed] = useState<number | null>(null);
 
+  // The only effect left is the fetch, whose setState lands after an await.
   useEffect(() => {
-    if (!open) return;
-    setReason(''); setNote(''); setRefund(false); setRefundNote(''); setError(null); setUsed(null);
     if (kind !== 'freeze') return;
     let alive = true;
     freezesThisMonth(memberId).then((n) => { if (alive) setUsed(n); });
     return () => { alive = false; };
-  }, [open, kind, memberId]);
-
-  if (!open) return null;
+  }, [kind, memberId]);
 
   const isFreeze = kind === 'freeze';
   const presets = isFreeze ? FREEZE_REASONS : CANCEL_REASONS;
