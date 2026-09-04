@@ -5,7 +5,9 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { Plus, Edit2, Trash2, X, Check, Users, Banknote } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import { listPlans, createPlan, updatePlan, deletePlan } from '../lib/api/membershipPlans';
+import {
+  listPlans, createPlan, updatePlan, retirePlan, getPlanMemberCounts,
+} from '../lib/api/membershipPlans';
 import { listMemberships } from '../lib/api/memberships';
 import PlanFeatureMatrix from '../components/PlanFeatureMatrix';
 import type { MembershipPlanRow, PlanTier } from '../types/db';
@@ -38,6 +40,9 @@ const emptyForm = {
 export default function MembershipPlans() {
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [activeMembersByPlan, setActiveMembersByPlan] = useState<Record<string, number>>({});
+  /** Every membership on the plan, whatever its status — what deletion has to move. */
+  const [totalMembersByPlan, setTotalMembersByPlan] = useState<Record<string, number>>({});
+  const [countsAreServerSide, setCountsAreServerSide] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
@@ -49,13 +54,40 @@ export default function MembershipPlans() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [planRows, membershipRows] = await Promise.all([listPlans(), listMemberships()]);
+      const planRows = await listPlans();
       setPlans(planRows);
-      const counts: Record<string, number> = {};
-      for (const m of membershipRows) {
-        if (m.status === 'active') counts[m.plan_id] = (counts[m.plan_id] ?? 0) + 1;
+
+      // Counted in SQL (0062). The old client-side tally only recognised
+      // `status === 'active'`, so a plan somebody was genuinely on reported
+      // **0 members** — and the delete guard trusted that number.
+      //
+      // Falls back to the old tally when the function is not there yet:
+      // migrations are pasted by hand here, so this screen has to survive
+      // running against a database that has not seen 0062. The fallback is
+      // still wrong in the same old way, which is why it says so on the card.
+      try {
+        const counts = await getPlanMemberCounts();
+        const active: Record<string, number> = {};
+        const total: Record<string, number> = {};
+        for (const c of counts) {
+          active[c.plan_id] = c.active_count;
+          total[c.plan_id] = c.total_count;
+        }
+        setActiveMembersByPlan(active);
+        setTotalMembersByPlan(total);
+        setCountsAreServerSide(true);
+      } catch {
+        const membershipRows = await listMemberships();
+        const active: Record<string, number> = {};
+        const total: Record<string, number> = {};
+        for (const m of membershipRows) {
+          total[m.plan_id] = (total[m.plan_id] ?? 0) + 1;
+          if (m.status === 'active') active[m.plan_id] = (active[m.plan_id] ?? 0) + 1;
+        }
+        setActiveMembersByPlan(active);
+        setTotalMembersByPlan(total);
+        setCountsAreServerSide(false);
       }
-      setActiveMembersByPlan(counts);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load membership plans', 'error');
     } finally {
@@ -132,18 +164,41 @@ export default function MembershipPlans() {
     }
   };
 
+  /**
+   * Deleting a plan moves everyone on it to the free tier (0062).
+   *
+   * This used to refuse outright whenever the page thought the plan had active
+   * members — and, worse, went ahead when it wrongly thought it had none, which
+   * is how "Failed to delete plan" happened: a foreign key error surfaced as
+   * four words that named no cause.
+   *
+   * The confirmation says what will happen to real people, by name and number,
+   * because "Delete this membership plan?" does not tell an admin that somebody
+   * is about to change tier.
+   */
   const handleDelete = async (plan: MembershipPlanRow) => {
-    const activeMembers = activeMembersByPlan[plan.id] ?? 0;
-    if (activeMembers > 0) {
-      showToast(`Cannot delete plan with ${activeMembers} active members`, 'error');
-      return;
-    }
-    if (!window.confirm('Delete this membership plan?')) return;
+    const onPlan = totalMembersByPlan[plan.id] ?? 0;
+    const consequence = onPlan > 0
+      ? `\n\n${onPlan} membership${onPlan === 1 ? '' : 's'} will move to the free plan. `
+        + 'They keep their current dates and status; what changes is what the plan '
+        + 'lets them do.'
+      : '';
+
+    if (!window.confirm(`Delete "${plan.name}"?${consequence}`)) return;
+
     try {
-      await deletePlan(plan.id);
-      showToast('Plan deleted', 'success');
+      const result = await retirePlan(plan.id);
+      showToast(
+        result.moved > 0
+          ? `${result.planName} deleted — ${result.moved} moved to ${result.movedTo}`
+          : `${result.planName} deleted`,
+        'success'
+      );
       await loadData();
     } catch (err) {
+      // The function raises with a reason (no free plan to fall back to, a
+      // claimed trial that cannot be rewritten, not an admin). Show it — that
+      // sentence is the whole point of it being written.
       showToast(err instanceof Error ? err.message : 'Failed to delete plan', 'error');
     }
   };
@@ -163,8 +218,10 @@ export default function MembershipPlans() {
       case 'free': return 'var(--color-text-muted)';
       case 'freemium': return 'var(--color-primary)';
       case 'premium': return 'var(--color-secondary)';
-      // Pro reuses the amber of Premium rather than introducing a third hue —
-      // the app has two, and a new colour per tier is how a palette drifts.
+      // Pro is retired (0060) but the enum value cannot be dropped, so a row
+      // may survive. It keeps Premium's amber rather than introducing a third
+      // hue — the app has two, and a new colour per tier is how a palette
+      // drifts. Deleting this case would render a surviving Pro plan grey.
       case 'pro': return 'var(--color-secondary)';
       default: return 'var(--color-text-muted)';
     }
@@ -212,11 +269,25 @@ export default function MembershipPlans() {
         })}
       </div>
 
+      {/* Says so when the numbers are the old client-side tally rather than a
+          count from the database — that tally is what reported "0 members" for
+          a plan somebody was on, and an admin about to delete one deserves to
+          know which number they are looking at. */}
+      {!loading && !countsAreServerSide && (
+        <div className="rounded-xl px-4 py-2.5 text-[11px]"
+          style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+          Member counts are being tallied in the browser and only recognise memberships
+          marked active — a plan may have more on it than shown. Run migration 0062 to
+          count them in the database.
+        </div>
+      )}
+
       {/* Plans Grid */}
       <div className="grid grid-cols-2 gap-4">
         {plans.map((plan, i) => {
           const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
           const activeMembers = activeMembersByPlan[plan.id] ?? 0;
+          const totalOnPlan = totalMembersByPlan[plan.id] ?? 0;
           return (
             <motion.div key={plan.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card className="!p-4">
@@ -269,6 +340,20 @@ export default function MembershipPlans() {
                     <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Active Members</span>
                     <span className="text-sm font-bold text-white">{activeMembers}</span>
                   </div>
+                  {/* Only shown when they differ. "Active Members 0" on a plan
+                      somebody is on is what made deleting it fail with no
+                      explanation — a lapsed or pending membership is still a
+                      real row holding the plan in place. */}
+                  {totalOnPlan > activeMembers && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        On this plan, any status
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+                        {totalOnPlan}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Monthly Revenue</span>
                     <span className="text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
@@ -319,11 +404,20 @@ export default function MembershipPlans() {
                         {/* The tier is a label and a set of seeding defaults —
                             never a rulebook. What a plan actually includes is
                             the fields below plus the feature matrix, so naming
-                            a plan "Pro" grants nothing on its own. */}
+                            a plan "Premium" grants nothing on its own. */}
                         <option value="free">Free</option>
                         <option value="freemium">Freemium — trial, one per member</option>
                         <option value="premium">Premium</option>
-                        <option value="pro">Pro / VIP</option>
+                        {/* Pro was retired in 0060 and is no longer offered.
+                            Postgres cannot drop an enum value, so a Pro row can
+                            still exist — and a <select> whose value matches no
+                            option renders as the first one, which would turn
+                            "edit this plan's price" into "silently move it to
+                            Free" on save. Offered only while editing a plan
+                            that is already on it. */}
+                        {form.tier === 'pro' && (
+                          <option value="pro">Pro / VIP (retired)</option>
+                        )}
                       </select>
                     </div>
                     <div>

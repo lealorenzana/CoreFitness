@@ -52,7 +52,7 @@ gap into a lost customer.
 | Tier | Price | Runs | Intent |
 |---|---|---|---|
 | **Free** | ₱0 | ongoing | Floor and locker access. Keeps a member who can't pay yet inside the community instead of gone. |
-| **Freemium** | ₱0 | 3 months | Trial with limited class access. Converts curiosity into habit before asking for money. |
+| **Freemium** | ₱0 | 1 month | Trial with limited class access. Converts curiosity into habit before asking for money. |
 | **Premium** | ₱1,500 | 30 days | Full access: unlimited classes and personal training. |
 
 **Crucially, those limits are data, not code.** Each plan carries its own entitlements —

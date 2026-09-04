@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- DEMO ACCOUNTS — six logins, one per plan and role. NOT a migration.
+-- DEMO ACCOUNTS — five logins, one per plan and role. NOT a migration.
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- Like DEMO_DATA.sql, this lives outside `supabase/migrations/` on purpose: it
@@ -18,13 +18,12 @@
 --   demo.freetrial@corefitness.test   member   Free Trial
 --   demo.free@corefitness.test        member   Free Plan
 --   demo.premium@corefitness.test     member   Premium
---   demo.pro@corefitness.test         member   Pro
 --   demo.trainer@corefitness.test     trainer  (Trainer tab on the phone app)
 --   demo.staff@corefitness.test       staff    (front desk, admin dashboard)
 --
---   Password for all six:  CoreFitness123!
+--   Password for all five:  CoreFitness123!
 --
--- The four members differ **only** in their plan, which is the point: log in as
+-- The three members differ **only** in their plan, which is the point: log in as
 -- two of them side by side and every difference you see is the plan_features
 -- matrix (0049) doing its job. If two plans look identical, that is a finding —
 -- check the matrix on the admin Membership Plans screen.
@@ -38,20 +37,20 @@
 -- ---------------------------------------------------------------------------
 -- Prerequisites
 -- ---------------------------------------------------------------------------
--- Migrations 0001–0057. In particular 0056+0057, which create the four plan
--- names this file looks up — it fails loudly and tells you if they are missing,
--- rather than quietly creating members with no membership.
+-- Migrations 0001–0060. 0057 names the plans this file looks up and 0060 cuts
+-- them back to three — it fails loudly and tells you if any are missing, rather
+-- than quietly creating members with no membership.
 --
 -- Safe to run twice: every insert is guarded, so a second run changes nothing
--- and reports the same six accounts.
+-- and reports the same five accounts.
 --
 -- ---------------------------------------------------------------------------
 -- Run DEMO_DATA.sql afterwards
 -- ---------------------------------------------------------------------------
 -- That file refuses to run against a gym with no members, and until now there
--- may not have been any. Run this file first and it has four to work with: it
+-- may not have been any. Run this file first and it has three to work with: it
 -- then fills in attendance history, workout logs, points, goals, a challenge
--- and events, so the accounts open onto a gym with a past instead of six empty
+-- and events, so the accounts open onto a gym with a past instead of five empty
 -- screens. The two are independent — either can be cleaned up without the
 -- other — but they are much more useful in that order.
 --
@@ -65,7 +64,7 @@
 do $accounts$
 declare
   -- Change this before running if you would rather not have a known password
-  -- sitting in a file. It is applied to all six accounts.
+  -- sitting in a file. It is applied to all five accounts.
   demo_password constant text := 'CoreFitness123!';
 
   a               record;
@@ -88,17 +87,23 @@ begin
   end if;
 
   -- ── The plans have to exist before anyone can be put on one ──────────────
-  -- Checked up front, all four at once, so you get one clear list instead of
-  -- discovering the fourth is missing after three members were created.
+  -- Checked up front, all three at once, so you get one clear list instead of
+  -- discovering the third is missing after two members were created.
+  --
+  -- Only *active* plans count. 0060 retired Pro by deactivating it when a
+  -- membership still pointed at it, and a deactivated plan is one no member
+  -- can be put on — so a demo account must not be put on one either.
   select array_agg(want.name order by want.name) into v_missing
-    from (values ('Free Trial'), ('Free Plan'), ('Premium'), ('Pro')) as want(name)
-   where not exists (select 1 from membership_plans p where p.name = want.name);
+    from (values ('Free Trial'), ('Free Plan'), ('Premium')) as want(name)
+   where not exists (
+     select 1 from membership_plans p where p.name = want.name and p.is_active
+   );
 
   if v_missing is not null and array_length(v_missing, 1) > 0 then
     raise exception
-      'These plans do not exist yet: %. Run migrations 0056 then 0057 first '
-      '(0056 alone — Postgres will not add an enum value and use it in the '
-      'same transaction).', array_to_string(v_missing, ', ');
+      'These plans do not exist (or are not active): %. Run migrations 0057 '
+      'and 0060 first — 0057 names them, 0060 cuts them back to three.',
+      array_to_string(v_missing, ', ');
   end if;
 
   -- ── Every plan needs a full row of feature cells ─────────────────────────
@@ -125,8 +130,10 @@ begin
        'Frankie', 'Reyes',    'member',  'Free Plan',  'beginner',     '+639170000002'),
       ('dede0003-0000-4000-8000-000000000003', 'demo.premium@corefitness.test',
        'Prima',   'Salazar',  'member',  'Premium',    'intermediate', '+639170000003'),
-      ('dede0004-0000-4000-8000-000000000004', 'demo.pro@corefitness.test',
-       'Paulo',   'Villamor', 'member',  'Pro',        'advanced',     '+639170000004'),
+      -- dede0004 was demo.pro@corefitness.test, on the Pro plan 0057 added and
+      -- 0060 retired. The id is deliberately left unused rather than shuffled
+      -- up: anyone who ran the old version of this file has that account, and
+      -- reusing the id would quietly overwrite a different person.
       ('dede0005-0000-4000-8000-000000000005', 'demo.trainer@corefitness.test',
        'Tere',    'Bautista', 'trainer',  null,        null,           '+639170000005'),
       ('dede0006-0000-4000-8000-000000000006', 'demo.staff@corefitness.test',
@@ -220,7 +227,10 @@ begin
       )
       on conflict (profile_id) do nothing;
 
-      select * into v_plan from membership_plans p where p.name = a.plan_name limit 1;
+      select * into v_plan
+        from membership_plans p
+       where p.name = a.plan_name and p.is_active
+       limit 1;
 
       -- No unique constraint to conflict on, so guard by hand rather than
       -- handing the same member a second membership on every re-run.
@@ -255,8 +265,8 @@ begin
 
   raise notice '─────────────────────────────────────────────────────────────';
   raise notice 'Demo accounts ready: % created, % already existed.', v_made, v_already;
-  raise notice 'Password for all six: %', demo_password;
-  raise notice 'Members: freetrial / free / premium / pro @corefitness.test';
+  raise notice 'Password for all five: %', demo_password;
+  raise notice 'Members: freetrial / free / premium @corefitness.test';
   raise notice 'Also:    trainer, staff @corefitness.test';
   raise notice '─────────────────────────────────────────────────────────────';
 end
@@ -285,3 +295,11 @@ $accounts$;
 -- a real member however many times you run it.
 --
 -- delete from auth.users where email like '%@corefitness.test';
+--
+-- **If you ran the earlier version of this file**, you still have a
+-- demo.pro@corefitness.test account, and its membership is what stops 0060
+-- deleting the retired Pro plan. Remove just that one:
+--
+-- delete from auth.users where email = 'demo.pro@corefitness.test';
+--
+-- then re-run 0060 and the Pro row goes rather than lingering as inactive.
