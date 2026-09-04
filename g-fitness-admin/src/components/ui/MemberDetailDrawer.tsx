@@ -12,8 +12,10 @@ import { removeAvatarFor } from '../../lib/api/avatars';
 import { recordPayment } from '../../lib/api/payments';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
+  freezesThisMonth, type MembershipActionDetail,
 } from '../../lib/api/memberships';
 import { listPlans } from '../../lib/api/membershipPlans';
+import MembershipActionDialog from './MembershipActionDialog';
 import { notifyUser } from '../../lib/api/notify';
 import { bmi, bmiBand, goalProgress } from '../../lib/api/progress';
 import { formatCheckInCode } from '../../utils/checkInCode';
@@ -383,6 +385,17 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
   const history = detail.memberships.slice(1);
   const { stats } = detail;
   const [busy, setBusy] = useState(false);
+  const [action, setAction] = useState<'freeze' | 'cancel' | null>(null);
+  const [freezesUsed, setFreezesUsed] = useState<number | null>(null);
+
+  // Shown next to the button rather than only inside the dialog, so the desk
+  // can see the limit before deciding to open anything.
+  useEffect(() => {
+    let alive = true;
+    freezesThisMonth(detail.identity.profile.id)
+      .then((n) => { if (alive) setFreezesUsed(n); });
+    return () => { alive = false; };
+  }, [detail.identity.profile.id, busy]);
   const [showPayment, setShowPayment] = useState(false);
 
   const act = async (fn: () => Promise<void>, ok: string) => {
@@ -424,7 +437,10 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                 label="Expires"
                 value={current.expiry_date ? formatDate(current.expiry_date) : current.never_expires ? 'Never' : 'not activated'}
               />
-              <MiniStat label="Freezes used" value={`${current.freeze_count ?? 0} of 1`} />
+              {/* Per calendar month since 0057, not per membership period —
+                  the old "of 1" counter could not express "twice a month"
+                  because it had no idea when the last freeze was. */}
+              <MiniStat label="Freezes this month" value={`${freezesUsed ?? '…'} of 2`} />
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -438,13 +454,16 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                 </Button>
               ) : current.status === 'active' ? (
                 <>
-                  <Button size="sm" variant="outline" disabled={busy || (current.freeze_count ?? 0) >= 1}
-                    title={(current.freeze_count ?? 0) >= 1 ? 'Already frozen once this period — resets on renewal' : undefined}
-                    onClick={() => act(() => freezeMembership(current.id), 'Membership frozen')}>
+                  {/* No longer disabled by a count. The limit is two a month
+                      and an admin can override it, so a hard-disabled button
+                      would refuse the person allowed to say yes. The dialog
+                      shows the count and the database enforces it. */}
+                  <Button size="sm" variant="outline" disabled={busy}
+                    onClick={() => setAction('freeze')}>
                     <Pause size={13} /> Freeze
                   </Button>
                   <Button size="sm" variant="danger" disabled={busy}
-                    onClick={() => act(() => cancelMembership(current.id), 'Membership cancelled — access runs to expiry')}>
+                    onClick={() => setAction('cancel')}>
                     <Ban size={13} /> Cancel
                   </Button>
                 </>
@@ -460,6 +479,27 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                 onDone={async () => { setShowPayment(false); await onRefresh(); }}
               />
             )}
+
+            {/* Freezing and cancelling both need a reason now (0057), so both go
+                through the same dialog rather than a yes/no confirm. */}
+            <MembershipActionDialog
+              open={action !== null}
+              kind={action ?? 'freeze'}
+              memberName={`${detail.identity.profile.first_name} ${detail.identity.profile.last_name}`.trim()}
+              memberId={detail.identity.profile.id}
+              neverExpires={current.never_expires ?? false}
+              expiryLabel={current.expiry_date ? formatDate(current.expiry_date) : null}
+              onClose={() => setAction(null)}
+              onConfirm={async (d: Omit<MembershipActionDetail, 'memberId'>) => {
+                const payload = { ...d, memberId: detail.identity.profile.id };
+                if (action === 'freeze') await freezeMembership(current.id, payload);
+                else await cancelMembership(current.id, payload);
+                showToast(action === 'freeze'
+                  ? 'Membership frozen'
+                  : 'Membership cancelled — access runs to expiry', 'success');
+                await onRefresh();
+              }}
+            />
           </div>
         ) : (
           <Empty text="No membership assigned. Approve a registration or assign a plan before recording a payment." />

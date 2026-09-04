@@ -85,7 +85,82 @@ function addDays(date: string, days: number): string {
  * indefinitely. Freezing on request — injury, travel, working away — is a
  * conversation, and like every other staff power it is recorded and reversible.
  */
-export async function freezeMembership(id: string): Promise<void> {
+export interface MembershipActionDetail {
+  memberId: string;
+  /** Required by the database for a freeze or a cancel — see 0057's trigger. */
+  reason: string;
+  /** Recorded even when false: "we never discussed it" and "they said no" are
+   *  different facts, and the second one is the useful one three weeks later. */
+  refundRequested?: boolean;
+  refundNote?: string;
+}
+
+/**
+ * How many freezes this member has had in the current calendar month.
+ *
+ * A calendar month, not a rolling 30 days: "twice a month" is what the gym
+ * says to members, and a rolling window would refuse a freeze on the 1st
+ * because of one on the 3rd of the month before.
+ *
+ * Returns 0 on failure rather than throwing — this only drives the counter and
+ * a disabled button. The limit itself is a trigger, so a wrong number here
+ * cannot let anyone past it.
+ */
+export async function freezesThisMonth(memberId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('freezes_this_month', { p_member: memberId });
+  if (error) return 0;
+  return Number(data ?? 0);
+}
+
+/** The freeze/cancel history the drawer shows, newest first. */
+export interface MembershipEventRow {
+  id: string;
+  kind: 'freeze' | 'unfreeze' | 'cancel';
+  reason: string | null;
+  refund_requested: boolean;
+  refund_note: string | null;
+  created_at: string;
+}
+
+export async function listMembershipEvents(memberId: string): Promise<MembershipEventRow[]> {
+  const { data, error } = await supabase
+    .from('membership_events')
+    .select('id, kind, reason, refund_requested, refund_note, created_at')
+    .eq('member_id', memberId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MembershipEventRow[];
+}
+
+/**
+ * Suspends a membership without burning the days already paid for (0017).
+ *
+ * Front-desk action, not self-serve: a member who could freeze themselves would
+ * freeze on the day they were about to expire and hold the membership
+ * indefinitely. Freezing on request — injury, travel, working away — is a
+ * conversation, and like every other staff power it is recorded and reversible.
+ *
+ * ## The record is written first, on purpose
+ *
+ * 0057's trigger enforces both the reason and the twice-a-month limit, and it
+ * can only do that on the `membership_events` insert. Writing the status first
+ * would freeze the membership and *then* discover the limit was reached,
+ * leaving a member frozen with no record of why — the exact state this feature
+ * exists to prevent. If the insert is refused, nothing has changed yet.
+ */
+export async function freezeMembership(id: string, detail: MembershipActionDetail): Promise<void> {
+  const { error: logError } = await supabase.from('membership_events').insert({
+    membership_id: id,
+    member_id: detail.memberId,
+    kind: 'freeze',
+    reason: detail.reason.trim(),
+    refund_requested: detail.refundRequested ?? false,
+    refund_note: detail.refundNote?.trim() || null,
+  });
+  // Surfaced as-is: the database's messages here are written to be read out
+  // loud at a desk ("already been frozen twice this month").
+  if (logError) throw logError;
+
   const { error } = await supabase
     .from('memberships')
     .update({ status: 'frozen', frozen_at: today() })
@@ -117,6 +192,16 @@ export async function unfreezeMembership(membership: MembershipRow): Promise<voi
 
   const { error } = await supabase.from('memberships').update(updates).eq('id', membership.id);
   if (error) throw error;
+
+  // Logged after the fact, and never allowed to fail the resume: a member whose
+  // membership is already active again must not be told the action failed
+  // because a history row did not write. An unfreeze needs no reason (0057).
+  await supabase.from('membership_events').insert({
+    membership_id: membership.id,
+    member_id: membership.member_id,
+    kind: 'unfreeze',
+    reason: frozenDays > 0 ? `Resumed after ${frozenDays} day${frozenDays === 1 ? '' : 's'}` : 'Resumed',
+  });
 }
 
 /**
@@ -127,7 +212,19 @@ export async function unfreezeMembership(membership: MembershipRow): Promise<voi
  * keep access until expiry; `membership_is_usable()` in 0017 encodes the same
  * rule server-side.
  */
-export async function cancelMembership(id: string): Promise<void> {
+export async function cancelMembership(id: string, detail: MembershipActionDetail): Promise<void> {
+  // Same order as the freeze, for the same reason: the reason requirement is a
+  // trigger on this insert, so it has to run before the membership changes.
+  const { error: logError } = await supabase.from('membership_events').insert({
+    membership_id: id,
+    member_id: detail.memberId,
+    kind: 'cancel',
+    reason: detail.reason.trim(),
+    refund_requested: detail.refundRequested ?? false,
+    refund_note: detail.refundNote?.trim() || null,
+  });
+  if (logError) throw logError;
+
   const { error } = await supabase
     .from('memberships')
     .update({ status: 'cancelled', frozen_at: null })

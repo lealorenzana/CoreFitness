@@ -5,6 +5,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import MembershipActionDialog from '../components/ui/MembershipActionDialog';
 import MemberDetailDrawer from '../components/ui/MemberDetailDrawer';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import DatePicker from '../components/ui/DatePicker';
@@ -24,7 +25,10 @@ import {
   setMemberStatus,
 } from '../lib/api/members';
 import { updateProfile } from '../lib/api/profiles';
-import { listMemberships, freezeMembership, unfreezeMembership, cancelMembership } from '../lib/api/memberships';
+import {
+  listMemberships, freezeMembership, unfreezeMembership, cancelMembership,
+  type MembershipActionDetail,
+} from '../lib/api/memberships';
 import { listPlans } from '../lib/api/membershipPlans';
 import { notifyUser } from '../lib/api/notify';
 import type {
@@ -268,16 +272,15 @@ export default function Members() {
    * All three are recorded, reversible transactions on the membership row, which
    * is the line drawn for what staff may do. None of them delete anything.
    */
-  const handleFreeze = async () => {
+  // The dialog owns the error now: the database's refusal ("already frozen
+  // twice this month") has to be readable *in* the form, not as a toast that
+  // vanishes while the desk is still looking at half-filled fields.
+  const handleFreeze = async (detail: Omit<MembershipActionDetail, 'memberId'>) => {
     if (!toFreeze?.membership) return;
-    try {
-      await freezeMembership(toFreeze.membership.id);
-      showToast(`${toFreeze.fullName}'s membership is frozen`, 'success');
-      setToFreeze(null);
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not freeze that membership', 'error');
-    }
+    await freezeMembership(toFreeze.membership.id, { ...detail, memberId: toFreeze.id });
+    showToast(`${toFreeze.fullName}'s membership is frozen`, 'success');
+    setToFreeze(null);
+    await load();
   };
 
   const handleUnfreeze = async (m: MemberRow) => {
@@ -291,16 +294,12 @@ export default function Members() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = async (detail: Omit<MembershipActionDetail, 'memberId'>) => {
     if (!toCancel?.membership) return;
-    try {
-      await cancelMembership(toCancel.membership.id);
-      showToast(`${toCancel.fullName}'s membership cancelled — access runs to expiry`, 'success');
-      setToCancel(null);
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not cancel that membership', 'error');
-    }
+    await cancelMembership(toCancel.membership.id, { ...detail, memberId: toCancel.id });
+    showToast(`${toCancel.fullName}'s membership cancelled — access runs to expiry`, 'success');
+    setToCancel(null);
+    await load();
   };
 
   /**
@@ -638,39 +637,26 @@ export default function Members() {
         <EditMemberForm member={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load(); }} />
       )}
 
-      <ConfirmDialog
-        isOpen={!!toFreeze}
+      <MembershipActionDialog
+        open={!!toFreeze}
+        kind="freeze"
+        memberName={toFreeze?.fullName ?? 'this member'}
+        memberId={toFreeze?.id ?? ''}
+        neverExpires={toFreeze?.membership?.never_expires ?? false}
+        expiryLabel={toFreeze?.expiryDate ? formatDate(toFreeze.expiryDate) : null}
         onClose={() => setToFreeze(null)}
         onConfirm={handleFreeze}
-        title="Freeze Membership"
-        message={
-          toFreeze?.membership?.never_expires
-            ? `Freeze ${toFreeze?.fullName ?? 'this member'}'s membership? They won't be able to check in or book while ` +
-              `it's frozen. This plan has no expiry date, so there are no days to credit back — resuming simply ` +
-              `restores access.`
-            : `Freeze ${toFreeze?.fullName ?? 'this member'}'s membership? They won't be able to check in or book while it's frozen, ` +
-              `and every frozen day is added back to their expiry when you resume it. Their expiry is currently ` +
-              `${toFreeze?.expiryDate ? formatDate(toFreeze.expiryDate) : 'not set'}.`
-        }
-        confirmText="Freeze"
-        type="warning"
       />
 
-      <ConfirmDialog
-        isOpen={!!toCancel}
+      <MembershipActionDialog
+        open={!!toCancel}
+        kind="cancel"
+        memberName={toCancel?.fullName ?? 'this member'}
+        memberId={toCancel?.id ?? ''}
+        neverExpires={toCancel?.membership?.never_expires ?? false}
+        expiryLabel={toCancel?.expiryDate ? formatDate(toCancel.expiryDate) : null}
         onClose={() => setToCancel(null)}
         onConfirm={handleCancel}
-        title="Cancel Membership"
-        message={
-          toCancel?.membership?.never_expires
-            ? `Cancel ${toCancel?.fullName ?? 'this member'}'s membership? This plan has no expiry date, so there are ` +
-              `no paid-for days left to honour — their access ends immediately rather than running to a date.`
-            : `Cancel ${toCancel?.fullName ?? 'this member'}'s membership? It won't renew, but they keep access until ` +
-              `${toCancel?.expiryDate ? formatDate(toCancel.expiryDate) : 'their expiry date'} — they've already paid for those days ` +
-              `and there's no refund process.`
-        }
-        confirmText="Cancel membership"
-        type="danger"
       />
 
       <ConfirmDialog
