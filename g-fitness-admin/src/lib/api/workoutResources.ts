@@ -12,6 +12,15 @@ export interface WorkoutResourceRow {
   title: string;
   provider: string;
   url: string;
+  /**
+   * Path to a preview screenshot under `public/resource-previews/` (0061).
+   *
+   * **NULL is normal.** Two of the seeded links sit behind a bot check and a
+   * cookie wall, so no honest screenshot of them exists; anything the gym adds
+   * later starts here too. Callers draw a monogram tile — see
+   * `resourceInitials` — and must never substitute a different site's image.
+   */
+  image_url: string | null;
   description: string | null;
   category: string | null;
   level: ClassLevel;
@@ -73,4 +82,21 @@ export function linkHost(url: string): string {
   } catch {
     return url;
   }
+}
+
+/**
+ * What to draw where a preview image would go when `image_url` is NULL.
+ *
+ * Deliberately **not** a monogram of the provider: three of the seeded
+ * resources are published by "YouTube", so provider initials would stamp the
+ * same two letters on unrelated things. The host is what actually
+ * distinguishes them, and `linkHost` already produces it for the link line.
+ *
+ * Both apps render this as an icon over the host on a flat surface. It has to
+ * read as "no picture yet" and never as a picture — the rule that killed
+ * `<img src="/eya.png">` on Profile is that a missing image must not be
+ * replaced by a plausible-looking wrong one.
+ */
+export function hasPreview(resource: Pick<WorkoutResourceRow, 'image_url'>): boolean {
+  return typeof resource.image_url === 'string' && resource.image_url.length > 0;
 }

@@ -12,6 +12,7 @@ import { errorMessage } from '../utils/errorMessage';
 import {
   listWorkoutResources,
   linkHost,
+  hasPreview,
   type WorkoutResourceRow,
 } from '../lib/api/workoutResources';
 import { getCurrentMemberId, getExperienceLevel, type ExperienceLevel } from '../services/bookingService';
@@ -58,6 +59,48 @@ function categoryTone(category: string | null) {
       bg: 'var(--color-bg)',
       fg: 'var(--color-text-muted)',
     }
+  );
+}
+
+/** The category's icon, resolved once. Was an IIFE inline in the card. */
+function CategoryIcon({ category }: { category: string | null }) {
+  const { icon: Icon, fg } = categoryTone(category);
+  return <Icon size={17} style={{ color: fg }} />;
+}
+
+/**
+ * The preview screenshot at the top of a card (0061).
+ *
+ * **Only drawn when there is one.** Ten of the twelve seeded resources have a
+ * picture; the Reddit wiki and the NHS page answer with a bot check and a
+ * cookie wall, so no honest screenshot of them exists. Those cards keep the
+ * category mark and no banner rather than showing a placeholder rectangle —
+ * on a phone that is a third of a card spent saying nothing, and a stand-in
+ * image would be the same lie as a hardcoded fallback identity.
+ *
+ * A file that 404s removes the banner for the same reason: the browser's
+ * broken-image glyph is not a preview.
+ *
+ * Module level, never declared inside the page's render body — a component
+ * defined during render remounts its subtree on every pass, which would
+ * re-request the image each time the category filter changed.
+ */
+function ResourceBanner({ src }: { src: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return (
+    <div className="w-full overflow-hidden rounded-xl mb-3"
+      style={{ aspectRatio: '3 / 1', background: 'var(--color-bg)' }}>
+      <img
+        src={src}
+        // Decorative: the title, provider and host all sit directly beneath it,
+        // so a screen reader announcing the picture too would just repeat them.
+        alt=""
+        loading="lazy"
+        onError={() => setBroken(true)}
+        className="w-full h-full object-cover object-top"
+      />
+    </div>
   );
 }
 
@@ -196,6 +239,7 @@ export default function Workouts() {
               rel="noopener noreferrer"
               className="block rounded-2xl p-4 transition-all active:scale-[0.98]"
               style={panelStyle}>
+              {hasPreview(r) && <ResourceBanner src={r.image_url as string} />}
               <div className="flex items-start gap-3">
                 {/* A category mark, so twelve links stop reading as one list.
                     Colour and icon come from the category, which is a real
@@ -206,10 +250,7 @@ export default function Workouts() {
                   style={{ background: categoryTone(r.category).bg }}
                   aria-hidden
                 >
-                  {(() => {
-                    const Icon = categoryTone(r.category).icon;
-                    return <Icon size={17} style={{ color: categoryTone(r.category).fg }} />;
-                  })()}
+                  <CategoryIcon category={r.category} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">

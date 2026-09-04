@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import { Plus, X, ExternalLink, Trash2, Eye, EyeOff, BookOpen } from 'lucide-react';
+import {
+  Plus, X, ExternalLink, Trash2, Eye, EyeOff, BookOpen, Search, ImageOff,
+} from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listWorkoutResources,
@@ -12,6 +14,7 @@ import {
   updateWorkoutResource,
   deleteWorkoutResource,
   linkHost,
+  hasPreview,
   type WorkoutResourceRow,
 } from '../lib/api/workoutResources';
 import type { ClassLevel } from '../types/db';
@@ -21,7 +24,10 @@ import type { ClassLevel } from '../types/db';
  *
  * Links out, never copies. The routines belong to whoever wrote them, and a copy
  * held here would go stale the moment they revised it — so this page curates
- * destinations rather than content.
+ * destinations rather than content. The preview images (0061) are the one
+ * exception and stay within that rule: a screenshot of the top of a page is a
+ * link preview, the same artefact any messaging app generates, not a copy of
+ * the routine underneath it.
  *
  * Hide, don't delete, is the default: a resource that's temporarily unsuitable
  * comes back with one click, and deleting loses the description someone wrote.
@@ -33,6 +39,7 @@ const emptyForm = {
   title: '',
   provider: '',
   url: '',
+  imageUrl: '',
   description: '',
   category: '',
   level: 'all_levels' as ClassLevel,
@@ -52,6 +59,47 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+/**
+ * The banner at the top of a resource card.
+ *
+ * Three states, and the third is the point: a file that 404s falls back to the
+ * same "no preview" tile as a NULL column rather than leaving the browser's
+ * broken-image glyph on the page. The preview files live in this app's own
+ * `public/`, so a path that works in the member app can still be missing here
+ * — checking is cheaper than remembering to copy.
+ *
+ * Declared at module level, never inside the page's render body: a component
+ * defined during render is a new type on every pass and remounts its whole
+ * subtree, which is how the image would flicker on each keystroke in search.
+ */
+function ResourceThumb({ resource }: { resource: WorkoutResourceRow }) {
+  const [broken, setBroken] = useState(false);
+  const show = hasPreview(resource) && !broken;
+
+  return (
+    <div className="relative w-full overflow-hidden"
+      style={{ aspectRatio: '3 / 1', background: 'var(--color-bg)' }}>
+      {show ? (
+        <img
+          src={resource.image_url as string}
+          alt=""
+          loading="lazy"
+          onError={() => setBroken(true)}
+          className="w-full h-full object-cover object-top"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
+          style={{ background: 'var(--color-primary-light)' }}>
+          <ImageOff size={18} style={{ color: 'var(--color-primary)' }} />
+          <span className="text-[11px] font-medium" style={{ color: 'var(--color-primary)' }}>
+            {linkHost(resource.url)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Resources() {
   const [rows, setRows] = useState<WorkoutResourceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +107,7 @@ export default function Resources() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [toDelete, setToDelete] = useState<WorkoutResourceRow | null>(null);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +122,24 @@ export default function Resources() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Title, provider, category and host — the four things someone actually has
+  // in mind when they come looking. The host matters because "the YouTube ones"
+  // is how the desk talks about three of these and no other field says it.
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.title, r.provider, r.category ?? '', linkHost(r.url)]
+        .some((field) => field.toLowerCase().includes(q))
+    );
+  }, [rows, search]);
+
+  const counts = useMemo(() => ({
+    total: rows.length,
+    hidden: rows.filter((r) => !r.is_active).length,
+    previews: rows.filter(hasPreview).length,
+  }), [rows]);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.provider.trim() || !form.url.trim()) {
@@ -91,6 +158,9 @@ export default function Resources() {
         title: form.title.trim(),
         provider: form.provider.trim(),
         url: form.url.trim(),
+        // Empty means "no preview", which is a supported state — not an empty
+        // string that would render as a broken image on every member's phone.
+        image_url: form.imageUrl.trim() || null,
         description: form.description.trim() || null,
         category: form.category.trim() || null,
         level: form.level,
@@ -133,7 +203,7 @@ export default function Resources() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">Workout Resources</h1>
           <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
@@ -145,6 +215,37 @@ export default function Resources() {
         </Button>
       </div>
 
+      {/* Search and the three counts worth knowing at a glance. "Without a
+          preview" is one of them because it is the only quality gap on this
+          page that is invisible from a list of titles. */}
+      {!loading && rows.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'var(--color-text-muted)' }} />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search title, provider, category or site…"
+              className="w-full rounded-xl pl-9 pr-3 py-2.5 text-white text-sm"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            <span className="px-2.5 py-1.5 rounded-lg" style={panel}>
+              <b className="text-white">{counts.total}</b> total
+            </span>
+            <span className="px-2.5 py-1.5 rounded-lg" style={panel}>
+              <b className="text-white">{counts.hidden}</b> hidden
+            </span>
+            <span className="px-2.5 py-1.5 rounded-lg" style={panel}>
+              <b className="text-white">{counts.total - counts.previews}</b> without a preview
+            </span>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
@@ -155,17 +256,39 @@ export default function Resources() {
             Add a link and it appears in the member app straight away.
           </p>
         </div>
+      ) : visible.length === 0 ? (
+        // A filtered-to-nothing list says so in its own words. "Nothing here"
+        // would read as an empty library, which is a different fact.
+        <div className="rounded-xl p-10 text-center" style={panel}>
+          <Search size={26} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
+          <p className="text-sm text-white mb-1">Nothing matches “{search}”</p>
+          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            {counts.total} resources in the library — clear the search to see them all.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {rows.map((r, i) => (
+        <div className="grid gap-3 grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3">
+          {visible.map((r, i) => (
             <motion.div key={r.id}
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.03, 0.25) }}
-              className="rounded-xl p-4 flex items-center gap-4"
-              style={{ ...panel, opacity: r.is_active ? 1 : 0.5 }}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-white">{r.title}</p>
+              className="rounded-xl overflow-hidden flex flex-col"
+              style={{ ...panel, opacity: r.is_active ? 1 : 0.55 }}>
+
+              <ResourceThumb resource={r} />
+
+              <div className="p-4 flex flex-col gap-2 flex-1">
+                <div className="flex items-start gap-2">
+                  <p className="text-sm font-semibold text-white flex-1 leading-snug">{r.title}</p>
+                  {!r.is_active && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                      style={{ background: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' }}>
+                      hidden
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[9px] px-2 py-0.5 rounded-full font-medium capitalize"
                     style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                     {r.level.replace('_', ' ')}
@@ -176,30 +299,32 @@ export default function Resources() {
                       {r.category}
                     </span>
                   )}
-                  {!r.is_active && (
-                    <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' }}>
-                      hidden
-                    </span>
-                  )}
                 </div>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                  {r.provider}{r.description ? ` · ${r.description}` : ''}
-                </p>
-                <a href={r.url} target="_blank" rel="noopener noreferrer"
-                  className="text-[10px] mt-1 inline-flex items-center gap-1 hover:underline"
-                  style={{ color: 'var(--color-secondary)' }}>
-                  <ExternalLink size={9} /> {linkHost(r.url)}
-                </a>
-              </div>
 
-              <div className="flex gap-2 flex-shrink-0">
-                <Button variant="ghost" size="sm" className="!text-[10px]" onClick={() => toggleActive(r)}>
-                  {r.is_active ? <><EyeOff size={12} className="mr-1" /> Hide</> : <><Eye size={12} className="mr-1" /> Show</>}
-                </Button>
-                <Button variant="ghost" size="sm" className="!text-[10px]" onClick={() => setToDelete(r)}>
-                  <Trash2 size={12} className="mr-1" style={{ color: '#ef4444' }} /> Delete
-                </Button>
+                {r.description && (
+                  <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                    {r.description}
+                  </p>
+                )}
+
+                {/* mt-auto pins the link and the buttons to the bottom, so cards
+                    in the same row line up however long their descriptions are. */}
+                <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="text-[11px] inline-flex items-center gap-1 hover:underline min-w-0"
+                    style={{ color: 'var(--color-secondary)' }}>
+                    <ExternalLink size={10} className="flex-shrink-0" />
+                    <span className="truncate">{r.provider} · {linkHost(r.url)}</span>
+                  </a>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="sm" className="!text-[10px]" onClick={() => toggleActive(r)}>
+                      {r.is_active ? <><EyeOff size={12} className="mr-1" /> Hide</> : <><Eye size={12} className="mr-1" /> Show</>}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="!text-[10px]" onClick={() => setToDelete(r)}>
+                      <Trash2 size={12} style={{ color: '#ef4444' }} />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -242,6 +367,17 @@ export default function Resources() {
                     <Input type="url" value={form.url} placeholder="https://…"
                       onChange={(e) => setForm({ ...form, url: e.target.value })} />
                   </Field>
+                  {/* Left blank on purpose most of the time: adding a preview
+                      means dropping a file into both apps' public folders, so
+                      the field says where rather than pretending to upload. */}
+                  <Field label="Preview image" hint="Optional — leave blank if you have no picture">
+                    <Input type="text" value={form.imageUrl} placeholder="/resource-previews/example.jpeg"
+                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+                  </Field>
+                  <p className="text-[10px] -mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                    Put the file in <code>public/resource-previews/</code> in both apps first.
+                    Blank shows the site's address instead, which is better than a wrong picture.
+                  </p>
                   <Field label="Description" hint="Optional, one line">
                     <Input type="text" value={form.description} placeholder="What a member gets from it"
                       onChange={(e) => setForm({ ...form, description: e.target.value })} />

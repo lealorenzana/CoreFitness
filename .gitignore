@@ -6,3 +6,7 @@ supabase/.temp/
 # at any time - committing it would put every future revision in history
 # forever for a file nobody diffs.
 CoreFitness-System-Documentation.html
+
+# Playwright MCP's scratch output (console logs, page snapshots). Written into
+# the repo root by the tool itself, never by this project.
+.playwright-mcp/
