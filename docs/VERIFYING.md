@@ -19,6 +19,19 @@ compositing produces no frames. This is the same condition that stops `requestAn
 transitions from running, so it is not an accident you can retry your way past — read the DOM instead.
 `element.innerText`, `getComputedStyle`, and `getBoundingClientRect` all work regardless.
 
+**When you genuinely need to look at the screen, drive Playwright against `localhost` instead**
+(2026-09-04). It runs its own browser, composites reliably, and writes a real file you can open. Two
+things to know:
+
+- **The Browser pane scales its screenshots down to the pane's own size.** Setting a 1440px viewport
+  there and screenshotting returns an 800px image with the dashboard squeezed into a corner — the
+  page is fine, the picture is not. Playwright returns the viewport at full size.
+- **Playwright saves relative to the repo root**, not to a sandbox. Pass a path prefix
+  (`.tmp-shots/foo.png`) or you will litter the project, and it writes its own `.playwright-mcp/`
+  scratch directory there regardless — that one is git-ignored.
+
+Admin Resources and member Workouts were both confirmed rendering this way.
+
 ### Verify against the built bundle, not the source
 
 If a class looks like it does nothing, it probably does nothing:
@@ -107,6 +120,20 @@ localStorage.setItem(sb.auth.storageKey, JSON.stringify({
 
 The token is never sent anywhere real — the stubbed `fetch` answers before it leaves.
 
+**Then navigate without reloading.** A reload throws the `fetch` patch away and lands you back on the
+login screen, so the obvious `location.href = '/resources'` undoes everything you just set up. Push
+the route and let React Router pick it up:
+
+```js
+history.pushState({}, '', '/resources');
+window.dispatchEvent(new PopStateEvent('popstate'));
+```
+
+`ProtectedRoute` then mounts, reads the planted session locally, and asks the stub for the profile —
+answer `/rest/v1/profiles` with `[{ role: 'admin', status: 'active' }]`. Note PostgREST's two shapes:
+`.single()` sends `Accept: application/vnd.pgrst.object+json` and wants the **object**, everything
+else wants the **array**. Return the wrong one and the screen renders empty for no visible reason.
+
 ### Driving a React controlled input from a probe
 
 Setting `.value` does not fire React's `onChange`. Go through the native setter:
@@ -164,6 +191,21 @@ On Git Bash, `docker cp`/`docker exec` mangle container paths; prefix with `MSYS
 **When Docker will not start**, `npx pgsql-parser` checks top-level syntax and `language sql` bodies —
 but **plpgsql bodies are opaque to it**, which is exactly where the interesting bugs live. Say so
 rather than implying the migration was verified.
+
+---
+
+## Comparing a build against what is deployed
+
+**A Windows build and a Linux build differ in filename hash while being byte-identical.** Vite hashes
+module paths, and those differ by separator across platforms. **Compare with `cmp`, never by
+filename** — a mismatched hash is not evidence of a stale deploy.
+
+**Tailwind v4 emits ~6 more utility rules on Vercel than locally.** Its content scan picks up
+false-positive words from files the local build did not walk, so deployed CSS is a **superset**, not
+a difference. Assert the rules you care about are present; do not assert the two files are equal.
+
+`@electric-sql/pglite` is real Postgres in Node, which is how the SQL harness runs at all — **Docker
+has never started in this environment**, so anything written as "run it in Docker" is not a plan.
 
 ---
 

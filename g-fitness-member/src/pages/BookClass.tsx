@@ -3,7 +3,7 @@ import { panelStyle } from '../components/ui/Card';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Users, ArrowLeft, Sparkles, User, Dumbbell, Lock, X, Trophy, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, Users, ArrowLeft, Sparkles, Dumbbell, Lock, X, Trophy, ArrowRight } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import { useLiveData } from '../hooks/useLiveData';
 import DateRail, { buildRail } from '../components/ui/DateRail';
@@ -107,6 +107,187 @@ function groupByDay<T>(rows: T[], iso: (row: T) => string): [string, T[]][] {
     else map.set(key, [row]);
   }
   return [...map.entries()];
+}
+
+/**
+ * One class, as a row rather than a card.
+ *
+ * The old card stacked a title, two badges, a level line, a capacity pill,
+ * three icon rows and a full-width button — around 200px, so a phone showed
+ * barely two classes and the timetable could not be scanned at all. Everything
+ * it said is still here; it is arranged as **time | what | act** instead of a
+ * vertical list of labelled facts, which is how a timetable is actually read.
+ *
+ * The icons went because each one prefixed a fact that is already unambiguous:
+ * nobody needs a pin to know "Studio A" is a place. Losing them buys the room
+ * that makes the row fit on two lines.
+ *
+ * Module level, not declared in the page body — a component defined during
+ * render remounts its subtree every pass and would restart each row's entry
+ * animation on every keystroke elsewhere on the screen.
+ */
+function ClassRow({
+  c, index, blocked, onBook,
+}: {
+  c: BookableClass;
+  index: number;
+  blocked: boolean;
+  onBook: (c: BookableClass) => void;
+}) {
+  const full = c.spotsLeft === 0;
+  const booked = c.myStatus != null;
+  const tight = !full && c.spotsLeft <= 3;
+
+  // Everything after the name, in one line. Filtered so a class with no type
+  // and no location does not render " ·  · ".
+  const detail = [LEVEL_LABEL[c.level], c.classType, c.trainerName, c.location]
+    .filter(Boolean).join(' · ');
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.03, 0.15) }}
+      className="rounded-2xl p-3 flex items-stretch gap-3"
+      style={panelStyle}
+    >
+      {/* Time is the column you scan, so it gets its own rail and the only
+          tabular figures on the row — proportional digits make a list of times
+          jitter left and right. */}
+      <div className="flex flex-col items-center justify-center px-1 flex-shrink-0"
+        style={{ minWidth: 58, borderRight: '1px solid var(--color-border)' }}>
+        <span className="text-sm font-bold text-white tabular-nums leading-tight">
+          {timeLabel(c.scheduledAt)}
+        </span>
+        <span className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+          {c.durationMinutes}m
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="text-sm font-bold text-white truncate">{c.name}</p>
+          {c.recommended && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5 flex-shrink-0"
+              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+              <Sparkles size={8} /> For you
+            </span>
+          )}
+          {/* The onboarding interests step used to write to a localStorage blob
+              nothing read. This badge is what makes answering it worth the
+              member's time. */}
+          {c.matchesInterest && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+              You picked this
+            </span>
+          )}
+        </div>
+
+        {/* Wraps to two lines rather than truncating. `truncate` cut this at
+            "Beginner · Cardio · Tere Bautista · …" and silently ate the room —
+            which is the one fact on the row a member needs before they set off
+            to the wrong studio. Clamped so a long class type still cannot push
+            the row to four lines.
+
+            Declared inline, not as `line-clamp-2`: the member app is Tailwind
+            v4 with no config file, and this codebase has already shipped
+            classes that emitted no CSS at all. The measurement below confirms
+            the clamp is live. */}
+        <p className="text-xs" style={{
+          color: 'var(--color-text-muted)',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {detail}
+        </p>
+
+        {/* "18 left" alone never said *of what*, so a class of 20 and a class of
+            200 read identically. The fraction stays; it just no longer needs a
+            pill of its own. Amber only when it is nearly gone — a count that is
+            always highlighted highlights nothing. */}
+        <p className="text-xs font-semibold"
+          style={{ color: full ? 'var(--color-text-muted)' : tight ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
+          {full ? `Full · ${c.booked}/${c.capacity}` : `${c.booked}/${c.capacity} booked · ${c.spotsLeft} left`}
+        </p>
+      </div>
+
+      <div className="flex items-center flex-shrink-0">
+        <button
+          disabled={booked || full || blocked}
+          onClick={() => onBook(c)}
+          className="px-4 h-9 rounded-full font-bold text-xs transition-all active:scale-[0.97] disabled:cursor-not-allowed whitespace-nowrap"
+          style={
+            booked
+              ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
+              : full || blocked
+                ? { background: 'var(--color-bg)', color: 'var(--color-text-muted)' }
+                : { background: 'var(--color-secondary)', color: '#000' }
+          }
+        >
+          {booked
+            ? (c.myStatus === 'approved' ? 'Confirmed' : 'Pending')
+            : full ? 'Full'
+            : blocked ? 'Locked'
+            : 'Book'}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * What the member's plan lets them do here, in one strip.
+ *
+ * This was two separate things stacked: an amber lock card when booking was
+ * refused, and a centred grey sentence counting the weekly quota. They answer
+ * the same question — *can I book, and how much is left* — so they are one
+ * element that changes state, and the page has one fewer thing above the
+ * timetable either way.
+ *
+ * Renders nothing when the plan imposes no limit worth mentioning. A strip
+ * saying "you may book" on every visit is noise.
+ */
+function PlanStrip({
+  block, entitlement, onSeePlans,
+}: {
+  block: string | null;
+  entitlement: Entitlement | null;
+  onSeePlans: () => void;
+}) {
+  if (block) {
+    return (
+      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl p-3 flex items-start gap-2.5"
+        style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
+        <Lock size={14} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
+        <p className="text-xs flex-1 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          {block}{' '}
+          <button onClick={onSeePlans} className="font-bold underline whitespace-nowrap"
+            style={{ color: 'var(--color-secondary)' }}>
+            See plans
+          </button>
+        </p>
+      </motion.div>
+    );
+  }
+
+  if (entitlement?.classesPerWeek == null) return null;
+
+  const used = entitlement.classesUsedThisWeek;
+  const cap = entitlement.classesPerWeek;
+  return (
+    <div className="flex items-center gap-2 px-1">
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
+        <div className="h-full rounded-full"
+          style={{ width: `${Math.min(100, (used / cap) * 100)}%`, background: 'var(--color-secondary)' }} />
+      </div>
+      <p className="text-xs whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+        <span className="font-bold text-white">{used}/{cap}</span> classes this week
+      </p>
+    </div>
+  );
 }
 
 export default function BookClass() {
@@ -369,36 +550,25 @@ export default function BookClass() {
         )}
       </motion.div>
 
-      {/* Coming up at the gym */}
+      {/* The gym's next announcement.
+          Was a full amber card with a 44px icon tile and three lines of its
+          own, which made the loudest thing on a booking screen something you
+          cannot book. Same facts, same tap target, one line — a nudge sized
+          like a nudge. Renders nothing when there is no upcoming event, never
+          a placeholder promising activity that does not exist. */}
       {!selectedTrainer && nextEvent && (
         <motion.button
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           onClick={() => navigate('/member/events')}
-          className="w-full p-4 flex items-center gap-3 text-left"
-          style={{
-            background: 'var(--color-secondary-light)',
-            border: '1px solid rgba(245,158,11,0.35)',
-            borderRadius: 'var(--radius-panel)',
-          }}
+          className="w-full px-3 py-2.5 flex items-center gap-2 text-left rounded-xl"
+          style={{ background: 'var(--color-secondary-light)' }}
         >
-          <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--color-secondary)' }}>
-            <Trophy size={20} className="text-black" />
+          <Trophy size={14} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+          <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--color-secondary)' }}>
+            {new Date(nextEvent.startsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-xs font-bold uppercase tracking-wider"
-              style={{ color: 'var(--color-secondary)' }}>
-              Coming up at the gym
-            </span>
-            <span className="block text-sm font-bold text-white truncate mt-0.5">{nextEvent.title}</span>
-            <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
-              {new Date(nextEvent.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-              {' · '}
-              {new Date(nextEvent.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-              {nextEvent.location && ` · ${nextEvent.location}`}
-            </span>
-          </span>
-          <ArrowRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+          <span className="text-xs font-semibold text-white truncate flex-1">{nextEvent.title}</span>
+          <ArrowRight size={14} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
         </motion.button>
       )}
 
@@ -422,31 +592,15 @@ export default function BookClass() {
         </div>
       )}
 
-      {/* Say why up front, rather than letting them pick a class and then fail.
-          The wording names the plan and the way out — a dead button with no
-          explanation reads as a broken app. */}
-      {!loading && activeBlock && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl p-4 flex items-start gap-3"
-          style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
-          <Lock size={16} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{activeBlock}</p>
-            <button onClick={() => navigate('/member/renew-membership')}
-              className="mt-2 px-3 py-1.5 rounded-full text-xs font-bold text-black"
-              style={{ background: 'var(--color-secondary)' }}>
-              See plans
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* A quota that's partly used is worth showing before it runs out. */}
-      {!loading && !activeBlock && tab === 'classes' && !selectedTrainer && entitlement?.classesPerWeek != null && (
-        <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
-          {entitlement.classesUsedThisWeek} of {entitlement.classesPerWeek} weekly class
-          {entitlement.classesPerWeek === 1 ? '' : 'es'} booked on {entitlement.planName}
-        </p>
+      {/* Why you can't book, or how much of your allowance is left — one strip
+          instead of two stacked ones. Says nothing when there is nothing to
+          say. */}
+      {!loading && (
+        <PlanStrip
+          block={activeBlock}
+          entitlement={tab === 'classes' && !selectedTrainer ? entitlement : null}
+          onSeePlans={() => navigate('/member/renew-membership')}
+        />
       )}
 
       {loading ? (
@@ -475,49 +629,56 @@ export default function BookClass() {
                 ))}
               </div>
             </motion.div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              {/* "You chose", not "your level". Progress shows a *different*
-                  level — the one earned from check-ins here — and labelling
-                  both the same made the two screens look like they disagreed.
-                  Tapping puts the picker back so the choice is changeable. */}
-              <button
-                onClick={() => setLevel(null)}
-                className="text-xs text-left min-w-0"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                You chose <span className="font-semibold text-white capitalize">{level}</span>
-                <span className="underline ml-1" style={{ color: 'var(--color-secondary)' }}>change</span>
-              </button>
-              <button onClick={() => setRecommendedOnly((v) => !v)}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1"
-                style={{
-                  background: recommendedOnly ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                  color: recommendedOnly ? '#fff' : 'var(--color-text-muted)',
-                  border: `1px solid ${recommendedOnly ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}>
-                <Sparkles size={11} /> For my level
-              </button>
-            </div>
-          )}
+          ) : null}
 
           {allClassDays.length > 0 && (
             <>
               <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
-              {selectedDay && (
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                    {classDays[0]?.[1].length
-                      ? `${classDays[0][1].length} class${classDays[0][1].length === 1 ? '' : 'es'} this day`
-                      : 'No classes this day'}
-                  </p>
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                  >
-                    <X size={11} /> Show all
+
+              {/* One row for both filters, directly under the calendar they
+                  narrow. The level used to be a sentence with an underlined
+                  "change" inside it — a text link the size of two words, on a
+                  phone, as the only way to correct a choice that reshapes the
+                  whole list. Both are chips now, both the same size, and both
+                  say what they currently are rather than what they would do. */}
+              {level !== null && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setRecommendedOnly((v) => !v)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0"
+                    style={{
+                      background: recommendedOnly ? 'var(--color-primary)' : 'var(--color-surface-raised)',
+                      color: recommendedOnly ? '#fff' : 'var(--color-text-muted)',
+                      border: `1px solid ${recommendedOnly ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    }}>
+                    <Sparkles size={11} /> For my level
                   </button>
+
+                  {/* "You chose", not "your level". Progress shows a *different*
+                      level — the one earned from check-ins here — and labelling
+                      both the same made the two screens look like they
+                      disagreed. */}
+                  {/* `capitalize` sits on the level alone. On the whole button
+                      it title-cased the sentence into "You Chose Beginner". */}
+                  <button onClick={() => setLevel(null)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+                    style={{
+                      background: 'var(--color-surface-raised)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text-muted)',
+                    }}>
+                    You chose <span className="capitalize text-white">{level}</span>
+                    <X size={11} />
+                  </button>
+
+                  {selectedDay && (
+                    <button
+                      onClick={() => setSelectedDay(null)}
+                      className="ml-auto flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full flex-shrink-0"
+                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+                    >
+                      <X size={11} /> All days
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -542,98 +703,26 @@ export default function BookClass() {
           ) : (
             classDays.map(([key, dayClasses]) => (
               <div key={key} className="space-y-2">
-                <h2 className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+                {/* Sticky, so the day you are looking at stays named while you
+                    scroll a fortnight of classes. `top-0` inside `<main>`,
+                    which is the scroll container — the page body does not
+                    scroll on this shell. */}
+                <h2 className="text-xs font-bold uppercase tracking-wide sticky top-0 py-1 z-10"
+                  style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
                   {dayLabel(dayClasses[0].scheduledAt)}
+                  <span className="ml-1.5 font-semibold" style={{ opacity: 0.7 }}>
+                    · {dayClasses.length}
+                  </span>
                 </h2>
-                {dayClasses.map((c, i) => {
-                  const full = c.spotsLeft === 0;
-                  const booked = c.myStatus != null;
-                  return (
-                    <motion.div key={c.id}
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(i * 0.04, 0.2) }}
-                      className="rounded-2xl p-4" style={panelStyle}>
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-white font-bold text-sm">{c.name}</p>
-                            {c.recommended && (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
-                                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                                <Sparkles size={8} /> For you
-                              </span>
-                            )}
-                            {/* The onboarding interests step used to write to a
-                                localStorage blob nothing read. This badge is
-                                what makes answering it worth the member's time. */}
-                            {c.matchesInterest && (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
-                                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                                You picked this
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                            {LEVEL_LABEL[c.level]}{c.classType ? ` · ${c.classType}` : ''}
-                          </p>
-                        </div>
-                        {/* "18 left" alone never said *of what*, so a class of
-                            20 and a class of 200 read identically. Showing
-                            taken/capacity makes it a fraction the member can
-                            judge — and "3 spots left" reads as urgency only
-                            when you can see it is 17/20 gone. Counted from
-                            approved bookings, refreshed with the roster. */}
-                        <span className="text-xs px-2 py-1 rounded-full font-bold flex-shrink-0 whitespace-nowrap"
-                          style={{
-                            background: full ? 'rgba(148,163,184,0.15)'
-                              : c.spotsLeft <= 3 ? 'var(--color-secondary-light)'
-                              : 'var(--color-primary-light)',
-                            color: full ? 'var(--color-text-muted)'
-                              : c.spotsLeft <= 3 ? 'var(--color-secondary)'
-                              : 'var(--color-primary)',
-                          }}>
-                          <Users size={9} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
-                          {full
-                            ? `Full · ${c.booked}/${c.capacity}`
-                            : `${c.booked}/${c.capacity} booked · ${c.spotsLeft} left`}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                        <p className="flex items-center gap-1.5">
-                          <Clock size={12} style={{ color: 'var(--color-secondary)' }} />
-                          {timeLabel(c.scheduledAt)} · {c.durationMinutes} min
-                        </p>
-                        <p className="flex items-center gap-1.5">
-                          <User size={12} style={{ color: 'var(--color-secondary)' }} /> {c.trainerName}
-                        </p>
-                        {c.location && (
-                          <p className="flex items-center gap-1.5">
-                            <MapPin size={12} style={{ color: 'var(--color-secondary)' }} /> {c.location}
-                          </p>
-                        )}
-                      </div>
-
-                      <button
-                        disabled={booked || full || classBlock !== null}
-                        onClick={() => setConfirmClass(c)}
-                        className="w-full h-10 rounded-full font-semibold text-xs transition-all active:scale-[0.97] disabled:cursor-not-allowed"
-                        style={
-                          booked
-                            ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
-                            : full || classBlock
-                              ? { background: 'var(--color-bg)', color: 'var(--color-text-muted)' }
-                              : { background: 'var(--color-secondary)', color: '#000' }
-                        }>
-                        {booked
-                          ? (c.myStatus === 'approved' ? 'Confirmed' : 'Awaiting approval')
-                          : full ? 'Class full'
-                          : classBlock ? 'Not on your plan'
-                          : 'Book'}
-                      </button>
-                    </motion.div>
-                  );
-                })}
+                {dayClasses.map((c, i) => (
+                  <ClassRow
+                    key={c.id}
+                    c={c}
+                    index={i}
+                    blocked={classBlock !== null}
+                    onBook={setConfirmClass}
+                  />
+                ))}
               </div>
             ))
           )}
@@ -677,22 +766,38 @@ export default function BookClass() {
         <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>Finding open times…</p>
       ) : (
         <>
+          {/* Who you are booking, kept on screen. The coach's name is in the
+              page header too, but that scrolls away and the grid of bare times
+              below gives no clue whose hours they are. */}
+          <div className="flex items-center gap-3 rounded-2xl p-3" style={panelStyle}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-xs flex-shrink-0"
+              style={{ background: 'var(--color-secondary)' }}>
+              {`${selectedTrainer.first_name[0] ?? ''}${selectedTrainer.last_name[0] ?? ''}`.toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{trainerName(selectedTrainer)}</p>
+              <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
+                {selectedTrainer.specialization ?? 'General training'}
+              </p>
+            </div>
+            <button onClick={() => setSelectedTrainer(null)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0"
+              style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+              Change
+            </button>
+          </div>
+
           {allSlotDays.length > 0 && (
             <>
               <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
               {selectedDay && (
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                    {slotDays[0]?.[1].length
-                      ? `${slotDays[0][1].length} open time${slotDays[0][1].length === 1 ? '' : 's'} this day`
-                      : 'No open times this day'}
-                  </p>
+                <div className="flex justify-end">
                   <button
                     onClick={() => setSelectedDay(null)}
-                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full"
                     style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
                   >
-                    <X size={11} /> Show all
+                    <X size={11} /> All days
                   </button>
                 </div>
               )}
@@ -714,8 +819,10 @@ export default function BookClass() {
           ) : (
             slotDays.map(([key, daySlots]) => (
           <div key={key} className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-wide sticky top-0 py-1 z-10"
+              style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
               {dayLabel(daySlots[0].startsAt)}
+              <span className="ml-1.5 font-semibold" style={{ opacity: 0.7 }}>· {daySlots.length}</span>
             </h2>
             <div className="grid grid-cols-3 gap-2">
               {daySlots.map((s) => (
