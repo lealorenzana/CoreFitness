@@ -6,6 +6,7 @@ import Badge from '../components/ui/Badge';
 import { AlertTriangle, Users, Target, Activity } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { exportToCSV } from '../utils/exportUtils';
+import { notifyUser } from '../lib/api/notify';
 import {
   dashboardService,
   type AtRiskMemberRow, type RetentionSummary,
@@ -18,6 +19,51 @@ export default function Retention() {
   const [summary, setSummary] = useState<RetentionSummary | null>(null);
   const [chartData, setChartData] = useState<{ month: string; rate: number }[]>([]);
   const [, setLoading] = useState(true);
+  const [reachingOut, setReachingOut] = useState<string | null>(null);
+  const [reachedOut, setReachedOut] = useState<Set<string>>(new Set());
+
+  /**
+   * What "at risk" is *for*.
+   *
+   * This button used to fire a toast reading "Rule action triggered" and do
+   * nothing whatsoever — no row written, no message sent, no record that the
+   * gym had noticed. A control that reports success and changes nothing is the
+   * same class of lie as the admin "Remember me" that was a `useState` nobody
+   * read, and it is worse here because it is on a screen about people the gym
+   * is about to lose.
+   *
+   * It now sends the member a real notification: it lands in their inbox, and
+   * pushes to their phone if they installed the app. That is the whole action —
+   * deliberately not an automated campaign, because a gym of this size wins
+   * people back with a message from a person, and an automatic one would go out
+   * whether or not anyone meant it.
+   *
+   * The wording names how long it has been, because "we noticed" is the part
+   * that works, and it is the one fact this screen actually knows.
+   */
+  const reachOut = async (m: AtRiskMemberRow) => {
+    setReachingOut(m.id);
+    try {
+      await notifyUser({
+        userId: m.id,
+        type: 'system',
+        title: 'We miss you at Core Fitness',
+        message:
+          `It has been ${m.daysInactive} days since your last visit. ` +
+          'Nothing needs booking — just come in when you can, and tell the front desk ' +
+          'if anything is getting in the way.',
+        actionUrl: '/member/book-class',
+      });
+      setReachedOut((prev) => new Set(prev).add(m.id));
+      showToast(`Message sent to ${m.name}`, 'success');
+    } catch (err) {
+      // Named, because the whole point is that the member actually hears from
+      // the gym. A silent failure here would be the old bug with extra steps.
+      showToast(err instanceof Error ? err.message : `Could not message ${m.name}`, 'error');
+    } finally {
+      setReachingOut(null);
+    }
+  };
 
   useEffect(() => {
     Promise.all([dashboardService.getAtRiskMembers(), dashboardService.getRetentionSummary()])
@@ -161,8 +207,10 @@ export default function Retention() {
                     </td>
                     <td className="py-2 px-2.5">
                       <Button variant="ghost" size="sm" className="!text-[8px] !px-2 !py-0.5 !h-5"
-                        onClick={() => showToast(`Rule action triggered for ${m.name}`, 'success')}>
-                        Execute
+                        disabled={reachingOut === m.id || reachedOut.has(m.id)}
+                        onClick={() => reachOut(m)}>
+                        {reachedOut.has(m.id) ? 'Sent'
+                          : reachingOut === m.id ? 'Sending…' : 'Reach out'}
                       </Button>
                     </td>
                   </tr>

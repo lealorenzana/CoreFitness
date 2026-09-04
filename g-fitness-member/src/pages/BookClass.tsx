@@ -577,13 +577,25 @@ export default function BookClass() {
                             {LEVEL_LABEL[c.level]}{c.classType ? ` · ${c.classType}` : ''}
                           </p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full font-bold flex-shrink-0"
+                        {/* "18 left" alone never said *of what*, so a class of
+                            20 and a class of 200 read identically. Showing
+                            taken/capacity makes it a fraction the member can
+                            judge — and "3 spots left" reads as urgency only
+                            when you can see it is 17/20 gone. Counted from
+                            approved bookings, refreshed with the roster. */}
+                        <span className="text-xs px-2 py-1 rounded-full font-bold flex-shrink-0 whitespace-nowrap"
                           style={{
-                            background: full ? 'rgba(148,163,184,0.15)' : 'var(--color-secondary-light)',
-                            color: full ? 'var(--color-text-muted)' : 'var(--color-secondary)',
+                            background: full ? 'rgba(148,163,184,0.15)'
+                              : c.spotsLeft <= 3 ? 'var(--color-secondary-light)'
+                              : 'var(--color-primary-light)',
+                            color: full ? 'var(--color-text-muted)'
+                              : c.spotsLeft <= 3 ? 'var(--color-secondary)'
+                              : 'var(--color-primary)',
                           }}>
                           <Users size={9} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
-                          {full ? 'Full' : `${c.spotsLeft} left`}
+                          {full
+                            ? `Full · ${c.booked}/${c.capacity}`
+                            : `${c.booked}/${c.capacity} booked · ${c.spotsLeft} left`}
                         </span>
                       </div>
 

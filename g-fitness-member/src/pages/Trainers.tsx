@@ -4,7 +4,7 @@ import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Award, ArrowRight, Calendar, Dumbbell } from 'lucide-react';
+import { Award, ArrowLeft, ArrowRight, Calendar, Dumbbell } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
@@ -75,11 +75,26 @@ export default function Trainers() {
 
   return (
     <div className="space-y-5 pb-4">
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-white">Our Trainers</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-          Find a coach and book a session
-        </p>
+      {/* This screen is reached from Book, from Home's coach note and from a
+          notification, so it needed a way out that is not the dock — every
+          other pushed screen in the app has one, and its absence here read as
+          a dead end. `navigate(-1)` returns you wherever you came from. */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Go back"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-white">Our Trainers</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+            Find a coach and book a session
+          </p>
+        </div>
       </motion.div>
 
       {loading ? (

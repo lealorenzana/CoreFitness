@@ -158,29 +158,73 @@ export default function Revenue() {
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {['Month', 'New Members', 'Payments', 'Total Revenue'].map((h) => (
-                      <th key={h} className="text-left py-3 px-4 text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
+            {/*
+              Twelve full-width rows for a year where nine of them are ₱0 spent
+              most of the page saying nothing. This is the same twelve months as
+              a bar strip: each month is a column you can read at a glance, and
+              only the months that actually had activity carry figures.
+
+              Nothing is hidden — the totals row and every month's numbers are
+              still here, and the tooltip carries the exact figures. What is
+              gone is nine rows of zeros.
+            */}
+            {monthly.length === 0 ? (
+              <p className="py-8 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                No data for {year}
+              </p>
+            ) : (() => {
+              const peak = Math.max(...monthly.map((m) => m.revenue), 1);
+              const totalRev = monthly.reduce((s, m) => s + m.revenue, 0);
+              const totalNew = monthly.reduce((s, m) => s + m.newMembers, 0);
+              const totalPay = monthly.reduce((s, m) => s + m.payments, 0);
+              return (
+                <>
+                  <div className="flex items-end gap-1.5" style={{ height: 132 }}>
+                    {monthly.map((row) => {
+                      const active = row.revenue > 0 || row.newMembers > 0 || row.payments > 0;
+                      return (
+                        <div key={row.month} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full"
+                          title={`${row.month} — ₱${row.revenue.toLocaleString()} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
+                          {/* The amount sits above its own bar, so a reader
+                              never has to match a column to a legend. */}
+                          <span className="text-[9px] font-semibold tabular-nums"
+                            style={{ color: active ? 'var(--color-secondary)' : 'transparent' }}>
+                            {active ? `₱${row.revenue.toLocaleString()}` : '·'}
+                          </span>
+                          <div className="w-full rounded-t"
+                            style={{
+                              // A month with activity but no revenue still gets a
+                              // visible stub, or "3 new members, ₱0" looks like
+                              // nothing happened.
+                              height: `${row.revenue > 0 ? Math.max(6, (row.revenue / peak) * 88) : active ? 3 : 2}px`,
+                              background: row.revenue > 0 ? 'var(--color-secondary)'
+                                : active ? 'var(--color-primary)' : 'var(--color-border)',
+                            }} />
+                          <span className="text-[9px]"
+                            style={{ color: active ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
+                            {row.month.slice(0, 3)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mt-4 pt-3"
+                    style={{ borderTop: '1px solid var(--color-border)' }}>
+                    {[
+                      { label: `${year} revenue`, value: `₱${totalRev.toLocaleString()}`, tone: 'var(--color-secondary)' },
+                      { label: 'Payments taken', value: String(totalPay), tone: 'var(--color-text-primary)' },
+                      { label: 'New members', value: String(totalNew), tone: 'var(--color-text-primary)' },
+                    ].map((t) => (
+                      <div key={t.label}>
+                        <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{t.label}</p>
+                        <p className="text-lg font-bold tabular-nums" style={{ color: t.tone }}>{t.value}</p>
+                      </div>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthly.length === 0 ? (
-                    <tr><td colSpan={4} className="py-8 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>No data for {year}</td></tr>
-                  ) : monthly.map((row) => (
-                    <tr key={row.month} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td className="py-3 px-4 text-sm text-white font-medium">{row.month}</td>
-                      <td className="py-3 px-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{row.newMembers}</td>
-                      <td className="py-3 px-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{row.payments}</td>
-                      <td className="py-3 px-4 text-sm text-white font-bold">₱{row.revenue.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </div>
+                </>
+              );
+            })()}
           </Card>
         </div>
 
