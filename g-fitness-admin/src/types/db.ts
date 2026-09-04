@@ -10,7 +10,7 @@
 export type UserRole = 'admin' | 'staff' | 'trainer' | 'member';
 export type ProfileStatus = 'active' | 'pending_approval' | 'suspended' | 'archived';
 export type MembershipStatus = 'active' | 'expired' | 'frozen' | 'cancelled' | 'pending';
-export type PlanTier = 'free' | 'freemium' | 'premium';
+export type PlanTier = 'free' | 'freemium' | 'premium' | 'pro';
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type PaymentStatus = 'completed' | 'pending' | 'failed';
 export type CheckinMethod = 'qr' | 'manual';

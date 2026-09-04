@@ -64,7 +64,11 @@ import type { MembershipPlanRow, PlanTier } from '../types/db';
  */
 
 /** Cheapest commitment first, so the column reads as a ladder. */
-const TIER_ORDER: Record<PlanTier, number> = { free: 0, freemium: 1, premium: 2 };
+// Pro sits above Premium, so the comparison screen reads cheapest-first.
+// Typed as a full Record on purpose: adding a tier to the enum without
+// deciding where it ranks is now a compile error rather than a plan that
+// silently sorts to position zero.
+const TIER_ORDER: Record<PlanTier, number> = { free: 0, freemium: 1, premium: 2, pro: 3 };
 
 /** What moving from the current plan to this one actually is. */
 type Move = 'current' | 'upgrade' | 'downgrade' | 'sidegrade';

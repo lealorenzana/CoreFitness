@@ -427,8 +427,14 @@ export default function Attendance() {
           design — a queue at the door shouldn't wait on a dropdown. */}
       {activityOptions.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap px-1">
+          {/* "Today's activity" read like a status — as if the gym were doing
+              one thing today. It is a *tag applied to the next check-in*, which
+              is a different claim, and the difference is why it looked
+              pointless. The label now says what it does, and the hint says why
+              you would bother: it is what makes the activity breakdown on the
+              history screen mean anything. */}
           <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
-            Today's activity
+            Tag check-ins as
           </span>
           <button onClick={() => setActivity('')}
             className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
@@ -450,6 +456,12 @@ export default function Attendance() {
               {opt}
             </button>
           ))}
+          <span className="text-[10px] w-full" style={{ color: 'var(--color-text-muted)' }}>
+            Optional. Applies to the next check-in you take, whichever way you take it —
+            handy when a class comes in together. It is what fills the activity breakdown
+            in Attendance history; leave it on <em>Not recorded</em> for a normal walk-in
+            rather than guessing.
+          </span>
         </div>
       )}
 

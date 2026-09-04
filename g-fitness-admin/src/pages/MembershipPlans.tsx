@@ -163,6 +163,9 @@ export default function MembershipPlans() {
       case 'free': return 'var(--color-text-muted)';
       case 'freemium': return 'var(--color-primary)';
       case 'premium': return 'var(--color-secondary)';
+      // Pro reuses the amber of Premium rather than introducing a third hue —
+      // the app has two, and a new colour per tier is how a palette drifts.
+      case 'pro': return 'var(--color-secondary)';
       default: return 'var(--color-text-muted)';
     }
   };
@@ -313,9 +316,14 @@ export default function MembershipPlans() {
                       <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value as PlanTier })}
                         className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
                         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                        {/* The tier is a label and a set of seeding defaults —
+                            never a rulebook. What a plan actually includes is
+                            the fields below plus the feature matrix, so naming
+                            a plan "Pro" grants nothing on its own. */}
                         <option value="free">Free</option>
-                        <option value="freemium">Freemium</option>
+                        <option value="freemium">Freemium — trial, one per member</option>
                         <option value="premium">Premium</option>
+                        <option value="pro">Pro / VIP</option>
                       </select>
                     </div>
                     <div>
