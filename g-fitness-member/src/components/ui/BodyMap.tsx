@@ -185,6 +185,19 @@ interface BodyMapProps {
    */
   onLogRegion?: (key: BodyRegionKey) => void;
   /**
+   * The exercises that train one region, looked up by the caller.
+   *
+   * Passed in rather than fetched here: this component draws a body and knows
+   * nothing about the database, and the exercise catalogue is one request the
+   * tab already has a reason to make. Return an empty array and the panel says
+   * the gym has nothing catalogued for that part, which is true of the neck.
+   */
+  exercisesFor?: (key: BodyRegionKey) => { id: string; name: string; equipment: string }[];
+  /** A note under the exercise list explaining what actually moves this number. */
+  trainingNoteFor?: (key: BodyRegionKey) => string;
+  /** Opens the set-by-set tracker. Omit and no training action is offered. */
+  onTrainRegion?: (key: BodyRegionKey) => void;
+  /**
    * What the member is training for (0044), or null when they have not said.
    *
    * This is the fact that lets the panel say whether a change is the one being
@@ -194,7 +207,10 @@ interface BodyMapProps {
   focus?: TrainingFocus | null;
 }
 
-export default function BodyMap({ data, showLegend = true, onLogRegion, focus = null }: BodyMapProps) {
+export default function BodyMap({
+  data, showLegend = true, onLogRegion, focus = null,
+  exercisesFor, trainingNoteFor, onTrainRegion,
+}: BodyMapProps) {
   const states = useMemo(() => buildStates(data), [data]);
   const [view, setView] = useState<BodyView>('front');
   const [selected, setSelected] = useState<BodyRegionKey | null>(null);
@@ -352,6 +368,66 @@ export default function BodyMap({ data, showLegend = true, onLogRegion, focus = 
                     : `Update ${LABEL[view][active.key].toLowerCase()}`}
                 </button>
               )}
+
+              {/*
+                What trains this part.
+
+                The map used to answer one question — "how big is it, and has it
+                moved" — and stop. That leaves the member holding a number with
+                nothing to do about it. The exercises come from the gym's own
+                `exercises` catalogue, so this lists movements the equipment here
+                actually supports rather than a generic anatomy chart.
+
+                A region the gym has nothing catalogued for (the neck) says so.
+                An empty list under a heading would read as a loading failure.
+              */}
+              {exercisesFor && (() => {
+                const list = exercisesFor(active.key);
+                const note = trainingNoteFor?.(active.key);
+                return (
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-1.5"
+                      style={{ color: 'var(--color-text-secondary)' }}>
+                      Trains this
+                    </p>
+                    {list.length === 0 ? (
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                        {note ?? 'Nothing in the gym’s catalogue targets this directly.'}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {list.map((e) => (
+                            <span key={e.id}
+                              className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                              style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary)',
+                              }}>
+                              {e.name}
+                            </span>
+                          ))}
+                        </div>
+                        {note && (
+                          <p className="text-xs mt-2 leading-relaxed"
+                            style={{ color: 'var(--color-text-muted)' }}>
+                            {note}
+                          </p>
+                        )}
+                        {onTrainRegion && (
+                          <button
+                            onClick={() => onTrainRegion(active.key)}
+                            className="mt-2.5 w-full h-9 rounded-full text-xs font-bold"
+                            style={{ background: 'var(--color-primary)', color: '#fff' }}
+                          >
+                            Track a set for this
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

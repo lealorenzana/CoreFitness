@@ -2,7 +2,7 @@ import { panelStyle } from '../../../components/ui/Card';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
-import { Target, Plus, Check, Trash2 } from 'lucide-react';
+import { Target, Plus, Check, Trash2, ChevronDown, Lightbulb, Trophy } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import PresetGoals from '../../../components/ui/PresetGoals';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -30,10 +30,20 @@ const METRICS = [
   { id: 'custom', label: 'Something else', unit: '' },
 ] as const;
 
+/**
+ * Status colours, in the app's two hues.
+ *
+ * "Achieved" used to be `#22c55e` — a green, in an app whose design system has
+ * none, sitting next to a green progress bar. It read as a traffic light in a
+ * palette that deliberately avoids them, and it was the only green on the
+ * screen. Achieved is now **amber**, the colour this app already uses for the
+ * thing that matters, and past-deadline steps back to muted rather than
+ * shouting: a missed date is information, not a failure to punish someone with.
+ */
 const STATUS_STYLE: Record<Goal['status'], { bg: string; color: string; label: string }> = {
   active: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'In progress' },
-  achieved: { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Achieved' },
-  overdue: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)', label: 'Past deadline' },
+  achieved: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)', label: 'Achieved' },
+  overdue: { bg: 'var(--color-bg)', color: 'var(--color-text-muted)', label: 'Past deadline' },
 };
 
 export default function GoalsTab() {
@@ -45,6 +55,8 @@ export default function GoalsTab() {
   const [form, setForm] = useState({
     title: '', metric: 'weight_kg', startValue: '', targetValue: '', deadline: '',
   });
+  const [showDone, setShowDone] = useState(false);
+  const [showIdeas, setShowIdeas] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -250,19 +262,76 @@ export default function GoalsTab() {
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
 
+  // Achieved goals are the ones that pile up. Splitting them out is what lets
+  // the tab open onto what is still in play rather than a mixed list where a
+  // goal finished in March sits above one due next week.
+  const open = goals.filter((g) => g.status !== 'achieved');
+  const done = goals.filter((g) => g.status === 'achieved');
+  const closest = open
+    .map((g) => ({ g, pct: goalProgressPct(g) }))
+    .filter((x): x is { g: Goal; pct: number } => x.pct != null)
+    .sort((a, b) => b.pct - a.pct)[0];
+
   return (
     <div className="space-y-4">
+      {/* Two real counts and, when there is one, the goal closest to done.
+          Every number here is derived from rows — an empty section says zero
+          rather than being hidden, so "no goals achieved yet" is a fact the
+          member can read instead of an absence they have to infer. */}
+      {goals.length > 0 && (
+        <div className="rounded-2xl p-4" style={panelStyle}>
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-2xl font-bold text-white leading-none">{open.length}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>in progress</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold leading-none" style={{ color: 'var(--color-secondary)' }}>
+                {done.length}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>achieved</p>
+            </div>
+          </div>
+          {closest && (
+            <p className="text-xs mt-3 pt-3" style={{ color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)' }}>
+              Closest to done:{' '}
+              <span className="font-semibold text-white">{closest.g.title}</span>
+              {' '}— {closest.pct}% there
+            </p>
+          )}
+        </div>
+      )}
+
       <button onClick={() => setShowForm(true)}
-        className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
+        className="w-full py-3.5 rounded-2xl text-sm font-bold text-black flex items-center justify-center gap-2"
         style={{ background: 'var(--color-secondary)' }}>
-        <Plus size={15} /> Set a goal
+        <Plus size={17} /> Set a goal
       </button>
 
-      {/* The five presets (0055). Below the numeric form rather than replacing
-          it: a member tracking weight keeps exactly what they had, and these
-          cover the goals people actually say out loud, which the numeric
-          schema could only ever store as `custom` with no progress. */}
-      {memberId && <PresetGoals memberId={memberId} onCreated={load} />}
+      {/* The five presets (0055), behind a toggle rather than always open.
+          They are for someone who does not know what to set; a member who
+          already has goals scrolls past five suggestion cards every visit to
+          reach their own. Collapsed by default, one tap away. */}
+      {memberId && (
+        <div>
+          <button
+            onClick={() => setShowIdeas((v) => !v)}
+            className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+            style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+          >
+            <Lightbulb size={14} />
+            {showIdeas ? 'Hide goal ideas' : 'Not sure what to aim for? Browse ideas'}
+            <ChevronDown size={14} style={{
+              transform: showIdeas ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
+            }} />
+          </button>
+          {showIdeas && (
+            <div className="mt-2">
+              <PresetGoals memberId={memberId} onCreated={load} />
+            </div>
+          )}
+        </div>
+      )}
 
       <StepFlow
         open={showForm}
@@ -278,13 +347,75 @@ export default function GoalsTab() {
         <EmptyState icon={Target} title="No goals yet"
           message="Set one and it tracks itself from the measurements you log." />
       ) : (
-        <div className="space-y-2">
-          {goals.map((g) => {
-            const pct = goalProgressPct(g);
-            const style = STATUS_STYLE[g.status];
-            const unit = unitFor(g.metric);
-            return (
-              <div key={g.id} className="rounded-2xl p-4" style={panelStyle}>
+        <div className="space-y-4">
+          {open.length > 0 && (
+            <div className="space-y-2">
+              {open.map((g) => (
+                <GoalCard key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />
+              ))}
+            </div>
+          )}
+
+          {/* Completed goals behind a button. They are worth keeping — the
+              count above is only meaningful because they are still there — but
+              a finished goal has nothing left to act on, so it does not earn
+              space above the ones that do. */}
+          {done.length > 0 && (
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowDone((v) => !v)}
+                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+              >
+                <Trophy size={14} style={{ color: 'var(--color-secondary)' }} />
+                {showDone
+                  ? 'Hide achieved goals'
+                  : `Show ${done.length} achieved goal${done.length === 1 ? '' : 's'}`}
+                <ChevronDown size={14} style={{
+                  transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
+                }} />
+              </button>
+              {showDone && (
+                <div className="space-y-2">
+                  {done.map((g) => (
+                    <GoalCard key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {open.length === 0 && done.length > 0 && !showDone && (
+            <p className="text-xs text-center px-6" style={{ color: 'var(--color-text-muted)' }}>
+              Nothing in progress. Set another goal, or look back at what you have already done.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One goal.
+ *
+ * Module level, not declared inside the tab's render — a component defined
+ * during render is a fresh type every pass and remounts its subtree, which
+ * would restart the progress bar's transition on every keystroke in the form
+ * above it.
+ */
+function GoalCard({
+  goal: g, onAchieve, onRemove,
+}: {
+  goal: Goal;
+  onAchieve: (g: Goal) => void;
+  onRemove: (g: Goal) => void;
+}) {
+  const pct = goalProgressPct(g);
+  const style = STATUS_STYLE[g.status];
+  const unit = METRICS.find((m) => m.id === g.metric)?.unit ?? '';
+  return (
+              <div className="rounded-2xl p-4" style={panelStyle}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
                     {/* The metric always shows, above the title.
@@ -322,9 +453,22 @@ export default function GoalsTab() {
 
                 {pct != null ? (
                   <>
-                    <div className="h-2 rounded-full" style={{ background: 'var(--color-border)' }}>
+                    {/* The two numbers the bar is drawn from, spelled out.
+                        A bar alone says "some of the way" and makes the member
+                        do the arithmetic to find out how far is left. */}
+                    {g.currentValue != null && g.targetValue != null && (
+                      <div className="flex items-baseline justify-between mb-1.5">
+                        <span className="text-lg font-bold text-white">
+                          {g.currentValue}<span className="text-xs font-normal">{unit}</span>
+                        </span>
+                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          {Math.abs(g.targetValue - g.currentValue).toFixed(1).replace(/\.0$/, '')}{unit} to go
+                        </span>
+                      </div>
+                    )}
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
                       <div className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, background: g.status === 'achieved' ? '#22c55e' : 'var(--color-secondary)' }} />
+                        style={{ width: `${pct}%`, background: 'var(--color-secondary)' }} />
                     </div>
                     <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{pct}% there</p>
                   </>
@@ -339,23 +483,19 @@ export default function GoalsTab() {
 
                 {g.status !== 'achieved' && (
                   <div className="flex gap-2 mt-3">
-                    <button onClick={() => markAchieved(g)}
-                      className="flex-1 py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                    <button onClick={() => onAchieve(g)}
+                      className="flex-1 py-2.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5"
+                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                       <Check size={12} /> Mark achieved
                     </button>
-                    <button onClick={() => remove(g)}
-                      className="px-3 py-2 rounded-full text-xs font-semibold"
+                    <button onClick={() => onRemove(g)}
+                      aria-label={`Delete goal: ${g.title}`}
+                      className="px-3.5 py-2.5 rounded-full text-xs font-semibold"
                       style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }

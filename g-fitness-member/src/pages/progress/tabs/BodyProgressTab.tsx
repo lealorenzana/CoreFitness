@@ -3,7 +3,8 @@ import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../componen
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
-import { Activity, Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Activity, Plus, TrendingDown, TrendingUp, Minus, ChevronDown, History } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
@@ -17,6 +18,8 @@ import {
   FOCUS_LABEL, FOCUS_BLURB, type TrainingFocus,
 } from '../../../utils/trainingFocus';
 import { readCache, writeCache } from '../../../lib/pageCache';
+import { listExercises, type Exercise } from '../../../lib/api/workoutSets';
+import { REGION_MUSCLE_GROUPS, REGION_TRAINING_NOTE } from '../../../utils/regionMuscles';
 
 /**
  * Body measurements, from `body_measurements` (migration 0020).
@@ -122,6 +125,18 @@ export default function BodyProgressTab() {
   const [saving, setSaving] = useState(false);
   /** Bulk / cut / maintain (0044). Null until the member says. */
   const [focus, setFocus] = useState<TrainingFocus | null>(null);
+  const navigate = useNavigate();
+  /**
+   * The gym's exercise catalogue, for the "trains this" list on the body map.
+   *
+   * Fetched alongside the measurements rather than on tap: the list is small
+   * and unchanging, and a request fired when a muscle is tapped would show an
+   * empty panel first and fill it in a beat later. A failure leaves it empty,
+   * which the panel renders as "nothing catalogued" — wrong but harmless, and
+   * the alternative is a body map that will not open.
+   */
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const blankForm = (): Record<FieldKey, string> =>
     Object.fromEntries(FIELDS.map((f) => [f.key, ''])) as Record<FieldKey, string>;
   const [form, setForm] = useState<Record<FieldKey, string>>(blankForm);
@@ -131,7 +146,9 @@ export default function BodyProgressTab() {
     try {
       // Independent of the measurements: a focus that fails to load must not
       // blank the readings, and readings that fail must not lose the focus.
+      // The catalogue is the same deal — the map still draws without it.
       getTrainingFocus(memberId).then(setFocus).catch(() => undefined);
+      listExercises().then(setExercises).catch(() => undefined);
       setEntries(writeCache(CACHE_KEY, await progressService.getBodyProgress(memberId)));
     } catch (err) {
       if (!quiet) toast.error(errorMessage(err, 'Could not load your measurements'));
@@ -369,6 +386,18 @@ export default function BodyProgressTab() {
             setStartStep(REGION_STEP[region]);
             setShowForm(true);
           }}
+          // Tapping a muscle now answers "what do I do about it?" as well as
+          // "how big is it?". The catalogue is loaded once for the whole tab
+          // and filtered per region here — see utils/regionMuscles.ts for why
+          // the two vocabularies do not line up.
+          exercisesFor={(region) => {
+            const groups = REGION_MUSCLE_GROUPS[region];
+            return exercises
+              .filter((e) => groups.includes(e.muscleGroup))
+              .slice(0, 8);
+          }}
+          trainingNoteFor={(region) => REGION_TRAINING_NOTE[region]}
+          onTrainRegion={() => navigate('/member/track')}
         />
       </div>
 
@@ -415,22 +444,43 @@ export default function BodyProgressTab() {
             })}
           </div>
 
-          <div>
-            <h3 className="text-white font-semibold mb-2 px-1 text-sm">History</h3>
+          {/* Every reading ever taken, behind a button.
+              The card above already says what the latest one was and how it
+              moved, which is the question this tab is opened to answer. The
+              full list only grows, and on a member who has logged for a year it
+              is the last thing on the screen and the longest. */}
+          {entries.length > 1 && (
             <div className="space-y-2">
-              {[...entries].reverse().map((e) => (
-                <div key={e.id} className="rounded-xl p-3 flex items-center justify-between" style={panelStyle}>
-                  <span className="text-xs text-white">
-                    {new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {e.weight != null ? `${e.weight} kg` : '—'}
-                    {e.bodyFatPct != null && ` · ${e.bodyFatPct}% fat`}
-                  </span>
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+              >
+                <History size={14} />
+                {showHistory
+                  ? 'Hide history'
+                  : `Show all ${entries.length} readings`}
+                <ChevronDown size={14} style={{
+                  transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
+                }} />
+              </button>
+              {showHistory && (
+                <div className="space-y-2">
+                  {[...entries].reverse().map((e) => (
+                    <div key={e.id} className="rounded-xl p-3 flex items-center justify-between" style={panelStyle}>
+                      <span className="text-xs text-white">
+                        {new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        {e.weight != null ? `${e.weight} kg` : '—'}
+                        {e.bodyFatPct != null && ` · ${e.bodyFatPct}% fat`}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

@@ -3,7 +3,7 @@ import { Field, TextInput, TextArea } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Plus } from 'lucide-react';
+import { Dumbbell, Plus, ChevronDown, ChevronRight, History } from 'lucide-react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
@@ -59,6 +59,7 @@ function WorkoutProgress() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ type: '', duration: '', notes: '' });
+  const [showHistory, setShowHistory] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -160,27 +161,49 @@ function WorkoutProgress() {
   if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
 
   // Real totals over real rows. Nothing estimated.
-  const thisMonth = new Date().toISOString().slice(0, 7);
+  //
+  // Built from local parts, not `toISOString()`. Manila is UTC+8, so for the
+  // first eight hours of every local day the UTC date is still yesterday — and
+  // on the 1st of a month that means "this month" silently reports last
+  // month's totals until 8am. Same bug that hid every pre-8am check-in.
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthLogs = logs.filter((l) => l.date.startsWith(thisMonth));
   const monthMinutes = monthLogs.reduce((sum, l) => sum + (l.duration ?? 0), 0);
 
+  const lastLog = logs[0] ?? null;
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => setShowForm(true)}
-          className="py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-1.5"
-          style={{ background: 'var(--color-secondary)' }}>
-          <Plus size={15} /> Quick log
-        </button>
-        {/* The set-by-set tracker (0050). Reached from here because this is
-            where a member already comes to record training — a route with
-            nothing pointing at it is a feature that does not exist. */}
-        <button onClick={() => navigate('/member/track')}
-          className="py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5"
-          style={{ background: 'var(--color-primary)', color: '#fff' }}>
-          <Dumbbell size={15} /> Track sets
-        </button>
-      </div>
+      {/*
+        ONE way in, not two.
+
+        This used to be "Quick log" and "Track sets" side by side, equal weight,
+        neither explaining itself — and the difference between them is not a
+        difference in the *thing* being recorded. It is **when** you are
+        recording it: afterwards, from memory, or live between sets. Two buttons
+        made that look like two features and the member had to guess which one
+        their workout was.
+
+        So the button is the ordinary case, and the live tracker is a line under
+        it that says what it is for. Both still reach the same history.
+      */}
+      <button
+        onClick={() => setShowForm(true)}
+        className="w-full py-3.5 rounded-2xl text-sm font-bold text-black flex items-center justify-center gap-2"
+        style={{ background: 'var(--color-secondary)' }}
+      >
+        <Plus size={17} /> Log a workout
+      </button>
+
+      <button
+        onClick={() => navigate('/member/track')}
+        className="w-full -mt-1 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold"
+        style={{ color: 'var(--color-primary)' }}
+      >
+        <Dumbbell size={13} /> Training right now? Track sets as you go
+        <ChevronRight size={13} />
+      </button>
 
       <StepFlow
         open={showForm}
@@ -216,29 +239,74 @@ function WorkoutProgress() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            {logs.map((l) => (
-              <div key={l.id} className="rounded-2xl p-4" style={panelStyle}>
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{l.type}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      {l.duration != null && ` · ${l.duration} min`}
-                    </p>
-                  </div>
-                  <Dumbbell size={16} style={{ color: 'var(--color-secondary)' }} />
+          {/* The most recent session only. Everything before it is history and
+              sits behind the button below — a tab that opens onto forty cards
+              is a tab nobody reads, and the one fact worth seeing on arrival is
+              when you last trained. */}
+          {lastLog && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2"
+                style={{ color: 'var(--color-text-muted)' }}>
+                Last session
+              </p>
+              <LogCard log={lastLog} />
+            </div>
+          )}
+
+          {logs.length > 1 && (
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+              >
+                <History size={14} />
+                {showHistory
+                  ? 'Hide earlier workouts'
+                  : `Show ${logs.length - 1} earlier workout${logs.length - 1 === 1 ? '' : 's'}`}
+                <ChevronDown
+                  size={14}
+                  style={{
+                    transform: showHistory ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 150ms',
+                  }}
+                />
+              </button>
+
+              {/* Rendered only when open. `hidden` would keep forty cards in the
+                  tree, and this list grows for the life of the membership. */}
+              {showHistory && (
+                <div className="space-y-2">
+                  {logs.slice(1).map((l) => <LogCard key={l.id} log={l} />)}
                 </div>
-                {l.notes && (
-                  <p className="text-xs mt-2 px-2 py-1 rounded-lg"
-                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                    {l.notes}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </>
+      )}
+    </div>
+  );
+}
+
+/** One row of the log. Module level — see the note in ResourceThumb about why. */
+function LogCard({ log: l }: { log: WorkoutLog }) {
+  return (
+    <div className="rounded-2xl p-4" style={panelStyle}>
+      <div className="flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{l.type}</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {l.duration != null && ` · ${l.duration} min`}
+          </p>
+        </div>
+        <Dumbbell size={16} style={{ color: 'var(--color-secondary)' }} />
+      </div>
+      {l.notes && (
+        <p className="text-xs mt-2 px-2 py-1 rounded-lg"
+          style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+          {l.notes}
+        </p>
       )}
     </div>
   );
