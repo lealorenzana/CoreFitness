@@ -1,5 +1,6 @@
 import type { MembershipPlanRow } from '../types/db';
 import type { PlanSpec } from '../utils/planBuilder';
+import type { PlanAccess } from '../utils/planAccess';
 import { formatCheckInCode } from '../utils/checkInCode';
 import { membershipTerm } from '../utils/membershipTerm';
 
@@ -76,6 +77,19 @@ export interface AssistantContext {
    * that can rephrase "4 x 5-6" can change it.
    */
   plan: PlanSpec | null;
+  /**
+   * What the member's plan includes and withholds — the booking columns from
+   * 0017 *and* the feature matrix from 0049, already merged by `planAccess()`.
+   *
+   * Here because "what does my membership include" is the question this
+   * assistant is asked most, and answering it from the plan's *name* was how
+   * the Free tier's card ended up announcing only "this membership does not
+   * expire". The assistant now says the same thing the membership card and the
+   * upgrade screen say, because all three read this one object.
+   */
+  access: PlanAccess | null;
+  /** CORE Points balance (0051), or null when it could not be read. */
+  points: number | null;
 }
 
 export const EMPTY_CONTEXT: AssistantContext = {
@@ -89,6 +103,8 @@ export const EMPTY_CONTEXT: AssistantContext = {
   checkInsThisMonth: null,
   plans: [],
   plan: null,
+  access: null,
+  points: null,
   gym: null,
 };
 
@@ -142,13 +158,39 @@ function clockLabel(raw: string | null): string | null {
   return `${h12}:${m[2]} ${suffix}`;
 }
 
+/**
+ * What the plan covers, in the same words the membership card uses.
+ *
+ * Appended to the membership answers rather than living in its own rule,
+ * because "when does it expire" and "what do I get" are the same question
+ * asked two ways, and the free tier's honest answer to the first ("it doesn't
+ * expire") is actively misleading without the second.
+ *
+ * Returns '' when access could not be loaded — never a guess about what a
+ * membership includes.
+ */
+function accessLines(ctx: AssistantContext): string {
+  const a = ctx.access;
+  if (!a) return '';
+  const parts = [`\n\n**Included:** ${a.included.join(', ')}.`];
+  if (!a.isFullAccess) {
+    parts.push(
+      `\n**Not included:** ${a.excluded.join(', ')} — the front desk can tell you which plan adds them.`
+    );
+  }
+  return parts.join('');
+}
+
 function membershipAnswer(ctx: AssistantContext): string {
   if (!ctx.planName) {
     return "You don't have an active membership on record yet. The front desk can set one up — it starts the moment they record your payment.";
   }
   const term = membershipTerm(ctx.daysLeft, ctx.neverExpires);
   if (term.kind === 'unlimited') {
-    return `You're on **${ctx.planName}**, and it doesn't expire. Nothing to renew.`;
+    // The tier that never runs out is also the one that withholds the most, so
+    // "it doesn't expire" alone is the single most misleading true sentence
+    // this assistant can say. `accessLines` is what stops it being said alone.
+    return `You're on **${ctx.planName}**, and it doesn't expire. Nothing to renew.${accessLines(ctx)}`;
   }
   if (term.kind === 'expired') {
     return `Your **${ctx.planName}** membership has run out. Pay at the front desk and it extends the moment they record it.`;
@@ -156,7 +198,7 @@ function membershipAnswer(ctx: AssistantContext): string {
   if (!ctx.expiryDate) {
     return `You're on **${ctx.planName}**. It hasn't been activated yet — that happens when the front desk records your payment.`;
   }
-  return `You're on **${ctx.planName}**, valid until **${dateLabel(`${ctx.expiryDate}T00:00:00`)}** — ${term.value} ${term.unit} ${term.caption}.`;
+  return `You're on **${ctx.planName}**, valid until **${dateLabel(`${ctx.expiryDate}T00:00:00`)}** — ${term.value} ${term.unit} ${term.caption}.${accessLines(ctx)}`;
 }
 
 function hoursAnswer(ctx: AssistantContext): string {
@@ -254,7 +296,103 @@ function planAnswer(ctx: AssistantContext, wantToday: boolean): string {
   ].join('\n');
 }
 
+
+/**
+ * CORE Points (0051).
+ *
+ * The balance is read, never computed here: a pending redemption already counts
+ * against it in SQL, so a number summed on the phone would tell a member they
+ * can afford something the database will refuse.
+ */
+function pointsAnswer(ctx: AssistantContext): string {
+  const gated = ctx.access?.excluded.some((e) => /point/i.test(e)) ?? false;
+  if (gated) {
+    return 'CORE Points are not part of your current plan.\n\nOn a plan that includes them you earn points for checking in, logging workouts and finishing challenges, then spend them on gym rewards. The front desk can tell you which plan adds it.';
+  }
+  const bal = ctx.points == null
+    ? "I couldn't read your balance just now — open **Profile → CORE Points** to see it."
+    : `You have **${ctx.points.toLocaleString()} CORE Points**.`;
+  return `**CORE Points**\n\n${bal}\n\nYou earn them by checking in, logging a workout, attending a class or session, reaching a goal and finishing a challenge — the exact amounts are listed in **Profile → CORE Points**, because the gym can change them. Rewards are claimed there and handed over at the desk once the gym approves.`;
+}
+
+/** Challenges (0052). Progress is counted, so say so — that is the selling point. */
+function challengesAnswer(ctx: AssistantContext): string {
+  const gated = ctx.access?.excluded.some((e) => /challenge/i.test(e)) ?? false;
+  if (gated) {
+    return 'Challenges are not part of your current plan. The front desk can tell you which plan includes them.';
+  }
+  return '**Challenges**\n\nOpen **Profile → Challenges** to see what the gym is running and join one. Your progress is counted automatically from your check-ins and logged workouts — there is nothing to tick off, and nothing you can accidentally forget to record. Finish one and the points are added for you.';
+}
+
+/** The set-by-set tracker (0050), as distinct from the quick log that predates it. */
+function trackerAnswer(ctx: AssistantContext): string {
+  const gated = ctx.access?.excluded.some((e) => /tracker/i.test(e)) ?? false;
+  if (gated) {
+    return 'Recording exercises set by set is not part of your current plan — but you can still log a session with **Progress → Workouts → Quick log** ("Weights, 45 minutes"), and that has not changed.\n\nThe front desk can tell you which plan adds the full tracker.';
+  }
+  return '**Tracking a workout**\n\nOpen **Progress → Workouts → Track sets**. Pick an exercise, then add each set as you finish it — reps and weight, or minutes for things like the treadmill and planks. Every set saves as you enter it, so locking your phone between sets loses nothing.\n\nFor a quick note instead of set-by-set detail, **Quick log** on the same screen still works.';
+}
+
+/** Preset goals (0055) — the five that track themselves. */
+function goalsAnswer(): string {
+  return '**Goals**\n\nOpen **Progress → Goals**. Alongside number goals like "get to 70 kg", there are ready-made ones that track themselves from your check-ins and logged workouts — build consistency, stay active, improve fitness, increase strength, improve endurance.\n\nEach one says exactly how it is counted, and the gym marks it reached for you; you never have to claim it.';
+}
+
+/**
+ * "Why is this locked?"
+ *
+ * Answered from the same access object the lock card is worded from, so the
+ * two can never explain one rule differently.
+ */
+function lockedAnswer(ctx: AssistantContext): string {
+  const a = ctx.access;
+  if (!a) {
+    return "I couldn't read what your plan includes just now. Open **Profile → Membership** and it is listed there.";
+  }
+  if (a.isFullAccess) {
+    return 'Your plan includes everything the app offers, so nothing should be locked. If a screen still shows a lock, tell the front desk — that is a bug, not your membership.';
+  }
+  return `Your plan does not include: **${a.excluded.join(', ')}**.\n\nEverything else is open to you. The front desk can tell you which plan adds them — payment is in person, in cash.`;
+}
+
+/** Trainer certificates (0054) — members never see the file, so be honest about it. */
+function credentialsAnswer(): string {
+  return "Coaches can upload their certificates for the gym to check, and the gym marks them verified once it has seen the document.\n\nThe certificates themselves aren't shown in the app — you'll see what a coach lists on their profile in **Book → Trainers**. Ask the front desk if you want to know more about a coach's qualifications.";
+}
+
 const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
+  {
+    // Points before the generic membership rule: "how do I earn points" is not
+    // a question about the subscription.
+    match: /\b(?:core ?points?|points?|reward\w*|redeem\w*|puntos)\b/,
+    reply: pointsAnswer,
+  },
+  {
+    match: /\b(?:challenge\w*|hamon)\b/,
+    reply: challengesAnswer,
+  },
+  {
+    // The logging verbs the training-plan rule deliberately refuses, routed
+    // here instead of being answered with the plan.
+    match: /\b(?:track\s+(?:my\s+)?(?:sets?|workout|lift)|log\s+(?:my\s+)?(?:sets?|workout|exercise)|record\s+(?:my\s+)?(?:sets?|workout|reps?|weight)|sets? and reps?|how much i lifted)\b/,
+    reply: trackerAnswer,
+  },
+  {
+    match: /\b(?:preset goals?|ready-?made goals?|set a goal|my goals?|goal progress)\b/,
+    reply: goalsAnswer,
+  },
+  {
+    match: /\b(?:why (?:is|are) (?:this|it|that) locked|locked|upgrade|what (?:does|do) my plan (?:include|cover)|bakit naka-?lock)\b/,
+    reply: lockedAnswer,
+  },
+  {
+    // `certif\w*`, not `certificat\w*` — "certified" does not contain
+    // "certificat", so the narrower stem missed the most common phrasing of
+    // this question entirely. Same fault as `amenit` never matching
+    // "amenities"; caught by running the regex, not by reading it.
+    match: /\b(?:certif\w*|qualif\w*|credential\w*|licens\w*|accredit\w*)\b/,
+    reply: credentialsAnswer,
+  },
   {
     // Above the workout-logging rule further down: "what is my workout today"
     // asks about the member's saved plan, not for somewhere to record one.
@@ -478,8 +616,16 @@ export function answerFor(question: string, ctx: AssistantContext): string {
 /** Starter chips. The personal ones only appear when we actually have the data. */
 export function suggestionsFor(ctx: AssistantContext): string[] {
   const personal: string[] = [];
-  if (ctx.planName) personal.push('When does my membership expire?');
+  if (ctx.planName) personal.push('What does my membership include?');
   if (ctx.memberId) personal.push('What is my check-in code?');
   if (ctx.nextBooking) personal.push('What is my next session?');
-  return [...personal, 'How do I book a class?', 'Opening hours', 'Prices'].slice(0, 5);
+  // Only offered when the plan actually includes them — a chip that leads
+  // straight to a lock card is a worse first impression than no chip at all.
+  const includes = (re: RegExp) =>
+    ctx.access != null && !ctx.access.excluded.some((e) => re.test(e));
+  const extras: string[] = [];
+  if (includes(/point/i)) extras.push('How do I earn CORE Points?');
+  if (includes(/challenge/i)) extras.push('What challenges are running?');
+  if (ctx.plan) extras.push('What is my workout today?');
+  return [...personal, ...extras, 'How do I book a class?', 'Opening hours', 'Prices'].slice(0, 5);
 }

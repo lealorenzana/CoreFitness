@@ -4,6 +4,30 @@
  */
 
 export const TRAINER_CHATBOT_RESPONSES: Record<string, string> = {
+  /**
+   * Certificates (migration 0054).
+   *
+   * First in the object on purpose: the lookup is `lower.includes(key)` over
+   * insertion order, so a later key that happens to appear in the question
+   * would win instead. Keyed on `certif` rather than `certificate`, because
+   * "certified" does not contain "certificate" — the same stem mistake that has
+   * broken three regexes in this project.
+   */
+  'certif': `**Your Certificates:**
+
+You can upload the document itself, not just type the name:
+
+1. Go to Profile → Edit profile
+2. Scroll to **Certificates**
+3. Name it ("NASM-CPT", "First Aid"), then attach a PDF or a photo
+
+**What happens next:**
+• The gym reviews it and marks it Verified
+• If it is rejected you will see the reason, and can upload a corrected one
+• Only you and the gym owner can open the file — not the front desk, not members
+
+You cannot mark your own certificate verified; that is the whole point of the gym checking it. The certifications you type on your profile are still shown to members as your own statement.`,
+
   // Member Management
   'member': `**Managing Members:**
 
@@ -311,8 +335,9 @@ Manage notification settings in your Profile → Settings.`,
 1. Go to Profile tab
 2. Edit your information
 3. Update bio and specialization
-4. Add certifications
+4. List your certifications, and attach the certificates themselves
 5. Upload profile photo
 
-A complete profile helps members choose the right trainer!`,
+A complete profile helps members choose the right trainer. Ask me about
+**certificates** for how the gym verifies them.`,
 };

@@ -9,6 +9,7 @@ import { getMemberHome } from '../services/memberHomeService';
 import { listPlans } from '../lib/api/membershipPlans';
 import { getGymSettings } from '../lib/api/settings';
 import { getCurrentPlan } from '../lib/api/workoutPlans';
+import { getBalance } from '../lib/api/points';
 import {
   answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback,
   type AssistantContext,
@@ -110,7 +111,7 @@ export default function ChatbotPage() {
     (async () => {
       // Personalise the greeting only once the data is in, so it never opens
       // with a name-shaped gap.
-      const [home, plans, gym, saved] = await Promise.all([
+      const [home, plans, gym, saved, points] = await Promise.all([
         getCurrentMemberId()
           .then((id) => (id ? getMemberHome(id) : null))
           .catch(() => null),
@@ -126,6 +127,12 @@ export default function ChatbotPage() {
         // it is resolved after it — a failure here just leaves `plan` null.
         getCurrentMemberId()
           .then((id) => (id ? getCurrentPlan(id) : null))
+          .catch(() => null),
+        // CORE Points (0051). Null on failure, and null for a plan that cannot
+        // earn — the answer then explains the plan instead of showing a zero
+        // that would read as "you have earned nothing".
+        getCurrentMemberId()
+          .then((id) => (id ? getBalance(id) : null))
           .catch(() => null),
       ]);
       if (cancelled) return;
@@ -149,8 +156,10 @@ export default function ChatbotPage() {
             plans,
             gym: toGymFacts(gym),
             plan: saved?.spec ?? null,
+            access: home.access,
+            points,
           }
-        : { ...EMPTY_CONTEXT, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null };
+        : { ...EMPTY_CONTEXT, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null, points };
 
       setCtx(next);
       setMessages([greeting(next)]);

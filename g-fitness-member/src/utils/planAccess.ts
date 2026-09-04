@@ -32,7 +32,21 @@ export interface PlanAccess {
   isFullAccess: boolean;
 }
 
-export function planAccess(plan: MembershipPlanRow | null | undefined): PlanAccess | null {
+/**
+ * One plan's rows from the `plan_features` matrix (0049), joined to the feature
+ * labels. Optional throughout: a caller that has not loaded them gets exactly
+ * the pre-0049 answer rather than a wrong one.
+ */
+export interface PlanFeatureRow {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
+export function planAccess(
+  plan: MembershipPlanRow | null | undefined,
+  features?: PlanFeatureRow[] | null
+): PlanAccess | null {
   if (!plan) return null;
 
   // Floor and locker access is the floor of every tier — it is what the Free
@@ -64,6 +78,20 @@ export function planAccess(plan: MembershipPlanRow | null | undefined): PlanAcce
     );
   } else {
     excluded.push('Personal training');
+  }
+
+  // ── What 0049 gates, added to the same two lists ─────────────────────────
+  //
+  // Without this the comparison screen answers "what does Premium add?" with
+  // classes and personal training only — while silently also adding the AI
+  // plan builder, the workout tracker, points and challenges. That is the
+  // hidden-rulebook failure 0041 was written to fix, reappearing in the one
+  // screen where somebody is deciding whether to pay.
+  //
+  // Labels come from the `features` rows, so a gate can never be described
+  // here in words that differ from the lock card the member hits later.
+  for (const f of features ?? []) {
+    (f.enabled ? included : excluded).push(f.label);
   }
 
   return { included, excluded, isFullAccess: excluded.length === 0 };

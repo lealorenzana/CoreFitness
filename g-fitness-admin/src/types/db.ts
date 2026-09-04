@@ -272,3 +272,192 @@ export interface PendingRegistrationRow {
   emergency_contact_relationship: string | null;
   created_at: string;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Subscription gating and the engagement loop (migrations 0049-0055)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * The catalogue of gateable app areas (0049).
+ *
+ * Rows arrive by migration only — the table has no INSERT policy for anyone,
+ * because a feature key does something only if code checks it. `label` and
+ * `description` are what the member sees on a lock card, so they are read
+ * rather than written in the UI.
+ */
+export interface FeatureRow {
+  key: string;
+  label: string;
+  description: string;
+  default_free: boolean;
+  default_freemium: boolean;
+  default_premium: boolean;
+  sort_order: number;
+}
+
+/** One cell of the plan x feature matrix the admin edits (0049). */
+export interface PlanFeatureRow {
+  plan_id: string;
+  feature_key: string;
+  enabled: boolean;
+  /** Reserved for metered features. NULL = no ceiling. Nothing reads it yet. */
+  quota: number | null;
+}
+
+/**
+ * The exercise catalogue (0050). Admin-owned, because free text turns
+ * "Bench Press", "bench" and "Benchpress" into three lifts and silently breaks
+ * every history chart. Deleting one with logged sets is refused by the
+ * database; the admin deactivates instead.
+ */
+export interface ExerciseRow {
+  id: string;
+  name: string;
+  muscle_group: string;
+  equipment: string;
+  /** Measured in time/distance rather than reps and weight — changes the form. */
+  is_timed: boolean;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+/** One recorded set (0050). Hangs off `workout_logs`, which is the session. */
+export interface WorkoutSetRow {
+  id: string;
+  log_id: string;
+  /** NULL when `custom_name` is used — a custom entry is not aggregated. */
+  exercise_id: string | null;
+  custom_name: string | null;
+  set_number: number;
+  reps: number | null;
+  weight_kg: number | null;
+  duration_seconds: number | null;
+  distance_m: number | null;
+  created_at: string;
+}
+
+/** What each action is worth (0051). Admin-editable; a double-points week is an UPDATE. */
+export interface PointRuleRow {
+  key: string;
+  label: string;
+  points: number;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/**
+ * The points ledger (0051). Append-only and **written only by SECURITY DEFINER
+ * code** — no INSERT policy exists for any role, admin included. A UNIQUE on
+ * (member, rule, source_table, source_id) is what makes a second award
+ * impossible rather than merely unlikely.
+ */
+export interface PointLedgerRow {
+  id: string;
+  member_id: string;
+  rule_key: string;
+  /** Copied, not joined: re-pricing a rule must not restate what was earned. */
+  points: number;
+  source_table: string;
+  source_id: string;
+  created_at: string;
+}
+
+/** A reward points can buy (0051). NULL stock = unlimited; 0 = out of stock. */
+export interface RewardRow {
+  id: string;
+  name: string;
+  description: string | null;
+  cost_points: number;
+  stock: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type RedemptionStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled';
+
+/** A claim on a reward (0051). Admin decides; staff can see but not approve. */
+export interface RewardRedemptionRow {
+  id: string;
+  member_id: string;
+  reward_id: string;
+  /** Frozen at request time, so re-pricing cannot alter a pending request. */
+  cost_points: number;
+  status: RedemptionStatus;
+  requested_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
+/**
+ * A gym challenge (0052). `metric_key` references `achievement_metrics`, but
+ * only the twelve flagged `challengeable` — a streak or a tenure cannot be
+ * counted inside a window honestly.
+ */
+export interface ChallengeRow {
+  id: string;
+  title: string;
+  description: string | null;
+  metric_key: string;
+  target: number;
+  starts_on: string;
+  ends_on: string;
+  reward_points: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+/**
+ * Who joined what (0052). `completed_on` is written **only** by
+ * `settle_challenges()`; the table has no UPDATE policy for any role, because
+ * whoever could hand out a completion could hand out its points.
+ */
+export interface ChallengeParticipantRow {
+  challenge_id: string;
+  member_id: string;
+  joined_at: string;
+  completed_on: string | null;
+}
+
+export type CredentialStatus = 'pending' | 'verified' | 'rejected';
+
+/**
+ * A trainer's certificate (0054). The file lives in a **private** bucket and is
+ * reached only through a short-lived signed URL — it carries a legal name and
+ * usually a licence number. Readable by that trainer and admin only, never
+ * staff, never members. A trainer cannot set `status`: a trigger refuses it.
+ */
+export interface TrainerCredentialRow {
+  id: string;
+  trainer_id: string;
+  title: string;
+  /** `credentials/<uid>/<random>.<ext>` — never a public URL. */
+  file_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  status: CredentialStatus;
+  uploaded_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+}
+
+/**
+ * A preset goal that tracks itself (0055).
+ *
+ * `measured_as` is the rule in plain language and is shown on the card — a goal
+ * whose definition is hidden is one you cannot trust when it says you failed.
+ */
+export interface GoalTemplateRow {
+  key: string;
+  label: string;
+  description: string;
+  measured_as: string;
+  metric: string;
+  /** Rolling window in days. 56 = the last eight weeks. */
+  period_days: number;
+  target_default: number;
+  is_active: boolean;
+  sort_order: number;
+}

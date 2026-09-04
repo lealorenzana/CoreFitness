@@ -11,6 +11,7 @@ import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { membershipTerm } from '../utils/membershipTerm';
 import { planAccess } from '../utils/planAccess';
+import { getPlanFeatureMatrix } from '../lib/api/planFeatures';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listPlans } from '../lib/api/membershipPlans';
 import {
@@ -85,18 +86,24 @@ export default function RenewMembership() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
+  // What each plan unlocks (0049), for every plan rather than just this
+  // member's. Empty on failure, which degrades to the pre-0049 wording instead
+  // of claiming a tier includes nothing.
+  const [matrix, setMatrix] = useState<Record<string, { key: string; label: string; enabled: boolean }[]>>({});
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const id = await getCurrentMemberId();
-        const [available, membership, usedTrial] = await Promise.all([
+        const [available, membership, usedTrial, features] = await Promise.all([
           listPlans(),
           id ? getCurrentMembership(id).catch(() => null) : Promise.resolve(null),
           id ? hasUsedFreemiumTrial(id) : Promise.resolve(false),
+          getPlanFeatureMatrix().catch(() => ({})),
         ]);
         if (cancelled) return;
+        setMatrix(features);
         const active = available
           .filter((p) => p.is_active)
           .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier]);
@@ -284,7 +291,7 @@ export default function RenewMembership() {
             const usable = current.status === 'active'
               && (current.never_expires || (daysLeft ?? -1) >= 0);
             const term = membershipTerm(daysLeft, current.never_expires);
-            const access = planAccess(currentPlan);
+            const access = planAccess(currentPlan, matrix[currentPlan.id]);
 
             return (
               <div className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
@@ -366,7 +373,7 @@ export default function RenewMembership() {
                 const isSelected = plan.id === selectedId;
                 const isCurrent = plan.id === currentPlan?.id;
                 const locked = lockedReason(plan);
-                const access = planAccess(plan);
+                const access = planAccess(plan, matrix[plan.id]);
                 const kind = moveFor(plan);
 
                 return (

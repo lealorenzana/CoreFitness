@@ -78,3 +78,40 @@ export function isEnabled(features: Feature[] | null, key: FeatureKey): boolean 
 export function findFeature(features: Feature[] | null, key: FeatureKey): Feature | null {
   return features?.find((f) => f.key === key) ?? null;
 }
+
+/**
+ * The whole matrix, keyed by plan — for the comparison screen.
+ *
+ * `my_features()` answers for *this* member's plan and cannot answer for the
+ * others, which is exactly what "should I upgrade?" needs. Both tables are
+ * readable by any authenticated user (0049), so this is a plain join.
+ *
+ * The result feeds `planAccess(plan, matrix[plan.id])`, so the upgrade screen
+ * lists what a tier adds in the same words as the lock card that will explain
+ * it later.
+ */
+export async function getPlanFeatureMatrix(): Promise<Record<string, { key: string; label: string; enabled: boolean }[]>> {
+  const [defs, cells] = await Promise.all([
+    supabase.from('features').select('key, label, sort_order').order('sort_order'),
+    supabase.from('plan_features').select('plan_id, feature_key, enabled'),
+  ]);
+  if (defs.error) throw defs.error;
+  if (cells.error) throw cells.error;
+
+  const labels = new Map((defs.data ?? []).map((d) => [d.key as string, d.label as string]));
+  const order = new Map((defs.data ?? []).map((d, i) => [d.key as string, i]));
+  const out: Record<string, { key: string; label: string; enabled: boolean }[]> = {};
+
+  for (const c of cells.data ?? []) {
+    const key = c.feature_key as string;
+    const label = labels.get(key);
+    // A cell whose feature row is missing is skipped rather than rendered as a
+    // blank bullet — the catalogue is the source of the wording.
+    if (!label) continue;
+    (out[c.plan_id as string] ??= []).push({ key, label, enabled: c.enabled as boolean });
+  }
+  for (const list of Object.values(out)) {
+    list.sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0));
+  }
+  return out;
+}

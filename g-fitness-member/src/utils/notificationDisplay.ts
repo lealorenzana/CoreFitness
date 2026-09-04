@@ -26,6 +26,17 @@ export const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
   /** Written by `send_due_gym_reminders()` (0030), not by any client. */
   gym_plan: Dumbbell,
   system: AlertCircle,
+
+  // ── 0053's automated reminders ────────────────────────────────────────────
+  // These types were already being written before they were listed here, so
+  // they fell through to the generic `Info` icon: a "your membership ends
+  // tomorrow" warning looked identical to a system notice. The map is the only
+  // thing that decides, so a new server-side notification type has to be added
+  // here in the same change that starts writing it.
+  /** `send_membership_expiry_reminders()` — 7, 3 and 1 days out. */
+  expiry: CreditCard,
+  /** Goal reached, badge unlocked, reward now claimable. */
+  success: Award,
 };
 
 export function iconFor(type: string): LucideIcon {

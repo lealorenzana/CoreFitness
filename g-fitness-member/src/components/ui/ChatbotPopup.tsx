@@ -5,6 +5,9 @@ import { listPlans } from '../../lib/api/membershipPlans';
 import { getGymSettings } from '../../lib/api/settings';
 import { getCurrentPlan } from '../../lib/api/workoutPlans';
 import { getCurrentMemberId } from '../../services/bookingService';
+import { getMyFeatures } from '../../lib/api/planFeatures';
+import { planAccess } from '../../utils/planAccess';
+import { getCurrentMembership } from '../../lib/api/memberships';
 import RichText from './RichText';
 import { answerFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
 import { X, Send, Bot } from 'lucide-react';
@@ -57,9 +60,21 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
       getCurrentMemberId()
         .then((id) => (id ? getCurrentPlan(id) : null))
         .catch(() => null),
-    ]).then(([plans, gym, saved]) => {
+      // What the plan includes (0017 + 0049), so "what does my membership
+      // cover" is answered the same here as on the membership card. This popup
+      // stays deliberately shallow, but this is two cheap reads and it is the
+      // difference between an honest answer and half of one.
+      Promise.all([
+        getCurrentMemberId().then((id) => (id ? getCurrentMembership(id) : null)).catch(() => null),
+        getMyFeatures().catch(() => []),
+      ])
+        .then(([m, f]) => planAccess(m?.membership_plans, f))
+        .catch(() => null),
+    ]).then(([plans, gym, saved, access]) => {
       if (!cancelled) {
-        setCtx((c) => ({ ...c, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null }));
+        setCtx((c) => ({
+          ...c, plans, gym: toGymFacts(gym), plan: saved?.spec ?? null, access,
+        }));
       }
     });
     return () => { cancelled = true; };

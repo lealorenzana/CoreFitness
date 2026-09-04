@@ -4,6 +4,7 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import { listMyBookings, isUpcoming, type MyBooking } from './bookingService';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { planAccess, type PlanAccess } from '../utils/planAccess';
+import { getMyFeatures } from '../lib/api/planFeatures';
 import { progressService } from './progressService';
 
 /**
@@ -82,7 +83,7 @@ function toDateString(d: Date): string {
 }
 
 export async function getMemberHome(memberId: string): Promise<MemberHome> {
-  const [member, membership, attendance, bookings, events, coachNotes] = await Promise.all([
+  const [member, membership, attendance, bookings, events, coachNotes, features] = await Promise.all([
     getMemberProfile(memberId).catch(() => null),
     getCurrentMembership(memberId).catch(() => null),
     listMemberAttendance(memberId).catch(() => []),
@@ -92,6 +93,10 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     // three type spellings a recommendation has been written under, and a second
     // copy of that list would drift and start hiding notes again.
     progressService.getTrainerFeedback(memberId).catch(() => []),
+    // What this member's plan unlocks (0049), so the membership card lists the
+    // gated features alongside classes and PT rather than only half the story.
+    // Empty on failure — the card then says exactly what it said before 0049.
+    getMyFeatures().catch(() => []),
   ]);
 
   const unread = coachNotes.filter((n) => !n.read);
@@ -149,7 +154,7 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     photoUrl: member?.profile.photo_url ?? null,
     memberId,
     planName: membership?.membership_plans?.name ?? null,
-    access: planAccess(membership?.membership_plans),
+    access: planAccess(membership?.membership_plans, features),
     expiryDate,
     neverExpires,
     daysLeft,

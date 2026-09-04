@@ -161,11 +161,56 @@ export function buildChatbotResponses(ctx: ChatbotContext): ChatbotResponse[] {
     'Nagche-check in ang miyembro gamit ang QR code, o sa pamamagitan ng 6-character na code sa app kung hindi gumana ang camera. Nasa Attendance page ang dalawa. Ang check-in ngayong araw ay maaaring bawiin doon; ang mas luma ay hindi.'
   );
 
+  // ---- What a plan unlocks (0049) -----------------------------------------
+  // Describes where the control is rather than listing the current settings:
+  // the matrix is per plan and the admin is looking at it on the next screen,
+  // so repeating a snapshot here is how the two start disagreeing.
+  const gating = say(
+    'Each plan controls which parts of the member app it unlocks. Open **Membership Plans** and scroll to **What each plan unlocks** — one row per feature, one checkbox per plan.\n\nMembers on a plan without a tick see the feature explained and locked, not hidden, so they can see what upgrading gets them. Class and personal-training limits are separate, in the plan\'s own form above that table.',
+    'Kinokontrol ng bawat plan kung aling bahagi ng member app ang bukas. Buksan ang **Membership Plans** at hanapin ang **What each plan unlocks**.\n\nAng members na walang tsek ay nakakakita ng paliwanag at naka-lock — hindi nakatago — para malaman nila kung ano ang makukuha sa pag-upgrade.'
+  );
+
+  // ---- CORE Points (0051) --------------------------------------------------
+  const points = say(
+    'Members earn CORE Points for checking in, logging workouts, attending sessions, reaching goals and finishing challenges. You set what each is worth, and you approve every reward claim.\n\nOpen **Rewards** to add rewards and to work the approval queue. Points cannot be created by hand — not by staff, not by you — because they are only ever awarded for something a member actually did. To be generous, add a cheaper reward.',
+    'Kumikita ang members ng CORE Points sa pag-check in, pag-log ng workout, pagdalo, at pagtapos ng challenge. Ikaw ang nag-a-approve ng bawat reward.\n\nBuksan ang **Rewards**. Hindi puwedeng magbigay ng points nang manu-mano — para sa aktuwal na ginawa lang ito.'
+  );
+
+  // ---- Challenges (0052) ---------------------------------------------------
+  const challenges = say(
+    'Open **Challenges** to run one: a title, what is counted, a target, a date range and a points reward.\n\nProgress is counted from real check-ins and logged workouts inside that date range — members cannot self-report it, and there is no mark-complete button for you either, because whoever could hand out a completion could hand out its points. Only metrics that can be counted inside a window are offered; streaks and days-since-joining are left out because a windowed target for them would be meaningless.',
+    'Buksan ang **Challenges**. Ang progress ay binibilang mula sa totoong check-ins at workouts sa loob ng petsa — hindi ito puwedeng i-report ng member, at wala ring mark-complete button para sa iyo.'
+  );
+
+  // ---- Exercises (0050) ----------------------------------------------------
+  const exercises = say(
+    'The exercise list members choose from when tracking a workout lives in **Exercises**.\n\nAn exercise that members have already logged cannot be deleted — that would rewrite their training history — so hide it instead and every past set stays intact. Names are matched ignoring case, so "Bench Press" and "bench press" cannot both exist and split the history.',
+    'Ang listahan ng exercises ay nasa **Exercises**. Hindi puwedeng burahin ang exercise na may naka-log na set — itago na lang, at mananatili ang lahat ng dating record.'
+  );
+
+  // ---- Trainer credentials (0054) ------------------------------------------
+  const credentials = say(
+    'Trainers upload their certificates from their own profile in the phone app; you review them in **Credentials**.\n\nFiles open through a link that expires after five minutes, and only you and the trainer who uploaded it can open them — not staff, not members. A trainer cannot mark their own document verified. Rejecting one requires a reason, which the trainer sees.',
+    'Nag-a-upload ang mga trainer ng sertipiko mula sa kanilang profile; sinusuri mo ito sa **Credentials**.\n\nLimang minuto lang bago mag-expire ang link, at ikaw at ang trainer lang ang makakabukas. Hindi puwedeng i-verify ng trainer ang sarili niyang dokumento.'
+  );
+
   return [
+    // 0049-0055, above the older patterns they would otherwise be swallowed by:
+    // `membership|\bplan\b` catches "what does each plan unlock", and
+    // `/trainer|coach/` catches "trainer certificates".
+    { pattern: /unlock|gat(?:e|ing)|feature matrix|what does each plan|locked for members|restrict/i, responses: gating },
+    { pattern: /core ?points?|\bpoints?\b|reward|redeem|redemption/i, responses: points },
+    { pattern: /challenge/i, responses: challenges },
+    { pattern: /exercise|movement|lift list|catalogue|catalog/i, responses: exercises },
+    { pattern: /certif|qualif|credential|licens|accredit/i, responses: credentials },
     // `\bopen\b` deliberately, so "opening hours" matches but "opened" does not
     // pull an hours answer out of an unrelated sentence.
     { pattern: /gym hours|operating hours|opening hours|anong oras|\bbukas\b|\bopen\b/i, responses: hours },
-    { pattern: /membership|\bplan\b|\bfee\b|price|magkano|presyo|bayad/i, responses: membership },
+    // `\bplans?\b`, not `\bplan\b` — the trailing `\b` meant "what plans do you
+    // have" matched nothing and fell through to the fallback, which is the same
+    // shape as `amenit` never matching "amenities". Found by running the
+    // patterns rather than reading them.
+    { pattern: /membership|\bplans?\b|\bfees?\b|price|magkano|presyo|bayad/i, responses: membership },
     // `locat`, not `location` — "Where are you located?" contains neither
     // "location" nor "address", and fell through to the fallback.
     { pattern: /locat|address|nasaan|\bsaan\b|where is the gym|where are you/i, responses: location },
@@ -186,6 +231,6 @@ export function buildChatbotResponses(ctx: ChatbotContext): ChatbotResponse[] {
 }
 
 export const FALLBACK_RESPONSE = {
-  en: "I don't have an answer for that. I can only report what's in the system — try asking about opening hours, membership plans, trainers, the class timetable, check-in, or the gym's contact details.",
-  fil: 'Wala akong sagot diyan. Ang naiuulat ko lang ay ang nasa sistema — subukang magtanong tungkol sa oras ng pagbubukas, membership plans, trainers, iskedyul ng klase, check-in, o contact details ng gym.',
+  en: "I don't have an answer for that. I can only report what's in the system — try asking about opening hours, membership plans, what each plan unlocks, trainers and their certificates, the class timetable, exercises, CORE Points and rewards, challenges, check-in, or the gym's contact details.",
+  fil: 'Wala akong sagot diyan. Ang naiuulat ko lang ay ang nasa sistema — subukang magtanong tungkol sa oras ng pagbubukas, membership plans, kung ano ang bukas sa bawat plan, trainers at sertipiko nila, iskedyul ng klase, exercises, CORE Points at rewards, challenges, check-in, o contact details ng gym.',
 };
