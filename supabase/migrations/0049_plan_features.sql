@@ -139,6 +139,18 @@ begin
            when 'free'     then f.default_free
            when 'freemium' then f.default_freemium
            when 'premium'  then f.default_premium
+           -- A CASE with no ELSE returns NULL, and `enabled` is NOT NULL — so
+           -- a tier this file does not name would make the seeding trigger
+           -- fail and take the whole plan INSERT with it.
+           --
+           -- That is not theoretical: 0056 adds a 'pro' tier, and re-pasting
+           -- *this* file afterwards would then fail on the existing Pro plan.
+           -- The ELSE keeps 0049 re-runnable no matter what tiers exist later.
+           --
+           -- Fail-open is right here: a new top tier that silently grants
+           -- nothing is worse than one that grants too much, and the admin sees
+           -- the whole matrix on one screen and unticks what it should not have.
+           else true
          end
     from membership_plans p
     cross join features f

@@ -199,9 +199,20 @@ grant execute on function freezes_this_month(uuid) to authenticated;
 -- 0018's counter stays where it is. Nothing reads it any more, but dropping a
 -- column that a deployed build might still select is how a working app starts
 -- returning 400s mid-session.
-comment on column memberships.freeze_count is
-  'Superseded by membership_events (0057), which counts per calendar month and '
-  'records a reason. Left in place so an older deployed bundle keeps working.';
+--
+-- Guarded, because a `comment on` for a column that does not exist is a hard
+-- error — and this whole file failing over a docstring would be an absurd way
+-- to lose the plans and the freeze policy.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_name = 'memberships' and column_name = 'freeze_count') then
+    execute $c$comment on column memberships.freeze_count is
+      'Superseded by membership_events (0057), which counts per calendar month '
+      'and records a reason. Left in place so an older deployed bundle keeps working.'$c$;
+  end if;
+end
+$$;
 
 -- ============================================================================
 -- 3. EVENTS MEMBERS CAN ACTUALLY UNDERSTAND
