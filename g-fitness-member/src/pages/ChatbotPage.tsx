@@ -18,6 +18,7 @@ import {
   listConversations, listMessages, createConversation, appendMessage,
   deleteConversation, titleFrom, type Conversation,
 } from '../lib/api/assistantChats';
+import FeatureLock from '../components/ui/FeatureLock';
 import { askFitnessAssistant } from '../lib/api/fitnessAssistant';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
@@ -64,7 +65,21 @@ interface Message {
 
 const GREETING_ID = 'greeting';
 
+/**
+ * The assistant is an entitlement (`ai_model`, 0049), so the route locks and
+ * explains rather than disappearing. The floating chathead is hidden for plans
+ * without it (see Layout) — but anything already linking here, and anyone who
+ * kept the URL, lands on the reason instead of a blank screen.
+ */
 export default function ChatbotPage() {
+  return (
+    <FeatureLock feature="ai_model">
+      <Assistant />
+    </FeatureLock>
+  );
+}
+
+function Assistant() {
   const navigate = useNavigate();
   const [ctx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
   const [messages, setMessages] = useState<Message[]>([]);

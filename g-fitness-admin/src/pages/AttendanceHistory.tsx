@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CalendarCheck, Search, Download, AlertTriangle, QrCode, Hand, Users, TrendingUp,
+  CalendarCheck, Search, Download, AlertTriangle, QrCode, Hand, Users, TrendingUp, X,
 } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DatePicker from '../components/ui/DatePicker';
+import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import { exportToCSV } from '../utils/exportUtils';
 import { listAttendanceBetween } from '../lib/api/attendance';
 import { listMembers } from '../lib/api/members';
@@ -59,6 +60,9 @@ export default function AttendanceHistory() {
   const [activity, setActivity] = useState('');
   const [method, setMethod] = useState<'' | 'qr' | 'manual'>('');
   const [page, setPage] = useState(1);
+  /** A day clicked in the calendar, narrowing the log to it. Null = whole range. */
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
+  const [calMonth, setCalMonth] = useState<string>(() => manilaDate().slice(0, 7));
 
   useEffect(() => {
     let alive = true;
@@ -77,6 +81,10 @@ export default function AttendanceHistory() {
       setFailed(false);
       setLoading(false);
       setPage(1);
+      // A day picked inside the old range is meaningless in the new one, and
+      // leaving it set would show an empty log with no visible reason why.
+      setDayFilter(null);
+      setCalMonth(to.slice(0, 7));
     })();
     return () => { alive = false; };
   }, [from, to]);
@@ -88,7 +96,16 @@ export default function AttendanceHistory() {
     setTo(manilaDate());
   };
 
-  const filtered = useMemo(() => {
+  /**
+   * Everything matching the search/method/activity filters, across the whole
+   * range — *before* a calendar day narrows it.
+   *
+   * The split matters: the calendar and the summary describe the range, so they
+   * must not shrink to the day you clicked. Deriving the grid from the
+   * day-filtered rows would leave exactly one day lit the moment you picked
+   * one, and the picture you were navigating by would vanish under the click.
+   */
+  const inRange = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (method && r.method !== method) return false;
@@ -98,34 +115,43 @@ export default function AttendanceHistory() {
     });
   }, [rows, search, activity, method, names]);
 
+  /** Manila calendar day of a check-in — the +8h shift, not `toISOString()`. */
+  const dayOf = (iso: string) =>
+    new Date(new Date(iso).getTime() + 8 * 3600_000).toISOString().slice(0, 10);
+
+  const filtered = useMemo(
+    () => (dayFilter ? inRange.filter((r) => dayOf(r.check_in_time) === dayFilter) : inRange),
+    [inRange, dayFilter]
+  );
+
   const stats = useMemo(() => {
-    const byDay = new Map<string, number>();
+    const byDay: Record<string, number> = {};
     const byMember = new Map<string, number>();
     let qr = 0;
-    for (const r of filtered) {
-      const d = new Date(new Date(r.check_in_time).getTime() + 8 * 3600_000)
-        .toISOString().slice(0, 10);
-      byDay.set(d, (byDay.get(d) ?? 0) + 1);
+    for (const r of inRange) {
+      const d = dayOf(r.check_in_time);
+      byDay[d] = (byDay[d] ?? 0) + 1;
       byMember.set(r.member_id, (byMember.get(r.member_id) ?? 0) + 1);
       if (r.method === 'qr') qr += 1;
     }
-    const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    const busiest = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+    const entries = Object.entries(byDay);
+    const busiest = [...entries].sort((a, b) => b[1] - a[1])[0] ?? null;
     const top = [...byMember.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
     const spanDays = Math.max(1,
       Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000) + 1);
     return {
-      total: filtered.length,
+      total: inRange.length,
       uniqueMembers: byMember.size,
       qr,
-      manual: filtered.length - qr,
-      perDay: (filtered.length / spanDays).toFixed(1),
+      manual: inRange.length - qr,
+      perDay: (inRange.length / spanDays).toFixed(1),
       busiest,
       top,
-      days,
-      peak: Math.max(...days.map((d) => d[1]), 1),
+      byDay,
+      activeDays: entries.length,
+      spanDays,
     };
-  }, [filtered, from, to]);
+  }, [inRange, from, to]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const visible = filtered.slice((page - 1) * PAGE, page * PAGE);
@@ -262,41 +288,50 @@ export default function AttendanceHistory() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {/* ── Daily shape ────────────────────────────────────────────────── */}
+        {/* ── Which days anyone came in ──────────────────────────────────────
+            This was a row of thin bars, one per day. It showed the *shape* of a
+            range and nothing else: no weekday, no date you could point at, and
+            no way to open a day. "Which Tuesdays are dead?" and "was anyone in
+            on the 14th?" are the questions actually being asked, and a month
+            grid answers both without a query. */}
         <Card className="!p-4 col-span-2">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-sm font-bold text-white">Check-ins per day</h3>
+          <div className="flex items-baseline justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-white">Days with check-ins</h3>
+              <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                {stats.activeDays} of {stats.spanDays} day{stats.spanDays === 1 ? '' : 's'} in range ·
+                {' '}click a day to open it
+              </p>
+            </div>
             {stats.busiest && (
-              <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                Busiest: {new Date(stats.busiest[0]).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+              <p className="text-[10px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+                Busiest:{' '}
+                {new Date(`${stats.busiest[0]}T00:00:00`)
+                  .toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                 {' '}({stats.busiest[1]})
               </p>
             )}
           </div>
-          {stats.days.length === 0 ? (
-            <p className="text-xs py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
-              No check-ins in this range.
+
+          <AttendanceCalendar
+            month={calMonth}
+            counts={stats.byDay}
+            selected={dayFilter}
+            today={manilaDate()}
+            onMonthChange={setCalMonth}
+            // Clicking the picked day again clears it, so the calendar is its
+            // own way back out rather than needing a separate reset.
+            onSelect={(d) => { setDayFilter(dayFilter === d ? null : d); setPage(1); }}
+          />
+
+          {/* An empty month outside the loaded range would otherwise read as
+              "nobody came in July" when July was simply never fetched. */}
+          {(calMonth < from.slice(0, 7) || calMonth > to.slice(0, 7)) && (
+            <p className="text-[10px] mt-2 flex items-center gap-1.5" style={{ color: 'var(--color-secondary)' }}>
+              <AlertTriangle size={11} />
+              This month is outside the range above, so it shows nothing. Widen the range to load it.
             </p>
-          ) : (
-            <div className="flex items-end gap-0.5" style={{ height: 120 }}>
-              {stats.days.map(([day, n]) => (
-                <div key={day} className="flex-1 flex flex-col justify-end h-full"
-                  title={`${new Date(day).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} — ${n} check-in${n === 1 ? '' : 's'}`}>
-                  <div className="w-full rounded-t"
-                    style={{
-                      height: `${Math.max(3, (n / stats.peak) * 112)}px`,
-                      background: n >= stats.peak * 0.8 ? 'var(--color-secondary)' : 'var(--color-primary)',
-                    }} />
-                </div>
-              ))}
-            </div>
           )}
-          <p className="text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
-            {new Date(from).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-            {' → '}
-            {new Date(to).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-            {' · hover a bar for the day'}
-          </p>
         </Card>
 
         {/* ── Who came most ──────────────────────────────────────────────── */}
@@ -325,10 +360,28 @@ export default function AttendanceHistory() {
 
       {/* ── The log ──────────────────────────────────────────────────────── */}
       <Card className="!p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white">
-            {filtered.length} check-in{filtered.length === 1 ? '' : 's'}
-          </h3>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-sm font-bold text-white whitespace-nowrap">
+              {filtered.length} check-in{filtered.length === 1 ? '' : 's'}
+            </h3>
+            {/* The log is narrowed to a day. Said out loud, with the way out
+                attached — a table quietly showing a subset is how "where did
+                everyone go?" starts. */}
+            {dayFilter && (
+              <button onClick={() => { setDayFilter(null); setPage(1); }}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold"
+                style={{
+                  background: 'var(--color-secondary-light)',
+                  color: 'var(--color-secondary)',
+                  border: '1px solid var(--color-secondary)',
+                }}>
+                {new Date(`${dayFilter}T00:00:00`).toLocaleDateString('en-PH',
+                  { weekday: 'short', day: 'numeric', month: 'short' })}
+                <X size={10} />
+              </button>
+            )}
+          </div>
           {pages > 1 && (
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" disabled={page === 1}

@@ -11,6 +11,7 @@ import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
 import { progressService, type WorkoutLog } from '../../../services/progressService';
 import { getGymSettings } from '../../../lib/api/settings';
+import FeatureLock from '../../../components/ui/FeatureLock';
 
 /**
  * The member's own workout log, from `workout_logs` (migration 0020).
@@ -31,7 +32,25 @@ import { getGymSettings } from '../../../lib/api/settings';
  * records describe workouts in the same vocabulary.
  */
 
+/**
+ * The workout log is the `workout_tracker` entitlement (0049), and this tab is
+ * where a member reads it back. It was the one surface of that feature with no
+ * gate on it: the tracker itself and its Add button were both locked, so a Free
+ * Plan member was told "Workout tracker - not on this plan" on their membership
+ * card and then shown the tracker's own history tab anyway.
+ *
+ * Locked and explained rather than removed from the tab strip - a tab that
+ * vanishes teaches nobody that the paid plan has more in it.
+ */
 export default function WorkoutProgressTab() {
+  return (
+    <FeatureLock feature="workout_tracker">
+      <WorkoutProgress />
+    </FeatureLock>
+  );
+}
+
+function WorkoutProgress() {
   const memberId = useMemberId();
   const navigate = useNavigate();
   const [logs, setLogs] = useState<WorkoutLog[]>([]);

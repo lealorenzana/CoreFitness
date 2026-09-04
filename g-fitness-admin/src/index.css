@@ -14,6 +14,13 @@
   --color-bg:              #0F0F1A;
   --color-surface:         #161622;
   --color-surface-raised:  #1E1B30;
+  /* One step above `raised`, for controls that sit *on* a raised card — inputs,
+     selects, unselected chips. It was referenced by six screens before it was
+     ever declared: an undefined custom property makes the whole declaration
+     invalid, so every one of those controls rendered with no background at all
+     rather than falling back to something close. Nothing errors, nothing warns,
+     and it looks like a styling opinion instead of a missing value. */
+  --color-surface-high:    #262238;
 
   --color-primary:         #7C3AED;
   --color-primary-light:   #1E1333;

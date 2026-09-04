@@ -4,9 +4,10 @@ import Badge from '../components/ui/Badge';
 import Pagination from '../components/ui/Pagination';
 import QRScanner from '../components/ui/QRScanner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import DatePicker from '../components/ui/DatePicker';
+import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import {
   QrCode, UserCheck, Search, Calendar, TrendingUp, Camera, Undo2, Download,
+  Info, CalendarDays, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { checkInCodeOf, formatCheckInCode, matchesCheckInCode } from '../utils/checkInCode';
@@ -121,6 +122,9 @@ export default function Attendance() {
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  /** Month the calendar is showing, `YYYY-MM`. Follows the picked day. */
+  const [calMonth, setCalMonth] = useState<string>(() => todayKey().slice(0, 7));
 
   const loadData = async () => {
     setLoading(true);
@@ -183,6 +187,23 @@ export default function Attendance() {
     const max = Math.max(...hourly);
     return max === 0 ? null : { hour: hourly.indexOf(max), count: max };
   }, [hourly]);
+
+  /**
+   * Check-ins per local day, for the calendar.
+   *
+   * Free: this page already holds every attendance row, so "which days did
+   * anyone come in?" costs a pass over an array rather than a query. Keyed with
+   * `localDateKey` — the same function the log filter uses — so a day the grid
+   * marks as busy cannot open onto an empty log.
+   */
+  const countsByDay = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of allAttendance) {
+      const k = localDateKey(a.check_in_time);
+      map[k] = (map[k] ?? 0) + 1;
+    }
+    return map;
+  }, [allAttendance]);
 
   /** Distinct members over the last 7 local days, ending on the selected date. */
   const weekUnique = useMemo(() => {
@@ -423,44 +444,58 @@ export default function Attendance() {
       </div>
 
       {/* Activity applies to whichever check-in method is used next, so it sits
-          above both rather than being duplicated into each column. Optional by
-          design — a queue at the door shouldn't wait on a dropdown. */}
+          above both columns rather than being duplicated into each.
+
+          "Today's activity" read like a status — as if the gym were doing one
+          thing today. It is a *tag applied to the next check-in*, a different
+          claim, and that difference is why it looked pointless.
+
+          It used to be a loose row of chips with a four-line paragraph
+          underneath, floating between the header and the columns with nothing
+          holding it together. Same control, now in its own strip with the
+          rationale on the hint icon: one line of chrome instead of five. */}
       {activityOptions.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap px-1">
-          {/* "Today's activity" read like a status — as if the gym were doing
-              one thing today. It is a *tag applied to the next check-in*, which
-              is a different claim, and the difference is why it looked
-              pointless. The label now says what it does, and the hint says why
-              you would bother: it is what makes the activity breakdown on the
-              history screen mean anything. */}
-          <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+        <div className="flex items-center gap-2.5 flex-shrink-0 rounded-lg px-3 py-2"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap"
+            style={{ color: 'var(--color-text-muted)' }}>
             Tag check-ins as
           </span>
-          <button onClick={() => setActivity('')}
-            className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
-            style={{
-              background: activity === '' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activity === '' ? '#fff' : 'var(--color-text-muted)',
-              border: `1px solid ${activity === '' ? 'var(--color-primary)' : 'var(--color-border)'}`,
-            }}>
-            Not recorded
-          </button>
-          {activityOptions.map((opt) => (
-            <button key={opt} onClick={() => setActivity(opt)}
+
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            <button onClick={() => setActivity('')}
               className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
               style={{
-                background: activity === opt ? 'var(--color-secondary)' : 'var(--color-surface)',
-                color: activity === opt ? '#000' : 'var(--color-text-muted)',
-                border: `1px solid ${activity === opt ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+                background: activity === '' ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                color: activity === '' ? '#fff' : 'var(--color-text-muted)',
+                border: `1px solid ${activity === '' ? 'var(--color-primary)' : 'var(--color-border)'}`,
               }}>
-              {opt}
+              Not recorded
             </button>
-          ))}
-          <span className="text-[10px] w-full" style={{ color: 'var(--color-text-muted)' }}>
-            Optional. Applies to the next check-in you take, whichever way you take it —
-            handy when a class comes in together. It is what fills the activity breakdown
-            in Attendance history; leave it on <em>Not recorded</em> for a normal walk-in
-            rather than guessing.
+            {activityOptions.map((opt) => (
+              <button key={opt} onClick={() => setActivity(opt)}
+                className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
+                style={{
+                  background: activity === opt ? 'var(--color-secondary)' : 'var(--color-surface-high)',
+                  color: activity === opt ? '#000' : 'var(--color-text-muted)',
+                  border: `1px solid ${activity === opt ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+                }}>
+                {opt}
+              </button>
+            ))}
+          </div>
+
+          <span
+            className="flex items-center gap-1 text-[10px] whitespace-nowrap cursor-help"
+            style={{ color: 'var(--color-text-muted)' }}
+            title={
+              'Optional, and it applies to the next check-in you take whichever way you take it — '
+              + 'handy when a class arrives together.\n\n'
+              + 'It is what fills the activity breakdown on Attendance history. Leave it on '
+              + '"Not recorded" for an ordinary walk-in rather than guessing: a blank is honest, '
+              + 'a default is fiction.'
+            }>
+            <Info size={11} /> applies to the next check-in
           </span>
         </div>
       )}
@@ -553,27 +588,90 @@ export default function Attendance() {
         {/* COL 3: Attendance Log */}
         <div className="rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="flex items-center justify-between p-2.5 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <div className="flex items-center gap-2">
-              <Calendar size={13} style={{ color: 'var(--color-secondary)' }} />
-              <h3 className="text-[11px] font-semibold text-white">Attendance Log</h3>
+          {/* A date picker, an 80px search box and an export icon were crammed
+              onto one line beside the title. Two tidy rows instead — and the
+              date control now carries the day's count, so stepping through the
+              week tells you where the check-ins are instead of making you look.
+              The month grid below answers it for thirty days at once. */}
+          <div className="p-2.5 flex-shrink-0 space-y-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Calendar size={13} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0" />
+                <h3 className="text-[11px] font-semibold text-white truncate">Attendance Log</h3>
+              </div>
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                <button onClick={() => { setCalMonth(logDate.slice(0, 7)); setShowCalendar((v) => !v); }}
+                  title={showCalendar ? 'Hide the month' : 'Pick a day from the month'}
+                  aria-expanded={showCalendar}
+                  className="p-1.5 rounded-lg"
+                  style={{
+                    color: showCalendar ? 'var(--color-secondary)' : 'var(--color-text-muted)',
+                    background: showCalendar ? 'var(--color-secondary-light)' : 'transparent',
+                  }}>
+                  <CalendarDays size={12} />
+                </button>
+                <button onClick={exportLog} title="Export this day as CSV"
+                  className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                  <Download size={12} />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-32">
-                <DatePicker value={logDate} max={todayKey()}
-                  onChange={(v) => { setLogDate(v || todayKey()); setLogPage(1); }} />
-              </div>
-              <div className="relative">
-                <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-                <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
-                  placeholder="Search…"
-                  className="pl-6 pr-2 py-1 rounded-lg text-[9px] w-20"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: '#fff' }} />
-              </div>
-              <button onClick={exportLog} title="Export this day as CSV"
-                className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
-                <Download size={12} />
+
+            <div className="flex items-center gap-1">
+              <button onClick={() => { setLogDate(addDays(logDate, -1)); setLogPage(1); }}
+                aria-label="Previous day"
+                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                <ChevronLeft size={12} />
               </button>
+
+              <button onClick={() => { setCalMonth(logDate.slice(0, 7)); setShowCalendar((v) => !v); }}
+                className="flex-1 h-6 px-2 rounded-md flex items-center justify-between gap-2 min-w-0"
+                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+                <span className="text-[10px] font-semibold text-white truncate">
+                  {logDate === todayStr
+                    ? 'Today'
+                    : new Date(`${logDate}T00:00:00`).toLocaleDateString('en-PH',
+                        { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+                <span className="text-[10px] tabular-nums flex-shrink-0"
+                  style={{ color: (countsByDay[logDate] ?? 0) > 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                  {countsByDay[logDate] ?? 0}
+                </span>
+              </button>
+
+              {/* Tomorrow has no check-ins to look at. */}
+              <button disabled={logDate >= todayStr}
+                onClick={() => { setLogDate(addDays(logDate, 1)); setLogPage(1); }}
+                aria-label="Next day"
+                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'var(--color-surface-high)',
+                  color: logDate >= todayStr ? 'var(--color-border)' : 'var(--color-text-secondary)',
+                }}>
+                <ChevronRight size={12} />
+              </button>
+            </div>
+
+            {showCalendar && (
+              <AttendanceCalendar
+                compact
+                month={calMonth}
+                counts={countsByDay}
+                selected={logDate}
+                today={todayStr}
+                onMonthChange={setCalMonth}
+                onSelect={(d) => { setLogDate(d); setLogPage(1); }}
+              />
+            )}
+
+            <div className="relative">
+              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--color-text-muted)' }} />
+              <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
+                placeholder="Search this day…"
+                className="w-full pl-6 pr-2 py-1 rounded-lg text-[10px]"
+                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: '#fff' }} />
             </div>
           </div>
 
