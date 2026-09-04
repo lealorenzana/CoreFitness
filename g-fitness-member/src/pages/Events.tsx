@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, Users, Check, ArrowLeft, CalendarX } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, ArrowLeft, CalendarX , Ticket } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -120,7 +120,11 @@ export default function Events() {
     // relevant thing on the screen, not history.
     return withStatus
       .filter((x) => x.status === 'Upcoming' || x.status === 'Ongoing')
-      .reverse(); // listEvents is newest-first; soonest-first reads better here.
+      .reverse() // listEvents is newest-first; soonest-first reads better here.
+      // Featured events rise to the top, and *only* within upcoming: pinning a
+      // finished event above a live one would be worse than not pinning at all.
+      // Sorted after the reverse so soonest-first still holds inside each group.
+      .sort((a, b) => Number(b.event.is_featured) - Number(a.event.is_featured));
   }, [events, mine, tab]);
 
   return (
@@ -249,8 +253,52 @@ export default function Events() {
                   <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                     <Users size={13} style={{ color: 'var(--color-primary)' }} />
                     {taken}/{event.capacity} registered
+                    {!full && ` · ${event.capacity - taken} ${event.capacity - taken === 1 ? 'place' : 'places'} left`}
+                  </p>
+                  {/* NULL fee is free; 0 is deliberately priced at zero. Saying
+                      "₱0" for a free event reads like a placeholder, and saying
+                      "Free" for a ₱0 event would erase a decision the gym made. */}
+                  <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                    <Ticket size={13} style={{ color: 'var(--color-primary)' }} />
+                    {event.fee == null ? 'Free' : `₱${Number(event.fee).toLocaleString()} — pay at the desk`}
                   </p>
                 </div>
+
+                {/* The three things that decide whether someone turns up (0057).
+                    Each is absent rather than shown empty: a "What to bring:"
+                    label with nothing after it is worse than no label. */}
+                {(event.who_is_it_for || event.what_to_bring || event.contact) && (
+                  <div className="rounded-xl p-3 mb-3 space-y-2"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    {event.who_is_it_for && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ color: 'var(--color-primary)' }}>Who it's for</p>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                          {event.who_is_it_for}
+                        </p>
+                      </div>
+                    )}
+                    {event.what_to_bring && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ color: 'var(--color-primary)' }}>Bring</p>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                          {event.what_to_bring}
+                        </p>
+                      </div>
+                    )}
+                    {event.contact && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ color: 'var(--color-primary)' }}>Questions</p>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                          {event.contact}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="h-1.5 rounded-full mb-3 overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
                   <div className="h-full rounded-full transition-all"

@@ -181,17 +181,39 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                     <QRCodeSVG value={qr || home.memberId} size={224} level="M" marginSize={4} />
                   </div>
 
+                  {/*
+                    The countdown is gone. The expiry is not.
+
+                    A code that never expires is one a member can screenshot and
+                    send to a friend, who then checks in as them — that is what
+                    the short window prevents, and it is the reason the code has
+                    a timestamp at all.
+
+                    But the code **regenerates itself** a second before it dies,
+                    so the member never had anything to do about the countdown.
+                    All "Expires in 12s" ever did was start a small panic in a
+                    queue about a problem the app had already solved — and the
+                    number moving every second pulls the eye away from the thing
+                    the scanner actually needs pointed at it.
+
+                    So the mechanism stays, silently, and the screen says the one
+                    thing worth knowing: hold it up, it stays valid.
+
+                    The manual button survives for the case the timer cannot
+                    cover — a backgrounded phone, where `setInterval` is
+                    throttled and the code really can go stale on screen.
+                  */}
                   {expired ? (
                     <button
                       onClick={() => regenerate(home.memberId)}
                       className="w-full h-11 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2"
                       style={{ background: 'var(--color-secondary)' }}
                     >
-                      <RefreshCw size={15} /> Code expired — get a new one
+                      <RefreshCw size={15} /> Tap to refresh your code
                     </button>
                   ) : (
                     <p className="text-xs flex items-center justify-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                      <Clock size={12} /> Expires in {remaining}s
+                      <Clock size={12} /> Refreshes itself — just hold it up to the scanner
                     </p>
                   )}
 

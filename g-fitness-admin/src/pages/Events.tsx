@@ -38,6 +38,10 @@ const INSET = { background: 'var(--color-bg)' };
 
 const emptyForm = {
   title: '', description: '', date: '', time: '', location: '', capacity: '30', duration: '60',
+  // Added in 0057. A member reading an event listing decides on four things the
+  // old form could not express: is this for someone like me, what do I need to
+  // bring, does it cost anything, and who do I ask.
+  whoIsItFor: '', whatToBring: '', fee: '', contact: '', isFeatured: false,
 };
 
 const STATUS_STYLE: Record<EventStatus, { bg: string; color: string }> = {
@@ -145,6 +149,13 @@ export default function Events() {
       time,
       location: evt.location ?? '',
       capacity: String(evt.capacity),
+      whoIsItFor: evt.who_is_it_for ?? '',
+      whatToBring: evt.what_to_bring ?? '',
+      // NULL fee means free; 0 means deliberately priced at zero. An empty
+      // string round-trips back to NULL, so the distinction survives an edit.
+      fee: evt.fee == null ? '' : String(evt.fee),
+      contact: evt.contact ?? '',
+      isFeatured: evt.is_featured ?? false,
       duration: String(evt.duration_minutes),
     });
     setShowModal(true);
@@ -171,6 +182,11 @@ export default function Events() {
         duration_minutes: Number(form.duration) || 60,
         location: form.location.trim() || null,
         capacity: Number(form.capacity) || 30,
+        who_is_it_for: form.whoIsItFor.trim() || null,
+        what_to_bring: form.whatToBring.trim() || null,
+        fee: form.fee.trim() === '' ? null : Number(form.fee),
+        contact: form.contact.trim() || null,
+        is_featured: form.isFeatured,
       };
       if (editing) {
         await updateEvent(editing.id, payload);
@@ -429,6 +445,54 @@ export default function Events() {
                       <Input style={INSET} type="number" min="1" value={form.capacity} placeholder="30"
                         onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
                     </FormField>
+
+                    <FieldDivider />
+                    <SectionLabel>What members need to know</SectionLabel>
+
+                    <FormField
+                      label="Who is it for"
+                      hint="The single most useful line. Saying everyone is welcome and no experience is needed brings people in; leaving it blank quietly keeps beginners away."
+                    >
+                      <Input style={INSET} type="text" value={form.whoIsItFor}
+                        placeholder="e.g. Everyone — half the group will be first-timers"
+                        onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
+                    </FormField>
+
+                    <FormField label="What to bring" hint="Water, a towel, flat shoes — whatever they will wish they had.">
+                      <Input style={INSET} type="text" value={form.whatToBring}
+                        placeholder="e.g. Water, a towel, shoes you can move in"
+                        onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
+                    </FormField>
+
+                    <FormField
+                      label="Fee"
+                      hint={
+                        form.fee.trim() === ''
+                          ? 'Blank means free, and the app says "Free" rather than "₱0".'
+                          : Number(form.fee) === 0
+                            ? 'Zero shows as "₱0" — use blank if you mean free.'
+                            : 'Members pay at the desk; the app does not take payments.'
+                      }
+                    >
+                      <Input style={INSET} type="number" min="0" step="50" value={form.fee}
+                        placeholder="Leave blank if free"
+                        onChange={(e) => setForm({ ...form, fee: e.target.value })} />
+                    </FormField>
+
+                    <FormField label="Who to ask" hint="Shown to members who have a question before signing up.">
+                      <Input style={INSET} type="text" value={form.contact}
+                        placeholder="e.g. Ask at the front desk, or message us on Facebook"
+                        onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+                    </FormField>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+                      <input type="checkbox" checked={form.isFeatured} className="mt-0.5"
+                        onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
+                      <span className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                        <strong className="text-white">Feature this event.</strong> Pins it to the top of the
+                        members' Events screen. Use it sparingly — if everything is featured, nothing is.
+                      </span>
+                    </label>
                   </div>
                   <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
                     <Button variant="ghost" className="flex-1" onClick={() => setShowModal(false)}>Cancel</Button>

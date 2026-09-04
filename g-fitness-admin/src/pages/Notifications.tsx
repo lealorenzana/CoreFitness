@@ -64,6 +64,32 @@ const EMPTY_FORM: NotificationForm = {
   actionUrl: '',
 };
 
+/**
+ * Where an announcement can send someone.
+ *
+ * These are real member-app routes, checked against `App.tsx`. Offered as a
+ * list rather than a text box because an admin has no way to know what paths
+ * exist, and the old free-text field only told them a path was wrong *after*
+ * they had sent the announcement to everyone.
+ *
+ * Deliberately short: only the screens an announcement plausibly points at. A
+ * link to a member's own private page would open on *their* data anyway, so
+ * "Membership" means "your membership", which is what a member expects.
+ */
+const ANNOUNCEMENT_DESTINATIONS: { path: string; label: string }[] = [
+  { path: '',                        label: 'Nothing — just show the message' },
+  { path: '/member/events',          label: 'Events' },
+  { path: '/member/book-class',      label: 'Book a session' },
+  { path: '/member/challenges',      label: 'Challenges' },
+  { path: '/member/rewards',         label: 'CORE Points' },
+  { path: '/member/membership',      label: 'Their membership' },
+  { path: '/member/renew',           label: 'Renew / see plans' },
+  { path: '/member/trainers',        label: 'Our trainers' },
+  { path: '/member/workouts',        label: 'Free workout resources' },
+  { path: '/member/progress',        label: 'Their progress' },
+  { path: '/member/payments',        label: 'Their payment history' },
+];
+
 /** Kept short enough to survive an Android notification shade without a tail-off. */
 const TITLE_MAX = 60;
 const MESSAGE_MAX = 240;
@@ -339,8 +365,14 @@ export default function Notifications() {
                   <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
                     <div>
                       <h2 className="text-lg font-bold text-white">Send Announcement</h2>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                        Writes it to each inbox and pushes an alert to installed phones.
+                      {/* Spells out both halves, because they behave
+                          differently and the difference matters: the inbox row
+                          always arrives, the phone alert only reaches people
+                          who installed the app and left that category on. */}
+                      <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                        Two things happen. It lands in each person's in-app inbox — always, and it
+                        stays there until they clear it. It also buzzes their phone, but only for
+                        people who installed the app and have not muted this category.
                       </p>
                     </div>
                     <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>
@@ -440,10 +472,26 @@ export default function Notifications() {
                         className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
                     </FormField>
 
-                    <FormField label="Opens at" error={errors.actionUrl}
-                      hint="Where tapping it lands them, e.g. /member/events. Leave blank for no link.">
-                      <input value={form.actionUrl} onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
-                        placeholder="/member/events" className={FIELD_CLASS} style={FIELD_STYLE} />
+                    {/* Was a free-text box asking the admin to type an app route
+                        from memory — "/member/events" — with no way to know what
+                        routes exist or whether they had spelled one right. The
+                        error only appeared after sending. A list of the real
+                        destinations removes the question entirely. */}
+                    <FormField
+                      label="When they tap it, open"
+                      error={errors.actionUrl}
+                      hint="Optional. Most announcements need no link — pick one only when there is somewhere specific to go."
+                    >
+                      <select
+                        value={form.actionUrl}
+                        onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
+                        className={FIELD_CLASS}
+                        style={FIELD_STYLE}
+                      >
+                        {ANNOUNCEMENT_DESTINATIONS.map((d) => (
+                          <option key={d.path || 'none'} value={d.path}>{d.label}</option>
+                        ))}
+                      </select>
                     </FormField>
 
                     {/* What it will actually look like. Composing blind into a box

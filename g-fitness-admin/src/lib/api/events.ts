@@ -9,6 +9,16 @@ export interface EventRow {
   location: string | null;
   capacity: number;
   cancelled: boolean;
+  /** Who it is aimed at, in the gym's words — "Everyone, no experience needed".
+   *  The line that decides whether a beginner signs up (0057). */
+  who_is_it_for: string | null;
+  what_to_bring: string | null;
+  /** NULL = free, and the screens say "Free". 0 = deliberately priced at zero
+   *  and shows as "₱0". Those are different claims, so they stay distinct. */
+  fee: number | null;
+  contact: string | null;
+  /** Pins it to the top of the member Events screen. */
+  is_featured: boolean;
   created_by: string | null;
   created_at: string;
 }
