@@ -348,8 +348,16 @@ export default function Home() {
           {/* Next session */}
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <SectionHeader title="Next session" />
-            <div
-              className="p-4 flex items-center justify-between gap-3"
+            {/* The whole card, not just the pill on the right.
+
+                A member reaching for "what am I doing next" taps the thing that
+                says it — the title, the date — and those were inert; only the
+                40px button did anything. One <button> rather than a clickable
+                div with a button inside it, which is invalid and swallows the
+                inner tap. The pill stays as the visible affordance. */}
+            <button
+              onClick={() => navigate(home.nextBooking ? '/member/booking-history' : '/member/book-class')}
+              className="p-4 flex items-center justify-between gap-3 w-full text-left transition-transform active:scale-[0.99]"
               style={{
                 ...panelStyle,
                 borderRadius: 'var(--radius-panel)',
@@ -357,7 +365,7 @@ export default function Home() {
                 borderLeft: '4px solid var(--color-primary)',
               }}
             >
-              <div className="flex-1 min-w-0">
+              <span className="flex-1 min-w-0 block">
                 {home.nextBooking ? (
                   <>
                     <p className="text-sm font-bold text-white truncate">{home.nextBooking.title}</p>
@@ -385,7 +393,7 @@ export default function Home() {
                       {home.nextBooking.subtitle}
                     </p>
                     {home.nextBooking.status === 'pending' && (
-                      <div className="mt-2"><Pill label="Awaiting approval" tone="secondary" /></div>
+                      <span className="block mt-2"><Pill label="Awaiting approval" tone="secondary" /></span>
                     )}
                   </>
                 ) : (
@@ -396,15 +404,14 @@ export default function Home() {
                     </p>
                   </>
                 )}
-              </div>
-              <button
-                onClick={() => navigate(home.nextBooking ? '/member/booking-history' : '/member/book-class')}
+              </span>
+              <span
                 className="h-10 px-4 rounded-full font-semibold text-sm text-black flex items-center gap-1.5 flex-shrink-0"
                 style={{ background: 'var(--color-secondary)' }}
               >
                 {home.nextBooking ? 'View' : 'Book'} <ArrowRight size={14} />
-              </button>
-            </div>
+              </span>
+            </button>
           </motion.section>
 
         </>
