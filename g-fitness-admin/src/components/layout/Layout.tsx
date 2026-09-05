@@ -36,6 +36,14 @@ export default function Layout() {
               animate={{ opacity: 1, y: 0 }}
               exit={{    opacity: 0, y: -6 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
+              /* `h-full` so a page can ask for the height it has been given.
+                 Without it this wrapper is auto-height, a child's `height:100%`
+                 resolves to auto, and the only way to fill the screen is to
+                 hard-code `calc(100vh - <a guess>)` — which was wrong by 8px on
+                 the dashboard and put back the scrollbar it was built to avoid.
+                 Pages taller than the viewport still overflow this box visibly,
+                 so <main> keeps scrolling them exactly as before. */
+              className="h-full"
             >
               <Outlet />
             </motion.div>
