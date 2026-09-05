@@ -21,6 +21,7 @@ import {
   setTrainerStatus,
   updateTrainerProfile,
   getRatingSummaries,
+  getTrainerMonths,
 } from '../lib/api/trainers';
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { updateProfile } from '../lib/api/profiles';
@@ -43,9 +44,15 @@ interface TrainerDisplay {
   certifications: string[];
   focusAreas: string[];
   achievements: string | null;
-  /** Member ratings (0042). `ratingAverage` is null until three exist — the
-   *  admin sees the same withheld number members do. */
+  /** The **public** figure: null until three members have evaluated (0066).
+   *  Kept so the admin can see what a member sees. */
   ratingAverage: number | null;
+  /** The gym's own figure, from `trainer_evaluation_months` — never withheld.
+   *  0042 hid this from the admin too; 0066 reverses that deliberately, because
+   *  a gym that cannot read its own evaluations cannot act on them. */
+  gymAverage: number | null;
+  /** The most recent month evaluated, for "is this current or from March?". */
+  latestPeriod: string | null;
   ratingCount: number;
   /** How many real bookable-hour windows this trainer has set (0015). */
   bookableWindows: number;
@@ -105,13 +112,25 @@ export default function Trainers() {
       // Bookable-hour windows come from the real table, in one query for the
       // whole roster — the card needs to say whether a trainer is actually
       // bookable, and the CSV on trainer_profiles cannot answer that.
-      const [rows, availability, scores] = await Promise.all([
+      const [rows, availability, scores, months] = await Promise.all([
         showArchived ? listArchivedTrainers() : listTrainers(),
         listAllAvailability().catch(() => []),
         // Degrades to an empty map rather than failing the roster: the gym needs
         // its trainer list far more than it needs the scores on it.
         getRatingSummaries().catch(() => new Map()),
+        getTrainerMonths().catch(() => []),
       ]);
+
+      // Weighted by how many evaluations each month carried — a month with one
+      // 5 and a month with nine 3s do not deserve equal say in the overall.
+      const gymScore = new Map<string, { sum: number; n: number; latest: string }>();
+      for (const m of months) {
+        const at = gymScore.get(m.trainer_id) ?? { sum: 0, n: 0, latest: m.period };
+        at.sum += m.average_stars * m.evaluations;
+        at.n += m.evaluations;
+        if (m.period > at.latest) at.latest = m.period;
+        gymScore.set(m.trainer_id, at);
+      }
       const windowsByTrainer = new Map<string, number>();
       for (const a of availability) {
         windowsByTrainer.set(a.trainer_id, (windowsByTrainer.get(a.trainer_id) ?? 0) + 1);
@@ -127,6 +146,11 @@ export default function Trainers() {
           bio: trainer.bio,
           photoUrl: profile.photo_url,
           ratingAverage: scores.get(profile.id)?.average_stars ?? null,
+          gymAverage: (() => {
+            const g = gymScore.get(profile.id);
+            return g && g.n > 0 ? Math.round((g.sum / g.n) * 10) / 10 : null;
+          })(),
+          latestPeriod: gymScore.get(profile.id)?.latest ?? null,
           ratingCount: scores.get(profile.id)?.rating_count ?? 0,
           yearsExperience: trainer.years_experience ?? null,
           certifications: trainer.certifications ?? [],
@@ -388,11 +412,14 @@ export default function Trainers() {
               <div className="mt-2.5 flex items-center gap-3 text-[10px]">
                 <span className="flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
                   <Star size={10} style={{ color: 'var(--color-secondary)' }} fill="currentColor" />
-                  {trainer.ratingAverage != null
-                    ? `${trainer.ratingAverage.toFixed(1)} · ${trainer.ratingCount}`
-                    : trainer.ratingCount === 0
-                      ? 'No ratings'
-                      : `${trainer.ratingCount}/3 to show`}
+                  {/* The gym's own figure, shown whatever the count. The
+                      trailing note says what members currently see, so nobody
+                      quotes an internal average back as a public one. */}
+                  {trainer.gymAverage != null
+                    ? `${trainer.gymAverage.toFixed(1)}${
+                        trainer.ratingAverage == null ? ' · not public yet' : ''
+                      }`
+                    : 'No evaluations'}
                 </span>
                 {/* Whether members can actually book this trainer. The weekday
                     blurb is a label with no times — showing only that made

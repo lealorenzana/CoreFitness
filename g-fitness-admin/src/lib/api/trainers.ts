@@ -144,22 +144,58 @@ export interface TrainerRatingRow {
   member_id: string;
   stars: number;
   comment: string | null;
+  /** Which month this evaluation is for (0066), 'YYYY-MM-01'. */
+  period: string;
   updated_at: string;
 }
 
+/** One month of a coach's record, straight from `trainer_evaluation_months`. */
+export interface TrainerMonth {
+  trainer_id: string;
+  period: string;
+  evaluations: number;
+  average_stars: number;
+  with_comment: number;
+}
+
 /**
- * The individual ratings behind one coach's average, newest first.
+ * The gym's own month-by-month figures — **not withheld**.
  *
- * Admin-only in practice: the SELECT policy on `trainer_ratings` is open to any
- * authenticated user, because a rating is a public statement and a member must
- * be able to read their own row back to edit it. What makes this admin-shaped is
- * where it is surfaced, not a secret.
+ * 0042 deliberately gave the admin the same withheld number members see, so a
+ * policy could not quietly become a display trick. 0066 reverses that on
+ * purpose: this is an evaluation tool now, and a gym that cannot read its own
+ * evaluations cannot act on them. Members still see the withheld average; this
+ * view is admin-only in SQL and named so the two cannot be confused.
+ */
+export async function getTrainerMonths(trainerId?: string): Promise<TrainerMonth[]> {
+  let q = supabase.from('trainer_evaluation_months').select('*').order('period', { ascending: false });
+  if (trainerId) q = q.eq('trainer_id', trainerId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as TrainerMonth[];
+}
+
+/** '2026-09-01' → 'Sep 2026'. */
+export function periodLabel(period: string): string {
+  const [y, m] = period.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' });
+}
+
+/**
+ * Every evaluation of one coach, newest month first.
+ *
+ * Genuinely admin-only now, not just admin-shaped. 0042's SELECT policy let any
+ * signed-in member read every row, on the reasoning that a rating is a public
+ * statement. Once a written reason is attached that stopped being true — "why I
+ * scored my coach 2" is a note to the gym — so 0066 narrowed reads to your own
+ * rows, the trainer being evaluated, and admins.
  */
 export async function listTrainerRatings(trainerId: string): Promise<TrainerRatingRow[]> {
   const { data, error } = await supabase
     .from('trainer_ratings')
-    .select('member_id, stars, comment, updated_at')
+    .select('member_id, stars, comment, period, updated_at')
     .eq('trainer_id', trainerId)
+    .order('period', { ascending: false })
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as TrainerRatingRow[];

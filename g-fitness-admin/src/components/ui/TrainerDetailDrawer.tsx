@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, User, CalendarClock, Clock, Users, Mail, Phone, Trash2, Info,
+  X, User, CalendarClock, Clock, Users, Mail, Phone, Trash2, Info, Star,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import Badge from './Badge';
@@ -12,6 +12,10 @@ import { showToast } from '../../utils/toast';
 import {
   loadTrainerDetail, weekdayName, formatTimeOfDay, type TrainerDetail,
 } from '../../services/trainerDetailService';
+import {
+  listTrainerRatings, getTrainerMonths, periodLabel,
+  type TrainerRatingRow, type TrainerMonth,
+} from '../../lib/api/trainers';
 
 /**
  * One trainer's whole record.
@@ -28,13 +32,14 @@ import {
  * them — this panel simply doesn't duplicate an editor that exists elsewhere.
  */
 
-type TabId = 'profile' | 'schedule' | 'sessions' | 'clients';
+type TabId = 'profile' | 'schedule' | 'sessions' | 'clients' | 'evaluations';
 
 const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'profile',  label: 'Profile',        icon: User },
   { id: 'schedule', label: 'Classes & hours', icon: CalendarClock },
   { id: 'sessions', label: '1-on-1',          icon: Clock },
   { id: 'clients',  label: 'Members',         icon: Users },
+  { id: 'evaluations', label: 'Evaluations', icon: Star },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -207,6 +212,7 @@ function Body({
         {tab === 'schedule' && <ScheduleTab detail={detail} />}
         {tab === 'sessions' && <SessionsTab detail={detail} />}
         {tab === 'clients'  && <ClientsTab detail={detail} />}
+        {tab === 'evaluations' && <EvaluationsTab trainerId={detail.identity.profile.id} />}
       </div>
 
       <div className="grid grid-cols-4 gap-px flex-shrink-0"
@@ -453,6 +459,120 @@ function Empty({ text }: { text: string }) {
     <div className="rounded-xl px-4 py-6 text-center text-[11px]"
       style={{ background: 'var(--color-surface-raised)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>
       {text}
+    </div>
+  );
+}
+
+/**
+ * The coach's monthly evaluations, and what members wrote.
+ *
+ * `listTrainerRatings` has existed since 0042 and **nothing ever called it** —
+ * which is why the gym could see a star count and never a single reason for it.
+ * The scores were being collected and read by nobody.
+ *
+ * Unwithheld on purpose: the member-facing average hides below three votes so
+ * one bad afternoon cannot become a public number, but this is the gym reading
+ * its own evaluations in order to act on them. 0066's admin-only SELECT policy
+ * is what keeps members out of it.
+ */
+function EvaluationsTab({ trainerId }: { trainerId: string }) {
+  const [rows, setRows] = useState<TrainerRatingRow[] | null>(null);
+  const [months, setMonths] = useState<TrainerMonth[]>([]);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [r, m] = await Promise.all([
+        listTrainerRatings(trainerId).catch(() => null),
+        getTrainerMonths(trainerId).catch(() => []),
+      ]);
+      if (!alive) return;
+      if (r === null) { setFailed(true); setRows([]); return; }
+      setRows(r);
+      setMonths(m);
+    })();
+    return () => { alive = false; };
+  }, [trainerId]);
+
+  if (rows === null) {
+    return <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading evaluations…</p>;
+  }
+
+  if (failed) {
+    return <Empty text="Couldn't load evaluations — a connection problem, not an empty record." />;
+  }
+
+  if (rows.length === 0) {
+    return (
+      <Empty text="No evaluations yet. A member can evaluate a coach once they have completed a session with them, and once per month after that." />
+    );
+  }
+
+  // Newest month first; `months` already arrives in that order.
+  const byPeriod = new Map<string, TrainerRatingRow[]>();
+  for (const r of rows) {
+    const list = byPeriod.get(r.period) ?? [];
+    list.push(r);
+    byPeriod.set(r.period, list);
+  }
+
+  return (
+    <div className="space-y-4">
+      <Section title="Month by month">
+        <div className="flex flex-wrap gap-2">
+          {months.map((m) => (
+            <div key={m.period} className="rounded-xl px-3 py-2"
+              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+                {periodLabel(m.period)}
+              </p>
+              <p className="text-base font-bold text-white tabular-nums leading-tight">
+                {m.average_stars.toFixed(1)}
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                {m.evaluations} {m.evaluations === 1 ? 'member' : 'members'}
+                {/* How many bothered to say why — the number that tells you
+                    whether this month is actionable or just a score. */}
+                {m.with_comment > 0 && ` · ${m.with_comment} wrote a reason`}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {[...byPeriod.entries()].map(([period, list]) => (
+        <Section key={period} title={periodLabel(period)}>
+          <div className="space-y-2">
+            {list.map((r) => (
+              <div key={`${r.member_id}-${r.period}`} className="rounded-xl p-3"
+                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} size={11}
+                      style={{ color: n <= r.stars ? 'var(--color-secondary)' : 'var(--color-border)' }}
+                      fill={n <= r.stars ? 'currentColor' : 'none'} />
+                  ))}
+                  <span className="text-xs font-bold text-white ml-1">{r.stars}.0</span>
+                </div>
+                {/* Members are not named. The gym needs the signal, not a list
+                    of who said what about whom — and a coach reading "Lea gave
+                    me a 2" is how honest evaluations stop being written. */}
+                {r.comment ? (
+                  <p className="text-xs mt-1.5 leading-relaxed whitespace-pre-line"
+                    style={{ color: 'var(--color-text-secondary)' }}>
+                    {r.comment}
+                  </p>
+                ) : (
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                    Score only — no reason written.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ))}
     </div>
   );
 }
