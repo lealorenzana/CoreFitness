@@ -23,6 +23,7 @@ import {
   createMember,
   updateMemberProfile,
   setMemberStatus,
+  startFreeMembership,
 } from '../lib/api/members';
 import { updateProfile } from '../lib/api/profiles';
 import {
@@ -323,7 +324,13 @@ export default function Members() {
   const handleApprove = async (m: MemberRow) => {
     try {
       await setMemberStatus(m.id, 'active');
-      showToast(`${m.fullName} can now sign in`, 'success');
+      // And give them something to be a member *of*. Flipping the status alone
+      // let them sign in with no membership at all — every screen that asks
+      // what their plan allows got nothing back, so they were admitted and
+      // still could not check in. Idempotent, so a member who already has a
+      // plan keeps it.
+      await startFreeMembership(m.id);
+      showToast(`${m.fullName} can now sign in — started on the free plan`, 'success');
       notifyUser({
         userId: m.id,
         type: 'membership',
@@ -813,9 +820,9 @@ export default function Members() {
                 </div>
 
                 <PendingRegistrationsList
-                  onApprove={async (reg, planId) => {
+                  onApprove={async (reg) => {
                     try {
-                      await approveMemberRegistration(reg, planId);
+                      await approveMemberRegistration(reg);
                       setPendingCount((c) => Math.max(0, c - 1));
 
                       // Until approval, a registered member can log in but the
@@ -1215,31 +1222,27 @@ function PendingRegistrationsList({
   onApprove,
   onReject,
 }: {
-  onApprove: (reg: PendingRegistrationRow, planId: string) => Promise<void>;
+  onApprove: (reg: PendingRegistrationRow) => Promise<void>;
   onReject: (reg: PendingRegistrationRow) => Promise<void>;
 }) {
   const [pendingList, setPendingList] = useState<PendingRegistrationRow[]>([]);
-  const [planIds, setPlanIds] = useState<string[]>([]);
+  /** id -> name, so the row can say which plan they asked about. */
+  const [planNames, setPlanNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([listPendingRegistrations(), listPlans()])
       .then(([list, plans]) => {
         setPendingList(list);
-        setPlanIds(plans.map((p) => p.id));
+        setPlanNames(Object.fromEntries(plans.map((p) => [p.id, p.name])));
       })
       .catch(() => showToast('Failed to load pending registrations', 'error'))
       .finally(() => setLoading(false));
   }, []);
 
   const handleApprove = async (reg: PendingRegistrationRow) => {
-    const planId = reg.requested_plan_id ?? planIds[0];
-    if (!planId) {
-      showToast('No membership plans exist yet — create one in Membership Plans first', 'error');
-      return;
-    }
     try {
-      await onApprove(reg, planId);
+      await onApprove(reg);
       setPendingList((prev) => prev.filter((p) => p.id !== reg.id));
     } catch {
       // onApprove already surfaced the error toast
@@ -1283,8 +1286,19 @@ function PendingRegistrationsList({
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white font-semibold truncate">{reg.first_name} {reg.last_name}</p>
             <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{reg.email}</p>
-            <span className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
+            <span className="text-[9px] block" style={{ color: 'var(--color-text-muted)' }}>
               Registered {new Date(reg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+            {/* What approving actually grants, and what they came in wanting.
+                The tick used to give whatever plan they tapped during signup —
+                a paid one, to somebody who has handed over nothing — so the
+                admin was selling Premium by clicking Approve without being told
+                that is what the button did. */}
+            <span className="text-[9px] block mt-0.5" style={{ color: 'var(--color-primary)' }}>
+              Approving starts them on the free plan
+              {reg.requested_plan_id && planNames[reg.requested_plan_id]
+                ? ` — they asked about ${planNames[reg.requested_plan_id]}`
+                : ''}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">

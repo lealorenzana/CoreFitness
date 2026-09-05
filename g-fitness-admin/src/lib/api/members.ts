@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { todayKey, addDays } from '../../utils/dates';
 import type {
   ProfileRow,
   MemberProfileRow,
@@ -97,14 +98,19 @@ export async function listPendingRegistrations(): Promise<PendingRegistrationRow
 }
 
 /**
- * Admin approval: activates the profile, creates the member_profiles + memberships
- * rows, and clears the review-queue entry. Not atomic (supabase-js has no
- * client-side multi-table transaction) — acceptable for this foundation phase;
- * a production system would wrap this in a single `supabase.rpc()` Postgres function.
+ * Admin approval: activates the profile, creates the member_profiles +
+ * memberships rows on the **free tier**, and clears the review-queue entry.
+ *
+ * No longer takes a plan. Approving a registration and selling a membership are
+ * two different acts, and only the second one involves money — see the note on
+ * the membership insert below.
+ *
+ * Not atomic (supabase-js has no client-side multi-table transaction) —
+ * acceptable for this phase; a production system would wrap it in one
+ * `supabase.rpc()` Postgres function.
  */
 export async function approveMemberRegistration(
-  pending: PendingRegistrationRow,
-  planId: string
+  pending: PendingRegistrationRow
 ): Promise<void> {
   const authUserId = pending.auth_user_id;
   if (!authUserId) throw new Error('Pending registration has no linked auth account');
@@ -159,20 +165,98 @@ export async function approveMemberRegistration(
     if (insertError) throw insertError;
   }
 
-  const startDate = new Date().toISOString().slice(0, 10);
-  const { error: membershipError } = await supabase.from('memberships').insert({
-    member_id: authUserId,
-    plan_id: planId,
-    status: 'pending',
-    start_date: startDate,
-  });
-  if (membershipError) throw membershipError;
+  await startFreeMembership(authUserId);
 
   const { error: deleteError } = await supabase
     .from('pending_registrations')
     .delete()
     .eq('id', pending.id);
   if (deleteError) throw deleteError;
+}
+
+/**
+ * Put a member on the free tier, active, unless they already have a membership.
+ *
+ * Called from **both** approval paths, which is the point of it existing:
+ *
+ *  - the Pending Registrations panel, which works off `pending_registrations`;
+ *  - the Approve button on a roster row, for a member whose queue entry is gone
+ *    or never existed.
+ *
+ * The second path originally only flipped `profiles.status` to active. That let
+ * them sign in and left them with **no membership at all**, so every screen that
+ * asks what their plan allows got nothing — approved, admitted, and unable to
+ * check in. Verified with a real self-registration: the roster row is where such
+ * a member shows up.
+ *
+ * Idempotent. A member who already has a membership keeps it; this must never
+ * overwrite a paid plan somebody has been put on at the desk.
+ */
+export async function startFreeMembership(memberId: string): Promise<void> {
+  const { data: existing, error: existingError } = await supabase
+    .from('memberships')
+    .select('id')
+    .eq('member_id', memberId)
+    .limit(1);
+  if (existingError) throw existingError;
+  if (existing && existing.length > 0) return;
+
+  // ── The membership a newly approved member actually gets ────────────────
+  //
+  // This used to grant `planId` — whatever the member picked during signup —
+  // with `status: 'pending'`. Two things were wrong with that.
+  //
+  // A self-registered member has paid nothing. The gym is cash-only, so
+  // granting the Premium they tapped on a form is handing out a paid plan on
+  // trust. And because the row was `pending`, `membershipIsUsable` refused it:
+  // the member was approved, could sign in, and still could not check in or
+  // book anything. Approval that visibly changes nothing is indistinguishable
+  // from approval that failed.
+  //
+  // Everyone starts on the **free tier, active**. They can walk in, check in
+  // and use the free areas immediately; the desk upgrades them the moment cash
+  // changes hands, which is the one event that should ever create a paid
+  // membership. What they asked for is not thrown away — `requested_plan_id`
+  // stays on the queue row and the approval panel shows it, so the desk knows
+  // what to sell them.
+  //
+  // Resolved by **tier**, never by name or list position. The old fallback was
+  // `planIds[0]`, which is the cheapest plan only because `listPlans()` happens
+  // to sort by price — a gym adding a ₱0 day pass would silently start putting
+  // new members on it.
+  const { data: freePlans, error: freePlanError } = await supabase
+    .from('membership_plans')
+    .select('id, duration_days')
+    .eq('tier', 'free')
+    .eq('is_active', true)
+    .order('price', { ascending: true })
+    .limit(1);
+  if (freePlanError) throw freePlanError;
+
+  const freePlan = freePlans?.[0];
+  if (!freePlan) {
+    throw new Error(
+      'There is no active free plan to start this member on. Create one on the '
+      + 'Membership Plans screen, then approve again.'
+    );
+  }
+
+  // Local, not toISOString(): Manila is UTC+8, so before 8am the UTC date is
+  // yesterday and the membership would start — and expire — a day early.
+  const startDate = todayKey();
+  const { error: membershipError } = await supabase.from('memberships').insert({
+    member_id: memberId,
+    plan_id: freePlan.id,
+    // Active, not pending. Nothing is owed on a free plan, so there is nothing
+    // for a pending state to be waiting for.
+    status: 'active',
+    start_date: startDate,
+    // A free plan with no duration does not expire, and `never_expires` is what
+    // separates that from "not activated yet" — both have a NULL expiry (0024).
+    expiry_date: freePlan.duration_days == null ? null : addDays(startDate, freePlan.duration_days),
+    never_expires: freePlan.duration_days == null,
+  });
+  if (membershipError) throw membershipError;
 }
 
 /**

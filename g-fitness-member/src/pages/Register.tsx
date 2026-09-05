@@ -225,7 +225,10 @@ export default function Register() {
     // Only demanded when there are plans to choose from. If the catalog failed
     // to load, blocking registration on a list the member cannot see would
     // strand them; the front desk sets the plan at approval anyway.
-    if (plans.length > 0 && !formData.selectedPlanId) return fail('Please choose a plan');
+    // Not required any more. It records what to offer them, and everybody
+    // starts on the free plan regardless — so refusing to continue over an
+    // unanswered preference would block a sign-up for nothing.
+
     if (!formData.termsAccepted) return fail('Please accept the Terms and Privacy Policy');
     return true;
   };
@@ -306,8 +309,9 @@ export default function Register() {
             </motion.div>
             <h2 className="display text-2xl text-white">You're registered</h2>
             <p className="text-xs mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Confirm your email, then visit Core Fitness Mamburao to pay. Your membership starts the
-              moment the front desk records it{selectedPlan ? ` — you asked for ${selectedPlan.name}` : ''}.
+              Confirm your email. The gym reviews new sign-ups, and once yours is approved you can
+              sign in on the free plan{selectedPlan ? ` — we have noted you asked about ${selectedPlan.name}` : ''}.
+              Visit Core Fitness Mamburao to pay whenever you want to upgrade.
             </p>
             <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>Taking you to sign in…</p>
           </motion.div>
@@ -634,9 +638,15 @@ export default function Register() {
                   className="space-y-4 pb-4"
                 >
                   <div>
-                    <h1 className="display text-2xl text-white leading-tight">Which plan do you want?</h1>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                      Nothing is charged here — you pay cash at the front desk.
+                    <h1 className="display text-2xl text-white leading-tight">Which plan interests you?</h1>
+                    {/* "Which plan do you want?" read like a choice that took
+                        effect. It did not: everyone starts on the free plan when
+                        the desk approves them, and a paid plan begins the moment
+                        cash changes hands, not the moment a form is submitted.
+                        This tells the desk what to offer, and nothing more. */}
+                    <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      You start on the free plan. Tell us what you are after and the front
+                      desk will sort it when you come in — nothing is charged here.
                     </p>
                   </div>
 
