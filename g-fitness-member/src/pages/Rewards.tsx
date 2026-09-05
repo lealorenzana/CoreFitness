@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, AlertTriangle, Clock, Check, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Gift, AlertTriangle, Clock, Check, X, Sparkles, ChevronDown } from 'lucide-react';
 import { panelStyle } from '../components/ui/Card';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -52,6 +52,7 @@ export default function Rewards() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   const load = useCallback(async (id: string) => {
     const [b, r, w, m] = await Promise.all([
@@ -167,20 +168,40 @@ export default function Rewards() {
             )}
           </div>
 
-          {/* ── How to earn ────────────────────────────────────────────────── */}
-          <div className="p-4 rounded-2xl" style={panelStyle}>
-            <p className="text-xs font-bold text-white mb-2.5">How you earn</p>
-            <div className="space-y-1.5">
-              {rules.map((r) => (
-                <div key={r.key} className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{r.label}</span>
-                  <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
-                    +{r.points}
-                  </span>
+          {/* ── How to earn ────────────────────────────────────────────────────
+              Reference, not news. The rules matter enormously the first time and
+              never change after — so they sat above the rewards every visit,
+              pushing the thing you came to spend points on below the fold. One
+              tap away, and still published: a scheme that will not say how you
+              earn is a slot machine. */}
+          {rules.length > 0 && (
+            <div className="rounded-2xl overflow-hidden" style={panelStyle}>
+              <button
+                onClick={() => setShowRules((v) => !v)}
+                className="w-full p-4 flex items-center justify-between gap-2"
+              >
+                <span className="text-xs font-bold text-white">How you earn</span>
+                <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {rules.length} way{rules.length === 1 ? '' : 's'}
+                  <ChevronDown size={13} style={{
+                    transform: showRules ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
+                  }} />
+                </span>
+              </button>
+              {showRules && (
+                <div className="px-4 pb-4 space-y-1.5">
+                  {rules.map((r) => (
+                    <div key={r.key} className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{r.label}</span>
+                      <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
+                        +{r.points}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          )}
 
           {/* ── Catalogue ──────────────────────────────────────────────────── */}
           <div>

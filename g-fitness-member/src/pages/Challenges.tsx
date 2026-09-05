@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flag, AlertTriangle, Check, Sparkles } from 'lucide-react';
+import { ArrowLeft, Flag, AlertTriangle, Check, Sparkles, ChevronDown } from 'lucide-react';
 import { panelStyle } from '../components/ui/Card';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -36,6 +36,7 @@ export default function Challenges() {
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async (id: string) => {
@@ -74,6 +75,20 @@ export default function Challenges() {
       setBusy(null);
     }
   };
+
+  /**
+   * In progress, then available, then finished.
+   *
+   * `completedOn` is the only hard boundary; "joined" separates the two live
+   * groups. Order within each is left exactly as the query returned it — the
+   * gym decides what is featured, and re-sorting here would quietly override
+   * that.
+   */
+  const renderGroups = [
+    { key: 'active',    label: 'In progress',    rows: items.filter((c) => c.joined && c.completedOn == null),  collapsed: false },
+    { key: 'available', label: 'Open to join',   rows: items.filter((c) => !c.joined && c.completedOn == null), collapsed: false },
+    { key: 'done',      label: 'Completed',      rows: items.filter((c) => c.completedOn != null),              collapsed: true  },
+  ];
 
   const Header = (
     <div className="flex items-center gap-3 mb-4">
@@ -124,7 +139,34 @@ export default function Challenges() {
               </p>
             </div>
           ) : (
-            items.map((c) => {
+            /*
+              Three groups, not one list.
+
+              A challenge you finished in March sat between one you are halfway
+              through and one you have not joined — the same mixing that made
+              Goals unreadable. What you are *doing* comes first, what you could
+              join comes next, and what is finished goes behind a button: it is
+              a record, and there is nothing left to do on it.
+            */
+            renderGroups.map(({ key, label, rows, collapsed }) => rows.length === 0 ? null : (
+              <div key={key} className="space-y-2">
+                {collapsed ? (
+                  <button
+                    onClick={() => setShowDone((v) => !v)}
+                    className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                    style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
+                  >
+                    <Check size={13} style={{ color: 'var(--color-primary)' }} />
+                    {showDone ? 'Hide completed' : `Show ${rows.length} completed`}
+                    <ChevronDown size={13} style={{
+                      transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
+                    }} />
+                  </button>
+                ) : (
+                  <p className="text-[10px] font-bold uppercase tracking-wider px-1"
+                    style={{ color: 'var(--color-text-muted)' }}>{label}</p>
+                )}
+                {(!collapsed || showDone) && rows.map((c) => {
               const pct = c.progress == null ? 0
                 : Math.min(100, Math.round((c.progress / c.target) * 100));
               const done = c.completedOn != null;
@@ -192,7 +234,9 @@ export default function Challenges() {
                   </div>
                 </div>
               );
-            })
+            })}
+              </div>
+            ))
           )}
         </div>
       </div>
