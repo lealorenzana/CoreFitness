@@ -1,11 +1,15 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
 import RecordPaymentModal, { type RecordPaymentInput } from '../components/ui/RecordPaymentModal';
 import ViewReceiptModal from '../components/ui/ViewReceiptModal';
+import DetailSheet, { SheetRow } from '../components/ui/DetailSheet';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, OpenChevron,
+  Chips, PageSummary,
+} from '../components/ui/kit';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { Banknote, CheckCircle, XCircle, Clock, Download, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Banknote, CheckCircle, XCircle, Clock, Download, Plus } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
 import { listMembers } from '../lib/api/members';
@@ -204,181 +208,162 @@ export default function Payments() {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading payments…</div>;
   }
 
+  const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Payments</h1>
-          <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>Member payment records grouped by member</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setIsModalOpen(true)}
-            className="px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-black transition-colors"
-            style={{ background: 'var(--color-secondary)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-secondary-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-secondary)')}>
-            <Plus size={18} /> Record Payment
-          </button>
-          <button onClick={() => exportPaymentsToCSV(payments)}
-            className="px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-white transition-colors"
-            style={{ background: 'var(--color-primary)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-primary-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-primary)')}>
-            <Download size={18} /> Export CSV
-          </button>
-        </div>
-      </motion.div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Payments"
+        subtitle="Cash taken at the desk, grouped by member"
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => exportPaymentsToCSV(payments)}>
+              <Download size={14} /> Export
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(true)}>
+              <Plus size={15} /> Record payment
+            </Button>
+          </>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${s.color}20` }}>
-                    <Icon size={20} style={{ color: s.color }} />
-                  </div>
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                    <p className="text-2xl font-bold text-white">{s.value}</p>
-                  </div>
+      <StatTiles items={stats.map((s) => ({
+        label: s.label,
+        value: s.value,
+        icon: s.icon,
+        tone: s.color === 'var(--color-secondary)' ? 'secondary' : 'primary',
+      }))} />
+
+      {/* The member list.
+
+          Clicking a member used to unfold an eight-column table *inside* the
+          list, pushing every member below it down the page — and the table was
+          wider than the space it had, so Invoice and Actions fought for room.
+          The row now opens a sheet: the list stays where it is, and the columns
+          become labelled lines with space to breathe. */}
+      <Section
+        title="Payment records" icon={Banknote} count={memberGroups.length}
+        hint="click a member to see their receipts"
+        actions={
+          <Chips
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'completed', label: 'Completed', count: payments.filter((p) => p.status === 'completed').length },
+              { value: 'pending', label: 'Pending', count: payments.filter((p) => p.status === 'pending').length },
+              { value: 'failed', label: 'Failed', count: payments.filter((p) => p.status === 'failed').length },
+            ]}
+          />
+        }
+      >
+        {memberGroups.length === 0 ? (
+          <EmptyState
+            icon={Banknote}
+            title={filterStatus === 'all' ? 'No payments recorded' : `No ${filterStatus} payments`}
+            hint={filterStatus === 'all'
+              ? 'Every peso taken at the desk is recorded here.'
+              : 'Try another filter — the money is still on the All tab.'}
+            action={filterStatus === 'all'
+              ? <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(true)}><Plus size={14} /> Record one</Button>
+              : undefined}
+          />
+        ) : (
+          <>
+            <CardGrid min={280}>
+              {paginatedGroups.map((group) => {
+                const owing = group.payments.filter((p) => p.status === 'pending').length;
+                return (
+                  <TileCard key={group.memberId} accent={owing > 0}
+                    onClick={() => setExpandedMember(group.memberId)}
+                    title={`Open ${group.memberName}'s payments`}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-[11px] flex-shrink-0"
+                        style={{ background: 'var(--color-secondary)' }}>
+                        {group.memberName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] text-white font-semibold truncate">{group.memberName}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                          {group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}
+                          {owing > 0 && (
+                            <span style={{ color: 'var(--color-secondary)' }}> · {owing} pending</span>
+                          )}
+                        </p>
+                      </div>
+                      <OpenChevron />
+                    </div>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-base font-bold text-white tabular-nums">
+                        ₱{group.totalPaid.toLocaleString()}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        last {new Date(group.lastPayment).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  </TileCard>
+                );
+              })}
+            </CardGrid>
+            <div className="flex items-center justify-between mt-3">
+              <PageSummary page={currentPage} perPage={ITEMS_PER_PAGE}
+                total={memberGroups.length} noun="members" />
+              <Pagination currentPage={currentPage} totalItems={memberGroups.length}
+                itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
+            </div>
+          </>
+        )}
+      </Section>
+
+      {/* One member's receipts, floating over the list. */}
+      <DetailSheet
+        open={!!openGroup}
+        onClose={() => setExpandedMember(null)}
+        title={openGroup?.memberName ?? ''}
+        subtitle={openGroup
+          ? `₱${openGroup.totalPaid.toLocaleString()} across ${openGroup.payments.length} payment${openGroup.payments.length === 1 ? '' : 's'}`
+          : undefined}
+      >
+        <div className="space-y-2">
+          {openGroup?.payments.map((p) => (
+            <div key={p.id} className="rounded-xl p-3"
+              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-white tabular-nums">₱{p.amount.toLocaleString()}</p>
+                  {/* 0045 makes invoice_number NOT NULL, so this is the real
+                      stored identifier — never one invented at render time. */}
+                  <p className="text-[10px] font-mono" style={{ color: 'var(--color-text-muted)' }}>
+                    {p.invoiceNumber}
+                  </p>
                 </div>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Filter */}
-      <div className="flex items-center gap-2">
-        {(['all', 'completed', 'pending', 'failed'] as const).map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              background: filterStatus === s ? 'var(--color-secondary)' : 'var(--color-surface-raised)',
-              color: filterStatus === s ? '#000' : 'var(--color-text-secondary)',
-              border: `1px solid ${filterStatus === s ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-            }}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Member-centric table */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-white">Payment Records by Member</h2>
-            <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Click a member row to expand their payment history</p>
-          </div>
-
-          <div className="space-y-2">
-            {paginatedGroups.map(group => (
-              <div key={group.memberId} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-                {/* Member row */}
-                <button
-                  onClick={() => setExpandedMember(expandedMember === group.memberId ? null : group.memberId)}
-                  className="w-full flex items-center justify-between p-4 text-left transition-colors"
-                  style={{ background: expandedMember === group.memberId ? 'var(--color-surface-raised)' : 'var(--color-surface)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = expandedMember === group.memberId ? 'var(--color-surface-raised)' : 'var(--color-surface)')}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-sm" style={{ background: 'var(--color-secondary)' }}>
-                      {group.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold">{group.memberName}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Total Paid</p>
-                      <p className="font-bold text-white">₱{group.totalPaid.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Last Payment</p>
-                      <p className="text-sm text-white">{new Date(group.lastPayment).toLocaleDateString()}</p>
-                    </div>
-                    {expandedMember === group.memberId
-                      ? <ChevronDown size={18} style={{ color: 'var(--color-secondary)' }} />
-                      : <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} />
-                    }
-                  </div>
-                </button>
-
-                {/* Expanded payment rows */}
-                <AnimatePresence>
-                  {expandedMember === group.memberId && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ borderTop: '1px solid var(--color-border)' }}
-                    >
-                      <table className="w-full">
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            {['Invoice', 'Plan', 'Amount', 'Method', 'Date', 'Expires', 'Status', 'Actions'].map(h => (
-                              <th key={h} className="text-left py-2 px-4 text-xs font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.payments.map(p => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}
-                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                              <td className="py-3 px-4 text-xs font-mono" style={{ color: 'var(--color-text-secondary)' }}>{p.invoiceNumber}</td>
-                              <td className="py-3 px-4">
-                                <span className="text-xs px-2 py-1 rounded-lg font-semibold" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>{p.plan}</span>
-                              </td>
-                              <td className="py-3 px-4 font-bold text-white">₱{p.amount.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{methodIcon[p.method] || '💰'} {p.method}</td>
-                              <td className="py-3 px-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{new Date(p.date).toLocaleDateString()}</td>
-                              <td className="py-3 px-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{new Date(p.dueDate).toLocaleDateString()}</td>
-                              <td className="py-3 px-4">
-                                <span className="px-2 py-1 rounded-full text-xs font-semibold uppercase" style={getStatusStyle(p.status)}>{p.status}</span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <button onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}
-                                    className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
-                                    style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.30)' }}>
-                                    View
-                                  </button>
-                                  {p.status === 'pending' && (
-                                    <button onClick={() => confirmPayment(p.id)}
-                                      className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
-                                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.30)' }}>
-                                      Confirm
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase flex-shrink-0"
+                  style={getStatusStyle(p.status)}>{p.status}</span>
               </div>
-            ))}
 
-            {memberGroups.length === 0 && (
-              <div className="py-12 text-center" style={{ color: 'var(--color-text-muted)' }}>No payment records found.</div>
-            )}
-          </div>
+              <div className="mt-2 space-y-0.5">
+                <SheetRow label="Plan">{p.plan}</SheetRow>
+                <SheetRow label="Method">{methodIcon[p.method] || '💰'} {p.method}</SheetRow>
+                {/* paid_on, not created_at — the day the cash changed hands. */}
+                <SheetRow label="Paid on">{new Date(p.date).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
+                <SheetRow label="Covers until">{new Date(p.dueDate).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
+              </div>
 
-          <Pagination currentPage={currentPage} totalItems={memberGroups.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
-        </Card>
-      </motion.div>
+              <div className="flex gap-1.5 mt-2.5">
+                <Button variant="ghost" size="sm"
+                  onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}>
+                  View receipt
+                </Button>
+                {p.status === 'pending' && (
+                  <Button variant="secondary" size="sm" onClick={() => confirmPayment(p.id)}>
+                    Confirm
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DetailSheet>
 
       <RecordPaymentModal
         isOpen={isModalOpen}

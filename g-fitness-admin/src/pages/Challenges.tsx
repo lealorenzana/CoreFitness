@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Flag, AlertTriangle, Users } from 'lucide-react';
-import Card from '../components/ui/Card';
+import { Plus, Flag, AlertTriangle, Users, Clock, Trophy } from 'lucide-react';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
+import { PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard } from '../components/ui/kit';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 
@@ -145,59 +145,138 @@ export default function Challenges() {
 
   if (failed) {
     return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5" style={{ color: 'var(--color-secondary)' }} />
-          <div>
-            <p className="text-xs font-semibold text-white">Couldn&apos;t load challenges</p>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              A connection problem, not an empty list. Reload to try again.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <Section title="Couldn't load challenges" icon={AlertTriangle}>
+        <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+          A connection problem, not an empty list. Reload to try again.
+        </p>
+      </Section>
     );
   }
 
   const now = today();
   const running = items.filter((c) => c.ends_on >= now);
   const past = items.filter((c) => c.ends_on < now);
+  const totalJoined = Object.values(counts).reduce((s, n) => s + n.joined, 0);
+  const totalDone = Object.values(counts).reduce((s, n) => s + n.done, 0);
+
+  /** One challenge, as a tile. Shared by both sections so they cannot drift. */
+  const tile = (c: typeof items[number]) => {
+    const n = counts[c.id] ?? { joined: 0, done: 0 };
+    // Progress is computed, never stored (0052) — this bar is the same
+    // arithmetic the member sees, not a second number that can disagree.
+    const share = n.joined > 0 ? Math.round((n.done / n.joined) * 100) : 0;
+    return (
+      <TileCard key={c.id} dim={!c.is_active}>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[12px] font-semibold text-white leading-snug">{c.title}</p>
+          <button onClick={() => toggle(c)}
+            className="text-[9px] font-semibold flex-shrink-0 px-2 py-1 rounded"
+            style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+            {c.is_active ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          {metricLabel(c.metric_key)} ≥ <span className="font-bold">{c.target}</span>
+        </p>
+        <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+          {c.starts_on} → {c.ends_on}
+          {c.reward_points > 0 && ` · ${c.reward_points} pts`}
+        </p>
+
+        <div className="mt-2.5 flex items-center gap-2">
+          <span className="text-[10px] flex items-center gap-1 flex-shrink-0"
+            style={{ color: 'var(--color-text-secondary)' }}>
+            <Users size={10} />{n.joined}
+          </span>
+          {/* The bar only means anything once somebody has joined; with nobody
+              in it, an empty track would read as "everyone is failing". */}
+          {n.joined > 0 ? (
+            <>
+              <span className="flex-1 h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--color-surface-high)' }}>
+                <span className="block h-full rounded-full"
+                  style={{ width: `${share}%`, background: 'var(--color-primary)' }} />
+              </span>
+              <span className="text-[10px] tabular-nums flex-shrink-0"
+                style={{ color: 'var(--color-primary)' }}>{n.done} done</span>
+            </>
+          ) : (
+            <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>nobody joined yet</span>
+          )}
+        </div>
+      </TileCard>
+    );
+  };
 
   return (
-    <div className="space-y-5">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Challenges</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            {running.length} running · progress is counted from real check-ins, never self-reported
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => setAdding((v) => !v)}>
-          <Plus size={16} /> New Challenge
-        </Button>
-      </motion.div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Challenges"
+        subtitle="Progress is counted from real check-ins, never self-reported"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+            <Plus size={15} /> New challenge
+          </Button>
+        }
+      />
 
-      {adding && (
-        <Card className="!p-4">
-          <div className="grid grid-cols-3 gap-3">
-            <label>
-              <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Title</span>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. 15 visits in November"
-                className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-            </label>
-            <label className="col-span-2">
-              <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Description</span>
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Shown to members"
-                className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-            </label>
-          </div>
-          <div className="grid grid-cols-5 gap-3 mt-3">
-            <label className="col-span-2">
+      <StatTiles items={[
+        { label: 'Running', value: running.length, icon: Flag },
+        { label: 'Finished', value: past.length, icon: Clock },
+        { label: 'Members joined', value: totalJoined, icon: Users },
+        { label: 'Completions', value: totalDone, icon: Trophy, tone: 'secondary' },
+      ]} />
+
+      {items.length === 0 ? (
+        <Section title="Challenges" icon={Flag}>
+          <EmptyState
+            icon={Flag}
+            title="No challenges yet"
+            hint="A challenge gives members a reason to come back that is not a renewal reminder."
+            action={<Button variant="secondary" size="sm" onClick={() => setAdding(true)}><Plus size={14} /> Create one</Button>}
+          />
+        </Section>
+      ) : (
+        [{ label: 'Running', list: running, icon: Flag },
+         { label: 'Finished', list: past, icon: Clock }]
+          .filter((s) => s.list.length > 0)
+          .map((section) => (
+            <Section key={section.label} title={section.label} icon={section.icon} count={section.list.length}>
+              <CardGrid min={260}>{section.list.map(tile)}</CardGrid>
+            </Section>
+          ))
+      )}
+
+      {/* Creating one floats. It used to unfold between the header and the
+          list, so the challenges you were comparing against jumped down the
+          page the moment you went to add another. */}
+      <Modal
+        isOpen={adding}
+        onClose={() => setAdding(false)}
+        title="New challenge"
+        subtitle="Counted automatically between the two dates"
+        size="lg"
+        onConfirm={add}
+        confirmLabel={busy ? 'Creating…' : 'Create challenge'}
+        confirmDisabled={busy || !form.title.trim()}
+      >
+        <div className="space-y-3">
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Title</span>
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="e.g. 15 visits in November"
+              className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
+              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Description</span>
+            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Shown to members"
+              className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
+              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>What is counted</span>
               <select value={form.metric_key} onChange={(e) => setForm({ ...form, metric_key: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
@@ -205,94 +284,42 @@ export default function Challenges() {
                 {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
               </select>
             </label>
-            <label>
+            <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Target</span>
               <input value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })}
+                inputMode="numeric"
                 className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
             </label>
-            <label>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Starts</span>
               <input type="date" value={form.starts_on} onChange={(e) => setForm({ ...form, starts_on: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
             </label>
-            <label>
+            <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Ends</span>
               <input type="date" value={form.ends_on} onChange={(e) => setForm({ ...form, ends_on: e.target.value })}
                 className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
             </label>
+            <label className="block">
+              <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Points</span>
+              <input value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: e.target.value })}
+                inputMode="numeric"
+                className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
+                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+            </label>
           </div>
-          <label className="block mt-3 w-40">
-            <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>CORE Points reward</span>
-            <input value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: e.target.value })}
-              className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
-              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-          </label>
-          <p className="text-[10px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             Only metrics that can be counted inside a date range are listed. Streaks and
             &ldquo;days since joining&rdquo; are left out because they describe a whole
             history, so a windowed target for them would be meaningless.
           </p>
-          <div className="flex gap-2 mt-3">
-            <Button variant="secondary" onClick={add} disabled={busy}>
-              {busy ? 'Creating…' : 'Create'}
-            </Button>
-            <Button variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
-          </div>
-        </Card>
-      )}
-
-      {[{ label: 'Running', list: running }, { label: 'Finished', list: past }]
-        .filter((s) => s.list.length > 0)
-        .map((section) => (
-          <Card key={section.label} className="!p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Flag size={14} style={{ color: 'var(--color-primary)' }} />
-              <h3 className="text-sm font-bold text-white">{section.label}</h3>
-            </div>
-            <div className="space-y-2">
-              {section.list.map((c) => {
-                const n = counts[c.id] ?? { joined: 0, done: 0 };
-                return (
-                  <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg"
-                       style={{ background: 'var(--color-surface-high)',
-                                border: '1px solid var(--color-border)',
-                                opacity: c.is_active ? 1 : 0.45 }}>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white">{c.title}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                        {metricLabel(c.metric_key)} ≥ {c.target} · {c.starts_on} to {c.ends_on}
-                        {c.reward_points > 0 && ` · ${c.reward_points} points`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-text-secondary)' }}>
-                        <Users size={10} /> {n.joined} joined · {n.done} done
-                      </span>
-                      <button onClick={() => toggle(c)}
-                        className="text-[9px] font-semibold px-2 py-1 rounded"
-                        style={{ color: 'var(--color-text-muted)' }}>
-                        {c.is_active ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        ))}
-
-      {items.length === 0 && (
-        <Card className="!p-6 text-center">
-          <Flag size={22} className="mx-auto mb-2" style={{ color: 'var(--color-text-muted)' }} />
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            No challenges yet. A challenge gives members a reason to come back that
-            is not a renewal reminder.
-          </p>
-        </Card>
-      )}
+        </div>
+      </Modal>
     </div>
   );
 }

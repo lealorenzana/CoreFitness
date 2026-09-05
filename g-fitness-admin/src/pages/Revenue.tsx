@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Banknote, TrendingUp, Clock, Calendar, Download, ArrowRight } from 'lucide-react';
+import { PageHeader, StatTiles, Section, EmptyState, OpenChevron } from '../components/ui/kit';
+import {
+  Banknote, TrendingUp, Clock, Calendar, Download, ArrowRight, CreditCard,
+  ChartPie as PieIcon,
+} from 'lucide-react';
 import { exportToCSV } from '../utils/exportUtils';
 import { showToast } from '../utils/toast';
 import { formatCurrency } from '../utils/formatters';
@@ -62,53 +65,39 @@ export default function Revenue() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Revenue Reports</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            Financial performance from recorded cash payments
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => exportToCSV(exportRows, `revenue-${year}`)}>
-          <Download size={16} />
-          Export Report
-        </Button>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Revenue"
+        subtitle="Financial performance from recorded cash payments"
+        actions={
+          <Button variant="outline" size="sm" onClick={() => exportToCSV(exportRows, `revenue-${year}`)}>
+            <Download size={14} /> Export {year}
+          </Button>
+        }
+      />
 
-      {/* KPI pills — real figures, no invented growth badges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="flex items-center gap-3 rounded-full px-4 py-2"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-primary-light)' }}>
-                <Icon size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</p>
-                <p className="text-sm font-bold text-white">{stat.value}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Real figures, no invented growth badges.
+          These were four pills on a 4-column grid — 350px each to hold a peso
+          figure, stretched because the grid said so rather than because the
+          numbers needed it. */}
+      <StatTiles items={stats.map((s) => ({
+        label: s.label,
+        value: s.value,
+        icon: s.icon,
+        // Money owed is the one figure here that is a task, not a result.
+        tone: s.label === 'Pending Payments' ? 'secondary' : 'primary',
+      }))} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         {/* LEFT — 2/3 */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Revenue by plan */}
-          <Card>
-            <h3 className="text-lg font-semibold text-white mb-4">Revenue by Plan</h3>
+          <Section title="Revenue by plan" icon={PieIcon}>
             {loading ? (
               <p className="py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
             ) : byTier.length === 0 ? (
-              <p className="py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                No completed payments yet — record a payment on the Payments page to see this chart.
-              </p>
+              <EmptyState icon={Banknote} title="No completed payments yet"
+                hint="Record a payment on the Payments page and this chart fills in." />
             ) : (
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className="w-full md:w-1/2" style={{ height: 220 }}>
@@ -146,18 +135,19 @@ export default function Revenue() {
                 </div>
               </div>
             )}
-          </Card>
+          </Section>
 
           {/* Monthly breakdown */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Monthly Breakdown</h3>
+          <Section
+            title="Monthly breakdown" icon={Calendar}
+            actions={
               <select value={year} onChange={(e) => setYear(e.target.value)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                className="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
+                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-            </div>
+            }
+          >
             {/*
               Twelve full-width rows for a year where nine of them are ₱0 spent
               most of the page saying nothing. This is the same twelve months as
@@ -169,9 +159,8 @@ export default function Revenue() {
               gone is nine rows of zeros.
             */}
             {monthly.length === 0 ? (
-              <p className="py-8 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                No data for {year}
-              </p>
+              <EmptyState compact icon={Calendar} title={`Nothing recorded in ${year}`}
+                hint="Pick another year, or record a payment to start the ledger." />
             ) : (() => {
               const peak = Math.max(...monthly.map((m) => m.revenue), 1);
               const totalRev = monthly.reduce((s, m) => s + m.revenue, 0);
@@ -209,72 +198,78 @@ export default function Revenue() {
                     })}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 mt-4 pt-3"
+                  <div className="flex flex-wrap gap-2 mt-4 pt-3"
                     style={{ borderTop: '1px solid var(--color-border)' }}>
                     {[
                       { label: `${year} revenue`, value: `₱${totalRev.toLocaleString()}`, tone: 'var(--color-secondary)' },
                       { label: 'Payments taken', value: String(totalPay), tone: 'var(--color-text-primary)' },
                       { label: 'New members', value: String(totalNew), tone: 'var(--color-text-primary)' },
                     ].map((t) => (
-                      <div key={t.label}>
-                        <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{t.label}</p>
-                        <p className="text-lg font-bold tabular-nums" style={{ color: t.tone }}>{t.value}</p>
+                      <div key={t.label} className="px-3 py-1.5 rounded-lg" style={{ background: 'var(--color-surface-high)' }}>
+                        <p className="text-[9px] uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{t.label}</p>
+                        <p className="text-base font-bold tabular-nums" style={{ color: t.tone }}>{t.value}</p>
                       </div>
                     ))}
                   </div>
                 </>
               );
             })()}
-          </Card>
+          </Section>
         </div>
 
-        {/* RIGHT — 1/3: the real plan catalogue */}
-        <div className="space-y-4">
-          <Card>
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-semibold text-white">Membership Plans</h3>
-            </div>
-            <p className="text-[11px] mb-4" style={{ color: 'var(--color-text-muted)' }}>
-              These are the real plans members are billed against. Edit them on the Membership Plans page.
-            </p>
-
-            <div className="space-y-2">
-              {plans.length === 0 ? (
-                <p className="text-xs py-4 text-center" style={{ color: 'var(--color-text-muted)' }}>No plans defined yet.</p>
-              ) : plans.map((plan) => (
-                <div key={plan.id} className="flex items-center gap-3 rounded-xl p-3"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+        {/* RIGHT — 1/3: the real plan catalogue.
+            Read-only here on purpose; the plans page owns editing them. Each
+            row is a link to it rather than a dead row above one button. */}
+        <Section
+          title="Membership plans" icon={CreditCard} count={plans.length}
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => navigate('/membership-plans')}>
+              Manage <ArrowRight size={12} />
+            </Button>
+          }
+        >
+          <p className="text-[10px] mb-2.5 -mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            What members are actually billed against.
+          </p>
+          {plans.length === 0 ? (
+            <EmptyState compact icon={CreditCard} title="No plans yet"
+              hint="Nothing can be sold until a plan exists."
+              action={<Button variant="secondary" size="sm" onClick={() => navigate('/membership-plans')}>Create one</Button>} />
+          ) : (
+            <div className="space-y-1.5">
+              {plans.map((plan) => (
+                <button key={plan.id} onClick={() => navigate('/membership-plans')}
+                  className="w-full text-left flex items-center gap-2.5 rounded-lg px-2.5 py-2 group transition-colors"
+                  style={{
+                    background: 'var(--color-surface-high)',
+                    opacity: plan.is_active ? 1 : 0.5,
+                  }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-medium truncate">{plan.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full uppercase font-semibold"
-                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                        {plan.tier}
-                      </span>
-                      <span className="text-xs font-bold" style={{ color: 'var(--color-secondary)' }}>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[12px] text-white font-semibold truncate">{plan.name}</p>
+                      {!plan.is_active && (
+                        <span className="text-[9px] px-1.5 rounded-full flex-shrink-0"
+                          style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                          retired
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="font-bold" style={{ color: 'var(--color-secondary)' }}>
                         ₱{Number(plan.price).toLocaleString()}
                       </span>
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        / {plan.duration_days == null ? 'no expiry' : `${plan.duration_days}d`}
-                      </span>
-                    </div>
+                      {' · '}
+                      {/* A NULL duration is "never expires", which is a real
+                          plan setting and not a missing number. */}
+                      {plan.duration_days == null ? 'no expiry' : `${plan.duration_days} days`}
+                    </p>
                   </div>
-                  {!plan.is_active && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                      inactive
-                    </span>
-                  )}
-                </div>
+                  <OpenChevron />
+                </button>
               ))}
             </div>
-
-            <button onClick={() => navigate('/membership-plans')}
-              className="w-full mt-3 py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-              style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-              Manage Plans <ArrowRight size={12} />
-            </button>
-          </Card>
-        </div>
+          )}
+        </Section>
       </div>
     </div>
   );

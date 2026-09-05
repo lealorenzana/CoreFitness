@@ -1,10 +1,15 @@
-import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
 import {
-  CheckCircle, XCircle, Clock, Calendar, User, Dumbbell, Search, AlertTriangle,
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
+  SearchBox, Chips, Toolbar, PageSummary,
+} from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
+import {
+  CheckCircle, XCircle, Clock, Calendar, User, Dumbbell, AlertTriangle,
   RotateCcw, Users,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
@@ -66,6 +71,12 @@ export default function Bookings() {
     );
   }, [rows, filter, kindFilter, search]);
 
+  const paged = usePaged(visible, 12);
+
+  // Bulk selection deliberately spans the whole filtered queue, not just the
+  // page you can see: "select all 20 pending" after a weekend should mean all
+  // twenty, and silently meaning "the twelve on this page" is how a desk ends
+  // up believing it cleared a queue it did not.
   const selectablePending = visible.filter((r) => r.status === 'pending');
   const selectedPending = selectablePending.filter((r) => selected.has(r.id));
   const allSelected = selectablePending.length > 0 && selectedPending.length === selectablePending.length;
@@ -198,213 +209,200 @@ export default function Bookings() {
 
   const pendingCount = rows.filter((r) => r.status === 'pending').length;
   const flaggedCount = rows.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
-  const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white">Bookings</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Class bookings and personal-training requests
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Search member, class or trainer…" value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-60 pl-9 pr-3 h-8 rounded-full text-xs text-white"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
+      <PageHeader
+        title="Bookings"
+        subtitle="Class bookings and personal-training requests, in one queue"
+        actions={<SearchBox value={search} onChange={setSearch} placeholder="Member, class or trainer…" width={230} />}
+      />
+
+      <StatTiles items={[
+        { label: 'Awaiting approval', value: pendingCount, icon: Clock, tone: pendingCount > 0 ? 'secondary' : 'primary',
+          onClick: () => setFilter('pending') },
+        { label: 'Need checking', value: flaggedCount, icon: AlertTriangle,
+          tone: flaggedCount > 0 ? 'secondary' : 'primary', onClick: () => setFilter('pending') },
+        { label: 'Classes', value: rows.filter((r) => r.kind === 'class').length, icon: Dumbbell,
+          onClick: () => setKindFilter('class') },
+        { label: 'Personal training', value: rows.filter((r) => r.kind === 'pt').length, icon: User,
+          onClick: () => setKindFilter('pt') },
+      ]} />
+
+      <Section
+        title="Queue" icon={Calendar} count={visible.length}
+        actions={
+          <Toolbar>
+            <Chips
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'pending', label: 'Pending', count: pendingCount },
+                { value: 'approved', label: 'Approved' },
+                { value: 'rejected', label: 'Rejected' },
+                { value: 'cancelled', label: 'Cancelled' },
+              ]}
+            />
+            <Chips
+              value={kindFilter}
+              onChange={setKindFilter}
+              options={[
+                { value: 'all', label: 'Both' },
+                { value: 'class', label: 'Classes' },
+                { value: 'pt', label: 'PT' },
+              ]}
+            />
+          </Toolbar>
+        }
+      >
+        {/* Bulk bar. A queue after a weekend is twenty near-identical requests,
+            and twenty separate round trips is how the desk stops using the
+            queue. It sits inside the section now, directly above the things it
+            acts on, rather than as a floating strip above the filters. */}
+        {selectablePending.length > 0 && (
+          <div className="rounded-lg px-3 py-2 flex items-center gap-3 mb-3"
+            style={{ background: 'var(--color-surface-high)' }}>
+            <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
+              <input type="checkbox" checked={allSelected}
+                onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
+              Select all {selectablePending.length} pending
+            </label>
+            {selectedPending.length > 0 && (
+              <>
+                <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {selectedPending.length} selected
+                </span>
+                <div className="ml-auto flex gap-2">
+                  <Button variant="primary" size="sm" className="!text-[10px]" onClick={() => setBulk('approved')}>
+                    <CheckCircle size={12} className="mr-1" /> Approve selected
+                  </Button>
+                  <Button variant="danger" size="sm" className="!text-[10px]" onClick={() => setBulk('rejected')}>
+                    <XCircle size={12} className="mr-1" /> Reject selected
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
-          {pendingCount > 0 && (
-            <span className="text-[11px] px-3 py-1.5 rounded-full font-bold whitespace-nowrap"
-              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-              {pendingCount} awaiting approval
-            </span>
-          )}
-        </div>
-      </div>
+        )}
 
-      {/* Requests that need a second look before anyone taps Approve. */}
-      {flaggedCount > 0 && filter !== 'pending' && (
-        <button onClick={() => setFilter('pending')}
-          className="w-full text-left rounded-xl p-3 flex items-center gap-2"
-          style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
-          <AlertTriangle size={13} style={{ color: 'var(--color-secondary)' }} />
-          <span className="text-[11px]" style={{ color: 'var(--color-secondary)' }}>
-            {flaggedCount} pending request{flaggedCount === 1 ? '' : 's'} need checking — full class, lapsed membership or a plan that doesn't cover it.
-          </span>
-        </button>
-      )}
-
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex gap-1.5">
-          {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className="px-3 py-1.5 rounded-full text-[10px] font-semibold capitalize transition-colors"
-              style={{
-                background: filter === f ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: filter === f ? '#fff' : 'var(--color-text-muted)',
-                border: `1px solid ${filter === f ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              }}>
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1.5">
-          {([['all', 'All types'], ['class', 'Classes'], ['pt', 'Personal Training']] as const).map(([k, label]) => (
-            <button key={k} onClick={() => setKindFilter(k)}
-              className="px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors"
-              style={{
-                background: kindFilter === k ? 'var(--color-secondary)' : 'var(--color-surface)',
-                color: kindFilter === k ? '#000' : 'var(--color-text-muted)',
-                border: `1px solid ${kindFilter === k ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-              }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Bulk bar. A queue after a weekend is twenty near-identical requests, and
-          twenty separate round trips is how the desk stops using the queue. */}
-      {selectablePending.length > 0 && (
-        <div className="rounded-xl px-3 py-2 flex items-center gap-3" style={panel}>
-          <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
-            <input type="checkbox" checked={allSelected}
-              onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
-            Select all {selectablePending.length} pending
-          </label>
-          {selectedPending.length > 0 && (
-            <>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                {selectedPending.length} selected
-              </span>
-              <div className="ml-auto flex gap-2">
-                <Button variant="primary" size="sm" className="!text-[10px]" onClick={() => setBulk('approved')}>
-                  <CheckCircle size={12} className="mr-1" /> Approve selected
-                </Button>
-                <Button variant="danger" size="sm" className="!text-[10px]" onClick={() => setBulk('rejected')}>
-                  <XCircle size={12} className="mr-1" /> Reject selected
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading bookings…</p>
-      ) : visible.length === 0 ? (
-        <div className="rounded-xl p-10 text-center" style={panel}>
-          <Calendar size={26} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
-          <p className="text-sm text-white mb-1">Nothing here</p>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            {rows.length === 0
-              ? 'No bookings yet — members book classes and PT sessions from the phone app.'
-              : 'No bookings match this filter.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {visible.map((row, i) => {
-            const flagged = row.warnings.length > 0;
-            return (
-              <motion.div key={`${row.kind}-${row.id}`}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.03, 0.25) }}
-                className="rounded-xl p-4 flex items-start gap-3"
-                style={{ ...panel, borderColor: flagged ? 'var(--color-secondary)' : 'var(--color-border)' }}>
-
-                {row.status === 'pending' && (
-                  <input type="checkbox" className="mt-3 flex-shrink-0"
-                    checked={selected.has(row.id)} onChange={() => toggle(row.id)}
-                    aria-label={`Select ${row.memberName}'s booking`} />
-                )}
-
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: row.kind === 'pt' ? 'var(--color-secondary-light)' : 'var(--color-primary-light)' }}>
-                  {row.kind === 'pt'
-                    ? <User size={16} style={{ color: 'var(--color-secondary)' }} />
-                    : <Dumbbell size={16} style={{ color: 'var(--color-primary)' }} />}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-white truncate">{row.memberName}</p>
-                    <Badge variant={STATUS_BADGE[row.status]} className="!text-[9px] !px-2 !py-0.5">{row.status}</Badge>
-                    {row.seats && (
-                      <span className="text-[9px] flex items-center gap-1"
-                        style={{ color: row.seats.taken >= row.seats.capacity ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
-                        <Users size={9} /> {row.seats.taken}/{row.seats.capacity}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                    {row.title}
-                    {row.trainerName && ` · with ${row.trainerName}`}
-                  </p>
-                  <p className="text-[10px] mt-1 flex items-center gap-3" style={{ color: 'var(--color-text-muted)' }}>
-                    <span className="flex items-center gap-1">
-                      <Calendar size={9} />
-                      {row.when
-                        ? new Date(row.when).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
-                        : 'Not scheduled'}
-                    </span>
-                    {row.when && (
-                      <span className="flex items-center gap-1">
-                        <Clock size={9} />
-                        {new Date(row.when).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </p>
-                  {row.notes && (
-                    <p className="text-[10px] mt-1.5 px-2 py-1 rounded-lg inline-block"
-                      style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                      {row.notes}
-                    </p>
-                  )}
-
-                  {/* Warnings, not blocks — the desk overrides these for real
-                      reasons, so they inform rather than refuse. */}
-                  {flagged && (
-                    <div className="mt-2 space-y-0.5">
-                      {row.warnings.map((w) => (
-                        <p key={w.kind + w.message} className="text-[10px] flex items-start gap-1.5"
-                          style={{ color: 'var(--color-secondary)' }}>
-                          <AlertTriangle size={10} className="mt-0.5 flex-shrink-0" /> {w.message}
+        {loading ? (
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading bookings…</p>
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title={rows.length === 0 ? 'No bookings yet' : 'Nothing matches those filters'}
+            hint={rows.length === 0
+              ? 'Members book classes and PT sessions from the phone app.'
+              : 'Clear a filter to widen the queue.'}
+          />
+        ) : (
+          <>
+            {/* Cards in a grid rather than full-width rows: a request is about
+                240px of information, and stretching it to 1,600 puts the member's
+                name and the Approve button at opposite ends of the desk's screen. */}
+            <CardGrid min={330}>
+              {paged.visible.map((row) => {
+                const flagged = row.warnings.length > 0;
+                return (
+                  <TileCard key={`${row.kind}-${row.id}`} accent={flagged}>
+                    <div className="flex items-start gap-2.5">
+                      {row.status === 'pending' && (
+                        <input type="checkbox" className="mt-1 flex-shrink-0"
+                          checked={selected.has(row.id)} onChange={() => toggle(row.id)}
+                          aria-label={`Select ${row.memberName}'s booking`} />
+                      )}
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: row.kind === 'pt' ? 'var(--color-secondary-light)' : 'var(--color-primary-light)' }}>
+                        {row.kind === 'pt'
+                          ? <User size={14} style={{ color: 'var(--color-secondary)' }} />
+                          : <Dumbbell size={14} style={{ color: 'var(--color-primary)' }} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[12px] font-semibold text-white truncate">{row.memberName}</p>
+                          <Badge variant={STATUS_BADGE[row.status]} className="!text-[9px] !px-1.5 !py-0 flex-shrink-0">{row.status}</Badge>
+                        </div>
+                        <p className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                          {row.title}{row.trainerName && ` · ${row.trainerName}`}
                         </p>
-                      ))}
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                <div className="flex gap-2 flex-shrink-0">
-                  {row.status === 'pending' ? (
-                    <>
-                      <Button variant="ghost" size="sm" className="!text-[10px]"
-                        disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>
-                        <CheckCircle size={12} className="mr-1" /> Approve
-                      </Button>
-                      <Button variant="danger" size="sm" className="!text-[10px]"
-                        disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}>
-                        <XCircle size={12} className="mr-1" /> Reject
-                      </Button>
-                    </>
-                  ) : row.status === 'approved' || row.status === 'rejected' ? (
-                    <Button variant="ghost" size="sm" className="!text-[10px]"
-                      disabled={busyId === row.id} onClick={() => setToReverse(row)}
-                      title={`Change this to ${row.status === 'approved' ? 'rejected' : 'approved'}`}>
-                      <RotateCcw size={12} className="mr-1" /> Change
-                    </Button>
-                  ) : null}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                    <p className="text-[10px] mt-1.5 flex items-center gap-2.5 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={9} />
+                        {row.when
+                          ? new Date(row.when).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+                          : 'Not scheduled'}
+                      </span>
+                      {row.when && (
+                        <span className="flex items-center gap-1">
+                          <Clock size={9} />
+                          {new Date(row.when).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      )}
+                      {row.seats && (
+                        <span className="flex items-center gap-1"
+                          style={{ color: row.seats.taken >= row.seats.capacity ? 'var(--color-secondary)' : undefined }}>
+                          <Users size={9} /> {row.seats.taken}/{row.seats.capacity}
+                        </span>
+                      )}
+                    </p>
+
+                    {row.notes && (
+                      <p className="text-[10px] mt-1.5 px-2 py-1 rounded-lg"
+                        style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+                        {row.notes}
+                      </p>
+                    )}
+
+                    {/* Warnings, not blocks — the desk overrides these for real
+                        reasons, so they inform rather than refuse. */}
+                    {flagged && (
+                      <div className="mt-1.5 space-y-0.5">
+                        {row.warnings.map((w) => (
+                          <p key={w.kind + w.message} className="text-[10px] flex items-start gap-1.5"
+                            style={{ color: 'var(--color-secondary)' }}>
+                            <AlertTriangle size={10} className="mt-0.5 flex-shrink-0" /> {w.message}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-1.5 mt-2.5">
+                      {row.status === 'pending' ? (
+                        <>
+                          <Button variant="primary" size="sm" className="!text-[10px] flex-1"
+                            disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>
+                            <CheckCircle size={12} className="mr-1" /> Approve
+                          </Button>
+                          <Button variant="danger" size="sm" className="!text-[10px]"
+                            disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}>
+                            <XCircle size={12} className="mr-1" /> Reject
+                          </Button>
+                        </>
+                      ) : row.status === 'approved' || row.status === 'rejected' ? (
+                        <Button variant="ghost" size="sm" className="!text-[10px]"
+                          disabled={busyId === row.id} onClick={() => setToReverse(row)}
+                          title={`Change this to ${row.status === 'approved' ? 'rejected' : 'approved'}`}>
+                          <RotateCcw size={12} className="mr-1" /> Change decision
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TileCard>
+                );
+              })}
+            </CardGrid>
+
+            <div className="flex items-center justify-between mt-3">
+              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="requests" />
+              <Pagination currentPage={paged.page} totalItems={paged.total}
+                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+            </div>
+          </>
+        )}
+      </Section>
 
       <ConfirmDialog
         isOpen={!!bulk}

@@ -1,12 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
-import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
-import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Search, Archive, UserX, UserCheck, Clock, Star } from 'lucide-react';
+import {
+  PageHeader, StatTiles, EmptyState, CardGrid, TileCard, OpenChevron,
+  SearchBox, PageSummary,
+} from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
+import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Archive, UserX, UserCheck, Clock, Star, Users } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
@@ -155,6 +160,8 @@ export default function Trainers() {
     );
   });
 
+  const paged = usePaged(visible, 12);
+
   /**
    * Suspend / reactivate / archive.
    *
@@ -290,147 +297,169 @@ export default function Trainers() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Trainers</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            {showArchived ? 'Archived trainers — classes and sessions retained' : 'Manage gym trainers'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Search name or specialty…" value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-52 pl-9 pr-3 h-9 rounded-full text-xs text-white"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
-            <Archive size={14} /> {showArchived ? 'Active Roster' : 'Archived'}
-          </Button>
-          <button onClick={() => setShowAddModal(true)}
-            className="px-4 h-9 rounded-full font-semibold text-xs flex items-center gap-2 text-black transition-colors"
-            style={{ background: 'var(--color-secondary)' }}>
-            <UserPlus size={14} /> Add Trainer
-          </button>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Trainers"
+        subtitle={showArchived ? 'Archived trainers — classes and sessions retained' : 'Who coaches here, and who members can actually book'}
+        actions={
+          <>
+            <SearchBox value={search} onChange={setSearch} placeholder="Search name or specialty…" width={210} />
+            <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
+              <Archive size={14} /> {showArchived ? 'Active roster' : 'Archived'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
+              <UserPlus size={14} /> Add trainer
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats. "Bookable" counts real trainer_availability windows — the old
           "Availability Set" counted the free-text weekday blurb, which produces
-          no slots, so it reported trainers as available who could not be booked. */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Trainers', value: trainers.length, color: 'var(--color-primary)' },
-          { label: 'Active', value: trainers.filter(t => t.status === 'active').length, color: 'var(--color-secondary)' },
-          { label: 'Bookable Hours Set', value: trainers.filter(t => t.bookableWindows > 0).length, color: 'var(--color-primary)' },
-        ].map((s, i) => (
-          <motion.div key={s.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}>
-            <div className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: `1px solid ${s.color}30` }}>
-              <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+          no slots, so it reported trainers as available who could not be booked.
 
-      {/* Trainer Cards — 2 columns */}
+          These were three tiles on a `grid-cols-3`, so three small numbers were
+          stretched across the whole page. They are numbers; they need ~140px. */}
+      <StatTiles items={[
+        { label: 'On the roster', value: trainers.length, icon: Users },
+        { label: 'Active', value: trainers.filter((t) => t.status === 'active').length, icon: UserCheck },
+        {
+          label: 'Bookable',
+          value: trainers.filter((t) => t.bookableWindows > 0).length,
+          icon: Clock,
+          // Amber when somebody has no hours set: that trainer cannot be booked
+          // at all, which is a thing to go and fix.
+          tone: trainers.some((t) => t.bookableWindows === 0) ? 'secondary' : 'primary',
+        },
+      ]} />
+
+      {/* The roster.
+
+          Two things changed. It was `grid-cols-2`, so a gym with one trainer
+          drew an 830px card with a full-width amber button in it; `CardGrid`
+          lays out ~320px columns, so one trainer is one card-sized card. And
+          the card itself is the button — "View Profile" was a bar across the
+          bottom of every card repeating what clicking the card should do. The
+          three icon actions stay, revealed on hover, so the common case (open
+          the profile) is one click anywhere and the rarer ones are still one
+          click too. */}
       {loading ? (
         <p className="text-center py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading trainers…</p>
       ) : visible.length === 0 ? (
-        <p className="text-center py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          {search
-            ? `No trainer matches "${search}".`
-            : showArchived
-              ? 'No archived trainers.'
-              : 'No trainers yet — click "Add Trainer" to create one.'}
-        </p>
+        <EmptyState
+          icon={showArchived ? Archive : UserPlus}
+          title={search ? 'No trainer matches' : showArchived ? 'No archived trainers' : 'No trainers yet'}
+          hint={
+            search
+              ? `Nothing matches “${search}”.`
+              : showArchived
+                ? 'Archived trainers keep every class and session they ever ran.'
+                : 'Add a coach and they get a login for the trainer app.'
+          }
+          action={!search && !showArchived
+            ? <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}><UserPlus size={14} /> Add trainer</Button>
+            : undefined}
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {visible.map((trainer, index) => (
-            <motion.div key={trainer.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + index * 0.1 }}>
-              <Card className="group !p-4">
-                <div className="flex items-start gap-3">
-                  <Avatar name={trainer.name} photoUrl={trainer.photoUrl} size={56} tone="secondary" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="text-sm font-bold text-white truncate">{trainer.name}</h3>
-                      {trainer.status !== 'active' && (
-                        <Badge variant="Suspended" className="!text-[9px] !px-2 !py-0.5">{trainer.status.replace('_', ' ')}</Badge>
-                      )}
-                    </div>
-                    <Badge variant="Premium" className="mt-0.5 inline-block !text-[9px] !px-2 !py-0.5">{trainer.specialization}</Badge>
-                    {/* Member ratings (0042). The average is withheld below three
-                        ratings for the admin too — showing the gym a number the
-                        member app hides would turn a policy into a display trick,
-                        and it is the version that would get repeated to the coach. */}
-                    <p className="text-[10px] mt-1 flex items-center gap-1"
-                      style={{ color: 'var(--color-text-muted)' }}>
-                      <Star size={10} style={{ color: 'var(--color-secondary)' }} fill="currentColor" />
-                      {trainer.ratingAverage != null
-                        ? `${trainer.ratingAverage.toFixed(1)} from ${trainer.ratingCount} ${trainer.ratingCount === 1 ? 'rating' : 'ratings'}`
-                        : trainer.ratingCount === 0
-                          ? 'No ratings yet'
-                          : `${trainer.ratingCount} of 3 ratings — average hidden until 3`}
-                    </p>
-                    <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
+        <CardGrid min={320}>
+          {paged.visible.map((trainer) => (
+            <TileCard key={trainer.id} onClick={() => setViewingId(trainer.id)}
+              dim={trainer.status !== 'active'} title={`Open ${trainer.name}'s profile`}>
+              <div className="flex items-start gap-3">
+                <Avatar name={trainer.name} photoUrl={trainer.photoUrl} size={44} tone="secondary" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-[13px] font-bold text-white truncate">{trainer.name}</h3>
+                    {trainer.status !== 'active' && (
+                      <Badge variant="Suspended" className="!text-[9px] !px-1.5 !py-0">{trainer.status.replace('_', ' ')}</Badge>
+                    )}
                   </div>
+                  <p className="text-[11px] truncate" style={{ color: 'var(--color-primary)' }}>
+                    {trainer.specialization}
+                  </p>
+                  <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
                 </div>
+                <OpenChevron />
+              </div>
 
+              {/* Member ratings (0042). The average is withheld below three
+                  ratings for the admin too — showing the gym a number the
+                  member app hides would turn a policy into a display trick,
+                  and it is the version that would get repeated to the coach. */}
+              <div className="mt-2.5 flex items-center gap-3 text-[10px]">
+                <span className="flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                  <Star size={10} style={{ color: 'var(--color-secondary)' }} fill="currentColor" />
+                  {trainer.ratingAverage != null
+                    ? `${trainer.ratingAverage.toFixed(1)} · ${trainer.ratingCount}`
+                    : trainer.ratingCount === 0
+                      ? 'No ratings'
+                      : `${trainer.ratingCount}/3 to show`}
+                </span>
                 {/* Whether members can actually book this trainer. The weekday
-                    blurb below is a label with no times — showing only that made
+                    blurb is a label with no times — showing only that made
                     every trainer look bookable. */}
-                <div className="mt-3 flex items-center gap-1.5 text-[10px]"
+                <span className="flex items-center gap-1"
                   style={{ color: trainer.bookableWindows > 0 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                  <Clock size={11} />
+                  <Clock size={10} />
                   {trainer.bookableWindows > 0
-                    ? `${trainer.bookableWindows} bookable window${trainer.bookableWindows === 1 ? '' : 's'} set`
-                    : 'No bookable hours — members cannot request a session'}
-                </div>
+                    ? `${trainer.bookableWindows} window${trainer.bookableWindows === 1 ? '' : 's'}`
+                    : 'No hours set'}
+                </span>
+              </div>
 
-                {trainer.availabilityDays.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {trainer.availabilityDays.map((day) => (
-                      <span key={day} className="text-[9px] px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                        {day.slice(0, 3)}
-                      </span>
-                    ))}
-                  </div>
+              {trainer.availabilityDays.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {trainer.availabilityDays.map((day) => (
+                    <span key={day} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                      {day.slice(0, 3)}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Always visible, deliberately.
+                  Revealing these on hover reserves the space anyway — the card
+                  keeps a blank strip so it does not resize under the cursor —
+                  so hiding them buys nothing and costs you having to discover
+                  them. They are quiet instead: surface-coloured, small, and
+                  clearly secondary to the card itself, which is the button.
+                  `stopPropagation` keeps them from also opening the profile. */}
+              <div className="mt-2.5 flex gap-1.5">
+                {!showArchived && (
+                  <>
+                    <button onClick={(e) => { e.stopPropagation(); openEdit(trainer); }}
+                      className="px-2 h-7 rounded-lg text-[10px] font-semibold" title="Edit trainer"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      <Edit2 size={11} className="inline mr-1" />Edit
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setToSuspend(trainer); }}
+                      title={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
+                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
+                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                      {trainer.status === 'suspended'
+                        ? <><UserCheck size={11} className="inline mr-1" />Reactivate</>
+                        : <><UserX size={11} className="inline mr-1" />Suspend</>}
+                    </button>
+                  </>
                 )}
-
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => setViewingId(trainer.id)}
-                    className="flex-1 py-2 rounded-full font-semibold text-[11px] text-black transition-colors"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    View Profile
-                  </button>
-                  {!showArchived && (
-                    <>
-                      <button onClick={() => openEdit(trainer)}
-                        className="p-2 rounded-full transition-colors" title="Edit trainer"
-                        style={{ background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.2)', color: 'var(--color-primary)' }}>
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => setToSuspend(trainer)}
-                        title={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
-                        className="p-2 rounded-full transition-colors"
-                        style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
-                        {trainer.status === 'suspended' ? <UserCheck size={13} /> : <UserX size={13} />}
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => setToArchive(trainer)}
-                    title={showArchived ? 'Restore trainer' : 'Archive trainer'}
-                    className="p-2 rounded-full transition-colors"
-                    style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--color-secondary)' }}>
-                    <Archive size={13} />
-                  </button>
-                </div>
-              </Card>
-            </motion.div>
+                <button onClick={(e) => { e.stopPropagation(); setToArchive(trainer); }}
+                  title={showArchived ? 'Restore trainer' : 'Archive trainer'}
+                  className="px-2 h-7 rounded-lg text-[10px] font-semibold"
+                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                  <Archive size={11} className="inline mr-1" />{showArchived ? 'Restore' : 'Archive'}
+                </button>
+              </div>
+            </TileCard>
           ))}
+        </CardGrid>
+      )}
+
+      {/* A roster is small until it isn't; this one has no ceiling without it. */}
+      {visible.length > 0 && (
+        <div className="flex items-center justify-between">
+          <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="trainers" />
+          <Pagination currentPage={paged.page} totalItems={paged.total}
+            itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
         </div>
       )}
 

@@ -9,6 +9,7 @@ import Button from './Button';
  *   50   dropdowns, the small page modals
  *   100  GlobalSearch
  *   150  the member / trainer detail drawers
+ *   180  `DetailSheet` (a card's details — it opens modals, so it sits under them)
  *   200  the big modals — `Modal`, Events, Schedule, Notifications, RecordPayment
  *   300  Popover (it opens *inside* a modal, so it has to clear one)
  *   400  this
