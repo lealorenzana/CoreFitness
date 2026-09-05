@@ -510,11 +510,31 @@ export default function Attendance() {
           left the log, the thing anybody actually reads, squeezed into the
           last third. The two ways in stack on the left; the record gets the
           room. 2:3 of a five-column grid. */}
-      <div className="flex-1 min-h-0 grid grid-cols-5 gap-3">
-        <div className="col-span-2 min-h-0 flex flex-col gap-3">
-        {/* COL 1: QR Code Scan */}
+      {/* Three tiles, sized to their jobs.
+
+          It was a 2:3 split of five columns with the two ways in stacked
+          inside the left half — which meant the QR panel and the member
+          list were the same width whatever they needed, and the whole
+          left column had to be re-reasoned about to change either. Same
+          bento as the dashboard now: twelve columns, six rows, each panel
+          placed on the grid rather than nested inside a flex column.
+
+          Scanning and the member list take half the column each: at two
+          rows the QR panel scrolled inside its own cell, which put the
+          Check In link under a scrollbar. The
+          log takes eight columns and the full height, because it is what
+          the desk actually reads. */}
+      <div
+        className="flex-1 min-h-0 grid gap-3"
+        style={{
+          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+          gridTemplateRows: 'repeat(6, minmax(0, 1fr))',
+        }}
+      >
+        {/* Scanning: two rows, top-left. */}
         <div className="rounded-xl overflow-hidden flex flex-col"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          style={{ gridColumn: '1 / 5', gridRow: '1 / 4',
+                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <QrCode size={13} style={{ color: 'var(--color-secondary)' }} />
             <h3 className="text-[11px] font-semibold text-white">QR Code Scan</h3>
@@ -550,9 +570,10 @@ export default function Attendance() {
           </div>
         </div>
 
-        {/* COL 2: Manual Check-in */}
-        <div className="rounded-xl overflow-hidden flex flex-col"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        {/* The member list: four rows, so it has room to scroll. */}
+        <div className="rounded-xl overflow-hidden flex flex-col min-h-0"
+          style={{ gridColumn: '1 / 5', gridRow: '4 / 7',
+                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <Search size={13} style={{ color: 'var(--color-primary)' }} />
             <h3 className="text-[11px] font-semibold text-white">Manual Check-in</h3>
@@ -595,11 +616,11 @@ export default function Attendance() {
           </div>
         </div>
 
-        </div>
 
-        {/* The record — three fifths, because it is what the desk reads */}
-        <div className="col-span-3 rounded-xl overflow-hidden flex flex-col"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        {/* The record — the whole right side, because it is what the desk reads. */}
+        <div className="rounded-xl overflow-hidden flex flex-col min-h-0"
+          style={{ gridColumn: '5 / 13', gridRow: '1 / 7',
+                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           {/* One line: what this is, how many, and the two things you can do
               with it. The day-stepper, month grid, per-day search and by-hour
               chart that used to live here all exist on Attendance History,

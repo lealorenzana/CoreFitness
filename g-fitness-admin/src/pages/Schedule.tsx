@@ -9,7 +9,7 @@ import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import {
-  Plus, X, Trash2, MapPin, RefreshCw, Dumbbell, Ban, Edit2,
+  Plus, X, Trash2, RefreshCw, Dumbbell,
   AlertTriangle, CalendarDays, Filter, Clock,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
@@ -441,112 +441,32 @@ export default function Schedule() {
           </Section>
         ) : (
           /*
-            A week, laid out like a week.
+            A week, laid out like a calendar.
 
-            This was one column per day stacked vertically, each day's classes
-            in a `grid-cols-2`. With one class on a day that meant a half-width
-            card and an empty half — on a 1900px dashboard, most of the screen
-            was blank. Worse, a day with nothing on it was skipped entirely, so
-            the timetable could not answer "is Tuesday free?", which is the
-            question you open a timetable to ask.
+            Two shapes have been wrong here. First, one column per day stacked
+            vertically with each day's classes in a `grid-cols-2` — a single
+            class meant a half-width card and an empty half. Then seven columns
+            of stacked cards, which fixed the emptiness but still answered the
+            wrong question: a list per day tells you *what* is on, and a
+            timetable is asked *when*. "Is 6pm free on Wednesday?" needed
+            counting down a column and reading times one by one.
 
-            Seven columns now, always all seven. An empty day says it is empty.
+            Now the hours run down the side and the days across the top, and a
+            class is a block at its own time, its height proportional to how
+            long it runs. Gaps in the grid are free hours — which is the thing
+            you actually came to see, and the one thing a list can never show.
+
+            The visible range is derived from the classes, not hardcoded to
+            06:00-21:00: a gym that runs a 5am class must see it, and one that
+            closes at 8pm should not scroll past three empty hours.
           */
-          <div className="grid grid-cols-7 gap-2 items-start">
-            {DAY_NAMES.map((day, dow) => {
-              const items = visibleTemplates
-                .filter((t) => t.day_of_week === dow)
-                .sort((a, b) => a.start_time.localeCompare(b.start_time));
-              return (
-                <div key={day} className="min-w-0">
-                  <div className="flex items-baseline justify-between mb-1.5 px-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide"
-                      style={{ color: 'var(--color-text-muted)' }}>{day.slice(0, 3)}</p>
-                    {items.length > 0 && (
-                      <span className="text-[10px] font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        {items.length}
-                      </span>
-                    )}
-                  </div>
-
-                  {items.length === 0 ? (
-                    <div className="rounded-xl py-6 text-center"
-                      style={{ border: '1px dashed var(--color-border)' }}>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No classes</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {items.map((t) => {
-                        const clashing = flagged.has(t.id);
-                        return (
-                        <motion.div key={t.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                          className="rounded-xl p-2.5 group"
-                          style={{
-                            ...panel,
-                            opacity: t.active ? 1 : 0.55,
-                            borderColor: clashing ? 'var(--color-secondary)' : 'var(--color-border)',
-                          }}>
-                          {/* Time first and biggest — in a column of classes it
-                              is the only thing that orders them, and it is what
-                              the eye is scanning for. */}
-                          <div className="flex items-baseline justify-between gap-1">
-                            <p className="text-xs font-bold text-white tabular-nums">{clock(t.start_time)}</p>
-                            <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                              {t.duration_minutes}m
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <p className="text-[11px] font-semibold text-white truncate">{t.name}</p>
-                            {clashing && (
-                              <span data-tip="Clashes with another class" className="flex-shrink-0">
-                                <AlertTriangle size={10} style={{ color: 'var(--color-secondary)' }} />
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                            {trainerName(t.trainer_id)}
-                          </p>
-                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                            {t.level.replace('_', ' ')} · {t.capacity} places
-                          </p>
-                          {t.location && (
-                            <p className="text-[10px] flex items-center gap-1 truncate" style={{ color: 'var(--color-text-muted)' }}>
-                              <MapPin size={9} className="flex-shrink-0" /> {t.location}
-                            </p>
-                          )}
-                          {!t.active && (
-                            <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded-full"
-                              style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                              retired
-                            </span>
-                          )}
-
-                          {/* Revealed on hover — in a seven-column grid two
-                              permanent icon buttons per card is a lot of
-                              furniture for actions used once a term. */}
-                          <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openEdit(t)} data-tip="Edit class"
-                              className="text-[10px] font-semibold flex items-center gap-1"
-                              style={{ color: 'var(--color-primary)' }}>
-                              <Edit2 size={10} /> Edit
-                            </button>
-                            <button onClick={() => setToRetire(t)} data-tip={t.active ? 'Retire' : 'Reactivate'}
-                              className="text-[10px] font-semibold flex items-center gap-1"
-                              style={{ color: 'var(--color-text-muted)' }}>
-                              <Ban size={10} /> {t.active ? 'Retire' : 'Restore'}
-                            </button>
-                          </div>
-                        </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <CalendarWeek
+            templates={visibleTemplates}
+            flagged={flagged}
+            trainerName={trainerName}
+            onEdit={openEdit}
+            onRetire={setToRetire}
+          />
         )
       ) : tab === 'sessions' ? (
         /* The plan versus what it actually produced. The page used to show only
@@ -813,5 +733,212 @@ export default function Schedule() {
         document.body
       )}
     </div>
+  );
+}
+
+/** Minutes since midnight, from 'HH:MM' or 'HH:MM:SS'. */
+function minutesOfDay(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
+ * The weekly timetable as a calendar.
+ *
+ * Layout is a CSS grid of hour rows and seven day columns; each class is placed
+ * with `gridRow` spanning the hours it covers, then offset inside that span by
+ * its minutes past the hour. Absolute positioning inside a relative day column
+ * would have been simpler and is what breaks the moment the grid re-flows at a
+ * different width — the grid keeps the blocks tied to the hours they belong to.
+ *
+ * Overlaps are laid side by side rather than stacked on top of each other. Two
+ * classes at 6pm is exactly the case the clash banner is warning about, and a
+ * calendar that hides one of them would be arguing with the warning.
+ */
+function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
+  templates: ClassTemplateRow[];
+  flagged: Set<string>;
+  trainerName: (id: string | null) => string;
+  onEdit: (t: ClassTemplateRow) => void;
+  onRetire: (t: ClassTemplateRow) => void;
+}) {
+  // The hours worth drawing, from the classes themselves. One hour of padding
+  // either side so a 6am class is not flush against the top border.
+  const starts = templates.map((t) => minutesOfDay(t.start_time));
+  const ends = templates.map((t) => minutesOfDay(t.start_time) + t.duration_minutes);
+  const firstHour = starts.length > 0 ? Math.max(0, Math.floor(Math.min(...starts) / 60) - 1) : 6;
+  const lastHour = ends.length > 0 ? Math.min(24, Math.ceil(Math.max(...ends) / 60) + 1) : 21;
+  const hours = Array.from({ length: Math.max(1, lastHour - firstHour) }, (_, i) => firstHour + i);
+  /**
+   * Pixels per hour, scaled so a whole gym day fits on one screen.
+   *
+   * A fixed 52px was fine for a six-hour span and became a 780px scroll for a
+   * gym that runs a 6am class and a 6pm one — with eight dead hours in the
+   * middle that you had to scroll *through* to see the evening. Dividing a
+   * budget by the span keeps both ends visible.
+   *
+   * Clamped at both ends for different reasons: below ~30px a 45-minute block
+   * cannot hold its own start time, and above ~54px a short day turns into
+   * acres of empty grid.
+   */
+  const ROW = Math.max(30, Math.min(54, Math.round(520 / Math.max(1, hours.length))));
+
+  /**
+   * Classes that share a column and a time, so they can sit side by side.
+   * Returns, per class, how many lanes its day needs and which lane it is in.
+   */
+  const lanes = new Map<string, { lane: number; of: number }>();
+  for (let dow = 0; dow < 7; dow++) {
+    const day = templates
+      .filter((t) => t.day_of_week === dow)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    // Greedy: put each class in the first lane whose last class has finished.
+    const laneEnds: number[] = [];
+    const placed: { id: string; lane: number }[] = [];
+    for (const t of day) {
+      const from = minutesOfDay(t.start_time);
+      const to = from + t.duration_minutes;
+      let lane = laneEnds.findIndex((endAt) => endAt <= from);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(to); }
+      else laneEnds[lane] = to;
+      placed.push({ id: t.id, lane });
+    }
+    for (const pl of placed) lanes.set(pl.id, { lane: pl.lane, of: Math.max(1, laneEnds.length) });
+  }
+
+  return (
+    <Section title="Class timetable" icon={CalendarDays}
+      hint="hours down the side, days across — gaps are free time">
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-dark-border">
+        <div className="min-w-[720px]">
+          {/* Day headings, aligned to the columns below by sharing the same
+              template — a separate flex row would drift out of alignment the
+              moment a scrollbar appeared. */}
+          <div className="grid gap-1 mb-1"
+            style={{ gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))' }}>
+            <div />
+            {DAY_NAMES.map((day, dow) => {
+              const n = templates.filter((t) => t.day_of_week === dow).length;
+              return (
+                <div key={day} className="text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wide"
+                    style={{ color: n > 0 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
+                    {day.slice(0, 3)}
+                  </p>
+                  <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
+                    {n === 0 ? 'free' : `${n} class${n === 1 ? '' : 'es'}`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-1"
+            style={{
+              gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))',
+              gridTemplateRows: `repeat(${hours.length}, ${ROW}px)`,
+            }}>
+            {/* Hour labels and the empty cells behind everything. */}
+            {hours.map((h, i) => (
+              <div key={`h${h}`} className="text-[10px] tabular-nums text-right pr-1 -mt-1.5"
+                style={{ gridColumn: '1 / 2', gridRow: `${i + 1} / ${i + 2}`, color: 'var(--color-text-muted)' }}>
+                {clock(`${String(h).padStart(2, '0')}:00`).replace(':00', '')}
+              </div>
+            ))}
+            {hours.map((h, i) =>
+              DAY_NAMES.map((_, dow) => (
+                <div key={`c${h}-${dow}`}
+                  style={{
+                    gridColumn: `${dow + 2} / ${dow + 3}`,
+                    gridRow: `${i + 1} / ${i + 2}`,
+                    borderTop: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    borderRadius: 4,
+                  }} />
+              ))
+            )}
+
+            {/* The classes themselves, on top of the empty grid. */}
+            {templates.map((t) => {
+              const from = minutesOfDay(t.start_time);
+              const to = from + t.duration_minutes;
+              const rowStart = Math.floor(from / 60) - firstHour;
+              const rowEnd = Math.max(rowStart + 1, Math.ceil(to / 60) - firstHour);
+              // Offset within the spanned rows, in px, so a 06:30 start sits
+              // half a row down rather than snapping to 6am.
+              const topPad = ((from % 60) / 60) * ROW;
+              const height = ((to - from) / 60) * ROW;
+              const { lane, of } = lanes.get(t.id) ?? { lane: 0, of: 1 };
+              const clashing = flagged.has(t.id);
+              // Room for a second line? Derived from ROW, not a constant tuned
+              // for one row height — at 30px per hour a 45-minute block is 22px
+              // and can only carry its time.
+              const roomy = height >= ROW * 0.62;
+
+              return (
+                <div key={t.id}
+                  style={{
+                    gridColumn: `${t.day_of_week + 2} / ${t.day_of_week + 3}`,
+                    gridRow: `${rowStart + 1} / ${rowEnd + 1}`,
+                    paddingTop: topPad,
+                    // Lanes share the column; 2px of gap keeps two blocks from
+                    // reading as one.
+                    marginLeft: `${(lane / of) * 100}%`,
+                    width: `calc(${100 / of}% - 2px)`,
+                    position: 'relative',
+                    zIndex: 1,
+                  }}>
+                  <div
+                    className="rounded-lg px-1.5 py-1 overflow-hidden group h-full"
+                    data-tip={`${t.name} · ${clock(t.start_time)} · ${t.duration_minutes}m · ${trainerName(t.trainer_id)}${clashing ? ' · clashes with another class' : ''}`}
+                    style={{
+                      height,
+                      background: t.active
+                        ? (clashing ? 'var(--color-secondary-light)' : 'var(--color-primary-light)')
+                        : 'var(--color-surface-high)',
+                      borderLeft: `3px solid ${
+                        !t.active ? 'var(--color-border)'
+                          : clashing ? 'var(--color-secondary)' : 'var(--color-primary)'
+                      }`,
+                      opacity: t.active ? 1 : 0.6,
+                    }}>
+                    <p className="text-[10px] font-bold tabular-nums leading-tight truncate"
+                      style={{ color: clashing ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
+                      {clock(t.start_time)}
+                    </p>
+                    {roomy && (
+                      <>
+                        <p className="text-[10px] font-semibold text-white truncate leading-tight">
+                          {t.name}
+                        </p>
+                        <p className="text-[9px] truncate leading-tight" style={{ color: 'var(--color-text-muted)' }}>
+                          {trainerName(t.trainer_id)}
+                        </p>
+                      </>
+                    )}
+
+                    {/* Hover actions, over the block. A permanent pair of
+                        buttons on every block would be more furniture than
+                        timetable. */}
+                    <div className="absolute inset-x-1 bottom-1 hidden group-hover:flex gap-1">
+                      <button onClick={() => onEdit(t)} data-tip="Edit class"
+                        className="flex-1 h-5 rounded text-[9px] font-bold"
+                        style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                        Edit
+                      </button>
+                      <button onClick={() => onRetire(t)} data-tip={t.active ? 'Retire' : 'Reactivate'}
+                        className="flex-1 h-5 rounded text-[9px] font-bold"
+                        style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                        {t.active ? 'Retire' : 'Restore'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </Section>
   );
 }
