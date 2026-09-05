@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronRight } from 'lucide-react';
 
 import LevelProgressCard   from '../../components/ui/LevelProgressCard';
 import WeekRings           from '../../components/ui/WeekRings';
@@ -120,8 +120,13 @@ export default function ProgressHub() {
         <>
           <div>
             <SectionHeader title="This week" />
-            <div
-              className="p-4"
+            {/* Seven rings showing which days you trained, and — until now —
+                no way to reach the eighth day, or last month. The whole record
+                is one screen away and this panel is the obvious place a member
+                taps looking for it. */}
+            <button
+              onClick={() => navigate('/member/attendance-history')}
+              className="p-4 w-full text-left transition-transform active:scale-[0.99]"
               style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
             >
               <WeekRings
@@ -129,7 +134,11 @@ export default function ProgressHub() {
                 dayNumbers={home.weekDayNumbers}
                 todayIndex={home.todayIndex}
               />
-            </div>
+              <span className="flex items-center justify-center gap-1 mt-3 text-[11px] font-semibold"
+                style={{ color: 'var(--color-text-muted)' }}>
+                See every visit <ChevronRight size={12} />
+              </span>
+            </button>
           </div>
 
           {/* These two counters used to be their own StatCards here. MyCoreCard

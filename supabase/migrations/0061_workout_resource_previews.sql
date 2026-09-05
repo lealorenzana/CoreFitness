@@ -30,7 +30,7 @@
 -- than to a broken row.
 --
 -- ---------------------------------------------------------------------------
--- Two resources deliberately have no image
+-- Three resources deliberately have no image
 -- ---------------------------------------------------------------------------
 -- The r/bodyweightfitness wiki answers with Reddit's "Prove your humanity"
 -- check, and the NHS page opens behind a cookie consent dialog that covers the
@@ -38,10 +38,15 @@
 -- cookie banner is not a picture of the resource, and shipping one would be
 -- exactly the "plausible invention" this codebase keeps ruling out.
 --
--- Their `image_url` stays NULL and both apps draw a generated monogram tile
--- instead — the provider's initials on a colour derived from its own name. It
--- reads as "no preview", not as a different website. A wrong picture is worse
--- than no picture.
+-- **Darebee is the third**, and for a different reason: its capture was
+-- dominated by one of their copyrighted workout posters, watermarked with their
+-- own name. 0019 is explicit that this library links out rather than
+-- republishing other people's work, and a thumbnail of somebody's routine is
+-- the thing that rule exists to prevent.
+--
+-- Their `image_url` stays NULL and both apps draw a tile showing the site's
+-- host instead. It reads as "no preview", not as a different website. A wrong
+-- picture is worse than no picture.
 
 alter table workout_resources
   add column if not exists image_url text;
@@ -60,8 +65,6 @@ comment on column workout_resources.image_url is
 update workout_resources r
    set image_url = v.path
   from (values
-    ('https://darebee.com/workouts.html',
-     '/resource-previews/darebee.jpeg'),
     ('https://www.fitnessblender.com/videos',
      '/resource-previews/fitnessblender.jpeg'),
     ('https://www.nerdfitness.com/blog/beginner-body-weight-workout-burn-fat-build-muscle/',
@@ -85,7 +88,7 @@ update workout_resources r
    and r.image_url is null;
 
 -- ============================================================================
--- VERIFICATION — expect 10 with a path, 2 without (Reddit and NHS)
+-- VERIFICATION — expect 9 with a path, 3 without (Reddit, NHS, Darebee)
 -- ============================================================================
 --   select provider, image_url is not null as has_preview
 --     from workout_resources

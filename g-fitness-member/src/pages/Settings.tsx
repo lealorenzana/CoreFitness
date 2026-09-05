@@ -403,60 +403,65 @@ export default function Settings() {
         </p>
       </motion.section>
 
-      {sections.map((section, sectionIndex) => (
-        <motion.section
-          key={section.title}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 + sectionIndex * 0.05 }}
-        >
-          <h2
-            className="text-xs font-semibold uppercase tracking-wider px-1 mb-2"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {section.title}
-          </h2>
+      {/*
+        The seven link rows, as one list instead of three headed cards.
 
-          <div
-            className="overflow-hidden"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-panel)',
-            }}
-          >
-            {section.items.map((item, index) => {
-              const Icon = item.icon;
-              return (
+        They were split across "Training preferences" (one item), "Security &
+        privacy" (three) and "Support & about" (three) — three headings, three
+        card borders and three gaps to carry seven destinations, on a page that
+        already scrolls past six switches to reach them. The grouping was
+        editorially tidy and cost the member two extra screens of scrolling.
+
+        Each row also carried a 40px violet icon tile. On a list where every row
+        is the same kind of thing — go somewhere — the icons distinguished
+        nothing and set the row height. The label is what anyone reads.
+
+        Sub-headings survive as quiet dividers inside the one card, so the
+        grouping is still legible without being three separate objects.
+      */}
+      <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <h2 className="text-xs font-semibold uppercase tracking-wider px-1 mb-2"
+          style={{ color: 'var(--color-text-muted)' }}>
+          Account &amp; app
+        </h2>
+
+        <div className="overflow-hidden" style={{
+          background: 'var(--color-surface-raised)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-panel)',
+        }}>
+          {sections.map((section, si) => (
+            <div key={section.title}>
+              <p className="px-3.5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider"
+                style={{
+                  color: 'var(--color-text-muted)',
+                  borderTop: si > 0 ? '1px solid var(--color-border)' : 'none',
+                }}>
+                {section.title}
+              </p>
+              {section.items.map((item, index) => (
                 <button
                   key={item.label}
                   onClick={item.action}
-                  className="w-full p-3.5 flex items-center gap-3 text-left"
+                  className="w-full px-3.5 py-3 flex items-center gap-3 text-left"
                   style={{
-                    borderBottom: index < section.items.length - 1 ? '1px solid var(--color-border)' : 'none',
+                    borderBottom:
+                      index < section.items.length - 1 ? '1px solid var(--color-border)' : 'none',
                   }}
                 >
-                  <span
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--color-primary-light)' }}
-                  >
-                    <Icon size={18} style={{ color: 'var(--color-primary)' }} />
-                  </span>
-
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-white">{item.label}</span>
                     <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
                       {item.description}
                     </span>
                   </span>
-
-                  <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
+                  <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
                 </button>
-              );
-            })}
-          </div>
-        </motion.section>
-      ))}
+              ))}
+            </div>
+          ))}
+        </div>
+      </motion.section>
 
       <p className="text-center text-xs pt-2" style={{ color: 'var(--color-text-muted)' }}>
         Core Fitness · Version 1.0.0
