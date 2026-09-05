@@ -2,12 +2,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, Chips,
+} from '../components/ui/kit';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import {
   Plus, X, Trash2, MapPin, RefreshCw, Dumbbell, Ban, Edit2,
-  AlertTriangle, CalendarDays, Filter,
+  AlertTriangle, CalendarDays, Filter, Clock,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
@@ -300,14 +303,11 @@ export default function Schedule() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Schedule</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Weekly timetable and trainer working hours
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Schedule"
+        subtitle="Weekly timetable and trainer working hours"
+        actions={
+          <>
           {/*
             What this button is for, and why it says "Refresh" now.
 
@@ -326,16 +326,32 @@ export default function Schedule() {
             It is a refresh, it says so, and it now reports the outcome every
             time — including "already up to date".
           */}
-          <Button variant="secondary" onClick={() => load(true)} disabled={loading}>
-            <RefreshCw size={14} className="mr-1.5" /> Refresh
-          </Button>
-          {tab === 'timetable' && (
-            <Button variant="primary" onClick={openAdd}>
-              <Plus size={16} className="mr-1.5" /> Add Class
+          <Button variant="secondary" size="sm" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw size={14} className="mr-1.5" /> Refresh
             </Button>
-          )}
-        </div>
-      </div>
+            {tab === 'timetable' && (
+              <Button variant="primary" size="sm" onClick={openAdd}>
+                <Plus size={15} className="mr-1" /> Add class
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      {/* The four numbers the desk is asked for, sized to the numbers. */}
+      {!loading && (
+        <StatTiles items={[
+          { label: 'Classes', value: templates.filter((t) => t.active).length, icon: Dumbbell },
+          { label: 'Sessions ahead', value: sessions.length, icon: CalendarDays },
+          { label: 'Trainer hours set', value: availability.length, icon: Clock },
+          {
+            label: 'Clashes',
+            value: conflicts.length,
+            icon: AlertTriangle,
+            tone: conflicts.length > 0 ? 'secondary' : 'primary',
+          },
+        ]} />
+      )}
 
       {/* Says how far ahead members can book, which is the fact the front desk
           is actually asked. The old banner only appeared when new sessions had
@@ -377,35 +393,24 @@ export default function Schedule() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5">
-          {([
-            ['timetable', 'Class Timetable'],
-            ['sessions', 'Upcoming Sessions'],
-            ['hours', 'Trainer Hours'],
-          ] as const).map(([id, label]) => (
-            <button key={id} onClick={() => setTab(id)}
-              className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors"
-              style={{
-                background: tab === id ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: tab === id ? '#fff' : 'var(--color-text-muted)',
-                border: `1px solid ${tab === id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              }}>
-              {label}
-              {id === 'sessions' && sessions.length > 0 && (
-                <span className="ml-1.5 opacity-70">{sessions.length}</span>
-              )}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <Chips
+          value={tab}
+          onChange={(v) => setTab(v as typeof tab)}
+          options={[
+            { value: 'timetable', label: 'Timetable', count: templates.filter((t) => t.active).length },
+            { value: 'sessions', label: 'Upcoming sessions', count: sessions.length },
+            { value: 'hours', label: 'Trainer hours', count: availability.length },
+          ]}
+        />
 
         {tab !== 'hours' && (
           <div className="flex items-center gap-1.5">
             <Filter size={12} style={{ color: 'var(--color-text-muted)' }} />
             <select value={trainerFilter} onChange={(e) => setTrainerFilter(e.target.value)}
               aria-label="Filter by trainer"
-              className="rounded-full px-3 h-8 text-[11px] text-white"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              className="rounded-lg px-3 h-9 text-[11px] text-white"
+              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
               <option value="all">All trainers</option>
               <option value="unassigned">Unassigned</option>
               {trainers.map((t) => (
@@ -422,17 +427,18 @@ export default function Schedule() {
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : tab === 'timetable' ? (
         visibleTemplates.length === 0 ? (
-          <div className="rounded-xl p-10 text-center" style={panel}>
-            <Dumbbell size={26} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
-            <p className="text-sm text-white mb-1">
-              {templates.length === 0 ? 'No classes on the timetable' : 'No classes for that trainer'}
-            </p>
-            <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-              {templates.length === 0
-                ? 'Add one and the sessions members book are generated automatically.'
+          <Section title="Class timetable" icon={Dumbbell}>
+            <EmptyState
+              icon={Dumbbell}
+              title={templates.length === 0 ? 'No classes on the timetable' : 'No classes for that trainer'}
+              hint={templates.length === 0
+                ? 'Add one and the dated sessions members book are generated from it automatically.'
                 : 'Clear the filter to see the whole week.'}
-            </p>
-          </div>
+              action={templates.length === 0
+                ? <Button variant="primary" size="sm" onClick={openAdd}><Plus size={14} /> Add class</Button>
+                : undefined}
+            />
+          </Section>
         ) : (
           /*
             A week, laid out like a week.
@@ -547,13 +553,15 @@ export default function Schedule() {
            the recurring templates, so "is Saturday's class full?" was a question
            the front desk could not answer from here at all. */
         visibleSessions.length === 0 ? (
-          <div className="rounded-xl p-10 text-center" style={panel}>
-            <CalendarDays size={26} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
-            <p className="text-sm text-white mb-1">No sessions in the next 14 days</p>
-            <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-              Add an active class to the timetable, then hit Regenerate sessions.
-            </p>
-          </div>
+          <Section title="Upcoming sessions" icon={CalendarDays}>
+            <EmptyState
+              icon={CalendarDays}
+              title="No sessions in the next 14 days"
+              /* "hit Regenerate sessions" named a button that no longer exists —
+                 it is Refresh now, and it runs on page load anyway. */
+              hint="Add an active class to the timetable; its dated sessions are generated automatically."
+            />
+          </Section>
         ) : (
           <div className="space-y-3">
             {Object.entries(
@@ -566,12 +574,14 @@ export default function Schedule() {
             ).map(([label, items]) => (
               <div key={label}>
                 <p className="text-[10px] font-bold uppercase mb-1.5" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-                <div className="grid grid-cols-2 gap-2">
+                {/* Was `grid-cols-2`: a day with one session drew an 800px card
+                    and left 800px blank beside it. */}
+                <CardGrid min={270}>
                   {items.map((s) => {
                     const full = s.booked >= s.capacity;
                     const pct = s.capacity > 0 ? Math.min(100, (s.booked / s.capacity) * 100) : 0;
                     return (
-                      <div key={s.id} className="rounded-xl p-3" style={panel}>
+                      <TileCard key={s.id} accent={full}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-white truncate">{s.name}</p>
@@ -590,10 +600,10 @@ export default function Schedule() {
                           <div className="h-full rounded-full"
                             style={{ width: `${pct}%`, background: full ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
                         </div>
-                      </div>
+                      </TileCard>
                     );
                   })}
-                </div>
+                </CardGrid>
               </div>
             ))}
           </div>

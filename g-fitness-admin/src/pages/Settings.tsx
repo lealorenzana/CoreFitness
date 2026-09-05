@@ -340,7 +340,10 @@ export default function Settings() {
           <p className="text-xs" style={{ color: TEXT_MUTED }}>Loading…</p>
         ) : (
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="max-w-xl space-y-4">
+            /* Was `max-w-xl` — 576px of form on a 1,650px page, with the rest
+               left as empty background. 860px fits the two-column field rows
+               without letting a single text input run the width of a monitor. */
+            className="space-y-4" style={{ maxWidth: 860 }}>
 
             {activeTab === 'profile' && (
               <div className="rounded-xl p-5 space-y-4" style={panel}>
@@ -563,8 +566,11 @@ export default function Settings() {
                           </Badge>
                           {/* Never offered on your own account: suspending yourself
                               locks you out of the only screen that could undo it. */}
+                          {/* Always visible: these are rare but consequential,
+                              and a control you have to hover to discover is one
+                              the front desk will not find under pressure. */}
                           {!isMe && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => setStaffAction({ account: a, next: a.status === 'suspended' ? 'active' : 'suspended' })}
                                 title={a.status === 'suspended' ? 'Reactivate' : 'Suspend'}

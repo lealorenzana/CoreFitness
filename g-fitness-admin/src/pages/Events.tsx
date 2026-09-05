@@ -5,6 +5,11 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, PageSummary,
+} from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import DatePicker from '../components/ui/DatePicker';
 import TimePicker from '../components/ui/TimePicker';
@@ -248,108 +253,138 @@ export default function Events() {
     }
   };
 
-  const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
+  const paged = usePaged(events, 12);
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Events</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Gym events and member signups
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/notifications"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] font-semibold"
-            style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-            <Bell size={13} /> Send Announcement <ChevronRight size={12} />
-          </Link>
-          <Button variant="primary" onClick={openAdd}>
-            <Plus size={16} className="mr-1.5" /> New Event
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Events"
+        subtitle="Gym events and member signups"
+        actions={
+          <>
+            <Link to="/notifications"
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-[11px] font-semibold"
+              style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+              <Bell size={13} /> Announce <ChevronRight size={12} />
+            </Link>
+            <Button variant="primary" size="sm" onClick={openAdd}>
+              <Plus size={15} className="mr-1" /> New event
+            </Button>
+          </>
+        }
+      />
 
-      {loading ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading events…</p>
-      ) : events.length === 0 ? (
-        <div className="rounded-xl p-10 text-center" style={panel}>
-          <Calendar size={28} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
-          <p className="text-sm text-white mb-1">No events yet</p>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Create one and it appears for every member.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {events.map((evt, i) => {
-            const status = eventStatus(evt);
-            const style = STATUS_STYLE[status];
-            const registered = counts[evt.id] ?? 0;
-            const full = registered >= evt.capacity;
-            return (
-              <motion.div key={evt.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                className="rounded-xl p-4" style={panel}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-sm font-bold text-white flex-1">{evt.title}</h3>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
-                    style={{ background: style.bg, color: style.color }}>
-                    {status}
-                  </span>
-                </div>
+      <StatTiles items={[
+        { label: 'Events', value: events.length, icon: Calendar },
+        { label: 'Upcoming', value: events.filter((e) => eventStatus(e) === 'Upcoming').length, icon: Clock },
+        { label: 'Signups', value: Object.values(counts).reduce((s, n) => s + n, 0), icon: Users },
+        {
+          label: 'Full',
+          value: events.filter((e) => (counts[e.id] ?? 0) >= e.capacity).length,
+          icon: Users,
+          tone: events.some((e) => (counts[e.id] ?? 0) >= e.capacity) ? 'secondary' : 'primary',
+        },
+      ]} />
 
-                {evt.description && (
-                  <p className="text-[11px] mb-3 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
-                    {evt.description}
-                  </p>
-                )}
+      <Section title="All events" icon={Calendar} count={events.length}
+        hint="click the headcount to see who signed up">
+        {loading ? (
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading events…</p>
+        ) : events.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No events yet"
+            hint="Create one and it appears for every member in the phone app."
+            action={<Button variant="primary" size="sm" onClick={openAdd}><Plus size={14} /> New event</Button>}
+          />
+        ) : (
+          <>
+            <CardGrid min={300}>
+              {paged.visible.map((evt) => {
+                const status = eventStatus(evt);
+                const style = STATUS_STYLE[status];
+                const registered = counts[evt.id] ?? 0;
+                const full = registered >= evt.capacity;
+                // A capacity bar reads faster than "12/20" alone, and it is the
+                // same two numbers — nothing new is being claimed.
+                const share = evt.capacity > 0 ? Math.min(100, (registered / evt.capacity) * 100) : 0;
+                return (
+                  <TileCard key={evt.id} dim={evt.cancelled} accent={full && !evt.cancelled}>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-[13px] font-bold text-white flex-1 leading-snug">{evt.title}</h3>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
+                        style={{ background: style.bg, color: style.color }}>
+                        {status}
+                      </span>
+                    </div>
 
-                <div className="space-y-1 mb-3">
-                  <p className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                    <Calendar size={11} />
-                    {new Date(evt.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    <Clock size={11} className="ml-1" />
-                    {new Date(evt.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                  {evt.location && (
-                    <p className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                      <MapPin size={11} /> {evt.location}
+                    {evt.description && (
+                      <p className="text-[10px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
+                        {evt.description}
+                      </p>
+                    )}
+
+                    <p className="text-[10px] mt-2 flex items-center gap-2 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} />
+                        {new Date(evt.starts_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} />
+                        {new Date(evt.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                      {evt.location && (
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin size={10} /> {evt.location}
+                        </span>
+                      )}
                     </p>
-                  )}
-                </div>
 
-                {/* Real headcount from event_registrations */}
-                <button onClick={() => openAttendees(evt)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-3"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                  <span className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                    <Users size={11} /> Registered
-                  </span>
-                  <span className="text-[11px] font-bold"
-                    style={{ color: full ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
-                    {registered}/{evt.capacity}
-                  </span>
-                </button>
+                    {/* Real headcount from event_registrations */}
+                    <button onClick={() => openAttendees(evt)}
+                      className="w-full mt-2.5 px-2.5 py-2 rounded-lg text-left"
+                      style={{ background: 'var(--color-surface-high)' }}>
+                      <span className="flex items-center justify-between">
+                        <span className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                          <Users size={11} /> Registered
+                        </span>
+                        <span className="text-[11px] font-bold tabular-nums"
+                          style={{ color: full ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
+                          {registered}/{evt.capacity}
+                        </span>
+                      </span>
+                      <span className="block mt-1.5 h-1 rounded-full overflow-hidden"
+                        style={{ background: 'var(--color-border)' }}>
+                        <span className="block h-full rounded-full"
+                          style={{ width: `${share}%`, background: full ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
+                      </span>
+                    </button>
 
-                <div className="flex gap-1.5">
-                  <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => openEdit(evt)}>
-                    <Edit2 size={11} className="mr-1" /> Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => setToCancel(evt)}>
-                    <Ban size={11} className="mr-1" /> {evt.cancelled ? 'Reinstate' : 'Cancel'}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="!text-[10px]" title="Delete event" onClick={() => setToDelete(evt)}>
-                    <Trash2 size={11} style={{ color: 'var(--color-secondary)' }} />
-                  </Button>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                    <div className="flex gap-1.5 mt-2.5">
+                      <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => openEdit(evt)}>
+                        <Edit2 size={11} className="mr-1" /> Edit
+                      </Button>
+                      {/* Cancelling keeps the event and every registration;
+                          deleting removes both, so they are different buttons. */}
+                      <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => setToCancel(evt)}>
+                        <Ban size={11} className="mr-1" /> {evt.cancelled ? 'Reinstate' : 'Cancel'}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="!text-[10px]" title="Delete event" onClick={() => setToDelete(evt)}>
+                        <Trash2 size={11} style={{ color: 'var(--color-secondary)' }} />
+                      </Button>
+                    </div>
+                  </TileCard>
+                );
+              })}
+            </CardGrid>
+            <div className="flex items-center justify-between mt-3">
+              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="events" />
+              <Pagination currentPage={paged.page} totalItems={paged.total}
+                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+            </div>
+          </>
+        )}
+      </Section>
 
       <ConfirmDialog
         isOpen={!!toCancel}

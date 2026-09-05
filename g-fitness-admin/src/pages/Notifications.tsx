@@ -4,10 +4,14 @@ import { createPortal } from 'react-dom';
 import {
   Bell, Send, Users, User, Dumbbell, Plus, X, Search, Eye, Trash2, Smartphone,
 } from 'lucide-react';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, SearchBox, PageSummary,
+} from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -230,6 +234,8 @@ export default function Notifications() {
     );
   }, [recent, historySearch]);
 
+  const paged = usePaged(visibleHistory, 9);
+
   const filteredPeople = useMemo(() => {
     const q = peopleSearch.trim().toLowerCase();
     if (!q) return people;
@@ -258,97 +264,104 @@ export default function Notifications() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white">Notifications</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Announcements to members and trainers
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
-          <Plus size={16} className="mr-1.5" /> Send Announcement
-        </Button>
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Announcements to members and trainers"
+        actions={
+          <Button variant="primary" size="sm"
+            onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
+            <Plus size={15} className="mr-1" /> Send announcement
+          </Button>
+        }
+      />
 
-      {/* Stats — scoped to the broadcasts listed below, and each says so. */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={Send} tone="primary" value={String(broadcastStats.count)}
-          label="Recent broadcasts" sub="last 20 sends" />
-        <StatCard icon={Users} tone="secondary" value={broadcastStats.delivered.toLocaleString('en-PH')}
-          label="People reached" sub="across those sends" />
-        <StatCard icon={Eye} tone="primary"
-          value={broadcastStats.readRate == null ? '—' : `${broadcastStats.readRate}%`}
-          label="Opened" sub={broadcastStats.readRate == null ? 'nothing sent yet' : 'of those recipients'} />
-      </div>
+      {/* Scoped to the broadcasts listed below — the labels say so, because a
+          read rate over "everything ever" and one over "the last 20 sends" are
+          different numbers and only one of them is on this page. */}
+      <StatTiles items={[
+        { label: 'Recent sends', value: broadcastStats.count, icon: Send },
+        { label: 'People reached', value: broadcastStats.delivered.toLocaleString('en-PH'), icon: Users, tone: 'secondary' },
+        {
+          label: 'Opened',
+          // NULL when nothing has been sent — never 0%, which would read as
+          // "nobody opened it" rather than "there is nothing to open".
+          value: broadcastStats.readRate == null ? '—' : `${broadcastStats.readRate}%`,
+          icon: Eye,
+        },
+      ]} />
 
-      {/* History */}
-      <Card className="!p-0">
-        <div className="p-4 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <h2 className="text-sm font-bold text-white">Sent announcements</h2>
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Search sent…" value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
-              className="w-48 pl-8 pr-3 h-8 rounded-full text-xs text-white"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-          </div>
-        </div>
-
+      <Section
+        title="Sent announcements" icon={Bell} count={recent.length}
+        hint="last 20 sends"
+        actions={<SearchBox value={historySearch} onChange={setHistorySearch} placeholder="Search sent…" width={200} />}
+      >
         {visibleHistory.length === 0 ? (
-          <div className="p-10 text-center">
-            <Bell size={24} className="mx-auto mb-2 opacity-40" style={{ color: 'var(--color-text-muted)' }} />
-            <p className="text-sm text-white font-semibold">
-              {recent.length === 0 ? 'Nothing sent yet' : 'No announcement matches that'}
-            </p>
-            <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              {recent.length === 0
-                ? 'Use “Send Announcement” to message your members or trainers.'
-                : 'Try a different search.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Bell}
+            title={recent.length === 0 ? 'Nothing sent yet' : 'No announcement matches that'}
+            hint={recent.length === 0
+              ? 'An announcement lands in every recipient’s inbox and pushes an alert to installed phones.'
+              : 'Try a different search.'}
+            action={recent.length === 0
+              ? <Button variant="primary" size="sm"
+                  onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
+                  <Plus size={14} /> Send one
+                </Button>
+              : undefined}
+          />
         ) : (
-          <div>
-            {visibleHistory.map((notif) => {
-              const pct = notif.recipients > 0 ? Math.round((notif.readCount / notif.recipients) * 100) : 0;
-              return (
-                <div key={notif.key} className="p-4 group" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="text-sm text-white font-semibold">{notif.title}</h4>
-                        <Badge variant="Standard" className="!text-[9px] !px-2 !py-0.5">{notif.type}</Badge>
-                      </div>
-                      <p className="text-[11px] mb-2" style={{ color: 'var(--color-text-muted)' }}>
-                        {notif.message}
-                      </p>
-                      <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        <span>{notif.recipients} {notif.recipients === 1 ? 'recipient' : 'recipients'}</span>
-                        <span>·</span>
-                        {/* The number that says whether it landed. "Sent to 40"
-                            on its own tells you nothing. */}
-                        <span style={{ color: notif.readCount > 0 ? 'var(--color-primary)' : undefined }}>
-                          {notif.readCount} opened ({pct}%)
-                        </span>
-                        <span>·</span>
-                        <span>{timeAgo(notif.sentAt)}</span>
-                      </div>
-                      <div className="h-1 rounded-full mt-2 max-w-xs overflow-hidden" style={{ background: 'var(--color-border)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
-                      </div>
+          <>
+            <CardGrid min={320}>
+              {paged.visible.map((notif) => {
+                const pct = notif.recipients > 0 ? Math.round((notif.readCount / notif.recipients) * 100) : 0;
+                return (
+                  <TileCard key={notif.key}>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-[12px] text-white font-semibold leading-snug flex-1">{notif.title}</h4>
+                      <Badge variant="Standard" className="!text-[9px] !px-1.5 !py-0 flex-shrink-0">{notif.type}</Badge>
                     </div>
-                    <button onClick={() => setToRecall(notif)} title="Recall this announcement"
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                      style={{ color: 'var(--color-secondary)' }}>
-                      <Trash2 size={13} />
+                    <p className="text-[10px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
+                      {notif.message}
+                    </p>
+
+                    <div className="flex items-center gap-2 text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                      <span>{notif.recipients} {notif.recipients === 1 ? 'recipient' : 'recipients'}</span>
+                      <span>·</span>
+                      <span>{timeAgo(notif.sentAt)}</span>
+                    </div>
+
+                    {/* The number that says whether it landed. "Sent to 40" on
+                        its own tells you nothing. */}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
+                        <span className="block h-full rounded-full"
+                          style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
+                      </span>
+                      <span className="text-[10px] tabular-nums flex-shrink-0"
+                        style={{ color: notif.readCount > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                        {notif.readCount} opened · {pct}%
+                      </span>
+                    </div>
+
+                    {/* Recall clears it from every inbox. A push that already
+                        arrived cannot be taken back, and the dialog says so. */}
+                    <button onClick={() => setToRecall(notif)}
+                      className="mt-2.5 px-2 h-7 rounded-lg text-[10px] font-semibold"
+                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                      <Trash2 size={11} className="inline mr-1" />Recall
                     </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </TileCard>
+                );
+              })}
+            </CardGrid>
+            <div className="flex items-center justify-between mt-3">
+              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="announcements" />
+              <Pagination currentPage={paged.page} totalItems={paged.total}
+                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+            </div>
+          </>
         )}
-      </Card>
+      </Section>
 
       {/* Compose */}
       {createPortal(
@@ -565,28 +578,5 @@ export default function Notifications() {
         type="danger"
       />
     </div>
-  );
-}
-
-function StatCard({
-  icon: Icon, tone, value, label, sub,
-}: {
-  icon: typeof Send; tone: 'primary' | 'secondary'; value: string; label: string; sub: string;
-}) {
-  const color = tone === 'primary' ? 'var(--color-primary)' : 'var(--color-secondary)';
-  const bg = tone === 'primary' ? 'var(--color-primary-light)' : 'var(--color-secondary-light)';
-  return (
-    <Card className="!p-4">
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-          <Icon size={18} style={{ color }} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xl font-bold text-white">{value}</p>
-          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-          <p className="text-[9px] truncate" style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>{sub}</p>
-        </div>
-      </div>
-    </Card>
   );
 }

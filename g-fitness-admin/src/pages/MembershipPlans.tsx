@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Plus, Edit2, Trash2, X, Check, Users, Banknote } from 'lucide-react';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, OpenChevron,
+} from '../components/ui/kit';
+import { Plus, Edit2, Trash2, X, Check, Users, Banknote, CreditCard } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listPlans, createPlan, updatePlan, retirePlan, getPlanMemberCounts,
@@ -213,17 +215,27 @@ export default function MembershipPlans() {
     setFeatureLines(featureLines.filter((_, i) => i !== index));
   };
 
-  const getTierColor = (tier: PlanTier) => {
+  /**
+   * The tier chip's two colours.
+   *
+   * This returned one colour and the chip built its background by appending
+   * "20" for alpha — `${color}20`. That works on a hex literal and is silently
+   * meaningless on a custom property: `var(--color-text-muted)20` is not a
+   * colour, so the browser dropped the declaration and the Free chip rendered
+   * with **no background at all**, which is why "FREE" looked like stray text
+   * next to two proper chips. Both halves are named now.
+   */
+  const getTierStyle = (tier: PlanTier): { color: string; background: string } => {
     switch (tier) {
-      case 'free': return 'var(--color-text-muted)';
-      case 'freemium': return 'var(--color-primary)';
-      case 'premium': return 'var(--color-secondary)';
+      case 'free': return { color: 'var(--color-text-secondary)', background: 'var(--color-surface-high)' };
+      case 'freemium': return { color: 'var(--color-primary)', background: 'var(--color-primary-light)' };
+      case 'premium': return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' };
       // Pro is retired (0060) but the enum value cannot be dropped, so a row
       // may survive. It keeps Premium's amber rather than introducing a third
       // hue — the app has two, and a new colour per tier is how a palette
       // drifts. Deleting this case would render a surviving Pro plan grey.
-      case 'pro': return 'var(--color-secondary)';
-      default: return 'var(--color-text-muted)';
+      case 'pro': return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' };
+      default: return { color: 'var(--color-text-secondary)', background: 'var(--color-surface-high)' };
     }
   };
 
@@ -235,39 +247,23 @@ export default function MembershipPlans() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Membership Plans</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Manage membership plans and pricing</p>
-        </div>
-        <Button variant="secondary" onClick={openAdd}>
-          <Plus size={16} /> Create Plan
-        </Button>
-      </motion.div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Membership plans"
+        subtitle="What the gym sells, and what each plan unlocks"
+        actions={
+          <Button variant="secondary" size="sm" onClick={openAdd}>
+            <Plus size={15} /> Create plan
+          </Button>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Total Plans', value: plans.length, icon: Banknote },
-          { label: 'Active Members', value: totalMembers, icon: Users },
-          { label: 'Monthly Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote },
-          { label: 'Avg Price', value: plans.length ? `₱${Math.round(plans.reduce((s, p) => s + p.price, 0) / plans.length)}` : '₱0', icon: Banknote },
-        ].map(s => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-              <Icon size={16} style={{ color: 'var(--color-primary)' }} />
-              <div>
-                <p className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                <p className="text-lg font-bold text-white">{s.value}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <StatTiles items={[
+        { label: 'Plans', value: plans.length, icon: Banknote },
+        { label: 'Members on a plan', value: totalMembers, icon: Users },
+        { label: 'Monthly revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote, tone: 'secondary' },
+        { label: 'Average price', value: plans.length ? `₱${Math.round(plans.reduce((s, p) => s + p.price, 0) / plans.length).toLocaleString()}` : '₱0', icon: Banknote },
+      ]} />
 
       {/* Says so when the numbers are the old client-side tally rather than a
           count from the database — that tally is what reported "0 members" for
@@ -282,90 +278,107 @@ export default function MembershipPlans() {
         </div>
       )}
 
-      {/* Plans Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {plans.map((plan, i) => {
-          const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
-          const activeMembers = activeMembersByPlan[plan.id] ?? 0;
-          const totalOnPlan = totalMembersByPlan[plan.id] ?? 0;
-          return (
-            <motion.div key={plan.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="!p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white mb-1">{plan.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase"
-                        style={{ background: `${getTierColor(plan.tier)}20`, color: getTierColor(plan.tier) }}>
-                        {plan.tier}
-                      </span>
-                      <Badge variant={plan.is_active ? 'Active' : 'Expired'}>{plan.is_active ? 'Active' : 'Inactive'}</Badge>
+      {/* The catalogue.
+
+          It was `grid-cols-2`, so the gym's three plans drew two 800px cards
+          and one orphan. Three plans is three cards; `CardGrid` gives them a
+          column each and leaves the rest of the row alone. The card is now the
+          button — clicking it edits, which is what the pencil icon did. */}
+      <Section title="The catalogue" icon={CreditCard} count={plans.length}>
+        {plans.length === 0 ? (
+          <EmptyState
+            icon={CreditCard}
+            title="No plans yet"
+            hint="Nothing can be sold, and nobody can be approved onto a free tier, until one exists."
+            action={<Button variant="secondary" size="sm" onClick={openAdd}><Plus size={14} /> Create the first plan</Button>}
+          />
+        ) : (
+          <CardGrid min={280}>
+            {plans.map((plan) => {
+              const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
+              const activeMembers = activeMembersByPlan[plan.id] ?? 0;
+              const totalOnPlan = totalMembersByPlan[plan.id] ?? 0;
+              return (
+                <TileCard key={plan.id} dim={!plan.is_active}
+                  onClick={() => openEdit(plan)} title={`Edit ${plan.name}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-[13px] font-bold text-white truncate">{plan.name}</h3>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase"
+                          style={getTierStyle(plan.tier)}>
+                          {plan.tier}
+                        </span>
+                        {!plan.is_active && (
+                          <Badge variant="Inactive" className="!text-[9px] !px-1.5 !py-0">Retired</Badge>
+                        )}
+                      </div>
                     </div>
+                    <OpenChevron />
                   </div>
-                  <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                    <button onClick={() => openEdit(plan)} className="p-1.5 rounded-lg"
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      <Edit2 size={11} />
-                    </button>
-                    <button onClick={() => handleDelete(plan)} className="p-1.5 rounded-lg"
-                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                      <Trash2 size={11} />
-                    </button>
+
+                  <div className="flex items-baseline gap-1 mt-2.5">
+                    <span className="text-xl font-bold text-white tabular-nums">₱{plan.price}</span>
+                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                      / {durationLabel(plan.duration_days)}
+                    </span>
                   </div>
-                </div>
 
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span className="text-2xl font-bold text-white">₱{plan.price}</span>
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                    / {durationLabel(plan.duration_days)}
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 mb-3">
-                  {features.slice(0, 4).map((feature, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
-                      <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-                      <span className="flex-1">{feature}</span>
-                    </div>
-                  ))}
-                  {features.length > 4 && (
-                    <p className="text-[9px] pl-4" style={{ color: 'var(--color-text-muted)' }}>
-                      +{features.length - 4} more features
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Active Members</span>
-                    <span className="text-sm font-bold text-white">{activeMembers}</span>
-                  </div>
-                  {/* Only shown when they differ. "Active Members 0" on a plan
-                      somebody is on is what made deleting it fail with no
-                      explanation — a lapsed or pending membership is still a
-                      real row holding the plan in place. */}
-                  {totalOnPlan > activeMembers && (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        On this plan, any status
-                      </span>
-                      <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                        {totalOnPlan}
-                      </span>
+                  {features.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {features.slice(0, 3).map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+                          <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
+                          <span className="flex-1 line-clamp-1">{feature}</span>
+                        </div>
+                      ))}
+                      {features.length > 3 && (
+                        <p className="text-[9px] pl-4" style={{ color: 'var(--color-text-muted)' }}>
+                          +{features.length - 3} more
+                        </p>
+                      )}
                     </div>
                   )}
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Monthly Revenue</span>
-                    <span className="text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
+
+                  <div className="mt-2.5 pt-2.5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="font-bold text-white">{activeMembers}</span> active
+                    </span>
+                    {/* Only shown when they differ. "Active Members 0" on a plan
+                        somebody is on is what made deleting it fail with no
+                        explanation — a lapsed or pending membership is still a
+                        real row holding the plan in place. */}
+                    {totalOnPlan > activeMembers && (
+                      <span className="text-[10px]" style={{ color: 'var(--color-primary)' }}>
+                        <span className="font-bold">{totalOnPlan}</span> any status
+                      </span>
+                    )}
+                    <span className="text-[10px] ml-auto font-bold" style={{ color: 'var(--color-secondary)' }}>
                       ₱{(plan.price * activeMembers).toLocaleString()}
                     </span>
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
+
+                  <div className="flex gap-1.5 mt-2.5">
+                    <button onClick={(e) => { e.stopPropagation(); openEdit(plan); }}
+                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      <Edit2 size={11} className="inline mr-1" />Edit
+                    </button>
+                    {/* Deleting is retire_plan() (0062/0063): every membership
+                        moves to the free tier first, so this never raises the
+                        foreign key the screen could only call "failed". */}
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(plan); }}
+                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
+                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                      <Trash2 size={11} className="inline mr-1" />Delete
+                    </button>
+                  </div>
+                </TileCard>
+              );
+            })}
+          </CardGrid>
+        )}
+      </Section>
 
       {/* What each plan unlocks in the member app (0049). Below the grid rather
           than inside the edit modal: it is a comparison across plans, and the

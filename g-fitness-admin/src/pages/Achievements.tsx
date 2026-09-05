@@ -1,17 +1,21 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   Award, CalendarCheck, CalendarHeart, ClipboardList, Crown, Dumbbell, Flame, Footprints,
   Gem, Gift, GraduationCap, Handshake, Heart, HeartHandshake, Medal, Moon, Mountain,
   PartyPopper, Repeat, Rocket, Ruler, Shapes, Shield, Smile, Sparkles, Star, Sunrise,
   Swords, Target, ThumbsUp, Timer, Trophy, UserCheck, Users, Zap,
-  Plus, Pencil, EyeOff, Eye, Trash2, Gift as GiftIcon, X, Search, Lock,
+  Plus, Pencil, EyeOff, Eye, Trash2, Gift as GiftIcon, X, Lock,
   type LucideIcon,
 } from 'lucide-react';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
+import {
+  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
+  SearchBox, Chips, Toolbar, PageSummary,
+} from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import {
@@ -159,6 +163,8 @@ export default function Achievements() {
       .filter((r) => !q || r.title.toLowerCase().includes(q) || r.key.includes(q) || r.category.toLowerCase().includes(q));
   }, [rows, audience, search]);
 
+  const paged = usePaged(visible, 12);
+
   const metricsFor = useMemo(
     () => metrics.filter((m) => m.audience === form.audience),
     [metrics, form.audience]
@@ -268,38 +274,33 @@ export default function Achievements() {
     }
   };
 
-  const chip = (active: boolean): React.CSSProperties => ({
-    background: active ? PRIMARY : SURFACE_RAISED,
-    border: `1px solid ${active ? PRIMARY : BORDER}`,
-    color: active ? '#FFFFFF' : TEXT_SECOND,
-  });
-
   return (
-    <div className="p-6 space-y-5">
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <Trophy size={22} style={{ color: PRIMARY }} />
-            Achievements
-          </h1>
-          <p className="text-sm mt-1 max-w-2xl" style={{ color: TEXT_SECOND }}>
-            What members and trainers can earn. Automatic ones are awarded by the server
-            the next time someone syncs — you never hand those out. Manual ones you give
-            to a specific person.
-          </p>
-        </div>
-        {!unavailable && (
-          <Button onClick={openCreate}>
+    // The page carried its own `p-6`, doubling the 24px the layout's <main>
+    // already applies — every other admin page starts flush, this one started
+    // 48px in and looked like a different app.
+    <div className="space-y-4">
+      <PageHeader
+        title="Achievements"
+        subtitle="Automatic ones are awarded by the server the next time someone syncs — you never hand those out. Manual ones you give to a specific person."
+        actions={!unavailable ? (
+          <Button size="sm" onClick={openCreate}>
             <Plus size={15} /> New achievement
           </Button>
-        )}
-      </motion.div>
+        ) : undefined}
+      />
+
+      {!unavailable && !loading && (
+        <StatTiles items={[
+          { label: 'In the catalogue', value: rows.length, icon: Trophy },
+          { label: 'Live', value: rows.filter((r) => r.active).length, icon: Trophy },
+          { label: 'Awarded by hand', value: rows.filter((r) => r.rule_kind === 'manual').length, icon: GiftIcon, tone: 'secondary' },
+          { label: 'Fixed rules', value: rows.filter((r) => r.rule_kind === 'builtin').length, icon: Lock },
+        ]} />
+      )}
 
       {unavailable ? (
-        <Card>
-          <div className="py-12 text-center">
-            <Trophy size={38} className="mx-auto mb-3" style={{ color: TEXT_MUTED }} />
+        <Section title="Catalogue unavailable" icon={Trophy}>
+          <div className="py-8 text-center">
             <p className="text-sm text-white font-medium">The achievement catalogue is not available yet</p>
             <p className="text-xs mt-2 max-w-md mx-auto" style={{ color: TEXT_SECOND }}>
               Migration <span className="font-mono">0038_achievements_as_data.sql</span> creates the
@@ -308,52 +309,47 @@ export default function Achievements() {
               just not editable.
             </p>
           </div>
-        </Card>
+        </Section>
       ) : (
         <>
-          <Card>
-            <div className="flex flex-wrap items-center gap-2">
-              {(['member', 'trainer'] as AchievementAudience[]).map((a) => (
-                <button key={a} onClick={() => setAudience(a)}
-                  className="h-8 px-3 rounded-full text-xs font-medium capitalize transition-colors"
-                  style={chip(audience === a)}>
-                  {a === 'member' ? 'For members' : 'For trainers'}
-                  <span className="ml-1.5 opacity-70">
-                    {rows.filter((r) => r.audience === a).length}
-                  </span>
-                </button>
-              ))}
-              <div className="flex items-center gap-2 h-8 px-3 rounded-lg flex-1 min-w-[200px]"
-                style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}>
-                <Search size={13} style={{ color: TEXT_MUTED }} />
-                <input value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filter by title, key or category"
-                  className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[var(--color-text-muted)]" />
-              </div>
-            </div>
-          </Card>
-
+          <Section
+            title={audience === 'member' ? 'For members' : 'For trainers'}
+            icon={Trophy}
+            count={visible.length}
+            actions={
+              <Toolbar>
+                <SearchBox value={search} onChange={setSearch}
+                  placeholder="Title, key or category…" width={220} />
+                <Chips
+                  value={audience}
+                  onChange={(v) => setAudience(v as AchievementAudience)}
+                  options={(['member', 'trainer'] as AchievementAudience[]).map((a) => ({
+                    value: a,
+                    label: a === 'member' ? 'Members' : 'Trainers',
+                    count: rows.filter((r) => r.audience === a).length,
+                  }))}
+                />
+              </Toolbar>
+            }
+          >
           {loading ? (
-            <Card>
-              <div className="space-y-2 py-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: SURFACE_RAISED }} />
-                ))}
-              </div>
-            </Card>
+            <div className="space-y-2 py-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: SURFACE_RAISED }} />
+              ))}
+            </div>
           ) : visible.length === 0 ? (
-            <Card>
-              <div className="py-12 text-center">
-                <p className="text-sm" style={{ color: TEXT_SECOND }}>
-                  {search ? 'Nothing matches that' : 'No achievements for this audience yet'}
-                </p>
-              </div>
-            </Card>
+            <EmptyState icon={Trophy}
+              title={search ? 'Nothing matches that' : 'No achievements for this audience yet'}
+              hint={search ? 'Try a shorter search.' : 'Create one and members start earning it on their next sync.'} />
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {visible.map((a) => {
+            <>
+            {/* Was `md:grid-cols-2`: two 800px cards each holding an icon, a
+                title and four small buttons. A badge is ~310px of content. */}
+            <CardGrid min={310}>
+              {paged.visible.map((a) => {
                 return (
-                  <Card key={a.key}>
+                  <TileCard key={a.key} dim={!a.active}>
                     <div className="flex items-start gap-3">
                       <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: SURFACE_RAISED, border: `2px solid ${TIER_RING[a.tier]}` }}>
@@ -388,22 +384,32 @@ export default function Achievements() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <IconBtn title="Award to someone" onClick={() => setAwarding(a)}><GiftIcon size={14} /></IconBtn>
-                        <IconBtn title="Edit" onClick={() => openEdit(a)}><Pencil size={14} /></IconBtn>
-                        <IconBtn title={a.active ? 'Retire' : 'Bring back'} onClick={() => toggleActive(a)}>
-                          {a.active ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </IconBtn>
-                        {!a.builtin && (
-                          <IconBtn title="Delete" onClick={() => setConfirmDelete(a)}><Trash2 size={14} /></IconBtn>
-                        )}
-                      </div>
                     </div>
-                  </Card>
+
+                    <div className="flex items-center gap-1 mt-2.5">
+                      <IconBtn title="Award to someone" onClick={() => setAwarding(a)}><GiftIcon size={14} /></IconBtn>
+                      <IconBtn title="Edit" onClick={() => openEdit(a)}><Pencil size={14} /></IconBtn>
+                      <IconBtn title={a.active ? 'Retire' : 'Bring back'} onClick={() => toggleActive(a)}>
+                        {a.active ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </IconBtn>
+                      {/* A built-in has its rule in SQL, which this screen
+                          cannot express — so it can be retired, never deleted. */}
+                      {!a.builtin && (
+                        <IconBtn title="Delete" onClick={() => setConfirmDelete(a)}><Trash2 size={14} /></IconBtn>
+                      )}
+                    </div>
+                  </TileCard>
                 );
               })}
+            </CardGrid>
+            <div className="flex items-center justify-between mt-3">
+              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="achievements" />
+              <Pagination currentPage={paged.page} totalItems={paged.total}
+                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
             </div>
+            </>
           )}
+          </Section>
         </>
       )}
 

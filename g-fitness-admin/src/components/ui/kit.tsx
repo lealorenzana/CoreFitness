@@ -265,6 +265,16 @@ export function TileCard({
         borderLeft: accent ? `3px solid ${SECONDARY}` : `1px solid ${BORDER}`,
         opacity: dim ? 0.55 : 1,
         cursor: onClick ? 'pointer' : 'default',
+        // A <button> centres its content vertically — the browser's own
+        // stylesheet does it, and nothing in the markup hints at it. Grid rows
+        // stretch every card to the tallest one, so three cards with different
+        // amounts of text ended up with their titles at three different
+        // heights, which reads as broken alignment rather than as centring.
+        // Column flex from the top pins the content where the eye expects it.
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
       }}
     >
       {children}
