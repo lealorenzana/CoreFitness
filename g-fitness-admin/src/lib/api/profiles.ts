@@ -24,8 +24,24 @@ export async function updateMyProfile(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+  // `.select()` so this becomes `UPDATE … RETURNING` and a zero-row result can
+  // be told apart from success.
+  //
+  // Without it, a write that RLS silently filters reports success: PostgREST
+  // returns no error for an UPDATE that matched nothing. That is how a trainer
+  // can pick a photo, see "Photo updated", and end up with `photo_url` still
+  // NULL — the same failure mode that made onboarding write nothing in 0033,
+  // and that admin "Recall" and "Undo check-in" both had until they were given
+  // this same treatment.
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', user.id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That change was not saved — your account may not have permission.');
+  }
 }
 
 /** Admin-only: update another user's profile (e.g. editing a trainer's name/phone). */
