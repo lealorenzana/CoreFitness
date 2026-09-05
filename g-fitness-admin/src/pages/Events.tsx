@@ -48,7 +48,7 @@ const STATUS_STYLE: Record<EventStatus, { bg: string; color: string }> = {
   Upcoming: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
   Ongoing: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
   Completed: { bg: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' },
-  Cancelled: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)' },
+  Cancelled: { bg: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' },
 };
 
 /** Local datetime -> ISO, without toISOString()'s UTC shift on the date part. */

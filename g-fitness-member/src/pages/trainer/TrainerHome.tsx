@@ -51,9 +51,9 @@ function greeting(): string {
 /** Status drives icon and colour — the thing a trainer scans this list for. */
 const ACTIVITY: Record<BookingStatus, { icon: LucideIcon; color: string; tint: string; verb: string }> = {
   approved:  { icon: CheckCircle2,  color: 'var(--color-primary)', tint: 'var(--color-primary-light)',  verb: 'Approved' },
-  pending:   { icon: CircleDashed,  color: '#F59E0B', tint: 'rgba(245,158,11,0.14)', verb: 'New request' },
+  pending:   { icon: CircleDashed,  color: 'var(--color-secondary)', tint: 'var(--color-secondary-light)', verb: 'New request' },
   rejected:  { icon: XCircle,       color: 'var(--color-secondary)', tint: 'var(--color-secondary-light)',  verb: 'Declined' },
-  cancelled: { icon: XCircle,       color: 'var(--color-secondary)', tint: 'var(--color-secondary-light)',  verb: 'Cancelled' },
+  cancelled: { icon: XCircle,       color: 'var(--color-text-muted)', tint: 'var(--color-surface-high)',    verb: 'Cancelled' },
 };
 
 /**

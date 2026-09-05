@@ -205,10 +205,10 @@ export default function Events() {
                   ...panelStyle,
                   borderRadius: 'var(--radius-panel)',
                   boxShadow: 'var(--shadow-panel)',
+                  // Cancelled is muted, not amber: amber is the app's "needs
+                  // your attention" tone and a cancelled event needs nothing.
                   borderLeft: `4px solid ${
-                    status === 'Cancelled' ? 'var(--color-secondary)'
-                      : going ? 'var(--color-primary)'
-                      : 'var(--color-primary)'
+                    status === 'Cancelled' ? 'var(--color-border)' : 'var(--color-primary)'
                   }`,
                   opacity: closed ? 0.75 : 1,
                 }}
@@ -218,7 +218,7 @@ export default function Events() {
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                     style={
                       status === 'Cancelled'
-                        ? { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }
+                        ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
                         : status === 'Ongoing'
                           ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
                           : { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
