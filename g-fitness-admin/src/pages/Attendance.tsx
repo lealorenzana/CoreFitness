@@ -18,6 +18,7 @@ import { listMembers, getMemberByQrCode, type MemberWithProfile } from '../lib/a
 import { listAttendance, recordCheckIn, deleteCheckIn } from '../lib/api/attendance';
 import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
 import { getGymSettings } from '../lib/api/settings';
+import { notifyUser } from '../lib/api/notify';
 import type { AttendanceRow } from '../types/db';
 
 const ITEMS_PER_PAGE = 10;
@@ -254,6 +255,28 @@ export default function Attendance() {
         activity: activity || undefined,
       });
       showToast(`${member.profile.first_name} checked in successfully!`, 'success');
+
+      // Tell the member too. The desk saw a toast; the phone being held out at
+      // the counter said nothing, so the member had to ask whether it worked.
+      //
+      // Fire-and-forget, and deliberately after the check-in is already written:
+      // the attendance row is the record and the message is only the alert, so a
+      // notification failure must never fail a check-in that has happened. Same
+      // rule as booking approvals.
+      notifyUser({
+        userId: member.profile.id,
+        // 'system', not a category of its own. The four preference categories
+        // (booking/payment/membership/event) are what a member can mute, and a
+        // check-in confirmation is not one of them — it is the app reporting
+        // something that just happened to them at the desk.
+        type: 'system',
+        title: 'Checked in',
+        message: activity
+          ? `Your QR code was scanned at the front desk and logged as ${activity}.`
+          : 'Your QR code was scanned at the front desk and your attendance is logged.',
+        actionUrl: '/member/attendance-history',
+      }).catch(() => undefined);
+
       setQrInput('');
       setSearchTerm('');
       await loadData();

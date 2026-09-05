@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { X, Camera, QrCode, AlertCircle } from 'lucide-react';
 import Button from './Button';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import jsQR from 'jsqr';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -11,157 +11,223 @@ interface QRScannerProps {
 }
 
 /**
- * Release one scanner instance and its camera stream.
+ * The decode loop, and why it is no longer html5-qrcode.
  *
- * `stop()` throws when `start()` never succeeded — a denied permission, a camera
- * already in use by Teams. That is the expected path on teardown after a failed
- * start, not an error worth logging: it would bury the real message above it.
+ * The previous scanner ran html5-qrcode with
+ * `experimentalFeatures.useBarCodeDetectorIfSupported`, and its own comment
+ * explained the choice: the native `BarcodeDetector` is "far more tolerant of
+ * glare and the moire you get pointing a webcam at another screen than the JS
+ * fallback".
+ *
+ * That is true, and **`BarcodeDetector` does not exist in Chrome on Windows** —
+ * it ships on Android, macOS and ChromeOS. The gym runs the dashboard on a
+ * Windows PC, so the tolerant path was never taken there once. Every frame fell
+ * through to html5-qrcode's bundled ZXing decoder, at **10fps on a cropped 80%
+ * box**, which is the least forgiving setup available for the exact job this
+ * desk does: reading a QR off a lit phone screen with a webcam.
+ *
+ * Nothing surfaced an error, because a decode miss is not an error. The camera
+ * ran, the picture looked right, and the code was simply never found.
+ *
+ * The pipeline now, at animation-frame rate over the whole frame:
+ *
+ *     getUserMedia -> video -> canvas.drawImage -> getImageData -> jsQR
+ *
+ * `BarcodeDetector` is still used **where it exists** — on an Android tablet at
+ * the desk it is faster and better than anything in JS. It is a fast path now
+ * rather than the only good path, and the floor underneath it is jsQR instead
+ * of ZXing.
  */
-async function stopInstance(scanner: Html5Qrcode): Promise<void> {
-  try {
-    await scanner.stop();
-  } catch {
-    /* never started */
-  }
-  try {
-    scanner.clear();
-  } catch {
-    /* nothing rendered */
-  }
+
+/** Stop every track on a stream. Safe to call twice. */
+function stopStream(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((t) => {
+    try {
+      t.stop();
+    } catch {
+      /* already ended */
+    }
+  });
 }
 
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
   const [hasCamera, setHasCamera] = useState(true);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  // Serialises camera teardown against the next start. Switching cameras used to
-  // construct a second Html5Qrcode on the same `qr-reader` element while the
-  // first was still releasing its stream — the library then either refuses to
-  // start ("scanner is already running") or leaves an orphaned <video> behind,
-  // and the picker appears to do nothing. A laptop commonly exposes several
-  // devices (built-in, external, and the virtual cameras Teams and OBS install),
-  // so this path is reached more often than it looks.
-  const teardownRef = useRef<Promise<void>>(Promise.resolve());
   const [manualInput, setManualInput] = useState('');
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [cameraId, setCameraId] = useState('');
 
-  // Step 1: find the cameras. The admin dashboard runs on a desktop, which has
-  // only a front-facing webcam — the old `facingMode: 'environment'` constraint
-  // asks for a rear camera that doesn't exist there. Enumerate instead and start
-  // an explicit device, preferring a rear lens when the desk uses a tablet.
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  /** Set the instant a code is accepted, so an in-flight frame cannot fire twice. */
+  const doneRef = useRef(false);
+
+  /**
+   * Step 1: find the cameras.
+   *
+   * `enumerateDevices` withholds labels until permission has been granted, so a
+   * throwaway stream is opened and closed first. Without it the picker reads
+   * "Camera 1 / Camera 2" and the desk cannot tell the real webcam from the
+   * virtual one Teams installs.
+   */
   useEffect(() => {
     if (!isOpen || !isScanning) return;
     let cancelled = false;
 
-    Html5Qrcode.getCameras()
-      .then((devices) => {
+    (async () => {
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ video: true });
+        stopStream(probe);
         if (cancelled) return;
-        if (!devices || devices.length === 0) {
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter((d) => d.kind === 'videoinput');
+        if (cancelled) return;
+
+        if (cams.length === 0) {
           setHasCamera(false);
           setError('No camera found. Please use manual entry.');
           return;
         }
         setHasCamera(true);
         setError('');
-        setCameras(devices.map((d) => ({ id: d.id, label: d.label })));
-        const rear = devices.find((d) => /back|rear|environment/i.test(d.label));
-        setCameraId((current) => current || rear?.id || devices[0].id);
-      })
-      .catch((err) => {
+        setCameras(cams.map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` })));
+        const rear = cams.find((d) => /back|rear|environment/i.test(d.label));
+        setCameraId((current) => current || rear?.deviceId || cams[0].deviceId);
+      } catch (err) {
         if (cancelled) return;
         console.error('Camera enumeration failed:', err);
         setHasCamera(false);
         setError('Unable to access camera. Please allow camera permission, or use manual entry.');
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
   }, [isOpen, isScanning]);
 
-  // Step 2: run the scanner on the chosen device. Re-runs when the user picks a
-  // different camera from the dropdown.
+  // Step 2: stream the chosen camera and decode every frame.
   useEffect(() => {
     if (!isOpen || !isScanning || !cameraId) return;
     let cancelled = false;
+    doneRef.current = false;
 
-    let mine: Html5Qrcode | null = null;
-
-    const startWhenFree = async () => {
-      // Wait for the previous camera to actually let go before touching the DOM
-      // node again. Without this the two overlap and the second start fails.
-      await teardownRef.current;
-      if (cancelled) return;
-
-      const scanner = new Html5Qrcode('qr-reader', {
-        verbose: false,
-        // Only look for QR codes. Without this it also runs every 1D barcode
-        // decoder on each frame, which costs time we'd rather spend on retries.
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        // Chrome's native BarcodeDetector is far more tolerant of glare and the
-        // moiré you get pointing a webcam at another screen than the JS fallback.
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      });
-      mine = scanner;
-      scannerRef.current = scanner;
-
+    (async () => {
       try {
-        await scanner.start(
-          cameraId,
-          {
-            fps: 10,
-            // Crop to most of the viewfinder rather than a fixed 250px box: a
-            // tight crop can clip the QR's quiet zone, which alone breaks decoding.
-            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
-              return { width: size, height: size };
-            },
-            // Resolution belongs here, NOT in the first argument — html5-qrcode
-            // rejects a `cameraIdOrConfig` object with more than one key. A webcam
-            // otherwise defaults to ~640x480, where this QR's modules are only a
-            // few pixels wide and the decode fails. When these constraints are
-            // valid the library uses them in place of the first argument, so the
-            // deviceId has to be repeated here.
-            videoConstraints: {
-              deviceId: { exact: cameraId },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: cameraId },
+            // 1280x720 is not a nicety. At the 640x480 a webcam defaults to,
+            // this QR's modules are a few pixels across and no decoder reads it.
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
           },
-          (decodedText) => {
-            onScan(decodedText);
-            stopScanner();
-            onClose();
-          },
-          () => {
-            // Per-frame decode misses fire constantly while aiming — not an error.
-          }
-        );
+        });
+        if (cancelled) {
+          stopStream(stream);
+          return;
+        }
+        streamRef.current = stream;
+
+        const video = videoRef.current;
+        if (!video) {
+          stopStream(stream);
+          return;
+        }
+        video.srcObject = stream;
+        await video.play();
         if (cancelled) return;
-        // A camera that started is a camera that works — clear the failure left
-        // by a previous device so the error box does not outlive the problem.
-        setError('');
+
         setHasCamera(true);
+        setError('');
+
+        // Native detector where the platform has one. Absent on Windows, which
+        // is the whole reason this component was rewritten.
+        const Detector = (
+          window as unknown as {
+            BarcodeDetector?: new (o: { formats: string[] }) => {
+              detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+            };
+          }
+        ).BarcodeDetector;
+        const detector = Detector ? new Detector({ formats: ['qr_code'] }) : null;
+
+        const canvas = canvasRef.current ?? document.createElement('canvas');
+        canvasRef.current = canvas;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const accept = (text: string) => {
+          if (doneRef.current) return;
+          doneRef.current = true;
+          onScan(text);
+          onClose();
+        };
+
+        const tick = async () => {
+          if (cancelled || doneRef.current) return;
+          const v = videoRef.current;
+
+          if (v && v.readyState === v.HAVE_ENOUGH_DATA && ctx) {
+            canvas.width = v.videoWidth;
+            canvas.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+            if (detector) {
+              try {
+                const found = await detector.detect(canvas);
+                if (found.length > 0 && found[0].rawValue) {
+                  accept(found[0].rawValue);
+                  return;
+                }
+              } catch {
+                /* fall through to jsQR */
+              }
+            }
+
+            const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            // The whole frame, never a crop. A tight box clips the QR's quiet
+            // zone, and a quiet zone under four modules wide stops it decoding
+            // at all — which is how the old 80% qrbox could refuse a code that
+            // was plainly centred in the picture.
+            //
+            // `attemptBoth` costs a second pass and buys a code shown light-on-
+            // dark, which is exactly what the member app renders.
+            const code = jsQR(frame.data, frame.width, frame.height, {
+              inversionAttempts: 'attemptBoth',
+            });
+            if (code?.data) {
+              accept(code.data);
+              return;
+            }
+          }
+
+          rafRef.current = requestAnimationFrame(() => {
+            void tick();
+          });
+        };
+
+        rafRef.current = requestAnimationFrame(() => {
+          void tick();
+        });
       } catch (err) {
         if (cancelled) return;
         console.error('Scanner error:', err);
         setHasCamera(false);
         setError('Unable to start that camera. Try another, or use manual entry.');
       }
-    };
-
-    const running = startWhenFree();
+    })();
 
     return () => {
       cancelled = true;
-      // Hand the next start something to wait on, rather than tearing down in
-      // the background and hoping it finishes first.
-      teardownRef.current = running
-        .then(() => (mine ? stopInstance(mine) : undefined))
-        .catch(() => undefined);
-      if (scannerRef.current === mine) scannerRef.current = null;
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
     // onScan/onClose are called, not observed — re-subscribing on every parent
     // render would tear down the live camera stream mid-scan.
@@ -169,14 +235,11 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   }, [isOpen, isScanning, cameraId]);
 
   const stopScanner = () => {
-    const scanner = scannerRef.current;
-    if (!scanner) return;
-    scannerRef.current = null;
-    // Recorded on the same ref the start path waits on, so an explicit stop and
-    // an unmount-driven one cannot race each other either.
-    teardownRef.current = teardownRef.current
-      .then(() => stopInstance(scanner))
-      .catch(() => undefined);
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    stopStream(streamRef.current);
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
 
   const handleClose = () => {
@@ -268,7 +331,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                           type="text"
                           value={manualInput}
                           onChange={(e) => setManualInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
+                          onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                           placeholder="Paste QR payload or member ID"
                           className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
                         />
@@ -302,11 +365,17 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
                     {/* Scanner Container */}
                     <div className="relative bg-black rounded-2xl overflow-hidden">
-                      <div id="qr-reader" className="w-full"></div>
-                      
-                      {/* Scanning overlay. Only the outer edge — html5-qrcode draws
-                          its own shaded box at the real crop bounds, and a second
-                          fixed-size square on top of it just misleads your aim. */}
+                      <video
+                        ref={videoRef}
+                        className="w-full block"
+                        style={{ aspectRatio: '4 / 3', objectFit: 'cover' }}
+                        muted
+                        playsInline
+                      />
+
+                      {/* An aiming hint only. The whole frame is decoded, so
+                          unlike the old fixed square this cannot misrepresent
+                          where the scanner is actually looking. */}
                       <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute inset-0 border-4 border-primary-start/50 rounded-2xl animate-pulse"></div>
                       </div>
@@ -314,24 +383,26 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
                     {/* Error Message */}
                     {error && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-                        <AlertCircle size={20} className="text-yellow flex-shrink-0 mt-0.5" />
+                      <div className="rounded-xl p-4 flex items-start gap-3"
+                        style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+                        <AlertCircle size={20} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-yellow text-sm font-semibold mb-1">Camera Error</p>
-                          <p className="text-red-300 text-xs">{error}</p>
+                          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-secondary)' }}>Camera Error</p>
+                          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{error}</p>
                         </div>
                       </div>
                     )}
 
                     {/* Instructions */}
                     {!error && (
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-                        <p className="text-blue-300 text-sm font-semibold mb-2">📱 Scanning Tips:</p>
-                        <ul className="text-blue-200 text-xs space-y-1 ml-4 list-disc">
-                          <li>Hold the QR code steady within the frame</li>
-                          <li>Ensure good lighting for best results</li>
-                          <li>Keep the camera 6-12 inches from the QR code</li>
-                          <li>Scanner will automatically detect and process</li>
+                      <div className="rounded-xl p-4"
+                        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+                        <p className="text-sm font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Scanning tips</p>
+                        <ul className="text-xs space-y-1 ml-4 list-disc" style={{ color: 'var(--color-text-secondary)' }}>
+                          <li>Turn the phone brightness up — a dim screen is the usual cause</li>
+                          <li>Hold it 6–12 inches away and steady</li>
+                          <li>Tilt slightly to kill the reflection off the glass</li>
+                          <li>It detects automatically; there is no button to press</li>
                         </ul>
                       </div>
                     )}
@@ -347,7 +418,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                             type="text"
                             value={manualInput}
                             onChange={(e) => setManualInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
+                            onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                             placeholder="Paste QR payload or member ID"
                             className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
                           />

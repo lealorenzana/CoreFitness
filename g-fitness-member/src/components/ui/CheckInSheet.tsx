@@ -27,6 +27,16 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
   const [qr, setQr] = useState('');
   const [remaining, setRemaining] = useState(0);
   const loadedRef = useRef(false);
+  /**
+   * True when the check-in landed **while this sheet was open** — i.e. the desk
+   * just scanned the code the member is holding up.
+   *
+   * Distinct from `home.checkedInToday`, which is also true when they open the
+   * sheet hours later. "You're already checked in today" is the right sentence
+   * for that and the wrong one for the moment the scanner beeps: the member is
+   * standing at the desk waiting to be told it worked.
+   */
+  const [justScanned, setJustScanned] = useState(false);
 
   const regenerate = useCallback((memberId: string) => {
     const code = generateSecureQR(memberId);
@@ -50,6 +60,11 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
         const data = await getMemberHome(id);
         if (cancelled) return;
         setHome(data);
+        // Cleared here rather than in an effect keyed on `open`: re-opening is
+        // the moment the stale celebration would show, and this already runs
+        // then. A separate effect whose body is one synchronous setState is
+        // exactly the cascading-render pattern the lint rule is about.
+        setJustScanned(false);
         if (!data.expired && !data.checkedInToday) regenerate(data.memberId);
       } catch (err) {
         if (!cancelled) toast.error(errorMessage(err, 'Could not load your check-in code'));
@@ -59,6 +74,38 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
     })();
     return () => { cancelled = true; };
   }, [open, regenerate]);
+
+  /**
+   * Watch for the desk scanning it, and say so.
+   *
+   * The member holds the phone out, the desk scans, the desk sees a toast — and
+   * the phone, the thing actually pointed at the person, said nothing at all.
+   * They had to ask whether it worked.
+   *
+   * Polled rather than pushed: the check-in is written by the admin app against
+   * Supabase, and a realtime subscription for one row on one screen is a lot of
+   * moving parts for a sheet that is open for about fifteen seconds. Four
+   * seconds is quick enough to feel immediate at a counter.
+   *
+   * Stops the moment it fires, and never runs for a member who was already
+   * checked in when they opened it.
+   */
+  useEffect(() => {
+    if (!open || !home || home.expired || home.checkedInToday) return;
+    let cancelled = false;
+    const id = window.setInterval(async () => {
+      try {
+        const fresh = await getMemberHome(home.memberId);
+        if (cancelled || !fresh.checkedInToday) return;
+        setHome(fresh);
+        setJustScanned(true);
+      } catch {
+        // A dropped poll is not worth a message. The next one covers it, and
+        // the member can see their own screen either way.
+      }
+    }, 4000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, [open, home]);
 
   // The code rolls over on its own rather than dying on screen.
   //
@@ -145,9 +192,13 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                     style={{ background: 'var(--color-primary-light)' }}>
                     <CheckCircle size={26} style={{ color: 'var(--color-primary)' }} />
                   </div>
-                  <p className="text-sm font-semibold text-white">You're already checked in today</p>
+                  <p className="text-sm font-semibold text-white">
+                    {justScanned ? 'Scanned — you are logged in' : "You're already checked in today"}
+                  </p>
                   <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Have a good session, {home.firstName}.
+                    {justScanned
+                      ? `Your attendance is recorded. Have a good session, ${home.firstName}.`
+                      : `Have a good session, ${home.firstName}.`}
                   </p>
                 </div>
               ) : (
