@@ -313,8 +313,8 @@ export default function TrainerSchedule() {
       </div>
 
       {error && (
-        <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p>
+        <div className="rounded-xl p-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>{error}</p>
         </div>
       )}
 

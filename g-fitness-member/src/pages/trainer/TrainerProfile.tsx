@@ -78,7 +78,7 @@ export default function TrainerProfile() {
             trap someone in the app with no way out. */}
         <button onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 p-3 rounded-full text-xs font-semibold transition-colors active:scale-[0.98]"
-          style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)' }}>
           <LogOut size={14} /> Logout
         </button>
       </div>

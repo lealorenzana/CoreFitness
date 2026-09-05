@@ -49,8 +49,8 @@ export default function ChangePassword() {
 
     if (strength <= 2) return { strength, label: 'Weak', color: 'var(--color-secondary)' };
     if (strength <= 3) return { strength, label: 'Fair', color: '#f59e0b' };
-    if (strength <= 4) return { strength, label: 'Good', color: '#10b981' };
-    return { strength, label: 'Strong', color: '#10b981' };
+    if (strength <= 4) return { strength, label: 'Good', color: 'var(--color-primary)' };
+    return { strength, label: 'Strong', color: 'var(--color-primary)' };
   };
 
   const passwordStrength = getPasswordStrength(newPassword);

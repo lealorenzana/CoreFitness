@@ -206,8 +206,8 @@ export default function Events() {
                   borderRadius: 'var(--radius-panel)',
                   boxShadow: 'var(--shadow-panel)',
                   borderLeft: `4px solid ${
-                    status === 'Cancelled' ? '#EF4444'
-                      : going ? '#22C55E'
+                    status === 'Cancelled' ? 'var(--color-secondary)'
+                      : going ? 'var(--color-primary)'
                       : 'var(--color-primary)'
                   }`,
                   opacity: closed ? 0.75 : 1,
@@ -218,9 +218,9 @@ export default function Events() {
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                     style={
                       status === 'Cancelled'
-                        ? { background: 'rgba(239,68,68,0.15)', color: '#EF4444' }
+                        ? { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }
                         : status === 'Ongoing'
-                          ? { background: 'rgba(34,197,94,0.15)', color: '#22C55E' }
+                          ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
                           : { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
                     }>
                     {status}
@@ -317,7 +317,7 @@ export default function Events() {
                     className="w-full h-11 rounded-full font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
                     style={
                       going
-                        ? { background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.30)' }
+                        ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }
                         : full
                           ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
                           : { background: 'var(--color-secondary)', color: '#000' }

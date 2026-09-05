@@ -14,7 +14,7 @@ import {
 import { listPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 
-const PIE_COLORS = ['#7C3AED', '#F59E0B', '#22c55e', '#6b7280', '#ef4444'];
+const PIE_COLORS = ['#7C3AED', '#F59E0B', 'var(--color-primary)', '#6b7280', 'var(--color-secondary)'];
 
 export default function Revenue() {
   const navigate = useNavigate();

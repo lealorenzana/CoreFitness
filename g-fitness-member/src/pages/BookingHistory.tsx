@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
 const STATUS_STYLE: Record<BookingStatus, { color: string; background: string }> = {
   pending: { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' },
   approved: { color: 'var(--color-primary)', background: 'var(--color-primary-light)' },
-  rejected: { color: '#ef4444', background: 'rgba(239,68,68,0.15)' },
+  rejected: { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' },
   cancelled: { color: 'var(--color-text-muted)', background: 'rgba(148,163,184,0.15)' },
 };
 

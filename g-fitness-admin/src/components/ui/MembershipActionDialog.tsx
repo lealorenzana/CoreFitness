@@ -122,10 +122,10 @@ export default function MembershipActionDialog({
               style={{ borderBottom: '1px solid var(--color-border)' }}>
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: isFreeze ? 'var(--color-secondary-light)' : 'rgba(239,68,68,0.12)' }}>
+                  style={{ background: isFreeze ? 'var(--color-secondary-light)' : 'var(--color-secondary-light)' }}>
                   {isFreeze
                     ? <Pause size={16} style={{ color: 'var(--color-secondary)' }} />
-                    : <Ban size={16} style={{ color: '#ef4444' }} />}
+                    : <Ban size={16} style={{ color: 'var(--color-secondary)' }} />}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">

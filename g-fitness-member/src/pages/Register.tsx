@@ -610,7 +610,7 @@ export default function Register() {
                           background: 'var(--color-bg)',
                           border: `1px solid ${
                             formData.confirmPassword && formData.confirmPassword !== formData.password
-                              ? 'rgba(239,68,68,0.5)'
+                              ? 'var(--color-secondary)'
                               : 'var(--color-border)'
                           }`,
                         }}

@@ -157,11 +157,21 @@ export function bmi(weightKg: number | null, heightCm: number | null): number | 
   return Number((weightKg / (m * m)).toFixed(1));
 }
 
+/**
+ * The BMI band, with no colour verdict. Mirrors the member app's copy — see the
+ * longer note there.
+ *
+ * Short version: this returned green for "Normal" and red for "Obese", which is
+ * a traffic light rating a body, in a palette that has neither colour. The band
+ * name carries the information; the colour only added a judgement that BMI is
+ * not entitled to make, since it cannot tell muscle from fat.
+ */
 export function bmiBand(value: number): { label: string; color: string } {
-  if (value < 18.5) return { label: 'Underweight', color: 'var(--color-secondary)' };
-  if (value < 25) return { label: 'Normal', color: '#22c55e' };
-  if (value < 30) return { label: 'Overweight', color: 'var(--color-secondary)' };
-  return { label: 'Obese', color: '#ef4444' };
+  const color = 'var(--color-text-secondary)';
+  if (value < 18.5) return { label: 'Underweight', color };
+  if (value < 25) return { label: 'Normal', color };
+  if (value < 30) return { label: 'Overweight', color };
+  return { label: 'Obese', color };
 }
 
 /**

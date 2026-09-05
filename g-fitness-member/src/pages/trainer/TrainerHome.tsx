@@ -50,10 +50,10 @@ function greeting(): string {
 
 /** Status drives icon and colour — the thing a trainer scans this list for. */
 const ACTIVITY: Record<BookingStatus, { icon: LucideIcon; color: string; tint: string; verb: string }> = {
-  approved:  { icon: CheckCircle2,  color: '#22C55E', tint: 'rgba(34,197,94,0.14)',  verb: 'Approved' },
+  approved:  { icon: CheckCircle2,  color: 'var(--color-primary)', tint: 'var(--color-primary-light)',  verb: 'Approved' },
   pending:   { icon: CircleDashed,  color: '#F59E0B', tint: 'rgba(245,158,11,0.14)', verb: 'New request' },
-  rejected:  { icon: XCircle,       color: '#EF4444', tint: 'rgba(239,68,68,0.14)',  verb: 'Declined' },
-  cancelled: { icon: XCircle,       color: '#EF4444', tint: 'rgba(239,68,68,0.14)',  verb: 'Cancelled' },
+  rejected:  { icon: XCircle,       color: 'var(--color-secondary)', tint: 'var(--color-secondary-light)',  verb: 'Declined' },
+  cancelled: { icon: XCircle,       color: 'var(--color-secondary)', tint: 'var(--color-secondary-light)',  verb: 'Cancelled' },
 };
 
 /**
@@ -153,7 +153,7 @@ export default function TrainerHome() {
           <Avatar name={fullName} photoUrl={profile.photo_url} size={56} />
           <span
             className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full"
-            style={{ background: '#22C55E', border: '2px solid var(--color-bg)' }}
+            style={{ background: 'var(--color-primary)', border: '2px solid var(--color-bg)' }}
             aria-hidden
           />
         </div>

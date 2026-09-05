@@ -111,14 +111,14 @@ export default function TodayPlanCard({ checkedInToday }: { checkedInToday: bool
         ...panelStyle,
         borderRadius: 'var(--radius-panel)',
         boxShadow: 'var(--shadow-panel)',
-        borderLeft: `4px solid ${done ? '#22C55E' : 'var(--color-secondary)'}`,
+        borderLeft: `4px solid ${done ? 'var(--color-primary)' : 'var(--color-secondary)'}`,
       }}
     >
       <span
         className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
         style={{
-          background: done ? 'rgba(34,197,94,0.15)' : 'var(--color-secondary-light)',
-          color: done ? '#22C55E' : 'var(--color-secondary)',
+          background: done ? 'var(--color-primary-light)' : 'var(--color-secondary-light)',
+          color: done ? 'var(--color-primary)' : 'var(--color-secondary)',
         }}
       >
         {/* The dumbbell only moves while the session is still outstanding.

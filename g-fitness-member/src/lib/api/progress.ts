@@ -163,11 +163,28 @@ export function bmi(weightKg: number | null, heightCm: number | null): number | 
   return Number((weightKg / (m * m)).toFixed(1));
 }
 
+/**
+ * The BMI band, with **no colour verdict**.
+ *
+ * This returned `#22c55e` for "Normal" and `#ef4444` for "Obese" — a traffic
+ * light, in an app whose design system has no greens or reds, rating a member's
+ * body on the Progress tab.
+ *
+ * Re-toning it to violet and amber removed the palette violation and kept the
+ * judgement, which was the worse half. The card carrying this badge already
+ * says, in as many words, that BMI *"doesn't distinguish muscle from fat"* — so
+ * flashing a warning colour at a member who has been lifting for a year
+ * contradicts the app's own caption. It is a number and a band, and the band
+ * name says everything the colour was saying.
+ *
+ * The label is unchanged. Nothing is hidden; it just stops being scored.
+ */
 export function bmiBand(value: number): { label: string; color: string } {
-  if (value < 18.5) return { label: 'Underweight', color: 'var(--color-secondary)' };
-  if (value < 25) return { label: 'Normal', color: '#22c55e' };
-  if (value < 30) return { label: 'Overweight', color: 'var(--color-secondary)' };
-  return { label: 'Obese', color: '#ef4444' };
+  const color = 'var(--color-text-secondary)';
+  if (value < 18.5) return { label: 'Underweight', color };
+  if (value < 25) return { label: 'Normal', color };
+  if (value < 30) return { label: 'Overweight', color };
+  return { label: 'Obese', color };
 }
 
 /**

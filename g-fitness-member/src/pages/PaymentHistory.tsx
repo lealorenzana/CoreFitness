@@ -29,13 +29,13 @@ import type { PaymentRow, PaymentStatus } from '../types/db';
 const STATUS_ICON: Record<PaymentStatus, React.ReactNode> = {
   completed: <CheckCircle size={14} style={{ color: 'var(--color-primary)' }} />,
   pending: <Clock size={14} style={{ color: 'var(--color-secondary)' }} />,
-  failed: <XCircle size={14} style={{ color: '#ef4444' }} />,
+  failed: <XCircle size={14} style={{ color: 'var(--color-secondary)' }} />,
 };
 
 const STATUS_STYLE: Record<PaymentStatus, { background: string; color: string }> = {
   completed: { background: 'var(--color-primary-light)', color: 'var(--color-primary)' },
   pending: { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' },
-  failed: { background: 'rgba(239,68,68,0.15)', color: '#ef4444' },
+  failed: { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' },
 };
 
 export default function PaymentHistory() {

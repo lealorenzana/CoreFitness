@@ -321,7 +321,7 @@ export default function Resources() {
                       {r.is_active ? <><EyeOff size={12} className="mr-1" /> Hide</> : <><Eye size={12} className="mr-1" /> Show</>}
                     </Button>
                     <Button variant="ghost" size="sm" className="!text-[10px]" onClick={() => setToDelete(r)}>
-                      <Trash2 size={12} style={{ color: '#ef4444' }} />
+                      <Trash2 size={12} style={{ color: 'var(--color-secondary)' }} />
                     </Button>
                   </div>
                 </div>

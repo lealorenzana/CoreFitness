@@ -666,7 +666,7 @@ export default function Members() {
                       {!showArchived && m.membership && (
                         m.membershipStatus === 'frozen' ? (
                           <button onClick={() => handleUnfreeze(m)} title="Resume membership — frozen days are added back to the expiry"
-                            className="p-1.5 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                            className="p-1.5 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                             <Play size={11} />
                           </button>
                         ) : m.membershipStatus === 'active' ? (
@@ -684,7 +684,7 @@ export default function Members() {
                               <Pause size={11} />
                             </button>
                             <button onClick={() => setToCancel(m)} title="Cancel membership"
-                              className="p-1.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                              className="p-1.5 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                               <Ban size={11} />
                             </button>
                           </>
@@ -1288,10 +1288,10 @@ function PendingRegistrationsList({
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => handleApprove(reg)} className="p-2 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }} title="Approve">
+            <button onClick={() => handleApprove(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }} title="Approve">
               <CheckCircle size={16} />
             </button>
-            <button onClick={() => handleReject(reg)} className="p-2 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }} title="Reject">
+            <button onClick={() => handleReject(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }} title="Reject">
               <XCircle size={16} />
             </button>
           </div>

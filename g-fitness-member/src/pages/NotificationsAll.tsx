@@ -348,7 +348,7 @@ export default function NotificationsAll() {
             <button
               onClick={() => setConfirmDelete(true)}
               className="w-11 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
+              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
               aria-label={`Delete ${selected.size} notifications`}
             >
               <Trash2 size={15} />
@@ -378,7 +378,7 @@ export default function NotificationsAll() {
             >
               <div className="flex items-start gap-3">
                 <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>
+                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                   <Trash2 size={18} />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -407,7 +407,7 @@ export default function NotificationsAll() {
                 <button
                   onClick={bulkDelete}
                   className="flex-1 h-11 rounded-full text-sm font-bold text-white"
-                  style={{ background: '#EF4444' }}
+                  style={{ background: 'var(--color-secondary)' }}
                 >
                   Delete
                 </button>

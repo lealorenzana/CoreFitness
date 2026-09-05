@@ -25,8 +25,8 @@ import type { BookingStatus } from '../../types/db';
 
 const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; label: string }> = {
   pending: { bg: 'rgba(245,158,11,0.15)', color: 'var(--color-secondary)', label: 'Pending' },
-  approved: { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', label: 'Approved' },
-  rejected: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Rejected' },
+  approved: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Approved' },
+  rejected: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)', label: 'Rejected' },
   cancelled: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Cancelled' },
 };
 
@@ -101,8 +101,8 @@ export default function TrainerBookings() {
       </div>
 
       {error && (
-        <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p>
+        <div className="rounded-xl p-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>{error}</p>
         </div>
       )}
 

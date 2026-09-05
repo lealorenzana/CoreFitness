@@ -258,21 +258,21 @@ export default function TrainerMembers() {
       </div>
 
       {error && (
-        <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p>
+        <div className="rounded-xl p-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>{error}</p>
         </div>
       )}
 
       {notice && (
         <div className="rounded-xl p-3 flex items-start gap-2"
           style={notice.ok
-            ? { background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }
-            : { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          <p className="text-xs flex-1" style={{ color: notice.ok ? '#22c55e' : '#ef4444' }}>
+            ? { background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }
+            : { background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+          <p className="text-xs flex-1" style={{ color: notice.ok ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
             {notice.text}
           </p>
           {!notice.ok && (
-            <button onClick={() => setNotice(null)} style={{ color: '#ef4444' }}>
+            <button onClick={() => setNotice(null)} style={{ color: 'var(--color-secondary)' }}>
               <X size={12} />
             </button>
           )}
@@ -307,8 +307,8 @@ export default function TrainerMembers() {
               <div className="flex items-center gap-1.5">
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
-                    background: member.membershipStatus === 'active' ? 'rgba(34,197,94,0.15)' : 'var(--color-primary-light)',
-                    color: member.membershipStatus === 'active' ? '#22c55e' : 'var(--color-primary)',
+                    background: member.membershipStatus === 'active' ? 'var(--color-primary-light)' : 'var(--color-primary-light)',
+                    color: member.membershipStatus === 'active' ? 'var(--color-primary)' : 'var(--color-primary)',
                   }}>
                   {member.membershipStatus}
                 </span>

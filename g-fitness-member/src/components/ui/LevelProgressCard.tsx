@@ -43,7 +43,7 @@ const CACHE_KEY = 'member:level-progress';
  */
 
 const RANK: Record<TrainingLevel, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-const MET = '#22C55E';
+const MET = 'var(--color-primary)';
 
 function Requirement({
   label, value, target, animate,
