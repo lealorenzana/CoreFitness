@@ -16,6 +16,8 @@ import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { updateProfile } from '../lib/api/profiles';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
+import ImageField from '../components/ui/ImageField';
+import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
 import {
   getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
   setStaffStatus,
@@ -96,6 +98,9 @@ export default function Settings() {
   const [newActivity, setNewActivity] = useState('');
   const [gymForm, setGymForm] = useState({
     gym_name: '', address: '', phone: '', email: '', opening_time: '', closing_time: '',
+    // Branding (0067). Blank means "not chosen", which renders the bundled
+    // default — never a blank space where a logo should be.
+    short_name: '', tagline: '', logo_url: '',
   });
 
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -137,6 +142,9 @@ export default function Settings() {
           email: gym.email ?? '',
           opening_time: gym.opening_time ?? '',
           closing_time: gym.closing_time ?? '',
+          short_name: gym.short_name ?? '',
+          tagline: gym.tagline ?? '',
+          logo_url: gym.logo_url ?? '',
         });
         setActivityOptions(gym.activity_options ?? []);
         setGymAudit({ at: gym.updated_at, by: gym.updated_by });
@@ -188,7 +196,20 @@ export default function Settings() {
         email: gymForm.email.trim() || null,
         opening_time: gymForm.opening_time.trim() || null,
         closing_time: gymForm.closing_time.trim() || null,
+        short_name: gymForm.short_name.trim() || null,
+        tagline: gymForm.tagline.trim() || null,
+        logo_url: gymForm.logo_url.trim() || null,
         activity_options: activityOptions,
+      });
+      // Repaint the sidebar and header now rather than on the next full reload.
+      // Saving a new gym name and watching the old one stay in the corner is
+      // how an admin concludes the save did not work.
+      publishBranding({
+        gym_name: gymForm.gym_name.trim(),
+        short_name: gymForm.short_name.trim() || null,
+        tagline: gymForm.tagline.trim() || null,
+        logo_url: gymForm.logo_url.trim() || null,
+        address: gymForm.address.trim() || null,
       });
       showToast('Gym information saved', 'success');
     } catch (err) {
@@ -395,6 +416,47 @@ export default function Settings() {
                   <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
                     Shared across the system — not just this browser.
                   </p>
+                  {/* ── Branding ─────────────────────────────────────────
+                      The sidebar hardcoded "CORE FITNESS", a tagline and a logo
+                      file, and the header hardcoded the name a second time.
+                      `gym_name` had been editable here since 0013 and changed
+                      nothing on screen. All four are one source now. */}
+                  <div className="pt-4 mt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <h3 className="text-xs font-bold text-white">Branding</h3>
+                    <p className="text-[10px] mt-0.5 mb-3" style={{ color: TEXT_MUTED }}>
+                      What the sidebar and the header show. Leave anything blank
+                      to use the built-in default.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field
+                        label="Short name"
+                        value={gymForm.short_name}
+                        onChange={(short_name) => setGymForm({ ...gymForm, short_name })}
+                        placeholder={DEFAULT_BRANDING.shortName}
+                        hint="Shown on the collapsed menu. Blank derives it from the gym name."
+                      />
+                      <Field
+                        label="Tagline"
+                        value={gymForm.tagline}
+                        onChange={(tagline) => setGymForm({ ...gymForm, tagline })}
+                        placeholder={DEFAULT_BRANDING.tagline ?? ''}
+                        hint="The small line under the name. Blank hides it."
+                      />
+                    </div>
+
+                    <div className="mt-3" style={{ maxWidth: 260 }}>
+                      <ImageField
+                        value={gymForm.logo_url}
+                        onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })}
+                        kind="resources"
+                        label="Logo"
+                        aspect={1}
+                        hint="Square works best — it renders in a circle. Blank uses the built-in logo."
+                      />
+                    </div>
+                  </div>
+
                   {/* `updated_at` / `updated_by` have been recorded since 0013 and
                       never shown. Who last changed the gym's phone number is
                       exactly the question you ask when it turns out to be wrong. */}

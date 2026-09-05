@@ -12,6 +12,11 @@ export interface GymSettingsRow {
   /** Check-in activity choices, editable by the gym (0018). Pre-defined at the
    *  point of check-in so the data aggregates, but the list is the gym's own. */
   activity_options: string[];
+  /** Branding (0067). All three NULL until an admin sets them; the shell then
+   *  renders its bundled defaults rather than a blank corner. */
+  logo_url: string | null;
+  short_name: string | null;
+  tagline: string | null;
   updated_at: string;
   updated_by: string | null;
 }

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
+import { useBranding, DEFAULT_BRANDING } from '../../hooks/useBranding';
 import { supabase } from '../../lib/supabaseClient';
 
 const BG           = 'var(--color-bg)';
@@ -145,6 +146,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(true);
+  const brand = useBranding();
 
   // Hide admin-only destinations from front-desk staff. Cosmetic only — the real
   // enforcement is ProtectedRoute's adminOnly guard plus RLS. Defaults to true so
@@ -227,14 +229,21 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           style={{ width: ICON_RAIL_W, background: BG, borderRight: `1px solid ${BORDER}` }}
         >
           {/* Logo */}
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 cursor-pointer"
-            style={{ background: PRIMARY }}
+          {/* The rail showed a generic dumbbell for every gym. It shows this
+              gym's logo now, and its initials when there is no logo — never a
+              stand-in mark belonging to nobody. */}
+          <button
+            className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 overflow-hidden flex-shrink-0"
+            style={{ background: brand.logoUrl === DEFAULT_BRANDING.logoUrl ? PRIMARY : 'var(--color-surface-high)' }}
             onClick={onToggle}
-            data-tip="Expand"
+            data-tip={`${brand.name} — expand the menu`}
           >
-            <Dumbbell size={16} className="text-white" />
-          </div>
+            {brand.logoUrl === DEFAULT_BRANDING.logoUrl ? (
+              <span className="text-white font-bold text-[11px]">{brand.shortName}</span>
+            ) : (
+              <img src={brand.logoUrl} alt="" className="w-full h-full object-cover" />
+            )}
+          </button>
 
           {/* One icon per entry. A group's icon opens its first page — the rail
               has no room to explain a folder, and landing on the section's main
@@ -299,11 +308,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         >
         {/* Brand header with logo */}
         <div className="px-4 py-4 flex items-center gap-3 flex-shrink-0">
-          <img src="/core-fitness-logo.png" alt="Core Fitness"
-            className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          {/* The gym's own name and logo (0067). These were literals — and
+              the header carried a second copy of the name that could disagree
+              with this one. `truncate`, not `whitespace-nowrap`: a longer gym
+              name should be cut off, not push the nav sideways. */}
+          <img src={brand.logoUrl} alt=""
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+            style={{ background: 'var(--color-surface-high)' }} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white uppercase tracking-wide whitespace-nowrap">CORE FITNESS</p>
-            <p className="text-[9px] uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: TEXT_MUTED }}>ADMIN PANEL</p>
+            <p className="text-sm font-bold text-white uppercase tracking-wide truncate"
+              data-tip={brand.name}>
+              {brand.name}
+            </p>
+            {brand.tagline && (
+              <p className="text-[9px] uppercase tracking-[0.15em] truncate" style={{ color: TEXT_MUTED }}>
+                {brand.tagline}
+              </p>
+            )}
           </div>
         </div>
         {/* Collapse button — separate row */}

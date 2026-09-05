@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
 import Pagination from '../components/ui/Pagination';
 import RecordPaymentModal, { type RecordPaymentInput } from '../components/ui/RecordPaymentModal';
 import ViewReceiptModal from '../components/ui/ViewReceiptModal';
@@ -35,6 +36,9 @@ export interface MemberPlanInfo {
 
 interface MemberGroup {
   memberId: string; memberName: string;
+  /** From `listMembers()`, which has always carried it — the card drew its own
+   *  initials circle and never asked. NULL is normal and falls back to them. */
+  photoUrl: string | null;
   payments: Payment[];
   totalPaid: number;
   lastPayment: string;
@@ -53,6 +57,7 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   // memberId -> the member's current plan, for the Record Payment form
   const [memberMembership, setMemberMembership] = useState<Record<string, MemberPlanInfo>>({});
+  const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
 
   const loadData = async () => {
     setLoading(true);
@@ -64,7 +69,12 @@ export default function Payments() {
       ]);
 
       const nameById: Record<string, string> = {};
-      for (const m of members) nameById[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
+      const photoById: Record<string, string | null> = {};
+      for (const m of members) {
+        nameById[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
+        photoById[m.profile.id] = m.profile.photo_url ?? null;
+      }
+      setMemberPhotos(photoById);
 
       const planByMembershipId: Record<string, string> = {};
       const latestMembershipByMember: Record<string, MemberPlanInfo> = {};
@@ -125,7 +135,8 @@ export default function Payments() {
       const filtered = filterStatus === 'all' || p.status === filterStatus;
       if (!filtered) return acc;
       if (!acc[p.memberId]) {
-        acc[p.memberId] = { memberId: p.memberId, memberName: p.memberName, payments: [], totalPaid: 0, lastPayment: p.date };
+        acc[p.memberId] = { memberId: p.memberId, memberName: p.memberName,
+          photoUrl: memberPhotos[p.memberId] ?? null, payments: [], totalPaid: 0, lastPayment: p.date };
       }
       acc[p.memberId].payments.push(p);
       if (p.status === 'completed') acc[p.memberId].totalPaid += p.amount;
@@ -278,10 +289,8 @@ export default function Payments() {
                     onClick={() => setExpandedMember(group.memberId)}
                     title={`Open ${group.memberName}'s payments`}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-[11px] flex-shrink-0"
-                        style={{ background: 'var(--color-secondary)' }}>
-                        {group.memberName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                      </div>
+                      <Avatar name={group.memberName} photoUrl={group.photoUrl}
+                        size={36} tone="secondary" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] text-white font-semibold truncate">{group.memberName}</p>
                         <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Avatar from '../components/ui/Avatar';
 import Pagination from '../components/ui/Pagination';
 import QRScanner from '../components/ui/QRScanner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -591,10 +592,8 @@ export default function Attendance() {
                 <div key={member.profile.id} className="flex items-center justify-between p-2 rounded-lg"
                   style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-black font-bold text-[8px] flex-shrink-0"
-                      style={{ background: 'var(--color-secondary)' }}>
-                      {member.profile.first_name[0]}{member.profile.last_name[0]}
-                    </div>
+                    <Avatar name={`${member.profile.first_name} ${member.profile.last_name}`}
+                      photoUrl={member.profile.photo_url} size={24} tone="secondary" />
                     <div className="min-w-0">
                       <p className="text-[10px] text-white font-semibold truncate">{member.profile.first_name} {member.profile.last_name}</p>
                       <p className="text-[8px] truncate" style={{ color: 'var(--color-text-muted)' }}>{member.profile.email}</p>

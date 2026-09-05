@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBranding } from '../../hooks/useBranding';
 import { useState, useEffect } from 'react';
-import { useGymContext } from '../../hooks/useGymContext';
 import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin } from 'lucide-react';
 import { dashboardService, type HeaderAlert } from '../../services/dashboardService';
 import { getMyProfile } from '../../lib/api/profiles';
@@ -25,7 +25,10 @@ const ICONS: Record<HeaderAlert['kind'], typeof Bell> = {
 };
 
 export default function Header() {
-  const { selectedGym } = useGymContext();
+  // `useGymContext` supplied a hardcoded gym name and location from a fixture.
+  // The real ones live in `gym_settings` (0013/0067) and are read once by the
+  // shell, so the header and the sidebar can no longer disagree.
+  const brand = useBranding();
   const [showNotifications, setShowNotifications] = useState(false);
   const [alerts, setAlerts] = useState<HeaderAlert[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -73,11 +76,16 @@ export default function Header() {
       style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}
     >
       <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 min-w-0">
-        <div className="hidden lg:block">
-          <p className="text-sm font-semibold text-white">Core Fitness</p>
-          <p className="text-xs flex items-center gap-1" style={{ color: TEXT_MUTED }}>
-            <MapPin size={11} /> {selectedGym.location}
-          </p>
+        {/* One source for the name (0067). This was a literal that could
+            disagree with the sidebar's literal, and the location came from a
+            `selectedGym` fixture rather than from the gym's own settings. */}
+        <div className="hidden lg:block min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{brand.name}</p>
+          {brand.address && (
+            <p className="text-xs flex items-center gap-1 truncate" style={{ color: TEXT_MUTED }}>
+              <MapPin size={11} className="flex-shrink-0" /> {brand.address}
+            </p>
+          )}
         </div>
       </motion.div>
 
