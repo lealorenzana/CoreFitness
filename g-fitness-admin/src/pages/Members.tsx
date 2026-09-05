@@ -88,6 +88,26 @@ const MEMBERSHIP_BADGE: Record<MembershipStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+/**
+ * What the membership badge actually says.
+ *
+ * The cell used to render the raw enum, so this column showed a lowercase
+ * **"pending"** — three characters from the word used by the "Pending" button
+ * in the header, which opens something else entirely: the *registration* queue.
+ * One means "this member has not paid yet", the other means "this person cannot
+ * log in until you approve them", and the roster gave them the same word.
+ *
+ * `MEMBERSHIP_BADGE` above is the Badge *variant* (its colour). This is the
+ * text, and it is deliberately not the enum.
+ */
+const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
+  active: 'Active',
+  pending: 'Awaiting payment',
+  expired: 'Expired',
+  frozen: 'Frozen',
+  cancelled: 'Cancelled',
+};
+
 /** Days of remaining membership below which the roster starts warning. */
 const EXPIRING_SOON_DAYS = 7;
 
@@ -262,6 +282,10 @@ export default function Members() {
     { label: 'Active', value: members.filter((m) => m.membershipStatus === 'active').length },
     { label: 'Expiring ≤7d', value: expiringSoon },
     { label: 'Pending Payment', value: members.filter((m) => m.membershipStatus === 'pending').length },
+    // The one status that stops somebody using the app at all. It was loaded on
+    // every row and shown nowhere, so an account waiting on approval was
+    // indistinguishable from an active one at a glance.
+    { label: 'Awaiting approval', value: members.filter((m) => m.accountStatus === 'pending_approval').length },
     { label: 'Expired', value: members.filter((m) => m.membershipStatus === 'expired').length },
     { label: 'Suspended', value: members.filter((m) => m.accountStatus === 'suspended').length },
   ];
@@ -281,6 +305,36 @@ export default function Members() {
     showToast(`${toFreeze.fullName}'s membership is frozen`, 'success');
     setToFreeze(null);
     await load();
+  };
+
+  /**
+   * Let a member who is already on the roster sign in.
+   *
+   * Distinct from `approveMemberRegistration`, which the Pending panel uses:
+   * that one works off the `pending_registrations` queue and also copies the
+   * intake details the member typed at sign-up onto their row. This is for a
+   * member whose row already exists — added at the desk, or approved through
+   * the queue before and later suspended — where the only thing standing
+   * between them and the app is `profiles.status`.
+   *
+   * They are told. An account that quietly starts working is one the member
+   * finds out about by trying again days later.
+   */
+  const handleApprove = async (m: MemberRow) => {
+    try {
+      await setMemberStatus(m.id, 'active');
+      showToast(`${m.fullName} can now sign in`, 'success');
+      notifyUser({
+        userId: m.id,
+        type: 'membership',
+        title: 'Your account is approved',
+        message: 'You can sign in to the Core Fitness app now.',
+        actionUrl: '/member/home',
+      }).catch(() => undefined);
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not approve that account', 'error');
+    }
   };
 
   const handleUnfreeze = async (m: MemberRow) => {
@@ -524,10 +578,30 @@ export default function Members() {
                       <Avatar name={m.fullName} photoUrl={m.photoUrl} size={32} />
                       <div className="min-w-0">
                         <p className="text-sm text-white font-semibold leading-tight truncate">{m.fullName}</p>
-                        <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                          {m.experienceLevel || 'no level set'}
-                          {m.accountStatus !== 'active' && ` · ${m.accountStatus}`}
-                        </p>
+                        {/* Under the name, not beside it: a badge on the same
+                            line stole enough width to truncate "Conrad Connie"
+                            to "Conrad…", and the name is the column.
+
+                            Said in words either way. This used to render as a
+                            lowercase enum appended to the experience level —
+                            "beginner · pending_approval" — where the one status
+                            that stops somebody opening the app read as a
+                            footnote about their training. */}
+                        {m.accountStatus === 'pending_approval' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold"
+                            style={{ color: 'var(--color-secondary)' }}>
+                            <Clock size={9} /> Awaiting approval
+                          </span>
+                        ) : m.accountStatus === 'suspended' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold"
+                            style={{ color: 'var(--color-secondary)' }}>
+                            <Ban size={9} /> Suspended
+                          </span>
+                        ) : (
+                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+                            {m.experienceLevel || 'no level set'}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -540,7 +614,7 @@ export default function Members() {
                   <td className="py-2.5 px-3"><p className="text-xs text-white truncate">{m.planName}</p></td>
                   <td className="py-2.5 px-3">
                     {m.membershipStatus ? (
-                      <Badge variant={MEMBERSHIP_BADGE[m.membershipStatus]}>{m.membershipStatus}</Badge>
+                      <Badge variant={MEMBERSHIP_BADGE[m.membershipStatus]}>{MEMBERSHIP_LABEL[m.membershipStatus]}</Badge>
                     ) : (
                       <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>none</span>
                     )}
@@ -566,6 +640,28 @@ export default function Members() {
                     )}
                   </td>
                   <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                    {/*
+                      Approve sits OUTSIDE the hover group on purpose.
+
+                      Every other action here is a maintenance job you go looking
+                      for, so revealing them on hover keeps the roster quiet.
+                      Approval is the opposite: it is the one thing blocking a
+                      real person from using the app they signed up for, and it
+                      was reachable only through a modal that reads a *different*
+                      table — so a member sitting in the roster at
+                      `pending_approval` could not be approved from this screen
+                      at all. It is now a labelled button on their row.
+                    */}
+                    {!showArchived && m.accountStatus === 'pending_approval' && (
+                      <button
+                        onClick={() => handleApprove(m)}
+                        title={`Let ${m.firstName} sign in`}
+                        className="mb-1 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 whitespace-nowrap"
+                        style={{ background: 'var(--color-secondary)', color: '#000' }}
+                      >
+                        <UserCheck size={11} /> Approve
+                      </button>
+                    )}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {!showArchived && m.membership && (
                         m.membershipStatus === 'frozen' ? (
