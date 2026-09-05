@@ -9,7 +9,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
-import Card from '../components/ui/Card';
 import DetailSheet from '../components/ui/DetailSheet';
 import { formatCurrency } from '../utils/formatters';
 import {
@@ -45,58 +44,6 @@ function FilterSelect({ value, options, onChange }: {
       </select>
       <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: TEXT_MUTED }} />
     </div>
-  );
-}
-
-// ── KPI Card ────────────────────────────────────────────────────────────────
-/**
- * One headline figure.
- *
- * Laid out on one line rather than stacked: the icon sat above the number in a
- * 100px-tall card, and four of those plus a 145px banner is most of a laptop
- * screen spent before the first chart. Side by side it is 62px and reads the
- * same.
- *
- * `delta` is still supported and still unused — no invented growth badges. A
- * "+12%" beside a real number is worse than no badge, because it looks
- * authoritative while being made up.
- */
-function KpiCard({ label, value, delta, icon: Icon, tooltip, onClick }: {
-  label: string; value: string | number; delta?: string; icon: any;
-  tooltip?: string; onClick?: () => void;
-}) {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      onClick={onClick}
-      data-tip={tooltip}
-      className="w-full text-left rounded-xl p-3 flex items-center gap-2.5 group transition-colors"
-      style={{
-        background: SURFACE, border: `1px solid ${BORDER}`,
-        boxShadow: 'var(--shadow-card)', cursor: onClick ? 'pointer' : 'default',
-      }}
-    >
-      <span className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-primary-light)' }}>
-        <Icon size={16} style={{ color: VIOLET }} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-lg font-bold text-white tracking-tight tabular-nums leading-tight truncate">
-          {value}
-        </span>
-        <span className="block text-[10px] truncate" style={{ color: TEXT_MUTED }}>{label}</span>
-      </span>
-      {delta && (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0"
-          style={{ background: 'var(--color-secondary-light)', color: YELLOW }}>
-          <ArrowUpRight size={9} /> {delta}
-        </span>
-      )}
-      {onClick && (
-        <ChevronRight size={13} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-          style={{ color: TEXT_MUTED }} />
-      )}
-    </Tag>
   );
 }
 
@@ -270,6 +217,28 @@ export default function Dashboard() {
   const busiestCell = heatmap.reduce<HeatmapCell | null>(
     (best, c) => (best === null || c.visits > best.visits ? c : best), null);
 
+  /**
+   * Visits per hour bucket, summed across the week.
+   *
+   * The heatmap is day x hour; this collapses the day axis so the tile can draw
+   * the shape of an ordinary day in the space a sparkline would have used.
+   * Bucket order comes from the data, not from a hardcoded list of hours —
+   * `getAttendanceHeatmap` decides the buckets and this must not disagree.
+   */
+  const hourTotals = (() => {
+    const order: string[] = [];
+    const sums = new Map<string, number>();
+    for (const c of heatmap) {
+      if (!sums.has(c.hour)) { order.push(c.hour); sums.set(c.hour, 0); }
+      sums.set(c.hour, (sums.get(c.hour) ?? 0) + c.visits);
+    }
+    return order.map((h) => sums.get(h) ?? 0);
+  })();
+  const peakHour = Math.max(0, ...hourTotals);
+
+  /** Bars or a line — the same twelve months either way. */
+  const [chartMode, setChartMode] = useState<'bars' | 'trend'>('bars');
+
   const PANEL_TITLE: Record<string, string> = {
     members: 'New members', attendance: 'Attendance',
     trend: '12-month revenue trend', heatmap: 'Member activity heatmap',
@@ -277,140 +246,143 @@ export default function Dashboard() {
   };
 
   return (
-    <div
-      /* Exactly the height <main> gives it, so the page itself never scrolls.
-         `h-full`, not `calc(100vh - something)`: the something is the header
-         plus main's padding plus the route wrapper's margins, and hard-coding
-         a guess at that was wrong by 8px at every viewport size — which is all
-         it takes to put a scrollbar back on a screen built not to have one.
-         100% asks the parent, and the parent knows. */
-      className="flex gap-4 overflow-hidden h-full"
-    >
-      {/* ── LEFT: Main content ─────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-3">
-        {/* ── HEADER ────────────────────────────────────────────────────────
-            The purple banner was 145px tall and carried a greeting, the date
-            and two buttons. The greeting and the date are one line; the buttons
-            keep their place. That is ~100px given back to the charts. */}
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between gap-4 flex-shrink-0">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-white">Dashboard</h1>
-            <p className="text-[11px]" style={{ color: TEXT_MUTED }}>
-              {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {pendingBookings > 0 && (
-              <button
-                onClick={() => navigate('/bookings')}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg font-semibold text-[11px]"
-                style={{ background: 'var(--color-secondary-light)', color: YELLOW }}
-              >
-                {pendingBookings} awaiting approval <ChevronRight size={12} />
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/revenue')}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg font-semibold text-[11px] text-black"
-              style={{ background: YELLOW }}
-            >
-              Reports <ArrowUpRight size={12} />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* ── KPI ROW ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-2.5 flex-shrink-0">
-          {kpis.map((k, i) => (
-            <motion.div key={k.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}>
-              <KpiCard {...k} onClick={k.to ? () => navigate(k.to as string) : undefined} />
-            </motion.div>
-          ))}
+    <div className="h-full flex flex-col gap-3 overflow-hidden">
+      {/* ── HEADER ──────────────────────────────────────────────────────────
+          One line. The purple banner this replaced was 145px tall and carried
+          a greeting, a date and two buttons; only two of those were facts. */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between gap-4 flex-shrink-0">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <p className="text-[11px]" style={{ color: TEXT_MUTED }}>
+            {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {pendingBookings > 0 && (
+            <button
+              onClick={() => navigate('/bookings')}
+              data-tip="Class and personal-training requests waiting for a decision"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg font-semibold text-[11px]"
+              style={{ background: 'var(--color-secondary-light)', color: YELLOW }}
+            >
+              {pendingBookings} awaiting approval <ChevronRight size={12} />
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/revenue')}
+            data-tip="Full revenue reports, by month and by plan"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg font-semibold text-[11px] text-black"
+            style={{ background: YELLOW }}
+          >
+            Reports <ArrowUpRight size={12} />
+          </button>
+        </div>
+      </motion.div>
 
-        {/* ── REVENUE — the one chart that keeps its full size ─────────────
-            `min-h-0` matters: without it a flex child refuses to shrink below
-            its content, the column grows past the viewport, and the page you
-            just made unscrollable gets a scrollbar again. */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          className="flex-1 min-h-0">
-          {/* The column layout is an inline style, not `className="flex flex-col"`.
-              Card runs its classes through `cn()` (tailwind-merge), which ate
-              the bare `flex` and kept `flex-col` — so the card stayed
-              `display: block`, `flex-1` on the chart wrapper meant nothing, and
-              the chart rendered at zero height: a full-size card with nothing
-              in it. Inline styles do not go through the merge. */}
-          <Card className="!p-4 h-full"
-            style={{ display: 'flex', flexDirection: 'column' }}
-            data-tip="Monthly revenue breakdown showing income per month for the selected year">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <div>
+      {/* ── THE BENTO ───────────────────────────────────────────────────────
+          Twelve columns, six rows, filling exactly the height left over. Every
+          tile is a real card with real content; the sizes differ because the
+          things differ, which is the whole point of the arrangement.
+
+          It replaced a layout with one 500px chart in the middle and a rail of
+          small cards down the side — that shape says "one of these matters and
+          the rest are footnotes", which is not true of a gym's morning.
+
+          The row track is `76px` then five equal rows: the KPI strip is a fixed
+          height because a number needs 76px whatever the screen, while the
+          tiles below share whatever is left. `minmax(0, 1fr)` on both axes, not
+          `1fr` — a bare `1fr` floors at the content's min size, so one long
+          trainer name would push a tile past the viewport and put back the
+          scrollbar this layout exists to avoid. */}
+      <div
+        className="flex-1 min-h-0 grid gap-3"
+        style={{
+          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+          gridTemplateRows: '76px repeat(5, minmax(0, 1fr))',
+        }}
+      >
+        {/* Row 1 — the four figures, three columns each. */}
+        {kpis.map((k, i) => (
+          <Tile key={k.label} col={`${i * 3 + 1} / ${i * 3 + 4}`} row="1 / 2"
+            onClick={k.to ? () => navigate(k.to as string) : undefined}
+            tip={k.tooltip}>
+            <div className="h-full flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-primary-light)' }}>
+                <k.icon size={16} style={{ color: VIOLET }} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-bold text-white tabular-nums leading-tight truncate">
+                  {k.value}
+                </span>
+                <span className="block text-[10px] truncate" style={{ color: TEXT_MUTED }}>{k.label}</span>
+              </span>
+              <ChevronRight size={13} className="flex-shrink-0" style={{ color: TEXT_MUTED }} />
+            </div>
+          </Tile>
+        ))}
+
+        {/* Rows 2–4, left half — revenue, the one figure asked for daily.
+            The bar/line switch is where the old "12-Month Revenue Trend" panel
+            went: it plotted `revenueData`, the identical series this tile
+            already draws. Two charts of one array is not two facts. */}
+        <Tile col="1 / 7" row="2 / 5">
+          <div className="h-full flex flex-col">
+            <div className="flex items-start justify-between gap-2 mb-2 flex-shrink-0">
+              <div className="min-w-0">
                 <h3 className="text-xs font-semibold text-white">Revenue</h3>
                 <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
                   {formatCurrency(yearRevenue)} across {revenueYear}
                 </p>
               </div>
-              <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex p-0.5 rounded-lg" style={{ background: 'var(--color-surface-high)' }}>
+                  {(['bars', 'trend'] as const).map((m) => (
+                    <button key={m} onClick={() => setChartMode(m)}
+                      data-tip={m === 'bars' ? 'Each month as a bar' : 'The same months as a line'}
+                      className="px-2 h-6 rounded-md text-[10px] font-semibold capitalize"
+                      style={{
+                        background: chartMode === m ? VIOLET : 'transparent',
+                        color: chartMode === m ? '#fff' : 'var(--color-text-secondary)',
+                      }}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
+              </div>
             </div>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
-                  <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
-                    cursor={{ fill: 'rgba(124,58,237,0.08)' }}
-                  />
-                  <Bar dataKey="revenue" fill={VIOLET} radius={[8, 8, 0, 0]} maxBarSize={42} />
-                </BarChart>
+                {chartMode === 'bars' ? (
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                    <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} width={44} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
+                      cursor={{ fill: 'rgba(124,58,237,0.08)' }}
+                    />
+                    <Bar dataKey="revenue" fill={VIOLET} radius={[8, 8, 0, 0]} maxBarSize={38} />
+                  </BarChart>
+                ) : (
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
+                    <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} width={44} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }} />
+                    <Line type="monotone" dataKey="revenue" stroke={YELLOW} strokeWidth={2.5} dot={{ fill: YELLOW, r: 3 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
-          </Card>
-        </motion.div>
+          </div>
+        </Tile>
 
-        {/* ── THE OTHER THREE, AS CARDS ───────────────────────────────────────
-            Each shows the figure you would have scrolled down to read, plus a
-            sparkline of the same series. Clicking opens the full chart. */}
-        <div className="grid grid-cols-4 gap-2.5 flex-shrink-0">
-          <MiniCard
-            label="New members" value={String(totalNewMembers)} sub={`in ${memberYear}`}
-            series={memberData.map((m) => m.newMembers)} accent={YELLOW}
-            onClick={() => setPanel('members')}
-          />
-          <MiniCard
-            label="Attendance" value={String(totalAttendance)}
-            sub={attendanceScope === 'weekly' ? 'this week' : 'this month'}
-            series={attendanceData.map((a) => a.count)} accent={YELLOW}
-            onClick={() => setPanel('attendance')}
-          />
-          <MiniCard
-            label="12-month trend" value={formatCurrency(yearRevenue)} sub={`${revenueYear} total`}
-            series={revenueData.map((r) => r.revenue)} accent={VIOLET}
-            onClick={() => setPanel('trend')}
-          />
-          <MiniCard
-            label="Busiest hour"
-            /* NULL until the heatmap loads, and it says so rather than showing
-               a plausible "6am" nobody's visits produced. */
-            value={busiestCell && busiestCell.visits > 0 ? busiestCell.hour : '—'}
-            sub={busiestCell && busiestCell.visits > 0 ? `${busiestCell.day} · ${busiestCell.visits} visits` : 'no visits yet'}
-            series={[]} accent={VIOLET}
-            onClick={() => setPanel('heatmap')}
-          />
-        </div>
-      </div>
-
-      {/* ── RIGHT: Statistics rail ─────────────────────────────────────────── */}
-      <aside className="hidden xl:flex w-[264px] flex-shrink-0 flex-col gap-3">
-        {/* The greeting card is gone. It was 120px of "Good Morning, Admin 🔥 /
-            Continue managing your gym!" — no number, no link, no state. The
-            greeting now lives in the header line, where it costs nothing. */}
-        <Card className="!p-3.5 flex-shrink-0" data-tip="Key fitness statistics — average BMI, weight changes, total workouts, and active goals across all members" header={
-          <h3 className="text-xs font-semibold text-white">Member statistics</h3>
-        }>
+        {/* Rows 2–4, middle — the member-body figures. */}
+        <Tile col="7 / 10" row="2 / 5">
+          <h3 className="text-xs font-semibold text-white mb-2">Member statistics</h3>
           <div className="space-y-2.5">
             <ProgressRing
               value={progressKpis ? Math.min(100, (progressKpis.avgBmi / 30) * 100) : 0}
@@ -443,40 +415,141 @@ export default function Dashboard() {
               format={() => progressKpis ? `${progressKpis.activeGoals}` : '—'}
             />
           </div>
-        </Card>
+        </Tile>
 
-        {/* Two lists, each showing its top two and opening the rest in a panel.
-            They used to show four apiece and pushed the rail past the fold. */}
-        <RailList
-          title="Top trainers"
-          count={topTrainers.length}
-          onOpen={() => setPanel('trainers')}
-          empty="No rated trainers yet"
-          rows={topTrainers.slice(0, 2).map((t) => ({
-            id: t.id,
-            initials: t.name.split(' ').map((n) => n[0]).join('').slice(0, 2),
-            name: t.name,
-            note: `${t.avgRating.toFixed(1)} ★ · ${t.sessions} sessions`,
-            tone: VIOLET,
-          }))}
-        />
+        {/* Rows 2–4, right — who is coaching well. */}
+        <Tile col="10 / 13" row="2 / 5" onClick={() => setPanel('trainers')}
+          tip="Coaches ranked by member rating and sessions run">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+              <h3 className="text-xs font-semibold text-white">Top trainers</h3>
+              <span className="text-[10px] font-semibold flex items-center gap-0.5" style={{ color: YELLOW }}>
+                {topTrainers.length > 3 ? `All ${topTrainers.length}` : 'Open'} <ChevronRight size={10} />
+              </span>
+            </div>
+            {topTrainers.length === 0 ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No rated coaches yet.</p>
+            ) : (
+              <div className="space-y-1.5 overflow-hidden">
+                {topTrainers.slice(0, 3).map((t) => (
+                  <div key={t.id} className="flex items-center gap-2 p-2 rounded-lg"
+                    style={{ background: 'var(--color-surface-raised)' }}>
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
+                      style={{ background: VIOLET }}>
+                      {t.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[11px] text-white font-semibold truncate">{t.name}</span>
+                      <span className="block text-[9px]" style={{ color: TEXT_MUTED }}>
+                        {t.avgRating.toFixed(1)} ★ · {t.sessions} sessions
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Tile>
 
-        <RailList
-          title="Expiring soon"
-          count={expiringSoon.length}
-          onOpen={() => setPanel('expiring')}
-          empty="No expiring memberships"
-          rows={expiringSoon.slice(0, 2).map((m) => ({
-            id: m.id,
-            initials: m.firstName[0],
-            name: m.fullName,
-            note: `${m.daysLeft} day${m.daysLeft !== 1 ? 's' : ''} left`,
-            tone: YELLOW,
-          }))}
-        />
-      </aside>
+        {/* Rows 5–6 — four equal tiles, each a real chart rather than a
+            sparkline standing in for one. Clicking any of them opens the same
+            chart full size with its own controls. */}
+        <Tile col="1 / 4" row="5 / 7" onClick={() => setPanel('members')}
+          tip="Sign-ups per month for the selected year">
+          <MiniChartHeader label="New members" value={String(totalNewMembers)} sub={`in ${memberYear}`} />
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={memberData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                <Line type="monotone" dataKey="newMembers" stroke={YELLOW} strokeWidth={2}
+                  dot={false} activeDot={{ r: 4 }} />
+                <XAxis dataKey="month" hide />
+                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 10, color: '#fff', fontSize: 11 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Tile>
 
-      {/* ── The panel every small card opens ───────────────────────────────── */}
+        <Tile col="4 / 7" row="5 / 7" onClick={() => setPanel('attendance')}
+          tip="Check-ins per day this week, or per week this month">
+          <MiniChartHeader label="Attendance" value={String(totalAttendance)}
+            sub={attendanceScope === 'weekly' ? 'this week' : 'this month'} />
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={attendanceData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                <Bar dataKey="count" fill={YELLOW} radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <XAxis dataKey="day" hide />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 10, color: '#fff', fontSize: 11 }}
+                  cursor={{ fill: 'rgba(245,158,11,0.08)' }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Tile>
+
+        <Tile col="7 / 10" row="5 / 7" onClick={() => setPanel('heatmap')}
+          tip="The busiest day-and-hour, from real check-ins">
+          <MiniChartHeader
+            label="Busiest hour"
+            /* NULL until the heatmap loads, and it says so rather than naming
+               an hour nobody's visits produced. */
+            value={busiestCell && busiestCell.visits > 0 ? busiestCell.hour : '—'}
+            sub={busiestCell && busiestCell.visits > 0
+              ? `${busiestCell.day} · ${busiestCell.visits} visits`
+              : 'no visits yet'}
+          />
+          <div className="flex-1 min-h-0 flex items-end gap-[3px]">
+            {/* Visits by hour, summed across days — the shape of a gym's day
+                in the space a sparkline would have used. */}
+            {hourTotals.map((n, i) => (
+              <div key={i} className="flex-1 rounded-sm"
+                style={{
+                  height: `${peakHour === 0 ? 3 : Math.max(3, (n / peakHour) * 100)}%`,
+                  background: n === 0 ? 'var(--color-border)'
+                    : n === peakHour ? YELLOW : 'rgba(124,58,237,0.55)',
+                }} />
+            ))}
+          </div>
+        </Tile>
+
+        <Tile col="10 / 13" row="5 / 7" onClick={() => setPanel('expiring')}
+          tip="Memberships ending within seven days">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+              <h3 className="text-xs font-semibold text-white">Expiring soon</h3>
+              <span className="text-[10px] font-semibold px-1.5 rounded-full"
+                style={{
+                  background: expiringSoon.length > 0 ? 'var(--color-secondary-light)' : 'var(--color-surface-high)',
+                  color: expiringSoon.length > 0 ? YELLOW : TEXT_MUTED,
+                }}>
+                {expiringSoon.length}
+              </span>
+            </div>
+            {expiringSoon.length === 0 ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Nothing expires this week.</p>
+            ) : (
+              <div className="space-y-1.5 overflow-hidden">
+                {expiringSoon.slice(0, 3).map((m) => (
+                  <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg"
+                    style={{ background: 'var(--color-surface-raised)' }}>
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
+                      style={{ background: YELLOW }}>
+                      {m.firstName[0]}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[11px] text-white font-semibold truncate">{m.fullName}</span>
+                      <span className="block text-[9px]" style={{ color: YELLOW }}>
+                        {m.daysLeft} day{m.daysLeft !== 1 ? 's' : ''} left
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Tile>
+      </div>
+
       <DetailSheet
         open={panel !== null}
         onClose={() => setPanel(null)}
@@ -627,78 +700,59 @@ export default function Dashboard() {
  * twelve points in a 96×24 box, and mounting a ResponsiveContainer four times
  * to draw that costs more than the whole rest of the row.
  */
-function MiniCard({ label, value, sub, series, accent, onClick }: {
-  label: string; value: string; sub: string;
-  series: number[]; accent: string; onClick: () => void;
+/**
+ * One cell of the bento.
+ *
+ * Placement is passed in rather than expressed as Tailwind classes because
+ * `col-start-7` and friends are only generated when the exact class name
+ * appears in the source — a computed one emits no CSS at all, which is the
+ * "if a class looks like it does nothing, it probably does nothing" trap this
+ * codebase has hit twice. Grid lines as inline styles always apply.
+ *
+ * `min-h-0` and `overflow-hidden` are what keep the grid honest: without them
+ * a tile grows to its content, the row grows with it, and the page that was
+ * built never to scroll starts scrolling.
+ */
+function Tile({ col, row, onClick, tip, children }: {
+  col: string; row: string; onClick?: () => void; tip?: string;
+  children: React.ReactNode;
 }) {
-  const peak = Math.max(...series, 1);
-  const points = series.length > 1
-    ? series.map((v, i) => `${(i / (series.length - 1)) * 96},${24 - (v / peak) * 22}`).join(' ')
-    : null;
-
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <button onClick={onClick}
-      className="text-left rounded-xl p-3 transition-colors group"
-      style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-      <span className="flex items-center justify-between gap-2">
-        <span className="text-[9px] uppercase tracking-wider truncate" style={{ color: TEXT_MUTED }}>{label}</span>
-        <ChevronRight size={12} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-          style={{ color: TEXT_MUTED }} />
-      </span>
-      <span className="flex items-end justify-between gap-2 mt-0.5">
-        <span className="min-w-0">
-          <span className="block text-base font-bold text-white tabular-nums leading-tight truncate">{value}</span>
-          <span className="block text-[10px] truncate" style={{ color: TEXT_MUTED }}>{sub}</span>
-        </span>
-        {points && (
-          <svg width="96" height="24" viewBox="0 0 96 24" className="flex-shrink-0" aria-hidden>
-            <polyline points={points} fill="none" stroke={accent} strokeWidth="1.5"
-              strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
-    </button>
+    <Tag
+      onClick={onClick}
+      data-tip={tip}
+      className="rounded-xl p-3 text-left min-w-0 min-h-0 overflow-hidden transition-colors"
+      style={{
+        gridColumn: col,
+        gridRow: row,
+        background: SURFACE,
+        border: `1px solid ${BORDER}`,
+        boxShadow: 'var(--shadow-card)',
+        cursor: onClick ? 'pointer' : 'default',
+        // A <button> centres its content and its children shrink-wrap; both are
+        // wrong for a tile that must fill its cell. Same fix as TileCard.
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
+      }}
+    >
+      {children}
+    </Tag>
   );
 }
 
-/** A short list in the right rail, with the rest one click away. */
-function RailList({ title, count, rows, empty, onOpen }: {
-  title: string;
-  count: number;
-  rows: { id: string; initials: string; name: string; note: string; tone: string }[];
-  empty: string;
-  onOpen: () => void;
-}) {
+/** The figure and label above a small chart, so the chart never stands alone. */
+function MiniChartHeader({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <Card className="!p-3.5 flex-shrink-0" header={
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-white">{title}</h3>
-        <button onClick={onOpen} className="text-[10px] font-semibold flex items-center gap-0.5"
-          style={{ color: YELLOW }}>
-          {count > rows.length ? `All ${count}` : 'Open'} <ChevronRight size={10} />
-        </button>
+    <div className="flex items-start justify-between gap-2 mb-1 flex-shrink-0">
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-wider truncate" style={{ color: TEXT_MUTED }}>{label}</p>
+        <p className="text-base font-bold text-white tabular-nums leading-tight truncate">{value}</p>
+        <p className="text-[10px] truncate" style={{ color: TEXT_MUTED }}>{sub}</p>
       </div>
-    }>
-      {rows.length === 0 ? (
-        <p className="text-center py-3 text-[11px]" style={{ color: TEXT_MUTED }}>{empty}</p>
-      ) : (
-        <div className="space-y-1.5">
-          {rows.map((r) => (
-            <button key={r.id} onClick={onOpen}
-              className="w-full text-left flex items-center gap-2 p-2 rounded-lg"
-              style={{ background: 'var(--color-surface-raised)' }}>
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
-                style={{ background: r.tone }}>
-                {r.initials}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[11px] text-white font-semibold truncate">{r.name}</span>
-                <span className="block text-[9px] truncate" style={{ color: TEXT_MUTED }}>{r.note}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </Card>
+      <ChevronRight size={12} className="flex-shrink-0 mt-0.5" style={{ color: TEXT_MUTED }} />
+    </div>
   );
 }
