@@ -32,6 +32,9 @@ export interface Notification {
   timestamp: string; // ISO date
   read: boolean;
   actionUrl?: string;
+  /** A picture the gym attached to an announcement (0065). Absent on every
+   *  automated notice — bookings, payments and reminders never carry one. */
+  imageUrl?: string;
   metadata?: Record<string, any>;
   /** Swiped right: dealt with, moved out of the inbox into Archived (0029). */
   archived: boolean;
@@ -59,6 +62,7 @@ function toNotification(row: NotificationRow): Notification {
     timestamp: row.created_at,
     read: row.read,
     actionUrl: row.action_url ?? undefined,
+    imageUrl: row.image_url ?? undefined,
     metadata: row.metadata ?? undefined,
     archived: row.archived_at != null,
     cleared: row.cleared_at != null,

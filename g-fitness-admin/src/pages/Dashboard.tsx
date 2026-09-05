@@ -69,7 +69,7 @@ function KpiCard({ label, value, delta, icon: Icon, tooltip, onClick }: {
   return (
     <Tag
       onClick={onClick}
-      title={tooltip}
+      data-tip={tooltip}
       className="w-full text-left rounded-xl p-3 flex items-center gap-2.5 group transition-colors"
       style={{
         background: SURFACE, border: `1px solid ${BORDER}`,
@@ -174,7 +174,7 @@ function HeatmapGrid({ cells }: { cells: HeatmapCell[] }) {
                   key={`${d}-${h}`}
                   className="h-7 rounded-sm flex items-center justify-center text-[9px] font-bold text-white"
                   style={{ background: colorFor(v) }}
-                  title={`${d} ${h}: ${v} visits`}
+                  data-tip={`${d} ${h}: ${v} visits`}
                 >
                   {v > 0 ? v : ''}
                 </div>
@@ -344,7 +344,7 @@ export default function Dashboard() {
               in it. Inline styles do not go through the merge. */}
           <Card className="!p-4 h-full"
             style={{ display: 'flex', flexDirection: 'column' }}
-            title="Monthly revenue breakdown showing income per month for the selected year">
+            data-tip="Monthly revenue breakdown showing income per month for the selected year">
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
               <div>
                 <h3 className="text-xs font-semibold text-white">Revenue</h3>
@@ -408,7 +408,7 @@ export default function Dashboard() {
         {/* The greeting card is gone. It was 120px of "Good Morning, Admin 🔥 /
             Continue managing your gym!" — no number, no link, no state. The
             greeting now lives in the header line, where it costs nothing. */}
-        <Card className="!p-3.5 flex-shrink-0" title="Key fitness statistics — average BMI, weight changes, total workouts, and active goals across all members" header={
+        <Card className="!p-3.5 flex-shrink-0" data-tip="Key fitness statistics — average BMI, weight changes, total workouts, and active goals across all members" header={
           <h3 className="text-xs font-semibold text-white">Member statistics</h3>
         }>
           <div className="space-y-2.5">

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, PageSummary,
@@ -46,7 +47,7 @@ const emptyForm = {
   // Added in 0057. A member reading an event listing decides on four things the
   // old form could not express: is this for someone like me, what do I need to
   // bring, does it cost anything, and who do I ask.
-  whoIsItFor: '', whatToBring: '', fee: '', contact: '', isFeatured: false,
+  whoIsItFor: '', whatToBring: '', fee: '', contact: '', isFeatured: false, imageUrl: '',
 };
 
 const STATUS_STYLE: Record<EventStatus, { bg: string; color: string }> = {
@@ -161,6 +162,7 @@ export default function Events() {
       fee: evt.fee == null ? '' : String(evt.fee),
       contact: evt.contact ?? '',
       isFeatured: evt.is_featured ?? false,
+      imageUrl: evt.image_url ?? '',
       duration: String(evt.duration_minutes),
     });
     setShowModal(true);
@@ -192,6 +194,9 @@ export default function Events() {
         fee: form.fee.trim() === '' ? null : Number(form.fee),
         contact: form.contact.trim() || null,
         is_featured: form.isFeatured,
+        // Empty string means "no picture" and must be stored as NULL — an
+        // empty src renders the browser's broken-image glyph on every phone.
+        image_url: form.imageUrl.trim() || null,
       };
       if (editing) {
         await updateEvent(editing.id, payload);
@@ -310,6 +315,12 @@ export default function Events() {
                 const share = evt.capacity > 0 ? Math.min(100, (registered / evt.capacity) * 100) : 0;
                 return (
                   <TileCard key={evt.id} dim={evt.cancelled} accent={full && !evt.cancelled}>
+                    {/* Only when the gym chose one — never a stock image. */}
+                    {evt.image_url && (
+                      <img src={evt.image_url} alt="" loading="lazy"
+                        className="w-full rounded-lg object-cover mb-2"
+                        style={{ aspectRatio: '16 / 9', background: 'var(--color-bg)' }} />
+                    )}
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-[13px] font-bold text-white flex-1 leading-snug">{evt.title}</h3>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
@@ -519,6 +530,14 @@ export default function Events() {
                         placeholder="e.g. Ask at the front desk, or message us on Facebook"
                         onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                     </FormField>
+
+                    <ImageField
+                      value={form.imageUrl}
+                      onChange={(imageUrl) => setForm({ ...form, imageUrl })}
+                      kind="events"
+                      label="Event picture"
+                      hint="A poster or photo, shown with the event in the member app."
+                    />
 
                     <label className="flex items-start gap-2.5 cursor-pointer pt-1">
                       <input type="checkbox" checked={form.isFeatured} className="mt-0.5"

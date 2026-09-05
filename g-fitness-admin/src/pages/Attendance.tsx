@@ -491,7 +491,7 @@ export default function Attendance() {
           <span
             className="flex items-center gap-1 text-[10px] whitespace-nowrap cursor-help ml-auto"
             style={{ color: 'var(--color-text-muted)' }}
-            title={
+            data-tip={
               'Optional, and it applies to the next check-in you take whichever way you take it — '
               + 'handy when a class arrives together. '
               + 'It is what fills the activity breakdown on Attendance history. Leave it on '
@@ -618,7 +618,7 @@ export default function Attendance() {
               </span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={exportLog} title="Export today as CSV"
+              <button onClick={exportLog} data-tip="Export today as CSV"
                 className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
                 <Download size={12} />
               </button>
@@ -680,7 +680,7 @@ export default function Attendance() {
                             policy allows, so offering it on older days would be a
                             button that always fails. */}
                         {localDateKey(r.check_in_time) === todayStr && (
-                          <button onClick={() => setToUndo(r)} title="Undo this check-in"
+                          <button onClick={() => setToUndo(r)} data-tip="Undo this check-in"
                             className="opacity-0 group-hover:opacity-100 transition-opacity"
                             style={{ color: 'var(--color-secondary)' }}>
                             <Undo2 size={11} />

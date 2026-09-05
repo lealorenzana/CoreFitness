@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageField from '../components/ui/ImageField';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
@@ -367,17 +368,19 @@ export default function Resources() {
                     <Input type="url" value={form.url} placeholder="https://…"
                       onChange={(e) => setForm({ ...form, url: e.target.value })} />
                   </Field>
-                  {/* Left blank on purpose most of the time: adding a preview
-                      means dropping a file into both apps' public folders, so
-                      the field says where rather than pretending to upload. */}
-                  <Field label="Preview image" hint="Optional — leave blank if you have no picture">
-                    <Input type="text" value={form.imageUrl} placeholder="/resource-previews/example.jpeg"
-                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
-                  </Field>
-                  <p className="text-[10px] -mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Put the file in <code>public/resource-previews/</code> in both apps first.
-                    Blank shows the site's address instead, which is better than a wrong picture.
-                  </p>
+                  {/* This asked for `/resource-previews/example.jpeg` — a path
+                      into a folder inside the app's source. The only way to put
+                      a file there is to commit one and redeploy, so the gym
+                      could never actually use it. Uploads to storage now (0065);
+                      the "use a link" box still accepts those seeded paths so
+                      the nine 0061 rows stay editable. */}
+                  <ImageField
+                    value={form.imageUrl}
+                    onChange={(imageUrl) => setForm({ ...form, imageUrl })}
+                    kind="resources"
+                    label="Preview image"
+                    hint="Blank shows the site's address instead, which is better than a wrong picture."
+                  />
                   <Field label="Description" hint="Optional, one line">
                     <Input type="text" value={form.description} placeholder="What a member gets from it"
                       onChange={(e) => setForm({ ...form, description: e.target.value })} />

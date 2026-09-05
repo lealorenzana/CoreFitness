@@ -200,6 +200,9 @@ export interface NotificationRow {
   message: string;
   action_url: string | null;
   metadata: Record<string, unknown> | null;
+  /** Optional picture the gym attached to an announcement (0065). NULL is
+   *  normal — automated receipts and reminders never carry one. */
+  image_url: string | null;
   read: boolean;
   /**
    * Inbox state (0029). Both hide the row from the bell, and they are not the

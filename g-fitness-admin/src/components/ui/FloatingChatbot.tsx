@@ -84,7 +84,7 @@ export default function FloatingChatbot() {
             onClick={() => setIsOpen(true)}
             className="relative flex items-center justify-center rounded-full shadow-lg"
             style={{ width: 56, height: 56, background: PRIMARY }}
-            title="Open AI Assistant"
+            data-tip="Open AI Assistant"
           >
             <MessageSquare size={22} className="text-white" />
             <span

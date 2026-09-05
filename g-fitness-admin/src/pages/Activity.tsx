@@ -320,7 +320,7 @@ export default function Activity() {
                   onClick={() => setLiveOnly(!liveOnly)}
                   className="h-7 px-2.5 rounded-full text-xs font-medium transition-colors"
                   style={chip(liveOnly)}
-                  title="Hide entries reconstructed from data that predates the log"
+                  data-tip="Hide entries reconstructed from data that predates the log"
                 >
                   Recorded live only
                 </button>
@@ -438,7 +438,7 @@ export default function Activity() {
                                   <span
                                     className="text-xs px-1.5 py-0.5 rounded"
                                     style={{ background: SURFACE_RAISED, color: TEXT_MUTED, border: `1px solid ${BORDER}` }}
-                                    title="Reconstructed from timestamps that predate the log. The time is real; the actor was not recorded at the time."
+                                    data-tip="Reconstructed from timestamps that predate the log. The time is real; the actor was not recorded at the time."
                                   >
                                     reconstructed
                                   </span>

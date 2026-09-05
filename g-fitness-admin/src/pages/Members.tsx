@@ -662,7 +662,7 @@ export default function Members() {
                     {!showArchived && m.accountStatus === 'pending_approval' && (
                       <button
                         onClick={() => handleApprove(m)}
-                        title={`Let ${m.firstName} sign in`}
+                        data-tip={`Let ${m.firstName} sign in`}
                         className="mb-1 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 whitespace-nowrap"
                         style={{ background: 'var(--color-secondary)', color: '#000' }}
                       >
@@ -672,7 +672,7 @@ export default function Members() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {!showArchived && m.membership && (
                         m.membershipStatus === 'frozen' ? (
-                          <button onClick={() => handleUnfreeze(m)} title="Resume membership — frozen days are added back to the expiry"
+                          <button onClick={() => handleUnfreeze(m)} data-tip="Resume membership — frozen days are added back to the expiry"
                             className="p-1.5 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                             <Play size={11} />
                           </button>
@@ -683,14 +683,14 @@ export default function Members() {
                                 the database will refuse a second one anyway. */}
                             <button onClick={() => setToFreeze(m)}
                               disabled={(m.membership?.freeze_count ?? 0) >= 1}
-                              title={(m.membership?.freeze_count ?? 0) >= 1
+                              data-tip={(m.membership?.freeze_count ?? 0) >= 1
                                 ? 'Already frozen once this period — resets on renewal'
                                 : 'Freeze membership'}
                               className="p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
                               style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
                               <Pause size={11} />
                             </button>
-                            <button onClick={() => setToCancel(m)} title="Cancel membership"
+                            <button onClick={() => setToCancel(m)} data-tip="Cancel membership"
                               className="p-1.5 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                               <Ban size={11} />
                             </button>
@@ -699,19 +699,19 @@ export default function Members() {
                       )}
                       {!showArchived && (
                         <>
-                          <button onClick={() => setEditing(m)} title="Edit member"
+                          <button onClick={() => setEditing(m)} data-tip="Edit member"
                             className="p-1.5 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                             <Edit2 size={11} />
                           </button>
                           <button onClick={() => setToSuspend(m)}
-                            title={m.accountStatus === 'suspended' ? 'Reactivate account' : 'Suspend account'}
+                            data-tip={m.accountStatus === 'suspended' ? 'Reactivate account' : 'Suspend account'}
                             className="p-1.5 rounded-full"
                             style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                             {m.accountStatus === 'suspended' ? <UserCheck size={11} /> : <UserX size={11} />}
                           </button>
                         </>
                       )}
-                      <button onClick={() => setToArchive(m)} title={showArchived ? 'Restore member' : 'Archive member'}
+                      <button onClick={() => setToArchive(m)} data-tip={showArchived ? 'Restore member' : 'Archive member'}
                         className="p-1.5 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                         <Archive size={11} />
                       </button>
@@ -991,7 +991,7 @@ function AddMemberForm({
             onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 6 characters"
             className={`${FIELD_CLASS} !pr-9`} style={FIELD_STYLE} />
           <button type="button" onClick={() => setShowPw(!showPw)}
-            title={showPw ? 'Hide password' : 'Show password'}
+            data-tip={showPw ? 'Hide password' : 'Show password'}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1" style={{ color: 'var(--color-text-muted)' }}>
             {showPw ? <EyeOff size={12} /> : <Eye size={12} />}
           </button>
@@ -1302,10 +1302,10 @@ function PendingRegistrationsList({
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => handleApprove(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }} title="Approve">
+            <button onClick={() => handleApprove(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }} data-tip="Approve">
               <CheckCircle size={16} />
             </button>
-            <button onClick={() => handleReject(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }} title="Reject">
+            <button onClick={() => handleReject(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }} data-tip="Reject">
               <XCircle size={16} />
             </button>
           </div>

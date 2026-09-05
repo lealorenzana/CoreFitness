@@ -165,7 +165,7 @@ function Body({
           <div className="relative flex-shrink-0">
             <Avatar name={fullName} photoUrl={photoUrl} size={52} tone="secondary" />
             {photoUrl && (
-              <button onClick={removePhoto} disabled={removing} title="Remove this trainer's photo"
+              <button onClick={removePhoto} disabled={removing} data-tip="Remove this trainer's photo"
                 className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-50"
                 style={{ background: 'var(--color-secondary)', color: '#000' }}>
                 <Trash2 size={11} />

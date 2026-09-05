@@ -197,7 +197,7 @@ function DrawerBody({
             <Avatar name={fullName} photoUrl={photoUrl} size={52} tone="secondary" />
             {photoUrl && (
               <button onClick={removePhoto} disabled={removingPhoto}
-                title="Remove this member's photo"
+                data-tip="Remove this member's photo"
                 className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-50"
                 style={{ background: 'var(--color-secondary)', color: '#000' }}>
                 <Trash2 size={11} />

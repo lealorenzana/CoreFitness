@@ -173,6 +173,16 @@ export default function Challenges() {
               const left = daysLeft(c.endsOn);
               return (
                 <div key={c.id} className="p-4 rounded-2xl" style={panelStyle}>
+                  {/* Only when the gym attached one. */}
+                  {c.imageUrl && (
+                    <img
+                      src={c.imageUrl}
+                      alt=""
+                      loading="lazy"
+                      className="w-full rounded-xl object-cover mb-3"
+                      style={{ aspectRatio: '16 / 9', background: 'var(--color-surface-high)' }}
+                    />
+                  )}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-white">{c.title}</p>

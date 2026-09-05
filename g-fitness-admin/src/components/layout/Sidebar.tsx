@@ -231,7 +231,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 cursor-pointer"
             style={{ background: PRIMARY }}
             onClick={onToggle}
-            title="Expand"
+            data-tip="Expand"
           >
             <Dumbbell size={16} className="text-white" />
           </div>
@@ -259,7 +259,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     background: isActive ? PRIMARY_LIGHT : 'transparent',
                     color: isActive ? PRIMARY : TEXT_MUTED,
                   }}
-                  title={title}
+                  data-tip={title}
                 >
                   <Icon size={18} />
                   {/* A group is more than one destination; the dot says the icon
@@ -279,7 +279,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               onClick={handleLogout}
               className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors"
               style={{ color: SECONDARY }}
-              title="Logout"
+              data-tip="Logout"
             >
               <LogOut size={18} />
             </button>

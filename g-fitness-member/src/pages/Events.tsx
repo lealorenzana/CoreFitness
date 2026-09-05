@@ -213,6 +213,19 @@ export default function Events() {
                   opacity: closed ? 0.75 : 1,
                 }}
               >
+                {/* The gym's own picture, when there is one. A cancelled
+                    event keeps its poster — the card's muted border and the
+                    Cancelled pill carry that, and hiding the picture would
+                    make a cancelled event harder to recognise, not easier. */}
+                {event.image_url && (
+                  <img
+                    src={event.image_url}
+                    alt=""
+                    loading="lazy"
+                    className="w-full rounded-xl object-cover mb-2.5"
+                    style={{ aspectRatio: '16 / 9', background: 'var(--color-surface-high)' }}
+                  />
+                )}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h3 className="text-sm font-bold text-white leading-snug min-w-0">{event.title}</h3>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"

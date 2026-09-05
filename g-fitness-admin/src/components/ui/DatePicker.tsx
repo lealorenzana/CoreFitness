@@ -244,7 +244,7 @@ export default function DatePicker({
 
 function IconBtn({ onClick, label, children }: { onClick: () => void; label: string; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} title={label} aria-label={label}
+    <button type="button" onClick={onClick} data-tip={label} aria-label={label}
       className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
       style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
       {children}

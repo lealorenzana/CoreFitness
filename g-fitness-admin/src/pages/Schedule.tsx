@@ -499,7 +499,7 @@ export default function Schedule() {
                           <div className="flex items-center gap-1 mt-0.5">
                             <p className="text-[11px] font-semibold text-white truncate">{t.name}</p>
                             {clashing && (
-                              <span title="Clashes with another class" className="flex-shrink-0">
+                              <span data-tip="Clashes with another class" className="flex-shrink-0">
                                 <AlertTriangle size={10} style={{ color: 'var(--color-secondary)' }} />
                               </span>
                             )}
@@ -527,12 +527,12 @@ export default function Schedule() {
                               permanent icon buttons per card is a lot of
                               furniture for actions used once a term. */}
                           <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openEdit(t)} title="Edit class"
+                            <button onClick={() => openEdit(t)} data-tip="Edit class"
                               className="text-[10px] font-semibold flex items-center gap-1"
                               style={{ color: 'var(--color-primary)' }}>
                               <Edit2 size={10} /> Edit
                             </button>
-                            <button onClick={() => setToRetire(t)} title={t.active ? 'Retire' : 'Reactivate'}
+                            <button onClick={() => setToRetire(t)} data-tip={t.active ? 'Retire' : 'Reactivate'}
                               className="text-[10px] font-semibold flex items-center gap-1"
                               style={{ color: 'var(--color-text-muted)' }}>
                               <Ban size={10} /> {t.active ? 'Retire' : 'Restore'}
@@ -673,7 +673,7 @@ export default function Schedule() {
                         {DAY_NAMES[a.day_of_week]} · {clock(a.start_time)}–{clock(a.end_time)} · {a.slot_minutes}m slots
                       </p>
                     </div>
-                    <button onClick={() => setToDeleteHours(a)} title="Remove these hours"
+                    <button onClick={() => setToDeleteHours(a)} data-tip="Remove these hours"
                       style={{ color: 'var(--color-secondary)' }}>
                       <Trash2 size={13} />
                     </button>

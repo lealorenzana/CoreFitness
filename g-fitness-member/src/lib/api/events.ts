@@ -19,6 +19,9 @@ export interface EventRow {
   contact: string | null;
   /** Pins it to the top of the member Events screen. */
   is_featured: boolean;
+  /** Optional picture the gym attached (0065). NULL is normal and draws
+   *  nothing — never a stock photo standing in for one they did not choose. */
+  image_url: string | null;
   created_by: string | null;
   created_at: string;
 }

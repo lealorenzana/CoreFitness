@@ -92,6 +92,19 @@ export default function NotificationDetail({
               >
                 {notification.message}
               </p>
+
+              {/* Under the words, not above them: the message is what the
+                  member came to read, and a banner pushing it below the fold
+                  would bury it. Nothing is drawn when there is no picture. */}
+              {notification.imageUrl && (
+                <img
+                  src={notification.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="w-full rounded-2xl object-cover mt-3"
+                  style={{ background: 'var(--color-surface-high)' }}
+                />
+              )}
             </div>
 
             <div className="p-4 pb-8 flex flex-wrap gap-2 shrink-0" style={{ borderTop: '1px solid var(--color-border)' }}>

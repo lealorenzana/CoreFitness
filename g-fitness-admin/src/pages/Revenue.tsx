@@ -173,7 +173,7 @@ export default function Revenue() {
                       const active = row.revenue > 0 || row.newMembers > 0 || row.payments > 0;
                       return (
                         <div key={row.month} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full"
-                          title={`${row.month} — ₱${row.revenue.toLocaleString()} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
+                          data-tip={`${row.month} — ₱${row.revenue.toLocaleString()} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
                           {/* The amount sits above its own bar, so a reader
                               never has to match a column to a legend. */}
                           <span className="text-[9px] font-semibold tabular-nums"

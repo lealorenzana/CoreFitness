@@ -7,6 +7,7 @@ import {
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, SearchBox, PageSummary,
@@ -57,6 +58,8 @@ interface NotificationForm {
   title: string;
   message: string;
   actionUrl?: string;
+  /** Optional picture, copied onto every recipient's row (0065). */
+  imageUrl?: string;
 }
 
 const EMPTY_FORM: NotificationForm = {
@@ -66,6 +69,7 @@ const EMPTY_FORM: NotificationForm = {
   title: '',
   message: '',
   actionUrl: '',
+  imageUrl: '',
 };
 
 /**
@@ -176,6 +180,7 @@ export default function Notifications() {
         title: form.title.trim(),
         message: form.message.trim(),
         actionUrl: form.actionUrl?.trim() || null,
+        imageUrl: form.imageUrl?.trim() || null,
       });
 
       // The rows are already written; these are the alerts on top. Never fatal —
@@ -323,6 +328,11 @@ export default function Notifications() {
                     <p className="text-[10px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
                       {notif.message}
                     </p>
+                    {notif.imageUrl && (
+                      <img src={notif.imageUrl} alt="" loading="lazy"
+                        className="w-full rounded-lg object-cover mt-2"
+                        style={{ aspectRatio: '16 / 9', background: 'var(--color-bg)' }} />
+                    )}
 
                     <div className="flex items-center gap-2 text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
                       <span>{notif.recipients} {notif.recipients === 1 ? 'recipient' : 'recipients'}</span>
@@ -484,6 +494,14 @@ export default function Notifications() {
                         placeholder="Say what is happening and what they should do."
                         className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
                     </FormField>
+
+                    <ImageField
+                      value={form.imageUrl ?? ''}
+                      onChange={(imageUrl) => setForm({ ...form, imageUrl })}
+                      kind="announcements"
+                      label="Picture"
+                      hint="Shown with the announcement in the member's inbox. The phone alert stays text-only."
+                    />
 
                     {/* Was a free-text box asking the admin to type an app route
                         from memory — "/member/events" — with no way to know what

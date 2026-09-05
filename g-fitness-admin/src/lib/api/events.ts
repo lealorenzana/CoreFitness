@@ -19,6 +19,9 @@ export interface EventRow {
   contact: string | null;
   /** Pins it to the top of the member Events screen. */
   is_featured: boolean;
+  /** Optional picture (0065). NULL is normal and draws no image — never a
+   *  stand-in photo. */
+  image_url: string | null;
   created_by: string | null;
   created_at: string;
 }

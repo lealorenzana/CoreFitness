@@ -72,6 +72,8 @@ export interface StatItem {
   tone?: 'primary' | 'secondary';
   /** Makes the tile a button. A statistic you can act on should be clickable. */
   onClick?: () => void;
+  /** What the number counts. Shown by TooltipLayer on hover or focus. */
+  tooltip?: string;
 }
 
 /**
@@ -93,6 +95,7 @@ export function StatTiles({ items }: { items: StatItem[] }) {
           <Tag
             key={s.label}
             onClick={s.onClick}
+            data-tip={s.tooltip}
             className="flex items-center gap-2.5 pl-2.5 pr-4 py-2 rounded-xl text-left transition-colors"
             style={{
               background: SURFACE,
@@ -279,6 +282,29 @@ export function TileCard({
     >
       {children}
     </Tag>
+  );
+}
+
+/**
+ * A small "?" beside a heading that needs a sentence of context but has no
+ * control to hang it off. The text is a `data-tip`, so `TooltipLayer` renders
+ * it in the app's own palette rather than the operating system's.
+ */
+export function InfoDot({ tip }: { tip: string }) {
+  return (
+    <span
+      data-tip={tip}
+      tabIndex={0}
+      role="img"
+      aria-label={tip}
+      className="w-3.5 h-3.5 rounded-full inline-flex items-center justify-center flex-shrink-0 align-middle cursor-help"
+      style={{
+        background: SURFACE_HIGH, color: TEXT_MUTED,
+        fontSize: 9, fontWeight: 700, lineHeight: 1,
+      }}
+    >
+      ?
+    </span>
   );
 }
 

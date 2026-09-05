@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Flag, AlertTriangle, Users, Clock, Trophy } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import ImageField from '../components/ui/ImageField';
 import { PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard } from '../components/ui/kit';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -36,6 +37,8 @@ interface Challenge {
   ends_on: string;
   reward_points: number;
   is_active: boolean;
+  /** Optional picture (0065). NULL is normal. */
+  image_url: string | null;
 }
 
 function today(): string {
@@ -59,6 +62,7 @@ export default function Challenges() {
   const [form, setForm] = useState({
     title: '', description: '', metric_key: 'training_days',
     target: '10', starts_on: today(), ends_on: inDays(30), reward_points: '250',
+    imageUrl: '',
   });
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
@@ -68,7 +72,7 @@ export default function Challenges() {
       supabase.from('achievement_metrics')
         .select('key, label, unit').eq('challengeable', true).order('sort_order'),
       supabase.from('challenges')
-        .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, is_active')
+        .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, is_active, image_url')
         .order('ends_on', { ascending: false }),
       supabase.from('challenge_participants').select('challenge_id, completed_on'),
     ]);
@@ -122,6 +126,8 @@ export default function Challenges() {
       starts_on: form.starts_on,
       ends_on: form.ends_on,
       reward_points: Number.isFinite(points) ? points : 0,
+      // Empty means no picture; an empty string would render a broken image.
+      image_url: form.imageUrl.trim() || null,
     });
     setBusy(false);
     if (error) { showToast(error.message, 'error'); return; }
@@ -167,6 +173,13 @@ export default function Challenges() {
     const share = n.joined > 0 ? Math.round((n.done / n.joined) * 100) : 0;
     return (
       <TileCard key={c.id} dim={!c.is_active}>
+        {/* Only when there is one. A placeholder here would be a picture the
+            gym never chose, on a card members are shown. */}
+        {c.image_url && (
+          <img src={c.image_url} alt="" loading="lazy"
+            className="w-full rounded-lg object-cover mb-2"
+            style={{ aspectRatio: '16 / 9', background: 'var(--color-bg)' }} />
+        )}
         <div className="flex items-start justify-between gap-2">
           <p className="text-[12px] font-semibold text-white leading-snug">{c.title}</p>
           <button onClick={() => toggle(c)}
@@ -313,6 +326,13 @@ export default function Challenges() {
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
             </label>
           </div>
+          <ImageField
+            value={form.imageUrl}
+            onChange={(imageUrl) => setForm({ ...form, imageUrl })}
+            kind="challenges"
+            label="Picture"
+            hint="Shown with the challenge in the member app."
+          />
           <p className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             Only metrics that can be counted inside a date range are listed. Streaks and
             &ldquo;days since joining&rdquo; are left out because they describe a whole

@@ -350,7 +350,7 @@ export default function Settings() {
                 <div className="flex items-center gap-4">
                   <div className="relative flex-shrink-0">
                     <Avatar name={`${me?.first_name ?? ''} ${me?.last_name ?? ''}`} photoUrl={me?.photo_url ?? null} size={56} />
-                    <label title="Change photo"
+                    <label data-tip="Change photo"
                       className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
                       style={{ background: 'var(--color-primary)', color: '#fff', opacity: uploadingPhoto ? 0.5 : 1 }}>
                       <Camera size={11} />
@@ -460,7 +460,7 @@ export default function Settings() {
                         style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                         {opt}
                         <button onClick={() => setActivityOptions(activityOptions.filter((a) => a !== opt))}
-                          title={`Remove ${opt}`} className="opacity-70 hover:opacity-100">×</button>
+                          data-tip={`Remove ${opt}`} className="opacity-70 hover:opacity-100">×</button>
                       </span>
                     ))}
                     {activityOptions.length === 0 && (
@@ -573,12 +573,12 @@ export default function Settings() {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => setStaffAction({ account: a, next: a.status === 'suspended' ? 'active' : 'suspended' })}
-                                title={a.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                                data-tip={a.status === 'suspended' ? 'Reactivate' : 'Suspend'}
                                 className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
                                 {a.status === 'suspended' ? <UserCheck size={12} /> : <UserX size={12} />}
                               </button>
                               <button onClick={() => setStaffAction({ account: a, next: 'archived' })}
-                                title="Archive" className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                                data-tip="Archive" className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
                                 <Archive size={12} />
                               </button>
                             </div>

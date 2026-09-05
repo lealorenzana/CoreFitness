@@ -24,6 +24,8 @@ export interface Challenge {
   progress: number | null;
   joined: boolean;
   completedOn: string | null;
+  /** Optional picture the gym attached (0065). NULL is normal. */
+  imageUrl: string | null;
 }
 
 interface Row {
@@ -35,6 +37,7 @@ interface Row {
   starts_on: string;
   ends_on: string;
   reward_points: number;
+  image_url: string | null;
   achievement_metrics: { label: string } | { label: string }[] | null;
 }
 
@@ -54,7 +57,7 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
   const [{ data, error }, joined] = await Promise.all([
     supabase
       .from('challenges')
-      .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, achievement_metrics(label)')
+      .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, image_url, achievement_metrics(label)')
       .eq('is_active', true)
       .gte('ends_on', today)
       .order('ends_on'),
@@ -86,6 +89,7 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
       progress: null as number | null,
       joined: mine.has(r.id),
       completedOn: mine.get(r.id) ?? null,
+      imageUrl: r.image_url ?? null,
     };
   });
 

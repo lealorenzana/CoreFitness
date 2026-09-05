@@ -74,8 +74,12 @@ export async function getUnreadCount(userId: string): Promise<number> {
  */
 export type NewNotification = Omit<
   NotificationRow,
-  'id' | 'created_at' | 'read' | 'archived_at' | 'cleared_at'
->;
+  'id' | 'created_at' | 'read' | 'archived_at' | 'cleared_at' | 'image_url'
+> & {
+  /** Optional (0065). Only the admin's announcement composer sets this; every
+   *  automated notice the app writes has no picture. */
+  image_url?: string | null;
+};
 
 export async function addNotification(input: NewNotification): Promise<void> {
   const { error } = await supabase.from('notifications').insert({ ...input, read: false });

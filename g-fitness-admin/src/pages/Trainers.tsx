@@ -428,12 +428,12 @@ export default function Trainers() {
                 {!showArchived && (
                   <>
                     <button onClick={(e) => { e.stopPropagation(); openEdit(trainer); }}
-                      className="px-2 h-7 rounded-lg text-[10px] font-semibold" title="Edit trainer"
+                      className="px-2 h-7 rounded-lg text-[10px] font-semibold" data-tip="Edit trainer"
                       style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                       <Edit2 size={11} className="inline mr-1" />Edit
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); setToSuspend(trainer); }}
-                      title={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
+                      data-tip={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
                       className="px-2 h-7 rounded-lg text-[10px] font-semibold"
                       style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
                       {trainer.status === 'suspended'
@@ -443,7 +443,7 @@ export default function Trainers() {
                   </>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); setToArchive(trainer); }}
-                  title={showArchived ? 'Restore trainer' : 'Archive trainer'}
+                  data-tip={showArchived ? 'Restore trainer' : 'Archive trainer'}
                   className="px-2 h-7 rounded-lg text-[10px] font-semibold"
                   style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
                   <Archive size={11} className="inline mr-1" />{showArchived ? 'Restore' : 'Archive'}
@@ -624,11 +624,11 @@ export default function Trainers() {
                         className={`${FIELD_CLASS} !pr-16`} style={CREDENTIAL_STYLE} />
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                         <button type="button" onClick={() => setShowLoginPw(!showLoginPw)}
-                          title={showLoginPw ? 'Hide password' : 'Show password'}
+                          data-tip={showLoginPw ? 'Hide password' : 'Show password'}
                           className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
                           {showLoginPw ? <EyeOff size={12} /> : <Eye size={12} />}
                         </button>
-                        <button type="button" title="Copy password"
+                        <button type="button" data-tip="Copy password"
                           onClick={() => {
                             if (!addForm.loginPassword) return showToast('Nothing to copy yet', 'error');
                             navigator.clipboard.writeText(addForm.loginPassword);
@@ -701,7 +701,7 @@ export default function Trainers() {
                   <div className="grid grid-cols-2 gap-3">
                     <FormField label="Login email" hint="Cannot be changed here.">
                       <input value={editForm.email} disabled
-                        title="Changing a login email means changing the auth account, which this form does not do"
+                        data-tip="Changing a login email means changing the auth account, which this form does not do"
                         className={`${FIELD_CLASS} cursor-not-allowed`}
                         style={{ ...FIELD_STYLE, color: 'var(--color-text-muted)' }} />
                     </FormField>

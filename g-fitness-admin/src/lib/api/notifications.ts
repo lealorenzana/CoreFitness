@@ -106,6 +106,10 @@ export async function broadcastNotification(input: {
   title: string;
   message: string;
   actionUrl?: string | null;
+  /** Optional picture (0065). A notification row *is* one recipient, so the
+   *  URL is copied onto each of them rather than stored once — the same shape
+   *  title and message already have. */
+  imageUrl?: string | null;
 }): Promise<BroadcastResult> {
   let recipientIds: string[] = [];
 
@@ -132,6 +136,7 @@ export async function broadcastNotification(input: {
     title: input.title,
     message: input.message,
     action_url: input.actionUrl ?? null,
+    image_url: input.imageUrl ?? null,
     read: false,
   }));
 
@@ -151,6 +156,9 @@ export interface BroadcastSummary {
   readCount: number;
   /** The underlying notification ids, so a mis-sent broadcast can be recalled. */
   ids: string[];
+  /** The picture, if the send had one (0065). Read off the first row of the
+   *  group — every recipient's row carries the same URL. */
+  imageUrl: string | null;
 }
 
 /**
@@ -166,12 +174,13 @@ export interface BroadcastSummary {
 export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary[]> {
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, title, message, type, created_at, read')
+    .select('id, title, message, type, created_at, read, image_url')
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) throw error;
 
-  const groups = new Map<string, Omit<BroadcastSummary, 'key'>>();
+  type Group = Omit<BroadcastSummary, 'key' | 'imageUrl'> & { image_url: string | null };
+  const groups = new Map<string, Group>();
   for (const n of data ?? []) {
     // Same title+message sent within the same minute = one broadcast.
     const minute = n.created_at.slice(0, 16);
@@ -185,12 +194,13 @@ export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary
       groups.set(key, {
         title: n.title, message: n.message, type: n.type, sentAt: n.created_at,
         recipients: 1, readCount: n.read ? 1 : 0, ids: [n.id],
+        image_url: n.image_url ?? null,
       });
     }
   }
 
   return [...groups.entries()]
-    .map(([key, v]) => ({ key, ...v }))
+    .map(([key, { image_url, ...v }]) => ({ key, ...v, imageUrl: image_url }))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))
     .slice(0, limit);
 }

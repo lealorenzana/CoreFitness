@@ -225,7 +225,7 @@ export default function Exercises() {
                       </p>
                     </div>
                     <button onClick={() => toggleActive(r)}
-                      title={r.is_active ? 'Hide from members' : 'Show to members'}
+                      data-tip={r.is_active ? 'Hide from members' : 'Show to members'}
                       className="p-1.5 rounded-lg flex-shrink-0"
                       style={{ color: 'var(--color-text-muted)' }}>
                       {r.is_active ? <Eye size={12} /> : <EyeOff size={12} />}
