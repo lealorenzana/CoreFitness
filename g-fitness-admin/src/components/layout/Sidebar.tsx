@@ -1,10 +1,12 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, PartyPopper, Bell, BookOpen, History, Trophy, ListChecks, Gift, Flag, ShieldCheck,
+  LogOut, ChevronRight, ChevronDown, PartyPopper, Bell, BookOpen, History,
+  Trophy, ListChecks, Gift, Flag, ShieldCheck, UserCheck, TrendingUp,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -17,34 +19,122 @@ const SECONDARY    = 'var(--color-secondary)';
 const TEXT_SECOND  = 'var(--color-text-secondary)';
 const TEXT_MUTED   = 'var(--color-text-muted)';
 
-const NAV_ITEMS = [
-  { label: 'Dashboard',  path: '/dashboard',  icon: LayoutDashboard, section: 'Overview' },
-  { label: 'Members',    path: '/members',    icon: Users,           section: 'Management' },
-  { label: 'Trainers',   path: '/trainers',   icon: Dumbbell,        section: 'Management', adminOnly: true },
-  { label: 'Schedule',   path: '/schedule',   icon: CalendarDays,    section: 'Management' },
-  { label: 'Bookings',   path: '/bookings',   icon: Calendar,        section: 'Management' },
-  { label: 'Events',     path: '/events',     icon: PartyPopper,     section: 'Management' },
-  { label: 'Notifications', path: '/notifications', icon: Bell,      section: 'Management' },
-  { label: 'Attendance history', path: '/attendance-history', icon: History, section: 'Reports' },
-  { label: 'Attendance', path: '/attendance',  icon: CheckSquare,     section: 'Management' },
-  { label: 'Retention',  path: '/retention',   icon: Target,          section: 'Reports' },
-  { label: 'Revenue',    path: '/revenue',     icon: Banknote,      section: 'Reports' },
-  { label: 'Payments',   path: '/payments',    icon: CreditCard,      section: 'Reports' },
-  { label: 'Activity',   path: '/activity',    icon: History,         section: 'Reports', adminOnly: true },
-  { label: 'Plans',      path: '/membership-plans', icon: Banknote,   section: 'Management', adminOnly: true },
-  { label: 'Resources',  path: '/resources',        icon: BookOpen,   section: 'Management' },
-  { label: 'Achievements', path: '/achievements',  icon: Trophy,     section: 'Management', adminOnly: true },
-  { label: 'Exercises',  path: '/exercises',        icon: ListChecks, section: 'Management', adminOnly: true },
-  { label: 'Rewards',    path: '/rewards',          icon: Gift,       section: 'Management', adminOnly: true },
-  { label: 'Challenges', path: '/challenges',       icon: Flag,       section: 'Management', adminOnly: true },
-  { label: 'Credentials',path: '/credentials',      icon: ShieldCheck,section: 'Management', adminOnly: true },
-  { label: 'Settings',   path: '/settings',    icon: Settings,        section: 'Settings', adminOnly: true },
+interface Leaf {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+}
+
+interface Group {
+  /** Also the key the open/closed state is stored under. */
+  label: string;
+  icon: LucideIcon;
+  children: Leaf[];
+}
+
+type Entry = Leaf | Group;
+
+const isGroup = (e: Entry): e is Group => 'children' in e;
+
+/**
+ * The nav, ordered by how often the desk needs it and grouped by what belongs
+ * together.
+ *
+ * It was one flat list of 21 links under four headings, ordered by the accident
+ * of when each page was written: Attendance sat tenth, below Notifications, and
+ * its own history report sat in a different section entirely. Twenty-one
+ * destinations is more than anyone scans — so related pages now collapse under
+ * one row and only the section you are working in is open.
+ *
+ * Attendance is first after the dashboard because it is the one screen this gym
+ * uses every single day.
+ *
+ * A group whose children are all `adminOnly` disappears for front-desk staff,
+ * and one left with a single child renders as a plain link rather than a folder
+ * holding one thing — so `staff` sees a shorter, flatter version of the same nav
+ * instead of a row of empty drawers.
+ */
+const NAV: Entry[] = [
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+
+  {
+    label: 'Attendance',
+    icon: CheckSquare,
+    children: [
+      { label: 'Log attendance', path: '/attendance', icon: UserCheck },
+      { label: 'History', path: '/attendance-history', icon: History },
+    ],
+  },
+  {
+    label: 'People',
+    icon: Users,
+    children: [
+      { label: 'Members', path: '/members', icon: Users },
+      { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true },
+      { label: 'Credentials', path: '/credentials', icon: ShieldCheck, adminOnly: true },
+    ],
+  },
+  {
+    label: 'Classes',
+    icon: CalendarDays,
+    children: [
+      { label: 'Schedule', path: '/schedule', icon: CalendarDays },
+      { label: 'Bookings', path: '/bookings', icon: Calendar },
+      { label: 'Events', path: '/events', icon: PartyPopper },
+    ],
+  },
+  {
+    label: 'Billing',
+    icon: CreditCard,
+    children: [
+      { label: 'Payments', path: '/payments', icon: CreditCard },
+      { label: 'Plans', path: '/membership-plans', icon: Banknote, adminOnly: true },
+    ],
+  },
+  {
+    label: 'Reports',
+    icon: TrendingUp,
+    children: [
+      { label: 'Revenue', path: '/revenue', icon: Banknote },
+      { label: 'Retention', path: '/retention', icon: Target },
+      { label: 'Activity log', path: '/activity', icon: History, adminOnly: true },
+    ],
+  },
+  {
+    label: 'Engagement',
+    icon: Trophy,
+    children: [
+      { label: 'Challenges', path: '/challenges', icon: Flag, adminOnly: true },
+      { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true },
+      { label: 'Achievements', path: '/achievements', icon: Trophy, adminOnly: true },
+      { label: 'Notifications', path: '/notifications', icon: Bell },
+    ],
+  },
+  {
+    label: 'Training',
+    icon: BookOpen,
+    children: [
+      { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
+      { label: 'Resources', path: '/resources', icon: BookOpen },
+    ],
+  },
+
+  { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true },
 ];
 
-const SECTIONS = ['Overview', 'Management', 'Reports', 'Settings'];
+/** The group a path lives in, or null for a top-level page. */
+function groupHolding(pathname: string): string | null {
+  for (const e of NAV) {
+    if (isGroup(e) && e.children.some((c) => c.path === pathname)) return e.label;
+  }
+  return null;
+}
+
 const ICON_RAIL_W = 56;
 const DETAIL_W = 208;
 const STORAGE_KEY = 'admin_sidebar_collapsed';
+const OPEN_KEY = 'admin_sidebar_open_groups';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -70,7 +160,52 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return () => { active = false; };
   }, []);
 
-  const navItems = NAV_ITEMS.filter((i) => isAdmin || !i.adminOnly);
+  /**
+   * The nav with anything this role cannot reach removed, and any group left
+   * holding exactly one child flattened into that child.
+   */
+  const entries = useMemo<Entry[]>(() => {
+    const visible = (l: Leaf) => isAdmin || !l.adminOnly;
+    const out: Entry[] = [];
+    for (const e of NAV) {
+      if (!isGroup(e)) {
+        if (visible(e)) out.push(e);
+        continue;
+      }
+      const children = e.children.filter(visible);
+      if (children.length === 0) continue;
+      if (children.length === 1) { out.push(children[0]); continue; }
+      out.push({ ...e, children });
+    }
+    return out;
+  }, [isAdmin]);
+
+  /**
+   * Which drawers are open — remembered, so the section you work in every day
+   * is already open the next time the dashboard is launched.
+   *
+   * Opening the group holding the current page is done *here*, in the lazy
+   * initialiser, rather than in an effect watching the route. An effect that
+   * calls `setState` on render is the `set-state-in-effect` mistake this
+   * codebase keeps making; and it isn't needed, because a closed group holding
+   * the current page already paints itself selected (see `holdsActive` below).
+   */
+  const [open, setOpen] = useState<string[]>(() => {
+    const here = groupHolding(window.location.pathname);
+    try {
+      const raw = localStorage.getItem(OPEN_KEY);
+      const stored = raw ? (JSON.parse(raw) as string[]) : ['Attendance'];
+      return here && !stored.includes(here) ? [...stored, here] : stored;
+    } catch { return here ? ['Attendance', here] : ['Attendance']; }
+  });
+
+  const toggleGroup = (label: string) => {
+    setOpen((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -101,24 +236,39 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <Dumbbell size={16} className="text-white" />
           </div>
 
-          {/* Nav icons */}
+          {/* One icon per entry. A group's icon opens its first page — the rail
+              has no room to explain a folder, and landing on the section's main
+              screen is what clicking it means anywhere else. */}
           <div className="flex-1 flex flex-col gap-1 w-full px-2 overflow-y-auto scrollbar-hide">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+            {entries.map((entry) => {
+              const Icon = entry.icon;
+              const paths = isGroup(entry) ? entry.children.map((c) => c.path) : [entry.path];
+              const isActive = paths.includes(location.pathname);
+              const title = isGroup(entry)
+                ? `${entry.label} — ${entry.children.map((c) => c.label).join(', ')}`
+                : entry.label;
               return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors"
+                <button
+                  key={entry.label}
+                  onClick={() => {
+                    if (isGroup(entry)) setOpen((p) => (p.includes(entry.label) ? p : [...p, entry.label]));
+                    navigate(paths[0]);
+                  }}
+                  className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors relative"
                   style={{
                     background: isActive ? PRIMARY_LIGHT : 'transparent',
                     color: isActive ? PRIMARY : TEXT_MUTED,
                   }}
-                  title={item.label}
+                  title={title}
                 >
                   <Icon size={18} />
-                </NavLink>
+                  {/* A group is more than one destination; the dot says the icon
+                      is a section rather than a page. */}
+                  {isGroup(entry) && (
+                    <span className="absolute bottom-1 right-1 w-1 h-1 rounded-full"
+                      style={{ background: isActive ? PRIMARY : BORDER }} />
+                  )}
+                </button>
               );
             })}
           </div>
@@ -168,33 +318,80 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-4">
-          {SECTIONS.map(section => {
-            const items = navItems.filter(i => i.section === section);
-            if (items.length === 0) return null;
+        <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-0.5">
+          {entries.map((entry) => {
+            if (!isGroup(entry)) {
+              const isActive = location.pathname === entry.path;
+              return (
+                <NavLink
+                  key={entry.path}
+                  to={entry.path}
+                  className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
+                  style={{
+                    background: isActive ? PRIMARY_LIGHT : 'transparent',
+                    color: isActive ? PRIMARY : TEXT_SECOND,
+                  }}
+                >
+                  <entry.icon size={15} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
+                  <span className="truncate">{entry.label}</span>
+                </NavLink>
+              );
+            }
+
+            const expanded = open.includes(entry.label);
+            const holdsActive = entry.children.some((c) => c.path === location.pathname);
+            // A closed group holding the current page still has to look
+            // selected, or the nav shows nothing highlighted while you are
+            // plainly on one of its pages.
+            const headerColor = holdsActive ? PRIMARY : TEXT_SECOND;
+
             return (
-              <div key={section}>
-                <p className="px-3 mb-1.5 text-[9px] font-semibold tracking-[0.2em] uppercase"
-                  style={{ color: TEXT_MUTED }}>{section}</p>
-                <div className="space-y-0.5">
-                  {items.map(item => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
-                        style={{
-                          background: isActive ? PRIMARY_LIGHT : 'transparent',
-                          color: isActive ? PRIMARY : TEXT_SECOND,
-                        }}
-                      >
-                        <item.icon size={15} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
-                        <span className="truncate">{item.label}</span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
+              <div key={entry.label}>
+                <button
+                  onClick={() => toggleGroup(entry.label)}
+                  aria-expanded={expanded}
+                  className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
+                  style={{
+                    background: holdsActive && !expanded ? PRIMARY_LIGHT : 'transparent',
+                    color: headerColor,
+                  }}
+                >
+                  <entry.icon size={15} style={{ color: holdsActive ? PRIMARY : TEXT_MUTED }} />
+                  <span className="truncate flex-1 text-left">{entry.label}</span>
+                  <ChevronDown
+                    size={12}
+                    className="flex-shrink-0 transition-transform duration-200"
+                    style={{
+                      color: TEXT_MUTED,
+                      transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    }}
+                  />
+                </button>
+
+                {expanded && (
+                  // The guide line is what makes these read as *inside* the row
+                  // above rather than as more top-level links.
+                  <div className="ml-[22px] pl-2 mt-0.5 space-y-0.5"
+                    style={{ borderLeft: `1px solid ${BORDER}` }}>
+                    {entry.children.map((child) => {
+                      const isActive = location.pathname === child.path;
+                      return (
+                        <NavLink
+                          key={child.path}
+                          to={child.path}
+                          className="flex items-center gap-2 px-2.5 h-8 rounded-lg text-[12px] font-medium transition-colors"
+                          style={{
+                            background: isActive ? PRIMARY_LIGHT : 'transparent',
+                            color: isActive ? PRIMARY : TEXT_SECOND,
+                          }}
+                        >
+                          <child.icon size={13} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
+                          <span className="truncate">{child.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

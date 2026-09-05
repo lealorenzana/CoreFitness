@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Pagination from '../components/ui/Pagination';
 import QRScanner from '../components/ui/QRScanner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import {
   QrCode, UserCheck, Search, Calendar, TrendingUp, Camera, Undo2, Download,
-  Info, CalendarDays, ChevronLeft, ChevronRight,
+  Info, History, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { checkInCodeOf, formatCheckInCode, matchesCheckInCode } from '../utils/checkInCode';
@@ -114,18 +114,11 @@ export default function Attendance() {
 
   const [qrInput, setQrInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [logSearch, setLogSearch] = useState('');
-  // Local calendar date, never toISOString() — see utils/dates.ts for what that
-  // was doing to every check-in before 8am.
-  const [logDate, setLogDate] = useState<string>(todayKey());
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activity, setActivity] = useState('');
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
-  const [showCalendar, setShowCalendar] = useState(false);
-  /** Month the calendar is showing, `YYYY-MM`. Follows the picked day. */
-  const [calMonth, setCalMonth] = useState<string>(() => todayKey().slice(0, 7));
 
   const loadData = async () => {
     setLoading(true);
@@ -172,50 +165,27 @@ export default function Attendance() {
     () => allAttendance.filter((a) => localDateKey(a.check_in_time) === todayStr),
     [allAttendance, todayStr]
   );
-  const logRecords = useMemo(
-    () => allAttendance.filter((a) => localDateKey(a.check_in_time) === logDate),
-    [allAttendance, logDate]
-  );
-
-  /** Check-ins per hour for the selected day — when the gym is actually busy. */
-  const hourly = useMemo(() => {
-    const buckets = Array.from({ length: 24 }, () => 0);
-    for (const a of logRecords) buckets[new Date(a.check_in_time).getHours()] += 1;
-    return buckets;
-  }, [logRecords]);
-
-  const busiestHour = useMemo(() => {
-    const max = Math.max(...hourly);
-    return max === 0 ? null : { hour: hourly.indexOf(max), count: max };
-  }, [hourly]);
-
   /**
-   * Check-ins per local day, for the calendar.
+   * The log is **today**, and only today.
    *
-   * Free: this page already holds every attendance row, so "which days did
-   * anyone come in?" costs a pass over an array rather than a query. Keyed with
-   * `localDateKey` — the same function the log filter uses — so a day the grid
-   * marks as busy cannot open onto an empty log.
+   * It used to carry its own day-stepper, month grid, per-day search and
+   * by-hour chart — a second, smaller copy of Attendance History sitting on top
+   * of the check-in desk. Two screens answering "who came in on the 14th?"
+   * differently is how they drift apart; this one is the desk, where the only
+   * day that exists is the one being worked. Every other day is one link away.
    */
-  const countsByDay = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const a of allAttendance) {
-      const k = localDateKey(a.check_in_time);
-      map[k] = (map[k] ?? 0) + 1;
-    }
-    return map;
-  }, [allAttendance]);
+  const logRecords = todayAttendance;
 
-  /** Distinct members over the last 7 local days, ending on the selected date. */
+  /** Distinct members over the last 7 local days, ending today. */
   const weekUnique = useMemo(() => {
-    const from = addDays(logDate, -6);
+    const from = addDays(todayStr, -6);
     const seen = new Set<string>();
     for (const a of allAttendance) {
       const k = localDateKey(a.check_in_time);
-      if (k >= from && k <= logDate) seen.add(a.member_id);
+      if (k >= from && k <= todayStr) seen.add(a.member_id);
     }
     return seen.size;
-  }, [allAttendance, logDate]);
+  }, [allAttendance, todayStr]);
 
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
     if (todayAttendance.find((a) => a.member_id === member.profile.id)) {
@@ -396,9 +366,9 @@ export default function Attendance() {
    * same way the members export did. Built here from the real shape instead.
    */
   const exportLog = () => {
-    if (filteredLog.length === 0) return showToast('Nothing to export for that day', 'error');
+    if (logRecords.length === 0) return showToast('Nothing to export — nobody has checked in today', 'error');
     exportToCSV(
-      filteredLog.map((r) => {
+      logRecords.map((r) => {
         const at = new Date(r.check_in_time);
         return {
           Date: localDateKey(r.check_in_time),
@@ -409,7 +379,7 @@ export default function Attendance() {
           Activity: r.activity ?? '',
         };
       }),
-      `attendance_${logDate}`,
+      `attendance_${todayStr}`,
       false, // the day is already in the name
     );
   };
@@ -424,10 +394,6 @@ export default function Attendance() {
       checkInCodeOf(m.profile.id).includes(q.replace(/[\s-]/g, ''))
     );
   });
-
-  const filteredLog = logRecords.filter((r) =>
-    (memberNameById[r.member_id] ?? '').toLowerCase().includes(logSearch.toLowerCase())
-  );
 
   const stats = [
     { label: "Today", value: todayAttendance.length, icon: UserCheck, color: 'var(--color-primary)' },
@@ -634,123 +600,50 @@ export default function Attendance() {
         {/* The record — three fifths, because it is what the desk reads */}
         <div className="col-span-3 rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          {/* A date picker, an 80px search box and an export icon were crammed
-              onto one line beside the title. Two tidy rows instead — and the
-              date control now carries the day's count, so stepping through the
-              week tells you where the check-ins are instead of making you look.
-              The month grid below answers it for thirty days at once. */}
-          <div className="p-2.5 flex-shrink-0 space-y-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Calendar size={13} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0" />
-                <h3 className="text-[11px] font-semibold text-white truncate">Attendance Log</h3>
-              </div>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                <button onClick={() => { setCalMonth(logDate.slice(0, 7)); setShowCalendar((v) => !v); }}
-                  title={showCalendar ? 'Hide the month' : 'Pick a day from the month'}
-                  aria-expanded={showCalendar}
-                  className="p-1.5 rounded-lg"
-                  style={{
-                    color: showCalendar ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                    background: showCalendar ? 'var(--color-secondary-light)' : 'transparent',
-                  }}>
-                  <CalendarDays size={12} />
-                </button>
-                <button onClick={exportLog} title="Export this day as CSV"
-                  className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
-                  <Download size={12} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button onClick={() => { setLogDate(addDays(logDate, -1)); setLogPage(1); }}
-                aria-label="Previous day"
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                <ChevronLeft size={12} />
-              </button>
-
-              <button onClick={() => { setCalMonth(logDate.slice(0, 7)); setShowCalendar((v) => !v); }}
-                className="flex-1 h-6 px-2 rounded-md flex items-center justify-between gap-2 min-w-0"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-                <span className="text-[10px] font-semibold text-white truncate">
-                  {logDate === todayStr
-                    ? 'Today'
-                    : new Date(`${logDate}T00:00:00`).toLocaleDateString('en-PH',
-                        { weekday: 'short', day: 'numeric', month: 'short' })}
-                </span>
-                <span className="text-[10px] tabular-nums flex-shrink-0"
-                  style={{ color: (countsByDay[logDate] ?? 0) > 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
-                  {countsByDay[logDate] ?? 0}
-                </span>
-              </button>
-
-              {/* Tomorrow has no check-ins to look at. */}
-              <button disabled={logDate >= todayStr}
-                onClick={() => { setLogDate(addDays(logDate, 1)); setLogPage(1); }}
-                aria-label="Next day"
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+          {/* One line: what this is, how many, and the two things you can do
+              with it. The day-stepper, month grid, per-day search and by-hour
+              chart that used to live here all exist on Attendance History,
+              which is where a question about any day but today belongs. */}
+          <div className="p-2.5 flex-shrink-0 flex items-center justify-between gap-2"
+            style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar size={13} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0" />
+              <h3 className="text-[11px] font-semibold text-white truncate">Today&apos;s check-ins</h3>
+              <span className="text-[10px] tabular-nums px-1.5 rounded-full flex-shrink-0"
                 style={{
                   background: 'var(--color-surface-high)',
-                  color: logDate >= todayStr ? 'var(--color-border)' : 'var(--color-text-secondary)',
+                  color: logRecords.length > 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)',
                 }}>
-                <ChevronRight size={12} />
-              </button>
+                {logRecords.length}
+              </span>
             </div>
-
-            {showCalendar && (
-              <AttendanceCalendar
-                compact
-                month={calMonth}
-                counts={countsByDay}
-                selected={logDate}
-                today={todayStr}
-                onMonthChange={setCalMonth}
-                onSelect={(d) => { setLogDate(d); setLogPage(1); }}
-              />
-            )}
-
-            <div className="relative">
-              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2"
-                style={{ color: 'var(--color-text-muted)' }} />
-              <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
-                placeholder="Search this day…"
-                className="w-full pl-6 pr-2 py-1 rounded-lg text-[10px]"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: '#fff' }} />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button onClick={exportLog} title="Export today as CSV"
+                className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                <Download size={12} />
+              </button>
+              {/* Another day, a range, a member's own record, who is most
+                  regular — all one click away, and none of it duplicated here. */}
+              <Link to="/attendance-history"
+                className="flex items-center gap-1 pl-2 pr-1.5 h-6 rounded-lg text-[10px] font-semibold"
+                style={{
+                  background: 'var(--color-surface-high)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                }}>
+                <History size={11} />
+                Other days
+                <ChevronRight size={10} />
+              </Link>
             </div>
           </div>
-
-          {/* When the gym was actually busy. A day's total says nothing about
-              whether to put a second person on the desk at 6pm. */}
-          {busiestHour && (
-            <div className="px-2.5 py-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-                  By hour
-                </span>
-                <span className="text-[8px]" style={{ color: 'var(--color-secondary)' }}>
-                  busiest {busiestHour.hour % 12 === 0 ? 12 : busiestHour.hour % 12}{busiestHour.hour < 12 ? 'am' : 'pm'} · {busiestHour.count}
-                </span>
-              </div>
-              <div className="flex items-end gap-px h-7">
-                {hourly.map((n, h) => (
-                  <div key={h} className="flex-1 rounded-sm" title={`${h}:00 — ${n} check-in${n === 1 ? '' : 's'}`}
-                    style={{
-                      height: `${n === 0 ? 2 : Math.max(8, (n / busiestHour.count) * 100)}%`,
-                      background: n === 0
-                        ? 'var(--color-border)'
-                        : h === busiestHour.hour ? 'var(--color-secondary)' : 'var(--color-primary)',
-                    }} />
-                ))}
-              </div>
-            </div>
-          )}
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-            {filteredLog.length === 0 ? (
+            {logRecords.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-6">
                 <UserCheck size={24} style={{ color: 'var(--color-border)' }} className="mb-1" />
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No check-ins</p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  Nobody has checked in today yet
+                </p>
               </div>
             ) : (
               <table className="w-full">
@@ -763,7 +656,7 @@ export default function Attendance() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLog.slice((logPage - 1) * ITEMS_PER_PAGE, logPage * ITEMS_PER_PAGE).map(r => (
+                  {logRecords.slice((logPage - 1) * ITEMS_PER_PAGE, logPage * ITEMS_PER_PAGE).map(r => (
                     <tr key={r.id} className="group" style={{ borderBottom: '1px solid var(--color-border)' }}>
                       <td className="py-1.5 px-2">
                         <p className="text-[10px] text-white font-semibold truncate">{memberNameById[r.member_id] ?? 'Unknown member'}</p>
@@ -800,9 +693,9 @@ export default function Attendance() {
               </table>
             )}
           </div>
-          {filteredLog.length > 0 && (
+          {logRecords.length > 0 && (
             <div className="flex-shrink-0 px-2 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-              <Pagination currentPage={logPage} totalItems={filteredLog.length}
+              <Pagination currentPage={logPage} totalItems={logRecords.length}
                 itemsPerPage={ITEMS_PER_PAGE} onPageChange={setLogPage} />
             </div>
           )}
