@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, TrendingUp, Award, Flame } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { listMemberAttendance } from '../lib/api/attendance';
 import type { AttendanceRow } from '../types/db';
+import { dateKey, localDateKey } from '../utils/dates';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -32,7 +33,10 @@ function computeStreaks(dateStrings: string[]): { current: number; longest: numb
   }
   let current = 0;
   const cursor = new Date();
-  while (days.has(cursor.toISOString().slice(0, 10))) {
+  // `dateKey`, not `toISOString()`: the set below is keyed on local dates, and
+  // before 8am Manila the UTC key is yesterday — so the walk started on a day
+  // that was never in the set and every streak read as 0.
+  while (days.has(dateKey(cursor))) {
     current += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -55,7 +59,11 @@ export default function AttendanceHistory() {
       .finally(() => setLoading(false));
   }, []);
 
-  const checkInDates = useMemo(() => records.map((r) => r.check_in_time.slice(0, 10)), [records]);
+  // `localDateKey`, not `.slice(0, 10)` on the raw column. That text is UTC, so
+  // a 7am visit was filed to the previous day — while the calendar heatmap below
+  // plots the same rows with `new Date()`, which is local. The page showed one
+  // check-in on two different days depending on which half you looked at.
+  const checkInDates = useMemo(() => records.map((r) => localDateKey(r.check_in_time)), [records]);
   const attendanceDays = useMemo(
     () =>
       checkInDates

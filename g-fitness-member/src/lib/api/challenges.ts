@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { todayKey } from '../../utils/dates';
 
 /**
  * Gym challenges (migration 0052).
@@ -45,7 +46,10 @@ interface Row {
  * four open challenges should not wait four round trips to see a screen.
  */
 export async function listChallenges(memberId: string): Promise<Challenge[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  // Local, not UTC: `ends_on` is a calendar date, and before 8am Manila the
+  // UTC date is yesterday — so a challenge that finished last night was still
+  // being offered for the first eight hours of the day.
+  const today = todayKey();
 
   const [{ data, error }, joined] = await Promise.all([
     supabase

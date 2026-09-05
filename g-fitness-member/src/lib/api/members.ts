@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { todayKey } from '../../utils/dates';
 import type {
   ProfileRow,
   MemberProfileRow,
@@ -131,7 +132,10 @@ export async function approveMemberRegistration(
   });
   if (memberProfileError) throw memberProfileError;
 
-  const startDate = new Date().toISOString().slice(0, 10);
+  // Local, not UTC. `start_date` is a calendar date and everything downstream
+  // — expiry, days-left, the renewal prompt — is derived from it, so a member
+  // signed up before 8am started a day early and expired a day early too.
+  const startDate = todayKey();
   const { error: membershipError } = await supabase.from('memberships').insert({
     member_id: authUserId,
     plan_id: planId,

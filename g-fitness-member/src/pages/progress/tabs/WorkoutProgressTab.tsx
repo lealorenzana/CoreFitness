@@ -12,6 +12,7 @@ import { errorMessage } from '../../../utils/errorMessage';
 import { progressService, type WorkoutLog } from '../../../services/progressService';
 import { getGymSettings } from '../../../lib/api/settings';
 import FeatureLock from '../../../components/ui/FeatureLock';
+import { monthKey } from '../../../utils/dates';
 
 /**
  * The member's own workout log, from `workout_logs` (migration 0020).
@@ -162,12 +163,11 @@ function WorkoutProgress() {
 
   // Real totals over real rows. Nothing estimated.
   //
-  // Built from local parts, not `toISOString()`. Manila is UTC+8, so for the
-  // first eight hours of every local day the UTC date is still yesterday — and
-  // on the 1st of a month that means "this month" silently reports last
-  // month's totals until 8am. Same bug that hid every pre-8am check-in.
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // `monthKey`, not `toISOString()`. Manila is UTC+8, so on the 1st of a month
+  // the UTC month is still last month until 8am. This was fixed inline here
+  // first; it now uses the shared helper so the next screen that needs a month
+  // does not have to rediscover it.
+  const thisMonth = monthKey();
   const monthLogs = logs.filter((l) => l.date.startsWith(thisMonth));
   const monthMinutes = monthLogs.reduce((sum, l) => sum + (l.duration ?? 0), 0);
 
