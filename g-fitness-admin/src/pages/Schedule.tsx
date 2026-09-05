@@ -6,7 +6,7 @@ import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import {
-  Plus, X, Trash2, Clock, MapPin, Users, RefreshCw, Dumbbell, Ban, Edit2,
+  Plus, X, Trash2, MapPin, RefreshCw, Dumbbell, Ban, Edit2,
   AlertTriangle, CalendarDays, Filter,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
@@ -112,7 +112,7 @@ export default function Schedule() {
     [trainers]
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (announce = false) => {
     setLoading(true);
     try {
       const [tpl, avail, trainerRows, gym] = await Promise.all([
@@ -133,6 +133,17 @@ export default function Schedule() {
       // Read the dated sessions *after* generating, so a first visit doesn't
       // show an empty list that fills in only on the next refresh.
       setSessions(await loadUpcomingSessions(14).catch(() => []));
+
+      // Only on an explicit refresh. Announcing this on every mount would toast
+      // the front desk every time they open the screen.
+      if (announce) {
+        showToast(
+          created > 0
+            ? `${created} new session${created === 1 ? '' : 's'} generated`
+            : 'Sessions are already up to date',
+          'success'
+        );
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load schedule', 'error');
     } finally {
@@ -141,6 +152,20 @@ export default function Schedule() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /**
+   * The last local date a generated session exists for.
+   *
+   * Derived from the templates rather than the session list: the list is capped
+   * at 14 days for display, and the generator runs four weeks out, so counting
+   * the list would understate the horizon by a fortnight.
+   */
+  const bookableThrough = useMemo(() => {
+    if (templates.filter((t) => t.active).length === 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + WEEKS_AHEAD * 7);
+    return d.toLocaleDateString('en-PH', { day: 'numeric', month: 'long' });
+  }, [templates]);
 
   const openAdd = () => {
     setEditingTemplate(null);
@@ -283,8 +308,26 @@ export default function Schedule() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={load} disabled={loading}>
-            <RefreshCw size={14} className="mr-1.5" /> Regenerate sessions
+          {/*
+            What this button is for, and why it says "Refresh" now.
+
+            The Class Timetable is a weekly *pattern* — "Yoga, Mondays, 6am".
+            Members cannot book a pattern; they book a dated session. Opening
+            this page calls `generate_class_instances`, which walks four weeks
+            forward and creates the dated sessions each active template is
+            missing. It is idempotent, so it creates only what is absent.
+
+            The button ran that same page load. Labelled "Regenerate sessions"
+            it promised a manual action for something that had already happened
+            the moment the screen opened — and because the confirmation banner
+            only appeared when the count was above zero, the ordinary case
+            (nothing to create) looked like a button that did nothing at all.
+
+            It is a refresh, it says so, and it now reports the outcome every
+            time — including "already up to date".
+          */}
+          <Button variant="secondary" onClick={() => load(true)} disabled={loading}>
+            <RefreshCw size={14} className="mr-1.5" /> Refresh
           </Button>
           {tab === 'timetable' && (
             <Button variant="primary" onClick={openAdd}>
@@ -294,11 +337,25 @@ export default function Schedule() {
         </div>
       </div>
 
-      {generated !== null && generated > 0 && (
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-primary-light)' }}>
+      {/* Says how far ahead members can book, which is the fact the front desk
+          is actually asked. The old banner only appeared when new sessions had
+          just been created, so on a normal visit this said nothing. */}
+      {!loading && (
+        <div className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-3"
+          style={{ background: 'var(--color-primary-light)' }}>
           <p className="text-[11px]" style={{ color: 'var(--color-primary)' }}>
-            {generated} session{generated === 1 ? '' : 's'} scheduled for the next {WEEKS_AHEAD} weeks.
+            {templates.filter((t) => t.active).length === 0
+              ? 'No active classes on the timetable, so there is nothing to schedule yet.'
+              : bookableThrough
+                ? <>Members can book through <b>{bookableThrough}</b> — {WEEKS_AHEAD} weeks of sessions are generated from the timetable below.</>
+                : 'Add an active class to the timetable and its sessions are generated automatically.'}
           </p>
+          {generated !== null && (
+            <span className="text-[10px] font-semibold whitespace-nowrap px-2 py-1 rounded-full"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-primary)' }}>
+              {generated > 0 ? `+${generated} new` : 'Up to date'}
+            </span>
+          )}
         </div>
       )}
 
@@ -377,70 +434,109 @@ export default function Schedule() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          /*
+            A week, laid out like a week.
+
+            This was one column per day stacked vertically, each day's classes
+            in a `grid-cols-2`. With one class on a day that meant a half-width
+            card and an empty half — on a 1900px dashboard, most of the screen
+            was blank. Worse, a day with nothing on it was skipped entirely, so
+            the timetable could not answer "is Tuesday free?", which is the
+            question you open a timetable to ask.
+
+            Seven columns now, always all seven. An empty day says it is empty.
+          */
+          <div className="grid grid-cols-7 gap-2 items-start">
             {DAY_NAMES.map((day, dow) => {
-              const items = visibleTemplates.filter((t) => t.day_of_week === dow);
-              if (items.length === 0) return null;
+              const items = visibleTemplates
+                .filter((t) => t.day_of_week === dow)
+                .sort((a, b) => a.start_time.localeCompare(b.start_time));
               return (
-                <div key={day}>
-                  <p className="text-[10px] font-bold uppercase mb-1.5" style={{ color: 'var(--color-text-muted)' }}>{day}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {items.map((t) => {
-                      const clashing = flagged.has(t.id);
-                      return (
-                      <motion.div key={t.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl p-3 flex items-start gap-3"
-                        style={{
-                          ...panel,
-                          opacity: t.active ? 1 : 0.55,
-                          borderColor: clashing ? 'var(--color-secondary)' : 'var(--color-border)',
-                        }}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--color-primary-light)' }}>
-                          <Dumbbell size={14} style={{ color: 'var(--color-primary)' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-semibold text-white truncate">{t.name}</p>
+                <div key={day} className="min-w-0">
+                  <div className="flex items-baseline justify-between mb-1.5 px-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide"
+                      style={{ color: 'var(--color-text-muted)' }}>{day.slice(0, 3)}</p>
+                    {items.length > 0 && (
+                      <span className="text-[10px] font-semibold" style={{ color: 'var(--color-primary)' }}>
+                        {items.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {items.length === 0 ? (
+                    <div className="rounded-xl py-6 text-center"
+                      style={{ border: '1px dashed var(--color-border)' }}>
+                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No classes</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {items.map((t) => {
+                        const clashing = flagged.has(t.id);
+                        return (
+                        <motion.div key={t.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                          className="rounded-xl p-2.5 group"
+                          style={{
+                            ...panel,
+                            opacity: t.active ? 1 : 0.55,
+                            borderColor: clashing ? 'var(--color-secondary)' : 'var(--color-border)',
+                          }}>
+                          {/* Time first and biggest — in a column of classes it
+                              is the only thing that orders them, and it is what
+                              the eye is scanning for. */}
+                          <div className="flex items-baseline justify-between gap-1">
+                            <p className="text-xs font-bold text-white tabular-nums">{clock(t.start_time)}</p>
+                            <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                              {t.duration_minutes}m
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <p className="text-[11px] font-semibold text-white truncate">{t.name}</p>
                             {clashing && (
                               <span title="Clashes with another class" className="flex-shrink-0">
-                                <AlertTriangle size={11} style={{ color: 'var(--color-secondary)' }} />
-                              </span>
-                            )}
-                            {!t.active && (
-                              <span className="text-[8px] px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                                retired
+                                <AlertTriangle size={10} style={{ color: 'var(--color-secondary)' }} />
                               </span>
                             )}
                           </div>
-                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                            {trainerName(t.trainer_id)} · {t.level.replace('_', ' ')}
+
+                          <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            {trainerName(t.trainer_id)}
                           </p>
-                          <p className="text-[10px] flex items-center gap-2 mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                            <span className="flex items-center gap-1"><Clock size={9} /> {clock(t.start_time)} · {t.duration_minutes}m</span>
-                            <span className="flex items-center gap-1"><Users size={9} /> {t.capacity}</span>
+                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+                            {t.level.replace('_', ' ')} · {t.capacity} places
                           </p>
                           {t.location && (
-                            <p className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                              <MapPin size={9} /> {t.location}
+                            <p className="text-[10px] flex items-center gap-1 truncate" style={{ color: 'var(--color-text-muted)' }}>
+                              <MapPin size={9} className="flex-shrink-0" /> {t.location}
                             </p>
                           )}
-                        </div>
-                        <div className="flex flex-col gap-1.5 flex-shrink-0">
-                          <button onClick={() => openEdit(t)} title="Edit class"
-                            style={{ color: 'var(--color-primary)' }}>
-                            <Edit2 size={13} />
-                          </button>
-                          <button onClick={() => setToRetire(t)} title={t.active ? 'Retire' : 'Reactivate'}
-                            style={{ color: 'var(--color-text-muted)' }}>
-                            <Ban size={13} />
-                          </button>
-                        </div>
-                      </motion.div>
-                      );
-                    })}
-                  </div>
+                          {!t.active && (
+                            <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded-full"
+                              style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                              retired
+                            </span>
+                          )}
+
+                          {/* Revealed on hover — in a seven-column grid two
+                              permanent icon buttons per card is a lot of
+                              furniture for actions used once a term. */}
+                          <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openEdit(t)} title="Edit class"
+                              className="text-[10px] font-semibold flex items-center gap-1"
+                              style={{ color: 'var(--color-primary)' }}>
+                              <Edit2 size={10} /> Edit
+                            </button>
+                            <button onClick={() => setToRetire(t)} title={t.active ? 'Retire' : 'Reactivate'}
+                              className="text-[10px] font-semibold flex items-center gap-1"
+                              style={{ color: 'var(--color-text-muted)' }}>
+                              <Ban size={10} /> {t.active ? 'Retire' : 'Restore'}
+                            </button>
+                          </div>
+                        </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

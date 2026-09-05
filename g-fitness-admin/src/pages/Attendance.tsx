@@ -462,35 +462,49 @@ export default function Attendance() {
             Tag check-ins as
           </span>
 
-          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
-            <button onClick={() => setActivity('')}
-              className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
-              style={{
-                background: activity === '' ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                color: activity === '' ? '#fff' : 'var(--color-text-muted)',
-                border: `1px solid ${activity === '' ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              }}>
-              Not recorded
-            </button>
+          {/*
+            A dropdown, not thirty chips.
+
+            The gym has 29 activity options. As buttons they wrapped onto two
+            full rows and took more vertical space than the QR scanner — for an
+            optional tag that is left on "Not recorded" most of the day. Chips
+            are for a handful of choices you compare at a glance; this is a list
+            you pick one from, which is a select.
+
+            Amber when something is set, so an activity left on from an earlier
+            class is visible rather than silently tagging the next walk-in.
+          */}
+          <select
+            value={activity}
+            onChange={(e) => setActivity(e.target.value)}
+            aria-label="Tag the next check-in with an activity"
+            className="rounded-full px-3 h-7 text-[11px] font-semibold min-w-[180px]"
+            style={{
+              background: activity === '' ? 'var(--color-surface-high)' : 'var(--color-secondary)',
+              color: activity === '' ? 'var(--color-text-muted)' : '#000',
+              border: `1px solid ${activity === '' ? 'var(--color-border)' : 'var(--color-secondary)'}`,
+            }}
+          >
+            <option value="">Not recorded</option>
             {activityOptions.map((opt) => (
-              <button key={opt} onClick={() => setActivity(opt)}
-                className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
-                style={{
-                  background: activity === opt ? 'var(--color-secondary)' : 'var(--color-surface-high)',
-                  color: activity === opt ? '#000' : 'var(--color-text-muted)',
-                  border: `1px solid ${activity === opt ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-                }}>
-                {opt}
-              </button>
+              <option key={opt} value={opt}>{opt}</option>
             ))}
-          </div>
+          </select>
+
+          {activity !== '' && (
+            <button onClick={() => setActivity('')}
+              className="text-[10px] font-semibold underline whitespace-nowrap"
+              style={{ color: 'var(--color-text-muted)' }}>
+              clear
+            </button>
+          )}
 
           <span
-            className="flex items-center gap-1 text-[10px] whitespace-nowrap cursor-help"
+            className="flex items-center gap-1 text-[10px] whitespace-nowrap cursor-help ml-auto"
             style={{ color: 'var(--color-text-muted)' }}
             title={
               'Optional, and it applies to the next check-in you take whichever way you take it — '
-              + 'handy when a class arrives together.\n\n'
+              + 'handy when a class arrives together. '
               + 'It is what fills the activity breakdown on Attendance history. Leave it on '
               + '"Not recorded" for an ordinary walk-in rather than guessing: a blank is honest, '
               + 'a default is fiction.'
@@ -500,8 +514,15 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Three-column layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-3 gap-3">
+      {/* Two panels, not three.
+
+          Scanning a QR and typing a name are the same job — get this person
+          checked in — and they were two equal thirds of the screen, which
+          left the log, the thing anybody actually reads, squeezed into the
+          last third. The two ways in stack on the left; the record gets the
+          room. 2:3 of a five-column grid. */}
+      <div className="flex-1 min-h-0 grid grid-cols-5 gap-3">
+        <div className="col-span-2 min-h-0 flex flex-col gap-3">
         {/* COL 1: QR Code Scan */}
         <div className="rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -585,8 +606,10 @@ export default function Attendance() {
           </div>
         </div>
 
-        {/* COL 3: Attendance Log */}
-        <div className="rounded-xl overflow-hidden flex flex-col"
+        </div>
+
+        {/* The record — three fifths, because it is what the desk reads */}
+        <div className="col-span-3 rounded-xl overflow-hidden flex flex-col"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           {/* A date picker, an 80px search box and an export icon were crammed
               onto one line beside the title. Two tidy rows instead — and the
