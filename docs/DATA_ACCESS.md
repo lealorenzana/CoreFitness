@@ -228,3 +228,43 @@ inventing one would defeat the point of having the log.
 Global search (`services/searchService.ts`, Ctrl+K) fires 11 parallel queries across nine entity
 types from **one** character up. A section that fails is **named in the results** rather than shown
 empty — "couldn't load bookings" and "no bookings" are different answers.
+
+
+## A SECURITY DEFINER guard can block its own writer
+
+`auth.uid()` is **NULL outside a browser session** — pg_cron, the SQL Editor, an Edge Function.
+So `if get_my_role() is distinct from 'admin' then raise` is *true* for exactly the caller
+entitled to run it. Shipped wrong twice: 0055's `settle_goals()` from cron, and 0062's
+`retire_plan()` from the SQL Editor.
+
+**Always guard on `auth.uid() is not null and <not-admin>`** (the shape 0063 settled on). And
+**probe the guard before believing it** (0038 → 0039) — resolve the function to its *last*
+definition, since a later migration may have replaced it.
+
+## A trigger needs an event to fire on
+
+"Attended" is an approved booking whose time has **passed**, and nothing writes a row when time
+passes. Anything keyed on elapsed time must be a **re-runnable sweep** called from a page load
+(and from pg_cron where it exists), never a trigger — as triggers they compile and never fire.
+
+Live examples: class/PT points (0051), reminders (0053), `sweep_stale_requests()` (0071).
+
+Every automated message goes through `notify_once`, whose dedupe key sits behind a **partial
+unique index** (0053). `not exists` races itself, and these functions run on every page load.
+
+## RLS filters rows, never columns
+
+A policy chooses which rows a statement can see. It cannot hide a column. So a trainer allowed to
+read `trainer_ratings` reads `member_id` too, and filtering the name out in JSX leaves it in the
+network response for anyone with devtools open.
+
+The fix is a **view without the column** (0072's `trainer_ratings_anon`). But a view with
+`security_invoker = false` reads *every* row regardless of the caller, so it must be **revoked
+from `authenticated`** and reached only through a SECURITY DEFINER function that filters on
+`auth.uid()`. Granting it directly leaks more than the hole it was closing.
+
+## A policy on a table whose RLS is off is not protection
+
+It reads exactly like protection and is none. **Assert `enable row level security` in the same
+file that adds the policy** — and remember an `EXISTS` subquery inside a policy is itself
+RLS-filtered (0050), so it can only reach tables the caller can already read.

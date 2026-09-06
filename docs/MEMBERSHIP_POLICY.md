@@ -153,3 +153,36 @@ anything from this file as if it were a reference — it is a search plan.
 
 The rule text is **copied onto the event row**, not joined to `refund_rules`.
 Editing the policy next year must not rewrite what a member was told last year.
+
+
+---
+
+## Editing and retiring a plan — the mechanics
+
+**Postgres cannot drop an enum value.** `'pro'` therefore survives in `plan_tier` and in both
+apps' `PlanTier` type even though the Pro plan was retired (0060, 0063). The tier `<option>` is
+rendered **only while editing a plan already on that tier** — without that condition the
+`<select>` has no matching option and silently rewrites the plan to Free on save.
+
+**Retiring is `is_active = false`**, which is correct while any membership still points at the
+plan: `memberships.plan_id` has no cascade.
+
+**Deleting is `retire_plan()` (0062, fixed in 0063), never a bare `delete`.** It moves every
+membership — *whatever its status*, not only the active ones — to the free tier in one
+transaction. A bare delete raised a foreign-key violation.
+
+**Count members with `plan_member_counts()`.** The client-side tally counted only
+`status = 'active'`, so a plan somebody was on read **"Active Members 0"** — and the delete guard
+believed it.
+
+## What a plan unlocks
+
+Not the tier. `plan_features` (0049) is a plan × feature matrix the admin edits, resolved by
+`plan_allows()` — **the same function RLS calls**, so the screen and the database cannot drift.
+
+- **A plan may never have a missing cell.** An insert trigger seeds every one, and **that seeding
+  CASE needs an `else`**: three branches returned NULL into a NOT NULL column, so adding a tier
+  failed on its own trigger (0057).
+- **Gates lock and explain, never hide**, worded from the `features` row that denied it.
+- **Never gate the free workout library (0019)** — it exists *for* members who cannot pay. Only
+  the assistant's model escalation is gated, never the rule table.
