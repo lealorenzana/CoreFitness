@@ -1,4 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  renderSchedulePng, scheduleToCsv, downloadBlob, type ScheduleSlot,
+} from '../utils/exportSchedule';
+import { useBranding } from '../hooks/useBranding';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
@@ -11,6 +15,7 @@ import TimePicker from '../components/ui/TimePicker';
 import {
   Plus, X, Trash2, RefreshCw, Dumbbell,
   AlertTriangle, CalendarDays, Filter, Clock,
+  Image as ImageIcon, FileDown,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
@@ -79,6 +84,7 @@ type TabId = 'timetable' | 'sessions' | 'hours';
 
 export default function Schedule() {
   const [tab, setTab] = useState<TabId>('timetable');
+  const branding = useBranding();
   const [templates, setTemplates] = useState<ClassTemplateRow[]>([]);
   const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>([]);
   const [trainers, setTrainers] = useState<TrainerWithProfile[]>([]);
@@ -301,6 +307,66 @@ export default function Schedule() {
     ? sessions
     : sessions.filter((s) => (trainerFilter === 'unassigned' ? s.trainerId == null : s.trainerId === trainerFilter));
 
+  /**
+   * The timetable as a file.
+   *
+   * Exports the **active** templates only. An inactive template is a class the
+   * gym has stopped running; printing it would send members to an empty studio.
+   * The trainer filter is deliberately NOT applied — a wall timetable filtered
+   * to one coach without saying so is worse than no timetable, and the filter
+   * is a browsing aid rather than a statement about the week.
+   */
+  const exportable = (): ScheduleSlot[] =>
+    templates
+      .filter((t) => t.active)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        dayOfWeek: t.day_of_week,
+        startTime: t.start_time,
+        durationMinutes: t.duration_minutes,
+        trainerName: t.trainer_id ? trainerName(t.trainer_id) : null,
+        location: t.location,
+        capacity: t.capacity,
+      }));
+
+  const handleExportPng = async () => {
+    const slots = exportable();
+    if (slots.length === 0) {
+      showToast('There are no active classes to export.', 'error');
+      return;
+    }
+    try {
+      const blob = await renderSchedulePng(slots, { gymName: branding.name });
+      // renderSchedulePng returns null when the canvas is unavailable, which is
+      // a failure and must not pass silently as a download that never arrives.
+      if (!blob) {
+        showToast('Could not draw the timetable image.', 'error');
+        return;
+      }
+      downloadBlob(blob, `timetable-${new Date().toISOString().slice(0, 10)}.png`);
+      showToast('Timetable image downloaded.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Export failed', 'error');
+    }
+  };
+
+  const handleExportCsv = () => {
+    const slots = exportable();
+    if (slots.length === 0) {
+      showToast('There are no active classes to export.', 'error');
+      return;
+    }
+    // \ufeff so Excel opens it as UTF-8. Without it a peso sign or an accented
+    // trainer name arrives mangled, which is how most "the export is broken"
+    // reports start.
+    const blob = new Blob(['\ufeff' + scheduleToCsv(slots)], {
+      type: 'text/csv;charset=utf-8',
+    });
+    downloadBlob(blob, `timetable-${new Date().toISOString().slice(0, 10)}.csv`);
+    showToast('Timetable spreadsheet downloaded.', 'success');
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -326,6 +392,17 @@ export default function Schedule() {
             It is a refresh, it says so, and it now reports the outcome every
             time — including "already up to date".
           */}
+          {/* Two formats, two real uses: a sheet to pin up, and rows to open
+              in Excel. Both draw from the same data as the calendar rather than
+              screenshotting it — see utils/exportSchedule.ts for why. */}
+          <Button variant="ghost" size="sm" onClick={handleExportPng}
+            data-tip="Download the week as an image, sized for printing">
+              <ImageIcon size={14} className="mr-1.5" /> PNG
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExportCsv}
+            data-tip="Download the week as a spreadsheet">
+              <FileDown size={14} className="mr-1.5" /> CSV
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => load(true)} disabled={loading}>
               <RefreshCw size={14} className="mr-1.5" /> Refresh
             </Button>
