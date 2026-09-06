@@ -211,15 +211,15 @@ on `profiles` cannot see a reason that is not a column.
 What is missing is (a) a PT session's payment link and (b) the member being
 *told*. Confirm by reading both `payments.ts` modules before writing anything.
 
-- [ ] **Step 1: Admin marks a pending payment paid** — one action, writing
+- [x] **Step 1: Admin marks a pending payment paid** — one action, writing
       `status='completed'` and `paid_on`, with a `.select()` zero-row guard.
-- [ ] **Step 2: Notify the member** — `notify_once` with a dedupe key of
+- [x] **Step 2: Notify the member** — `notify_once` with a dedupe key of
       `payment:<id>:paid`, so a double-click cannot send two receipts.
-- [ ] **Step 3: PT payment** — a `pt_sessions.payment_id` link, so "paid" is
+- [~] **Step 3: PT payment** — payment_id column added in 0070; the UI that distinguishes unpaid from plan-covered is NOT written — a `pt_sessions.payment_id` link, so "paid" is
       visible on the session, not only in the ledger.
-- [ ] **Step 4: Member side** — PaymentHistory shows Paid/Pending distinctly and
+- [~] **Step 4: Member side** — PaymentHistory already distinguished statuses; the outstanding-balance card on Home is NOT done — PaymentHistory shows Paid/Pending distinctly and
       Home surfaces an outstanding balance.
-- [ ] **Step 5: Build, lint, commit**
+- [x] **Step 5: Build, lint, commit** — commit 431be1d
 
 ---
 
@@ -299,17 +299,17 @@ and **no member identity**, and the trainer's SELECT policy points at that.
 **Decision — T5 admin sees identity.** The gym monitors and coaches; an anonymous
 complaint it cannot follow up is not monitoring. Admin reads the base table.
 
-- [ ] **Step 1: 0072** — `trainer_feedback` (trainer→member, T3), the
+- [x] **Step 1: 0072** — `trainer_feedback` (trainer→member, T3), the
       `trainer_ratings_anon` view, tightened trainer SELECT policy.
-- [ ] **Step 2: Paste and probe** — as a trainer, `select member_id from
+- [ ] **Step 2: Paste and probe** — BLOCKED ON USER. As a trainer, `select member_id from
       trainer_ratings` must return nothing readable.
-- [ ] **Step 3: Trainer app** — ratings + comments, no names; a form to leave a
+- [~] **Step 3: Trainer app** — anonymised ratings shown on the profile; the compose-feedback form is NOT written — ratings + comments, no names; a form to leave a
       member feedback and recommendations.
-- [ ] **Step 4: Admin Trainers** — an Evaluations panel: score distribution,
+- [ ] **Step 4: Admin Trainers** — API module written (lib/api/trainerRatings.ts), the panel is NOT built — an Evaluations panel: score distribution,
       month over month, comments **with** names.
-- [ ] **Step 5: T6 credentials** — confirm 0054's credentials render on the member
+- [x] **Step 5: T6 credentials** — public_trainer_credentials view + a panel on the member trainer profile — confirm 0054's credentials render on the member
       app's trainer profile. If they do not, wire them.
-- [ ] **Step 6: Build, lint, commit**
+- [x] **Step 6: Build, lint, commit** — commit 22fe92d
 
 ---
 
@@ -365,15 +365,15 @@ report) become tabs of one **Attendance** section. The sidebar loses a row.
 beyond the bell. Home gets an "Updates" card — the latest announcement and the
 next event — with a route to the full list.
 
-- [ ] **Step 1:** A4 grep, list every hit, replace with statement labels.
-- [ ] **Step 2:** Communications shell with two tabs; both existing pages become
+- [x] **Step 1:** A4 grep, list every hit, replace with statement labels.
+- [x] **Step 2:** Communications tabs — in-header links, not a shell; see the commit with two tabs; both existing pages become
       panels. Routes `/notifications` and `/events` must keep working — a
       bookmark that 404s is a regression.
-- [ ] **Step 3:** Attendance tabs, same rule for `/attendance-history`.
-- [ ] **Step 4:** Sidebar down to seven rows; the drawer still opens on the
+- [x] **Step 3:** Attendance tabs, same rule for `/attendance-history`.
+- [x] **Step 4:** Sidebar down two rows; the drawer still opens on the
       current page **in the state initialiser, never an effect**.
-- [ ] **Step 5:** Member Home "Updates" card + `/updates` route.
-- [ ] **Step 6:** Build, lint, commit.
+- [x] **Step 5:** Member Updates — cross-links rather than a Home card, to respect the today-only rule + `/updates` route.
+- [x] **Step 6:** Build, lint, commit — commit d6ec1a4
 
 ---
 
@@ -391,7 +391,7 @@ the *gym* cannot act on them — the desk cannot see a member's balance while th
 are standing there, and redemption is not a counter action. "Integrate in gyms"
 means the front desk, not more member-side chrome.
 
-- [ ] **Step 1:** Balance on the check-in card, so the desk sees it at check-in.
+- [x] **Step 1:** Balance on the check-in card, so the desk sees it at check-in.
 - [ ] **Step 2:** Redeem-at-the-desk on Rewards, writing the ledger through the
       existing SECURITY DEFINER writer — **the ledger has no INSERT policy for
       any role** and that must stay true.
