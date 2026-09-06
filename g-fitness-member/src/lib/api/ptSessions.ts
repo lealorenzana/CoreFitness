@@ -20,6 +20,13 @@ export interface PtSessionRow {
   requested_at: string;
   approved_at: string | null;
   approved_by: string | null;
+  /** Who decided and in what capacity (0071). NULL before a decision, and on
+   *  rows decided before that column existed — which are different from "the
+   *  desk decided" and must not be rendered as it. 'system' is an automatic
+   *  expiry: nobody decided, the start time passed. */
+  decided_by: string | null;
+  decided_by_role: 'admin' | 'staff' | 'trainer' | 'system' | null;
+  decided_at: string | null;
   created_at: string;
 }
 

@@ -73,3 +73,29 @@ export async function updateBookingStatus(
   const { error } = await supabase.from('bookings').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+
+/**
+ * Reminds, escalates and finally expires booking requests nobody answered
+ * (migration 0071).
+ *
+ * Called on the Bookings page load rather than only from pg_cron, because
+ * pg_cron is optional on this deployment — so a member is told late at worst,
+ * never not at all. Safe to call on every load: every message goes through
+ * `notify_once`, whose dedupe index makes a repeat impossible rather than
+ * merely unlikely.
+ *
+ * Returns the count of notifications actually created; 0 is the normal answer
+ * and means everything is already handled.
+ *
+ * Never allowed to throw into the page. A sweep that fails must not stop the
+ * queue from rendering — the queue is the thing the admin came for.
+ */
+export async function sweepStaleRequests(): Promise<number> {
+  const { data, error } = await supabase.rpc('sweep_stale_requests');
+  if (error) {
+    console.error('Stale-booking sweep failed:', error);
+    return 0;
+  }
+  return (data as number | null) ?? 0;
+}

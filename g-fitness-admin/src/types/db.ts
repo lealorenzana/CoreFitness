@@ -178,6 +178,11 @@ export interface BookingRow {
   approved_at: string | null;
   rejected_at: string | null;
   approved_by: string | null;
+  /** Who decided and in what capacity (0071). NULL before a decision, and on
+   *  rows decided before the column existed. 'system' is an automatic expiry. */
+  decided_by?: string | null;
+  decided_by_role?: 'admin' | 'staff' | 'trainer' | 'system' | null;
+  decided_at?: string | null;
 }
 
 export interface AttendanceRow {

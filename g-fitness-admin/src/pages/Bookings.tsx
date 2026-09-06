@@ -18,6 +18,7 @@ import { updateBookingStatus } from '../lib/api/bookings';
 import { setPtSessionStatus } from '../lib/api/ptSessions';
 import { notifyUser } from '../lib/api/notify';
 import { loadBookingQueue, type QueueRow } from '../services/bookingQueueService';
+import { sweepStaleRequests } from '../lib/api/bookings';
 import type { BookingStatus } from '../types/db';
 
 /**
@@ -41,6 +42,19 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   approved: 'Confirmed',
   rejected: 'Rejected',
   cancelled: 'Cancelled',
+};
+
+/**
+ * How each decider is described to the admin.
+ *
+ * 'system' never reaches this map — an automatic expiry is worded as an event
+ * rather than as an actor, because nobody decided anything.
+ */
+const DECIDER_WORD: Record<'admin' | 'staff' | 'trainer' | 'system', string> = {
+  admin: 'admin',
+  staff: 'front desk',
+  trainer: 'their trainer',
+  system: 'the system',
 };
 
 export default function Bookings() {
@@ -84,6 +98,17 @@ export default function Bookings() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Reminds, escalates and expires requests nobody answered (0071).
+      //
+      // Here rather than only in pg_cron, because pg_cron is optional on this
+      // deployment — so a member waiting on a trainer is told late at worst,
+      // never not at all. It runs before the read so an expiry it performs is
+      // already reflected in the queue below rather than appearing next visit.
+      //
+      // Never throws into the page: a failed sweep must not stop the queue
+      // rendering, and the queue is what the admin came for.
+      await sweepStaleRequests();
+
       const { rows: queue } = await loadBookingQueue();
       setRows(queue);
       setSelected(new Set());
@@ -326,6 +351,21 @@ export default function Bookings() {
                         <p className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
                           {row.title}{row.trainerName && ` · ${row.trainerName}`}
                         </p>
+                        {/* Since 0071 a trainer decides their own classes and
+                            sessions, so a decided row that said only
+                            "approved" would imply the desk did it. NULL is
+                            left silent rather than guessed: it means undecided,
+                            or decided before this column existed, and neither
+                            of those is "the front desk". */}
+                        {row.decidedByRole && (
+                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+                            {row.decidedByRole === 'system'
+                              ? 'Expired automatically — nobody answered in time'
+                              : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${
+                                  row.decidedByName ?? DECIDER_WORD[row.decidedByRole]
+                                }${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}
+                          </p>
+                        )}
                       </div>
                     </div>
 

@@ -43,6 +43,20 @@ export interface QueueRow {
   /** Approved seats vs capacity, class bookings only. */
   seats: { taken: number; capacity: number } | null;
   warnings: BookingWarning[];
+  /**
+   * Who accepted or declined this, and in what capacity (migration 0071).
+   *
+   * 'trainer' is the interesting value: since 0071 a trainer decides their own
+   * classes and sessions, so a screen that said "approved" without saying by
+   * whom would imply the desk did it. 'system' is an automatic expiry — nobody
+   * decided, the start time simply passed.
+   *
+   * NULL means undecided, or decided before 0071 added the column. Those are
+   * different things and neither is "the desk did it", so the screen says
+   * nothing rather than guessing.
+   */
+  decidedByRole: 'admin' | 'staff' | 'trainer' | 'system' | null;
+  decidedByName: string | null;
 }
 
 export interface QueueData {
@@ -153,6 +167,8 @@ export async function loadBookingQueue(): Promise<QueueData> {
         notes: null,
         seats: capacity > 0 ? { taken, capacity } : null,
         warnings,
+        decidedByRole: b.decided_by_role ?? null,
+        decidedByName: b.decided_by ? names[b.decided_by] ?? null : null,
       };
     }),
     ...ptSessions.map((s): QueueRow => {
@@ -177,6 +193,8 @@ export async function loadBookingQueue(): Promise<QueueData> {
         notes: s.notes,
         seats: null,
         warnings,
+        decidedByRole: s.decided_by_role ?? null,
+        decidedByName: s.decided_by ? names[s.decided_by] ?? null : null,
       };
     }),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
