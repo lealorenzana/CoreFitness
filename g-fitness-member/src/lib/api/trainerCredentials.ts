@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -110,7 +111,10 @@ export async function credentialUrl(filePath: string): Promise<string | null> {
 
 /** Withdraw a document. Removes the file too, so nothing is left behind. */
 export async function deleteCredential(id: string, filePath: string): Promise<void> {
-  const { error } = await supabase.from('trainer_credentials').delete().eq('id', id);
+  const { data, error } = await supabase
+    .from('trainer_credentials').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That credential could not be removed — it may not be yours to delete.');
   await supabase.storage.from(BUCKET).remove([filePath]);
 }

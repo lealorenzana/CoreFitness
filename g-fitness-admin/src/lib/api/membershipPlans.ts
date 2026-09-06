@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { MembershipPlanRow } from '../../types/db';
 
@@ -22,8 +23,11 @@ export async function updatePlan(
   id: string,
   updates: Partial<Omit<MembershipPlanRow, 'id' | 'created_at'>>
 ): Promise<void> {
-  const { error } = await supabase.from('membership_plans').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('membership_plans').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That plan could not be saved — only an admin can change pricing.');
 }
 
 /**

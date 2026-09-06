@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ProfileRow, TrainerProfileRow } from '../../types/db';
 
@@ -31,8 +32,11 @@ export async function updateTrainerProfile(
   id: string,
   updates: Partial<Omit<TrainerProfileRow, 'profile_id'>>
 ): Promise<void> {
-  const { error } = await supabase.from('trainer_profiles').update(updates).eq('profile_id', id);
+  const { data, error } = await supabase
+    .from('trainer_profiles').update(updates).eq('profile_id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'Those trainer details could not be saved. Please refresh and try again.');
 }
 
 /**

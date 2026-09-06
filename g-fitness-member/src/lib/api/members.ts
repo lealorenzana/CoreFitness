@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import { todayKey } from '../../utils/dates';
 import type {
@@ -189,8 +190,11 @@ export async function setMemberStatus(
   memberId: string,
   status: ProfileStatus
 ): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ status }).eq('id', memberId);
+  const { data, error } = await supabase
+    .from('profiles').update({ status }).eq('id', memberId)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That account status could not be changed — your account may not have permission.');
 }
 
 /** Admin: archive a member (keeps all history, drops them off the active roster). */

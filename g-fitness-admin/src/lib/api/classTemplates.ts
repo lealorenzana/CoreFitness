@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ClassLevel } from '../../types/db';
 
@@ -42,8 +43,11 @@ export async function updateClassTemplate(
   id: string,
   updates: Partial<Omit<ClassTemplateRow, 'id' | 'created_at'>>
 ): Promise<void> {
-  const { error } = await supabase.from('class_templates').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('class_templates').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That class could not be saved. Please refresh and try again.');
 }
 
 /**
@@ -58,8 +62,11 @@ export async function deactivateClassTemplate(id: string): Promise<void> {
 }
 
 export async function deleteClassTemplate(id: string): Promise<void> {
-  const { error } = await supabase.from('class_templates').delete().eq('id', id);
+  const { data, error } = await supabase
+    .from('class_templates').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That class could not be removed. Please refresh and try again.');
 }
 
 /**

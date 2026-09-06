@@ -25,17 +25,58 @@ by hand. Two things make that dangerous:
 `.update()` and `.delete()` on rows that do not exist — or that RLS hides — report **success** and
 affect nothing. PostgreSQL has no opinion about this; neither does PostgREST.
 
-It has bitten three times:
+It has bitten five times:
 
 | Where | Symptom |
 |---|---|
 | Onboarding experience level | Every value ever collected was silently discarded |
 | Admin Notifications → Recall | "Recalled" toast; the broadcast was still in members' bells |
 | Attendance → Undo check-in | "Removed"; the row was still there |
+| Trainer profile photo | "Photo updated"; `photo_url` stayed NULL |
+| `cancelOwnBooking` | "Cancelled"; the seat was never released |
 
 **Fix:** add `.select()` so the statement becomes `… RETURNING`, then check the row count and
-throw. The two admin buttons above now do exactly that, and migrations 0034/0035 add the DELETE
-policies that make the write succeed for real.
+throw. `lib/api/mutate.ts` (both apps) has `assertWrote()` so this is one line:
+
+```ts
+const { data, error } = await supabase
+  .from('memberships').update(updates).eq('id', id).select('id');
+if (error) throw error;
+assertWrote(data, 'That membership could not be updated. Someone may have changed it first.');
+```
+
+### The audit, and which writes are deliberately left unguarded
+
+A sweep of both `lib/api` directories found **113 writes, 52 guarded**. The
+remaining 61 are not all bugs. The test is: **would the user be misled by being
+told this worked?**
+
+**Deliberately unguarded — a zero-row result is a normal outcome:**
+
+| Function | Why |
+|---|---|
+| `notifications.setRead` / `setCleared` / `setArchived` / `markAllAsRead` | The row may already be read on another device. Interrupting somebody to say a read-flag did not move is worse than the silence. |
+| `notifications.deleteNotifications` / `deleteAllNotifications` | Same — deleting what is already gone is the intended end state. |
+| `push.enablePush` / `disablePush` / `clearPushOnSignOut` | Push is a courtesy channel and never allowed to fail a user action (see `notify.ts`). Sign-out must not be blocked by a subscription row. |
+| `achievements.markSeen` | Cosmetic "new" dot. |
+| `notificationPrefs.updateMyPrefs`, `sharePrefs.saveSharePrefs`, `trainerRatings.saveMyRating`, `planFeatures.setPlanFeature` | `upsert`, so there is nothing to miss. |
+
+**Still owed a guard** — these change state a user acts on, and are tracked
+rather than fixed because each needs its own message and its own thought about
+what a zero-row result actually means:
+
+`payments.recordPayment` (the `memberships` update inside it) ·
+`ptSessions.setPtSessionStatus` / `cancelPtSession` (admin copy — the member
+copy is guarded) · `members.approveMemberRegistration` /
+`rejectPendingRegistration` · `progress.updateGoal` / `deleteGoal` /
+`deleteMeasurement` / `deleteWorkoutLog` · `workoutSets.completeSession` /
+`deleteSet` · `points.cancelRedemption` · `challenges.leaveChallenge` ·
+`events.cancelRegistration` · `classes.updateClass` / `deleteClass` ·
+`workoutResources.updateWorkoutResource` / `deleteWorkoutResource` ·
+`trainerAvailability.deleteAvailability` · `avatars.removeAvatarFor` ·
+`gymPlans.saveMyPlan`
+
+Re-run the audit with `scripts/audit-writes.py` before claiming this list is current.
 
 ### But never `.insert().select()` a row you cannot read
 

@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ProfileRow } from '../../types/db';
 
@@ -49,8 +50,11 @@ export async function updateProfile(
   id: string,
   updates: Partial<Pick<ProfileRow, 'first_name' | 'last_name' | 'phone' | 'photo_url'>>
 ): Promise<void> {
-  const { error } = await supabase.from('profiles').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('profiles').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'Those changes were not saved — your account may not have permission.');
 }
 
 

@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ProfileRow, ProfileStatus, TrainerProfileRow } from '../../types/db';
 
@@ -63,8 +64,11 @@ export async function listArchivedTrainers(): Promise<TrainerWithProfile[]> {
  * check — nothing is deleted, and it is reversible.
  */
 export async function setTrainerStatus(id: string, status: ProfileStatus): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ status }).eq('id', id);
+  const { data, error } = await supabase
+    .from('profiles').update({ status }).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That trainer account could not be changed — your account may not have permission.');
 }
 
 export async function getTrainer(id: string): Promise<TrainerWithProfile | null> {
@@ -83,8 +87,11 @@ export async function updateTrainerProfile(
   id: string,
   updates: Partial<Omit<TrainerProfileRow, 'profile_id'>>
 ): Promise<void> {
-  const { error } = await supabase.from('trainer_profiles').update(updates).eq('profile_id', id);
+  const { data, error } = await supabase
+    .from('trainer_profiles').update(updates).eq('profile_id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'Those trainer details could not be saved. Please refresh and try again.');
 }
 
 /**

@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { MembershipRow, MembershipStatus, MembershipPlanRow } from '../../types/db';
 
@@ -61,8 +62,11 @@ export async function updateMembershipStatus(
 ): Promise<void> {
   const updates: Partial<MembershipRow> = { status };
   if (expiryDate) updates.expiry_date = expiryDate;
-  const { error } = await supabase.from('memberships').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('memberships').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That membership could not be updated. Someone may have changed it first.');
 }
 
 /** Local calendar date as YYYY-MM-DD. Never toISOString() — that shifts to UTC. */
@@ -161,11 +165,13 @@ export async function freezeMembership(id: string, detail: MembershipActionDetai
   // loud at a desk ("already been frozen twice this month").
   if (logError) throw logError;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('memberships')
     .update({ status: 'frozen', frozen_at: today() })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'The freeze was recorded but the membership did not change. Please refresh and check.');
 }
 
 /**
@@ -190,8 +196,11 @@ export async function unfreezeMembership(membership: MembershipRow): Promise<voi
   const updates: Partial<MembershipRow> = { status: 'active', frozen_at: null };
   if (membership.expiry_date) updates.expiry_date = addDays(membership.expiry_date, frozenDays);
 
-  const { error } = await supabase.from('memberships').update(updates).eq('id', membership.id);
+  const { data, error } = await supabase
+    .from('memberships').update(updates).eq('id', membership.id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That membership could not be resumed. Please refresh and try again.');
 
   // Logged after the fact, and never allowed to fail the resume: a member whose
   // membership is already active again must not be told the action failed
@@ -225,11 +234,13 @@ export async function cancelMembership(id: string, detail: MembershipActionDetai
   });
   if (logError) throw logError;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('memberships')
     .update({ status: 'cancelled', frozen_at: null })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That membership could not be cancelled. Please refresh and try again.');
 }
 
 /**

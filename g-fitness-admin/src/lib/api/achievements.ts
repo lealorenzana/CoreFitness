@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -105,8 +106,11 @@ export async function updateAchievement(
   key: string,
   updates: Partial<Omit<AchievementInput, 'key'>>
 ): Promise<void> {
-  const { error } = await supabase.from('achievements').update(updates).eq('key', key);
+  const { data, error } = await supabase
+    .from('achievements').update(updates).eq('key', key)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That achievement could not be saved. Please refresh and try again.');
 }
 
 /** Stops new unlocks without touching anyone who already earned it. */
@@ -121,8 +125,11 @@ export async function setAchievementActive(key: string, active: boolean): Promis
  * retire it instead, so it is surfaced verbatim.
  */
 export async function deleteAchievement(key: string): Promise<void> {
-  const { error } = await supabase.from('achievements').delete().eq('key', key);
+  const { data, error } = await supabase
+    .from('achievements').delete().eq('key', key)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That achievement could not be deleted. Please refresh and try again.');
 }
 
 /** Everyone currently holding one, for the detail panel. */

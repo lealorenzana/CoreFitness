@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ProfileRow, ProfileStatus } from '../../types/db';
 
@@ -33,11 +34,13 @@ export async function updateGymSettings(
   updates: Partial<Omit<GymSettingsRow, 'id' | 'updated_at' | 'updated_by'>>
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('gym_settings')
     .update({ ...updates, updated_at: new Date().toISOString(), updated_by: user?.id ?? null })
-    .eq('id', true);
+    .eq('id', true)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'Those settings could not be saved — only an admin can change them.');
 }
 
 /**

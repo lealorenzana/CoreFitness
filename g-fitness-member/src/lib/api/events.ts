@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 export interface EventRow {
@@ -75,13 +76,19 @@ export async function updateEvent(
   id: string,
   updates: Partial<Omit<EventRow, 'id' | 'created_at' | 'created_by'>>
 ): Promise<void> {
-  const { error } = await supabase.from('events').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('events').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That event could not be saved. Please refresh and try again.');
 }
 
 export async function deleteEvent(id: string): Promise<void> {
-  const { error } = await supabase.from('events').delete().eq('id', id);
+  const { data, error } = await supabase
+    .from('events').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That event could not be deleted. Please refresh and try again.');
 }
 
 /** All registrations, for headcounts across the events list. */
