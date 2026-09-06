@@ -107,10 +107,49 @@ export async function recordPayment(
   return inserted;
 }
 
+/**
+ * Moves a payment between completed / pending / failed.
+ *
+ * Two things this did not do, both of which the member sees.
+ *
+ * **`paid_on` was never set.** The column exists precisely because `created_at`
+ * is when the *record* was made and `paid_on` is when the money changed hands
+ * (0008) — but confirming a pending payment left `paid_on` at the day the row
+ * was created, so a payment raised on the 1st and settled on the 20th read as
+ * having been paid on the 1st in the member's history and in every revenue
+ * report. Completing now stamps today.
+ *
+ * It is set on completion only, and never cleared: 0008 made the column NOT
+ * NULL with a `current_date` default, so a pending payment already carries a
+ * date and there is no NULL to fall back to. Writing null here fails at the
+ * database, which is how this was found.
+ *
+ * **A zero-row write reported success.** PostgREST returns no error for an
+ * UPDATE that matched nothing, so a status change RLS declined showed
+ * "Payment confirmed!" over an unchanged row.
+ *
+ * Returns the updated row so the caller can notify the member without a second
+ * read — and so "who was this for" is answered by the write itself rather than
+ * by a lookup that could disagree with it.
+ */
 export async function updatePaymentStatus(
   id: string,
   status: PaymentRow['status']
-): Promise<void> {
-  const { error } = await supabase.from('payments').update({ status }).eq('id', id);
+): Promise<PaymentRow> {
+  const updates: Partial<PaymentRow> = { status };
+  if (status === 'completed') {
+    updates.paid_on = toDateString(new Date());
+  }
+
+  const { data, error } = await supabase
+    .from('payments')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
   if (error) throw error;
+  if (!data) {
+    throw new Error('That payment could not be updated. Please refresh and try again.');
+  }
+  return data;
 }

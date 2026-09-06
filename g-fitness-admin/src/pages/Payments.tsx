@@ -189,10 +189,38 @@ export default function Payments() {
     }
   };
 
+  /**
+   * Confirms a pending payment — and tells the member.
+   *
+   * Marking it paid used to be invisible from the member's side: the row
+   * changed, and the only way to find out was to open the payment history and
+   * notice. For a personal training session that had already been paid for in
+   * cash at the desk, that is the member's only confirmation the gym agrees.
+   *
+   * The notification is deduped on the payment id, so a double-clicked Confirm
+   * cannot send two receipts. It is also not allowed to fail the confirmation:
+   * the payment *is* settled, and a member who misses the alert still has the
+   * row — the same asymmetry notify.ts describes between record and alert.
+   */
   const confirmPayment = async (id: string) => {
     try {
-      await updatePaymentStatus(id, 'completed');
-      showToast('Payment confirmed!', 'success');
+      const updated = await updatePaymentStatus(id, 'completed');
+      showToast('Payment confirmed', 'success');
+
+      try {
+        await notifyUser({
+          userId: updated.member_id,
+          type: 'payment',
+          title: 'Payment received',
+          message: `The gym has confirmed your payment of ₱${Number(updated.amount).toLocaleString('en-PH')}.`,
+          actionUrl: '/member/payments',
+          dedupe: `payment:${updated.id}:paid`,
+        });
+      } catch (notifyErr) {
+        console.error('Payment confirmed but the member was not notified:', notifyErr);
+        showToast('Payment confirmed, but we could not notify the member.', 'error');
+      }
+
       await loadData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to confirm payment', 'error');

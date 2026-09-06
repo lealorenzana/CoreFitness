@@ -29,6 +29,18 @@ export interface NotifyInput {
   message: string;
   /** Where tapping the notification should land, e.g. '/member/booking-history'. */
   actionUrl?: string;
+  /**
+   * Makes this notification un-repeatable.
+   *
+   * A partial unique index on `(user_id, metadata->>'dedupe')` (migration 0053)
+   * rejects a second row with the same key, so a double-clicked Confirm button
+   * cannot send a member two receipts for one payment. Checking "have I sent
+   * this already" in JS instead would race itself — the reason 0053 used an
+   * index rather than a `not exists`.
+   *
+   * Use a key derived from the *thing*, not the moment: `payment:<id>:paid`.
+   */
+  dedupe?: string;
 }
 
 /** Fire-and-forget push. Swallows everything — see the note above. */
@@ -52,14 +64,23 @@ export function pushOnly(input: NotifyInput): void {
 
 /** Write the notification row (awaited), then push (not awaited). */
 export async function notifyUser(input: NotifyInput): Promise<void> {
-  await addNotification({
-    user_id: input.userId,
-    type: input.type,
-    title: input.title,
-    message: input.message,
-    action_url: input.actionUrl ?? null,
-    metadata: null,
-  });
+  try {
+    await addNotification({
+      user_id: input.userId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      action_url: input.actionUrl ?? null,
+      metadata: input.dedupe ? { dedupe: input.dedupe } : null,
+    });
+  } catch (err) {
+    // 23505 on a deduped notification is the index doing its job: this exact
+    // message has already been sent. That is success, not failure — the member
+    // has the record, which is all the caller wanted. Anything else rethrows.
+    const code = (err as { code?: string } | null)?.code;
+    if (input.dedupe && code === '23505') return;
+    throw err;
+  }
   pushOnly(input);
 }
 
