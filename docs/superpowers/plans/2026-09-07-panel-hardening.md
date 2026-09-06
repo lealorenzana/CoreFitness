@@ -391,12 +391,13 @@ the *gym* cannot act on them — the desk cannot see a member's balance while th
 are standing there, and redemption is not a counter action. "Integrate in gyms"
 means the front desk, not more member-side chrome.
 
-- [x] **Step 1:** Balance on the check-in card, so the desk sees it at check-in.
-- [ ] **Step 2:** Redeem-at-the-desk on Rewards, writing the ledger through the
-      existing SECURITY DEFINER writer — **the ledger has no INSERT policy for
-      any role** and that must stay true.
-- [ ] **Step 3:** Points on MemberDetail with the ledger as history.
-- [ ] **Step 4:** Build, lint, commit.
+- [x] **Step 1:** balance in the check-in toast, read after the trigger has awarded
+- [x] **Step 2:** redemption approval already existed on the Rewards page, so this half was
+      already met and is left alone. The constraint it rested on still holds and is now
+      stated in the code: **the ledger has no INSERT policy for any role**, and every row
+      is written by `award_points()`.
+- [x] **Step 3:** balance + last 8 ledger rows on the member drawer
+- [x] **Step 4:** commit 4d1ad61
 
 ---
 
