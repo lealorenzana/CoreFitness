@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, PartyPopper, Bell, BookOpen, History,
-  Trophy, ListChecks, Gift, Flag, ShieldCheck, UserCheck, TrendingUp,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History,
+  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -25,6 +25,14 @@ interface Leaf {
   path: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  /**
+   * Other routes that belong to this row.
+   *
+   * A section split across tabs is one nav row pointing at its first tab. Without
+   * this, standing on the second tab would leave the sidebar highlighting
+   * nothing, which reads as "you have navigated out of the app".
+   */
+  alsoMatches?: string[];
 }
 
 interface Group {
@@ -59,13 +67,14 @@ const isGroup = (e: Entry): e is Group => 'children' in e;
 const NAV: Entry[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
 
+  // Today's desk and the historical record are one section with two tabs
+  // (SectionTabs), so this is one row rather than a drawer holding two. First
+  // after the dashboard because it is the one screen this gym uses every day.
   {
     label: 'Attendance',
+    path: '/attendance',
     icon: CheckSquare,
-    children: [
-      { label: 'Log attendance', path: '/attendance', icon: UserCheck },
-      { label: 'History', path: '/attendance-history', icon: History },
-    ],
+    alsoMatches: ['/attendance-history'],
   },
   {
     label: 'People',
@@ -82,7 +91,6 @@ const NAV: Entry[] = [
     children: [
       { label: 'Schedule', path: '/schedule', icon: CalendarDays },
       { label: 'Bookings', path: '/bookings', icon: Calendar },
-      { label: 'Events', path: '/events', icon: PartyPopper },
     ],
   },
   {
@@ -109,8 +117,18 @@ const NAV: Entry[] = [
       { label: 'Challenges', path: '/challenges', icon: Flag, adminOnly: true },
       { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true },
       { label: 'Achievements', path: '/achievements', icon: Trophy, adminOnly: true },
-      { label: 'Notifications', path: '/notifications', icon: Bell },
     ],
+  },
+  // Announcements and Events answered the same question — what has the gym told
+  // its members — from two different sidebar sections, one under Engagement and
+  // one under Classes. One row, two tabs. The tables stay separate; see
+  // SectionTabs for why merging the records would be worse than merging the
+  // screens.
+  {
+    label: 'Communications',
+    path: '/notifications',
+    icon: Bell,
+    alsoMatches: ['/events'],
   },
   {
     label: 'Training',
@@ -127,7 +145,9 @@ const NAV: Entry[] = [
 /** The group a path lives in, or null for a top-level page. */
 function groupHolding(pathname: string): string | null {
   for (const e of NAV) {
-    if (isGroup(e) && e.children.some((c) => c.path === pathname)) return e.label;
+    if (isGroup(e) && e.children.some(
+      (c) => c.path === pathname || (c.alsoMatches?.includes(pathname) ?? false)
+    )) return e.label;
   }
   return null;
 }
@@ -342,7 +362,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-0.5">
           {entries.map((entry) => {
             if (!isGroup(entry)) {
-              const isActive = location.pathname === entry.path;
+              const isActive = location.pathname === entry.path
+                || (entry.alsoMatches?.includes(location.pathname) ?? false);
               return (
                 <NavLink
                   key={entry.path}
@@ -395,7 +416,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <div className="ml-[22px] pl-2 mt-0.5 space-y-0.5"
                     style={{ borderLeft: `1px solid ${BORDER}` }}>
                     {entry.children.map((child) => {
-                      const isActive = location.pathname === child.path;
+                      const isActive = location.pathname === child.path
+                        || (child.alsoMatches?.includes(location.pathname) ?? false);
                       return (
                         <NavLink
                           key={child.path}

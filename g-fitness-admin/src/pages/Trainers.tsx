@@ -568,7 +568,7 @@ export default function Trainers() {
 
                 {/* Form */}
                 <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <SectionLabel>Who they are</SectionLabel>
+                  <SectionLabel>Personal Information</SectionLabel>
                   <FormField label="Full name" required error={addErrors.name}>
                     <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
                       placeholder="e.g. Coach Maria"
@@ -715,7 +715,7 @@ export default function Trainers() {
                   </button>
                 </div>
                 <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <SectionLabel>Who they are</SectionLabel>
+                  <SectionLabel>Personal Information</SectionLabel>
                   <FormField label="Full name" required error={editErrors.name}>
                     <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                       className={FIELD_CLASS} style={FIELD_STYLE} />

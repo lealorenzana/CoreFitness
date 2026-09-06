@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bell, Trash2, CheckCheck, Mail, MailOpen, Archive, ArchiveRestore, X,
+  ArrowRight,
 } from 'lucide-react';
 
 import NotificationListItem from '../components/ui/NotificationListItem';
@@ -172,11 +173,32 @@ export default function NotificationsAll() {
           <ArrowLeft size={18} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="display text-xl text-white">Notifications</h1>
+          <h1 className="display text-xl text-white">Updates</h1>
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {loading ? 'Loading…' : `${all.length} total · ${unreadCount} unread`}
           </p>
         </div>
+        {/* Announcements and events are the two halves of "what has the gym
+            told me", and they lived on unrelated screens — one behind the bell,
+            one under Book. This is the crossing between them.
+
+            Hidden while selecting, so the header never holds three controls;
+            and hidden for a trainer, because /member/events is a member route
+            that is not on their nav — a link that leads somewhere they cannot
+            use is worse than no link. */}
+        {!isTrainer && !selecting && (
+          <button
+            onClick={() => navigate('/member/events')}
+            className="h-9 px-3 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+            style={{
+              background: 'var(--color-surface-raised)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            Events <ArrowRight size={12} />
+          </button>
+        )}
         {!loading && all.length > 0 && (
           <button
             onClick={() => (selecting ? exitSelect() : setSelecting(true))}

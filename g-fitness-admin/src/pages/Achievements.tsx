@@ -499,7 +499,7 @@ function AchievementForm({
           </div>
         </div>
 
-        <SectionLabel>What it is</SectionLabel>
+        <SectionLabel>Achievement Details</SectionLabel>
 
         <FormField label="Title" required>
           <input value={form.title}
@@ -576,7 +576,7 @@ function AchievementForm({
         </FormField>
 
         <FieldDivider />
-        <SectionLabel>How it is earned</SectionLabel>
+        <SectionLabel>Earning Rules</SectionLabel>
 
         {locked ? (
           <p className="text-xs p-3 rounded-lg" style={{ background: SURFACE_RAISED, color: TEXT_SECOND }}>
@@ -751,7 +751,7 @@ function AwardModal({
         </FormField>
 
         <FieldDivider />
-        <SectionLabel>Who has it ({holders.length})</SectionLabel>
+        <SectionLabel>Members Holding It ({holders.length})</SectionLabel>
 
         {holders.length === 0 ? (
           <p className="text-xs py-4 text-center" style={{ color: TEXT_MUTED }}>Nobody yet</p>

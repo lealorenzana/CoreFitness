@@ -1,3 +1,4 @@
+import { NavLink, useLocation } from 'react-router-dom';
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import { Search, X, ChevronRight } from 'lucide-react';
@@ -59,6 +60,76 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
       </div>
       {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
     </motion.div>
+  );
+}
+
+// ─── Section tabs ────────────────────────────────────────────────────────────
+
+export interface SectionTab {
+  label: string;
+  to: string;
+  /** Optional count, e.g. how many are pending. Omit rather than pass 0. */
+  count?: number;
+}
+
+/**
+ * Two or three routes presented as one section.
+ *
+ * Attendance and Attendance History were separate sidebar rows, as were
+ * Notifications and Events — four destinations for what a user thinks of as two
+ * jobs. The panel's note was that they looked redundant, and they did.
+ *
+ * ## Why links, and not a shell page with panels
+ *
+ * A shell that renders the sibling pages as panels needs to own the header, and
+ * both Attendance screens size themselves against the viewport
+ * (`calc(100vh - 5rem)`, a no-scroll bento) — an extra header row would break
+ * that by exactly its own height. It would also mean either two headers stacked
+ * or a prop threaded through every page to suppress one.
+ *
+ * These are `NavLink`s to the routes that already exist. The pages keep their
+ * own layout untouched, and every existing bookmark and deep link still works —
+ * a URL that 404s to tidy up a sidebar is not a tidier app.
+ *
+ * ## Why not the router's own `isActive`
+ *
+ * `NavLink`'s callback would do, but the active tab needs the same treatment in
+ * three places (background, text, and the underline), and reading `pathname`
+ * once is clearer than three callbacks that must agree.
+ */
+export function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
+  const { pathname } = useLocation();
+
+  return (
+    <div className="flex items-center gap-1 flex-shrink-0" role="tablist">
+      {tabs.map((t) => {
+        const active = pathname === t.to;
+        return (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            role="tab"
+            aria-selected={active}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-1.5"
+            style={{
+              background: active ? 'var(--color-primary-light)' : 'transparent',
+              color: active ? 'var(--color-primary)' : TEXT_MUTED,
+              border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+            }}
+          >
+            {t.label}
+            {/* Omitted rather than shown as 0 — a badge reading zero is a badge
+                drawing the eye to nothing. */}
+            {t.count !== undefined && t.count > 0 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'var(--color-secondary)', color: '#000' }}>
+                {t.count}
+              </span>
+            )}
+          </NavLink>
+        );
+      })}
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, PageSummary,
+  SectionTabs,
 } from '../components/ui/kit';
 import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
@@ -95,6 +96,13 @@ function endTimeLabel(time: string, durationMinutes: string): string | null {
   d.setMinutes(d.getMinutes() + mins);
   return d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 }
+
+/** Announcements and Events are one section — see SectionTabs for why the
+ *  records stay in separate tables. */
+const COMMS_TABS = [
+  { label: 'Announcements', to: '/notifications' },
+  { label: 'Events', to: '/events' },
+];
 
 export default function Events() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -262,6 +270,7 @@ export default function Events() {
 
   return (
     <div className="space-y-4">
+      <SectionTabs tabs={COMMS_TABS} />
       <PageHeader
         title="Events"
         subtitle="Gym events and member signups"
@@ -460,7 +469,7 @@ export default function Events() {
                     </FormField>
 
                     <FieldDivider />
-                    <SectionLabel>When</SectionLabel>
+                    <SectionLabel>Date &amp; Time</SectionLabel>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Our own picker, not <input type="date">. The native one
                           drops a white Chrome-styled calendar over the app and
@@ -482,7 +491,7 @@ export default function Events() {
                     </FormField>
 
                     <FieldDivider />
-                    <SectionLabel>Where &amp; how many</SectionLabel>
+                    <SectionLabel>Location &amp; Capacity</SectionLabel>
                     <FormField label="Location" hint="Leave blank if it's at the gym.">
                       <Input style={INSET} type="text" value={form.location} placeholder="e.g. Main floor, Mamburao"
                         onChange={(e) => setForm({ ...form, location: e.target.value })} />
@@ -493,10 +502,10 @@ export default function Events() {
                     </FormField>
 
                     <FieldDivider />
-                    <SectionLabel>What members need to know</SectionLabel>
+                    <SectionLabel>Member Information</SectionLabel>
 
                     <FormField
-                      label="Who is it for"
+                      label="Intended Audience"
                       hint="The single most useful line. Saying everyone is welcome and no experience is needed brings people in; leaving it blank quietly keeps beginners away."
                     >
                       <Input style={INSET} type="text" value={form.whoIsItFor}
@@ -504,7 +513,7 @@ export default function Events() {
                         onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
                     </FormField>
 
-                    <FormField label="What to bring" hint="Water, a towel, flat shoes — whatever they will wish they had.">
+                    <FormField label="Items to Bring" hint="Water, a towel, flat shoes — whatever they will wish they had.">
                       <Input style={INSET} type="text" value={form.whatToBring}
                         placeholder="e.g. Water, a towel, shoes you can move in"
                         onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
@@ -525,7 +534,7 @@ export default function Events() {
                         onChange={(e) => setForm({ ...form, fee: e.target.value })} />
                     </FormField>
 
-                    <FormField label="Who to ask" hint="Shown to members who have a question before signing up.">
+                    <FormField label="Contact Person" hint="Shown to members who have a question before signing up.">
                       <Input style={INSET} type="text" value={form.contact}
                         placeholder="e.g. Ask at the front desk, or message us on Facebook"
                         onChange={(e) => setForm({ ...form, contact: e.target.value })} />

@@ -11,6 +11,7 @@ import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, SearchBox, PageSummary,
+  SectionTabs,
 } from '../components/ui/kit';
 import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
@@ -111,6 +112,13 @@ const AUDIENCE_LABEL: Record<RecipientType, string> = {
   everyone: 'Everyone',
   specific: 'Pick People',
 };
+
+/** Announcements and Events are one section — see SectionTabs for why the
+ *  records stay in separate tables. */
+const COMMS_TABS = [
+  { label: 'Announcements', to: '/notifications' },
+  { label: 'Events', to: '/events' },
+];
 
 export default function Notifications() {
   const [showSendModal, setShowSendModal] = useState(false);
@@ -269,9 +277,17 @@ export default function Notifications() {
 
   return (
     <div className="space-y-4">
+      {/* Announcements and Events are one section for the admin, because they
+          answer the same question — what has the gym told its members. The
+          *records* stay in two tables: an announcement is a message with no
+          date, an event is a date with a message. Merging them would give every
+          announcement a nullable date and every event a nullable audience, and
+          the form would ask questions that do not apply to what is being
+          written. */}
+      <SectionTabs tabs={COMMS_TABS} />
       <PageHeader
-        title="Notifications"
-        subtitle="Announcements to members and trainers"
+        title="Announcements"
+        subtitle="Messages sent to members and trainers"
         actions={
           <Button variant="primary" size="sm"
             onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
@@ -404,7 +420,7 @@ export default function Notifications() {
                   </div>
 
                   <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                    <SectionLabel>Who gets it</SectionLabel>
+                    <SectionLabel>Recipients</SectionLabel>
                     <FormField label="Audience" required error={errors.recipients}>
                       <div className="grid grid-cols-4 gap-2">
                         {(['all_members', 'all_trainers', 'everyone', 'specific'] as RecipientType[]).map((type) => {
@@ -466,7 +482,7 @@ export default function Notifications() {
                     )}
 
                     <FieldDivider />
-                    <SectionLabel>The message</SectionLabel>
+                    <SectionLabel>Message Content</SectionLabel>
                     <FormField label="Category" hint="Members can mute categories in Settings, so pick honestly.">
                       <select value={form.notificationType}
                         onChange={(e) => setForm({ ...form, notificationType: e.target.value as NotificationType })}
@@ -509,7 +525,7 @@ export default function Notifications() {
                         error only appeared after sending. A list of the real
                         destinations removes the question entirely. */}
                     <FormField
-                      label="When they tap it, open"
+                      label="Destination on Tap"
                       error={errors.actionUrl}
                       hint="Optional. Most announcements need no link — pick one only when there is somewhere specific to go."
                     >

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { SectionTabs } from '../components/ui/kit';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -106,6 +107,18 @@ const describeGap = (seconds: number): string => {
   if (s < 90) return `${s} seconds`;
   return `${Math.round(s / 60)} minutes`;
 };
+
+/**
+ * The two views of one section.
+ *
+ * Module level, not built during render: an array literal in the body is a new
+ * object every pass, and this codebase has already paid for components declared
+ * inside a render body.
+ */
+const ATTENDANCE_TABS = [
+  { label: 'Today', to: '/attendance' },
+  { label: 'History', to: '/attendance-history' },
+];
 
 export default function Attendance() {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
@@ -414,9 +427,15 @@ export default function Attendance() {
     <div className="h-full flex flex-col gap-3 overflow-hidden" style={{ maxHeight: 'calc(100vh - 5rem)' }}>
       {/* Header + Stats row */}
       <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-white">Attendance</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Hybrid check-in: QR scan or manual entry</p>
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-white">Attendance</h1>
+            <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Today's desk · QR scan or manual entry</p>
+          </div>
+          {/* One section, two views. This screen is the desk — today only — and
+              any other day belongs to History, which this page once duplicated
+              with its own day-stepper, month grid, search and hourly chart. */}
+          <SectionTabs tabs={ATTENDANCE_TABS} />
         </div>
         <div className="flex items-center gap-2">
           {stats.map(s => {

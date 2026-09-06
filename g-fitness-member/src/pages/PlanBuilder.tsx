@@ -376,35 +376,35 @@ export default function PlanBuilder() {
         {Err}
 
         <Choice
-          label="How much training have you done?"
+          label="Training Experience"
           options={EXPERIENCES}
           value={answers.experience}
           onPick={(experience) => setAnswers((a) => ({ ...a, experience }))}
         />
 
         <Choice
-          label="What are you training for right now?"
+          label="Training Goal"
           options={FOCUSES.map((f) => ({ id: f, label: FOCUS_LABEL[f] }))}
           value={answers.focus}
           onPick={(focus) => setAnswers((a) => ({ ...a, focus }))}
         />
 
         <Choice
-          label="How many days a week can you realistically train?"
+          label="Days per Week"
           options={[2, 3, 4, 5, 6].map((d) => ({ id: d, label: `${d} days` }))}
           value={answers.daysPerWeek}
           onPick={(daysPerWeek) => setAnswers((a) => ({ ...a, daysPerWeek }))}
         />
 
         <Choice
-          label="How long is a session for you?"
+          label="Session Length"
           options={MINUTES.map((m) => ({ id: m, label: `${m} min` }))}
           value={answers.sessionMinutes}
           onPick={(sessionMinutes) => setAnswers((a) => ({ ...a, sessionMinutes }))}
         />
 
         <Choice
-          label="Where do you prefer to train?"
+          label="Preferred Location"
           options={PREFERENCES}
           value={answers.preference}
           onPick={(preference) => setAnswers((a) => ({ ...a, preference }))}

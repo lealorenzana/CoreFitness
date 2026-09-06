@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { SectionTabs } from '../components/ui/kit';
 import { motion } from 'framer-motion';
 import {
   CalendarCheck, Search, Download, AlertTriangle, QrCode, Hand, Users, TrendingUp, X,
@@ -46,6 +47,18 @@ function manilaDate(offsetDays = 0): string {
 const PAGE = 25;
 
 type Preset = '7' | '30' | '90' | 'custom';
+
+/**
+ * The two views of one section.
+ *
+ * Module level, not built during render: an array literal in the body is a new
+ * object every pass, and this codebase has already paid for components declared
+ * inside a render body.
+ */
+const ATTENDANCE_TABS = [
+  { label: 'Today', to: '/attendance' },
+  { label: 'History', to: '/attendance-history' },
+];
 
 export default function AttendanceHistory() {
   const [from, setFrom] = useState(manilaDate(-29));
@@ -185,11 +198,14 @@ export default function AttendanceHistory() {
     <div className="space-y-4">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Attendance History</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            Who came in, when, and how they checked in — over any range
-          </p>
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-white">Attendance</h1>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+              The record: who came in, when, and how they checked in — over any range
+            </p>
+          </div>
+          <SectionTabs tabs={ATTENDANCE_TABS} />
         </div>
         <Button variant="secondary"
           onClick={() => exportToCSV(

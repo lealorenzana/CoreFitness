@@ -978,7 +978,7 @@ function AddMemberForm({
 
   return (
     <ModalShell title="Add Member (Walk-in)" subtitle="Creates a real login the member can use on the phone app" onClose={onClose}>
-      <SectionLabel>Who they are</SectionLabel>
+      <SectionLabel>Personal Information</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name" required error={errors.firstName}
           value={form.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />
@@ -1105,7 +1105,7 @@ function EditMemberForm({
 
   return (
     <ModalShell title="Edit Member" subtitle={member.email} onClose={onClose}>
-      <SectionLabel>Who they are</SectionLabel>
+      <SectionLabel>Personal Information</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name" required error={errors.firstName}
           value={form.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />

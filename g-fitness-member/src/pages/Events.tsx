@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, Users, Check, ArrowLeft, CalendarX , Ticket } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, ArrowLeft, ArrowRight, CalendarX , Ticket } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -136,12 +136,24 @@ export default function Events() {
           aria-label="Back">
           <ArrowLeft size={18} />
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="display text-xl text-white">Events</h1>
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             What the gym has coming up
           </p>
         </div>
+        {/* The other half of the same section — see NotificationsAll. */}
+        <button
+          onClick={() => navigate('/member/notifications')}
+          className="h-9 px-3 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+          style={{
+            background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Announcements <ArrowRight size={12} />
+        </button>
       </motion.div>
 
       <div
