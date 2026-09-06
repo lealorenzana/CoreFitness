@@ -1,6 +1,50 @@
 import { supabase } from '../supabaseClient';
 import type { BookingRow, BookingStatus, ClassRow, ProfileRow } from '../../types/db';
 
+/**
+ * One commitment a member already holds — a class booking or a PT session —
+ * as a half-open interval. Mirrors `member_commitments()` in migration 0068.
+ */
+export interface Commitment {
+  source: 'class' | 'pt';
+  ref_id: string;
+  starts_at: string;
+  ends_at: string;
+  label: string;
+}
+
+/**
+ * Everything this member is already booked into, across both tables.
+ *
+ * The booking triggers (0068) are the boundary — this read only lets a slot
+ * picker grey out a time *before* it is tapped. Never treat an empty result as
+ * permission: the member may have booked on another device a second ago.
+ *
+ * Self or front desk only; the function raises for anyone else.
+ */
+export async function listMemberCommitments(memberId: string): Promise<Commitment[]> {
+  const { data, error } = await supabase.rpc('member_commitments', { p_member: memberId });
+  if (error) throw error;
+  return (data ?? []) as Commitment[];
+}
+
+/** True when `[startsAt, +minutes)` overlaps something already held. */
+export function clashesWith(
+  held: Commitment[],
+  startsAt: string,
+  durationMinutes: number,
+): Commitment | null {
+  const start = new Date(startsAt).getTime();
+  const end = start + durationMinutes * 60_000;
+  // Half-open on both sides, matching the SQL: a class ending at 11:00 and a
+  // session starting at 11:00 do not clash.
+  return held.find((c) => {
+    const hs = new Date(c.starts_at).getTime();
+    const he = new Date(c.ends_at).getTime();
+    return hs < end && start < he;
+  }) ?? null;
+}
+
 export interface BookingWithDetails extends BookingRow {
   classes: ClassRow;
 }
@@ -55,11 +99,28 @@ export async function createBooking(memberId: string, classId: string): Promise<
  * cannot be repurposed to self-approve.
  */
 export async function cancelOwnBooking(id: string): Promise<void> {
-  const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+  // `.select()` so a zero-row result can be told apart from success. PostgREST
+  // returns no error for an UPDATE that matched nothing, so without this a
+  // cancellation RLS declined would report "Cancelled" and leave the seat taken.
+  const { data, error } = await supabase
+    .from('bookings')
+    .update({ status: 'cancelled' })
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That booking could not be cancelled. Please refresh and try again.');
+  }
 }
 
-/** Admin-only per RLS (bookings_update_admin) — approve or reject a pending booking. */
+/**
+ * Approve or reject a pending booking.
+ *
+ * Reachable by an admin (`bookings_update_admin`) and, since 0071, by the
+ * trainer who teaches the class (`bookings_update_trainer`). Anyone else gets a
+ * zero-row update, which the guard below turns into a visible failure rather
+ * than a button that appears to work.
+ */
 export async function updateBookingStatus(
   id: string,
   status: Extract<BookingStatus, 'approved' | 'rejected'>,
@@ -70,6 +131,13 @@ export async function updateBookingStatus(
     status === 'approved'
       ? { status, approved_at: now, approved_by: approvedBy }
       : { status, rejected_at: now };
-  const { error } = await supabase.from('bookings').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('bookings')
+    .update(updates)
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That booking could not be updated — it may already have been decided.');
+  }
 }

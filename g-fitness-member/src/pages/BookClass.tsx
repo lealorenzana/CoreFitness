@@ -19,13 +19,14 @@ import {
   requestPt,
   getEntitlement,
   type BookableClass,
+  type BookableSlot,
   type ExperienceLevel,
   type Entitlement,
 } from '../services/bookingService';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
 import { listEvents } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
-import type { OpenSlot } from '../lib/api/trainerAvailability';
+
 import type { ClassLevel } from '../types/db';
 
 /**
@@ -137,6 +138,10 @@ function ClassRow({
   const full = c.spotsLeft === 0;
   const booked = c.myStatus != null;
   const tight = !full && c.spotsLeft <= 3;
+  // A clash is not the same refusal as "full" or "your plan does not allow it",
+  // so it gets its own label. The member can act on this one — by cancelling
+  // the other thing — which is why it names it.
+  const clash = !booked && c.conflict !== null;
 
   // Everything after the name, in one line. Filtered so a class with no type
   // and no location does not render " ·  · ".
@@ -211,17 +216,26 @@ function ClassRow({
           style={{ color: full ? 'var(--color-text-muted)' : tight ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
           {full ? `Full · ${c.booked}/${c.capacity}` : `${c.booked}/${c.capacity} booked · ${c.spotsLeft} left`}
         </p>
+
+        {/* Named, not "unavailable": a slot that reads as the gym's problem
+            sends the member looking for another class, when what they need to
+            do is cancel the thing they forgot they booked. */}
+        {clash && (
+          <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>
+            {c.conflict}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center flex-shrink-0">
         <button
-          disabled={booked || full || blocked}
+          disabled={booked || full || blocked || clash}
           onClick={() => onBook(c)}
           className="px-4 h-9 rounded-full font-bold text-xs transition-all active:scale-[0.97] disabled:cursor-not-allowed whitespace-nowrap"
           style={
             booked
               ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
-              : full || blocked
+              : full || blocked || clash
                 ? { background: 'var(--color-bg)', color: 'var(--color-text-muted)' }
                 : { background: 'var(--color-secondary)', color: '#000' }
           }
@@ -230,6 +244,7 @@ function ClassRow({
             ? (c.myStatus === 'approved' ? 'Confirmed' : 'Pending')
             : full ? 'Full'
             : blocked ? 'Locked'
+            : clash ? 'Busy'
             : 'Book'}
         </button>
       </div>
@@ -312,9 +327,9 @@ export default function BookClass() {
   // Personal training
   const [trainers, setTrainers] = useState<PublicTrainer[]>(cached?.trainers ?? []);
   const [selectedTrainer, setSelectedTrainer] = useState<PublicTrainer | null>(null);
-  const [slots, setSlots] = useState<OpenSlot[]>([]);
+  const [slots, setSlots] = useState<BookableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [confirmSlot, setConfirmSlot] = useState<OpenSlot | null>(null);
+  const [confirmSlot, setConfirmSlot] = useState<BookableSlot | null>(null);
   const [notes, setNotes] = useState('');
 
   /**
@@ -387,7 +402,7 @@ export default function BookClass() {
     setSlots([]);
     setSlotsLoading(true);
     try {
-      setSlots(await listOpenPtSlots(trainer.id));
+      setSlots(await listOpenPtSlots(trainer.id, 14, memberId ?? undefined));
     } catch (err) {
       toast.error(errorMessage(err, 'Could not load open times'));
     } finally {
@@ -441,7 +456,7 @@ export default function BookClass() {
       setNotes('');
       toast.success('Requested — the front desk will confirm it');
       // Re-derive: the slot just taken must disappear for everyone, including us.
-      setSlots(await listOpenPtSlots(selectedTrainer.id));
+      setSlots(await listOpenPtSlots(selectedTrainer.id, 14, memberId ?? undefined));
     } catch (err) {
       toast.error(errorMessage(err, 'Could not request that session'));
     } finally {
@@ -826,15 +841,34 @@ export default function BookClass() {
             </h2>
             <div className="grid grid-cols-3 gap-2">
               {daySlots.map((s) => (
+                /* A clashing slot is shown and disabled, never hidden. Removing
+                   it would read as "this coach has no 10am", which is a
+                   different and wrong statement — the coach is free, the
+                   member is not. */
                 <button key={s.startsAt} onClick={() => setConfirmSlot(s)}
-                  disabled={ptBlock !== null}
-                  className="rounded-xl py-3 text-center transition-all active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={panelStyle}>
+                  disabled={ptBlock !== null || s.conflict !== null}
+                  className="rounded-xl py-3 text-center transition-all active:scale-[0.96] disabled:cursor-not-allowed"
+                  style={{ ...panelStyle, opacity: ptBlock !== null || s.conflict !== null ? 0.4 : 1 }}>
                   <span className="text-xs font-bold text-white block">{timeLabel(s.startsAt)}</span>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{s.durationMinutes} min</span>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    {s.conflict !== null ? 'Busy' : `${s.durationMinutes} min`}
+                  </span>
                 </button>
               ))}
             </div>
+
+            {/* The detail lives here rather than on each tile. A three-column
+                grid has no room for a sentence, and this app has no hover — a
+                `data-tip` or a `title=` would be a flag nothing reads on a
+                phone. One line per day, listing only the times that clash, is
+                the version a member can actually act on. */}
+            {daySlots.some((s) => s.conflict !== null) && (
+              <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>
+                {daySlots.filter((s) => s.conflict !== null)
+                  .map((s) => `${timeLabel(s.startsAt)} — ${s.conflict}`)
+                  .join(' · ')}
+              </p>
+            )}
           </div>
             ))
           )}

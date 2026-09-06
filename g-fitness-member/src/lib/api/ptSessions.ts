@@ -84,12 +84,21 @@ export async function requestPtSession(input: {
     if (error.code === '23505') {
       throw new Error('That slot has just been taken. Please pick another time.');
     }
+    // 0068's guards raise a sentence written for the member — the clash it
+    // names is the useful part, so it is passed through rather than replaced.
     throw error;
   }
   return data;
 }
 
-/** Front desk only per RLS (pt_sessions_update_frontdesk). */
+/**
+ * Decide a request.
+ *
+ * Reachable by the front desk (`pt_sessions_update_frontdesk`) and, since 0071,
+ * by the trainer the session belongs to (`pt_sessions_update_trainer`). A
+ * trainer acting on someone else's session matches no policy, updates no rows,
+ * and is caught by the zero-row guard rather than silently appearing to work.
+ */
 export async function setPtSessionStatus(
   id: string,
   status: Extract<BookingStatus, 'approved' | 'rejected' | 'cancelled'>
@@ -100,12 +109,26 @@ export async function setPtSessionStatus(
     updates.approved_at = new Date().toISOString();
     updates.approved_by = user?.id ?? null;
   }
-  const { error } = await supabase.from('pt_sessions').update(updates).eq('id', id);
+  const { data, error } = await supabase
+    .from('pt_sessions')
+    .update(updates)
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That request could not be updated — it may already have been decided.');
+  }
 }
 
 /** A member may withdraw their own request while it's still pending. */
 export async function cancelPtSession(id: string): Promise<void> {
-  const { error } = await supabase.from('pt_sessions').delete().eq('id', id);
+  const { data, error } = await supabase
+    .from('pt_sessions')
+    .delete()
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('That request could not be withdrawn — it may already have been approved.');
+  }
 }

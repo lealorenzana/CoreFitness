@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { listClasses } from '../lib/api/classes';
-import { listMemberBookings, createBooking, cancelOwnBooking } from '../lib/api/bookings';
+import {
+  listMemberBookings, createBooking, cancelOwnBooking,
+  listMemberCommitments, clashesWith, type Commitment,
+} from '../lib/api/bookings';
 import { listMemberPtSessions, requestPtSession, cancelPtSession } from '../lib/api/ptSessions';
 import { listTrainerAvailability, computeOpenSlots, type OpenSlot } from '../lib/api/trainerAvailability';
 import {
@@ -49,6 +52,36 @@ export interface BookableClass {
   matchesInterest: boolean;
   /** The member's own booking on this class, if any — drives "Booked" vs "Book". */
   myStatus: BookingStatus | null;
+  /**
+   * Something else the member already holds at this time, if any.
+   *
+   * Courtesy only. Migration 0068's triggers are the boundary — they refuse the
+   * insert whatever this says, because the member may have booked on another
+   * device since this list loaded. Showing it here just means the refusal is
+   * rarely a surprise.
+   *
+   * NULL means no clash *that we could see*, never "definitely free".
+   */
+  conflict: string | null;
+}
+
+/** An open PT slot, with the same courtesy check applied. */
+export interface BookableSlot extends OpenSlot {
+  conflict: string | null;
+}
+
+/**
+ * Wording for a clash, for a button label or a line under a slot.
+ *
+ * Says what the member is already doing, not "unavailable" — a slot that
+ * reads as unavailable looks like the gym's problem, and the member goes
+ * looking for another trainer rather than cancelling the thing they forgot.
+ */
+export function conflictLabel(c: Commitment): string {
+  const at = new Date(c.starts_at).toLocaleTimeString('en-PH', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila',
+  });
+  return `You are already booked for ${c.label} at ${at}`;
 }
 
 /** A class booking and a PT session, flattened into the one thing the member sees. */
@@ -310,13 +343,17 @@ function isRecommended(classLevel: ClassLevel, memberLevel: ExperienceLevel | nu
 
 /** Upcoming classes only — a timetable of sessions that already ran is history, not a booking screen. */
 export async function listBookableClasses(memberId: string): Promise<BookableClass[]> {
-  const [classes, availability, trainers, myBookings, level, interests] = await Promise.all([
+  const [classes, availability, trainers, myBookings, level, interests, held] = await Promise.all([
     listClasses().catch(() => []),
     listClassAvailability().catch(() => []),
     listPublicTrainers().catch(() => [] as PublicTrainer[]),
     listMemberBookings(memberId).catch(() => []),
     getExperienceLevel(memberId).catch(() => null),
     getInterests(memberId).catch(() => [] as string[]),
+    // Falls back to "no clashes visible" rather than failing the whole screen.
+    // The trigger still refuses a real clash, so the cost of this read failing
+    // is a surprising error message, not a double booking.
+    listMemberCommitments(memberId).catch(() => [] as Commitment[]),
   ]);
 
   const capacityById = new Map(availability.map((a) => [a.class_id, a]));
@@ -353,6 +390,13 @@ export async function listBookableClasses(memberId: string): Promise<BookableCla
         recommended: isRecommended(c.level, level),
         matchesInterest: matchesInterests(`${c.name} ${c.class_type ?? ''}`, interests),
         myStatus: mineByClass.get(c.id) ?? null,
+        // A class the member has already booked is not in conflict with itself.
+        conflict: mineByClass.has(c.id)
+          ? null
+          : (() => {
+              const clash = clashesWith(held, c.scheduled_at as string, c.duration_minutes);
+              return clash ? conflictLabel(clash) : null;
+            })(),
       };
     })
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
@@ -370,11 +414,18 @@ export async function bookClass(memberId: string, classId: string): Promise<void
  * teach. Passing only one is how a coach ends up double-booked against their
  * own class.
  */
-export async function listOpenPtSlots(trainerId: string, daysAhead = 14): Promise<OpenSlot[]> {
-  const [availability, ptBusy, classes] = await Promise.all([
+export async function listOpenPtSlots(
+  trainerId: string,
+  daysAhead = 14,
+  memberId?: string,
+): Promise<BookableSlot[]> {
+  const [availability, ptBusy, classes, held] = await Promise.all([
     listTrainerAvailability(trainerId).catch(() => []),
     listTrainerBusySlots(trainerId).catch(() => []),
     listClasses().catch(() => []),
+    memberId
+      ? listMemberCommitments(memberId).catch(() => [] as Commitment[])
+      : Promise.resolve([] as Commitment[]),
   ]);
 
   const busy = [
@@ -384,7 +435,13 @@ export async function listOpenPtSlots(trainerId: string, daysAhead = 14): Promis
       .map((c) => ({ startsAt: c.scheduled_at as string, durationMinutes: c.duration_minutes })),
   ];
 
-  return computeOpenSlots(availability, busy, daysAhead);
+  // The member's own clashes MARK a slot, they do not remove it. A slot that
+  // silently disappears reads as "this coach has no time"; a slot that says
+  // "you are already in Yoga then" tells them what to cancel.
+  return computeOpenSlots(availability, busy, daysAhead).map((slot): BookableSlot => {
+    const clash = clashesWith(held, slot.startsAt, slot.durationMinutes);
+    return { ...slot, conflict: clash ? conflictLabel(clash) : null };
+  });
 }
 
 export async function requestPt(input: {
