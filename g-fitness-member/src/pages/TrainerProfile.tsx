@@ -1,4 +1,5 @@
 import Avatar from '../components/ui/Avatar';
+import { listPublicCredentials, type PublicCredential } from '../lib/api/trainerFeedback';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
 import { motion } from 'framer-motion';
@@ -53,6 +54,18 @@ export default function TrainerProfile() {
   // Ratings (0042). Kept separate from the profile fetch: a coach with no
   // ratings, or a summary that fails to load, must still render a full profile.
   const [summary, setSummary] = useState<TrainerRatingSummary | null>(null);
+  /**
+   * Qualifications the gym has checked (0072).
+   *
+   * A different and stronger claim than `trainer.certifications` below, which
+   * is what the coach says about themselves. Kept apart on screen for that
+   * reason — merging them would launder an unverified claim into a verified
+   * one, which is the whole thing the credential review exists to prevent.
+   *
+   * Empty is normal: most coaches have uploaded nothing, and an empty list
+   * renders no panel rather than an empty one.
+   */
+  const [credentials, setCredentials] = useState<PublicCredential[]>([]);
   const [mine, setMine] = useState<MyTrainerRating | null>(null);
   const [eligible, setEligible] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
@@ -69,6 +82,18 @@ export default function TrainerProfile() {
    * midnight on the 1st, silently switch which row a save targets mid-edit.
    */
   const [period] = useState(currentPeriod);
+
+  useEffect(() => {
+    if (!trainerId) return;
+    let cancelled = false;
+    // Its own effect, like the ratings: a credential read that fails must not
+    // take the profile down with it. Falling back to an empty list is honest
+    // here — it renders nothing at all rather than claiming none exist.
+    listPublicCredentials(trainerId)
+      .then((rows) => { if (!cancelled) setCredentials(rows); })
+      .catch(() => { /* no panel, rather than a wrong one */ });
+    return () => { cancelled = true; };
+  }, [trainerId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,6 +457,46 @@ export default function TrainerProfile() {
               <h3 className="text-white font-semibold mb-2 text-sm">About</h3>
               <p className="text-sm leading-relaxed whitespace-pre-line"
                 style={{ color: 'var(--color-text-secondary)' }}>{trainer.bio}</p>
+            </div>
+          )}
+
+          {/* Checked by the gym, and labelled as such — the strong claim.
+              0054 keeps the uploaded document with the trainer and the admin,
+              because it is their personal paperwork and often carries a licence
+              number; 0072 publishes only the title and the date it was
+              verified. Unverified uploads never appear here: a pending claim
+              shown on a profile is a claim laundered into a fact. */}
+          {credentials.length > 0 && (
+            <div className="rounded-2xl p-4" style={panelStyle}>
+              <h3 className="text-white font-semibold mb-1 text-sm flex items-center gap-2">
+                <BadgeCheck size={16} style={{ color: 'var(--color-primary)' }} />
+                Verified by the gym
+              </h3>
+              <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+                Core Fitness has seen the certificate for each of these.
+              </p>
+              <ul className="space-y-2">
+                {credentials.map((c) => (
+                  <li key={`${c.title}-${c.verified_on ?? ''}`}
+                    className="text-sm flex items-start gap-2"
+                    style={{ color: 'var(--color-text-secondary)' }}>
+                    <BadgeCheck size={14} className="flex-shrink-0 mt-0.5"
+                      style={{ color: 'var(--color-primary)' }} />
+                    <span className="min-w-0">
+                      {c.title}
+                      {/* NULL is possible on rows verified before reviewed_at
+                          was written; the title stands on its own. */}
+                      {c.verified_on && (
+                        <span className="block text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          Verified {new Date(c.verified_on).toLocaleDateString('en-PH', {
+                            month: 'short', year: 'numeric',
+                          })}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

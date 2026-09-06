@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Calendar, Users, LogOut, Pencil, Mail, Phone, Clock, Trophy,
+  Calendar, Users, LogOut, Pencil, Mail, Phone, Clock, Trophy, Star,
   Settings as SettingsIcon,
 } from 'lucide-react';
 import Avatar from '../../components/ui/Avatar';
@@ -13,6 +13,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import StatCard from '../../components/ui/StatCard';
 import { panelStyle } from '../../components/ui/Card';
 import { logout } from '../../utils/auth';
+import { listMyRatings, summarise, type AnonymousRating } from '../../lib/api/trainerFeedback';
 import {
   getCurrentTrainerId,
   getTrainerOverview,
@@ -30,6 +31,32 @@ export default function TrainerProfile() {
   const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  /**
+   * How members have rated this coach (0042, monthly since 0066).
+   *
+   * **Without any member identity, enforced in SQL.** `my_trainer_ratings()`
+   * reads a view with no member_id column and the base table no longer answers
+   * to trainers at all (0072) — so there is nothing to hide in this component,
+   * which is the point. Filtering a name out in JSX would have left it in the
+   * network response for anyone who opened devtools.
+   *
+   * NULL average means nobody has rated yet. Never rendered as 0: zero stars is
+   * a score nobody can give, so printing it would invent a verdict out of the
+   * absence of one.
+   */
+  const [ratings, setRatings] = useState<AnonymousRating[] | null>(null);
+
+  // Its own effect: a coach whose ratings fail to load must still get a
+  // working profile. An empty result and a failed read are different, so a
+  // failure leaves `ratings` at null and the section renders nothing rather
+  // than "no ratings yet", which would be a claim about the members.
+  useEffect(() => {
+    let alive = true;
+    listMyRatings()
+      .then((rows) => { if (alive) setRatings(rows); })
+      .catch(() => { /* no section, rather than a false one */ });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +116,10 @@ export default function TrainerProfile() {
   const fullName = `${profile.first_name} ${profile.last_name}`;
   // Initials now come from <Avatar>, which owns that fallback for the whole app.
 
-  // No rating table exists, so the old 4.8-star badge is gone rather than faked.
+  // Derived, not stored: a second state holding the average would be one more
+  // thing to keep in step with the list it came from.
+  const ratingSummary = summarise(ratings ?? []);
+
   const stats = [
     { icon: Calendar, label: 'Sessions this week', value: overview.sessionsThisWeek },
     { icon: Users, label: 'Members', value: overview.membersAssigned },
@@ -173,13 +203,62 @@ export default function TrainerProfile() {
         </motion.section>
       )}
 
-      {/* No rating table exists, so the old 4.8-star badge is gone rather than faked. */}
       <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="grid grid-cols-2 gap-2">
         {stats.map((s) => (
           <StatCard key={s.label} value={s.value} label={s.label} icon={s.icon} />
         ))}
       </motion.section>
+
+      {ratings !== null && ratings.length > 0 && (
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+          <SectionHeader title="How members rate you" />
+          <div className="p-4 space-y-3" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white tabular-nums">
+                {ratingSummary.average!.toFixed(1)}
+              </span>
+              <Star size={16} style={{ color: 'var(--color-secondary)', fill: 'var(--color-secondary)' }} />
+              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                from {ratingSummary.count} {ratingSummary.count === 1 ? 'evaluation' : 'evaluations'}
+              </span>
+            </div>
+
+            {/* Said plainly rather than left to be inferred. A coach who thinks
+                they can work out who wrote a review behaves differently towards
+                the members they suspect — so the guarantee is worth stating,
+                and it is a guarantee the database keeps, not this screen. */}
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              Evaluations are anonymous. The gym can see who wrote them; you cannot.
+            </p>
+
+            {ratings.filter((r) => r.comment).length > 0 && (
+              <div className="space-y-2 pt-1">
+                {ratings.filter((r) => r.comment).slice(0, 5).map((r, i) => (
+                  <div key={`${r.period}-${i}`} className="rounded-xl p-3"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    <div className="flex items-center gap-1 mb-1">
+                      {Array.from({ length: 5 }, (_, n) => (
+                        <Star key={n} size={11}
+                          style={{
+                            color: n < r.stars ? 'var(--color-secondary)' : 'var(--color-border)',
+                            fill: n < r.stars ? 'var(--color-secondary)' : 'transparent',
+                          }} />
+                      ))}
+                      <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+                        {new Date(r.period).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      {r.comment}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.section>
+      )}
 
       <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
         <SectionHeader
