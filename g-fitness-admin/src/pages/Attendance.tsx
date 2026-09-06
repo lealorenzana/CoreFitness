@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { getBalance } from '../lib/api/points';
 import { SectionTabs } from '../components/ui/kit';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -238,7 +239,21 @@ export default function Attendance() {
         // "nobody asked", a default would say "they did Strength".
         activity: activity || undefined,
       });
-      showToast(`${member.profile.first_name} checked in successfully!`, 'success');
+      // The balance, at the one moment the desk can act on it — the member is
+      // standing there. Points are awarded by a trigger on the insert (0051),
+      // so this reads *after* the write rather than adding to a stale number.
+      //
+      // Never allowed to fail the check-in: the member is in the gym either
+      // way, and a points read that 404s must not read as a failed scan. A
+      // failure drops the suffix rather than showing 0, which would tell the
+      // desk something false.
+      const bonus = await getBalance(member.profile.id).catch(() => null);
+      showToast(
+        bonus === null
+          ? `${member.profile.first_name} checked in successfully!`
+          : `${member.profile.first_name} checked in · ${bonus.toLocaleString('en-PH')} CORE Points`,
+        'success',
+      );
 
       // Tell the member too. The desk saw a toast; the phone being held out at
       // the counter said nothing, so the member had to ask whether it worked.

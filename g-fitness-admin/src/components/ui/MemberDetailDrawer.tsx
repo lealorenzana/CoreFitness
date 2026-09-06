@@ -10,6 +10,7 @@ import Badge from './Badge';
 import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { listAccountStatusEvents, type AccountStatusEvent } from '../../lib/api/accountEvents';
+import { getBalance, listLedger, ledgerLabel, type LedgerEntry } from '../../lib/api/points';
 import { recordPayment } from '../../lib/api/payments';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
@@ -366,6 +367,8 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
           )}
         </div>
       </Section>
+
+      <PointsSection memberId={profile.id} />
 
       <AccountHistorySection profileId={profile.id} />
 
@@ -1016,6 +1019,92 @@ function AccountHistorySection({ profileId }: { profileId: string }) {
           </div>
         ))}
       </div>
+    </Section>
+  );
+}
+
+/**
+ * CORE Points, from the desk's side (0051).
+ *
+ * The balance and how it was arrived at. **Read-only, and there is no way to
+ * make it otherwise**: `point_ledger` has no INSERT, UPDATE or DELETE policy
+ * for any role, and every row is written by `award_points()`. A balance an
+ * admin can type into is not a score.
+ *
+ * Loaded on demand with the tab rather than with the drawer — two more queries
+ * on every open, to render a zero for members who have never earned anything,
+ * is a cost paid for the uncommon case.
+ */
+function PointsSection({ memberId }: { memberId: string }) {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([getBalance(memberId), listLedger(memberId, 8)])
+      .then(([b, l]) => { if (alive) { setBalance(b); setLedger(l); } })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [memberId]);
+
+  // A failed read says so. Rendering 0 would tell the desk this member has
+  // never earned a point, which may be false — and they are standing there.
+  if (failed) {
+    return (
+      <Section title="CORE Points">
+        <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>
+          Could not load this member's points.
+        </p>
+      </Section>
+    );
+  }
+
+  if (balance === null) return null;   // still loading; no flash of zero
+
+  return (
+    <Section title="CORE Points">
+      <div className="rounded-lg p-3 mb-2"
+        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl font-bold text-white tabular-nums">
+            {balance.toLocaleString('en-PH')}
+          </span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            available to spend
+          </span>
+        </div>
+        <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          Earned automatically. Nobody can add or remove points by hand — approve
+          a reward on the Rewards page to spend them.
+        </p>
+      </div>
+
+      {ledger.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          Nothing earned yet.
+        </p>
+      ) : (
+        <div className="space-y-1">
+          {ledger.map((e) => (
+            <div key={e.id} className="flex items-center justify-between gap-2 text-xs py-1"
+              style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>{ledgerLabel(e)}</span>
+              <span className="flex items-center gap-2 flex-shrink-0">
+                <span className="font-semibold tabular-nums"
+                  style={{ color: 'var(--color-secondary)' }}>
+                  +{e.points}
+                </span>
+                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {new Date(e.created_at).toLocaleDateString('en-PH', {
+                    day: 'numeric', month: 'short', timeZone: 'Asia/Manila',
+                  })}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </Section>
   );
 }

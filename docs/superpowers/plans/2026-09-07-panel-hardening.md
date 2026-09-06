@@ -326,12 +326,12 @@ an SVG `<foreignObject>` and painting that to a canvas needs no dependency and n
 CDN. Fonts are the known risk — inline the two families as the export runs, and
 if that fails, fall back to CSV rather than shipping a PNG with the wrong type.
 
-- [ ] **Step 1: `exportImage.ts`** — node → PNG blob → download.
-- [ ] **Step 2: Export menu on Schedule** — PNG, plus CSV and a printable view
+- [x] **Step 1:** landed as `utils/exportSchedule.ts` — canvas 2D, not foreignObject — node → PNG blob → download.
+- [x] **Step 2:** PNG + CSV on Schedule. Print dropped: the PNG is the printable artefact — PNG, plus CSV and a printable view
       (`window.print()` with a print stylesheet). Three formats, three real uses:
       pin it up, open it in Excel, hand it to a member.
-- [ ] **Step 3: Verify the PNG actually decodes** — download it and read it back.
-- [ ] **Step 4: Build, lint, commit**
+- [x] **Step 3:** decoded in-browser — signature 89504e47, 2320x1912, 36 colours sampled — download it and read it back.
+- [x] **Step 4:** commit ae878b9
 
 ---
 
@@ -427,17 +427,17 @@ dressed up as a source. A fabricated citation in a capstone is worse than none.
 
 Cash-only gym: a refund is a recorded desk transaction, not a gateway reversal.
 
-- [ ] **Step 1:** `refund_quote(membership_id)` in SQL returning percentage **and
+- [x] **Step 1:** `refund_quote(membership_id)` in SQL returning percentage **and
       the rule that produced it** — a number with no reason cannot be argued with.
-- [ ] **Step 2:** Tiers editable in Settings; seeded with the table above.
-- [ ] **Step 3:** Cancel dialog shows the quote before confirming; the amount and
+- [~] **Step 2:** tiers are editable data in `refund_rules`; the Settings screen for them is NOT built; seeded with the table above.
+- [ ] **Step 3:** Cancel dialog quote — NOT built; `refund_quote()` exists for it before confirming; the amount and
       reason land on `membership_events`.
-- [ ] **Step 4:** `docs/MEMBERSHIP_POLICY.md`, linked from Terms so a member can
+- [x] **Step 4:** `docs/MEMBERSHIP_POLICY.md`, linked from Terms so a member can
       read the rule that binds them — **a rule enforced only in SQL ambushes them**.
-- [ ] **Step 5:** `docs/OBJECTIVES_TRACE.md` — each research objective → the
+- [x] **Step 5:** `docs/OBJECTIVES_TRACE.md` — and it found that manuscript Objective 2 names an architecture the build does not use — each research objective → the
       features that serve it → how to demonstrate it. Objectives come from the
       manuscript; **quote it, do not paraphrase it into something it did not say**.
-- [ ] **Step 6:** Commit.
+- [x] **Step 6:** commit 1682273
 
 ---
 
@@ -453,22 +453,22 @@ Cash-only gym: a refund is a recorded desk transaction, not a gateway reversal.
 Seed one member per plan (Free Trial / Free Plan / Premium), two trainers with
 overlapping availability, and one staff account, then drive each app.
 
-- [ ] **Step 1:** `seed-test-accounts.sql` — re-runnable, every password recorded
+- [x] **Step 1:** `scripts/seed-test-accounts.sql` — written, NOT executed (no DB access here) — re-runnable, every password recorded
       in `docs/TEST_MATRIX.md`. Emails on the existing `corefitness-test.com`
       domain so real members are never touched.
-- [ ] **Step 2:** Plan-gate matrix — for each plan × feature, what the member
+- [~] **Step 2:** expectations written in TEST_MATRIX §2; results BLOCKED on the pastes — for each plan × feature, what the member
       should see. Drive it with Playwright and record the actual result.
       **A gate must lock and explain, never hide.**
-- [ ] **Step 3:** T2 scenario — Trainer A booked solid at Tuesday 10:00, Trainer B
+- [~] **Step 3:** written as §3.2; BLOCKED on the pastes — Trainer A booked solid at Tuesday 10:00, Trainer B
       free. A second member books B at Tuesday 10:00 and it must succeed.
-- [ ] **Step 4:** M1 scenario — same member, class then PT at one time: refused.
-- [ ] **Step 5:** T8 scenario — a request backdated 72h; run the sweep; assert
+- [~] **Step 4:** written as §3.1; BLOCKED on the pastes — same member, class then PT at one time: refused.
+- [~] **Step 5:** written as §3.4; BLOCKED on the pastes — a request backdated 72h; run the sweep; assert
       exactly the notifications in the ladder, and no duplicates on a second run.
-- [ ] **Step 6:** Payment, freeze, cancel-with-refund, suspend-with-reason: each
+- [~] **Step 6:** written as §4; BLOCKED on the pastes: each
       end to end, admin action visible on the member side.
-- [ ] **Step 7:** Record every result in `docs/TEST_MATRIX.md` — **including the
+- [ ] **Step 7:** Record every result — the Result column is deliberately empty until run in `docs/TEST_MATRIX.md` — **including the
       failures**, which become fixes, not omissions.
-- [ ] **Step 8:** Commit.
+- [x] **Step 8:** commit 0d1eae0
 
 ---
 
@@ -478,17 +478,17 @@ overlapping availability, and one staff account, then drive each app.
 
 Not a bug hunt — a read of the rules for gaps that only show up in use.
 
-- [ ] **Step 1:** Every `.update(`/`.delete(` in both `lib/api` without a
+- [x] **Step 1:** counted, not guessed — `scripts/audit-writes.py`; 20 guarded to 52, the remaining 61 triaged in DATA_ACCESS in both `lib/api` without a
       `.select()` zero-row guard. This has bitten four times.
-- [ ] **Step 2:** Every SECURITY DEFINER function: does its guard block its own
+- [x] **Step 2:** every new guard in 0068-0072 uses `auth.uid() is not null and`; the rule is now in DATA_ACCESS: does its guard block its own
       legitimate caller? (0055 and 0062 both shipped this bug.)
-- [ ] **Step 3:** Every policy added in 0068–0072: is RLS actually **on** for that
+- [x] **Step 3:** each file asserts `rowsecurity` in a `do $$` block that raises: is RLS actually **on** for that
       table? Assert it in the file.
-- [ ] **Step 4:** Expiry, freeze and suspension interactions — can a frozen member
+- [~] **Step 4:** four open questions raised in TEST_MATRIX rather than silently decided — can a frozen member
       book? Can a suspended one? Should a freeze extend the expiry date?
-- [ ] **Step 5:** Fix what turns up; record what is deliberate.
-- [ ] **Step 6:** Update CLAUDE.md (**overdue**), MIGRATION_STATUS, roadmap to 0072.
-- [ ] **Step 7:** Commit.
+- [~] **Step 5:** the write audit was the substantive find; the rest needs the pastes; record what is deliberate.
+- [x] **Step 6:** CLAUDE.md at 206 lines, overflow routed to DATA_ACCESS and MEMBERSHIP_POLICY; MIGRATION_STATUS still owed (**overdue**), MIGRATION_STATUS, roadmap to 0072.
+- [x] **Step 7:** commit 076f6ce
 
 ---
 
