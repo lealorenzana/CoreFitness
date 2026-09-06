@@ -125,7 +125,7 @@ scoped to the trainer, so Trainer A being full says nothing about Trainer B. Wha
 is unverified is whether the *member's slot picker* narrows by trainer. Task 10
 proves it end-to-end; this task fixes it if the read is wrong.
 
-- [ ] **Step 1: Write `member_busy_at()` and the two triggers**
+- [x] **Step 1: Write `member_busy_at()` and the two triggers** — landed as `member_commitments()` + `assert_member_free()` + `assert_trainer_free()`, commit c9cfde7
 
 ```sql
 -- Every commitment a member already holds, as intervals, from both tables.
@@ -148,17 +148,17 @@ Then `trg_booking_no_member_overlap()` on `bookings` and
 `trg_pt_no_member_overlap()` on `pt_sessions`, each raising a message naming the
 clash: `'You are already booked for % at %.'`. Exclude the row's own id on UPDATE.
 
-- [ ] **Step 2: Paste 0068, then probe it**
+- [ ] **Step 2: Paste 0068, then probe it** — BLOCKED ON USER
 
 Book a class and a PT session at the same hour as the same member; the second
 insert must raise. Book the same hour as a *different* member — must succeed.
 
-- [ ] **Step 3: Surface the clash before the tap, not only after**
+- [x] **Step 3: Surface the clash before the tap, not only after**
 
 `BookClass.tsx` marks a slot "You're busy" using `listMemberCommitments()`. The
 trigger stays the boundary; this is courtesy.
 
-- [ ] **Step 4: Build, lint, commit**
+- [x] **Step 4: Build, lint, commit** — member build clean, lint 59 (baseline 60)
 
 ---
 
@@ -183,15 +183,15 @@ p_profile, p_status, p_reason)` writes the event and the profile in one
 transaction and rejects a blank reason for `suspended` and `archived`. A trigger
 on `profiles` cannot see a reason that is not a column.
 
-- [ ] **Step 1: Write 0069** — table, `set_account_status()`, RLS (select: self,
+- [x] **Step 1: Write 0069** — table, `set_account_status()`, RLS (select: self,
       admin, staff; insert: **nobody** — the RPC is SECURITY DEFINER).
-- [ ] **Step 2: Paste and probe** — a suspend with a blank reason must raise.
-- [ ] **Step 3: Members.tsx** — the suspend dialog takes a required reason.
+- [ ] **Step 2: Paste and probe** — a suspend with a blank reason must raise. BLOCKED ON USER
+- [x] **Step 3: Members.tsx** — the suspend dialog takes a required reason.
       Reactivate takes an optional one.
-- [ ] **Step 4: MemberDetail.tsx** — an "Account history" section listing events.
-- [ ] **Step 5: Member app** — a suspended member sees *why* on the login screen,
+- [x] **Step 4: MemberDetail.tsx** — landed in MemberDetailDrawer.tsx (the route is a redirect) — an "Account history" section listing events.
+- [x] **Step 5: Member app** — a suspended member sees *why* on the login screen,
       not a generic refusal.
-- [ ] **Step 6: Build, lint, commit**
+- [x] **Step 6: Build, lint, commit** — commit 977e07f, admin 37 / member 59
 
 ---
 
@@ -261,17 +261,17 @@ so the escalation happens late at worst, never not at all.
 | session < 24h away, still pending | trainer **and** member and admin |
 | start time passed, never decided | auto-`rejected`, member told why, slot freed |
 
-- [ ] **Step 1: Write 0071** — `decided_by`/`decided_by_role` columns; update
+- [x] **Step 1: Write 0071** — `decided_by`/`decided_by_role` columns; update
       policies letting a trainer decide *their own* class bookings and PT
       sessions; `sweep_stale_requests()`; activity-log triggers.
-- [ ] **Step 2: Paste and probe** — as a trainer, approve a session on another
+- [ ] **Step 2: Paste and probe** — BLOCKED ON USER. As a trainer, approve a session on another
       trainer's roster: must be refused by RLS.
-- [ ] **Step 3: TrainerBookings** — Accept/Decline, with waiting time on each row.
+- [x] **Step 3: TrainerBookings** — rewritten; class + PT in one queue, waiting time per row — Accept/Decline, with waiting time on each row.
       Delete the "read-only, deliberately" docstring; it is no longer true.
-- [ ] **Step 4: Admin Bookings** — show who decided, allow reversal, run the sweep.
-- [ ] **Step 5: A5 — class capacity** — trainer may edit `capacity` on their own
+- [x] **Step 4: Admin Bookings** — show who decided, allow reversal, run the sweep.
+- [x] **Step 5: A5 — class capacity** — policy + guard in 0071; the trainer-facing field is still owed — trainer may edit `capacity` on their own
       classes; admin on any. Policy first, then the field.
-- [ ] **Step 6: Build, lint, commit**
+- [x] **Step 6: Build, lint, commit** — commit 87facd4
 
 ---
 
