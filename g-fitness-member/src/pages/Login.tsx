@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { accountLockoutReason } from '../lib/api/profiles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -73,13 +74,27 @@ export default function Login() {
     // just bounces the user back to this screen with no explanation.
     if (result.status !== 'active') {
       await logout();
-      const reason =
+      const headline =
         result.status === 'suspended'
-          ? 'This account has been suspended. Please contact the gym.'
+          ? 'This account has been suspended.'
           : result.status === 'archived'
-            ? 'This account is no longer active. Please contact the gym to rejoin.'
-            : 'This account is not active. Please contact the gym.';
-      showErrorToast({ type: 'validation', message: reason, details: '' });
+            ? 'This account is no longer active.'
+            : 'This account is not active.';
+
+      // The gym wrote down why (0069) — so say it. "Contact the gym" on its own
+      // makes the member phone up to be told a sentence that already exists,
+      // and a rule they cannot read ambushes them.
+      //
+      // NULL means no reason was recorded, which is a real answer and not a
+      // reason to invent a plausible one.
+      const why = await accountLockoutReason(email).catch(() => null);
+      const details = why
+        ? why
+        : result.status === 'archived'
+          ? 'Please contact the gym to rejoin.'
+          : 'Please contact the gym.';
+
+      showErrorToast({ type: 'validation', message: headline, details });
       setIsLoading(false);
       return;
     }

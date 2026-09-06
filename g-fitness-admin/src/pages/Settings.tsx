@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { setAccountStatus } from '../lib/api/accountEvents';
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -20,7 +21,6 @@ import ImageField from '../components/ui/ImageField';
 import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
 import {
   getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
-  setStaffStatus,
 } from '../lib/api/settings';
 import type { ProfileRow, ProfileStatus } from '../types/db';
 
@@ -299,11 +299,13 @@ export default function Settings() {
    * leaves keeping one is the same problem the trainer roster had. Nothing here
    * deletes: archive keeps every payment they recorded attributable.
    */
-  const handleStaffStatus = async () => {
+  const handleStaffStatus = async (reason?: string) => {
     if (!staffAction) return;
     const { account, next } = staffAction;
     try {
-      await setStaffStatus(account.id, next);
+      // Same RPC as the member roster (0069). A staff login takes payments, so
+      // "why was this account closed" is a question the gym will be asked.
+      await setAccountStatus(account.id, next, reason);
       showToast(
         next === 'active'
           ? `${account.first_name} reactivated`
@@ -710,6 +712,14 @@ export default function Settings() {
             : staffAction?.next === 'suspended' ? 'Suspend' : 'Archive'
         }
         type={staffAction?.next === 'active' ? 'info' : staffAction?.next === 'suspended' ? 'warning' : 'danger'}
+        reason={
+          staffAction?.next === 'active'
+            ? { label: 'Note (optional)', placeholder: 'Back from leave.' }
+            : { label: staffAction?.next === 'suspended' ? 'Reason for suspension' : 'Reason for archiving',
+                required: true,
+                placeholder: 'Left the gym on 30 September.',
+                hint: 'Kept on the account history, alongside every payment they recorded.' }
+        }
       />
     </div>
   );

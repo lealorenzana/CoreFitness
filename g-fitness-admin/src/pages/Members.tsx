@@ -1,4 +1,5 @@
 import Avatar from '../components/ui/Avatar';
+import { setAccountStatus } from '../lib/api/accountEvents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import Badge from '../components/ui/Badge';
@@ -22,7 +23,6 @@ import {
   rejectPendingRegistration,
   createMember,
   updateMemberProfile,
-  setMemberStatus,
   startFreeMembership,
 } from '../lib/api/members';
 import { updateProfile } from '../lib/api/profiles';
@@ -323,7 +323,10 @@ export default function Members() {
    */
   const handleApprove = async (m: MemberRow) => {
     try {
-      await setMemberStatus(m.id, 'active');
+      // Audited like every other status change (0069). Approving needs no
+      // reason, but it still belongs on the account's history — 'when did they
+      // get in' is a question the desk asks about a member who is now suspended.
+      await setAccountStatus(m.id, 'active');
       // And give them something to be a member *of*. Flipping the status alone
       // let them sign in with no membership at all — every screen that asks
       // what their plan allows got nothing back, so they were admitted and
@@ -370,11 +373,14 @@ export default function Members() {
    * which meant locking someone out was three clicks and a Save behind a form
    * full of unrelated fields.
    */
-  const handleSuspendToggle = async () => {
+  const handleSuspendToggle = async (reason?: string) => {
     if (!toSuspend) return;
     const next: ProfileStatus = toSuspend.accountStatus === 'suspended' ? 'active' : 'suspended';
     try {
-      await setMemberStatus(toSuspend.id, next);
+      // Through the RPC (0069), so the status and the reason land in one
+      // transaction and cannot come apart. A bare update could not carry the
+      // reason at all, and reported success when RLS declined it.
+      await setAccountStatus(toSuspend.id, next, reason);
       showToast(
         next === 'suspended'
           ? `${toSuspend.fullName} suspended — they can no longer log in`
@@ -388,10 +394,10 @@ export default function Members() {
     }
   };
 
-  const handleArchive = async () => {
+  const handleArchive = async (reason?: string) => {
     if (!toArchive) return;
     try {
-      await setMemberStatus(toArchive.id, showArchived ? 'active' : 'archived');
+      await setAccountStatus(toArchive.id, showArchived ? 'active' : 'archived', reason);
       showToast(
         showArchived
           ? `${toArchive.fullName} restored to the active roster.`
@@ -776,12 +782,31 @@ export default function Members() {
         }
         confirmText={toSuspend?.accountStatus === 'suspended' ? 'Reactivate' : 'Suspend'}
         type={toSuspend?.accountStatus === 'suspended' ? 'info' : 'warning'}
+        /* Required to suspend, optional to reinstate — nobody has ever needed to
+           justify giving somebody their account back. The database enforces the
+           same asymmetry (0069); this only means the admin finds out before the
+           click rather than after it. */
+        reason={
+          toSuspend?.accountStatus === 'suspended'
+            ? { label: 'Note (optional)', placeholder: 'Dues settled on 12 September.',
+                hint: 'Kept on the account history.' }
+            : { label: 'Reason for suspension', required: true,
+                placeholder: 'Unpaid dues since August. Spoke to them on the 3rd.',
+                hint: 'The member sees this when they try to sign in, and it stays on their account history.' }
+        }
       />
 
       <ConfirmDialog
         isOpen={!!toArchive}
         onClose={() => setToArchive(null)}
         onConfirm={handleArchive}
+        reason={
+          showArchived
+            ? { label: 'Note (optional)', placeholder: 'Rejoined on 1 October.' }
+            : { label: 'Reason for archiving', required: true,
+                placeholder: 'Moved away — asked to be taken off the roster.',
+                hint: 'Kept with their payment and attendance history.' }
+        }
         title={showArchived ? 'Restore Member' : 'Archive Member'}
         message={
           showArchived
@@ -1035,7 +1060,6 @@ function EditMemberForm({
     firstName: member.firstName, lastName: member.lastName, phone: member.phone,
     address: member.address, experienceLevel: member.experienceLevel,
     dateOfBirth: member.dateOfBirth, gender: member.gender,
-    accountStatus: member.accountStatus,
     emergencyContactName: member.emergencyContactName,
     emergencyContactPhone: member.emergencyContactPhone,
     emergencyContactRelationship: member.emergencyContactRelationship,
@@ -1070,9 +1094,6 @@ function EditMemberForm({
         emergency_contact_phone: form.emergencyContactPhone || null,
         emergency_contact_relationship: form.emergencyContactRelationship || null,
       });
-      if (form.accountStatus !== member.accountStatus) {
-        await setMemberStatus(member.id, form.accountStatus);
-      }
       showToast(`${form.firstName} ${form.lastName} updated.`, 'success');
       await onSaved();
     } catch (err) {
@@ -1105,12 +1126,14 @@ function EditMemberForm({
       </div>
       <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
 
-      <FieldDivider />
-      <SectionLabel>Account</SectionLabel>
-      <SelectField label="Account status" value={form.accountStatus}
-        onChange={(v) => setForm({ ...form, accountStatus: v as ProfileStatus })}
-        hint="Suspending blocks sign-in. The membership keeps running and nothing is deleted."
-        options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended (cannot log in)' }]} />
+      {/* The Account Status dropdown that used to sit here is gone.
+          Suspending now requires a written reason (0069) and this form has
+          nowhere to type one — so the dropdown could only ever have produced
+          'A reason is required', from a screen with no way to supply it.
+
+          The roster's own Suspend action asks for the reason and is one click,
+          which is what it was added for. Losing a duplicate route to the same
+          action is not a loss. */}
       <FieldDivider />
       <SectionLabel>Emergency contact</SectionLabel>
       <div className="grid grid-cols-2 gap-3">

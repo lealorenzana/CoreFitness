@@ -52,3 +52,24 @@ export async function updateProfile(
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
   if (error) throw error;
 }
+
+
+/**
+ * Why this email cannot sign in, or NULL (migration 0069).
+ *
+ * Called from the login screen *after* a refusal, with no session — so it
+ * cannot go through `account_status_events` RLS, and goes through a
+ * SECURITY DEFINER function that returns nothing but the sentence.
+ *
+ * Returns NULL for an active account, an unknown one, and a suspension
+ * recorded before 0069 alike. That is deliberate on two counts: it cannot be
+ * used to find out whether an email is registered, and NULL genuinely means
+ * "no reason on file" — the screen says so rather than inventing one.
+ */
+export async function accountLockoutReason(email: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('account_lockout_reason', { p_email: email });
+  // A failure here must never replace the refusal the member already needs to
+  // see, so it degrades to "no reason on file" rather than throwing.
+  if (error) return null;
+  return (data as string | null) ?? null;
+}

@@ -9,6 +9,7 @@ import Avatar from './Avatar';
 import Badge from './Badge';
 import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
+import { listAccountStatusEvents, type AccountStatusEvent } from '../../lib/api/accountEvents';
 import { recordPayment } from '../../lib/api/payments';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
@@ -365,6 +366,8 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
           )}
         </div>
       </Section>
+
+      <AccountHistorySection profileId={profile.id} />
 
       <Section title="Activity">
         <div className="grid grid-cols-4 gap-2">
@@ -944,6 +947,85 @@ function NotesTab({ detail }: { detail: MemberDetail }) {
 }
 
 /* ─────────────────────────── Shared bits ─────────────────────────── */
+
+/**
+ * Why this account was suspended, archived or reinstated (migration 0069).
+ *
+ * Loaded on demand rather than with the drawer: most members have never had a
+ * status change, and a second query on every open to render nothing is a cost
+ * paid for the rare case.
+ *
+ * Renders **nothing at all** when the history is empty. An empty panel headed
+ * "Account history" reads as "we checked and there is nothing", which is right
+ * — but a member who has genuinely never been suspended does not need a panel
+ * saying so, and the drawer is already six tabs deep.
+ */
+function AccountHistorySection({ profileId }: { profileId: string }) {
+  const [events, setEvents] = useState<AccountStatusEvent[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    listAccountStatusEvents(profileId)
+      .then((rows) => { if (alive) setEvents(rows); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [profileId]);
+
+  // A failed read says so. Empty would read as "this member has a clean
+  // record", which is a different claim and might be false.
+  if (failed) {
+    return (
+      <Section title="Account history">
+        <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>
+          Could not load the account history.
+        </p>
+      </Section>
+    );
+  }
+
+  if (events === null || events.length === 0) return null;
+
+  return (
+    <Section title="Account history">
+      <div className="space-y-2">
+        {events.map((e) => (
+          <div key={e.id} className="rounded-lg p-2.5"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-semibold text-white">
+                {e.previous_status
+                  ? `${STATUS_WORD[e.previous_status] ?? e.previous_status} → ${STATUS_WORD[e.status] ?? e.status}`
+                  : (STATUS_WORD[e.status] ?? e.status)}
+              </span>
+              <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                {new Date(e.created_at).toLocaleDateString('en-PH', {
+                  day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Manila',
+                })}
+              </span>
+            </div>
+            {/* NULL is normal for a reinstatement and for rows backfilled by
+                0069. It says which, rather than leaving a blank that reads as
+                a missing reason for a suspension. */}
+            <p className="text-xs mt-1" style={{
+              color: e.reason ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
+              fontStyle: e.reason ? 'normal' : 'italic',
+            }}>
+              {e.reason ?? 'No reason recorded.'}
+            </p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+const STATUS_WORD: Record<string, string> = {
+  active: 'Active',
+  pending_approval: 'Awaiting approval',
+  suspended: 'Suspended',
+  archived: 'Archived',
+};
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
