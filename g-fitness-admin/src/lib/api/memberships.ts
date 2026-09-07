@@ -122,6 +122,52 @@ export async function freezesThisMonth(memberId: string): Promise<number> {
   return Number(data ?? 0);
 }
 
+/**
+ * Days already spent frozen in the rolling year, and the gym's ceiling.
+ *
+ * 0070 added `max_freeze_days_per_year` (60 by default) and
+ * `frozen_days_last_year()`, and for a while **nothing read either of them** —
+ * a limit that exists only in the schema is a limit nobody is subject to and
+ * nobody can appeal. This is the reader.
+ *
+ * It is deliberately *shown, not enforced*. The monthly count has a trigger
+ * behind it; this one does not, because a two-week freeze that tips a member
+ * over 60 days is a conversation at the desk rather than a refusal a member
+ * cannot argue with. The dialog says as much, so nobody mistakes the number
+ * for a boundary.
+ *
+ * Both halves return `null` on failure rather than 0. `freezesThisMonth` can
+ * afford to guess 0 because a trigger catches a wrong guess; here a 0 would be
+ * the screen telling the desk "no days used this year" on no evidence at all.
+ */
+export interface FreezeAllowance {
+  /** Days frozen in the last rolling year, or null if the read failed. */
+  usedDays: number | null;
+  /** The gym's yearly ceiling, or null if the setting could not be read. */
+  ceilingDays: number | null;
+}
+
+export async function freezeAllowance(memberId: string): Promise<FreezeAllowance> {
+  const [used, settings] = await Promise.all([
+    supabase.rpc('frozen_days_last_year', { p_member: memberId }),
+    supabase
+      .from('gym_settings')
+      .select('max_freeze_days_per_year')
+      .eq('id', true)
+      .maybeSingle(),
+  ]);
+
+  return {
+    usedDays: used.error || used.data == null ? null : Number(used.data),
+    ceilingDays: settings.error ? null : numberOrNull(settings.data?.max_freeze_days_per_year),
+  };
+}
+
+/** NULL stays NULL — a missing setting is not the number zero. */
+function numberOrNull(value: unknown): number | null {
+  return value == null ? null : Number(value);
+}
+
 /** The freeze/cancel history the drawer shows, newest first. */
 export interface MembershipEventRow {
   id: string;

@@ -60,13 +60,23 @@ Not a self-report, and not "did they collect their QR code".
 | Rule | Value | Reasoning |
 |---|---|---|
 | Freezes per calendar month | **2** | A calendar month, not a rolling 30 days — "twice a month" is what the gym says out loud, and a rolling window would refuse a freeze on the 1st because of one on the 3rd of the month before. |
-| Longest single freeze | **30 days** | Beyond this it needs an admin, not the front desk. |
-| Total frozen days per year | **60** | Without a ceiling a membership could be frozen and simply never unfrozen — a cancellation the gym never recorded and the member never agreed to. |
+| Longest single freeze | **30 days** | Beyond this it needs an admin, not the front desk. *A stored setting with no reader — a freeze here has no end date to check it against.* |
+| Total frozen days per year | **60** | Without a ceiling a membership could be frozen and simply never unfrozen — a cancellation the gym never recorded and the member never agreed to. **Shown at the desk, not enforced.** |
 | Reason | **Required** | For freezing and for cancelling. An unfreeze needs none. |
+| Access while frozen | **None** | Cannot check in, cannot book. A freeze pauses the membership, not attendance alone. |
+| Frozen days | **Credited back to the expiry date** | The member is not charged for days the gym denied them — the same reading of a prepaid term that makes the pro-rata refund the lawful one. |
 
 An admin can override the monthly count. The front desk cannot. That asymmetry
 is enforced in SQL (`trg_membership_event_guard`, migration 0057), not in the
 form — so it holds no matter which screen the write comes from.
+
+**The yearly ceiling is different, and deliberately weaker.** It is displayed in
+the freeze dialog — "N of 60 days used this year", with a warning once it is
+passed — and nothing refuses on it. Members have been told about the monthly
+limit; nobody has ever been told about a yearly one, and a desk cannot defend a
+refusal it cannot explain. The four decisions behind this paragraph, including
+why frozen days extend the expiry, are recorded in
+[TEST_MATRIX](TEST_MATRIX.md#decisions--settled-7-september-2026).
 
 ### What the member is told
 
@@ -189,7 +199,7 @@ benchmarking report and Bedford's onboarding work should be obtained directly.
 |---|---|
 | Reason required to freeze or cancel | `trg_membership_event_guard` (0057) |
 | Two freezes per calendar month | `freezes_this_month()` (0057) |
-| Frozen days in the last year | `frozen_days_last_year()` (0070) |
+| Frozen days in the last year | **Nothing.** `frozen_days_last_year()` (0070) computes it and the freeze dialog *shows* it against `gym_settings.max_freeze_days_per_year`; no trigger refuses on it. Decided, not overlooked — [TEST_MATRIX](TEST_MATRIX.md#decisions--settled-7-september-2026) §3. |
 | Refund percentage | `refund_quote()` (0070) |
 | Refund actually given | `membership_events.refund_amount` / `refund_percent` / `refund_rule` (0070) |
 | Reason required to suspend an account | `set_account_status()` (0069) |

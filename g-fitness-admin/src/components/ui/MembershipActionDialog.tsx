@@ -5,7 +5,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Ban, X, AlertTriangle } from 'lucide-react';
 import Button from './Button';
-import { freezesThisMonth, type MembershipActionDetail } from '../../lib/api/memberships';
+import {
+  freezeAllowance, freezesThisMonth,
+  type FreezeAllowance, type MembershipActionDetail,
+} from '../../lib/api/memberships';
 
 /**
  * Freezing or cancelling a membership, with the reason the gym will need later.
@@ -30,6 +33,19 @@ import { freezesThisMonth, type MembershipActionDetail } from '../../lib/api/mem
  * sees "1 of 2 used this month" while deciding — rather than filling in a
  * reason and being refused by a trigger afterwards. The trigger is still the
  * boundary; this is only the explanation.
+ *
+ * ## The yearly ceiling is shown and not enforced, on purpose
+ *
+ * 0070 also caps total frozen days per rolling year (60 by default). Unlike the
+ * monthly count, **no trigger refuses on it** — and for a while nothing read it
+ * either, which made it a setting with no effect on anything.
+ *
+ * It is shown because a frozen day is credited back to the expiry date, so
+ * frozen time is the gym giving away membership it has already been paid for;
+ * the desk should be able to see how much of that a member has taken. It is not
+ * enforced because the honest answer to "you have used 61 of 60 days" is a
+ * conversation, not a refusal a member cannot appeal — and unlike the monthly
+ * rule, the gym has never told anyone this limit exists.
  */
 
 const FREEZE_REASONS = ['Injury', 'Travelling', 'Working away', 'Medical', 'Financial', 'Other'];
@@ -69,6 +85,13 @@ export default function MembershipActionDialog({
   const [error, setError] = useState<string | null>(null);
   const [used, setUsed] = useState<number | null>(null);
   /**
+   * The yearly freeze ceiling, alongside how much of it this member has spent.
+   *
+   * `undefined` while it loads; either field may come back `null`, which
+   * renders as "not known" rather than as a comfortable zero.
+   */
+  const [allowance, setAllowance] = useState<FreezeAllowance | undefined>(undefined);
+  /**
    * What the gym owes, worked out before anyone commits to anything.
    *
    * `undefined` = still loading, `null` = the read failed. Those render
@@ -82,6 +105,11 @@ export default function MembershipActionDialog({
     if (kind !== 'freeze') return;
     let alive = true;
     freezesThisMonth(memberId).then((n) => { if (alive) setUsed(n); });
+    freezeAllowance(memberId)
+      .then((a) => { if (alive) setAllowance(a); })
+      .catch(() => {
+        if (alive) setAllowance({ usedDays: null, ceilingDays: null });
+      });
     return () => { alive = false; };
   }, [kind, memberId]);
 
@@ -102,6 +130,15 @@ export default function MembershipActionDialog({
   const finalReason = reason === 'Other' ? note.trim() : [reason, note.trim()].filter(Boolean).join(' — ');
   const canSubmit = reason !== '' && (reason !== 'Other' || note.trim() !== '');
   const atLimit = isFreeze && used != null && used >= 2;
+  /**
+   * Past the yearly ceiling. Claimed only when *both* numbers are known — an
+   * unread setting must not turn into an accusation, and an unread total must
+   * not turn into a clean bill of health.
+   */
+  const overYearly = isFreeze
+    && allowance?.usedDays != null
+    && allowance.ceilingDays != null
+    && allowance.usedDays >= allowance.ceilingDays;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -187,6 +224,36 @@ export default function MembershipActionDialog({
                   }}>
                   <span>Freezes used this month</span>
                   <strong>{used == null ? '…' : `${used} of 2`}</strong>
+                </div>
+              )}
+
+              {/* The yearly ceiling (0070). Shown, never enforced — see below. */}
+              {isFreeze && (
+                <div className="px-3 py-2 rounded-lg text-[11px] flex items-center justify-between"
+                  style={{
+                    background: overYearly ? 'var(--color-secondary-light)' : 'var(--color-surface-high)',
+                    color: overYearly ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+                  }}>
+                  <span>Days frozen in the last year</span>
+                  <strong>
+                    {allowance === undefined
+                      ? '…'
+                      : allowance.usedDays == null || allowance.ceilingDays == null
+                        ? 'not known'
+                        : `${allowance.usedDays} of ${allowance.ceilingDays}`}
+                  </strong>
+                </div>
+              )}
+
+              {overYearly && (
+                <div className="px-3 py-2.5 rounded-lg flex items-start gap-2 text-[11px] leading-relaxed"
+                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                  <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    This member has used their {allowance?.ceilingDays} frozen days for the year.
+                    Nothing here will stop you — the yearly ceiling is a figure to discuss with
+                    them, not a rule the system refuses on.
+                  </span>
                 </div>
               )}
 

@@ -72,7 +72,11 @@ number nobody can reproduce.
 
 ---
 
-## The architecture discrepancy — read this before the defence
+## The architecture discrepancy — **decided: amend the manuscript**
+
+**Decision, 7 September 2026: Objective 2 is being amended** to describe the
+system that exists. Draft replacement text is at the end of this section; the
+comparison below is the justification to put behind it.
 
 Objective 2 of the manuscript specifies:
 
@@ -89,18 +93,35 @@ Objective 2 of the manuscript specifies:
 | Firebase | Supabase Auth + Web Push | One platform for auth and database; free tier. |
 
 This is a real and material difference, and a panel reading the manuscript will
-find it in about a minute. Two ways to handle it, in order of preference:
-
-1. **Amend Objective 2 in the manuscript** to describe what was built, with the
-   justification above. The objectives are meant to describe the study; a study
-   that describes a system nobody built is the actual problem.
-2. If it cannot be amended in time, **raise it before they do**, framed as a
-   design decision with a reason: RBAC in RLS is stronger than RBAC in an
-   Express middleware, because the middleware can be bypassed and the database
-   cannot.
+find it in about a minute. The objectives are meant to describe the study; a
+study that describes a system nobody built is the actual problem — so the
+objective changes, not the account of the system.
 
 Do not present the system as if it uses MySQL and Express. It does not, and the
 migrations are in the repository for anyone to read.
+
+### Draft replacement text for Objective 2
+
+> To design and develop the Core Fitness Gym Management System as two React 19
+> and TypeScript applications — a desktop administrative dashboard for gym staff
+> and an installable Progressive Web Application for members and trainers,
+> delivered to Android as a Trusted Web Activity — supported by a PostgreSQL
+> database hosted on Supabase, in which role-based access control is enforced by
+> Row-Level Security policies in the database itself rather than in application
+> code, with authentication, server-side scheduled processing and Web Push
+> notification delivery provided by Supabase Auth, `pg_cron` and Edge Functions.
+
+Wording to keep if the objective is questioned: **the security boundary moved
+down a layer, and that is the finding, not a substitution.** An Express
+middleware that checks a role can be bypassed by anything that reaches the
+database around it; an RLS policy cannot, because it is the database. MySQL 8.0
+has no row-level security, so the RBAC objective could not have been met the way
+it is met here — the change of engine is what made the security objective
+achievable, not a convenience.
+
+The three named technologies that did survive contact with the build (React, a
+relational database, push notifications) are still there. What changed is that
+the *tier* the manuscript put between the client and the data does not exist.
 
 ## The other honesty item — "NLP-based"
 

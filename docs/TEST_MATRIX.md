@@ -95,6 +95,72 @@ and staff from admin, then run `scripts/seed-test-accounts.sql`. Approving a
 registration needs an admin sign-in, so that step needs somebody with the
 password.
 
+*Run 3 lifted most of that block without accounts — see below.*
+
+---
+
+## Run 3 — 7 September 2026 · the app's own logic, driven under the harness
+
+**38 checks, all passing.** Two scripts drive the *real* application code with a
+routed network, so `useFeatures`, `FeatureLock`, `listOpenPtSlots()` and every
+gated screen's own branching all execute exactly as they do for a member.
+
+| Script | Covers | Result |
+|---|---|---|
+| `scripts/plan-gates.js` | §2.1–§2.4, all three plans × 8 checks | **24 / 24** |
+| `scripts/trainer-scenarios.js` | §3.1.3–3.1.4, §3.2, §3.4's human half | **14 / 14** |
+
+Run both with the Playwright MCP runner's `filename` argument, member dev
+server on `:5173`. Evidence: `shots/19-trainer-overdue-queue.png`,
+`shots/20-member-pending-survives.png`.
+
+### What Run 3 does not prove
+
+**Nothing here reaches Postgres.** The network is routed, so every RLS check
+(§2.6, §6) and every trigger (0068's conflict guard, 0057's freeze limit,
+0071's decision policies) is still untested end to end. A pass here means *the
+app agrees with the rules and tells the member the truth before the write* —
+not that the boundary holds. §2.6 and §6 still need real signed-in sessions.
+
+### §2 — what each plan actually unlocks
+
+The `DEFAULTS` table in `plan-gates.js` is transcribed from 0049's seed and the
+app matched it on every cell. Two things worth stating plainly:
+
+- **The Free Plan unlocks none of the six gated areas** — and it is not meant
+  to. What it *does* keep is the whole of the rest of the app: gym-floor
+  check-in, the free workout library, announcements and events, notifications,
+  its QR code, attendance history and the membership screen. It cannot book
+  classes or PT either, but that comes from **0017**, not from `plan_features`
+  — the two systems are separate and a Free Plan member is bounded by both.
+- **The chathead is the sharpest per-plan difference to demonstrate.** It is
+  absent on Free Plan and Free Trial and present on Premium, from the same
+  `ai_model` row that locks the chat route.
+
+### §3.2 — the panel's two-trainers question, answered with the slot lists
+
+Both coaches work 06:00–18:00 in 30-minute slots. Trainer A has a PT session at
+12:00 and teaches a class at 14:00; Trainer B has neither.
+
+| | 12:00 | 12:30 | 14:00 | 14:30 |
+|---|---|---|---|---|
+| Trainer A | — | — | — | — |
+| Trainer B | ✓ | ✓ | ✓ | ✓ |
+
+A being full says nothing about B, and A's own class blocks A's PT diary. The
+member's separate 10:00–11:00 class **marks** B's 10:30 slot
+(*"You are already booked for Morning Yoga at 10:00 AM"*) and leaves 11:00
+clean — the half-open interval, checked rather than assumed.
+
+### §3.4 — the three-day wait, as a person rather than a row
+
+The trainer's queue states *"waiting 3 days"* on the old request and
+*"waiting 5h"* on the recent one, banners *"One member has been waiting more
+than a day"*, and keeps **both** actionable. A pending request also survives
+the trainer clearing their availability entirely: the member still sees it,
+still pending. A request that vanished when a coach stopped working would be
+the worst possible version of "still pending".
+
 ---
 
 ## 1. Test accounts
@@ -133,7 +199,7 @@ disagrees with the app, check the matrix before calling it a bug.
 | AI workout plan (`plan_builder`) | ✗ | ✗ | ✓ | Plan Builder page |
 | Smarter AI assistant (`ai_model`) | ✗ | ✗ | ✓ | Chat route + the chathead in `Layout` |
 | Earn CORE Points (`points_earn`) | ✗ | ✓ | ✓ | MY CORE card on Progress |
-| Redeem CORE Points (`points_redeem`) | ✗ | ✗ | ✓ | Rewards page |
+| Redeem CORE Points (`points_redeem`) | ✗ | ✗ | ✓ | The **Redeem button** on the Rewards page — not the page, which is gated on `points_earn` |
 | Gym challenges (`challenges`) | ✗ | ✓ | ✓ | Challenges page |
 
 **Two rules to check on every locked screen, not just that it is locked:**
@@ -146,10 +212,10 @@ disagrees with the app, check the matrix before calling it a bug.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 2.1 | Sign in as Free Plan, open every gated screen above | Six locks, each explaining itself in its own words | |
-| 2.2 | Same account → Workouts → free library | **Fully available** | |
-| 2.3 | Sign in as Free Trial | Tracker, points-earn and challenges work; plan builder, AI and redeem are locked | |
-| 2.4 | Sign in as Premium | All six available | |
+| 2.1 | Sign in as Free Plan, open every gated screen above | Six locks, each explaining itself in its own words | **PASS** (Run 3) |
+| 2.2 | Same account → Workouts → free library | **Fully available** | **PASS** (Run 3) |
+| 2.3 | Sign in as Free Trial | Tracker, points-earn and challenges work; plan builder, AI and redeem are locked | **PASS** (Run 3) |
+| 2.4 | Sign in as Premium | All six available | **PASS** (Run 3) |
 | 2.5 | Admin → Plans → untick one feature for Premium; reload the member app | That one screen locks; nothing else changes | |
 | 2.6 | As the Free Plan member, call the gated table directly from the browser console | **RLS refuses** — the gate is not only in the UI | |
 
@@ -163,8 +229,8 @@ disagrees with the app, check the matrix before calling it a bug.
 |---|---|---|---|
 | 3.1.1 | Book a class Tuesday 10:00, then request PT Tuesday 10:00 | Refused, naming the class and its time | |
 | 3.1.2 | Book two classes at the same hour | Refused | |
-| 3.1.3 | Class 10:00–11:00, then PT at **11:00** | **Allowed** — the end instant is free | |
-| 3.1.4 | Class 10:00–11:00, then PT at **10:30** | Refused — overlap, not equality | |
+| 3.1.3 | Class 10:00–11:00, then PT at **11:00** | **Allowed** — the end instant is free | **PASS** (Run 3, UI) |
+| 3.1.4 | Class 10:00–11:00, then PT at **10:30** | Refused — overlap, not equality | **PASS** (Run 3, UI — flagged, not hidden) |
 | 3.1.5 | The clashing slot in the picker, before tapping | Shown, disabled, and says what you are already booked for | |
 | 3.1.6 | Cancel the class, then retry the PT slot | Now allowed | |
 
@@ -172,10 +238,10 @@ disagrees with the app, check the matrix before calling it a bug.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 3.2.1 | Fill Trainer A's Tuesday 10:00 | A's 10:00 disappears from A's slot list | |
-| 3.2.2 | **Second member books Trainer B, Tuesday 10:00** | **Succeeds.** A being full says nothing about B | |
-| 3.2.3 | Trainer A teaches a class at 14:00; check A's PT slots | 14:00 absent — a class blocks the coach's own PT | |
-| 3.2.4 | Trainer B at the same 14:00 | Available | |
+| 3.2.1 | Fill Trainer A's Tuesday 10:00 | A's 10:00 disappears from A's slot list | **PASS** (Run 3) |
+| 3.2.2 | **Second member books Trainer B, Tuesday 10:00** | **Succeeds.** A being full says nothing about B | **PASS** (Run 3) |
+| 3.2.3 | Trainer A teaches a class at 14:00; check A's PT slots | 14:00 absent — a class blocks the coach's own PT | **PASS** (Run 3) |
+| 3.2.4 | Trainer B at the same 14:00 | Available | **PASS** (Run 3) |
 
 ### 3.3 Trainers decide, admin oversees (migration 0071)
 
@@ -261,18 +327,48 @@ clock, not a queue.
 
 ---
 
-## Open questions — decide these before the panel does
+## Decisions — settled 7 September 2026
 
-1. **Can a frozen member book?** The entitlement check uses
-   `membership_is_usable()`, and `frozen` is not usable — so no. That is
-   probably right, but it is not written down anywhere as a decision, and a
-   member who froze for a holiday may reasonably expect to book for after it.
-2. **Should a freeze extend the expiry date?** `unfreezeMembership()` does
-   extend it. Confirm the gym agrees, because it is money.
-3. **Should the 60-day yearly freeze ceiling be enforced, or only shown?**
-   `frozen_days_last_year()` computes it; nothing refuses on it yet.
-4. **Does RA 7394 constrain the refund table?** If it does, the law wins. See
-   [MEMBERSHIP_POLICY](MEMBERSHIP_POLICY.md).
+These were open questions. The gym has answered them; the answers are recorded
+here because a rule nobody wrote down gets re-litigated at the desk every time.
+
+1. **A frozen member cannot book. Confirmed.** `membership_is_usable()` accepts
+   `active` and `cancelled` and not `frozen`, so the entitlement check refuses —
+   and that is intended, not an accident of the enum. A freeze is a pause on the
+   membership, not on attendance alone; a member who wants to book for the week
+   after their holiday unfreezes first, which takes the desk one click. The
+   alternative — bookable while frozen — would let someone hold a class seat
+   during a period the gym is crediting back to them for free.
+2. **A freeze does extend the expiry date. Confirmed, kept.**
+   `unfreezeMembership()` adds the frozen days back
+   ([memberships.ts](../g-fitness-admin/src/lib/api/memberships.ts)). This is
+   money and it was worth asking about, but the alternative is charging a member
+   for days the gym deliberately denied them access — which is the same reading
+   of a prepaid term that makes 0073's pro-rata refund the lawful one under RA
+   7394. Consistency here matters more than the few days it costs. The yearly
+   ceiling below is what stops it becoming unbounded.
+3. **The 60-day yearly ceiling is shown, not enforced.** The freeze dialog now
+   reads `frozen_days_last_year()` and `gym_settings.max_freeze_days_per_year`
+   and shows "N of 60 days used this year", with a warning line once it is
+   passed. No trigger refuses on it: the monthly limit is a rule members have
+   been told, but nobody has ever been told about a yearly one, and refusing on
+   an unpublished rule is how a desk ends up arguing on the gym's behalf for a
+   number it cannot explain. Before this, **nothing read either value** — the
+   setting existed and affected nothing.
+   `gym_settings.max_freeze_days_at_once` is **still unread**, deliberately:
+   a freeze here has no end date to check it against.
+4. **Admin evaluations show who wrote them. Kept as built.** This reverses an
+   earlier decision to hide names from everyone. The panel asked for the
+   information needed for monitoring, and a complaint nobody can attribute
+   cannot be followed up — nor can one member rating every trainer 1★ be spotted.
+   The protection that matters is unchanged and is in SQL, not in JSX: the
+   trainer reads `trainer_ratings_anon`, which has no `member_id` column at all
+   (0072). The admin panel says "Admin only" above the names so nobody reads one
+   out to a coach by accident.
+5. **RA 7394 constrains the refund table, and the law won.** 0073 rewrote
+   `refund_quote()` to `max(pro-rata for the unused term, the gym's tier) − a
+   documented fee`; the tiers are a floor, so lowering one cannot cut a payout
+   below the statutory pro-rata. See [MEMBERSHIP_POLICY](MEMBERSHIP_POLICY.md).
 
 ## How to run the SQL checks
 
