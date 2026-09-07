@@ -120,10 +120,12 @@ export async function registerForEvent(eventId: string, memberId: string): Promi
 }
 
 export async function cancelRegistration(eventId: string, memberId: string): Promise<void> {
-  const { error } = await supabase
+  const { data: data, error: error } = await supabase
     .from('event_registrations')
     .delete()
     .eq('event_id', eventId)
-    .eq('member_id', memberId);
+    .eq('member_id', memberId)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That registration could not be cancelled. Please refresh and try again.');
 }

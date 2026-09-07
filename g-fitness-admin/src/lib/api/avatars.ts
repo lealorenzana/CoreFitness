@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import { updateMyProfile } from './profiles';
 
@@ -124,9 +125,11 @@ export async function removeAvatarFor(userId: string): Promise<void> {
   const { data: profile } = await supabase
     .from('profiles').select('photo_url').eq('id', userId).maybeSingle();
 
-  const { error } = await supabase
-    .from('profiles').update({ photo_url: null }).eq('id', userId);
+  const { data: rows, error: error } = await supabase
+    .from('profiles').update({ photo_url: null }).eq('id', userId)
+    .select('id');
   if (error) throw error;
+  assertWrote(rows, 'That photo could not be removed — your account may not have permission.');
 
   const path = pathFromPublicUrl(profile?.photo_url ?? null);
   if (path) await supabase.storage.from(BUCKET).remove([path]).catch(() => {});

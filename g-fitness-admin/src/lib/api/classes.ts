@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ClassRow } from '../../types/db';
 
@@ -31,11 +32,17 @@ export async function updateClass(
   id: string,
   updates: Partial<Omit<ClassRow, 'id' | 'created_at'>>
 ): Promise<void> {
-  const { error } = await supabase.from('classes').update(updates).eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('classes').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That class could not be saved. Please refresh and try again.');
 }
 
 export async function deleteClass(id: string): Promise<void> {
-  const { error } = await supabase.from('classes').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('classes').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That class could not be removed. Please refresh and try again.');
 }

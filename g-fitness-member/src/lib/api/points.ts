@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -146,6 +147,9 @@ export async function requestReward(memberId: string, reward: Reward): Promise<v
 
 /** Withdraw a request the gym has not answered yet. */
 export async function cancelRedemption(id: string): Promise<void> {
-  const { error } = await supabase.from('reward_redemptions').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('reward_redemptions').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That redemption could not be cancelled — the gym may have already approved it.');
 }

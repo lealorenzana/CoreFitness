@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -80,8 +81,11 @@ export async function saveMeasurement(
 }
 
 export async function deleteMeasurement(id: string): Promise<void> {
-  const { error } = await supabase.from('body_measurements').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('body_measurements').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That measurement could not be deleted — it may not be yours to remove.');
 }
 
 // ─── Goals ───────────────────────────────────────────────────────────────────
@@ -108,13 +112,19 @@ export async function updateGoal(
   id: string,
   updates: Partial<Omit<FitnessGoalRow, 'id' | 'member_id' | 'created_at'>>
 ): Promise<void> {
-  const { error } = await supabase.from('fitness_goals').update(updates).eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('fitness_goals').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That goal could not be saved — it may not be yours to edit.');
 }
 
 export async function deleteGoal(id: string): Promise<void> {
-  const { error } = await supabase.from('fitness_goals').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('fitness_goals').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That goal could not be deleted — it may not be yours to remove.');
 }
 
 // ─── Workout logs ────────────────────────────────────────────────────────────
@@ -138,8 +148,11 @@ export async function createWorkoutLog(
 }
 
 export async function deleteWorkoutLog(id: string): Promise<void> {
-  const { error } = await supabase.from('workout_logs').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('workout_logs').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That workout could not be deleted — it may not be yours to remove.');
 }
 
 // ─── Derived ─────────────────────────────────────────────────────────────────

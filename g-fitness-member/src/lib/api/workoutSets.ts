@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -95,11 +96,13 @@ export async function startSession(memberId: string, planId?: string | null): Pr
  * correct.
  */
 export async function completeSession(logId: string, durationMinutes: number | null): Promise<void> {
-  const { error } = await supabase
+  const { data: data, error: error } = await supabase
     .from('workout_logs')
     .update({ completed_at: new Date().toISOString(), duration_minutes: durationMinutes })
-    .eq('id', logId);
+    .eq('id', logId)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That session could not be finished — it may not be yours to close.');
 }
 
 export async function listSets(logId: string): Promise<WorkoutSet[]> {
@@ -158,8 +161,11 @@ export async function addSet(logId: string, set: NewSet): Promise<string> {
 }
 
 export async function deleteSet(id: string): Promise<void> {
-  const { error } = await supabase.from('workout_sets').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('workout_sets').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That set could not be deleted — it may not be yours to remove.');
 }
 
 /** "5 exercises · 12 sets" — counted in SQL so the phone never has to guess. */

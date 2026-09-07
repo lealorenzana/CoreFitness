@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { BookingStatus } from '../../types/db';
 
@@ -107,12 +108,18 @@ export async function setPtSessionStatus(
     updates.approved_at = new Date().toISOString();
     updates.approved_by = user?.id ?? null;
   }
-  const { error } = await supabase.from('pt_sessions').update(updates).eq('id', id);
+  const { data: rows, error: error } = await supabase
+    .from('pt_sessions').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(rows, 'That request could not be updated — it may already have been decided.');
 }
 
 /** A member may withdraw their own request while it's still pending. */
 export async function cancelPtSession(id: string): Promise<void> {
-  const { error } = await supabase.from('pt_sessions').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('pt_sessions').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That request could not be withdrawn — it may already have been approved.');
 }

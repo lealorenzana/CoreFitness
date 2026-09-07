@@ -116,11 +116,13 @@ export async function approveMemberRegistration(
   const authUserId = pending.auth_user_id;
   if (!authUserId) throw new Error('Pending registration has no linked auth account');
 
-  const { error: statusError } = await supabase
+  const { data: statusRows, error: statusError } = await supabase
     .from('profiles')
     .update({ status: 'active' })
-    .eq('id', authUserId);
+    .eq('id', authUserId)
+    .select('id');
   if (statusError) throw statusError;
+  assertWrote(statusRows, 'That approval did not go through — only an admin can activate an account.');
 
   // Everything the member typed at sign-up moves from the review queue onto
   // their real row here (0031). Without this the intake details — birth date,
@@ -267,11 +269,13 @@ export async function startFreeMembership(memberId: string): Promise<void> {
  */
 export async function rejectPendingRegistration(pending: PendingRegistrationRow): Promise<void> {
   if (pending.auth_user_id) {
-    const { error: statusError } = await supabase
+    const { data: rejectRows, error: statusError } = await supabase
       .from('profiles')
       .update({ status: 'suspended' })
-      .eq('id', pending.auth_user_id);
+      .eq('id', pending.auth_user_id)
+      .select('id');
     if (statusError) throw statusError;
+    assertWrote(rejectRows, 'That registration could not be rejected — only an admin can do that.');
   }
   const { error: deleteError } = await supabase
     .from('pending_registrations')

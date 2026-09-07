@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import { todayKey } from '../../utils/dates';
 
@@ -122,10 +123,12 @@ export async function joinChallenge(challengeId: string, memberId: string): Prom
 
 /** Only possible while `completed_on` is null — 0052's delete policy enforces it. */
 export async function leaveChallenge(challengeId: string, memberId: string): Promise<void> {
-  const { error } = await supabase
+  const { data: data, error: error } = await supabase
     .from('challenge_participants')
     .delete()
     .eq('challenge_id', challengeId)
-    .eq('member_id', memberId);
+    .eq('member_id', memberId)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'You could not be removed from that challenge. Please refresh and try again.');
 }

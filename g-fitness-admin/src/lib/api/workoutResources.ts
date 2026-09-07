@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { ClassLevel } from '../../types/db';
 
@@ -60,13 +61,19 @@ export async function updateWorkoutResource(
   id: string,
   updates: Partial<Omit<WorkoutResourceRow, 'id' | 'created_at' | 'created_by'>>
 ): Promise<void> {
-  const { error } = await supabase.from('workout_resources').update(updates).eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('workout_resources').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That resource could not be saved — only an admin can change the library.');
 }
 
 export async function deleteWorkoutResource(id: string): Promise<void> {
-  const { error } = await supabase.from('workout_resources').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('workout_resources').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That resource could not be removed — only an admin can change the library.');
 }
 
 /**

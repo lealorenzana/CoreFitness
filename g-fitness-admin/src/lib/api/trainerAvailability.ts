@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -56,8 +57,11 @@ export async function addAvailability(
 }
 
 export async function deleteAvailability(id: string): Promise<void> {
-  const { error } = await supabase.from('trainer_availability').delete().eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('trainer_availability').delete().eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'Those hours could not be removed — they may not be yours to change.');
 }
 
 function parseTime(hhmmss: string): { h: number; m: number } {

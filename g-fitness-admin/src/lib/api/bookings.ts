@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { BookingRow, BookingStatus, ClassRow, ProfileRow } from '../../types/db';
 
@@ -55,8 +56,11 @@ export async function createBooking(memberId: string, classId: string): Promise<
  * cannot be repurposed to self-approve.
  */
 export async function cancelOwnBooking(id: string): Promise<void> {
-  const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('bookings').update({ status: 'cancelled' }).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That booking could not be cancelled. Please refresh and try again.');
 }
 
 /** Admin-only per RLS (bookings_update_admin) — approve or reject a pending booking. */
@@ -70,8 +74,11 @@ export async function updateBookingStatus(
     status === 'approved'
       ? { status, approved_at: now, approved_by: approvedBy }
       : { status, rejected_at: now };
-  const { error } = await supabase.from('bookings').update(updates).eq('id', id);
+  const { data: data, error: error } = await supabase
+    .from('bookings').update(updates).eq('id', id)
+    .select('id');
   if (error) throw error;
+  assertWrote(data, 'That booking could not be updated — it may already have been decided.');
 }
 
 

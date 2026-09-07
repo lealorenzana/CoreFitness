@@ -1,3 +1,4 @@
+import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import type { PaymentRow } from '../../types/db';
 
@@ -86,7 +87,7 @@ export async function recordPayment(
     .single();
   if (insertError) throw insertError;
 
-  const { error: membershipError } = await supabase
+  const { data: membershipRows, error: membershipError } = await supabase
     .from('memberships')
     .update({
       status: 'active',
@@ -95,8 +96,16 @@ export async function recordPayment(
       // First activation only — a renewal must not rewrite when the member joined.
       start_date: current.start_date ?? today,
     })
-    .eq('id', payment.membership_id);
+    .eq('id', payment.membership_id)
+    .select('id');
   if (membershipError) throw membershipError;
+  // The payment row is already written at this point, so a silent failure here
+  // is the worst shape this function can take: money recorded against a
+  // membership that never became active, and a receipt printed for it.
+  assertWrote(
+    membershipRows,
+    'The payment was recorded but the membership did not activate. Check it before the member leaves.',
+  );
 
   return inserted;
 }

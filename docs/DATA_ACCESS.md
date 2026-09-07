@@ -47,36 +47,27 @@ assertWrote(data, 'That membership could not be updated. Someone may have change
 
 ### The audit, and which writes are deliberately left unguarded
 
-A sweep of both `lib/api` directories found **113 writes, 52 guarded**. The
-remaining 61 are not all bugs. The test is: **would the user be misled by being
-told this worked?**
+`python scripts/audit-writes.py` counts them. **116 writes, 91 guarded.** The
+remaining 25 are not bugs. The test is: **would the user be misled by being told
+this worked?**
 
 **Deliberately unguarded — a zero-row result is a normal outcome:**
 
 | Function | Why |
 |---|---|
-| `notifications.setRead` / `setCleared` / `setArchived` / `markAllAsRead` | The row may already be read on another device. Interrupting somebody to say a read-flag did not move is worse than the silence. |
-| `notifications.deleteNotifications` / `deleteAllNotifications` | Same — deleting what is already gone is the intended end state. |
-| `push.enablePush` / `disablePush` / `clearPushOnSignOut` | Push is a courtesy channel and never allowed to fail a user action (see `notify.ts`). Sign-out must not be blocked by a subscription row. |
-| `achievements.markSeen` | Cosmetic "new" dot. |
-| `notificationPrefs.updateMyPrefs`, `sharePrefs.saveSharePrefs`, `trainerRatings.saveMyRating`, `planFeatures.setPlanFeature` | `upsert`, so there is nothing to miss. |
+| `notifications.setRead` / `setCleared` / `setArchived` / `markAllAsRead` | The row may already be read on another device. Interrupting somebody because a read-flag did not move is worse than the silence. |
+| `notifications.deleteNotifications` / `deleteAllNotifications` | Deleting what is already gone is the intended end state. |
+| `push.enablePush` / `disablePush` / `clearPushOnSignOut` | Push is a courtesy channel and never allowed to fail a user action. Sign-out must not be blocked by a subscription row. |
+| `achievements.markSeen` | A cosmetic "new" dot. |
+| `notificationPrefs.updateMyPrefs`, `sharePrefs.saveSharePrefs`, `trainerRatings.saveMyRating`, `planFeatures.setPlanFeature` | `upsert` — there is nothing to miss. |
+| `gymPlans.saveMyPlan` | Delete-then-insert; the delete matching nothing is the first save. |
+| `members.approveMemberRegistration` / `rejectPendingRegistration` — the `pending_registrations` DELETE | The queue entry already being gone is the desired end state. **Their `profiles` UPDATE is guarded**; only the delete is not. |
+| The `INSERT`s in `members.ts` | See the next section — guarding an insert this way is the bug, not the fix. |
 
-**Still owed a guard** — these change state a user acts on, and are tracked
-rather than fixed because each needs its own message and its own thought about
-what a zero-row result actually means:
-
-`payments.recordPayment` (the `memberships` update inside it) ·
-`ptSessions.setPtSessionStatus` / `cancelPtSession` (admin copy — the member
-copy is guarded) · `members.approveMemberRegistration` /
-`rejectPendingRegistration` · `progress.updateGoal` / `deleteGoal` /
-`deleteMeasurement` / `deleteWorkoutLog` · `workoutSets.completeSession` /
-`deleteSet` · `points.cancelRedemption` · `challenges.leaveChallenge` ·
-`events.cancelRegistration` · `classes.updateClass` / `deleteClass` ·
-`workoutResources.updateWorkoutResource` / `deleteWorkoutResource` ·
-`trainerAvailability.deleteAvailability` · `avatars.removeAvatarFor` ·
-`gymPlans.saveMyPlan`
-
-Re-run the audit with `scripts/audit-writes.py` before claiming this list is current.
+**An automated pass added `.select('id')` to those inserts and it had to be
+reverted.** A regex that matches "a supabase write with no select" matches
+inserts too, and `.insert().select()` is a different and worse thing. If you
+sweep these again, match `.update(` and `.delete(` only.
 
 ### But never `.insert().select()` a row you cannot read
 
