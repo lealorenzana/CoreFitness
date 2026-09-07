@@ -111,8 +111,11 @@ gated screen's own branching all execute exactly as they do for a member.
 | `scripts/trainer-scenarios.js` | §3.1.3–3.1.4, §3.2, §3.4's human half | **14 / 14** |
 
 Run both with the Playwright MCP runner's `filename` argument, member dev
-server on `:5173`. Evidence: `shots/19-trainer-overdue-queue.png`,
-`shots/20-member-pending-survives.png`.
+server on `:5173`. They write `shots/19-trainer-overdue-queue.png` and
+`shots/20-member-pending-survives.png` — **not committed** (`shots/.gitignore`
+excludes `*.png`), so regenerate them rather than looking for them.
+`scripts/freeze-dialog-shot.js` does the same for the admin freeze dialog on
+`:5174`.
 
 ### What Run 3 does not prove
 
