@@ -36,7 +36,7 @@ depends on it: the cancel dialog's quote, the Settings → Refund Policy tab, an
 0073, which alters a column 0070 creates.
 
 **Paste 0070 before 0073.** 0073 assumes `refund_rules` exists and rewrites
-`refund_quote()`, so on its own it will fail.
+`refund_quote()`, so on its own it will fail. *(Done — see Run 2.)*
 
 ### Anonymous boundary — §6 rows that can be checked now
 
@@ -57,6 +57,32 @@ Every one of these is a *negative* test: the correct outcome is a refusal.
 so it reads every row regardless of caller. It refusing anon is exactly the
 grant working — the mistake it guards against is the one caught in review before
 0072 shipped.
+
+---
+
+## Run 2 — 7 September 2026 · after 0070 and 0073 were pasted
+
+| Migration | Result |
+|---|---|
+| 0068, 0069, 0071, 0072 | **LIVE** (unchanged) |
+| **0070** refund policy | **LIVE** — table, function and column all present |
+| **0073** pro-rata refunds | **LIVE** — `refund_quote` and the fee column present |
+
+`scripts/probe-migrations.py` prints **"All probed migrations are live."**
+
+### Two more boundary checks, both passing
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 6.i | Anon reads `refund_rules` | Zero rows — the policy is `auth.uid() is not null` | **PASS** — 200 `[]` |
+| 6.j | Anon calls `refund_quote` | Refused | **PASS** — 401 |
+
+**What this run could not check.** The *contents* of the seeded rows — that four
+refund tiers exist and that 0073 rewrote the fourth one's label — are invisible
+to an anonymous caller, correctly. Confirm them signed in as admin, on
+Settings → Refund Policy: **four rules**, the last reading *"After 30 days — the
+unused part of the term, pro-rata"*. If that last one still says *"no refund"*,
+0073's label update did not match and should be re-run.
 
 ### Still blocked, and on what
 

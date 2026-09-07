@@ -13,15 +13,19 @@ no database credentials.
 | 0001–0067 | everything through gym branding | **live** |
 | 0068 | booking conflicts — member and trainer overlap guards | **live** |
 | 0069 | a reason on every account suspension | **live** |
-| **0070** | **refund policy, freeze ceiling, `pt_sessions.payment_id`** | **NOT PASTED** |
+| 0070 | refund policy, freeze ceiling, `pt_sessions.payment_id` | **live** |
 | 0071 | trainers decide bookings; the stale-request sweep | **live** |
 | 0072 | anonymous ratings, member-visible credentials, trainer feedback | **live** |
-| **0073** | **pro-rata refunds (RA 7394)** | **NOT PASTED** |
+| 0073 | pro-rata refunds (RA 7394) | **live** |
 
-### 0070 has to go in before 0073
+### All six are in as of 7 September 2026
 
-0073 alters a column 0070 creates and replaces a function 0070 defines, so on
-its own it fails. Pasting order is 0070 then 0073.
+0070 and 0073 were pasted after the first probe found 0070 missing entirely.
+The order mattered — 0073 alters a column 0070 creates and replaces a function
+it defines — and it was followed.
+
+**The lesson worth keeping:** 0070 was reported as pasted and had not run. Probe
+rather than trust; the script exists so that costs ten seconds.
 
 **How this was established, because "it looks empty" is not evidence.** Each
 migration is probed for three independent objects. 0070's table answers
@@ -36,15 +40,15 @@ object looked missing. Reporting that would have been the same mistake this
 document exists to prevent: an empty answer read as an absence rather than as a
 failed question.
 
-### What depends on the two that are missing
+### What was waiting on them, now unblocked
 
 - the refund quote in the cancel dialog
 - Settings → Refund Policy
 - the freeze-days ceiling
 - `Paid` / `In your plan` on a personal-training booking
 
-All four degrade rather than break: the quote says it could not be worked out,
-and the payment chip renders nothing rather than guessing "unpaid".
+All four are live. They were built to degrade rather than break while the
+migrations were missing, which is why nothing errored in the meantime.
 
 ## Achievements became data (0038)
 

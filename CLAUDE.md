@@ -174,11 +174,11 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0069, 0071 and 0072 are live; 0070 and 0073 are NOT** — check with
-`python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB
-credentials. **Paste 0070 before 0073**, which alters a column 0070 creates. It probes **three
-objects per migration**, so a file that never ran is distinguishable from one failed statement,
-and a protected object (42501) is a pass, not a miss. Migrations are pasted by hand, so **`db push` is wrong here**; hand over
+**0001–0073 are all live** — verified 2026-09-07 with `python scripts/probe-migrations.py`, which
+reads the schema over REST and needs no DB credentials. **Run it rather than trusting a report that
+a migration was pasted**: 0070 was believed done for a day and had never executed. It probes
+**three objects per migration**, so a file that never ran is distinguishable from one failed
+statement, and a protected object (42501) is a pass, not a miss. Migrations are pasted by hand, so **`db push` is wrong here**; hand over
 **one at a time** (a 444-line buffer broke the SQL Editor's splitter mid-`$$`), all re-runnable.
 The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-09-07-panel-hardening.md).
 [OBJECTIVES_TRACE](docs/OBJECTIVES_TRACE.md) maps objectives → code → demo, and records that
