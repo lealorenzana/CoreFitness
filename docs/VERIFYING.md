@@ -214,3 +214,35 @@ has never started in this environment**, so anything written as "run it in Docke
 Say plainly what ran and what did not. "Verified in a container, not against the live project" is a
 useful sentence; "verified" on its own, when it means "it compiled", is how this project's two
 false "no mock data remains" claims happened.
+
+## Screenshotting a login-gated screen, end to end
+
+`shots/admin-shots.js` and `shots/member-shots.js` are working examples of the
+recipe above, driven with `browser_run_code_unsafe` (`filename:` — the file must
+live under the repo root). Run one, and every `shots/*.png` is regenerated.
+
+Four things that cost time getting them working, none of which are obvious:
+
+- **`URL`, `Buffer` and `btoa` are all undefined** in the Playwright server
+  process. Parse the request URL with string ops and hand-roll base64url.
+- **`page.route()` beats a `window.fetch` patch**, and `addInitScript` beats
+  setting `localStorage` after load — the session has to be there before any
+  module reads it, and both survive the navigations.
+- **PostgREST has two response shapes.** `.single()` sends
+  `Accept: application/vnd.pgrst.object+json` and wants the **object**;
+  everything else wants the **array**. Return the wrong one and the screen
+  renders empty with no error.
+- **Wait about 5 seconds, not 2.** The member app resolves a session, then a
+  profile, then the page's own service assembles several tables. The first run
+  photographed the boot splash on every page — *a screenshot taken early is not
+  evidence of anything.*
+
+**Fixture columns must match the real ones.** The first member run showed "You
+need a membership before you can book" because `events` was seeded with
+`event_date` when the app selects `starts_at`, and `my_features` was unanswered.
+Log what the route actually receives before assuming the fixtures are right.
+
+**What these prove and do not prove:** the layout, wiring and wording are the
+real build; the data is invented. Good enough to show a feature renders and
+reads correctly. Useless for showing a database rule works — that is what
+`docs/TEST_MATRIX.md` is for.
