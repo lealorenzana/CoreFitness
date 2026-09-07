@@ -40,6 +40,26 @@ const STATUS_STYLE: Record<BookingStatus, { color: string; background: string }>
   cancelled: { color: 'var(--color-text-muted)', background: 'rgba(148,163,184,0.15)' },
 };
 
+/**
+ * What the member owes, in one word — or nothing at all.
+ *
+ * 'unknown' renders null on purpose. A blank is honest; "unpaid" would be a
+ * claim about somebody's money made by a screen that cannot see the till.
+ */
+function PaymentChip({ payment }: { payment: MyBooking['payment'] }) {
+  if (payment === 'unknown') return null;
+  const paid = payment === 'paid';
+  return (
+    <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+      style={{
+        background: paid ? 'var(--color-primary-light)' : 'var(--color-surface-raised)',
+        color: paid ? 'var(--color-primary)' : 'var(--color-text-muted)',
+      }}>
+      {paid ? 'Paid' : 'In your plan'}
+    </span>
+  );
+}
+
 function statusIcon(status: BookingStatus) {
   if (status === 'pending') return <AlertCircle size={13} />;
   if (status === 'approved') return <CheckCircle size={13} />;
@@ -169,7 +189,14 @@ export default function BookingHistory() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-white font-semibold text-sm truncate">{row.title}</h3>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{row.subtitle}</p>
+                      <p className="text-xs flex items-center gap-1.5 flex-wrap"
+                        style={{ color: 'var(--color-text-muted)' }}>
+                        {row.subtitle}
+                        {/* Only on 1-on-1 sessions. A class is covered by the
+                            plan or it is not bookable, so a chip on every class
+                            row would be noise saying the same thing forever. */}
+                        {row.kind === 'pt' && <PaymentChip payment={row.payment} />}
+                      </p>
                     </div>
                   </div>
                   <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0"

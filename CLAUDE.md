@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 72 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 73 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -21,9 +21,9 @@ app directory. `supabase/` holds 72 migrations, RLS policies and four Edge Funct
 Supabase-backed. **"No mock data remains" was claimed twice and wrong twice**, both times hiding in
 *chrome* — **audit layouts, shared modals and `data/`, not just `pages/`.**
 - Members are **archived, never deleted**; analytics return **zero, never a plausible
-  invention**; a missed lookup renders **nothing, never a hardcoded fallback identity**. A withheld
-  average is **NULL and says so**, never 0. **A failed section says so** — empty reads as "nothing
-  here". Payments distinguish **`paid_on` from `created_at`**; members store a **birth date**.
+  invention**; a missed lookup renders **nothing**, never a fallback identity. A withheld average is
+  **NULL and says so**. **A failed section says so** — empty reads as "nothing here". Payments
+  distinguish **`paid_on` from `created_at`**.
 - **Calendar dates come from `utils/dates.ts`, never `toISOString()`** — Manila is UTC+8, so the
   UTC date is yesterday for the first eight hours of every local day. **`current_date` is UTC
   too** (0045). **A feature ships when a route leads to it** — two were built, correct, and linked
@@ -35,8 +35,9 @@ Supabase-backed. **"No mock data remains" was claimed twice and wrong twice**, b
   ambushes them** (0017 → 0041). **Per-user state never lives in `localStorage`** — *and a column
   is not the fix unless the row exists when the write runs* (0033 → 0036).
 - **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in
-  `lib/api/mutate.ts`; **`python scripts/audit-writes.py`** counts what is still unguarded (113
-  writes, 52 guarded) and DATA_ACCESS says which are unguarded deliberately.
+  `lib/api/mutate.ts`; `python scripts/audit-writes.py` counts them (116 writes, 91 guarded) and
+  DATA_ACCESS says which 25 are deliberate. **Guard `.update(`/`.delete(` only** — adding
+  `.select()` to an `INSERT` breaks a write the caller may make but not read back.
 - **Anything the client can grant or skip proves nothing** — badge rules, the audit log and
   invoice numbers live in SQL. Four rules that have each cost a session, in full in
   [DATA_ACCESS](docs/DATA_ACCESS.md): **RLS filters rows, never columns**; **a SECURITY DEFINER
@@ -88,17 +89,17 @@ Every automated message goes through `notify_once`, whose **dedupe key sits behi
 index (0053)**; `not exists` races itself.
 
 ### Subscriptions gate features; the engagement loop is 0049–0061
-**Design + audit: [the startup-features spec](docs/superpowers/specs/2026-09-04-startup-features-design.md);
-plan mechanics and gating rules: [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
-0017's four booking columns are untouched and stay that way.** Gating *app areas* is
-`plan_features` (0049), resolved by `plan_allows()` — **the same function RLS calls**, so screen
-and database cannot drift. **Gates lock and explain, never hide.** **Never gate the free workout
-library (0019)** — it exists *for* members who cannot pay. Rules from the loop that outlive it:
-**0050 extends `workout_logs`, never a second table**; the points ledger and
-`challenge_participants` have **no INSERT policy for any role**, and challenge progress is
-**computed, never stored**; freeze and cancel need a **reason** (0057). **The gym sells three** —
-Free Trial (freemium, 30 days), Free Plan, Premium. **Deleting a plan is `retire_plan()`, never a
-`delete`**, and `'pro'` survives in `PlanTier` because Postgres cannot drop an enum value.
+**Spec: [startup-features](docs/superpowers/specs/2026-09-04-startup-features-design.md). Plans,
+refunds and gating detail: [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md). 0017's four booking
+columns are untouched and stay that way.** Gating *app areas* is `plan_features` (0049), resolved
+by `plan_allows()` — **the same function RLS calls**, so screen and database cannot drift. **Gates
+lock and explain, never hide**; **never gate the free workout library (0019)**, which exists *for*
+members who cannot pay. **0050 extends `workout_logs`, never a second table**; the points ledger
+and `challenge_participants` have **no INSERT policy for any role**, and challenge progress is
+**computed, never stored**. **The gym sells three** — Free Trial (30 days), Free Plan, Premium;
+**deleting one is `retire_plan()`, never a `delete`**. Freeze and cancel need a **reason** (0057),
+and **a refund is `max(pro-rata for the unused term, the gym's tier) − a documented fee`** (0073) —
+RA 7394 expects pro-rata, so the tiers are a **floor**, and lowering one does not cut the payout.
 
 ### Mobile shell — always full-screen
 [PhoneChassis.tsx](g-fitness-member/src/components/layout/PhoneChassis.tsx) fills the viewport via
@@ -112,20 +113,18 @@ Book — the dock's `tabSubPaths` must match or the bar highlights a tab you are
 ### Styling and design system
 **Full reference including the traps: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).**
 - **Admin is Tailwind v3; member is v4 with no config file** — one was silently ignored and
-  classes defined only there emitted *no CSS* for months. **Unlayered author CSS beats every
-  layer.** **If a class looks like it does nothing, it probably does nothing** — verify against the
-  built bundle, not the source.
+  emitted *no CSS* for months. **If a class looks like it does nothing, it probably does nothing**
+  — verify against the built bundle, not the source.
 - Tokens are CSS custom properties in each `src/index.css`; never `brand-*`/`dark-*`. **Amber =
   primary action, violet = selection/structure. Type floor is 12px.** No greens or reds. Headings opt
   into `.display` (Anton, uppercase), never globally. Primitives first: member `Card`, `StepFlow`;
   admin `FormField`, `DatePicker`, `TimePicker`, `Popover`.
 - **Layout traps that each cost a session:** `cn()`/tailwind-merge **silently drops a bare
   `flex`** beside `flex-col`, leaving `display: block`; **`minmax(0, 1fr)`, never bare `1fr`**;
-  Tailwind emits CSS **only for literal class names**, so computed grid placement must be inline
-  styles; **a `<button>` centres its content**, so stretched cards misalign until the flex column
-  is explicit. Primitives: `components/ui/kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`,
-  `SectionTabs`. **z-index** 50 dropdowns · 100 search · 150 drawers · 180 DetailSheet · 200
-  modals · 300 Popover · 400 ConfirmDialog · 500 tooltips.
+  Tailwind emits CSS **only for literal class names**; **a `<button>` centres its content**.
+  Primitives: `kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`, `SectionTabs`. **z-index**
+  50 dropdowns · 100 search · 150 drawers · 180 DetailSheet · 200 modals · 300 Popover ·
+  400 ConfirmDialog · 500 tooltips.
 - **On a non-compositing page (background tab, locked phone, this harness) neither `rAF` nor CSS
   transitions run** — **never gate visibility or correctness on an animation having run**.
   **`AnimatePresence` never unmounts an exiting child**, which left `Modal` with invisible
@@ -149,9 +148,8 @@ not**), `invoice_counters`, `plan_features`, `point_ledger`, `membership_events`
 `trainer_may_see()` gates measurements, goals, workout logs/sets and `workout_plans` in RLS, not the
 UI — audit it by resolving each function to its **last** definition (0039 missed this; 0048 fixed
 it). **The "AI" features are deterministic and rule-based, not model calls** — keep that honest in
-the UI. `planBuilder.ts` (0047) returns a **PlanSpec: data, never prose**; `planRender.ts` words it,
-and that seam is where a model would go. No calorie or macro targets; a stated injury yields a
-**referral, never a changed exercise**. Threads persist per profile (0046), **owner-only**. **Test
+the UI; `planBuilder.ts` returns **data, never prose** and `planRender.ts` words it. No calorie or
+macro targets; a stated injury yields a **referral, never a changed exercise**. **Test
 regexes by running them** — all four shipped broken (`\bplan\b` never matched "plans").
 
 ### Admin shell
@@ -176,9 +174,11 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0067 are live**; **0068–0072 are written and NOT pasted** — booking conflicts, account
-status reasons, refund policy, trainer decisions, trainer feedback. Everything built on them
-degrades until they are. Migrations are pasted by hand, so **`db push` is wrong here**; hand over
+**0001–0069, 0071 and 0072 are live; 0070 and 0073 are NOT** — check with
+`python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB
+credentials. **Paste 0070 before 0073**, which alters a column 0070 creates. It probes **three
+objects per migration**, so a file that never ran is distinguishable from one failed statement,
+and a protected object (42501) is a pass, not a miss. Migrations are pasted by hand, so **`db push` is wrong here**; hand over
 **one at a time** (a 444-line buffer broke the SQL Editor's splitter mid-`$$`), all re-runnable.
 The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-09-07-panel-hardening.md).
 [OBJECTIVES_TRACE](docs/OBJECTIVES_TRACE.md) maps objectives → code → demo, and records that

@@ -96,6 +96,23 @@ export interface MyBooking {
   status: BookingStatus;
   /** Whether this member is allowed to withdraw it right now. */
   cancellable: boolean;
+  /**
+   * Whether the member owes anything for this session, and can therefore stop
+   * wondering (0070's `pt_sessions.payment_id`).
+   *
+   * Three states, and they must not be collapsed into two:
+   *
+   *   'paid'      a completed payment is linked to it
+   *   'included'  their plan covers PT, so there is nothing to pay
+   *   'unknown'   we cannot tell — either the column is not there yet, or the
+   *               read failed. **Renders nothing**, never "unpaid".
+   *
+   * There is deliberately no 'unpaid'. The gym is cash-only and settles at the
+   * desk; telling a member they owe money on a screen that cannot see the till
+   * is how an argument starts. Absence of a linked payment is not evidence of
+   * a debt.
+   */
+  payment: 'paid' | 'included' | 'unknown';
 }
 
 /**
@@ -462,17 +479,26 @@ export async function requestPt(input: {
 
 /** Both kinds of booking, newest commitment first, for the member's own list. */
 export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
-  const [classBookings, ptSessions, trainers] = await Promise.all([
+  const [classBookings, ptSessions, trainers, membership] = await Promise.all([
     listMemberBookings(memberId).catch(() => []),
     listMemberPtSessions(memberId).catch(() => []),
     listPublicTrainers().catch(() => [] as PublicTrainer[]),
+    getCurrentMembership(memberId).catch(() => null),
   ]);
+
+  // A plan with a personal-training allowance means the session is covered, so
+  // there is nothing to settle. Unknown when the membership will not load —
+  // guessing 'included' would tell a member they owe nothing on no evidence.
+  const ptIncluded = membership?.membership_plans?.can_book_pt === true;
 
   const nameById = new Map(trainers.map((t) => [t.id, trainerName(t)]));
 
   const rows: MyBooking[] = [
     ...classBookings.map((b): MyBooking => ({
       kind: 'class',
+      // Classes are covered by the plan or they are not bookable at all, so
+      // there is never a per-class bill to report.
+      payment: 'included' as const,
       id: b.id,
       title: b.classes?.name ?? 'Class',
       subtitle: b.classes?.trainer_id
@@ -493,6 +519,15 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
       durationMinutes: s.duration_minutes,
       location: null,
       status: s.status,
+      // `payment_id` arrives only once 0070 is live; `select('*')` simply omits
+      // the key until then, which is why `undefined` maps to 'unknown' rather
+      // than to 'not paid'. A missing column and an unpaid session are
+      // different facts and this screen must not merge them.
+      payment: s.payment_id
+        ? 'paid'
+        : ptIncluded
+          ? 'included'
+          : 'unknown',
       // A PT request is withdrawn (deleted) rather than cancelled, and only
       // while it's still pending — once the desk has approved it, the slot is
       // committed and cancelling is a conversation, not a button.

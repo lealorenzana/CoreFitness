@@ -1,6 +1,50 @@
 # Migration status — what's real vs. still mock
 
-Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-08-15**.
+Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-09-07**.
+
+## What is live, as of 7 September 2026
+
+**Verified against the project, not assumed.** Run `python scripts/probe-migrations.py`
+to regenerate this — it reads the schema over REST with the anon key and needs
+no database credentials.
+
+| Migration | What it adds | Status |
+|---|---|---|
+| 0001–0067 | everything through gym branding | **live** |
+| 0068 | booking conflicts — member and trainer overlap guards | **live** |
+| 0069 | a reason on every account suspension | **live** |
+| **0070** | **refund policy, freeze ceiling, `pt_sessions.payment_id`** | **NOT PASTED** |
+| 0071 | trainers decide bookings; the stale-request sweep | **live** |
+| 0072 | anonymous ratings, member-visible credentials, trainer feedback | **live** |
+| **0073** | **pro-rata refunds (RA 7394)** | **NOT PASTED** |
+
+### 0070 has to go in before 0073
+
+0073 alters a column 0070 creates and replaces a function 0070 defines, so on
+its own it fails. Pasting order is 0070 then 0073.
+
+**How this was established, because "it looks empty" is not evidence.** Each
+migration is probed for three independent objects. 0070's table answers
+PGRST205, its function PGRST202 and its column 42703 — three separate absences,
+which is a file that never ran rather than a statement that failed inside one.
+A live-but-protected object answers 42501, and the script reports that as a
+pass, not a failure.
+
+The first version of that probe read the OpenAPI root and got a blanket 401,
+because a `sb_publishable` key may not read it — only a secret key can. Every
+object looked missing. Reporting that would have been the same mistake this
+document exists to prevent: an empty answer read as an absence rather than as a
+failed question.
+
+### What depends on the two that are missing
+
+- the refund quote in the cancel dialog
+- Settings → Refund Policy
+- the freeze-days ceiling
+- `Paid` / `In your plan` on a personal-training booking
+
+All four degrade rather than break: the quote says it could not be worked out,
+and the payment chip renders nothing rather than guessing "unpaid".
 
 ## Achievements became data (0038)
 

@@ -28,6 +28,11 @@ export interface PtSessionRow {
   decided_by: string | null;
   decided_by_role: 'admin' | 'staff' | 'trainer' | 'system' | null;
   decided_at: string | null;
+  /** The payment covering this session (0070). Optional in the type as well as
+   *  nullable in the column: `select('*')` omits the key entirely until that
+   *  migration is pasted, and `undefined` there means "cannot tell", which the
+   *  screens must not render as "unpaid". */
+  payment_id?: string | null;
   created_at: string;
 }
 
