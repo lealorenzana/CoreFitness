@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 73 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 74 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -17,33 +17,29 @@ app directory. `supabase/` holds 73 migrations, RLS policies and four Edge Funct
 - `npm run lint` · `npm run check:achievements` (member). No test framework — see *Verifying work*. Both apps need `.env.local` (copy `.env.example`).
 
 ## Data honesty — read this before touching a page
-**Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is
-Supabase-backed. **"No mock data remains" was claimed twice and wrong twice**, both times hiding in
-*chrome* — **audit layouts, shared modals and `data/`, not just `pages/`.**
-- Members are **archived, never deleted**; analytics return **zero, never a plausible
-  invention**; a missed lookup renders **nothing**, never a fallback identity. A withheld average is
-  **NULL and says so**. **A failed section says so** — empty reads as "nothing here". Payments
-  distinguish **`paid_on` from `created_at`**.
-- **Calendar dates come from `utils/dates.ts`, never `toISOString()`** — Manila is UTC+8, so the
-  UTC date is yesterday for the first eight hours of every local day. **`current_date` is UTC
-  too** (0045). **A feature ships when a route leads to it** — two were built, correct, and linked
-  from nowhere.
-- **An identifier is unique because a constraint says so**, not because a formula looks unlikely
-  to repeat; **clocks disagree too**. **`BarcodeDetector` does not exist in Chrome on Windows** and
-  fails *silently* — `QRScanner` uses **jsQR** over the full frame, **never a crop**. **A control
-  writing a flag nothing reads is a lie**; **a rule enforced only in SQL the user cannot read
-  ambushes them** (0017 → 0041). **Per-user state never lives in `localStorage`** — *and a column
-  is not the fix unless the row exists when the write runs* (0033 → 0036).
-- **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in
-  `lib/api/mutate.ts`; `python scripts/audit-writes.py` counts them (116 writes, 91 guarded) and
-  DATA_ACCESS says which 25 are deliberate. **Guard `.update(`/`.delete(` only** — adding
-  `.select()` to an `INSERT` breaks a write the caller may make but not read back.
-- **Anything the client can grant or skip proves nothing** — badge rules, the audit log and
-  invoice numbers live in SQL. Four rules that have each cost a session, in full in
-  [DATA_ACCESS](docs/DATA_ACCESS.md): **RLS filters rows, never columns**; **a SECURITY DEFINER
-  guard must not block its own writer** (`auth.uid() is not null and` not-admin); **a trigger needs
-  an event to fire on**, so elapsed time means a re-runnable sweep; **a policy on a table whose RLS
-  is off is not protection**.
+**Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is Supabase-backed. **"No mock data
+remains" was claimed twice and wrong twice**, both times hiding in *chrome* — **audit layouts, shared modals and
+`data/`, not just `pages/`.**
+- Members are **archived, never deleted**; analytics return **zero, never a plausible invention**; a missed lookup
+  renders **nothing**, never a fallback identity. A withheld average is **NULL and says so**. **A failed section says
+  so** — empty reads as "nothing here". Payments distinguish **`paid_on` from `created_at`**.
+- **Calendar dates come from `utils/dates.ts`, never `toISOString()`** — Manila is UTC+8, so the UTC date is yesterday
+  for the first eight hours of every local day. **`current_date` is UTC too** (0045). **A feature ships when a route
+  leads to it** — two were built, correct, and linked from nowhere.
+- **An identifier is unique because a constraint says so**, not because a formula looks unlikely to repeat; **clocks
+  disagree too**. **`BarcodeDetector` does not exist in Chrome on Windows** and fails *silently* — `QRScanner` uses
+  **jsQR** over the full frame, **never a crop**. **A control writing a flag nothing reads is a lie**; **a rule
+  enforced only in SQL the user cannot read ambushes them** (0017 → 0041). **Per-user state never lives in
+  `localStorage`** — *and a column is not the fix unless the row exists when the write runs* (0033 → 0036).
+- **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in `lib/api/mutate.ts`; `python
+  scripts/audit-writes.py` counts them (116 writes, 91 guarded) and DATA_ACCESS says which 25 are deliberate. **Guard
+  `.update(`/`.delete(` only** — adding `.select()` to an `INSERT` breaks a write the caller may make but not read
+  back.
+- **Anything the client can grant or skip proves nothing** — badge rules, the audit log and invoice numbers live in
+  SQL. Four rules that have each cost a session, in full in [DATA_ACCESS](docs/DATA_ACCESS.md): **RLS filters rows,
+  never columns**; **a SECURITY DEFINER guard must not block its own writer** (`auth.uid() is not null and` not-
+  admin); **a trigger needs an event to fire on**, so elapsed time means a re-runnable sweep; **a policy on a table
+  whose RLS is off is not protection**.
 
 ## Architecture
 ### Auth and routing — real Supabase Auth
@@ -59,14 +55,12 @@ never the plan tapped at signup: they have paid nothing, and the gym is cash-onl
 flipping `status` alone left them signed in with **no** membership (and `pending` is not usable).
 
 ### The data-access layer
-`src/lib/api/*.ts`, one module per table, typed against `src/types/db.ts`; per-app **services** above
-them assemble whole screens — put multi-table assembly in a service, not a component. Most modules
-exist twice, once per app: **diff before you copy**, `notify.ts` differs on purpose.
-**[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that has cost time here** — `OLD` is
-unassigned in an INSERT trigger; a comma inside `.or()` is filter syntax (400); a NULL-unsafe `<>`
-skips a role guard, so use `IS DISTINCT FROM`. `activity_log` (0037) is written **only** by SECURITY
-DEFINER triggers (**no INSERT policy**), read through `activity_feed`, which stays
-**`security_invoker`**.
+`src/lib/api/*.ts`, one module per table, typed against `src/types/db.ts`; per-app **services** above them assemble
+whole screens — put multi-table assembly in a service, not a component. Most modules exist twice, once per app: **diff
+before you copy**, `notify.ts` differs on purpose. **[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that
+has cost time here** — `OLD` is unassigned in an INSERT trigger; a comma inside `.or()` is filter syntax (400); a
+NULL-unsafe `<>` skips a role guard, so use `IS DISTINCT FROM`. `activity_log` (0037) is written **only** by SECURITY
+DEFINER triggers (**no INSERT policy**), read through `activity_feed`, which stays **`security_invoker`**.
 
 ### Booking rules live in SQL, not in the form
 Classes (`bookings` → `classes`) and 1-on-1 (`pt_sessions`) are separate tables (0015); 0017
@@ -159,12 +153,16 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0073 are all live** — verified 2026-09-07 with `python scripts/probe-migrations.py`, which
-reads the schema over REST and needs no DB credentials. **Run it rather than trusting a report that
-a migration was pasted**: 0070 was believed done for a day and had never executed. It probes
-**three objects per migration**, so a file that never ran is distinguishable from one failed
-statement, and a protected object (42501) is a pass, not a miss. Migrations are pasted by hand, so **`db push` is wrong here**; hand over
-**one at a time** (a 444-line buffer broke the SQL Editor's splitter mid-`$$`), all re-runnable.
+**0001–0073 are live; 0074 is written and NOT PASTED** — verified with
+`python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials.
+**Run it rather than trusting a report that a migration was pasted**: 0070 was believed done for a
+day and had never executed. It probes **three objects per migration**, so a file that never ran is
+distinguishable from one failed statement, and a protected object (42501) is a pass, not a miss.
+**0074 closes a live privilege bug** — 0071's stamp triggers returned early when `status` was
+unchanged, *above* the checks that stop a trainer rewriting `member_id` or `starts_at`, so a trainer
+could reassign a seat or move somebody's session. Found by running the SQL, not by reading it.
+Migrations are pasted by hand, so **`db push` is wrong here**; hand over **one at a time** (a
+444-line buffer broke the SQL Editor's splitter mid-`$$`), all re-runnable.
 The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-09-07-panel-hardening.md).
 [OBJECTIVES_TRACE](docs/OBJECTIVES_TRACE.md) maps objectives → code → demo. **Manuscript
 Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of them — the
@@ -190,8 +188,11 @@ claiming anything is verified. The three that decide *how* you verify:
   wrong column guess, but two were real bugs. **Heredocs keep breaking here** — bash eats backticks
   and mangles backslashes, so **write scripts with the Write tool**. To exercise a module with no
   login, `await import('/src/….ts')` through the dev server, which transforms TS on the fly.
-- **Most of the test matrix runs with no password at all.** `scripts/plan-gates.js` (per-plan
-  gating) and `scripts/trainer-scenarios.js` (two trainers one slot, overlap, the stale queue) go
-  into the Playwright runner's `filename` argument and drive the real app over a routed network —
-  38 checks. They prove the **app** agrees with the rules; they reach no Postgres, so **RLS and
-  every trigger are still untested** by them.
+- **The whole test matrix now runs with no password.** `scripts/plan-gates.js` and
+  `scripts/trainer-scenarios.js` go into the Playwright runner's `filename` argument and drive the
+  real app over a routed network (38 checks) — they prove the **app** agrees with the rules and
+  reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (64 checks): they apply a
+  migration verbatim onto a minimal fixture in `@electric-sql/pglite` — real Postgres in Node,
+  because **Docker has never started here** — and act as a real `authenticated` role, because **a
+  table owner bypasses RLS** and would pass every assertion regardless. **RLS filters rows and does
+  not raise**, so the right result for a forbidden write is *zero rows and no error*.

@@ -16,6 +16,7 @@ no database credentials.
 | 0070 | refund policy, freeze ceiling, `pt_sessions.payment_id` | **live** |
 | 0071 | trainers decide bookings; the stale-request sweep | **live** |
 | 0072 | anonymous ratings, member-visible credentials, trainer feedback | **live** |
+| 0074 | the decision guard runs before the early return — fixes a trainer being able to reassign a booking | **NOT PASTED** |
 | 0073 | pro-rata refunds (RA 7394) | **live** |
 
 ### All six are in as of 7 September 2026

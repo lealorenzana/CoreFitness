@@ -119,11 +119,14 @@ excludes `*.png`), so regenerate them rather than looking for them.
 
 ### What Run 3 does not prove
 
-**Nothing here reaches Postgres.** The network is routed, so every RLS check
-(§2.6, §6) and every trigger (0068's conflict guard, 0057's freeze limit,
-0071's decision policies) is still untested end to end. A pass here means *the
+**Nothing here reaches Postgres.** The network is routed, so a pass means *the
 app agrees with the rules and tells the member the truth before the write* —
-not that the boundary holds. §2.6 and §6 still need real signed-in sessions.
+not that the boundary holds.
+
+**Run 4 below covers most of what this could not**: 0068's conflict guard,
+0057's freeze limit, 0069's suspension reason and 0071's decision policies are
+all executed there, as a real `authenticated` role. Only §2.6's entitlement
+gates still need a signed-in member.
 
 ### §2 — what each plan actually unlocks
 
@@ -230,12 +233,12 @@ disagrees with the app, check the matrix before calling it a bug.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 3.1.1 | Book a class Tuesday 10:00, then request PT Tuesday 10:00 | Refused, naming the class and its time | |
-| 3.1.2 | Book two classes at the same hour | Refused | |
+| 3.1.1 | Book a class Tuesday 10:00, then request PT Tuesday 10:00 | Refused, naming the class and its time | **PASS** (Run 4, at the database) |
+| 3.1.2 | Book two classes at the same hour | Refused | **PASS** (Run 4) |
 | 3.1.3 | Class 10:00–11:00, then PT at **11:00** | **Allowed** — the end instant is free | **PASS** (Run 3, UI) |
 | 3.1.4 | Class 10:00–11:00, then PT at **10:30** | Refused — overlap, not equality | **PASS** (Run 3, UI — flagged, not hidden) |
 | 3.1.5 | The clashing slot in the picker, before tapping | Shown, disabled, and says what you are already booked for | |
-| 3.1.6 | Cancel the class, then retry the PT slot | Now allowed | |
+| 3.1.6 | Cancel the class, then retry the PT slot | Now allowed | **PASS** (Run 4) |
 
 ### 3.2 Trainer availability is per trainer — the panel's scenario
 
@@ -250,12 +253,12 @@ disagrees with the app, check the matrix before calling it a bug.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 3.3.1 | As Trainer A, accept a request for A's own class | Succeeds; the member is notified | |
-| 3.3.2 | As Trainer A, accept a request on **Trainer B's** class | Refused — matches no policy, and the zero-row guard surfaces it rather than showing a success toast | |
-| 3.3.3 | Admin → Bookings after 3.3.1 | Row says "Accepted by *their trainer*", not by the desk | |
-| 3.3.4 | Admin reverses it | Allowed; the member is notified of the new outcome | |
-| 3.3.5 | As a trainer, try to change a booking's `member_id` | Refused by the guard even on their own class | |
-| 3.3.6 | As Trainer A, set capacity on A's class below the number already booked | Refused | |
+| 3.3.1 | As Trainer A, accept a request for A's own class | Succeeds; the member is notified | **PASS** (Run 4) |
+| 3.3.2 | As Trainer A, accept a request on **Trainer B's** class | Refused — matches no policy, and the zero-row guard surfaces it rather than showing a success toast | **PASS** (Run 4 — 0 rows, no error, exactly as designed) |
+| 3.3.3 | Admin → Bookings after 3.3.1 | Row says "Accepted by *their trainer*", not by the desk | **PASS** (Run 4 — `decided_by_role` is 'trainer') |
+| 3.3.4 | Admin reverses it | Allowed; the member is notified of the new outcome | **PASS** (Run 4) |
+| 3.3.5 | As a trainer, try to change a booking's `member_id` | Refused by the guard even on their own class | **WAS A BUG** — accepted until 0074. **PASS** (Run 4) |
+| 3.3.6 | As Trainer A, set capacity on A's class below the number already booked | Refused | **PASS** (Run 4) |
 
 ### 3.4 Nobody waits forever (the sweep)
 
@@ -264,9 +267,9 @@ clock, not a queue.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 3.4.1 | Backdate a pending PT request 25h; open admin Bookings | Trainer notified once | |
-| 3.4.2 | Reload the page | **No second notification** — the dedupe index holds | |
-| 3.4.3 | Backdate 49h | Member told it is still pending and they may pick another trainer | |
+| 3.4.1 | Backdate a pending PT request 25h; open admin Bookings | Trainer notified once | **PASS** (Run 4) |
+| 3.4.2 | Reload the page | **No second notification** — the dedupe index holds | **PASS** (Run 4) |
+| 3.4.3 | Backdate 49h | Member told it is still pending and they may pick another trainer | **PASS** (Run 4) |
 | 3.4.4 | Backdate 73h | Every admin notified | |
 | 3.4.5 | A pending request starting in under 24h | Trainer, member **and** admin all notified | |
 | 3.4.6 | A pending request whose start time has passed | Auto-declined; member told why; `decided_by_role` is `'system'`, **not** the admin who opened the page | |
@@ -322,11 +325,83 @@ clock, not a queue.
 |---|---|---|---|
 | 6.1 | Staff account → pricing, trainers, settings, audit log | All unreachable | |
 | 6.2 | Staff records a payment and a check-in | Both work | |
-| 6.3 | Member calls `set_account_status` from the console | Refused | |
+| 6.3 | Member calls `set_account_status` from the console | Refused | **PASS** (Run 4) |
 | 6.4 | Member updates `memberships` directly | Refused | |
-| 6.5 | Member reads another member's `member_commitments` | Refused | |
+| 6.5 | Member reads another member's `member_commitments` | Refused | **PASS** (Run 4) |
 | 6.6 | Trainer reads a member's measurements without sharing on | Refused (`trainer_may_see`, 0032/0048) | |
 | 6.7 | Suspended account signs in | Refused, with the reason | |
+
+---
+
+## Run 4 — 7 September 2026 · the rules themselves, as SQL
+
+**64 checks, all passing, and one real bug found.** Run 3 proved the app agrees
+with the rules. This runs the rules.
+
+`scripts/sql/*.mjs` stub only the tables each migration touches, apply the
+migration **verbatim from `supabase/migrations/`**, then act as a real
+`authenticated` role — not as the owner, who bypasses RLS and would pass every
+assertion regardless. Real PostgreSQL, in-process, no credentials and no
+Docker; `scripts/sql/README.md` has the three traps that cost time.
+
+| Script | Under test | Result |
+|---|---|---|
+| `booking-conflicts.mjs` | 0068 — member and trainer overlap, `member_commitments` | **18 / 18** |
+| `trainer-decisions.mjs` | 0071 + 0074 — decisions, RLS, class size, the sweep | **22 / 22** |
+| `reasons-and-limits.mjs` | 0057, 0069 + 0074 — reasons, the freeze limit, suspension | **24 / 24** |
+
+### The bug it found
+
+`trg_stamp_booking_decision` and `trg_stamp_pt_decision` (0071) both open with
+*"if the status did not change there is nothing to stamp — return"*. Correct
+about stamping, wrong about **pinning**: the checks that stop a trainer
+reassigning a booking sit *below* that return, so an update leaving `status`
+alone never reaches them. With `bookings_update_trainer` letting a trainer
+update any booking on a class they teach, and RLS choosing rows rather than
+columns, this was live:
+
+```sql
+update bookings set member_id = '<anyone>' where id = '<a booking on my class>';
+```
+
+A trainer could move a seat from the member who booked it to anybody, and the
+row kept its original `decided_by` — so the audit trail said nothing happened.
+The same shape on `pt_sessions` let a trainer move `starts_at`, rescheduling
+somebody's session without telling them.
+
+**0074 fixes it** by resolving the caller's role and pinning the columns
+*before* the early return. Both cases are now checks 3.3.5 and 3.3.9. 0074 also
+repairs one sentence: 0069 raised *"A reason is required to suspended an
+account."*
+
+### What Run 4 proves that Run 3 could not
+
+- A clash is **refused by the database**, in the words the desk reads:
+  *"This clashes with Morning Yoga on Tuesday 8 September at 10:00 am."*
+- **Trainer A being full says nothing about Trainer B** — asserted on the writes
+  themselves, not on a slot list.
+- A trainer accepting a booking on **another trainer's class** updates **zero
+  rows**. RLS filters; it does not raise. That is exactly why `assertWrote()`
+  exists, and why a success toast on a zero-row write is a lie.
+- `member_commitments` refuses another member's diary, serves the front desk,
+  and **does not lock out a caller with no session at all** — the 0055/0062 bug.
+- A freeze or cancellation **without a reason is refused**, whitespace included;
+  the third freeze in a month is refused at the desk and allowed for an admin;
+  and the record has **no UPDATE or DELETE policy for anyone**, so a reason
+  cannot be edited afterwards.
+- The sweep runs with no session (as pg_cron does), reminds at 24h, tells the
+  member at 48h **and offers a different trainer**, escalates to the admin at
+  72h, alarms all three inside 24 hours, auto-declines a request whose start has
+  passed and stamps it **`system` with no author** — and running it twice sends
+  nothing the second time, because the dedupe index makes a repeat impossible
+  rather than unlikely.
+- A member calling the sweep is refused.
+
+### Still not covered
+
+`plan_allows()` and the entitlement gates (§2.6) sit on `current_membership_of`
+and `membership_is_usable`, one fixture layer deeper. That row still needs a
+signed-in member against the live project, and it is the last one that does.
 
 ---
 

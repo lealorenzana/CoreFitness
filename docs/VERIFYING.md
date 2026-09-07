@@ -168,29 +168,34 @@ in `localStorage` will confuse the next real page load.
 
 ## SQL
 
-Run it. A throwaway container, as a **non-superuser**:
+Run it. **Not in Docker** — Docker has never started in this environment, so anything written
+as "run it in a container" is not a plan. `@electric-sql/pglite` is real PostgreSQL compiled to
+WASM, in-process, installed with one `npm install` and needing no daemon and no credentials.
 
-```bash
-docker run -d --name cf-sqltest -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=cf postgres:16-alpine
-```
+**`scripts/sql/` is the working harness** — three scripts, 64 checks, and its README carries the
+traps. The shape: stub only the tables the migration touches, to the same column types the real
+ones use; stub `auth.uid()` to read `current_setting('request.jwt.claim.sub')`; apply the migration
+**verbatim from `supabase/migrations/`** so the test cannot drift from the file; then assert
+behaviour from Node, where a refusal is a caught exception whose *message* can be asserted too.
 
-Build a minimal fixture for the tables the migration touches (stub `auth.uid()` to read
-`current_setting('request.jwt.claim.sub')`), apply the migration, then assert behaviour in a
-`do $$ … $$` block so a failure aborts loudly instead of printing a row nobody reads.
+Do this before believing a migration. The first run of `scripts/sql/trainer-decisions.mjs` found a
+live privilege bug that four readings of 0071 had not.
 
 Two traps:
 
+- **Reproduce Supabase's roles first.** `create role anon; authenticated; service_role;`. Nearly
+  every migration here revokes from `anon`, and a missing role fails the whole file with an error
+  that looks nothing like the rule you were testing.
 - **A table owner bypasses RLS entirely.** A policy assertion run as `postgres` passes whether or not
-  the policy works. Switch to a dedicated role.
-- **`SET LOCAL ROLE` outside a transaction silently does nothing** — it warns and carries on as the
-  owner, so the whole check passes for the wrong reason. Wrap it in `begin; … rollback;` and assert
-  `current_user` before trusting anything that follows.
-
-On Git Bash, `docker cp`/`docker exec` mangle container paths; prefix with `MSYS_NO_PATHCONV=1`.
-
-**When Docker will not start**, `npx pgsql-parser` checks top-level syntax and `language sql` bodies —
-but **plpgsql bodies are opaque to it**, which is exactly where the interesting bugs live. Say so
-rather than implying the migration was verified.
+  the policy works. `set role authenticated`, then **assert `current_user`** before believing
+  anything after it — `SET LOCAL ROLE` outside a transaction silently does nothing, warns, and
+  carries on as the owner.
+- **Copy a stubbed function's modifiers, not just its body.** `get_my_role()` is `security definer`;
+  without those two words every policy that calls it fails with 42501, for a reason that has nothing
+  to do with the rule under test.
+- **RLS filters rows; it does not raise.** The correct result of "a trainer edits someone else's
+  class" is **zero rows and no error**. Asserting on an exception there would fail against a
+  perfectly working policy.
 
 ---
 
