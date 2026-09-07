@@ -35,8 +35,25 @@
 -- `member_id` to the value it already held passes, as it should. What is no
 -- longer possible is changing it.
 --
--- Re-runnable: `create or replace` on two functions, no schema change. The
--- triggers 0071 created already point at these names.
+-- ---------------------------------------------------------------------------
+-- This file adds no feature
+-- ---------------------------------------------------------------------------
+-- Nothing here is new for a member, a trainer or the desk to use. Four
+-- functions are replaced and one trivial marker is created:
+--
+--   1. trg_stamp_booking_decision  reordered  — the security fix above
+--   2. trg_stamp_pt_decision       reordered  — the same shape, on starts_at
+--   3. set_account_status          one word   — "required to suspended an
+--                                               account" was the sentence the
+--                                               desk read out loud
+--   4. migration_0074_applied      new        — a marker that does nothing and
+--                                               is called by nothing, so
+--                                               probe-migrations.py can tell
+--                                               whether this file ran at all
+--
+-- Re-runnable: `create or replace` throughout, no schema change beyond the
+-- marker. The triggers 0071 created already point at these names, so nothing
+-- needs re-attaching.
 
 -- ============================================================================
 -- 1. CLASS BOOKINGS
