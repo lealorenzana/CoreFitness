@@ -76,6 +76,10 @@ CHECKS = [
     ('0072', 'rpc my_trainer_ratings',         lambda: rpc('my_trainer_ratings')),
     ('0073', 'gym_settings.refund_fee',        lambda: table('gym_settings', 'refund_processing_fee')),
     ('0073', 'rpc refund_quote',               lambda: rpc('refund_quote', {'p_membership': NIL})),
+    # 0074 replaces three function *bodies* and creates no table, column or
+    # function anyone calls — so it leaves no schema trace, and this probe would
+    # have reported it live before it ever ran. The marker exists for that.
+    ('0074', 'rpc migration_0074_applied',     lambda: rpc('migration_0074_applied')),
 ]
 
 print('project: %s' % URL)

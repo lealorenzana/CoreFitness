@@ -219,6 +219,28 @@ revoke all on function set_account_status(uuid, text, text) from public, anon;
 grant execute on function set_account_status(uuid, text, text) to authenticated;
 
 -- ============================================================================
+-- 4. SOMETHING THE PROBE CAN SEE
+-- ============================================================================
+-- `scripts/probe-migrations.py` reads the **schema** over REST: it asks whether
+-- a table, column or function exists. This migration creates none of those — it
+-- replaces three function *bodies*, which leaves no schema trace at all. So the
+-- probe would report 0074 as live before it had ever run, which is precisely
+-- the failure that cost a day on 0070.
+--
+-- Hence a marker. It does nothing and is called by nothing; its whole job is to
+-- exist, so "was 0074 pasted?" has an answer that is not somebody's memory.
+create or replace function migration_0074_applied() returns boolean
+language sql immutable as $fn$ select true $fn$;
+
+revoke all on function migration_0074_applied() from public, anon;
+grant execute on function migration_0074_applied() to authenticated;
+
+comment on function migration_0074_applied() is
+  'Marker for scripts/probe-migrations.py. 0074 only replaces function bodies, '
+  'which the schema cannot show, so without this the probe would call it live '
+  'while it had never run. Delete this only alongside the probe entry.';
+
+-- ============================================================================
 -- VERIFICATION — as a real trainer, not as the owner.
 -- ============================================================================
 --   -- On a class they teach, with the status left alone. Must now raise.

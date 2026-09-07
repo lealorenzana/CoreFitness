@@ -369,7 +369,10 @@ row kept its original `decided_by` — so the audit trail said nothing happened.
 The same shape on `pt_sessions` let a trainer move `starts_at`, rescheduling
 somebody's session without telling them.
 
-**0074 fixes it** by resolving the caller's role and pinning the columns
+**0074 carries a marker function**, because it replaces three function *bodies*
+and creates nothing the schema can show — `probe-migrations.py` would otherwise
+have called it live before it ever ran, which is the exact failure that cost a
+day on 0070. It fixes the bug by resolving the caller's role and pinning the columns
 *before* the early return. Both cases are now checks 3.3.5 and 3.3.9. 0074 also
 repairs one sentence: 0069 raised *"A reason is required to suspended an
 account."*
