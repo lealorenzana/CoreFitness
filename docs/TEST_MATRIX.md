@@ -270,11 +270,11 @@ clock, not a queue.
 | 3.4.1 | Backdate a pending PT request 25h; open admin Bookings | Trainer notified once | **PASS** (Run 4) |
 | 3.4.2 | Reload the page | **No second notification** — the dedupe index holds | **PASS** (Run 4) |
 | 3.4.3 | Backdate 49h | Member told it is still pending and they may pick another trainer | **PASS** (Run 4) |
-| 3.4.4 | Backdate 73h | Every admin notified | |
-| 3.4.5 | A pending request starting in under 24h | Trainer, member **and** admin all notified | |
-| 3.4.6 | A pending request whose start time has passed | Auto-declined; member told why; `decided_by_role` is `'system'`, **not** the admin who opened the page | |
-| 3.4.7 | `select sweep_stale_requests();` twice | Second call returns 0 | |
-| 3.4.8 | Call it as a **member** | Refused — front desk only | |
+| 3.4.4 | Backdate 73h | Every admin notified | **PASS** (Run 4) |
+| 3.4.5 | A pending request starting in under 24h | Trainer, member **and** admin all notified | **PASS** (Run 4 — all three) |
+| 3.4.6 | A pending request whose start time has passed | Auto-declined; member told why; `decided_by_role` is `'system'`, **not** the admin who opened the page | **PASS** (Run 4 — and `decided_by` is NULL) |
+| 3.4.7 | `select sweep_stale_requests();` twice | Second call returns 0 | **PASS** (Run 4 — returns 0, and sends nothing) |
+| 3.4.8 | Call it as a **member** | Refused — front desk only | **PASS** (Run 4) |
 
 ---
 
@@ -282,12 +282,12 @@ clock, not a queue.
 
 | # | Test | Expected | Result |
 |---|---|---|---|
-| 4.1 | Suspend a member with a blank reason | Refused, before the click | |
+| 4.1 | Suspend a member with a blank reason | Refused, before the click | **PASS** (Run 4 — refused *at the database*, whitespace included) |
 | 4.2 | Suspend with a reason; sign in as them | Told **why**, not a generic refusal | |
 | 4.3 | Admin → member → Account history | Shows the transition, the reason and who did it | |
-| 4.4 | Reactivate | Allowed with no reason | |
-| 4.5 | Freeze twice in one calendar month, then a third time as staff | Third refused, naming the limit | |
-| 4.6 | Same third freeze as **admin** | Allowed — admin may override | |
+| 4.4 | Reactivate | Allowed with no reason | **PASS** (Run 4 — and a repeat is quiet, not an error) |
+| 4.5 | Freeze twice in one calendar month, then a third time as staff | Third refused, naming the limit | **PASS** (Run 4) |
+| 4.6 | Same third freeze as **admin** | Allowed — admin may override | **PASS** (Run 4) |
 | 4.7 | Cancel a membership | Refund quote shown **with the rule that produced it**, before confirming | |
 | 4.8 | Cancel a 3-day-old membership with no check-ins | 100% | |
 | 4.9 | Same, but with one check-in | 50% | |
@@ -295,7 +295,7 @@ clock, not a queue.
 | 4.11 | Record a pending payment, then Confirm | Member notified; `paid_on` is **today**, not the day the record was created | |
 | 4.12 | Double-click Confirm | **One** notification | |
 | 4.13 | Member → Payment history | Paid and pending clearly distinct | |
-| 4.14 | A frozen member tries to book | *Undecided — see Open questions* | |
+| 4.14 | A frozen member tries to book | **Refused.** `membership_is_usable()` does not accept `frozen` | Decided — see *Decisions* §1 |
 
 ---
 
@@ -335,7 +335,7 @@ clock, not a queue.
 
 ## Run 4 — 7 September 2026 · the rules themselves, as SQL
 
-**64 checks, all passing, and one real bug found.** Run 3 proved the app agrees
+**66 checks, all passing, and one real bug found.** Run 3 proved the app agrees
 with the rules. This runs the rules.
 
 `scripts/sql/*.mjs` stub only the tables each migration touches, apply the
@@ -347,7 +347,7 @@ Docker; `scripts/sql/README.md` has the three traps that cost time.
 | Script | Under test | Result |
 |---|---|---|
 | `booking-conflicts.mjs` | 0068 — member and trainer overlap, `member_commitments` | **18 / 18** |
-| `trainer-decisions.mjs` | 0071 + 0074 — decisions, RLS, class size, the sweep | **22 / 22** |
+| `trainer-decisions.mjs` | 0071 + 0074 — decisions, RLS, class size, the sweep | **24 / 24** |
 | `reasons-and-limits.mjs` | 0057, 0069 + 0074 — reasons, the freeze limit, suspension | **24 / 24** |
 
 ### The bug it found
@@ -397,11 +397,22 @@ account."*
   rather than unlikely.
 - A member calling the sweep is refused.
 
-### Still not covered
+### Still not covered — 30 rows, and what each one needs
 
-`plan_allows()` and the entitlement gates (§2.6) sit on `current_membership_of`
-and `membership_is_usable`, one fixture layer deeper. That row still needs a
-signed-in member against the live project, and it is the last one that does.
+Every remaining blank in this file is one of three things, and none of them is
+a rule nobody has looked at:
+
+- **A signed-in member against the live project** — §2.5, §2.6, §6.1–6.7.
+  `plan_allows()` sits on `current_membership_of` and `membership_is_usable`,
+  one fixture layer deeper than the harness goes.
+- **A person looking at a screen** — §3.1.5 (a clashing slot shown disabled,
+  with what you are already booked for), §4.2/4.3 (the locked-out member is
+  told *why*), §4.7–4.13 (the refund quote and the payment chips).
+- **Money moving at the desk** — §4.8–4.10, which need a real payment recorded
+  and then a cancellation quoted against it.
+
+The rules behind all three are the ones Run 4 executed. What is untested is
+the wiring from those rules to a screen a member is standing in front of.
 
 ---
 

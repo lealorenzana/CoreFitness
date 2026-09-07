@@ -35,7 +35,7 @@ node <path-to>/scripts/sql/booking-conflicts.mjs "<path-to-repo>"
 | Script | Migration under test | Checks |
 |---|---|---|
 | `booking-conflicts.mjs` | 0068 | 18 |
-| `trainer-decisions.mjs` | 0071 + 0074 | 22 |
+| `trainer-decisions.mjs` | 0071 + 0074 | 24 |
 | `reasons-and-limits.mjs` | 0057, 0069 + 0074 | 24 |
 
 Each exits non-zero if anything fails, so they can be chained.

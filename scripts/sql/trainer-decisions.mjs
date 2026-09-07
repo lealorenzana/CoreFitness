@@ -366,6 +366,25 @@ insert into pt_sessions (id, trainer_id, member_id, starts_at, status, requested
 }
 
 {
+  // Three days unanswered. It stops being the trainer's problem and becomes
+  // the desk's, so every admin hears about it.
+  await asOwner();
+  await db.exec(`insert into pt_sessions (id, trainer_id, member_id, starts_at, status, requested_at)
+    values ('50000000-0000-0000-0000-00000000005a','${TB}','${M2}', now() + interval '12 days', 'pending', now() - interval '73 hours');`);
+  await db.exec(`set request.jwt.claim.sub = ''; select sweep_stale_requests();`);
+  const escalated = await one(`select count(*)::int as n from notifications
+    where user_id = '${AD}' and title = 'Booking request unanswered for 3 days';`);
+  rec('3.4.7', 'At three days every admin is told — it is a desk problem now',
+    1, escalated.n, escalated.n === 1);
+
+  // The return value, not just the side effect: a second sweep has nothing
+  // left to send, and says so.
+  const again = await db.query(`select sweep_stale_requests() as n;`);
+  rec('3.4.8', 'A second sweep reports that it sent nothing', 0, Number(again.rows[0].n),
+    Number(again.rows[0].n) === 0);
+}
+
+{
   // A member must not be able to run it: it writes to every admin's inbox and
   // closes other people's bookings.
   await as(M1);
