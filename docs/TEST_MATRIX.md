@@ -4,13 +4,70 @@ What to click, what should happen, and what actually did. Written for the
 evaluation the panel described: different accounts, different plans, booking
 conflicts, trainer availability, account restrictions.
 
-**Nothing in the Result column is filled in yet.** Migrations 0068–0072 are not
-pasted, so half of what is listed here does not exist in the database. Filling
-these in from reading the code would be worthless — a green row nobody clicked
-is the failure mode this whole document exists to prevent.
-
 **Fill it in by running it.** Record what happened, including the failures. A
 failure recorded is a fix; a failure omitted is a bug the panel finds instead.
+
+---
+
+## Run 1 — 7 September 2026 · schema and anonymous boundary
+
+What can be checked without anyone's password. Run it again any time with
+`scripts/probe-migrations.py`.
+
+### Which migrations are actually live
+
+Probed over REST with the anon key, which reports the **schema** — three
+independent objects per migration, so one missing object cannot be mistaken for
+a whole file failing, or the reverse.
+
+| Migration | Evidence | Result |
+|---|---|---|
+| 0068 booking conflicts | `member_commitments`, `trainer_schedule_conflicts` | **LIVE** |
+| 0069 account status | `account_status_events`, `account_lockout_reason` | **LIVE** |
+| 0070 refund policy | `refund_rules`, `frozen_days_last_year`, `pt_sessions.payment_id` | **NOT PASTED** |
+| 0071 trainer decisions | `bookings.decided_by_role`, `sweep_stale_requests` | **LIVE** |
+| 0072 trainer feedback | `trainer_feedback`, `public_trainer_credentials`, `my_trainer_ratings` | **LIVE** |
+| 0073 pro-rata refunds | `gym_settings.refund_processing_fee` | **NOT PASTED** (written after this run) |
+
+**0070 is the finding.** All three of its objects are absent — the table returns
+PGRST205 "no such table", the function PGRST202, and the column 42703. That is
+not one failed statement, it is a file that never ran. Everything refund-shaped
+depends on it: the cancel dialog's quote, the Settings → Refund Policy tab, and
+0073, which alters a column 0070 creates.
+
+**Paste 0070 before 0073.** 0073 assumes `refund_rules` exists and rewrites
+`refund_quote()`, so on its own it will fail.
+
+### Anonymous boundary — §6 rows that can be checked now
+
+Every one of these is a *negative* test: the correct outcome is a refusal.
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 6.a | Anon calls `member_commitments` | Refused | **PASS** — 401, `42501` |
+| 6.b | Anon calls `trainer_schedule_conflicts` | Refused | **PASS** — 401 |
+| 6.c | Anon calls `sweep_stale_requests` | Refused | **PASS** — 401, front-desk only |
+| 6.d | Anon reads `public_trainer_credentials` | Refused | **PASS** — 401, `permission denied for view` |
+| 6.e | Anon calls `my_trainer_ratings` | Refused | **PASS** — 401 |
+| 6.f | Anon reads `account_status_events` | Zero rows, not an error | **PASS** — 200 `[]`, RLS filtering rather than blocking |
+| 6.g | Anon reads `trainer_feedback` | Zero rows | **PASS** — 200 `[]` |
+| 6.h | Anon reads `membership_plans` | Readable — the catalogue is public to signed-in users and the key is valid | **PASS** — 200 |
+
+6.d is worth noting: `public_trainer_credentials` is `security_invoker = false`,
+so it reads every row regardless of caller. It refusing anon is exactly the
+grant working — the mistake it guards against is the one caught in review before
+0072 shipped.
+
+### Still blocked, and on what
+
+Everything in §2–§5 needs **signed-in accounts**, and auth accounts cannot be
+created from SQL — `auth.users` belongs to Supabase Auth and hand-inserted rows
+produce accounts that appear in the dashboard and cannot sign in.
+
+To unblock: register the test members through the member app, add the trainers
+and staff from admin, then run `scripts/seed-test-accounts.sql`. Approving a
+registration needs an admin sign-in, so that step needs somebody with the
+password.
 
 ---
 
