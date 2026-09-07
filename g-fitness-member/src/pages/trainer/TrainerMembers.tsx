@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { leaveFeedback } from '../../lib/api/trainerFeedback';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, X, Send, ChevronRight, Users, Target, Ruler, Dumbbell, EyeOff,
@@ -11,8 +12,6 @@ import { supabase } from '../../lib/supabaseClient';
 import { listMembers } from '../../lib/api/members';
 import { listMemberships } from '../../lib/api/memberships';
 import { listAttendance } from '../../lib/api/attendance';
-import { addNotification } from '../../lib/api/notifications';
-import { pushOnly } from '../../lib/api/notify';
 import {
   getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer,
 } from '../../services/trainerService';
@@ -168,6 +167,19 @@ export default function TrainerMembers() {
     }
   }, []);
 
+  /**
+   * The note that goes with the recommendation.
+   *
+   * Two fields rather than one because they are read at different moments: the
+   * note is what happened in the session, the recommendation is what the member
+   * should do next — and a screen showing progress wants to surface only the
+   * second. `trainer_feedback` keeps them apart for the same reason (0072).
+   *
+   * Optional: a coach with only advice to give should not have to invent a
+   * session summary to send it.
+   */
+  const [sessionNote, setSessionNote] = useState('');
+
   const revisit = useRef(cached !== undefined);
   useEffect(() => {
     load(revisit.current);
@@ -208,30 +220,29 @@ export default function TrainerMembers() {
         );
       }
 
-      // Record WHO sent it. Every note used to read "New recommendation from
-      // your trainer" with nothing identifying the sender, so a member training
-      // with two coaches could not tell them apart — and the row itself carried
-      // no sender either, so it could never be worked out later.
-      const senderName = `${me.first_name ?? ''} ${me.last_name ?? ''}`.trim() || 'your trainer';
-
-      await addNotification({
-        user_id: selectedMember.id,
-        type: 'recommendation',
-        title: `New recommendation from ${senderName}`,
-        message: recommendation.trim(),
-        action_url: '/member/progress',
-        metadata: { from_trainer_id: trainerId, from_trainer_name: senderName },
-      });
-      // The row is written; this is the alert on top of it. Not awaited — a
-      // trainer should not wait on a push service to finish typing the next one.
-      pushOnly({
-        userId: selectedMember.id,
-        type: 'system',
-        title: 'New recommendation from your trainer',
-        message: recommendation.trim(),
-        actionUrl: '/member/progress',
+      // ── This is now a record, not only an alert ─────────────────────────
+      //
+      // It used to write a notification and nothing else, so the advice lived
+      // in the member's bell until they cleared it and then existed nowhere:
+      // the member could not look it up, the coach could not see what they had
+      // already said, and the gym could not review any of it.
+      //
+      // `trainer_feedback` (0072) is the record. `trainer_id` is pinned to
+      // `auth.uid()` by the insert policy, so a coach cannot sign a note with a
+      // colleague's name — passing it here fills the row, it does not authorise
+      // anything.
+      //
+      // The member's notification is sent by a database trigger rather than
+      // from here. Feedback nobody is told about is a note in a drawer, and a
+      // client that *could* skip the message would eventually skip it.
+      await leaveFeedback({
+        trainerId,
+        memberId: selectedMember.id,
+        note: sessionNote.trim() || recommendation.trim(),
+        recommendation: sessionNote.trim() ? recommendation.trim() : undefined,
       });
 
+      setSessionNote('');
       setRecommendation('');
       setShowRecommendation(false);
       setNotice({ text: `Recommendation sent to ${selectedMember.name}`, ok: true });
@@ -459,10 +470,17 @@ export default function TrainerMembers() {
                 </div>
 
                 {showRecommendation && (
-                  <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="px-4 py-3 border-t space-y-2" style={{ borderColor: 'var(--color-border)' }}>
+                    {/* How it went — optional. A coach with only advice to give
+                        should not have to invent a session summary first. */}
+                    <textarea value={sessionNote} onChange={e => setSessionNote(e.target.value)}
+                      rows={2}
+                      placeholder="How the session went (optional)"
+                      className="field-input w-full px-3 py-2 rounded-xl text-white text-xs resize-none"
+                    />
                     <div className="flex gap-2">
                       <input value={recommendation} onChange={e => setRecommendation(e.target.value)}
-                        placeholder="Add workout recommendation..."
+                        placeholder="What they should do next…"
                         className="field-input flex-1 px-3 py-2 rounded-xl text-white text-xs"
                         onKeyDown={e => { if (e.key === 'Enter') handleSendRecommendation(); }}
                       />
@@ -472,6 +490,10 @@ export default function TrainerMembers() {
                         <Send size={13} className="text-white" />
                       </button>
                     </div>
+                    <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                      Saved to their record and sent to them. Unlike their rating of you,
+                      this is not anonymous — they will see it came from you.
+                    </p>
                   </div>
                 )}
               </div>

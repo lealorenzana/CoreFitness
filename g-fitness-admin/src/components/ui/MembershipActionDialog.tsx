@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import {
+  getRefundQuote, formatPeso, basisLine, type RefundQuote,
+} from '../../lib/api/refunds';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Ban, X, AlertTriangle } from 'lucide-react';
 import Button from './Button';
@@ -46,6 +49,8 @@ interface Props {
   kind: 'freeze' | 'cancel';
   memberName: string;
   memberId: string;
+  /** The membership being acted on, so a cancellation can be quoted (0073). */
+  membershipId: string;
   /** Drives the "what happens next" sentence — a lifetime plan has no days to credit. */
   neverExpires: boolean;
   expiryLabel: string | null;
@@ -54,7 +59,7 @@ interface Props {
 }
 
 export default function MembershipActionDialog({
-  kind, memberName, memberId, neverExpires, expiryLabel, onClose, onConfirm,
+  kind, memberName, memberId, membershipId, neverExpires, expiryLabel, onClose, onConfirm,
 }: Props) {
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -63,6 +68,14 @@ export default function MembershipActionDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [used, setUsed] = useState<number | null>(null);
+  /**
+   * What the gym owes, worked out before anyone commits to anything.
+   *
+   * `undefined` = still loading, `null` = the read failed. Those render
+   * differently: a failure says so, because showing nothing where a refund
+   * figure belongs reads as "no refund due".
+   */
+  const [quote, setQuote] = useState<RefundQuote | null | undefined>(undefined);
 
   // The only effect left is the fetch, whose setState lands after an await.
   useEffect(() => {
@@ -71,6 +84,17 @@ export default function MembershipActionDialog({
     freezesThisMonth(memberId).then((n) => { if (alive) setUsed(n); });
     return () => { alive = false; };
   }, [kind, memberId]);
+
+  // Quoted on open, for a cancellation only. The desk should be reading the
+  // figure while it decides, not discovering it after the member has gone.
+  useEffect(() => {
+    if (kind !== 'cancel') return;
+    let alive = true;
+    getRefundQuote(membershipId)
+      .then((q) => { if (alive) setQuote(q); })
+      .catch(() => { if (alive) setQuote(null); });
+    return () => { alive = false; };
+  }, [kind, membershipId]);
 
   const isFreeze = kind === 'freeze';
   const presets = isFreeze ? FREEZE_REASONS : CANCEL_REASONS;
@@ -88,6 +112,11 @@ export default function MembershipActionDialog({
         reason: finalReason,
         refundRequested: refund,
         refundNote: refund ? refundNote : '',
+        // What the policy said at the time, copied onto the row. Editing the
+        // rules next year must not rewrite what this member was told today.
+        refundPercent: quote?.percent ?? null,
+        refundAmount: quote?.amount ?? null,
+        refundRule: quote?.rule_label ?? null,
       });
       onClose();
     } catch (err) {
@@ -106,6 +135,9 @@ export default function MembershipActionDialog({
     : neverExpires
       ? `This plan has no expiry date, so there are no paid-for days left to honour — their access ends immediately rather than running to a date.`
       : `It won't renew, but they keep access until ${expiryLabel ?? 'their expiry date'} — they've already paid for those days.`;
+
+  // Kept out of the JSX so the two branches are readable side by side.
+  const basis = quote ? basisLine(quote) : null;
 
   return (
     <AnimatePresence>
@@ -212,15 +244,75 @@ export default function MembershipActionDialog({
                   <input
                     value={refundNote}
                     onChange={(e) => setRefundNote(e.target.value)}
-                    placeholder="What was agreed? e.g. explained no refunds, offered a freeze instead"
+                    placeholder="What was agreed? e.g. paid in cash from the till, receipt reprinted"
                     className="w-full h-10 px-3 rounded-lg text-xs text-white mt-2"
                     style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}
                   />
                 ) : (
                   <p className="text-[10px] mt-1.5 ml-6" style={{ color: 'var(--color-text-muted)' }}>
-                    The gym is cash-only with no refund process. Tick this if it came up, so there
-                    is a record of what was said.
+                    Tick this if it came up, so there is a record of what was said.
                   </p>
+                )}
+
+                {/* The quote, always shown for a cancellation — not gated behind
+                    the checkbox. Whoever is at the desk needs to know what the
+                    policy owes before the member asks, not after.
+
+                    This block used to read "the gym is cash-only with no refund
+                    process". Cash-only is true; "no refund process" was not,
+                    and under RA 7394 a prepaid membership is expected to be
+                    refunded pro-rata for the unused term. See 0073. */}
+                {!isFreeze && (
+                  <div className="mt-3 rounded-lg px-3 py-2.5"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    {quote === undefined ? (
+                      <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                        Working out what is owed…
+                      </p>
+                    ) : quote === null ? (
+                      /* A failed read says so. Silence here would read as
+                         "nothing is owed", which may be false. */
+                      <p className="text-[11px]" style={{ color: 'var(--color-secondary)' }}>
+                        Could not work out the refund. Check the policy before promising anything.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[10px] uppercase tracking-wide"
+                            style={{ color: 'var(--color-text-muted)' }}>
+                            Refund due
+                          </span>
+                          <span className="text-base font-bold tabular-nums"
+                            style={{ color: quote.percent == null ? 'var(--color-text-muted)' : 'var(--color-secondary)' }}>
+                            {formatPeso(quote.amount)}
+                            {quote.percent != null && (
+                              <span className="text-[10px] font-semibold ml-1.5"
+                                style={{ color: 'var(--color-text-muted)' }}>
+                                {quote.percent}%
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-[10px] mt-1 leading-relaxed"
+                          style={{ color: 'var(--color-text-secondary)' }}>
+                          {quote.rule_label}
+                        </p>
+                        {basis && (
+                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            {basis}
+                          </p>
+                        )}
+                        {quote.fee_deducted > 0 && (
+                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            Less {formatPeso(quote.fee_deducted)} processing fee.
+                          </p>
+                        )}
+                        <p className="text-[10px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                          Paid to date {formatPeso(quote.paid_total)} · cash refund handed over at the desk.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
 

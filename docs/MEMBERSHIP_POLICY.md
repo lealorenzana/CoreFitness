@@ -1,8 +1,13 @@
 # Membership Policy — freezing, cancellation and refunds
 
 **Status: a proposal for the gym to approve, not a decision already taken.**
-The percentages and limits below are seeded by migration `0070` into a table the
-admin can edit. Nothing here is hardcoded in either app.
+The percentages and limits below are seeded by migrations `0070`/`0073` into a
+table the admin can edit. Nothing here is hardcoded in either app.
+
+**The percentages are a floor, not the rule.** Since 0073 the refund is
+`max(pro-rata for the unused term, the percentage below)` less a documented
+fee — because the Consumer Act expects pro-rata and a gym may be more generous
+than the law but not less. See *The basis for these numbers*.
 
 This document and `refund_rules` must be changed together. A policy the system
 enforces but nobody can read is the failure mode this file exists to prevent —
@@ -38,7 +43,7 @@ computed from.
 | Cancelled within **7 days**, has not visited once | **100%** | They bought access and never used it. Keeping the money buys the gym one refund and loses it every referral that member would have made. |
 | Cancelled within **7 days**, has visited | **50%** | The service was delivered, partially. Half acknowledges both facts. |
 | Cancelled **8–30 days** | **25%** | A month is the unit the gym sells; most of it has been made available. |
-| Cancelled **after 30 days** | **None.** Unused whole months may be **frozen** instead | Past this point the sale is complete. Freezing gives back the thing they actually want — time — without the gym refunding a month it held open for them. |
+| Cancelled **after 30 days** | **Pro-rata on the unused term** | RA 7394 expects the unused portion back. Freezing is still offered as the better option for someone who intends to return. |
 | Medical, with documentation | **Admin discretion**, any amount, reason required | A rule that cannot bend breaks. This one bends *on the record*: the amount, the reason and who approved it are all stored. |
 
 **Day counting starts from `memberships.start_date`,** not from the payment
@@ -102,41 +107,79 @@ pay. Only the assistant's model escalation is gated, never the rule table.
 
 ## The basis for these numbers
 
-Stated plainly, because a capstone panel will ask where they came from.
+Researched September 2026. Every source below was read, not merely listed —
+earlier drafts of this file named a "search plan" instead of doing the search,
+which was a gap and not a principle.
 
-**What they are actually derived from:**
+### The finding that changed the system
 
-1. **The gym's own constraint.** Cash-only, single location, small roster. A
-   refund is money physically handed back from a till, so a policy with many
-   fine gradations is one the desk cannot execute.
-2. **The structure of what is sold.** The unit is a month. The tiers follow the
-   proportion of that month the member has had access to — which is why the
-   boundaries are 7 and 30 days and not arbitrary figures.
-3. **A cooling-off period is the common shape** for prepaid consumer services,
-   and 7 days is the most widely used length. The distinction between "used it"
-   and "did not" is what makes it fair in both directions.
+**A refund on a prepaid service membership in the Philippines is expected to be
+pro-rata for the unused portion**, with only "reasonable and documented"
+deductions, under the Consumer Act (RA 7394). A "no refund" clause does not
+override that — statutory rights survive the contract, and DTI mediates and can
+order refunds and sanctions.
 
-**What they are *not* derived from:** a specific published study of gym refund
-policy. I have not read one, and I am not going to attach a citation to these
-numbers that I cannot vouch for. A fabricated reference in a capstone is worse
-than an honest "this is reasoned from the business, not from the literature".
+That contradicted the first version of the table above, whose fourth row read
+*"cancelled after 30 days — no refund"*. On a 30-day membership cancelled on
+day 8, the tiered table paid 25% where pro-rata is about 73%. That is not a
+rounding difference — it is the gym holding money a mediator could order it to
+return.
 
-**If a literature basis is required for the manuscript**, these are the real
-places to look, and each needs to be read and cited properly rather than taken
-from this list:
+**So migration 0073 changed the rule, not just this document.** Refunds are now:
 
-- Philippine **Consumer Act (RA 7394)** and DTI issuances on prepaid services —
-  the binding legal floor, and the one that actually matters. Check whether it
-  constrains any of the above; if it does, the law wins and this table changes.
-- **IHRSA** industry reports on membership retention and attrition — the trade
-  body most cited on gym churn.
-- Academic work on **freemium conversion** and on **subscription cancellation
-  and win-back**, in information-systems and marketing venues.
-- Consumer-protection guidance on **cooling-off periods** for prepaid services
-  in comparable jurisdictions.
+```
+refund = max(pro-rata for unused days, gym tier floor) − documented fee
+```
 
-Ask a supervisor or librarian to confirm the specific sources. Do not cite
-anything from this file as if it were a reference — it is a search plan.
+The tiers survive as a **floor**, which is where they belong: a gym may be more
+generous than the law (the 7-day full refund is exactly that), and may not be
+less. The processing fee defaults to zero and should stay there unless the gym
+can name the cost it covers.
+
+### On the plans themselves
+
+| What the research says | Where it came from | What we did with it |
+|---|---|---|
+| Industry annual retention averages **66.4%** — roughly one member in three leaves each year | HFA 2025 Fitness Industry Benchmarking Report, reported by [Nutripy](https://nutripy.io/blog/gym-retention-rate-benchmarks-2026) | Sets the scale of the problem the engagement features exist to address, and gives Retention a benchmark to be measured against rather than a bare number |
+| The top cancellation reason is **not visiting enough to justify the cost (46%)**, ahead of money (22%) and moving (15%) | [Gym Rescue](https://www.gymrescue.com/blog/gym-membership-retention-statistics-and-tips/), [Glofox](https://www.glofox.com/blog/gym-membership-statistics/) | Justifies the whole attendance-and-points loop: the intervention that matters is getting people *in*, not discounting |
+| Members completing a full onboarding are **87% active at 6 months** vs **38%** without (Dr Paul Bedford) | [PushPress](https://www.pushpress.com/blog/gym-member-retention-guide) | Supports the onboarding flow being mandatory rather than skippable, and the experience-level question that drives class recommendations |
+| Extending a free trial from 3 to 7 days raised **delayed conversion 42.36%** and overall subscriptions **20.92%** across 680,588 users | Zhang & Duan (2025), *Frontiers in Psychology*, [PMC12217587](https://pmc.ncbi.nlm.nih.gov/articles/PMC12217587/) | Directional support for a **longer** trial. **Stated honestly: this is a SaaS study of 3 vs 7 days, not a gym study of 30. It supports the direction, not the specific number.** |
+| Freeze policies typically cap at **1–3 months**, and an excessive hold fee backfires by pushing members to cancel outright | [Gymolix](https://gymolix.com/blog/gym-membership-freeze-policy-guide), [FitnessJudge](https://www.fitnessjudge.com/posts/which-gym-memberships-let-you-freeze-or-pause-most-easily/) | Our 30-day single freeze and 60-day annual ceiling sit inside the common range; the freeze carries **no fee**, deliberately |
+| Deferred revenue during a freeze is almost always smaller than the lifetime value lost to a cancellation | [Cloud Gym Manager](https://www.cloudgymmanager.com/membership-freezes-and-holds-done-right-policies-proration-and-automation/) | The reason freezing is offered readily and the ceiling exists only to stop an indefinite freeze becoming an unrecorded cancellation |
+
+### What still is not evidence
+
+The **specific percentages** in the tier table (100 / 50 / 25) are still a
+judgement about this gym, not a finding from literature. What the research
+changed is their *status*: they are now a floor above a legally-grounded
+pro-rata baseline, rather than the rule itself. That is a much more defensible
+position than the one this document started with.
+
+**For the manuscript**, the two sources that carry real weight are RA 7394 for
+the refund model and Zhang & Duan (2025) for trial design; the trade-press
+statistics are industry benchmarks and should be cited as such, not as peer
+review. Confirm the HFA report directly — it is quoted second-hand above.
+
+### Sources
+
+- Consumer Act of the Philippines (RA 7394) — refunds on unused service
+  memberships: [Respicio & Co.](https://www.lawyer-philippines.com/articles/refund-for-unused-service-memberships-in-the-philippines-your-rights-under-the-consumer-act)
+  · [DTI on "No Return, No Exchange"](https://aseanconsumer.org/read-news-dti-warns-against-establishments-implementing-a-no-return-no-exchange-policy-explains-to-consumers-the-rule-on-return-and-exchange)
+  · [Batas Natin on warranty and refund obligations](https://batasnatin.com/laws/consumer-act-ra-7394-warranty-and-refund-obligations-for-sellers)
+- Zhang & Duan (2025). Longer or shorter? A large-scale randomized field
+  experiment on free trial duration in the freemium model. *Frontiers in
+  Psychology*. [Full text](https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2025.1568868/full)
+- Retention benchmarks: [Nutripy](https://nutripy.io/blog/gym-retention-rate-benchmarks-2026)
+  · [PushPress](https://www.pushpress.com/blog/gym-member-retention-guide)
+  · [Glofox](https://www.glofox.com/blog/gym-membership-statistics/)
+  · [Gym Rescue](https://www.gymrescue.com/blog/gym-membership-retention-statistics-and-tips/)
+- Freeze policy practice: [Gymolix](https://gymolix.com/blog/gym-membership-freeze-policy-guide)
+  · [Cloud Gym Manager](https://www.cloudgymmanager.com/membership-freezes-and-holds-done-right-policies-proration-and-automation/)
+  · [FitnessJudge](https://www.fitnessjudge.com/posts/which-gym-memberships-let-you-freeze-or-pause-most-easily/)
+
+**This is not a substitute for a supervisor's review.** Trade-press figures cite
+primary reports second-hand; before any of this reaches the manuscript, the HFA
+benchmarking report and Bedford's onboarding work should be obtained directly.
 
 ---
 

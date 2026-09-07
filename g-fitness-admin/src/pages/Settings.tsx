@@ -12,8 +12,13 @@ import FormField from '../components/ui/FormField';
 import {
   User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight,
   UserX, UserCheck, Archive, Camera, Trash2, Check,
+  Banknote,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import {
+  listRefundRules, updateRefundRule, getRefundFee, setRefundFee,
+  type RefundRule, type RefundFee,
+} from '../lib/api/refundRules';
 import { supabase } from '../lib/supabaseClient';
 import { updateProfile } from '../lib/api/profiles';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
@@ -46,7 +51,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'refunds' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -54,6 +59,7 @@ const TEXT_MUTED = 'var(--color-text-muted)';
 const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'gym', label: 'Gym Information', icon: Building2 },
+  { id: 'refunds', label: 'Refund Policy', icon: Banknote },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'staff', label: 'Staff Accounts', icon: UserPlus },
 ];
@@ -555,6 +561,8 @@ export default function Settings() {
               </div>
             )}
 
+            {activeTab === 'refunds' && <RefundPolicyTab />}
+
             {activeTab === 'security' && (
               <div className="rounded-xl p-5 space-y-4" style={panel}>
                 <div>
@@ -721,6 +729,179 @@ export default function Settings() {
                 hint: 'Kept on the account history, alongside every payment they recorded.' }
         }
       />
+    </div>
+  );
+}
+
+
+/**
+ * The refund policy, editable.
+ *
+ * ## What an admin needs to understand before touching this
+ *
+ * These percentages are a **floor**, not the payout. Since migration 0073 the
+ * refund is `max(pro-rata for the unused term, the tier here)` less a
+ * documented fee, because the Consumer Act expects pro-rata on a prepaid
+ * membership and a gym may be more generous than the law but not less.
+ *
+ * So lowering a number here does not reduce what a member receives below the
+ * pro-rata share — it only reduces how generous the gym is on top of it. That
+ * is genuinely surprising, so the screen says it rather than leaving somebody
+ * to discover it from a quote that ignored their edit.
+ */
+function RefundPolicyTab() {
+  const [rules, setRules] = useState<RefundRule[] | null>(null);
+  const [fee, setFee] = useState<RefundFee | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [feeDraft, setFeeDraft] = useState('');
+  const [feeReason, setFeeReason] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const [r, f] = await Promise.all([listRefundRules(), getRefundFee()]);
+      setRules(r);
+      setFee(f);
+      setFeeDraft(String(f.amount));
+      setFeeReason(f.reason ?? '');
+    } catch {
+      setFailed(true);
+    }
+  }, []);
+
+  // Wrapped rather than `void load()`: the lint rule traces a directly called
+  // function into its setState calls and reports the set-state-in-effect
+  // cascade, even though every one here is behind an await.
+  useEffect(() => { (async () => { await load(); })(); }, [load]);
+
+  const savePercent = async (rule: RefundRule, raw: string) => {
+    const pct = Number(raw);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      showToast('A percentage has to be between 0 and 100.', 'error');
+      return;
+    }
+    if (pct === rule.percent) return;
+    setSaving(rule.id);
+    try {
+      await updateRefundRule(rule.id, { percent: pct });
+      setRules((prev) => prev?.map((r) => (r.id === rule.id ? { ...r, percent: pct } : r)) ?? null);
+      showToast('Refund rule updated.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not save that rule', 'error');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const saveFee = async () => {
+    const amount = Number(feeDraft);
+    if (!Number.isFinite(amount) || amount < 0) {
+      showToast('A fee has to be zero or more.', 'error');
+      return;
+    }
+    setSaving('fee');
+    try {
+      await setRefundFee(amount, feeReason);
+      setFee({ amount, reason: amount > 0 ? feeReason.trim() : null });
+      showToast('Processing fee saved.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not save the fee', 'error');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // A failed read says so. An empty policy table would read as "this gym
+  // refunds nothing", which is both false and the opposite of the law.
+  if (failed) {
+    return (
+      <div className="rounded-xl p-5" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-secondary)' }}>
+          Could not load the refund policy. It has not been changed.
+        </p>
+      </div>
+    );
+  }
+
+  if (rules === null || fee === null) {
+    return <p className="text-sm" style={{ color: TEXT_MUTED }}>Loading refund policy…</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl p-4"
+        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="font-semibold" style={{ color: VIOLET }}>These are a minimum, not the payout.</span>{' '}
+          A refund is the <em>higher</em> of the unused part of the term and the percentage below —
+          the Consumer Act expects the unused portion back, and the gym can be more generous than
+          that but not less. Lowering a number here reduces how generous the gym is, never what a
+          member is legally owed.
+        </p>
+      </div>
+
+      <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        <h2 className="text-sm font-bold text-white">When a member cancels</h2>
+
+        <div className="space-y-2">
+          {rules.map((rule) => (
+            <div key={rule.id} className="rounded-lg p-3 flex items-start gap-3"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-white leading-relaxed">{rule.label}</p>
+                <p className="text-[10px] mt-1" style={{ color: TEXT_MUTED }}>
+                  {rule.max_days == null
+                    ? `From day ${rule.min_days} onwards`
+                    : `Days ${rule.min_days}–${rule.max_days}`}
+                  {rule.requires_visits === true && ' · only if they have visited'}
+                  {rule.requires_visits === false && ' · only if they have not visited'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <input
+                  type="number" min={0} max={100}
+                  defaultValue={rule.percent}
+                  disabled={saving === rule.id}
+                  onBlur={(e) => void savePercent(rule, e.target.value)}
+                  className="w-16 h-8 px-2 rounded-lg text-xs font-semibold text-white text-center"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                />
+                <span className="text-xs" style={{ color: TEXT_MUTED }}>%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        <h2 className="text-sm font-bold text-white">Processing fee</h2>
+        <p className="text-xs" style={{ color: TEXT_MUTED }}>
+          Deducted from every refund. Leave it at zero unless there is a real cost you can name —
+          the law allows only reasonable, documented deductions, and an unexplained one is the kind
+          of term that gets thrown out.
+        </p>
+        <div className="flex gap-2 items-start">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="text-xs" style={{ color: TEXT_MUTED }}>₱</span>
+            <input
+              type="number" min={0} value={feeDraft}
+              onChange={(e) => setFeeDraft(e.target.value)}
+              className="w-24 h-9 px-2 rounded-lg text-xs font-semibold text-white text-center"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+          <input
+            value={feeReason}
+            onChange={(e) => setFeeReason(e.target.value)}
+            placeholder="What it covers, e.g. cash handling and receipt reprint"
+            className="flex-1 h-9 px-3 rounded-lg text-xs text-white"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+          />
+          <Button variant="primary" onClick={() => void saveFee()} disabled={saving === 'fee'}>
+            {saving === 'fee' ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

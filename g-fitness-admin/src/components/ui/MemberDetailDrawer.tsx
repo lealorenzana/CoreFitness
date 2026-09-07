@@ -491,6 +491,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
             {action && <MembershipActionDialog
               key={action}
               kind={action}
+              membershipId={current?.id ?? ''}
               memberName={`${detail.identity.profile.first_name} ${detail.identity.profile.last_name}`.trim()}
               memberId={detail.identity.profile.id}
               neverExpires={current.never_expires ?? false}

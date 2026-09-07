@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { listMembers } from '../../lib/api/members';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -475,20 +476,50 @@ function Empty({ text }: { text: string }) {
  * its own evaluations in order to act on them. 0066's admin-only SELECT policy
  * is what keeps members out of it.
  */
+/**
+ * Evaluations, as the gym sees them.
+ *
+ * ## Why members are named here and nowhere else
+ *
+ * An earlier version withheld the names from the admin too, reasoning that a
+ * coach who hears "Lea gave me a 2" stops receiving honest evaluations. That
+ * risk is real and the mitigation is real: **the trainer cannot see this
+ * screen, and cannot see the names at all** — since migration 0072 they read a
+ * view with no member column and the base table refuses them outright, so this
+ * is not a UI convention that a devtools panel can undo.
+ *
+ * What the gym gets in exchange is the ability to actually act. An anonymous
+ * complaint cannot be followed up: you cannot check whether one member is
+ * rating every coach one star, and you cannot talk to somebody who reported
+ * something serious. That is not monitoring, it is a number.
+ *
+ * The screen says which of those two things it is, so nobody assumes the coach
+ * is reading it over their shoulder.
+ */
 function EvaluationsTab({ trainerId }: { trainerId: string }) {
   const [rows, setRows] = useState<TrainerRatingRow[] | null>(null);
   const [months, setMonths] = useState<TrainerMonth[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [r, m] = await Promise.all([
+      const [r, m, people] = await Promise.all([
         listTrainerRatings(trainerId).catch(() => null),
         getTrainerMonths(trainerId).catch(() => []),
+        // Falls back to an empty map rather than failing the tab: a name that
+        // will not resolve renders as "A member", which is honest, where a
+        // blank would look like the evaluation had no author.
+        listMembers().catch(() => []),
       ]);
       if (!alive) return;
       if (r === null) { setFailed(true); setRows([]); return; }
+      const map: Record<string, string> = {};
+      for (const person of people) {
+        map[person.profile.id] = `${person.profile.first_name} ${person.profile.last_name}`.trim();
+      }
+      setNames(map);
       setRows(r);
       setMonths(m);
     })();
@@ -519,6 +550,17 @@ function EvaluationsTab({ trainerId }: { trainerId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Said plainly, because the whole arrangement depends on both halves
+          being true and neither being assumed. */}
+      <div className="rounded-xl px-3 py-2.5"
+        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>Admin only.</span>{' '}
+          This trainer cannot see who wrote any of this — the database refuses them the names, not
+          just this screen. Use it to follow something up, not to relay it.
+        </p>
+      </div>
+
       <Section title="Month by month">
         <div className="flex flex-wrap gap-2">
           {months.map((m) => (
@@ -554,10 +596,10 @@ function EvaluationsTab({ trainerId }: { trainerId: string }) {
                       fill={n <= r.stars ? 'currentColor' : 'none'} />
                   ))}
                   <span className="text-xs font-bold text-white ml-1">{r.stars}.0</span>
+                  <span className="text-[11px] ml-auto truncate" style={{ color: 'var(--color-text-muted)' }}>
+                    {names[r.member_id] ?? 'A member'}
+                  </span>
                 </div>
-                {/* Members are not named. The gym needs the signal, not a list
-                    of who said what about whom — and a coach reading "Lea gave
-                    me a 2" is how honest evaluations stop being written. */}
                 {r.comment ? (
                   <p className="text-xs mt-1.5 leading-relaxed whitespace-pre-line"
                     style={{ color: 'var(--color-text-secondary)' }}>

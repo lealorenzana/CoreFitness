@@ -97,6 +97,12 @@ export interface MembershipActionDetail {
    *  different facts, and the second one is the useful one three weeks later. */
   refundRequested?: boolean;
   refundNote?: string;
+  /** What the policy quoted at the time (0073). Copied onto the event rather
+   *  than joined to `refund_rules`, so editing the rules next year cannot
+   *  rewrite what a member was told this year. */
+  refundPercent?: number | null;
+  refundAmount?: number | null;
+  refundRule?: string | null;
 }
 
 /**
@@ -231,6 +237,9 @@ export async function cancelMembership(id: string, detail: MembershipActionDetai
     reason: detail.reason.trim(),
     refund_requested: detail.refundRequested ?? false,
     refund_note: detail.refundNote?.trim() || null,
+    refund_percent: detail.refundPercent ?? null,
+    refund_amount: detail.refundAmount ?? null,
+    refund_rule: detail.refundRule ?? null,
   });
   if (logError) throw logError;
 

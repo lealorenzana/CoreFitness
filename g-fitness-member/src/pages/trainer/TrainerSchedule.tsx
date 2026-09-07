@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Clock, ChevronRight, X, MapPin, Users } from 'lucide-react';
+import { Dumbbell, Clock, ChevronRight, X, MapPin, Users, Pencil } from 'lucide-react';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { panelStyle } from '../../components/ui/Card';
 import DateRail, { buildRail } from '../../components/ui/DateRail';
-import { listTrainerClasses } from '../../lib/api/classes';
+import { listTrainerClasses, setClassCapacity } from '../../lib/api/classes';
+import { toast } from '../../components/ui/Toast';
 import { listTrainerBookings } from '../../lib/api/bookings';
 import { listTrainerAvailability, type TrainerAvailabilityRow } from '../../lib/api/trainerAvailability';
 import { getCurrentTrainerId } from '../../services/trainerService';
@@ -77,17 +78,50 @@ function ClassRowCard({
   cls,
   booked,
   isNext,
+  onCapacityChanged,
 }: {
   cls: ClassRow;
   booked: number | null;
   isNext: boolean;
+  onCapacityChanged: (id: string, capacity: number) => void;
 }) {
+  /**
+   * Editing the class size, which migration 0071 made a trainer's own decision.
+   *
+   * The gym sets the timetable; the person standing in the room knows how many
+   * of them fit. Only this one number is editable, and the database enforces
+   * that rather than trusting this screen.
+   */
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(cls.capacity));
+  const [saving, setSaving] = useState(false);
   const start = new Date(cls.scheduled_at as string);
   const end = new Date(start.getTime() + cls.duration_minutes * 60_000);
   const from = timeParts(start);
   const to = timeParts(end);
 
   const full = booked != null && booked >= cls.capacity;
+  // Never below the people already booked in. The trigger refuses it too — this
+  // just means the trainer finds out while typing rather than after saving.
+  const floor = booked ?? 1;
+  const parsed = Number(draft);
+  const valid = Number.isInteger(parsed) && parsed >= Math.max(1, floor);
+
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await setClassCapacity(cls.id, parsed);
+      onCapacityChanged(cls.id, parsed);
+      toast.success(`${cls.name} now takes ${parsed}.`);
+      setEditing(false);
+    } catch (err) {
+      // The database's sentence is the useful one here.
+      toast.error(errorMessage(err, 'Could not change the class size'));
+    } finally {
+      setSaving(false);
+    }
+  };
   const fill = booked == null ? 0 : Math.min(1, booked / Math.max(1, cls.capacity));
   const accent = isNext ? 'var(--color-secondary)' : 'var(--color-primary)';
 
@@ -152,14 +186,56 @@ function ClassRowCard({
               }}
             />
           </span>
-          <span
-            className="text-xs font-semibold flex items-center gap-1 flex-shrink-0"
-            style={{ color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}
-          >
-            <Users size={11} />
-            {booked == null ? `${cls.capacity} places` : `${booked}/${cls.capacity}`}
-          </span>
+          {editing ? (
+            <span className="flex items-center gap-1.5 flex-shrink-0">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={draft}
+                min={Math.max(1, floor)}
+                autoFocus
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void save();
+                  if (e.key === 'Escape') { setDraft(String(cls.capacity)); setEditing(false); }
+                }}
+                className="w-14 h-7 px-2 rounded-lg text-xs font-semibold text-white text-center"
+                style={{
+                  background: 'var(--color-bg)',
+                  border: `1px solid ${valid ? 'var(--color-border)' : 'var(--color-secondary)'}`,
+                }}
+              />
+              <button onClick={() => void save()} disabled={!valid || saving}
+                className="h-7 px-2 rounded-lg text-xs font-bold disabled:opacity-40"
+                style={{ background: 'var(--color-secondary)', color: '#000' }}>
+                {saving ? '…' : 'Save'}
+              </button>
+            </span>
+          ) : (
+            /* Tappable, and it says so by looking like a control rather than a
+               label. Trainers were shown this number for a year and could not
+               change it. */
+            <button
+              onClick={() => { setDraft(String(cls.capacity)); setEditing(true); }}
+              className="text-xs font-semibold flex items-center gap-1 flex-shrink-0 px-1.5 py-0.5 rounded-md"
+              style={{
+                color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <Users size={11} />
+              {booked == null ? `${cls.capacity} places` : `${booked}/${cls.capacity}`}
+              <Pencil size={9} style={{ color: 'var(--color-text-muted)' }} />
+            </button>
+          )}
         </div>
+        {editing && (
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--color-text-muted)' }}>
+            {booked != null && booked > 0
+              ? `At least ${booked} — that many are already booked in.`
+              : 'How many people fit in the room.'}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -184,6 +260,16 @@ export default function TrainerSchedule() {
   const navigate = useNavigate();
   const cached = readCache<ScheduleSnapshot>(CACHE_KEY);
   const [classes, setClasses] = useState<ClassRow[]>(cached?.classes ?? []);
+
+  /**
+   * Reflects a saved class size without refetching the whole screen.
+   *
+   * The write already succeeded — re-reading three tables to learn a number we
+   * just set would flash the agenda for nothing, and on a phone that is the
+   * difference between the change feeling instant and feeling broken.
+   */
+  const applyCapacity = (id: string, capacity: number) =>
+    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, capacity } : c)));
   const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>(cached?.availability ?? []);
   /** classId → live bookings. Null means the query failed, which is not zero. */
   const [bookedByClass, setBookedByClass] = useState<Map<string, number> | null>(cached?.bookedByClass ?? null);
@@ -459,6 +545,7 @@ export default function TrainerSchedule() {
                     cls={cls}
                     booked={bookedByClass ? bookedByClass.get(cls.id) ?? 0 : null}
                     isNext={tab === 'upcoming' && cls.id === upcoming[0]?.id}
+                    onCapacityChanged={applyCapacity}
                   />
                 ))}
               </div>

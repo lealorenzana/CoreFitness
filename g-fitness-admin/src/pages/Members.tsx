@@ -753,6 +753,7 @@ export default function Members() {
         kind="freeze"
         memberName={toFreeze?.fullName ?? 'this member'}
         memberId={toFreeze?.id ?? ''}
+        membershipId={toFreeze?.membership?.id ?? ''}
         neverExpires={toFreeze?.membership?.never_expires ?? false}
         expiryLabel={toFreeze?.expiryDate ? formatDate(toFreeze.expiryDate) : null}
         onClose={() => setToFreeze(null)}
@@ -764,6 +765,7 @@ export default function Members() {
         kind="cancel"
         memberName={toCancel?.fullName ?? 'this member'}
         memberId={toCancel?.id ?? ''}
+        membershipId={toCancel?.membership?.id ?? ''}
         neverExpires={toCancel?.membership?.never_expires ?? false}
         expiryLabel={toCancel?.expiryDate ? formatDate(toCancel.expiryDate) : null}
         onClose={() => setToCancel(null)}
