@@ -153,12 +153,12 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0073 are live; 0074 is written and NOT PASTED** — verified with
+**0001–0074 are all live** — verified 2026-09-11 with
 `python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials.
 **Run it rather than trusting a report that a migration was pasted**: 0070 was believed done for a
 day and had never executed. It probes **three objects per migration**, so a file that never ran is
 distinguishable from one failed statement, and a protected object (42501) is a pass, not a miss.
-**0074 closes a live privilege bug** — 0071's stamp triggers returned early when `status` was
+**0074 closed a live privilege bug** — 0071's stamp triggers returned early when `status` was
 unchanged, *above* the checks that stop a trainer rewriting `member_id` or `starts_at`, so a trainer
 could reassign a seat or move somebody's session. Found by running the SQL, not by reading it.
 Migrations are pasted by hand, so **`db push` is wrong here**; hand over **one at a time** (a
