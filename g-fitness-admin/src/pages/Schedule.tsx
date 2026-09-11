@@ -3,7 +3,7 @@ import {
   renderSchedulePng, scheduleToCsv, downloadBlob, type ScheduleSlot,
 } from '../utils/exportSchedule';
 import { useBranding } from '../hooks/useBranding';
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
 import {
@@ -13,7 +13,7 @@ import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import {
-  Plus, X, Trash2, RefreshCw, Dumbbell,
+  Plus, X, Trash2, RefreshCw, Dumbbell, RotateCcw,
   AlertTriangle, CalendarDays, Filter, Clock,
   Image as ImageIcon, FileDown,
 } from 'lucide-react';
@@ -367,8 +367,10 @@ export default function Schedule() {
     showToast('Timetable spreadsheet downloaded.', 'success');
   };
 
+  // The timetable tab is exactly the window's height (header 4rem + <main>'s
+  // padding 3rem) so the board fills it; the two list tabs scroll as before.
   return (
-    <div className="space-y-4">
+    <div className={tab === 'timetable' ? 'h-[calc(100vh-7rem)] flex flex-col gap-4' : 'space-y-4'}>
       <PageHeader
         title="Schedule"
         subtitle="Weekly timetable and trainer working hours"
@@ -415,8 +417,13 @@ export default function Schedule() {
         }
       />
 
-      {/* The four numbers the desk is asked for, sized to the numbers. */}
+      {/* The numbers and the two notices share one row. Stacked, they took
+          about 200px above the timetable — enough to push the evening band
+          off the bottom of the board, and the stat tiles only need 600px of
+          the width anyway. */}
       {!loading && (
+      <div className="flex items-start gap-3 flex-wrap">
+      {/* The four numbers the desk is asked for, sized to the numbers. */}
         <StatTiles items={[
           { label: 'Classes', value: templates.filter((t) => t.active).length, icon: Dumbbell },
           { label: 'Sessions ahead', value: sessions.length, icon: CalendarDays },
@@ -428,13 +435,12 @@ export default function Schedule() {
             tone: conflicts.length > 0 ? 'secondary' : 'primary',
           },
         ]} />
-      )}
 
+      <div className="flex-1 min-w-[320px] space-y-2">
       {/* Says how far ahead members can book, which is the fact the front desk
           is actually asked. The old banner only appeared when new sessions had
           just been created, so on a normal visit this said nothing. */}
-      {!loading && (
-        <div className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-3"
+        <div className="rounded-xl px-3 py-2 flex items-center justify-between gap-3"
           style={{ background: 'var(--color-primary-light)' }}>
           <p className="text-[11px]" style={{ color: 'var(--color-primary)' }}>
             {templates.filter((t) => t.active).length === 0
@@ -450,13 +456,12 @@ export default function Schedule() {
             </span>
           )}
         </div>
-      )}
 
       {/* Clashes, stated plainly. Nothing stopped one trainer being booked onto
           two classes at the same hour, or two classes sharing a room — and both
           go on to generate real sessions members can book. */}
       {conflicts.length > 0 && (
-        <div className="rounded-xl p-3 space-y-1"
+        <div className="rounded-xl px-3 py-2 space-y-0.5"
           style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
           <p className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: 'var(--color-secondary)' }}>
             <AlertTriangle size={12} />
@@ -468,6 +473,9 @@ export default function Schedule() {
             </p>
           ))}
         </div>
+      )}
+      </div>
+      </div>
       )}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -528,14 +536,11 @@ export default function Schedule() {
             timetable is asked *when*. "Is 6pm free on Wednesday?" needed
             counting down a column and reading times one by one.
 
-            Now the hours run down the side and the days across the top, and a
-            class is a block at its own time, its height proportional to how
-            long it runs. Gaps in the grid are free hours — which is the thing
-            you actually came to see, and the one thing a list can never show.
-
-            The visible range is derived from the classes, not hardcoded to
-            06:00-21:00: a gym that runs a 5am class must see it, and one that
-            closes at 8pm should not scroll past three empty hours.
+            Then an hour grid, which answered "when" but drew a one-hour class
+            as a 30px sliver in a 5am-11pm grid of empty lines — unreadable
+            without hovering. Now: days across, morning / afternoon / evening
+            down, every class a card you can read, and a free cell says Free.
+            See CalendarWeek.
           */
           <CalendarWeek
             templates={visibleTemplates}
@@ -820,18 +825,108 @@ function minutesOfDay(t: string): number {
 }
 
 /**
- * The weekly timetable as a calendar.
+ * The weekly timetable as a board: days across, parts of the day down.
  *
- * Layout is a CSS grid of hour rows and seven day columns; each class is placed
- * with `gridRow` spanning the hours it covers, then offset inside that span by
- * its minutes past the hour. Absolute positioning inside a relative day column
- * would have been simpler and is what breaks the moment the grid re-flows at a
- * different width — the grid keeps the blocks tied to the hours they belong to.
+ * Third shape, and the reasons the first two failed are why this one looks the
+ * way it does. A plain list per day said *what* was on but not *when* things
+ * were free. The hour grid that replaced it answered "when" — and drew a 5am to
+ * 11pm grid in which a one-hour class was a 30px sliver holding 10px text, most
+ * of the screen empty lines, and nothing readable without hovering.
  *
- * Overlaps are laid side by side rather than stacked on top of each other. Two
- * classes at 6pm is exactly the case the clash banner is warning about, and a
- * calendar that hides one of them would be arguing with the warning.
+ * So the week is split into three bands everyone already thinks in — morning,
+ * afternoon, evening — and every class is a card big enough to read at a
+ * glance: its time range, name, coach, level, room and size. "Is Wednesday
+ * evening free?" is one cell, and it says **Free** when it is. Bands get room
+ * in proportion to how busy they are, so a quiet afternoon does not take the
+ * same height as a packed evening, and the board fills the panel it is given.
+ *
+ * Clashes stay loud: an amber card with a "Clash" chip, the same classes the
+ * banner above lists. Retired classes stay visible, dimmed, so restoring one is
+ * a click here rather than a hunt.
  */
+const BANDS = [
+  { id: 'morning',   label: 'Morning',   range: 'before 12 PM', from: 0,       to: 12 * 60 },
+  { id: 'afternoon', label: 'Afternoon', range: '12 – 5 PM',    from: 12 * 60, to: 17 * 60 },
+  { id: 'evening',   label: 'Evening',   range: 'from 5 PM',    from: 17 * 60, to: 24 * 60 + 1 },
+] as const;
+
+/** Minutes since midnight → 'HH:MM', wrapping past midnight. */
+function fromMinutes(total: number): string {
+  const m = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/** '6:00 – 7:00 AM', or '11:30 AM – 12:30 PM' when the half of the day changes. */
+function timeRange(start: string, minutes: number): string {
+  const a = clock(start);
+  const b = clock(fromMinutes(minutesOfDay(start) + minutes));
+  return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
+}
+
+function ClassCard({ t, clashing, trainer, onEdit, onRetire }: {
+  t: ClassTemplateRow;
+  clashing: boolean;
+  trainer: string;
+  onEdit: () => void;
+  onRetire: () => void;
+}) {
+  const accent = !t.active ? 'var(--color-border)' : clashing ? 'var(--color-secondary)' : 'var(--color-primary)';
+  const chip = 'text-[9px] font-semibold px-1.5 rounded leading-4';
+  // One muted line rather than a row of chips: chips wrapped to two rows on a
+  // 200px column and made every card twice the height it needed to be, so the
+  // evening band fell off the bottom of the board.
+  const meta = [
+    t.level !== 'all_levels' ? t.level[0].toUpperCase() + t.level.slice(1) : null,
+    `${t.duration_minutes} min`,
+    `${t.capacity} spots`,
+    t.location,
+  ].filter(Boolean).join(' · ');
+  return (
+    // A div, not a <button>: a button centres its content, and this card is
+    // left-aligned text with a button of its own inside it.
+    <div role="button" tabIndex={0} onClick={onEdit}
+      onKeyDown={(e) => { if (e.key === 'Enter') onEdit(); }}
+      data-tip={`Edit ${t.name} — ${trainer} · ${meta}`}
+      className="rounded-lg px-2 py-1.5 cursor-pointer transition-colors"
+      style={{
+        background: !t.active ? 'var(--color-surface-high)'
+          : clashing ? 'var(--color-secondary-light)' : 'var(--color-primary-light)',
+        borderLeft: `3px solid ${accent}`,
+        opacity: t.active ? 1 : 0.6,
+      }}>
+      <div className="flex items-start justify-between gap-1">
+        {/* The flags ride on the time line, which never truncates — on the
+            name line a long class name would push them out of sight. */}
+        <p className="text-[11px] font-bold tabular-nums leading-tight flex items-center gap-1.5 flex-wrap"
+          style={{ color: clashing ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
+          {timeRange(t.start_time, t.duration_minutes)}
+          {clashing && (
+            <span className={chip} style={{ background: 'var(--color-secondary)', color: '#000' }}>Clash</span>
+          )}
+          {!t.active && (
+            <span className={chip} style={{ background: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>Retired</span>
+          )}
+        </p>
+        {/* Always visible: hover-only actions have to be discovered first. */}
+        <button onClick={(e) => { e.stopPropagation(); onRetire(); }}
+          data-tip={t.active ? 'Retire this class' : 'Put this class back on the timetable'}
+          aria-label={t.active ? `Retire ${t.name}` : `Restore ${t.name}`}
+          className="w-5 h-5 -mt-0.5 -mr-0.5 rounded flex items-center justify-center flex-shrink-0"
+          style={{ color: 'var(--color-text-muted)' }}>
+          {t.active ? <Trash2 size={11} /> : <RotateCcw size={11} />}
+        </button>
+      </div>
+      <p className="text-[12px] font-semibold text-white leading-snug truncate">{t.name}</p>
+      {/* Coach and length only; level, size and room are in the hover tip and
+          one click away in the editor. Three lines keep a busy band's cards
+          short enough for all three bands to fit on a laptop screen. */}
+      <p className="text-[10px] truncate leading-snug" style={{ color: 'var(--color-text-secondary)' }}>
+        {trainer}<span style={{ color: 'var(--color-text-muted)' }}> · {t.duration_minutes} min</span>
+      </p>
+    </div>
+  );
+}
+
 function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
   templates: ClassTemplateRow[];
   flagged: Set<string>;
@@ -839,181 +934,85 @@ function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
   onEdit: (t: ClassTemplateRow) => void;
   onRetire: (t: ClassTemplateRow) => void;
 }) {
-  // The hours worth drawing, from the classes themselves. One hour of padding
-  // either side so a 6am class is not flush against the top border.
-  const starts = templates.map((t) => minutesOfDay(t.start_time));
-  const ends = templates.map((t) => minutesOfDay(t.start_time) + t.duration_minutes);
-  const firstHour = starts.length > 0 ? Math.max(0, Math.floor(Math.min(...starts) / 60) - 1) : 6;
-  const lastHour = ends.length > 0 ? Math.min(24, Math.ceil(Math.max(...ends) / 60) + 1) : 21;
-  const hours = Array.from({ length: Math.max(1, lastHour - firstHour) }, (_, i) => firstHour + i);
-  /**
-   * Pixels per hour, scaled so a whole gym day fits on one screen.
-   *
-   * A fixed 52px was fine for a six-hour span and became a 780px scroll for a
-   * gym that runs a 6am class and a 6pm one — with eight dead hours in the
-   * middle that you had to scroll *through* to see the evening. Dividing a
-   * budget by the span keeps both ends visible.
-   *
-   * Clamped at both ends for different reasons: below ~30px a 45-minute block
-   * cannot hold its own start time, and above ~54px a short day turns into
-   * acres of empty grid.
-   */
-  const ROW = Math.max(30, Math.min(54, Math.round(520 / Math.max(1, hours.length))));
+  // Read once, in an initialiser: a clock read during render is impure, and a
+  // tab left open past midnight is fixed by the next visit, not by a timer.
+  const [today] = useState(() => new Date().getDay());
 
-  /**
-   * Classes that share a column and a time, so they can sit side by side.
-   * Returns, per class, how many lanes its day needs and which lane it is in.
-   */
-  const lanes = new Map<string, { lane: number; of: number }>();
-  for (let dow = 0; dow < 7; dow++) {
-    const day = templates
-      .filter((t) => t.day_of_week === dow)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time));
-    // Greedy: put each class in the first lane whose last class has finished.
-    const laneEnds: number[] = [];
-    const placed: { id: string; lane: number }[] = [];
-    for (const t of day) {
-      const from = minutesOfDay(t.start_time);
-      const to = from + t.duration_minutes;
-      let lane = laneEnds.findIndex((endAt) => endAt <= from);
-      if (lane === -1) { lane = laneEnds.length; laneEnds.push(to); }
-      else laneEnds[lane] = to;
-      placed.push({ id: t.id, lane });
-    }
-    for (const pl of placed) lanes.set(pl.id, { lane: pl.lane, of: Math.max(1, laneEnds.length) });
-  }
+  const cell = (dow: number, band: (typeof BANDS)[number]) => templates
+    .filter((t) => {
+      const m = minutesOfDay(t.start_time);
+      return t.day_of_week === dow && m >= band.from && m < band.to;
+    })
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+  // Each band's share of the height follows its busiest day, so a band with
+  // four classes stacked on a Monday gets the room they need. Never below 0.6,
+  // so a free band still reads as a row and not a crease.
+  const weights = BANDS.map((b) => Math.max(0.6, ...DAY_NAMES.map((_, dow) => cell(dow, b).length)));
 
   return (
     <Section title="Class timetable" icon={CalendarDays}
-      hint="hours down the side, days across — gaps are free time">
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-dark-border">
-        <div className="min-w-[720px]">
-          {/* Day headings, aligned to the columns below by sharing the same
-              template — a separate flex row would drift out of alignment the
-              moment a scrollbar appeared. */}
-          <div className="grid gap-1 mb-1"
-            style={{ gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))' }}>
-            <div />
-            {DAY_NAMES.map((day, dow) => {
-              const n = templates.filter((t) => t.day_of_week === dow).length;
-              return (
-                <div key={day} className="text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wide"
-                    style={{ color: n > 0 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
-                    {day.slice(0, 3)}
-                  </p>
-                  <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
-                    {n === 0 ? 'free' : `${n} class${n === 1 ? '' : 'es'}`}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid gap-1"
-            style={{
-              gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))',
-              gridTemplateRows: `repeat(${hours.length}, ${ROW}px)`,
-            }}>
-            {/* Hour labels and the empty cells behind everything. */}
-            {hours.map((h, i) => (
-              <div key={`h${h}`} className="text-[10px] tabular-nums text-right pr-1 -mt-1.5"
-                style={{ gridColumn: '1 / 2', gridRow: `${i + 1} / ${i + 2}`, color: 'var(--color-text-muted)' }}>
-                {clock(`${String(h).padStart(2, '0')}:00`).replace(':00', '')}
+      hint="click a class to edit it · empty cells are free time"
+      className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-dark-border">
+        <div className="grid gap-1.5 min-w-[1000px] min-h-full"
+          style={{
+            gridTemplateColumns: '92px repeat(7, minmax(0, 1fr))',
+            gridTemplateRows: `auto ${weights.map((w) => `minmax(max-content, ${w}fr)`).join(' ')}`,
+          }}>
+          {/* Day headings share the grid's own columns, so they cannot drift
+              out of line with the cells below when a scrollbar appears. */}
+          <div />
+          {DAY_NAMES.map((day, dow) => {
+            const n = templates.filter((t) => t.day_of_week === dow).length;
+            const isToday = dow === today;
+            return (
+              <div key={day} className="text-center rounded-lg py-1.5"
+                style={{
+                  background: isToday ? 'var(--color-primary-light)' : 'transparent',
+                  border: `1px solid ${isToday ? 'var(--color-primary)' : 'transparent'}`,
+                }}>
+                <p className="text-[11px] font-bold uppercase tracking-wide"
+                  style={{ color: isToday ? 'var(--color-primary)' : n > 0 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
+                  {day.slice(0, 3)}{isToday && ' · today'}
+                </p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {n === 0 ? 'no classes' : `${n} class${n === 1 ? '' : 'es'}`}
+                </p>
               </div>
-            ))}
-            {hours.map((h, i) =>
-              DAY_NAMES.map((_, dow) => (
-                <div key={`c${h}-${dow}`}
-                  style={{
-                    gridColumn: `${dow + 2} / ${dow + 3}`,
-                    gridRow: `${i + 1} / ${i + 2}`,
-                    borderTop: '1px solid var(--color-border)',
-                    background: 'var(--color-surface)',
-                    borderRadius: 4,
-                  }} />
-              ))
-            )}
+            );
+          })}
 
-            {/* The classes themselves, on top of the empty grid. */}
-            {templates.map((t) => {
-              const from = minutesOfDay(t.start_time);
-              const to = from + t.duration_minutes;
-              const rowStart = Math.floor(from / 60) - firstHour;
-              const rowEnd = Math.max(rowStart + 1, Math.ceil(to / 60) - firstHour);
-              // Offset within the spanned rows, in px, so a 06:30 start sits
-              // half a row down rather than snapping to 6am.
-              const topPad = ((from % 60) / 60) * ROW;
-              const height = ((to - from) / 60) * ROW;
-              const { lane, of } = lanes.get(t.id) ?? { lane: 0, of: 1 };
-              const clashing = flagged.has(t.id);
-              // Room for a second line? Derived from ROW, not a constant tuned
-              // for one row height — at 30px per hour a 45-minute block is 22px
-              // and can only carry its time.
-              const roomy = height >= ROW * 0.62;
-
-              return (
-                <div key={t.id}
-                  style={{
-                    gridColumn: `${t.day_of_week + 2} / ${t.day_of_week + 3}`,
-                    gridRow: `${rowStart + 1} / ${rowEnd + 1}`,
-                    paddingTop: topPad,
-                    // Lanes share the column; 2px of gap keeps two blocks from
-                    // reading as one.
-                    marginLeft: `${(lane / of) * 100}%`,
-                    width: `calc(${100 / of}% - 2px)`,
-                    position: 'relative',
-                    zIndex: 1,
-                  }}>
-                  <div
-                    className="rounded-lg px-1.5 py-1 overflow-hidden group h-full"
-                    data-tip={`${t.name} · ${clock(t.start_time)} · ${t.duration_minutes}m · ${trainerName(t.trainer_id)}${clashing ? ' · clashes with another class' : ''}`}
+          {BANDS.map((band) => (
+            <Fragment key={band.id}>
+              <div className="rounded-lg px-2 py-2 flex flex-col justify-center"
+                style={{ background: 'var(--color-surface-high)' }}>
+                <p className="text-[11px] font-bold text-white">{band.label}</p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{band.range}</p>
+              </div>
+              {DAY_NAMES.map((day, dow) => {
+                const items = cell(dow, band);
+                return (
+                  <div key={`${band.id}-${day}`} className="rounded-lg p-1.5 space-y-1.5"
                     style={{
-                      height,
-                      background: t.active
-                        ? (clashing ? 'var(--color-secondary-light)' : 'var(--color-primary-light)')
-                        : 'var(--color-surface-high)',
-                      borderLeft: `3px solid ${
-                        !t.active ? 'var(--color-border)'
-                          : clashing ? 'var(--color-secondary)' : 'var(--color-primary)'
-                      }`,
-                      opacity: t.active ? 1 : 0.6,
+                      background: dow === today ? 'rgba(124,58,237,0.06)' : 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
                     }}>
-                    <p className="text-[10px] font-bold tabular-nums leading-tight truncate"
-                      style={{ color: clashing ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
-                      {clock(t.start_time)}
-                    </p>
-                    {roomy && (
-                      <>
-                        <p className="text-[10px] font-semibold text-white truncate leading-tight">
-                          {t.name}
-                        </p>
-                        <p className="text-[9px] truncate leading-tight" style={{ color: 'var(--color-text-muted)' }}>
-                          {trainerName(t.trainer_id)}
-                        </p>
-                      </>
-                    )}
-
-                    {/* Hover actions, over the block. A permanent pair of
-                        buttons on every block would be more furniture than
-                        timetable. */}
-                    <div className="absolute inset-x-1 bottom-1 hidden group-hover:flex gap-1">
-                      <button onClick={() => onEdit(t)} data-tip="Edit class"
-                        className="flex-1 h-5 rounded text-[9px] font-bold"
-                        style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                        Edit
-                      </button>
-                      <button onClick={() => onRetire(t)} data-tip={t.active ? 'Retire' : 'Reactivate'}
-                        className="flex-1 h-5 rounded text-[9px] font-bold"
-                        style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                        {t.active ? 'Retire' : 'Restore'}
-                      </button>
-                    </div>
+                    {items.length === 0 ? (
+                      <div className="h-full min-h-[40px] flex items-center justify-center text-[10px]"
+                        style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>
+                        Free
+                      </div>
+                    ) : items.map((t) => (
+                      <ClassCard key={t.id} t={t} clashing={flagged.has(t.id)}
+                        trainer={trainerName(t.trainer_id)}
+                        onEdit={() => onEdit(t)} onRetire={() => onRetire(t)} />
+                    ))}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </Fragment>
+          ))}
         </div>
       </div>
     </Section>
