@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Volume2, Clock, UserCog, Lock, Mail, Shield, FileText, Info,
-  Bot, ChevronRight, X, LogOut, type LucideIcon,
+  ChevronRight, X, LogOut, type LucideIcon,
 } from 'lucide-react';
 import { panelStyle } from '../../components/ui/Card';
 import { toast } from '../../components/ui/Toast';
@@ -113,12 +113,6 @@ export default function TrainerSettings() {
           label: 'Bookable hours',
           description: 'When members can book you 1-on-1',
           action: () => navigate('/trainer/availability'),
-        },
-        {
-          icon: Bot,
-          label: 'Training assistant',
-          description: 'Programming and coaching questions',
-          action: () => navigate('/trainer/chatbot'),
         },
       ],
     },

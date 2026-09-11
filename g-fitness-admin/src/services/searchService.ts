@@ -6,8 +6,7 @@ import type { ProfileRow } from '../types/db';
  *
  * Runs one small query per entity **in parallel**, each independently allowed to
  * fail: a missing table (a migration not yet run) or a policy that says no must
- * degrade that one section to empty, never blank the whole palette. Same shape
- * as `chatbotService.loadChatbotContext`.
+ * degrade that one section to empty, never blank the whole palette.
  *
  * Everything is matched server-side with `ilike`. Doing it client-side would
  * mean shipping the entire roster to the browser to filter it, which gets slower

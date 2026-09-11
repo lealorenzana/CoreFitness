@@ -330,7 +330,7 @@ export default function Settings() {
   const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex gap-0 overflow-hidden rounded-xl" style={{ border: '1px solid var(--color-border)' }}>
+    <div className="h-[calc(100vh-7rem)] flex gap-0 overflow-hidden rounded-xl" style={{ border: '1px solid var(--color-border)' }}>
       {/* Sidebar */}
       <div className="w-52 flex-shrink-0 flex flex-col py-5 px-3 overflow-y-auto"
         style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>

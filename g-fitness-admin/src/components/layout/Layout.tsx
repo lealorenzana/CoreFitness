@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar, { useSidebarCollapsed } from './Sidebar';
 import Header from './Header';
-import FloatingChatbot from '../ui/FloatingChatbot';
 import TooltipLayer from '../ui/TooltipLayer';
 
 export default function Layout() {
@@ -51,7 +50,6 @@ export default function Layout() {
           </AnimatePresence>
         </main>
       </div>
-      <FloatingChatbot />
       {/* One listener for every `data-tip` in the app. Mounted here so it
           covers the sidebar and header too, not just the routed page. */}
       <TooltipLayer />

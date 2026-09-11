@@ -38,7 +38,6 @@ import TrainerSettings from './pages/trainer/TrainerSettings';
 import TrainerBookings from './pages/trainer/TrainerBookings';
 import TrainerProfile from './pages/trainer/TrainerProfile';
 import TrainerEditProfile from './pages/trainer/TrainerEditProfile';
-import TrainerChatbot from './pages/trainer/TrainerChatbot';
 import Achievements from './pages/Achievements';
 import NotificationsAll from './pages/NotificationsAll';
 import GymPlan from './pages/GymPlan';
@@ -170,7 +169,6 @@ function App() {
               a destination you switch to. */}
           <Route path="availability" element={<TrainerAvailability />} />
           <Route path="bookings" element={<TrainerBookings />} />
-          <Route path="chatbot" element={<TrainerChatbot />} />
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />
           <Route path="settings" element={<TrainerSettings />} />

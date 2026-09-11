@@ -210,22 +210,36 @@ async (page) => {
   await page.setViewportSize({ width: 1918, height: 909 });
   const out = {};
 
-  // ── Members: the card must end where its rows and pager end ──────────────
-  await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(3500);
-  out.members = await page.evaluate(() => {
+  // ── Members: the rows must reach the pager, at any window height ─────────
+  // The gap that matters is between the LAST ROW and the pager: under one row
+  // means the page is full. The card's own bottom must sit near the window's.
+  const measureMembers = () => page.evaluate(() => {
     const table = document.querySelector('table');
     const card = table && table.closest('.rounded-xl');
     if (!card) return { error: 'no table card found' };
-    const rows = card.querySelectorAll('tbody tr').length;
-    const pager = card.lastElementChild;
-    const c = card.getBoundingClientRect(), p = pager.getBoundingClientRect();
-    return { rows, cardHeight: Math.round(c.height), viewport: window.innerHeight,
-             emptyBelowPager: Math.round(c.bottom - p.bottom),
-             cardBottom: Math.round(c.bottom),
-             flex: getComputedStyle(card).flex };
+    const rows = [...card.querySelectorAll('tbody tr')];
+    const pager = card.lastElementChild.getBoundingClientRect();
+    const last = rows[rows.length - 1].getBoundingClientRect();
+    const hs = rows.map((r) => r.getBoundingClientRect().height).sort((a, b) => a - b);
+    const rowH = hs[Math.floor(hs.length / 2)];
+    const scroller = table.parentElement;
+    const main = document.querySelector('main');
+    return { rows: rows.length, medianRow: Math.round(rowH),
+             gapLastRowToPager: Math.round(pager.top - last.bottom),
+             fillsPage: pager.top - last.bottom < rowH,
+             tableScrolls: scroller.scrollHeight > scroller.clientHeight + 1,
+             mainOverflowPx: main.scrollHeight - main.clientHeight,
+             cardBottomFromWindowBottom: Math.round(window.innerHeight - card.getBoundingClientRect().bottom) };
   });
+  await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(3500);
+  out.members = {};
+  out.members[909] = await measureMembers();
   await page.screenshot({ path: 'shots/22-members-card-fits.png' });
+  await page.setViewportSize({ width: 1918, height: 720 });
+  await page.waitForTimeout(800);
+  out.members[720] = await measureMembers();
+  await page.setViewportSize({ width: 1918, height: 909 });
 
   // ── Payments: whole rows at every width, not just one ────────────────────
   // Checked at four widths, resizing the SAME page so the ResizeObserver path

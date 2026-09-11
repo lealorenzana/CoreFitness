@@ -88,14 +88,6 @@ export interface ChatMessage {
   language: 'en' | 'fil';
 }
 
-export interface ChatbotResponse {
-  pattern: RegExp;
-  responses: {
-    en: string;
-    fil: string;
-  };
-}
-
 export interface Notification {
   id: string;
   type: 'expiry' | 'class' | 'achievement' | 'promotion';

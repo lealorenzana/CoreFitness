@@ -127,7 +127,7 @@ INSERT policy, and a table the admin edits for the *rules* — `achievement_unlo
 withheld below three ratings, the admin's is not**), `invoice_counters`, `plan_features`, `point_ledger`, `membership_events`. **A plan change must precede
 `recordPayment`**, and **`npm run check:achievements` must stay green**. **Members choose what trainers see** (0032): `trainer_may_see()` gates measurements, goals,
 workout logs/sets and `workout_plans` in RLS, not the UI — audit it by resolving each function to its **last** definition (0039 missed this; 0048 fixed it). **The "AI"
-features are deterministic and rule-based, not model calls** — keep that honest in the UI; `planBuilder.ts` returns **data, never prose** and `planRender.ts` words it. No
+features are deterministic and rule-based, not model calls** and **member-only** (admin and trainer lost theirs 2026-09-11) — keep that honest in the UI; `planBuilder.ts` returns **data, never prose** and `planRender.ts` words it. No
 calorie or macro targets; a stated injury yields a **referral, never a changed exercise**. **Test regexes by running them** — all four shipped broken (`\bplan\b` never
 matched "plans").
 
@@ -168,7 +168,7 @@ The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-
 Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of them — the
 objective is being amended**, not the account of the system; replacement text is in that file.
 Outstanding:
-- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); **members do see the coaches (no open hours) and past events**; one paste removes both — **dashboard figures include it until removed**.
+- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); **members do see the coaches (no open hours) and past events**; part 2 goes in as `part2/` one file at a time; one paste removes both — **dashboard figures include it until removed**.
 - **Staff approving registrations** needs an Edge Function (RLS won't let `staff` set
   `profiles.status`). **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
@@ -192,7 +192,7 @@ claiming anything is verified. The three that decide *how* you verify:
 - **The whole test matrix now runs with no password.** `scripts/plan-gates.js` and
   `scripts/trainer-scenarios.js` go into the Playwright runner's `filename` argument and drive the
   real app over a routed network (38 checks) — they prove the **app** agrees with the rules and
-  reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (64 checks): they apply a
+  reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (66 checks; `replay-migrations.mjs` first replays all 74 migrations — the only faithful schema, and what cleared part 2): they apply a
   migration verbatim onto a minimal fixture in `@electric-sql/pglite` — real Postgres in Node,
   because **Docker has never started here** — and act as a real `authenticated` role, because **a
   table owner bypasses RLS** and would pass every assertion regardless. **RLS filters rows and does

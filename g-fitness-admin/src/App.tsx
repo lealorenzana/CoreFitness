@@ -14,7 +14,6 @@ import Payments from './pages/Payments';
 import MembershipPlans from './pages/MembershipPlans';
 import Resources from './pages/Resources';
 import Trainers from './pages/Trainers';
-import Chatbot from './pages/Chatbot';
 import Settings from './pages/Settings';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
@@ -89,7 +88,6 @@ function App() {
             {/* Not staff: RLS refuses them these rows outright, and the route
                 matches so the two cannot disagree. */}
             <Route path="credentials" element={<ProtectedRoute adminOnly><Credentials /></ProtectedRoute>} />
-            <Route path="chatbot" element={<Chatbot />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>
 

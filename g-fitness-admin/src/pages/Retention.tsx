@@ -90,7 +90,7 @@ export default function Retention() {
     level === 'high' ? 'Suspended' : level === 'medium' ? 'Pending' : 'Active';
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col gap-3 overflow-hidden">
+    <div className="h-[calc(100vh-7rem)] flex flex-col gap-3 overflow-hidden">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between flex-shrink-0">

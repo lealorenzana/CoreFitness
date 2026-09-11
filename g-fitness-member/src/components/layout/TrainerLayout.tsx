@@ -1,7 +1,6 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot } from 'lucide-react';
 import TrainerBottomNav from './TrainerBottomNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
 import { Toaster } from '../ui/Toast';
@@ -23,18 +22,13 @@ import { useScrollMemory } from '../../hooks/useScrollMemory';
  * It now delegates to PhoneChassis like every other shell — same dvh sizing,
  * same safe-area insets, one set of portal roots.
  *
- * The assistant used to be `<FloatingChatbot />` — a violet bubble parked over
- * the bottom-right of every screen. Two things were wrong with it. It sat on
- * top of the content on the longest lists in the app, which on Schedule meant
- * it covered a class row. And it was the *member* assistant: it answers on gym
- * pricing, QR check-in and "go to Book a Class", none of which a trainer can
- * do. The trainer's own assistant already existed at /trainer/chatbot and had
- * no way in. It is now a header button beside the bell, where a trainer looks
- * for tools and where it covers nothing.
+ * **There is no assistant on the trainer side** (removed 2026-09-11, at the
+ * gym's request). The assistant is a member feature — gated by the member's
+ * plan (`ai_model`, 0049) — and lives only in the member shell. The header
+ * keeps the bell.
  */
 export default function TrainerLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
 
   // See Layout.tsx — the same scroll reset lived here, with the same effect on
@@ -48,23 +42,6 @@ export default function TrainerLayout() {
       {/* The bell used to be absolutely positioned over the page, which put it
           on top of whatever each screen rendered in its top-right corner. */}
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
-        <button
-          onClick={() => navigate('/trainer/chatbot')}
-          aria-label="Open the training assistant"
-          aria-current={location.pathname === '/trainer/chatbot' ? 'page' : undefined}
-          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"
-          style={{
-            background:
-              location.pathname === '/trainer/chatbot'
-                ? 'var(--color-primary)'
-                : 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color:
-              location.pathname === '/trainer/chatbot' ? '#fff' : 'var(--color-text-secondary)',
-          }}
-        >
-          <Bot size={18} />
-        </button>
         <Notifications />
       </div>
 

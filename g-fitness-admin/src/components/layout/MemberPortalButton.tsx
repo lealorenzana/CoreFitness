@@ -8,7 +8,7 @@ function getMemberAppUrl(): string {
   return `${protocol}//${hostname}:5173/`;
 }
 
-/** Quick link to the member app — bottom-left so it doesn't collide with the chatbot. */
+/** Quick link to the member app, bottom-left. */
 export default function MemberPortalButton() {
   const surfaceRaised = 'var(--color-surface-raised)';
   const border = 'var(--color-border)';

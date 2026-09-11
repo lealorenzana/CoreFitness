@@ -74,7 +74,8 @@ const GENDERS = [
   { value: 'female', label: 'Female' },
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
-const ITEMS_PER_PAGE = 10;
+/** Fewest rows a page shows, even on a very short window. */
+const MIN_ROWS_PER_PAGE = 5;
 
 /**
  * All five membership statuses, mapped onto the design system's three tones.
@@ -140,6 +141,43 @@ export default function Members() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  /**
+   * The page holds as many whole rows as the screen has room for.
+   *
+   * Ten, fixed, left a screen-height of nothing under the table on a desktop
+   * and overflowed a laptop. So: the height of the scroll area below its
+   * header row, divided by a row's height. Both are read off the real layout
+   * by one ResizeObserver, in a callback rather than an effect, so nothing sets
+   * state during a render. It watches the table body as well as the scroll
+   * area, so it re-measures when the rows change and not only on a resize.
+   *
+   * The **median** row, not the first. A suspended member's row carries a badge
+   * and stands about ten pixels taller; dividing by it — it sorted first — left
+   * a gap of nearly a row on every screen.
+   */
+  const [bodyHeight, setBodyHeight] = useState(0);
+  const [rowHeight, setRowHeight] = useState(49);
+  const measureBody = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const measure = () => {
+      const head = el.querySelector('thead');
+      const h = el.clientHeight - (head ? head.getBoundingClientRect().height : 0);
+      setBodyHeight((prev) => (Math.abs(prev - h) < 1 ? prev : h));
+      const heights = [...el.querySelectorAll('tr[data-member-row]')]
+        .map((r) => r.getBoundingClientRect().height)
+        .filter((x) => x > 0)
+        .sort((a, b) => a - b);
+      if (heights.length) {
+        const median = heights[Math.floor(heights.length / 2)];
+        setRowHeight((prev) => (Math.abs(prev - median) < 0.5 ? prev : median));
+      }
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    const body = el.querySelector('tbody');
+    if (body) observer.observe(body);
+    return () => observer.disconnect();
+  }, []);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [filters, setFilters] = useState({
     accountStatus: 'all' as 'all' | ProfileStatus,
@@ -263,10 +301,13 @@ export default function Members() {
     }
   });
 
-  const paginated = sorted.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const perPage = bodyHeight > 0
+    ? Math.max(MIN_ROWS_PER_PAGE, Math.floor(bodyHeight / rowHeight))
+    : 10;
+  // Clamped here, not corrected in an effect: a taller window means fewer
+  // pages, and the one that was open may no longer exist.
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(sorted.length / perPage)));
+  const paginated = sorted.slice((page - 1) * perPage, page * perPage);
 
   const toggleSort = (key: SortKey) => {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
@@ -412,7 +453,7 @@ export default function Members() {
   };
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col gap-3 overflow-hidden">
+    <div className="h-[calc(100vh-7rem)] flex flex-col gap-3 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
@@ -532,14 +573,14 @@ export default function Members() {
         </div>
       </div>
 
-      {/* Table. `flex-initial`, not `flex-1`: the card is as tall as its rows
-          and stops there. `flex-1` stretched it to the bottom of the viewport
-          whatever it held, so ten rows sat above a screen-height of empty card.
-          It still cannot grow past the viewport — `min-h-0` on both levels lets
-          the rows scroll inside it on a short screen. */}
-      <div className="flex-initial min-h-0 rounded-xl overflow-hidden flex flex-col"
+      {/* Table. The card fills the rest of the screen and the page size is
+          worked out from that space (see `measureBody`), so the rows reach the
+          pager instead of stopping at ten above an empty screen. `min-h-0` on
+          both levels keeps a stray extra row scrolling inside the card rather
+          than pushing the pager off the bottom. */}
+      <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
         style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-        <div className="min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+        <div ref={measureBody} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
           <table className="w-full table-fixed">
             <thead className="sticky top-0 z-10" style={{ background: 'var(--color-surface)' }}>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -586,7 +627,8 @@ export default function Members() {
                 const lapsingSoon =
                   m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
                 return (
-                <tr key={m.id} className="transition-colors group cursor-pointer" style={{ borderBottom: '1px solid var(--color-border)' }}
+                <tr key={m.id} data-member-row
+                  className="transition-colors group cursor-pointer" style={{ borderBottom: '1px solid var(--color-border)' }}
                   onClick={() => setViewingId(m.id)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
@@ -734,7 +776,7 @@ export default function Members() {
           </table>
         </div>
         <div className="flex-shrink-0 px-3 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <Pagination currentPage={currentPage} totalItems={filtered.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
+          <Pagination currentPage={page} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setCurrentPage} />
         </div>
       </div>
 

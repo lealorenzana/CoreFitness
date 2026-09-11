@@ -1,7 +1,12 @@
 -- Demo data, part 2 — the rest of the sidebar. Run AFTER seed-demo-data.sql.
 --
--- Paste into the Supabase SQL Editor and run. Four blocks, each atomic, each
--- re-runnable. Remove everything, both parts, with remove-demo-data.sql.
+-- **To run it, paste the four files in part2/ one at a time, in order 1 → 4.**
+-- Handed over whole, it did not land on the live project, and whether it failed
+-- in the editor or was never run is not known. The editor has broken on long
+-- pastes before, and a batch that fails anywhere rolls every block back. The
+-- part2/ files are generated from this one, verbatim.
+-- Each block is atomic and re-runnable. Remove everything, both parts, with
+-- remove-demo-data.sql.
 --
 -- ## Every section skips itself if its page already has data
 --
