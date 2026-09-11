@@ -532,10 +532,14 @@ export default function Members() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
+      {/* Table. `flex-initial`, not `flex-1`: the card is as tall as its rows
+          and stops there. `flex-1` stretched it to the bottom of the viewport
+          whatever it held, so ten rows sat above a screen-height of empty card.
+          It still cannot grow past the viewport — `min-h-0` on both levels lets
+          the rows scroll inside it on a short screen. */}
+      <div className="flex-initial min-h-0 rounded-xl overflow-hidden flex flex-col"
         style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+        <div className="min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
           <table className="w-full table-fixed">
             <thead className="sticky top-0 z-10" style={{ background: 'var(--color-surface)' }}>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>

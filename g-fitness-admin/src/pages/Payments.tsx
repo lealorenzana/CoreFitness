@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
 import Avatar from '../components/ui/Avatar';
 import Pagination from '../components/ui/Pagination';
@@ -44,7 +44,17 @@ interface MemberGroup {
   lastPayment: string;
 }
 
-const ITEMS_PER_PAGE = 8;
+/**
+ * Two full rows of tiles per page, however many fit across.
+ *
+ * The records are tiles in an auto-fill grid (`CardGrid`, 280px minimum), so
+ * the column count follows the window: six on one desktop, five on another,
+ * more with the sidebar collapsed. A fixed page size is ragged at most of
+ * them — eight left a row of two under a row of six, and twelve left two
+ * under two rows of five. So the page is sized from the columns the browser
+ * actually laid out.
+ */
+const ROWS_PER_PAGE = 2;
 
 export default function Payments() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
@@ -53,6 +63,25 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  /** Columns the tile grid actually has, read off the browser's own layout. */
+  const [columns, setColumns] = useState(6);
+  /**
+   * A ref callback, not an effect: it runs when the grid mounts, and React 19
+   * calls the returned cleanup when it unmounts. The observer's first report
+   * arrives on its own, so nothing sets state synchronously during a render or
+   * an effect.
+   */
+  const measureGrid = useCallback((wrap: HTMLDivElement | null) => {
+    if (!wrap) return;
+    const observer = new ResizeObserver(() => {
+      const grid = wrap.firstElementChild;
+      if (!grid) return;
+      const n = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+      if (n > 0) setColumns((c) => (c === n ? c : n));
+    });
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, []);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   // memberId -> the member's current plan, for the Record Payment form
@@ -145,7 +174,11 @@ export default function Payments() {
     }, {})
   );
 
-  const paginatedGroups = memberGroups.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const perPage = columns * ROWS_PER_PAGE;
+  // Clamped here rather than corrected in an effect: widening the window can
+  // shrink the page count under whatever page is open.
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(memberGroups.length / perPage)));
+  const paginatedGroups = memberGroups.slice((page - 1) * perPage, page * perPage);
 
   useEffect(() => { setCurrentPage(1); }, [filterStatus]);
 
@@ -309,6 +342,7 @@ export default function Payments() {
           />
         ) : (
           <>
+            <div ref={measureGrid}>
             <CardGrid min={280}>
               {paginatedGroups.map((group) => {
                 const owing = group.payments.filter((p) => p.status === 'pending').length;
@@ -342,11 +376,12 @@ export default function Payments() {
                 );
               })}
             </CardGrid>
+            </div>
             <div className="flex items-center justify-between mt-3">
-              <PageSummary page={currentPage} perPage={ITEMS_PER_PAGE}
+              <PageSummary page={page} perPage={perPage}
                 total={memberGroups.length} noun="members" />
-              <Pagination currentPage={currentPage} totalItems={memberGroups.length}
-                itemsPerPage={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
+              <Pagination currentPage={page} totalItems={memberGroups.length}
+                itemsPerPage={perPage} onPageChange={setCurrentPage} />
             </div>
           </>
         )}

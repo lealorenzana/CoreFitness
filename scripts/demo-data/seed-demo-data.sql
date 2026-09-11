@@ -19,8 +19,9 @@
 --
 -- Anything a **real member** would see in the phone app:
 --
---   * trainers   — `public_trainers` has no status filter, so a dummy coach
---                  would appear in every member's trainer list, bookable
+--   * trainers   — left to seed-demo-data-2.sql, which adds them with no
+--                  bookable hours (`public_trainers` shows every active
+--                  trainer to members, so an active one is listed)
 --   * events     — the member app lists past events as well as future ones
 --   * future classes — members are offered every future class
 --   * PT sessions, announcements, rewards — the same reason
