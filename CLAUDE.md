@@ -172,7 +172,7 @@ Outstanding:
   `profiles.status`). **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
   `promote`; **a push does not deploy**, and env vars must exist in Vercel *before* deploying
-  because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md)). **The APK never needs rebuilding
+  because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md); check with `scripts/verify-deploy.py`). **The APK never needs rebuilding
   for a code change**; admin serves `dist/`, so **admin changes need `npm run build`**.
 
 ### Verifying work

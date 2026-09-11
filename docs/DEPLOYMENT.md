@@ -63,6 +63,11 @@ Only the **publishable** key is ever deployed — verified absent from the bundl
   entirely and check the asset: the new `index-<hash>.js` returns `application/javascript`, while
   the retired one returns **200 `text/html`** — the catch-all serving `index.html` for a file that
   no longer exists. Content-type, never status.
+  **A random path is not a guaranteed MISS either** (2026-09-11): checked through `/verify-<n>`
+  moments after promotion, the canonical URL still returned the old entry bundle; a minute later
+  it returned the new one. So check the new deployment **by its own URL** first — that bypasses
+  the alias entirely — and treat a stale canonical result inside the first minute as the cache,
+  not the deploy. Compare the entry hash against the preview you verified.
 - **`sb_secret_` always appears in the member bundle, and is never a key.** It is supabase-js's own
   classifier, `e.startsWith('sb_publishable_') || e.startsWith('sb_secret_')`. Grep for the prefix
   *followed by characters*, for `service_role`, and for JWTs whose decoded payload contains
@@ -171,18 +176,39 @@ this repo. Budget for it being a manual step, and check first whether it is need
 name, icon, package ID, `start_url` and `scope` are unchanged, a Vercel deploy already updated
 every installed phone.
 
-## Deploy state, last verified 2026-08-17
+## Deploy state, last verified 2026-09-11
+
+**Live build: entry `index-BoWZpC4n.js`**, production deployment
+`core-fitness-nomuvw2v9`, promoted from preview `core-fitness-gc9sezhie`.
+
+**Production had been four days behind GitHub.** The 7 September member-app work — the clash
+warning in the picker, the paid/in-plan chip, the trainer accept/decline queue, ratings and
+credentials — was pushed on the 7th and never deployed, because **a push does not deploy**. The
+live bundle still carried the 5 September entry `index-TQtMf8fZ.js`. It was found by grepping the
+served JavaScript for strings that exist only in the new code, not by comparing dates.
 
 Deployed by promoting a verified preview rather than building straight to production, so the bytes
 that went live are the bytes that were checked:
 
 ```bash
 cd g-fitness-member && npx vercel deploy --yes        # preview URL
-npx vercel promote <preview-url> --yes                # same build → production
+python scripts/verify-deploy.py <preview-url>          # must be 10/10 before promoting
+npx vercel promote <preview-url> --yes                # → production
+python scripts/verify-deploy.py https://corefitness-gym.vercel.app
 ```
 
-What was checked on the live URL after promotion — repeat these, not just an HTTP 200, because an
-unrelated SPA and a Vercel login wall both return 200:
+`promote` reports *"Successfully created new deployment"*, which reads like a rebuild. It is the
+same build: the production entry hash matched the preview's exactly. Check the hash, not the
+wording.
+
+**`scripts/verify-deploy.py` runs every check below** and adds three the table never had: it
+greps the whole served bundle for a *control* string (old code — proves the search works) and for
+strings from the latest member-app change (proves this build is the one you meant). **Update those
+marker strings when you ship new member-app code**, or the script will keep passing on an old
+build.
+
+What is checked on the live URL after promotion — not just an HTTP 200, because an unrelated SPA
+and a Vercel login wall both return 200:
 
 | Check | Expected |
 |---|---|
