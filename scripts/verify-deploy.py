@@ -55,6 +55,13 @@ for label, s in [('CONTROL — old string, must be present', 'Checking your memb
                  ('Trainer overdue banner', 'waiting more than a day')]:
     check(label, s in corpus)
 
+# 2026-09-11: the assistant is member-only. A removal has no new string to find,
+# so these are strings that existed only in the trainer's copy — present means
+# the old build is still being served.
+for label, s in [('Trainer assistant page is gone', "I'm the training assistant."),
+                 ('Trainer settings row is gone', 'Programming and coaching questions')]:
+    check(label, s not in corpus)
+
 # The key checks. `sb_secret_` alone is supabase-js's own format test, never a key.
 check('No secret key value in the bundle', not re.search(r'sb_secret_[A-Za-z0-9]', corpus))
 jwts = re.findall(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+', corpus)
