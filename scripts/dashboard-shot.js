@@ -210,6 +210,19 @@ async (page) => {
     approved_at: null, approved_by: null, decided_by: null, decided_by_role: null, decided_at: null,
     payment_id: null, created_at: iso(0, 7, 0) });
 
+  // Ratings for one coach only, and past approved PT for the other — so the
+  // tile shows both a real average and "No evaluations", never "0.0".
+  TABLES.trainer_evaluation_months = [
+    { trainer_id: 't1', period: dstr(-5).slice(0, 8) + '01', evaluations: 5, average_stars: 4.8, with_comment: 2 },
+    { trainer_id: 't1', period: dstr(-40).slice(0, 8) + '01', evaluations: 3, average_stars: 4.0, with_comment: 1 },
+  ];
+  for (let i = 0; i < 3; i++) {
+    TABLES.pt_sessions.push({ id: `spa${i}`, trainer_id: 't2', member_id: 'm1', starts_at: iso(-3 - i * 7, 10, 0),
+      duration_minutes: 60, status: 'approved', notes: null, requested_at: iso(-10 - i * 7, 9, 0),
+      approved_at: iso(-9 - i * 7, 9, 0), approved_by: 't2', decided_by: 't2', decided_by_role: 'trainer',
+      decided_at: iso(-9 - i * 7, 9, 0), payment_id: null, created_at: iso(-10 - i * 7, 9, 0) });
+  }
+
   // The Dashboard reads the sign-up count from a `count: 'exact'` query, which
   // needs a real, exposed Content-Range — the generic handler's fixed
   // '0-0/1' (unexposed) would make it read as unknown.
@@ -248,6 +261,12 @@ async (page) => {
     return { mainOverflowPx: main ? main.scrollHeight - main.clientHeight : null };
   });
   await page.setViewportSize({ width: 1918, height: 909 });
+  await page.waitForTimeout(600);
+  const trainers = await page.evaluate(() => {
+    const h3 = [...document.querySelectorAll('h3')].find((x) => x.textContent.trim() === 'Top trainers');
+    const tile = h3 && h3.closest('[style*="grid-column"]');
+    return tile ? [...tile.querySelectorAll('.truncate')].map((e) => e.textContent.trim()).filter(Boolean) : null;
+  });
   const buttons = await page.evaluate(() => [...document.querySelectorAll('button')]
     .map((b) => b.textContent.trim()).filter((t) => /to approve|to decide/.test(t)));
   // Each button must land on the page that holds its queue.
@@ -263,5 +282,5 @@ async (page) => {
   const bookings = await page.evaluate(() => ({ url: location.pathname,
     awaiting: [...document.querySelectorAll('span')].map((s) => s.textContent.trim())
       .find((t, i, a) => a[i - 1] === 'Awaiting approval') ?? document.body.innerText.match(/Awaiting approval\s*(\d+)/i)?.[1] ?? null }));
-  return JSON.stringify({ ...info, at720: small, buttons, signups, bookings }, null, 1);
+  return JSON.stringify({ trainers, buttons, signups, bookings, mainOverflowPx: info.mainOverflowPx }, null, 1);
 }

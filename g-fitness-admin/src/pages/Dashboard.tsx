@@ -50,6 +50,16 @@ function FilterSelect({ value, options, onChange }: {
 }
 
 
+// ── Top trainers ────────────────────────────────────────────────────────────
+const TOP_TRAINERS_SHOWN = 6;
+
+/** "4.6 ★ (12) · 23 sessions". A coach nobody has rated reads "No evaluations",
+ *  never "0.0 ★" — a missing score is not a bad one. */
+function trainerLine(t: TopTrainer): string {
+  const rating = t.avgRating == null ? 'No evaluations' : `${t.avgRating.toFixed(1)} ★ (${t.evaluations})`;
+  return `${rating} · ${t.sessions} session${t.sessions === 1 ? '' : 's'}`;
+}
+
 // ── Activity Heatmap ────────────────────────────────────────────────────────
 /** Quiet violet to busy amber. Shared by the tile and the full panel so the two
  *  can never shade the same count differently. */
@@ -185,6 +195,7 @@ export default function Dashboard() {
    *  and must not also mean "still loading" or "the query failed". */
   const [heatmapState,   setHeatmapState]   = useState<'loading' | 'ready' | 'failed'>('loading');
   const [topTrainers,    setTopTrainers]    = useState<TopTrainer[]>([]);
+  const [trainersFailed, setTrainersFailed] = useState(false);
 
   useEffect(() => {
     dashboardService
@@ -211,7 +222,7 @@ export default function Dashboard() {
     dashboardService.getAttendanceHeatmap()
       .then((cells) => { setHeatmap(cells); setHeatmapState('ready'); })
       .catch(() => setHeatmapState('failed'));
-    dashboardService.getTopTrainers().then(setTopTrainers);
+    dashboardService.getTopTrainers().then(setTopTrainers).catch(() => setTrainersFailed(true));
     // The "Member statistics" tile that used getProgressKpis() is gone: every
     // figure it drew (BMI, weight change, workouts, goals) was a hardcoded 0,
     // shown as if measured. The heatmap took its place.
@@ -458,32 +469,41 @@ export default function Dashboard() {
           </div>
         </Tile>
 
-        {/* Rows 2–4, right — who is coaching well. */}
+        {/* Rows 2–4, right — who is coaching, and how members rate them. */}
         <Tile col="10 / 13" row="2 / 5" onClick={() => setPanel('trainers')}
-          tip="Coaches ranked by member rating and sessions run">
+          tip="Coaches ranked by sessions run in the last 90 days, then by member rating">
           <div className="h-full flex flex-col">
             <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
-              <h3 className="text-xs font-semibold text-white">Top trainers</h3>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-white">Top trainers</h3>
+                <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>Sessions run, last 90 days</p>
+              </div>
               <span className="text-[10px] font-semibold flex items-center gap-0.5" style={{ color: YELLOW }}>
-                {topTrainers.length > 3 ? `All ${topTrainers.length}` : 'Open'} <ChevronRight size={10} />
+                {topTrainers.length > TOP_TRAINERS_SHOWN ? `All ${topTrainers.length}` : 'Open'} <ChevronRight size={10} />
               </span>
             </div>
-            {topTrainers.length === 0 ? (
-              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No rated coaches yet.</p>
+            {trainersFailed ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>
+                Couldn&apos;t load the ranking. This is a connection problem, not a quiet month.
+              </p>
+            ) : topTrainers.length === 0 ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No active coaches.</p>
             ) : (
-              <div className="space-y-1.5 overflow-hidden">
-                {topTrainers.slice(0, 3).map((t) => (
+              // Six, not three: this tile is three rows tall, and three
+              // coaches left half of it empty.
+              <div className="space-y-1.5 overflow-hidden flex-1 min-h-0">
+                {topTrainers.slice(0, TOP_TRAINERS_SHOWN).map((t, i) => (
                   <div key={t.id} className="flex items-center gap-2 p-2 rounded-lg"
                     style={{ background: 'var(--color-surface-raised)' }}>
+                    <span className="w-4 text-[10px] font-bold tabular-nums text-center flex-shrink-0"
+                      style={{ color: i === 0 ? YELLOW : TEXT_MUTED }}>{i + 1}</span>
                     <span className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0"
                       style={{ background: VIOLET }}>
                       {t.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-[11px] text-white font-semibold truncate">{t.name}</span>
-                      <span className="block text-[9px]" style={{ color: TEXT_MUTED }}>
-                        {t.avgRating.toFixed(1)} ★ · {t.sessions} sessions
-                      </span>
+                      <span className="block text-[9px] truncate" style={{ color: TEXT_MUTED }}>{trainerLine(t)}</span>
                     </span>
                   </div>
                 ))}
@@ -691,8 +711,14 @@ export default function Dashboard() {
 
         {panel === 'trainers' && (
           <div className="space-y-1.5">
-            {topTrainers.length === 0 ? (
-              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No rated trainers yet.</p>
+            <p className="text-[11px] mb-2" style={{ color: TEXT_MUTED }}>
+              Ranked by sessions run in the last 90 days — approved PT sessions and classes
+              taught, both already past — then by the gym&apos;s evaluation average.
+            </p>
+            {trainersFailed ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Couldn&apos;t load the ranking.</p>
+            ) : topTrainers.length === 0 ? (
+              <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No active coaches.</p>
             ) : topTrainers.map((t) => (
               <button key={t.id} onClick={() => { setPanel(null); navigate('/trainers'); }}
                 className="w-full text-left flex items-center gap-2.5 p-2.5 rounded-xl"
@@ -703,9 +729,7 @@ export default function Dashboard() {
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-[12px] text-white font-semibold truncate">{t.name}</span>
-                  <span className="block text-[10px]" style={{ color: TEXT_MUTED }}>
-                    {t.avgRating.toFixed(1)} ★ · {t.sessions} sessions
-                  </span>
+                  <span className="block text-[10px]" style={{ color: TEXT_MUTED }}>{trainerLine(t)}</span>
                 </span>
                 <ChevronRight size={13} style={{ color: TEXT_MUTED }} />
               </button>

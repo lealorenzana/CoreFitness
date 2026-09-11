@@ -1,11 +1,11 @@
 /**
  * Dashboard service — single point of truth for the admin dashboard's analytics.
  *
- * Every figure here is now derived from real Supabase rows. Where the underlying
- * entity hasn't been migrated yet (classes/bookings are still mock — see CLAUDE.md),
- * the corresponding metric returns empty/zero rather than a plausible-looking
- * invention: a fabricated number on the dashboard is worse than a visible gap,
- * because nobody can tell it's wrong.
+ * Every figure here is derived from real Supabase rows. Where a figure cannot be
+ * known — a coach nobody has rated — it is null and the screen says so, rather
+ * than a plausible-looking zero: a fabricated number on the dashboard is worse
+ * than a visible gap, because nobody can tell it's wrong. (The last two places
+ * that broke this, getProgressKpis and getTopTrainers' zeros, are gone.)
  */
 import { supabase } from '../lib/supabaseClient';
 
@@ -13,13 +13,13 @@ export interface RevenuePoint  { month: string; revenue: number; }
 export interface MembersPoint  { month: string; members: number; newMembers: number; }
 export interface AttendancePt  { day: string; count: number; }
 export interface HeatmapCell   { day: string; hour: string; visits: number; }
-export interface TopTrainer    { id: string; name: string; sessions: number; avgRating: number; }
-export interface ProgressKpis  {
-  avgBmi: number;
-  avgWeightChangeKg: number;
-  totalWorkouts: number;
-  activeGoals: number;
-  totalClasses: number;
+export interface TopTrainer {
+  id: string; name: string;
+  /** Approved PT sessions plus classes taught, both already past, last 90 days. */
+  sessions: number;
+  /** The gym's weighted evaluation average; `null` when nobody has rated them. */
+  avgRating: number | null;
+  evaluations: number;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -641,45 +641,73 @@ export const dashboardService = {
   },
 
   /**
-   * Trainers ranked by sessions delivered. Sessions come from bookings/classes,
-   * which are still mock (see CLAUDE.md), so sessions/rating stay at 0 until that
-   * migration lands — the trainer names themselves are real.
+   * Active coaches ranked by the work they actually did in the last 90 days,
+   * then by rating.
+   *
+   * This returned `sessions: 0, avgRating: 0` for everyone, behind a comment
+   * saying classes and bookings were still mock — true once, long since false.
+   * Every coach read "0.0 ★ · 0 sessions" on the dashboard.
+   *
+   * **A session** is one that happened: an *approved* PT session whose start
+   * time has passed, or a class the coach taught (`classes.trainer_id`) whose
+   * time has passed. Pending, rejected and cancelled requests are not work
+   * done, and neither is next week's timetable. PT has no "completed" status
+   * (it shares `booking_status`), so "approved and in the past" is the
+   * definition — the same one 0042 uses to decide who may rate a session.
+   *
+   * **The rating** is the gym's own figure from `trainer_evaluation_months`,
+   * each month weighted by how many evaluations it carried — the exact
+   * calculation on the Trainers page, so the two screens show one number. The
+   * admin's average is never withheld below three ratings (only the member-
+   * facing one is, 0066). A coach nobody has evaluated gets `null`, never 0: a
+   * missing score is not a bad one.
    */
   async getTopTrainers(): Promise<TopTrainer[]> {
-    const { data, error } = await supabase
-      .from('trainer_profiles')
-      .select('profile_id, profiles!inner(first_name, last_name, status)');
-    if (error) throw error;
+    const now = new Date();
+    const since = new Date(now);
+    since.setDate(since.getDate() - 90);
+    const [trainersRes, ptRes, classesRes, monthsRes] = await Promise.all([
+      supabase.from('trainer_profiles').select('profile_id, profiles!inner(first_name, last_name, status)'),
+      supabase.from('pt_sessions').select('trainer_id')
+        .eq('status', 'approved')
+        .gte('starts_at', since.toISOString()).lt('starts_at', now.toISOString()),
+      supabase.from('classes').select('trainer_id')
+        .not('trainer_id', 'is', null)
+        .gte('scheduled_at', since.toISOString()).lt('scheduled_at', now.toISOString()),
+      supabase.from('trainer_evaluation_months').select('trainer_id, evaluations, average_stars'),
+    ]);
+    if (trainersRes.error) throw trainersRes.error;
+    // A failed count must not pass for "did nothing": the whole ranking is
+    // refused rather than shown with a column of false zeros.
+    for (const r of [ptRes, classesRes, monthsRes]) if (r.error) throw r.error;
 
-    return (data ?? [])
+    const sessions = new Map<string, number>();
+    for (const row of [...(ptRes.data ?? []), ...(classesRes.data ?? [])]) {
+      const id = row.trainer_id as string | null;
+      if (id) sessions.set(id, (sessions.get(id) ?? 0) + 1);
+    }
+    const score = new Map<string, { sum: number; n: number }>();
+    for (const m of monthsRes.data ?? []) {
+      const at = score.get(m.trainer_id) ?? { sum: 0, n: 0 };
+      at.sum += Number(m.average_stars) * m.evaluations;
+      at.n += m.evaluations;
+      score.set(m.trainer_id, at);
+    }
+
+    return (trainersRes.data ?? [])
       .filter((t) => (t.profiles as { status?: string })?.status === 'active')
       .map((t) => {
         const p = t.profiles as unknown as { first_name: string; last_name: string };
+        const s = score.get(t.profile_id);
         return {
           id: t.profile_id,
           name: `${p.first_name} ${p.last_name}`.trim(),
-          sessions: 0,
-          avgRating: 0,
+          sessions: sessions.get(t.profile_id) ?? 0,
+          avgRating: s && s.n > 0 ? Math.round((s.sum / s.n) * 10) / 10 : null,
+          evaluations: s?.n ?? 0,
         };
-      });
-  },
-
-  /**
-   * Body-composition and workout KPIs have no backing tables yet (progress
-   * tracking was never migrated), so those stay 0. `totalClasses` is real.
-   */
-  async getProgressKpis(): Promise<ProgressKpis> {
-    const { count, error } = await supabase
-      .from('classes')
-      .select('id', { count: 'exact', head: true });
-    if (error) throw error;
-    return {
-      avgBmi: 0,
-      avgWeightChangeKg: 0,
-      totalWorkouts: 0,
-      activeGoals: 0,
-      totalClasses: count ?? 0,
-    };
+      })
+      .sort((a, b) => b.sessions - a.sessions || (b.avgRating ?? -1) - (a.avgRating ?? -1));
   },
 
   /** Years offered in the chart filters: this year and the two before it. */
