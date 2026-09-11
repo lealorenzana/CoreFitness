@@ -84,6 +84,7 @@ CHECKS = [
     # carries a marker too.
     ('0075', 'rpc migration_0075_applied',     lambda: rpc('migration_0075_applied')),
     ('0076', 'rpc migration_0076_applied',     lambda: rpc('migration_0076_applied')),
+    ('0077', 'rpc migration_0077_applied',     lambda: rpc('migration_0077_applied')),
 ]
 
 print('project: %s' % URL)

@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 76 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 77 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -153,7 +153,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0075 are all live**; **0076** (preview pictures for 0075's links, files in both apps' `public/resource-previews/`) is written and replay-tested, **not yet pasted** — verified 2026-09-12 with
+**0001–0076 are all live**; **0077** (Boostcamp's published og:image as its resource picture) is written and replay-tested, **not yet pasted** — verified 2026-09-12 with
 `python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials.
 **Run it rather than trusting a report that a migration was pasted**: 0070 was believed done for a
 day and had never executed. It probes **three objects per migration**, so a file that never ran is
