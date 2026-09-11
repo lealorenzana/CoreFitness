@@ -197,6 +197,30 @@ async (page) => {
     }
   }
 
+  // Three sign-ups waiting, and two booking requests: the two queues the
+  // header's two buttons count, deliberately different numbers.
+  TABLES.pending_registrations = ['Rosa', 'Ben', 'Carla'].map((f, i) => ({
+    id: `pr${i}`, first_name: f, last_name: 'Tester', email: `${f.toLowerCase()}@corefitness.test`,
+    phone: null, requested_plan_id: 'p1', auth_user_id: `au${i}`, created_at: iso(-i, 9, 0) }));
+  TABLES.bookings.push({ id: 'bp1', member_id: 'm1', class_id: 'c1', status: 'pending',
+    requested_at: iso(0, 8, 0), approved_at: null, rejected_at: null, approved_by: null,
+    decided_by: null, decided_by_role: null, decided_at: null, classes: CLASSES[0] });
+  TABLES.pt_sessions.push({ id: 'sp1', trainer_id: 't1', member_id: 'm2', starts_at: iso(2, 10, 0),
+    duration_minutes: 60, status: 'pending', notes: null, requested_at: iso(0, 7, 0),
+    approved_at: null, approved_by: null, decided_by: null, decided_by_role: null, decided_at: null,
+    payment_id: null, created_at: iso(0, 7, 0) });
+
+  // The Dashboard reads the sign-up count from a `count: 'exact'` query, which
+  // needs a real, exposed Content-Range — the generic handler's fixed
+  // '0-0/1' (unexposed) would make it read as unknown.
+  await page.route(`**://${REF}.supabase.co/rest/v1/pending_registrations**`, async (route) => {
+    const rows = TABLES.pending_registrations;
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: route.request().method() === 'HEAD' ? '' : JSON.stringify(rows),
+      headers: { 'Content-Range': `0-${rows.length - 1}/${rows.length}`,
+        'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
+  });
+
   await page.setViewportSize({ width: 1918, height: 909 });
   await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(4000);
@@ -223,5 +247,21 @@ async (page) => {
     const main = document.querySelector('main');
     return { mainOverflowPx: main ? main.scrollHeight - main.clientHeight : null };
   });
-  return JSON.stringify({ ...info, at720: small }, null, 1);
+  await page.setViewportSize({ width: 1918, height: 909 });
+  const buttons = await page.evaluate(() => [...document.querySelectorAll('button')]
+    .map((b) => b.textContent.trim()).filter((t) => /to approve|to decide/.test(t)));
+  // Each button must land on the page that holds its queue.
+  await page.locator('button', { hasText: 'to approve' }).first().click();
+  await page.waitForTimeout(2500);
+  const signups = await page.evaluate(() => ({ url: location.pathname + location.search,
+    panelOpen: [...document.querySelectorAll('h2')].some((h) => h.textContent.includes('Pending Registrations')) }));
+  await page.screenshot({ path: 'shots/42-signups-panel.png' });
+  await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(3500);
+  await page.locator('button', { hasText: 'to decide' }).first().click();
+  await page.waitForTimeout(3000);
+  const bookings = await page.evaluate(() => ({ url: location.pathname,
+    awaiting: [...document.querySelectorAll('span')].map((s) => s.textContent.trim())
+      .find((t, i, a) => a[i - 1] === 'Awaiting approval') ?? document.body.innerText.match(/Awaiting approval\s*(\d+)/i)?.[1] ?? null }));
+  return JSON.stringify({ ...info, at720: small, buttons, signups, bookings }, null, 1);
 }

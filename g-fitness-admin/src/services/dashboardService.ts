@@ -36,6 +36,9 @@ export interface DashboardSummary {
   activeMembers: number;
   monthlyRevenue: number;
   attendanceToday: number;
+  /** Member **sign-ups** waiting for approval (`pending_registrations`) — the
+   *  Members page's pending panel. Not booking requests: those are counted from
+   *  `loadBookingQueue()` so the number matches the Bookings page exactly. */
   pendingApprovals: number;
 }
 

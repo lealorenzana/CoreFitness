@@ -2,6 +2,7 @@ import Avatar from '../components/ui/Avatar';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
@@ -190,7 +191,17 @@ export default function Members() {
   const [toFreeze, setToFreeze] = useState<MemberRow | null>(null);
   const [toCancel, setToCancel] = useState<MemberRow | null>(null);
   const [toSuspend, setToSuspend] = useState<MemberRow | null>(null);
-  const [showPendingPanel, setShowPendingPanel] = useState(false);
+  // `?pending=1` is how the Dashboard's "sign-ups to approve" button lands here
+  // with the queue already open — read once, in the initialiser, not an effect.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showPendingPanel, setShowPendingPanel] = useState(() => searchParams.get('pending') === '1');
+  /** Closes the panel and drops the flag, so a reload does not reopen it. */
+  const closePendingPanel = () => {
+    setShowPendingPanel(false);
+    if (searchParams.has('pending')) {
+      setSearchParams((prev) => { prev.delete('pending'); return prev; }, { replace: true });
+    }
+  };
   const [pendingCount, setPendingCount] = useState(0);
   /** The member whose full record is open in the drawer. */
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -871,7 +882,7 @@ export default function Members() {
         {showPendingPanel && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 z-50" onClick={() => setShowPendingPanel(false)} />
+              className="fixed inset-0 bg-black/70 z-50" onClick={closePendingPanel} />
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
@@ -887,7 +898,7 @@ export default function Members() {
                       <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Approve or reject member registrations</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowPendingPanel(false)} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-muted)' }}>
+                  <button onClick={closePendingPanel} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-muted)' }}>
                     <X size={18} />
                   </button>
                 </div>

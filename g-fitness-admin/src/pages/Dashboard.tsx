@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 
 import DetailSheet from '../components/ui/DetailSheet';
+import { loadBookingQueue } from '../services/bookingQueueService';
+import { sweepStaleRequests } from '../lib/api/bookings';
 import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
@@ -161,7 +163,19 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [expiringSoon, setExpiringSoon] = useState<ExpiringMember[]>([]);
   const [attendanceScope, setAttendanceScope] = useState<'weekly' | 'monthly'>('weekly');
-  const [pendingBookings, setPendingBookings] = useState(0);
+  /**
+   * Two different queues, counted apart.
+   *
+   * There was one "N awaiting approval" button. Its number came from
+   * `pending_registrations` — member sign-ups — but it said "class and
+   * personal-training requests" and opened Bookings, where there was nothing
+   * to approve. Each count now comes from the same place as the page it opens,
+   * so the two can never disagree:
+   *  - sign-ups: `pending_registrations`, the Members page's pending panel;
+   *  - requests: `loadBookingQueue()`, the exact rows the Bookings page shows.
+   */
+  const [pendingSignups, setPendingSignups] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   const [revenueData,    setRevenueData]    = useState<RevenuePoint[]>([]);
   const [memberData,     setMemberData]     = useState<MembersPoint[]>([]);
@@ -177,10 +191,17 @@ export default function Dashboard() {
       .getSummary()
       .then((s) => {
         setSummary(s);
-        setPendingBookings(s.pendingApprovals);
+        setPendingSignups(s.pendingApprovals);
       })
       .catch(() => {});
     dashboardService.getExpiringSoon().then(setExpiringSoon).catch(() => {});
+    // The same sweep the Bookings page runs first (0071), so a request it would
+    // expire on opening is not counted here as still waiting. Never throws.
+    (async () => {
+      await sweepStaleRequests();
+      const { rows } = await loadBookingQueue();
+      setPendingRequests(rows.filter((r) => r.status === 'pending').length);
+    })().catch(() => {});
   }, []);
 
   useEffect(() => { dashboardService.getRevenueByYear(revenueYear).then(setRevenueData); }, [revenueYear]);
@@ -270,14 +291,24 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {pendingBookings > 0 && (
+          {pendingSignups > 0 && (
+            <button
+              onClick={() => navigate('/members?pending=1')}
+              data-tip="New members who registered in the app and are waiting to be approved"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg font-semibold text-[11px]"
+              style={{ background: 'var(--color-secondary-light)', color: YELLOW }}
+            >
+              {pendingSignups} sign-up{pendingSignups === 1 ? '' : 's'} to approve <ChevronRight size={12} />
+            </button>
+          )}
+          {pendingRequests > 0 && (
             <button
               onClick={() => navigate('/bookings')}
               data-tip="Class and personal-training requests waiting for a decision"
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg font-semibold text-[11px]"
               style={{ background: 'var(--color-secondary-light)', color: YELLOW }}
             >
-              {pendingBookings} awaiting approval <ChevronRight size={12} />
+              {pendingRequests} booking{pendingRequests === 1 ? '' : 's'} to decide <ChevronRight size={12} />
             </button>
           )}
           <button
