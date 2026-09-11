@@ -241,6 +241,28 @@ why the `AdminLogin` scroll indicator still uses the class and still measures 0p
 **The general rule: anything Framer animates must not also be load-bearing for layout.** Same family
 as the `AnimatePresence` exit problem — treat Framer as decoration, never as positioning.
 
+## Admin pages fill the window, and page by what fits (admin only)
+
+A fixed page size is wrong on nearly every screen: twelve cards on a five-column grid is 5 + 5 + 2
+with half a screen of nothing below. Lists and card grids on Members, Trainers, Payments, Credentials
+and Activity take their page size from the space they are given.
+
+- **The page is exactly the window's height**: `h-[calc(100vh-7rem)] flex flex-col` — the header is
+  4rem and `<main>` pads 3rem, so `5rem` overran by 32px on every such page. The list sits in a
+  `flex-1 min-h-0 overflow-y-auto` box and the pager comes after it, pinned to the bottom edge.
+- **`hooks/useFillGrid.ts`** counts whole rows for a card grid: columns from the grid's own
+  template, rows from the box's height over the **median** tile (a taller tile would lose a row).
+  Destructure it — `const { measure, perPage } = useFillGrid(12)` — because the compiler lint
+  treats an object whose member is passed as a `ref` as a ref, and refuses the read of `perPage`.
+- **Stretching tiles pass `tileHeight`.** Credentials' rows share the height (`repeat(rows, 1fr)`)
+  so the certificate previews grow; measuring a stretched tile only reports the current row count
+  back, so it counts from the card's minimum instead and uses the returned `rows`.
+- **A server-paged list** (Activity) measures the same way and passes the size as `limit`/`offset`;
+  while its skeleton shows there is nothing to measure, so the last row height stands — falling back
+  to an estimate there would change the size, refetch, show the skeleton, and loop.
+- **Revenue and the Schedule board** fill by flex instead: chart heights and bar strips are
+  percentages of the panel, never fixed pixels.
+
 ## Tab switches must not flash, or lose your place
 
 Two separate defects, both reported from a real phone, both fixed in the shells rather than page by

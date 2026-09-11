@@ -11,6 +11,7 @@ import {
   SearchBox, PageSummary,
 } from '../components/ui/kit';
 import { usePaged } from '../hooks/usePaged';
+import { useFillGrid } from '../hooks/useFillGrid';
 import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Archive, UserX, UserCheck, Clock, Star, Users } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
@@ -184,7 +185,12 @@ export default function Trainers() {
     );
   });
 
-  const paged = usePaged(visible, 12);
+  // As many whole rows of cards as the window has room for — a fixed twelve
+  // was two and a half rows with half a screen of nothing underneath.
+  // Destructured: the compiler lint treats an object whose member is passed
+  // as a `ref` as a ref itself, and would refuse the read of `perPage`.
+  const { measure: measureRoster, perPage: rosterPerPage } = useFillGrid(12);
+  const paged = usePaged(visible, rosterPerPage);
 
   /**
    * Suspend / reactivate / archive.
@@ -319,8 +325,11 @@ export default function Trainers() {
     }
   };
 
+  // The page is exactly the window's height (header 4rem + <main>'s padding
+  // 3rem), so the roster area in the middle takes what is left and the pager
+  // sits at the bottom edge instead of wherever the last card happened to end.
   return (
-    <div className="space-y-4">
+    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
       <PageHeader
         title="Trainers"
         subtitle={showArchived ? 'Archived trainers — classes and sessions retained' : 'Who coaches here, and who members can actually book'}
@@ -384,6 +393,12 @@ export default function Trainers() {
             : undefined}
         />
       ) : (
+        // `useFillGrid` measures this box, so it must take its height from the
+        // page (flex-1 min-h-0), never from the cards. It scrolls rather than
+        // clips if a row of taller cards lands on one page; the stable gutter
+        // stops a scrollbar appearing from changing the column count.
+        <div ref={measureRoster} className="flex-1 min-h-0 overflow-y-auto"
+          style={{ scrollbarGutter: 'stable' }}>
         <CardGrid min={320}>
           {paged.visible.map((trainer) => (
             <TileCard key={trainer.id} onClick={() => setViewingId(trainer.id)}
@@ -479,11 +494,12 @@ export default function Trainers() {
             </TileCard>
           ))}
         </CardGrid>
+        </div>
       )}
 
       {/* A roster is small until it isn't; this one has no ceiling without it. */}
       {visible.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-auto">
           <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="trainers" />
           <Pagination currentPage={paged.page} totalItems={paged.total}
             itemsPerPage={paged.perPage} onPageChange={paged.setPage} />

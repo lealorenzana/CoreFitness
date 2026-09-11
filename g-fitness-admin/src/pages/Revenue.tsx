@@ -15,9 +15,19 @@ import {
   type RevenueSummary, type MonthlyBreakdown, type TierRevenue,
 } from '../services/dashboardService';
 import { listPlans } from '../lib/api/membershipPlans';
+import { supabase } from '../lib/supabaseClient';
 import type { MembershipPlanRow } from '../types/db';
 
 const PIE_COLORS = ['#7C3AED', '#F59E0B', 'var(--color-primary)', '#6b7280', 'var(--color-secondary)'];
+
+interface LatestPayment {
+  id: string;
+  amount: number;
+  status: 'completed' | 'pending' | 'failed';
+  paid_on: string;
+  invoice_number: string;
+  member_profiles: { profiles: { first_name: string; last_name: string } | null } | null;
+}
 
 export default function Revenue() {
   const navigate = useNavigate();
@@ -50,6 +60,25 @@ export default function Revenue() {
     dashboardService.getMonthlyBreakdown(year).then(setMonthly).catch(() => {});
   }, [year]);
 
+  // The latest money in, for the column under the plans. `null` until it
+  // answers and `'failed'` if it cannot — an empty list would read as "nobody
+  // has paid", which is a different and false statement.
+  const [latest, setLatest] = useState<LatestPayment[] | null | 'failed'>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('id, amount, status, paid_on, invoice_number, member_profiles(profiles(first_name, last_name))')
+        .order('paid_on', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(40);
+      if (!alive) return;
+      setLatest(error ? 'failed' : ((data ?? []) as unknown as LatestPayment[]));
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const stats = [
     { label: 'Total Revenue', value: summary ? formatCurrency(summary.totalRevenue) : '—', icon: Banknote },
     { label: 'This Month', value: summary ? formatCurrency(summary.thisMonth) : '—', icon: Calendar },
@@ -64,8 +93,12 @@ export default function Revenue() {
     Revenue: m.revenue,
   }));
 
+  // On a desktop the page is exactly the window's height (header 4rem +
+  // <main>'s padding 3rem) and the two charts share it, so they grow to the
+  // bottom edge instead of stopping two-thirds of the way down. Below `lg`
+  // the columns stack and the page scrolls normally.
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 lg:h-[calc(100vh-7rem)]">
       <PageHeader
         title="Revenue"
         subtitle="Financial performance from recorded cash payments"
@@ -88,22 +121,25 @@ export default function Revenue() {
         tone: s.label === 'Pending Payments' ? 'secondary' : 'primary',
       }))} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:flex-1 lg:min-h-0">
         {/* LEFT — 2/3 */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 flex flex-col gap-4 lg:min-h-0">
           {/* Revenue by plan */}
-          <Section title="Revenue by plan" icon={PieIcon}>
+          <Section title="Revenue by plan" icon={PieIcon} className="lg:flex-1 lg:min-h-0 flex flex-col">
             {loading ? (
               <p className="py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
             ) : byTier.length === 0 ? (
               <EmptyState icon={Banknote} title="No completed payments yet"
                 hint="Record a payment on the Payments page and this chart fills in." />
             ) : (
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-full md:w-1/2" style={{ height: 220 }}>
+              <div className="flex flex-col md:flex-row items-center gap-6 flex-1 min-h-0">
+                {/* The ring takes whatever height the panel has; the radii are
+                    percentages so it grows with it instead of sitting at 180px
+                    in the middle of a tall box. */}
+                <div className="w-full md:w-1/2 h-full" style={{ minHeight: 140 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={byTier} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" stroke="none">
+                      <Pie data={byTier} cx="50%" cy="50%" innerRadius="58%" outerRadius="88%" dataKey="value" stroke="none">
                         {byTier.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
@@ -140,6 +176,7 @@ export default function Revenue() {
           {/* Monthly breakdown */}
           <Section
             title="Monthly breakdown" icon={Calendar}
+            className="lg:flex-1 lg:min-h-0 flex flex-col"
             actions={
               <select value={year} onChange={(e) => setYear(e.target.value)}
                 className="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
@@ -168,27 +205,36 @@ export default function Revenue() {
               const totalPay = monthly.reduce((s, m) => s + m.payments, 0);
               return (
                 <>
-                  <div className="flex items-end gap-1.5" style={{ height: 132 }}>
+                  {/* The strip takes the panel's remaining height (110px at
+                      the least), and each bar is a share of its own column's
+                      plot area — so the tallest month reaches the top however
+                      tall the window is. */}
+                  <div className="flex items-stretch gap-1.5 flex-1" style={{ minHeight: 110 }}>
                     {monthly.map((row) => {
                       const active = row.revenue > 0 || row.newMembers > 0 || row.payments > 0;
                       return (
-                        <div key={row.month} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full"
+                        <div key={row.month} className="flex-1 flex flex-col items-center gap-1.5"
                           data-tip={`${row.month} — ₱${row.revenue.toLocaleString()} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
-                          {/* The amount sits above its own bar, so a reader
-                              never has to match a column to a legend. */}
-                          <span className="text-[9px] font-semibold tabular-nums"
-                            style={{ color: active ? 'var(--color-secondary)' : 'transparent' }}>
-                            {active ? `₱${row.revenue.toLocaleString()}` : '·'}
-                          </span>
-                          <div className="w-full rounded-t"
-                            style={{
-                              // A month with activity but no revenue still gets a
-                              // visible stub, or "3 new members, ₱0" looks like
-                              // nothing happened.
-                              height: `${row.revenue > 0 ? Math.max(6, (row.revenue / peak) * 88) : active ? 3 : 2}px`,
-                              background: row.revenue > 0 ? 'var(--color-secondary)'
-                                : active ? 'var(--color-primary)' : 'var(--color-border)',
-                            }} />
+                          <div className="flex-1 w-full flex flex-col items-center justify-end gap-1.5 min-h-0">
+                            {/* The amount sits above its own bar, so a reader
+                                never has to match a column to a legend. */}
+                            <span className="text-[9px] font-semibold tabular-nums"
+                              style={{ color: active ? 'var(--color-secondary)' : 'transparent' }}>
+                              {active ? `₱${row.revenue.toLocaleString()}` : '·'}
+                            </span>
+                            <div className="w-full rounded-t"
+                              style={{
+                                // A month with activity but no revenue still gets a
+                                // visible stub, or "3 new members, ₱0" looks like
+                                // nothing happened. Never above 85%, so the figure
+                                // over the tallest bar still has room.
+                                height: row.revenue > 0
+                                  ? `max(6px, ${(row.revenue / peak) * 85}%)`
+                                  : `${active ? 3 : 2}px`,
+                                background: row.revenue > 0 ? 'var(--color-secondary)'
+                                  : active ? 'var(--color-primary)' : 'var(--color-border)',
+                              }} />
+                          </div>
                           <span className="text-[9px]"
                             style={{ color: active ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
                             {row.month.slice(0, 3)}
@@ -217,9 +263,10 @@ export default function Revenue() {
           </Section>
         </div>
 
-        {/* RIGHT — 1/3: the real plan catalogue.
+        {/* RIGHT — 1/3: the real plan catalogue, then the latest money in.
             Read-only here on purpose; the plans page owns editing them. Each
             row is a link to it rather than a dead row above one button. */}
+        <div className="flex flex-col gap-4 lg:min-h-0">
         <Section
           title="Membership plans" icon={CreditCard} count={plans.length}
           actions={
@@ -270,6 +317,63 @@ export default function Revenue() {
             </div>
           )}
         </Section>
+
+        {/* The latest payments — what the totals above are made of. Takes the
+            rest of the column and scrolls inside it. Every row opens the
+            Payments page, which owns receipts and corrections. */}
+        <Section
+          title="Latest payments" icon={Banknote}
+          count={Array.isArray(latest) ? latest.length : undefined}
+          hint="newest first"
+          className="lg:flex-1 lg:min-h-0 flex flex-col"
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => navigate('/payments')}>
+              All <ArrowRight size={12} />
+            </Button>
+          }
+        >
+          {latest === null ? (
+            <p className="py-6 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+          ) : latest === 'failed' ? (
+            <EmptyState compact icon={Banknote} title="Couldn't load payments"
+              hint="A connection problem, not an empty ledger. Reload to try again." />
+          ) : latest.length === 0 ? (
+            <EmptyState compact icon={Banknote} title="No payments yet"
+              hint="Money recorded at the desk shows up here." />
+          ) : (
+            // Capped when the columns stack (below `lg`), where the column has
+            // no height of its own to take.
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 max-h-96 lg:max-h-none">
+              {latest.map((p) => {
+                const who = p.member_profiles?.profiles;
+                return (
+                  <button key={p.id} onClick={() => navigate('/payments')}
+                    className="w-full text-left flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors"
+                    style={{ background: 'var(--color-surface-high)' }}>
+                    <div className="flex-1 min-w-0">
+                      {/* A missed lookup renders nothing, never a stand-in name. */}
+                      <p className="text-[12px] text-white font-semibold truncate">
+                        {who ? `${who.first_name} ${who.last_name}` : p.invoice_number}
+                      </p>
+                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        {new Date(`${p.paid_on}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {who && ` · ${p.invoice_number}`}
+                        {p.status !== 'completed' && (
+                          <span style={{ color: 'var(--color-secondary)' }}> · {p.status}</span>
+                        )}
+                      </p>
+                    </div>
+                    <span className="text-[12px] font-bold tabular-nums flex-shrink-0"
+                      style={{ color: p.status === 'completed' ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                      ₱{Number(p.amount).toLocaleString()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+        </div>
       </div>
     </div>
   );

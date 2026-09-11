@@ -8,6 +8,7 @@ import {
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import Pagination from '../components/ui/Pagination';
+import { PageSummary } from '../components/ui/kit';
 import { showErrorToast } from '../utils/toast';
 import { dateKey, addDays } from '../utils/dates';
 import {
@@ -38,7 +39,20 @@ const SECONDARY_BG   = 'var(--color-secondary-light)';
 const TEXT_SECOND    = 'var(--color-text-secondary)';
 const TEXT_MUTED     = 'var(--color-text-muted)';
 
-const PAGE_SIZE = 40;
+/**
+ * Entries per page when nothing has been measured yet. The real size comes
+ * from the height the list is given — see `measureList`.
+ */
+const FALLBACK_PAGE_SIZE = 12;
+/** One entry's height before any has rendered: two lines and its padding. */
+const FALLBACK_ROW_PX = 60;
+/**
+ * A day heading plus the gap above the next day, before one has rendered.
+ * Every page has at least one heading, so its room is always kept; a page
+ * that crosses into a second day scrolls a few pixels inside the list rather
+ * than every page giving up a row it usually does not need.
+ */
+const FALLBACK_HEADING_PX = 32;
 
 const GROUPS: Array<{ id: ActivityGroup; label: string; icon: typeof Calendar }> = [
   { id: 'bookings',    label: 'Bookings',    icon: Calendar },
@@ -108,7 +122,62 @@ export default function Activity() {
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [liveOnly, setLiveOnlyState] = useState(false);
-  const [page, setPage] = useState(1);
+  const [rawPage, setPage] = useState(1);
+
+  /**
+   * As many entries per page as the list's box has room for, so the pager sits
+   * at the bottom of the window instead of forty entries further down the page.
+   * The box's height comes from the page layout (it is `flex-1 min-h-0`), never
+   * from the entries, so this cannot chase itself. A ResizeObserver on a ref
+   * callback rather than an effect: nothing sets state during a render, and
+   * React 19 calls the returned cleanup.
+   */
+  const [fit, setFit] = useState<{ box: number; row: number; heading: number } | null>(null);
+  const measureList = useCallback((box: HTMLDivElement | null) => {
+    if (!box) return;
+    const measure = () => {
+      const heights = [...box.querySelectorAll('[data-activity-row]')]
+        .map((r) => r.getBoundingClientRect().height)
+        .filter((h) => h > 0)
+        .sort((a, b) => a - b);
+      // The median entry: one with a wrapped summary stands taller, and
+      // dividing by it would lose rows on every screen. While the skeleton is
+      // showing there are no entries to measure, so the last measurement
+      // stands — falling back to the estimate there would change the page
+      // size, refetch, show the skeleton again, and go round for ever.
+      const measured = heights.length ? Math.round(heights[Math.floor(heights.length / 2)]) : null;
+      const head = box.querySelector('[data-activity-day]');
+      // The heading's own height plus its bottom margin. The page's first day
+      // has no gap above it; a second day's 16px gap is the overflow case.
+      const measuredHeading = head ? Math.round(head.getBoundingClientRect().height + 4) : null;
+      const h = Math.round(box.clientHeight);
+      setFit((prev) => {
+        const row = measured ?? prev?.row ?? FALLBACK_ROW_PX;
+        const heading = measuredHeading ?? prev?.heading ?? FALLBACK_HEADING_PX;
+        return prev && prev.box === h && prev.row === row && prev.heading === heading
+          ? prev : { box: h, row, heading };
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    const watch = () => {
+      observer.disconnect();
+      observer.observe(box);
+      if (box.firstElementChild) observer.observe(box.firstElementChild);
+    };
+    // The box's child is swapped — skeleton, entries, empty state — without the
+    // box itself changing size, so a resize alone would never re-measure the
+    // entries. Observing a new element reports it once, which measures.
+    const swaps = new MutationObserver(watch);
+    swaps.observe(box, { childList: true });
+    watch();
+    return () => { swaps.disconnect(); observer.disconnect(); };
+  }, []);
+  const pageSize = fit
+    ? Math.max(5, Math.floor((fit.box - fit.heading) / fit.row))
+    : FALLBACK_PAGE_SIZE;
+  // Clamped during render, never corrected in an effect: a taller window can
+  // shrink the page count under whatever page is open.
+  const page = total === null ? rawPage : Math.min(rawPage, Math.max(1, Math.ceil(total / pageSize)));
 
   /**
    * Any filter change invalidates the current page number — staying on page 4 of
@@ -142,10 +211,10 @@ export default function Activity() {
       // Local midnight, via the project's date helpers — never `toISOString()`,
       // which would put the boundary at 8am Manila and drop the morning's rows.
       from: days === null ? undefined : new Date(`${addDays(dateKey(new Date()), -days)}T00:00:00`).toISOString(),
-      limit: PAGE_SIZE,
-      offset: (page - 1) * PAGE_SIZE,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
     };
-  }, [group, range, role, actorId, debounced, liveOnly, page]);
+  }, [group, range, role, actorId, debounced, liveOnly, page, pageSize]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -203,8 +272,12 @@ export default function Activity() {
     color: active ? '#FFFFFF' : TEXT_SECOND,
   });
 
+  // Exactly the window's height (header 4rem + <main>'s padding 3rem): the
+  // filters on top, the entries in the middle taking the rest, and the pager
+  // pinned to the bottom edge. <main> already pads the page, so no `p-6` here —
+  // it had been padded twice, which is why this page sat indented.
   return (
-    <div className="p-6 space-y-5">
+    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
           <History size={22} style={{ color: PRIMARY }} />
@@ -328,10 +401,25 @@ export default function Activity() {
             </div>
           </Card>
 
-          <Card>
+          {/* `display` via style, not a `flex` class: `cn()` inside Card runs
+              tailwind-merge, which has dropped a bare `flex` here before. */}
+          <Card className="flex-1 min-h-0" style={{ display: 'flex', flexDirection: 'column' }}>
+            <p className="text-xs mb-3 flex-shrink-0" style={{ color: TEXT_MUTED }}>
+              {/* `total` is null only if Postgres declined to count. Say so
+                  rather than printing the page size as if it were the total. */}
+              {loading
+                ? 'Loading…'
+                : total === null
+                  ? `Showing ${rows.length}`
+                  : `${total.toLocaleString()} ${total === 1 ? 'entry' : 'entries'}`}
+            </p>
+
+            {/* Measured by `measureList`. Always mounted — loading, empty or
+                full — so the page size is known before the first fetch lands. */}
+            <div ref={measureList} className="flex-1 min-h-0 overflow-y-auto pr-1">
             {loading ? (
               <div className="space-y-2 py-2">
-                {Array.from({ length: 8 }).map((_, i) => (
+                {Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
                   <div key={i} className="h-12 rounded-lg animate-pulse" style={{ background: SURFACE_RAISED }} />
                 ))}
               </div>
@@ -354,20 +442,11 @@ export default function Activity() {
                 )}
               </div>
             ) : (
-              <>
-                <p className="text-xs mb-3" style={{ color: TEXT_MUTED }}>
-                  {/* `total` is null only if Postgres declined to count. Say so
-                      rather than printing the page size as if it were the total. */}
-                  {total === null
-                    ? `Showing ${rows.length}`
-                    : `${total.toLocaleString()} ${total === 1 ? 'entry' : 'entries'}`}
-                </p>
-
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {days.map((day) => (
                     <div key={day.key}>
-                      <p
-                        className="text-xs font-semibold uppercase tracking-wide pb-2 mb-1 sticky top-16 z-10"
+                      <p data-activity-day
+                        className="text-xs font-semibold uppercase tracking-wide pb-2 mb-1 sticky top-0 z-10"
                         style={{ color: TEXT_MUTED, background: SURFACE, borderBottom: `1px solid ${BORDER}` }}
                       >
                         {day.label}
@@ -381,6 +460,7 @@ export default function Activity() {
                         return (
                           <div
                             key={row.id}
+                            data-activity-row
                             onClick={() => href && navigate(href)}
                             role={href ? 'button' : undefined}
                             tabIndex={href ? 0 : undefined}
@@ -459,16 +539,22 @@ export default function Activity() {
                     </div>
                   ))}
                 </div>
+            )}
+            </div>
 
-                {total !== null && (
-                  <Pagination
-                    currentPage={page}
-                    totalItems={total}
-                    itemsPerPage={PAGE_SIZE}
-                    onPageChange={setPage}
-                  />
-                )}
-              </>
+            {/* The pager, outside the scrolling list, so it is always on
+                screen — it used to sit under forty entries, a long scroll down. */}
+            {!loading && total !== null && total > 0 && (
+              <div className="flex items-center justify-between gap-3 pt-3 mt-3 flex-shrink-0"
+                style={{ borderTop: `1px solid ${BORDER}` }}>
+                <PageSummary page={page} perPage={pageSize} total={total} noun={total === 1 ? 'entry' : 'entries'} />
+                <Pagination
+                  currentPage={page}
+                  totalItems={total}
+                  itemsPerPage={pageSize}
+                  onPageChange={setPage}
+                />
+              </div>
             )}
           </Card>
         </>

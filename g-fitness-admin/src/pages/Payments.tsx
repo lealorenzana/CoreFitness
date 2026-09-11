@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useFillGrid } from '../hooks/useFillGrid';
 import Button from '../components/ui/Button';
 import Avatar from '../components/ui/Avatar';
 import Pagination from '../components/ui/Pagination';
@@ -44,18 +45,6 @@ interface MemberGroup {
   lastPayment: string;
 }
 
-/**
- * Two full rows of tiles per page, however many fit across.
- *
- * The records are tiles in an auto-fill grid (`CardGrid`, 280px minimum), so
- * the column count follows the window: six on one desktop, five on another,
- * more with the sidebar collapsed. A fixed page size is ragged at most of
- * them — eight left a row of two under a row of six, and twelve left two
- * under two rows of five. So the page is sized from the columns the browser
- * actually laid out.
- */
-const ROWS_PER_PAGE = 2;
-
 export default function Payments() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,25 +52,13 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  /** Columns the tile grid actually has, read off the browser's own layout. */
-  const [columns, setColumns] = useState(6);
   /**
-   * A ref callback, not an effect: it runs when the grid mounts, and React 19
-   * calls the returned cleanup when it unmounts. The observer's first report
-   * arrives on its own, so nothing sets state synchronously during a render or
-   * an effect.
+   * Whole rows of tiles, as many as the window has room for. The column count
+   * follows the width (six on one desktop, five on another) and the row count
+   * follows the height — a fixed two rows left half the screen empty below the
+   * pager. Both are read off the browser's own layout by `useFillGrid`.
    */
-  const measureGrid = useCallback((wrap: HTMLDivElement | null) => {
-    if (!wrap) return;
-    const observer = new ResizeObserver(() => {
-      const grid = wrap.firstElementChild;
-      if (!grid) return;
-      const n = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
-      if (n > 0) setColumns((c) => (c === n ? c : n));
-    });
-    observer.observe(wrap);
-    return () => observer.disconnect();
-  }, []);
+  const { measure: measureRecords, perPage } = useFillGrid(12);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   // memberId -> the member's current plan, for the Record Payment form
@@ -174,7 +151,6 @@ export default function Payments() {
     }, {})
   );
 
-  const perPage = columns * ROWS_PER_PAGE;
   // Clamped here rather than corrected in an effect: widening the window can
   // shrink the page count under whatever page is open.
   const page = Math.min(currentPage, Math.max(1, Math.ceil(memberGroups.length / perPage)));
@@ -282,8 +258,10 @@ export default function Payments() {
 
   const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;
 
+  // Exactly the window's height (header 4rem + <main>'s padding 3rem), so the
+  // records panel runs to the bottom edge and the pager sits there.
   return (
-    <div className="space-y-4">
+    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
       <PageHeader
         title="Payments"
         subtitle="Cash taken at the desk, grouped by member"
@@ -316,6 +294,7 @@ export default function Payments() {
       <Section
         title="Payment records" icon={Banknote} count={memberGroups.length}
         hint="click a member to see their receipts"
+        className="flex-1 min-h-0 flex flex-col"
         actions={
           <Chips
             value={filterStatus}
@@ -342,7 +321,11 @@ export default function Payments() {
           />
         ) : (
           <>
-            <div ref={measureGrid}>
+            {/* Measured by `useFillGrid`: height from the panel, never from
+                the tiles; scrolls rather than clips; stable gutter so a
+                scrollbar cannot change the column count. */}
+            <div ref={measureRecords} className="flex-1 min-h-0 overflow-y-auto"
+              style={{ scrollbarGutter: 'stable' }}>
             <CardGrid min={280}>
               {paginatedGroups.map((group) => {
                 const owing = group.payments.filter((p) => p.status === 'pending').length;
