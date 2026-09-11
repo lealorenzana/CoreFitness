@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 74 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 75 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -153,7 +153,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0074 are all live** — verified 2026-09-11 with
+**0001–0074 are all live**; **0075** (25 curated resource links, data only) is written and replay-tested, **not yet pasted** — verified 2026-09-11 with
 `python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials.
 **Run it rather than trusting a report that a migration was pasted**: 0070 was believed done for a
 day and had never executed. It probes **three objects per migration**, so a file that never ran is
@@ -192,7 +192,7 @@ claiming anything is verified. The three that decide *how* you verify:
 - **The whole test matrix now runs with no password.** `scripts/plan-gates.js` and
   `scripts/trainer-scenarios.js` go into the Playwright runner's `filename` argument and drive the
   real app over a routed network (38 checks) — they prove the **app** agrees with the rules and
-  reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (66 checks; `replay-migrations.mjs` first replays all 74 migrations — the only faithful schema, and what cleared part 2): they apply a
+  reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (66 checks; `replay-migrations.mjs` first replays every migration — the only faithful schema, and what cleared part 2): they apply a
   migration verbatim onto a minimal fixture in `@electric-sql/pglite` — real Postgres in Node,
   because **Docker has never started here** — and act as a real `authenticated` role, because **a
   table owner bypasses RLS** and would pass every assertion regardless. **RLS filters rows and does

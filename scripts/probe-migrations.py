@@ -80,6 +80,9 @@ CHECKS = [
     # function anyone calls — so it leaves no schema trace, and this probe would
     # have reported it live before it ever ran. The marker exists for that.
     ('0074', 'rpc migration_0074_applied',     lambda: rpc('migration_0074_applied')),
+    # 0075 inserts library rows the anon key cannot read (0019's policy), so it
+    # carries a marker too.
+    ('0075', 'rpc migration_0075_applied',     lambda: rpc('migration_0075_applied')),
 ]
 
 print('project: %s' % URL)

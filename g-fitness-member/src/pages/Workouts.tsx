@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ExternalLink, BookOpen, Sparkles, ClipboardList, ChevronRight,
-  PlayCircle, HeartPulse, Dumbbell,
+  PlayCircle, HeartPulse, Dumbbell, GraduationCap, FlaskConical, Smartphone, Code,
 } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -44,7 +44,15 @@ import type { ClassLevel } from '../types/db';
  */
 const CATEGORY_TONES: { match: string; icon: typeof BookOpen; bg: string; fg: string }[] = [
   { match: 'beginner',  icon: Sparkles,      bg: 'var(--color-secondary-light)', fg: 'var(--color-secondary)' },
+  // Before 'strength': "Strength & hypertrophy education" is reading, not a
+  // programme to follow, so it takes the structural violet (0075).
+  { match: 'education', icon: GraduationCap, bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
   { match: 'strength',  icon: Dumbbell,      bg: 'var(--color-secondary-light)', fg: 'var(--color-secondary)' },
+  { match: 'program',   icon: ClipboardList, bg: 'var(--color-secondary-light)', fg: 'var(--color-secondary)' },
+  { match: 'librar',    icon: BookOpen,      bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'research',  icon: FlaskConical,  bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'app',       icon: Smartphone,    bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
+  { match: 'developer', icon: Code,          bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
   { match: 'bodyweight',icon: Dumbbell,      bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
   { match: 'follow',    icon: PlayCircle,    bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
   { match: 'guidance',  icon: HeartPulse,    bg: 'var(--color-primary-light)',   fg: 'var(--color-primary)' },
