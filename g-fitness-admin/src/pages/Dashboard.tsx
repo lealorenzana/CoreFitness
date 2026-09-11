@@ -14,7 +14,7 @@ import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
   type RevenuePoint, type MembersPoint, type AttendancePt,
-  type HeatmapCell, type TopTrainer, type ProgressKpis,
+  type HeatmapCell, type TopTrainer,
   type DashboardSummary, type ExpiringMember,
 } from '../services/dashboardService';
 
@@ -47,61 +47,69 @@ function FilterSelect({ value, options, onChange }: {
   );
 }
 
-// ── Progress Ring ───────────────────────────────────────────────────────────
-function ProgressRing({ value, label, sub, accent = VIOLET, format }: {
-  value: number; label: string; sub?: string; accent?: string;
-  format?: (v: number) => string;
-}) {
-  const radius = 24;
-  const stroke = 5;
-  const size = (radius + stroke) * 2;
-  const c = 2 * Math.PI * radius;
-  const pct = Math.max(0, Math.min(100, value));
-  const offset = c - (pct / 100) * c;
-  const display = format ? format(value) : `${Math.round(value)}%`;
 
+// ── Activity Heatmap ────────────────────────────────────────────────────────
+/** Quiet violet to busy amber. Shared by the tile and the full panel so the two
+ *  can never shade the same count differently. */
+function heatColor(v: number, max: number) {
+  if (v === 0) return 'var(--color-surface-raised)';
+  const pct = v / Math.max(1, max);
+  if (pct < 0.25) return 'rgba(124,58,237,0.25)';
+  if (pct < 0.5)  return 'rgba(124,58,237,0.50)';
+  if (pct < 0.75) return 'rgba(245,158,11,0.45)';
+  return 'rgba(245,158,11,0.75)';
+}
+
+/**
+ * The heatmap as a dashboard tile: every cell visible without a click.
+ *
+ * It lived only behind the "Busiest hour" tile, in a panel nobody opened, so
+ * the one chart that answers "when is the gym full?" was effectively missing.
+ * Rows and columns are fractions of the tile, so it fills whatever height the
+ * bento gives it rather than sitting at a fixed size in the corner.
+ */
+function HeatmapTileGrid({ cells }: { cells: HeatmapCell[] }) {
+  const max  = Math.max(0, ...cells.map((c) => c.visits));
+  const days = Array.from(new Set(cells.map((c) => c.day)));
+  const hrs  = Array.from(new Set(cells.map((c) => c.hour)));
+  const visitOf = (d: string, h: string) => cells.find((c) => c.day === d && c.hour === h)?.visits ?? 0;
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} stroke={BORDER} strokeWidth={stroke} fill="none" />
-          <circle
-            cx={size / 2} cy={size / 2} r={radius}
-            stroke={accent} strokeWidth={stroke} fill="none"
-            strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">
-          {display}
+    <div className="h-full grid gap-[3px]"
+      style={{
+        gridTemplateColumns: `28px repeat(${hrs.length}, minmax(0, 1fr))`,
+        gridTemplateRows: `auto repeat(${days.length}, minmax(0, 1fr))`,
+      }}>
+      <div />
+      {hrs.map((h) => (
+        <div key={h} className="text-[9px] text-center pb-0.5" style={{ color: TEXT_MUTED }}>{h}</div>
+      ))}
+      {days.map((d) => (
+        <div key={d} className="contents">
+          <div className="text-[9px] flex items-center" style={{ color: TEXT_MUTED }}>{d}</div>
+          {hrs.map((h) => {
+            const v = visitOf(d, h);
+            return (
+              <div key={`${d}-${h}`}
+                className="rounded-sm flex items-center justify-center text-[10px] font-bold text-white min-h-0"
+                style={{ background: heatColor(v, max) }}
+                data-tip={`${d} around ${h}: ${v} check-in${v === 1 ? '' : 's'} in the last 30 days`}>
+                {v > 0 ? v : ''}
+              </div>
+            );
+          })}
         </div>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-white truncate">{label}</p>
-        {sub && <p className="text-[10px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>{sub}</p>}
-      </div>
+      ))}
     </div>
   );
 }
 
-// ── Activity Heatmap ────────────────────────────────────────────────────────
 function HeatmapGrid({ cells }: { cells: HeatmapCell[] }) {
   if (cells.length === 0) return null;
   const max  = Math.max(...cells.map((c) => c.visits));
   const days = Array.from(new Set(cells.map((c) => c.day)));
   const hrs  = Array.from(new Set(cells.map((c) => c.hour)));
   const visitOf = (d: string, h: string) => cells.find((c) => c.day === d && c.hour === h)?.visits ?? 0;
-
-  // Color scale: dark → yellow (more visits = brighter yellow)
-  const colorFor = (v: number) => {
-    if (v === 0) return 'var(--color-surface-raised)';
-    const pct = v / Math.max(1, max);
-    if (pct < 0.25) return 'rgba(124,58,237,0.25)';
-    if (pct < 0.5)  return 'rgba(124,58,237,0.50)';
-    if (pct < 0.75) return 'rgba(245,158,11,0.45)';
-    return 'rgba(245,158,11,0.75)';
-  };
+  const colorFor = (v: number) => heatColor(v, max);
 
   return (
     <div>
@@ -159,8 +167,10 @@ export default function Dashboard() {
   const [memberData,     setMemberData]     = useState<MembersPoint[]>([]);
   const [attendanceData, setAttendanceData] = useState<AttendancePt[]>([]);
   const [heatmap,        setHeatmap]        = useState<HeatmapCell[]>([]);
+  /** Loading, loaded or failed — an empty heatmap means "nobody checked in",
+   *  and must not also mean "still loading" or "the query failed". */
+  const [heatmapState,   setHeatmapState]   = useState<'loading' | 'ready' | 'failed'>('loading');
   const [topTrainers,    setTopTrainers]    = useState<TopTrainer[]>([]);
-  const [progressKpis,   setProgressKpis]   = useState<ProgressKpis | null>(null);
 
   useEffect(() => {
     dashboardService
@@ -177,9 +187,13 @@ export default function Dashboard() {
   useEffect(() => { dashboardService.getNewMembersByYear(memberYear).then(setMemberData); }, [memberYear]);
   useEffect(() => { dashboardService.getAttendance(attendanceScope).then(setAttendanceData); }, [attendanceScope]);
   useEffect(() => {
-    dashboardService.getAttendanceHeatmap().then(setHeatmap);
+    dashboardService.getAttendanceHeatmap()
+      .then((cells) => { setHeatmap(cells); setHeatmapState('ready'); })
+      .catch(() => setHeatmapState('failed'));
     dashboardService.getTopTrainers().then(setTopTrainers);
-    dashboardService.getProgressKpis().then(setProgressKpis);
+    // The "Member statistics" tile that used getProgressKpis() is gone: every
+    // figure it drew (BMI, weight change, workouts, goals) was a hardcoded 0,
+    // shown as if measured. The heatmap took its place.
   }, []);
 
   // Real KPIs — no invented deltas. A "+12%" badge next to a real number is worse
@@ -217,24 +231,21 @@ export default function Dashboard() {
   const busiestCell = heatmap.reduce<HeatmapCell | null>(
     (best, c) => (best === null || c.visits > best.visits ? c : best), null);
 
-  /**
-   * Visits per hour bucket, summed across the week.
-   *
-   * The heatmap is day x hour; this collapses the day axis so the tile can draw
-   * the shape of an ordinary day in the space a sparkline would have used.
-   * Bucket order comes from the data, not from a hardcoded list of hours —
-   * `getAttendanceHeatmap` decides the buckets and this must not disagree.
-   */
-  const hourTotals = (() => {
+  /** Visits per weekday, the hour axis collapsed — the other cut of the same
+   *  30 days, for the small tile under the heatmap. Order comes from the data:
+   *  `getAttendanceHeatmap` decides the days and this must not disagree. */
+  const dayTotals = (() => {
     const order: string[] = [];
     const sums = new Map<string, number>();
     for (const c of heatmap) {
-      if (!sums.has(c.hour)) { order.push(c.hour); sums.set(c.hour, 0); }
-      sums.set(c.hour, (sums.get(c.hour) ?? 0) + c.visits);
+      if (!sums.has(c.day)) { order.push(c.day); sums.set(c.day, 0); }
+      sums.set(c.day, (sums.get(c.day) ?? 0) + c.visits);
     }
-    return order.map((h) => sums.get(h) ?? 0);
+    return order.map((d) => ({ day: d, visits: sums.get(d) ?? 0 }));
   })();
-  const peakHour = Math.max(0, ...hourTotals);
+  const peakDay = dayTotals.reduce<{ day: string; visits: number } | null>(
+    (best, d) => (best === null || d.visits > best.visits ? d : best), null);
+  const heatmapVisits = dayTotals.reduce((s, d) => s + d.visits, 0);
 
   /** Bars or a line — the same twelve months either way. */
   const [chartMode, setChartMode] = useState<'bars' | 'trend'>('bars');
@@ -380,40 +391,39 @@ export default function Dashboard() {
           </div>
         </Tile>
 
-        {/* Rows 2–4, middle — the member-body figures. */}
-        <Tile col="7 / 10" row="2 / 5">
-          <h3 className="text-xs font-semibold text-white mb-2">Member statistics</h3>
-          <div className="space-y-2.5">
-            <ProgressRing
-              value={progressKpis ? Math.min(100, (progressKpis.avgBmi / 30) * 100) : 0}
-              label="Avg BMI"
-              sub={progressKpis ? progressKpis.avgBmi.toFixed(1) : '—'}
-              accent={VIOLET}
-              format={() => progressKpis ? progressKpis.avgBmi.toFixed(1) : '—'}
-            />
-            <ProgressRing
-              value={progressKpis ? Math.min(100, Math.abs(progressKpis.avgWeightChangeKg) * 25) : 0}
-              label="Avg Weight Change"
-              sub={progressKpis
-                ? `${progressKpis.avgWeightChangeKg > 0 ? '+' : ''}${progressKpis.avgWeightChangeKg} kg`
-                : '—'}
-              accent={YELLOW}
-              format={() => progressKpis ? `${progressKpis.avgWeightChangeKg > 0 ? '+' : ''}${progressKpis.avgWeightChangeKg}` : '—'}
-            />
-            <ProgressRing
-              value={progressKpis ? Math.min(100, (progressKpis.totalWorkouts / 1500) * 100) : 0}
-              label="Total Workouts"
-              sub={progressKpis ? `${progressKpis.totalWorkouts.toLocaleString()} logged` : '—'}
-              accent={VIOLET}
-              format={() => progressKpis ? `${Math.round((progressKpis.totalWorkouts / 1500) * 100)}%` : '—'}
-            />
-            <ProgressRing
-              value={progressKpis ? Math.min(100, (progressKpis.activeGoals / 100) * 100) : 0}
-              label="Active Goals"
-              sub={progressKpis ? `${progressKpis.activeGoals} in progress` : '—'}
-              accent={YELLOW}
-              format={() => progressKpis ? `${progressKpis.activeGoals}` : '—'}
-            />
+        {/* Rows 2–4, middle — when the members actually come in. This tile was
+            "Member statistics": four rings that always read 0, because the
+            service returned hardcoded zeros. The heatmap it replaces lived only
+            behind a click, so this is the chart promoted rather than a new one. */}
+        <Tile col="7 / 10" row="2 / 5" onClick={() => setPanel('heatmap')}
+          tip="Check-ins by day and time over the last 30 days — click for the full view">
+          <div className="h-full flex flex-col">
+            <div className="flex items-start justify-between gap-2 mb-2 flex-shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-white">Member activity</h3>
+                <p className="text-[10px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>
+                  {heatmapState === 'ready' && heatmapVisits > 0 && busiestCell
+                    ? `${heatmapVisits} check-ins, last 30 days · busiest ${busiestCell.day} ${busiestCell.hour}`
+                    : 'Check-ins by day and time, last 30 days'}
+                </p>
+              </div>
+              <ChevronRight size={13} className="flex-shrink-0" style={{ color: TEXT_MUTED }} />
+            </div>
+            <div className="flex-1 min-h-0">
+              {heatmapState === 'loading' ? (
+                <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Loading…</p>
+              ) : heatmapState === 'failed' ? (
+                <p className="text-[11px]" style={{ color: TEXT_MUTED }}>
+                  Couldn&apos;t load check-ins. This is a connection problem, not an empty gym.
+                </p>
+              ) : heatmap.length === 0 ? (
+                <p className="text-[11px]" style={{ color: TEXT_MUTED }}>
+                  No check-ins in the last 30 days.
+                </p>
+              ) : (
+                <HeatmapTileGrid cells={heatmap} />
+              )}
+            </div>
           </div>
         </Tile>
 
@@ -488,27 +498,34 @@ export default function Dashboard() {
         </Tile>
 
         <Tile col="7 / 10" row="5 / 7" onClick={() => setPanel('heatmap')}
-          tip="The busiest day-and-hour, from real check-ins">
+          tip="Check-ins per weekday over the last 30 days">
           <MiniChartHeader
-            label="Busiest hour"
-            /* NULL until the heatmap loads, and it says so rather than naming
-               an hour nobody's visits produced. */
-            value={busiestCell && busiestCell.visits > 0 ? busiestCell.hour : '—'}
-            sub={busiestCell && busiestCell.visits > 0
-              ? `${busiestCell.day} · ${busiestCell.visits} visits`
+            label="Busiest day"
+            /* A dash until there are visits, rather than naming a day nobody's
+               check-ins produced. */
+            value={peakDay && peakDay.visits > 0 ? peakDay.day : '—'}
+            sub={peakDay && peakDay.visits > 0
+              ? `${peakDay.visits} check-ins · last 30 days`
               : 'no visits yet'}
           />
-          <div className="flex-1 min-h-0 flex items-end gap-[3px]">
-            {/* Visits by hour, summed across days — the shape of a gym's day
-                in the space a sparkline would have used. */}
-            {hourTotals.map((n, i) => (
-              <div key={i} className="flex-1 rounded-sm"
-                style={{
-                  height: `${peakHour === 0 ? 3 : Math.max(3, (n / peakHour) * 100)}%`,
-                  background: n === 0 ? 'var(--color-border)'
-                    : n === peakHour ? YELLOW : 'rgba(124,58,237,0.55)',
-                }} />
-            ))}
+          <div className="flex-1 min-h-0 flex items-end gap-1">
+            {/* The heatmap's other cut: its hour axis summed away, so the tile
+                shows the shape of the week under the grid that shows the day. */}
+            {dayTotals.map(({ day, visits }) => {
+              const top = peakDay?.visits ?? 0;
+              return (
+                <div key={day} className="flex-1 h-full flex flex-col items-center justify-end gap-0.5"
+                  data-tip={`${day}: ${visits} check-in${visits === 1 ? '' : 's'}`}>
+                  <div className="w-full rounded-sm"
+                    style={{
+                      height: `${top === 0 ? 3 : Math.max(3, (visits / top) * 80)}%`,
+                      background: visits === 0 ? 'var(--color-border)'
+                        : visits === top ? YELLOW : 'rgba(124,58,237,0.55)',
+                    }} />
+                  <span className="text-[8px]" style={{ color: TEXT_MUTED }}>{day.slice(0, 1)}</span>
+                </div>
+              );
+            })}
           </div>
         </Tile>
 
