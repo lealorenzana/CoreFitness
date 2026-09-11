@@ -168,6 +168,7 @@ The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-
 Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of them — the
 objective is being amended**, not the account of the system; replacement text is in that file.
 Outstanding:
+- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes (ids `5eed____-0000-4000-8000-`), removed in one paste — **dashboard figures include it until removed**.
 - **Staff approving registrations** needs an Edge Function (RLS won't let `staff` set
   `profiles.status`). **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
