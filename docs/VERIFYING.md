@@ -242,6 +242,19 @@ Four things that cost time getting them working, none of which are obvious:
   photographed the boot splash on every page — *a screenshot taken early is not
   evidence of anything.*
 
+- **A counted query needs `Access-Control-Expose-Headers: Content-Range`.**
+  Without it the browser hides the header, supabase-js reads the total as
+  unknown, and a paged list shows "Showing 6" with no pager — a fixture bug
+  that looks exactly like an app bug. `scripts/fill-check.js` sets it.
+- **Routes outlive a run.** The runner keeps one page, so a second run stacks
+  its handlers on the first's; start with `page.unrouteAll()`.
+
+**Page fill is measured, not eyeballed:** `scripts/fill-check.js` loads Trainers,
+Payments, Revenue, Activity, Credentials and Schedule at 1918×909 and ×720 and
+reports rows per page, the gap under the last row, whether `<main>` overflows,
+and whether the pager is on screen — plus the credentials viewer's arrow keys
+and reject-needs-a-reason. It regenerates `shots/30`–`37`.
+
 **Fixture columns must match the real ones.** The first member run showed "You
 need a membership before you can book" because `events` was seeded with
 `event_date` when the app selects `starts_at`, and `my_features` was unanswered.
