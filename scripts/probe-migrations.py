@@ -83,6 +83,7 @@ CHECKS = [
     # 0075 inserts library rows the anon key cannot read (0019's policy), so it
     # carries a marker too.
     ('0075', 'rpc migration_0075_applied',     lambda: rpc('migration_0075_applied')),
+    ('0076', 'rpc migration_0076_applied',     lambda: rpc('migration_0076_applied')),
 ]
 
 print('project: %s' % URL)
