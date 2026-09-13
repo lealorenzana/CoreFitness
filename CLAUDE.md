@@ -36,7 +36,10 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
   where members are archived. Rewritten 2026-09-14: **change them in the commit that changes the rule**,
   and contact details come from `gym_settings`, never typed in.
 - **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in `lib/api/mutate.ts`; `python
-  scripts/audit-writes.py` counts them (116 writes, 91 guarded) and DATA_ACCESS says which 25 are deliberate. **Guard
+  scripts/audit-writes.py` counts them (109 writes, 86 guarded) and DATA_ACCESS says which 23 are deliberate.
+  Two more audits, both finding real things: **`audit-dead-code.py`** (a module copied per app and then fixed in
+  only one is the trap — the member app carried eight admin-only functions nothing called) and
+  **`audit-routes.py`** (a route nothing links to; three have shipped). **Guard
   `.update(`/`.delete(` only** — adding `.select()` to an `INSERT` breaks a write the caller may make but not read
   back.
 - **Anything the client can grant or skip proves nothing** — badge rules, the audit log and invoice numbers live in

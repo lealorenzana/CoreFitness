@@ -21,6 +21,10 @@ export interface RecordPaymentInput {
  * `durationDays` learned to be null for a non-expiring plan (0024).
  */
 import type { MemberPlanInfo } from '../../pages/Payments';
+// todayKey(), never toISOString(): the desk opens at 06:00 and Manila is
+// UTC+8, so for the first two hours of every business day the ISO date is
+// yesterday — and this value is written straight to payments.paid_on.
+import { todayKey } from '../../utils/dates';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -43,7 +47,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
     memberId: '',
     amount: '',
     method: 'Cash',
-    date: new Date().toISOString().split('T')[0],
+    date: todayKey(),
     notes: '',
   });
 
@@ -92,7 +96,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
       memberId: '',
       amount: '',
       method: 'Cash',
-      date: new Date().toISOString().split('T')[0],
+      date: todayKey(),
       notes: '',
     });
     setMemberSearch('');

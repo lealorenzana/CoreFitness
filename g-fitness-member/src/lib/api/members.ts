@@ -1,12 +1,5 @@
-import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
-import { todayKey } from '../../utils/dates';
-import type {
-  ProfileRow,
-  MemberProfileRow,
-  PendingRegistrationRow,
-  ProfileStatus,
-} from '../../types/db';
+import type { ProfileRow, MemberProfileRow } from '../../types/db';
 
 export interface MemberWithProfile {
   profile: ProfileRow;
@@ -30,37 +23,11 @@ export async function listMembers(): Promise<MemberWithProfile[]> {
   });
 }
 
-/** Admin: archived members, kept for history (payments/attendance still reference them). */
-export async function listArchivedMembers(): Promise<MemberWithProfile[]> {
-  const { data, error } = await supabase
-    .from('member_profiles')
-    .select('*, profiles!inner(*)')
-    .eq('profiles.status', 'archived');
-  if (error) throw error;
-  return (data ?? []).map((row) => {
-    const { profiles, ...member } = row as MemberProfileRow & { profiles: ProfileRow };
-    return { profile: profiles, member: member as MemberProfileRow };
-  });
-}
-
 export async function getMemberProfile(memberId: string): Promise<MemberWithProfile | null> {
   const { data, error } = await supabase
     .from('member_profiles')
     .select('*, profiles!inner(*)')
     .eq('profile_id', memberId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  const { profiles, ...member } = data as MemberProfileRow & { profiles: ProfileRow };
-  return { profile: profiles, member: member as MemberProfileRow };
-}
-
-/** Attendance/QR check-in lookup — resolves a scanned QR code back to a member. */
-export async function getMemberByQrCode(qrCode: string): Promise<MemberWithProfile | null> {
-  const { data, error } = await supabase
-    .from('member_profiles')
-    .select('*, profiles!inner(*)')
-    .eq('qr_code', qrCode)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -96,150 +63,6 @@ export async function updateMemberProfile(
     .select('profile_id');
   if (error) throw error;
   if (!data || data.length === 0) throw new Error(NO_MEMBER_ROW);
-}
-
-/** Admin: members awaiting approval. */
-export async function listPendingRegistrations(): Promise<PendingRegistrationRow[]> {
-  const { data, error } = await supabase
-    .from('pending_registrations')
-    .select('*')
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-/**
- * Admin approval: activates the profile, creates the member_profiles + memberships
- * rows, and clears the review-queue entry. Not atomic (supabase-js has no
- * client-side multi-table transaction) — acceptable for this foundation phase;
- * a production system would wrap this in a single `supabase.rpc()` Postgres function.
- */
-export async function approveMemberRegistration(
-  pending: PendingRegistrationRow,
-  planId: string
-): Promise<void> {
-  const authUserId = pending.auth_user_id;
-  if (!authUserId) throw new Error('Pending registration has no linked auth account');
-
-  const { data: statusRows, error: statusError } = await supabase
-    .from('profiles')
-    .update({ status: 'active' })
-    .eq('id', authUserId)
-    .select('id');
-  if (statusError) throw statusError;
-  assertWrote(statusRows, 'That approval did not go through — only an admin can activate an account.');
-
-  const { error: memberProfileError } = await supabase.from('member_profiles').insert({
-    profile_id: authUserId,
-    qr_code: authUserId,
-  });
-  if (memberProfileError) throw memberProfileError;
-
-  // Local, not UTC. `start_date` is a calendar date and everything downstream
-  // — expiry, days-left, the renewal prompt — is derived from it, so a member
-  // signed up before 8am started a day early and expired a day early too.
-  const startDate = todayKey();
-  const { error: membershipError } = await supabase.from('memberships').insert({
-    member_id: authUserId,
-    plan_id: planId,
-    status: 'pending',
-    start_date: startDate,
-  });
-  if (membershipError) throw membershipError;
-
-  const { error: deleteError } = await supabase
-    .from('pending_registrations')
-    .delete()
-    .eq('id', pending.id);
-  if (deleteError) throw deleteError;
-}
-
-/**
- * Admin rejection: removes the review-queue entry and marks the profile
- * suspended (the auth account itself can't be deleted from the client —
- * that needs a service-role Edge Function, out of scope for this phase).
- */
-export async function rejectPendingRegistration(pending: PendingRegistrationRow): Promise<void> {
-  if (pending.auth_user_id) {
-    const { data: rejectRows, error: statusError } = await supabase
-      .from('profiles')
-      .update({ status: 'suspended' })
-      .eq('id', pending.auth_user_id)
-      .select('id');
-    if (statusError) throw statusError;
-    assertWrote(rejectRows, 'That registration could not be rejected — only an admin can do that.');
-  }
-  const { error: deleteError } = await supabase
-    .from('pending_registrations')
-    .delete()
-    .eq('id', pending.id);
-  if (deleteError) throw deleteError;
-}
-
-/**
- * Self-registration: creates the real Supabase Auth account (status starts as
- * 'pending_approval', gated by RLS until an admin approves). The profiles +
- * pending_registrations rows are created server-side by the
- * handle_new_member_signup trigger (see 0005_registration_trigger.sql) — this
- * project requires email confirmation, so signUp() returns no active session
- * for the client to insert with directly. The metadata below lands in
- * auth.users.raw_user_meta_data for that trigger to read.
- */
-/**
- * Admin: sets a member's account status. Used for suspend/reactivate and for
- * archiving. Members are never hard-deleted — a delete cascades through
- * memberships, payments and attendance and would destroy the gym's records.
- */
-export async function setMemberStatus(
-  memberId: string,
-  status: ProfileStatus
-): Promise<void> {
-  const { data, error } = await supabase
-    .from('profiles').update({ status }).eq('id', memberId)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That account status could not be changed — your account may not have permission.');
-}
-
-/** Admin: archive a member (keeps all history, drops them off the active roster). */
-export async function archiveMember(memberId: string): Promise<void> {
-  return setMemberStatus(memberId, 'archived');
-}
-
-/**
- * Admin: creates a walk-in member at the front desk via the create-member Edge
- * Function, so the admin's own session isn't swapped for the new member's.
- * Created already 'active' — walk-ins skip the self-registration approval queue.
- */
-export async function createMember(input: {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  address?: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  emergencyContactRelationship?: string;
-  experienceLevel?: string;
-  planId?: string;
-}): Promise<{ id: string; email: string }> {
-  const { data, error } = await supabase.functions.invoke('create-member', { body: input });
-  if (error) {
-    // FunctionsHttpError hides the function's JSON error body on error.context.
-    const context = (error as { context?: Response }).context;
-    let serverMessage: string | undefined;
-    if (context && typeof context.json === 'function') {
-      try {
-        const body = await context.json();
-        serverMessage = body?.error;
-      } catch {
-        // not JSON — fall through to the generic message
-      }
-    }
-    throw new Error(serverMessage ?? error.message);
-  }
-  return data as { id: string; email: string };
 }
 
 /**
