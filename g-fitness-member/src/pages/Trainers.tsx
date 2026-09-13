@@ -11,6 +11,7 @@ import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/
 import { getRatingSummaries, type TrainerRatingSummary } from '../lib/api/trainerRatings';
 import { RatingLine } from '../components/ui/StarRating';
 import { listClasses } from '../lib/api/classes';
+import { Page } from '../components/ui/page';
 
 /**
  * The gym's coaching team, as a member sees it.
@@ -74,7 +75,7 @@ export default function Trainers() {
   }, []);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* This screen is reached from Book, from Home's coach note and from a
           notification, so it needed a way out that is not the dock — every
           other pushed screen in the app has one, and its absence here read as
@@ -158,6 +159,6 @@ export default function Trainers() {
         style={{ background: 'var(--color-secondary)' }}>
         <Calendar size={18} /> Book a Session
       </button>
-    </div>
+    </Page>
   );
 }

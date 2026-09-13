@@ -18,10 +18,17 @@ export const panelStyle: CSSProperties = {
   border: '1px solid var(--color-border)',
 };
 
-/** A panel one step back from `panelStyle` — for nesting inside a raised card. */
+/**
+ * A block *inside* a card.
+ *
+ * A tint, not a second card. This used to be `--color-bg` plus a border, which
+ * gave every nested block its own edge and radius — so a stat inside MY CORE
+ * inside the page was three outlines deep, and Progress read as busy without
+ * anything on it being wrong. The parent card already supplies the edge; this
+ * only needs to separate.
+ */
 export const insetStyle: CSSProperties = {
-  background: 'var(--color-bg)',
-  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface-high)',
 };
 
 interface CardProps {

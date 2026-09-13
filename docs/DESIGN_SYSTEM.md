@@ -41,6 +41,36 @@ The apps' backgrounds differ deliberately. The reference design gets its separat
 cards on light grey; the dark equivalent needs the background pushed down and the cards lifted, or
 every surface merges into one.
 
+## Member layout: one rhythm, one edge, two surfaces
+
+Added 2026-09-14, after a screen-by-screen pass at 393x852. The member app had
+no shared page structure and it showed: `space-y-6 pb-4` on Home, `space-y-5` on
+Profile, `space-y-3` inside Rewards; section labels that were uppercase Anton on
+one screen and small bold sentence case on the next; and content running under
+the floating dock because the scroller reserved 24px for a bar 90px tall.
+
+**The four rules, and where they live:**
+
+| Rule | Enforced by |
+|---|---|
+| One rhythm — `--stack` between sections, `--stack-tight` within one | `<Page>`, `<Section>` in `components/ui/page.tsx` |
+| One left edge — the gutter is set once, in the layout | `Layout.tsx`, `--gutter` |
+| Two surfaces — page, then card. An inset is a **tint**, not a third card | `insetStyle` in `Card.tsx` |
+| One clearance above the dock | `<Page>`, `--dock-clear` |
+
+**`--dock-clear` is the load-bearing one.** The nav floats above the scroll
+container, so the scroller must end above it — 64px of bar, the check-in bump
+that rises out of it, and the home indicator. A screen with its own footer
+(Track, the assistant) passes `dockClear={false}` rather than fighting it.
+
+**When two blocks cannot share a left edge, draw the line.** On a 393px screen
+there is no room to indent a card's body to clear a 48px emblem, so
+`LevelProgressCard` puts a hairline under its header band instead. An
+almost-alignment reads as a mistake; a stated boundary does not.
+
+**The type floor is 12px and 66 places were under it** — 10px and 11px labels,
+one at 9px. This is read at arm's length, in a gym, often mid-set.
+
 ## Colour convention
 
 **Amber = primary action. Violet = selection and structure.** Home's "Book a Session", "Save goal"

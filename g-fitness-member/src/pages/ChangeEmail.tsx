@@ -7,6 +7,7 @@ import { panelStyle } from '../components/ui/Card';
 import { Field, TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
+import { Page } from '../components/ui/page';
 
 /**
  * Change the email you sign in with.
@@ -135,7 +136,7 @@ export default function ChangeEmail() {
   }
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate(backTo)}
@@ -209,6 +210,6 @@ export default function ChangeEmail() {
         Your gym records update automatically once you confirm, so the front desk always sees the
         address you actually use.
       </p>
-    </div>
+    </Page>
   );
 }

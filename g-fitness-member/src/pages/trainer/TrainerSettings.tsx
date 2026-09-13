@@ -312,7 +312,7 @@ export default function TrainerSettings() {
                     ['Location', 'Mamburao, Occidental Mindoro'],
                   ].map(([k, v]) => (
                     <div key={k} className="p-3 rounded-xl flex items-center justify-between gap-3"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                      style={{ background: 'var(--color-surface-high)' }}>
                       <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{k}</span>
                       <span className="text-xs font-semibold text-white text-right">{v}</span>
                     </div>

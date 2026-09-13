@@ -92,7 +92,7 @@ function Choice<T extends string | number>({
           >
             {o.label}
             {o.hint && (
-              <span className="block text-[10px] font-normal mt-0.5" style={{ color: on ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}>
+              <span className="block text-[12px] font-normal mt-0.5" style={{ color: on ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}>
                 {o.hint}
               </span>
             )}
@@ -212,7 +212,7 @@ export default function PlanBuilder() {
 
   const Err = error && (
     <div
-      className="mb-3 px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+      className="mb-3 px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
       style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
     >
       <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
@@ -247,7 +247,7 @@ export default function PlanBuilder() {
             <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {view.intro}
             </p>
-            <p className="text-[10px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
               Built {new Date(saved.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               {' · '}
               {FOCUS_LABEL[saved.spec.inputs.focus]}
@@ -260,13 +260,13 @@ export default function PlanBuilder() {
             <div key={d.label} className="p-4 rounded-2xl" style={panelStyle}>
               <div className="flex items-baseline justify-between gap-2 mb-3">
                 <p className="text-sm font-bold text-white">{d.label}</p>
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{d.focus}</p>
+                <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>{d.focus}</p>
               </div>
               <div className="space-y-2.5">
                 {d.exercises.map((e) => (
                   <div key={e.name} className="flex gap-3">
                     <span
-                      className="text-[11px] font-bold tabular-nums flex-shrink-0 pt-0.5"
+                      className="text-[12px] font-bold tabular-nums flex-shrink-0 pt-0.5"
                       style={{ color: 'var(--color-secondary)', minWidth: 58 }}
                     >
                       {e.sets} × {e.reps}
@@ -274,7 +274,7 @@ export default function PlanBuilder() {
                     <div className="min-w-0">
                       <p className="text-xs text-white leading-snug">{e.name}</p>
                       {e.note && (
-                        <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                        <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                           {e.note}
                         </p>
                       )}
@@ -347,7 +347,7 @@ export default function PlanBuilder() {
               equipment this gym actually has, and it is built from a fixed set of
               rules — not a chatbot guessing, so it says the same thing twice.
             </p>
-            <p className="text-[11px] mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
               It is a starting point, not a prescription. Anything about an injury,
               a health condition or what you should eat belongs with a coach or a
               doctor.
@@ -412,7 +412,7 @@ export default function PlanBuilder() {
 
         <div className="p-4 rounded-2xl" style={panelStyle}>
           <p className="text-xs font-bold text-white mb-1">Anything to work around?</p>
-          <p className="text-[10px] mb-2.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="text-[12px] mb-2.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             An old injury, a sore shoulder. This does not change the exercises —
             it tells you to have a coach adjust them, because that is not
             something an app should decide.

@@ -14,6 +14,7 @@ import { errorMessage } from '../utils/errorMessage';
 import { bucketize } from '../utils/notificationDisplay';
 import { notificationService, type Notification } from '../services/notificationService';
 import { supabase } from '../lib/supabaseClient';
+import { Page } from '../components/ui/page';
 
 /**
  * Every notification the user has, including the ones swiped out of the bell.
@@ -162,7 +163,7 @@ export default function NotificationsAll() {
   };
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate(isTrainer ? '/trainer/home' : '/member/home')}
@@ -446,6 +447,6 @@ export default function NotificationsAll() {
         onToggleArchive={toggleArchive}
         onOpenAction={(n) => { setDetail(null); if (n.actionUrl) navigate(n.actionUrl); }}
       />
-    </div>
+    </Page>
   );
 }

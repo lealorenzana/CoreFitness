@@ -223,7 +223,7 @@ export default function BodyMap({
       {/* Front / back — the part of "3D" that actually helps, since half the
           muscle groups are on the back. */}
       <div className="flex items-center justify-center gap-1 p-1 rounded-full mx-auto mb-2"
-        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', width: 'fit-content' }}
+        style={{ background: 'var(--color-surface-high)', width: 'fit-content' }}
         role="tablist" aria-label="Body view">
         {(['front', 'back'] as BodyView[]).map((v) => (
           <button
@@ -323,7 +323,7 @@ export default function BodyMap({
 
           {active && (
             <div className="mt-2 p-3 rounded-xl"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              style={{ background: 'var(--color-surface-high)' }}>
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-white">{LABEL[view][active.key]}</p>
                 {active.latest != null && (

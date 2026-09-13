@@ -570,7 +570,7 @@ export default function Register() {
                         placeholder="At least 8 characters"
                         autoComplete="new-password"
                         className="field-input w-full h-12 rounded-xl text-white text-sm pl-10 pr-11"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                        style={{ background: 'var(--color-surface-high)' }}
                       />
                       <button type="button" onClick={() => setShowPassword((v) => !v)}
                         aria-label={showPassword ? 'Hide password' : 'Show password'}

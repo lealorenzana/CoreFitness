@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
-import { TIER_STYLE, type AchievementDef } from '../../data/achievements';
+import { tierStyle, type AchievementDef } from '../../data/achievements';
 
 /**
  * One badge tile.
@@ -23,7 +23,7 @@ export default function AchievementBadge({
   index?: number;
   onClick?: () => void;
 }) {
-  const tier = TIER_STYLE[def.tier];
+  const tier = tierStyle(def.tier);
   const Icon = def.icon;
 
   return (
@@ -57,7 +57,7 @@ export default function AchievementBadge({
         {!unlocked && (
           <span
             className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+            style={{ background: 'var(--color-surface-high)' }}
           >
             <Lock size={9} style={{ color: 'var(--color-text-muted)' }} />
           </span>

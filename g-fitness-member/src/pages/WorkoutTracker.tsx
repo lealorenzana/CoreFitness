@@ -186,7 +186,7 @@ export default function WorkoutTracker() {
   }
 
   const Err = error && (
-    <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed mb-3"
+    <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed mb-3"
          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
       <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
       <span>{error}</span>
@@ -241,14 +241,14 @@ export default function WorkoutTracker() {
                 {chosen && (chosen.isTimed ? (
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block">
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Minutes</span>
+                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Minutes</span>
                       <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)}
                         placeholder="0"
                         className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
                         style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
                     </label>
                     <label className="block">
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Seconds</span>
+                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Seconds</span>
                       <input inputMode="numeric" value={seconds} onChange={(e) => setSeconds(e.target.value)}
                         placeholder="0"
                         className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
@@ -258,14 +258,14 @@ export default function WorkoutTracker() {
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block">
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Reps</span>
+                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Reps</span>
                       <input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)}
                         placeholder="8"
                         className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
                         style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
                     </label>
                     <label className="block">
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Weight (kg)</span>
+                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Weight (kg)</span>
                       <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)}
                         placeholder="Optional"
                         className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"

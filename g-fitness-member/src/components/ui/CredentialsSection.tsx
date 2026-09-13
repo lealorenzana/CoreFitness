@@ -121,14 +121,14 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
   return (
     <div className="p-4 rounded-2xl" style={panelStyle}>
       <p className="text-xs font-bold text-white">Certificates</p>
-      <p className="text-[10px] mt-1 mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+      <p className="text-[12px] mt-1 mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
         Upload the document itself — a PDF or a photo. Only you and the gym owner
         can open it; members never see the file. The gym marks it verified once
         they have looked at it.
       </p>
 
       {error && (
-        <div className="px-3 py-2 rounded-xl flex items-start gap-2 text-[10px] leading-relaxed mb-3"
+        <div className="px-3 py-2 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed mb-3"
              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
           <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
           <span>{error}</span>
@@ -144,7 +144,7 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
           style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}
         />
         <button onClick={pick} disabled={busy}
-          className="px-3.5 h-11 rounded-xl text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0 disabled:opacity-50"
+          className="px-3.5 h-11 rounded-xl text-[12px] font-bold flex items-center gap-1.5 flex-shrink-0 disabled:opacity-50"
           style={{ background: 'var(--color-secondary)', color: '#1A1200' }}>
           <Upload size={13} /> {busy ? 'Sending…' : 'Add'}
         </button>
@@ -152,9 +152,9 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
       <input ref={fileRef} type="file" accept={ACCEPT} onChange={onFile} className="hidden" />
 
       {loading ? (
-        <p className="text-[10px] mt-3" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+        <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : items.length === 0 ? (
-        <p className="text-[10px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
+        <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
           Nothing uploaded yet.
         </p>
       ) : (
@@ -163,7 +163,7 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
             const tone = TONE[c.status];
             return (
               <div key={c.id} className="p-3 rounded-xl"
-                   style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                   style={{ background: 'var(--color-surface-high)' }}>
                 <div className="flex items-center justify-between gap-2">
                   <button onClick={() => open(c)}
                     className="flex items-center gap-2 min-w-0 text-left">
@@ -171,7 +171,7 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
                     <span className="text-xs text-white truncate">{c.title}</span>
                   </button>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[9px] px-2 py-1 rounded-full font-semibold flex items-center gap-1"
+                    <span className="text-[12px] px-2 py-1 rounded-full font-semibold flex items-center gap-1"
                           style={{ background: tone.bg, color: tone.fg }}>
                       {c.status === 'verified' ? <Check size={9} />
                         : c.status === 'rejected' ? <X size={9} /> : <Clock size={9} />}
@@ -185,7 +185,7 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
                   </div>
                 </div>
                 {c.reviewNote && (
-                  <p className="text-[10px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  <p className="text-[12px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                     {c.reviewNote}
                   </p>
                 )}

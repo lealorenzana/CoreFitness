@@ -124,7 +124,7 @@ export default function Challenges() {
         {Header}
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4">
           {error && (
-            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
@@ -163,7 +163,7 @@ export default function Challenges() {
                     }} />
                   </button>
                 ) : (
-                  <p className="text-[10px] font-bold uppercase tracking-wider px-1"
+                  <p className="text-[12px] font-bold uppercase tracking-wider px-1"
                     style={{ color: 'var(--color-text-muted)' }}>{label}</p>
                 )}
                 {(!collapsed || showDone) && rows.map((c) => {
@@ -187,13 +187,13 @@ export default function Challenges() {
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-white">{c.title}</p>
                       {c.description && (
-                        <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                           {c.description}
                         </p>
                       )}
                     </div>
                     {done && (
-                      <span className="text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1 flex-shrink-0"
+                      <span className="text-[12px] px-2 py-1 rounded-full font-bold flex items-center gap-1 flex-shrink-0"
                             style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                         <Check size={10} /> Done
                       </span>
@@ -203,10 +203,10 @@ export default function Challenges() {
                   {c.joined && (
                     <div className="mt-3">
                       <div className="flex items-baseline justify-between mb-1.5">
-                        <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                        <span className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
                           {c.metricLabel}
                         </span>
-                        <span className="text-[11px] font-bold text-white">
+                        <span className="text-[12px] font-bold text-white">
                           {c.progress == null ? '—' : c.progress} / {c.target}
                         </span>
                       </div>
@@ -215,7 +215,7 @@ export default function Challenges() {
                              style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
                       </div>
                       {c.progress == null && (
-                        <p className="text-[10px] mt-1.5" style={{ color: 'var(--color-secondary)' }}>
+                        <p className="text-[12px] mt-1.5" style={{ color: 'var(--color-secondary)' }}>
                           Your progress couldn&apos;t be counted just now — this isn&apos;t zero,
                           it&apos;s unknown.
                         </p>
@@ -224,7 +224,7 @@ export default function Challenges() {
                   )}
 
                   <div className="flex items-center justify-between mt-3">
-                    <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                    <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
                       {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
                       {c.rewardPoints > 0 && (
                         <span style={{ color: 'var(--color-primary)' }}>
@@ -234,9 +234,9 @@ export default function Challenges() {
                     </p>
                     {!done && (
                       <button onClick={() => toggle(c)} disabled={busy === c.id}
-                        className="px-3.5 h-9 rounded-full text-[11px] font-bold disabled:opacity-50"
+                        className="px-3.5 h-9 rounded-full text-[12px] font-bold disabled:opacity-50"
                         style={c.joined
-                          ? { background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }
+                          ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
                           : { background: 'var(--color-secondary)', color: '#1A1200' }}>
                         {busy === c.id ? '…' : c.joined ? 'Leave' : 'Join'}
                       </button>

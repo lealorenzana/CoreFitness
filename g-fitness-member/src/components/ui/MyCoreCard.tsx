@@ -131,7 +131,7 @@ export default function MyCoreCard({ home, memberId }: Props) {
             likely thing on this card to be tapped hopefully. */}
         <button
           onClick={() => navigate('/member/renew-membership')}
-          className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"
+          className="text-[12px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"
           style={{
             background: home.expired ? 'var(--color-secondary-light)' : 'var(--color-primary-light)',
             color: home.expired ? 'var(--color-secondary)' : 'var(--color-primary)',
@@ -150,7 +150,8 @@ export default function MyCoreCard({ home, memberId }: Props) {
               key={s.label}
               onClick={s.onClick}
               className="p-3 rounded-xl text-left w-full transition-transform active:scale-[0.97]"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+              /* Tint, not another bordered card — see components/ui/page.tsx. */
+              style={{ background: 'var(--color-surface-high)' }}
             >
               {/* The chevron is the whole point of the row: it is what makes a
                   tile look like a door rather than a readout. Without it these
@@ -161,7 +162,7 @@ export default function MyCoreCard({ home, memberId }: Props) {
                 <ChevronRight size={13} style={{ color: 'var(--color-text-muted)', opacity: 0.55 }} />
               </span>
               <p className="text-lg font-bold text-white mt-1 leading-none">{s.value}</p>
-              <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
             </button>
           );
         })}
@@ -170,10 +171,10 @@ export default function MyCoreCard({ home, memberId }: Props) {
       {points != null && (
         <button
           onClick={() => navigate('/member/rewards')}
-          className="mt-2.5 p-3 rounded-xl flex items-center justify-between w-full"
+          className="mt-3 p-3 rounded-xl flex items-center justify-between w-full"
           style={{ background: 'var(--color-primary-light)' }}
         >
-          <span className="text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>
+          <span className="text-[12px] font-semibold" style={{ color: 'var(--color-primary)' }}>
             CORE Points
           </span>
           <span className="text-lg font-bold leading-none" style={{ color: 'var(--color-primary)' }}>
@@ -183,7 +184,7 @@ export default function MyCoreCard({ home, memberId }: Props) {
       )}
 
       {partial && (
-        <p className="flex items-start gap-1.5 mt-2.5 text-[10px] leading-relaxed"
+        <p className="flex items-start gap-1.5 mt-2.5 text-[12px] leading-relaxed"
            style={{ color: 'var(--color-secondary)' }}>
           <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
           Some of this could not be loaded, so it shows &ldquo;—&rdquo; rather than a

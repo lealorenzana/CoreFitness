@@ -181,6 +181,9 @@ function App() {
               drops them into a layout their role can't load. */}
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="change-email" element={<ChangeEmail />} />
+          {/* Anything else under /trainer goes home rather than rendering the
+              shell around nothing — see the member block below. */}
+          <Route path="*" element={<Navigate to="/trainer/home" replace />} />
         </Route>
 
         {/* Protected Member Routes */}
@@ -224,7 +227,17 @@ function App() {
           <Route path="renew" element={<RenewMembership />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
+          {/* An unknown path under /member rendered the shell with an empty
+              page in it — no error, no way to tell it apart from a screen that
+              failed to load. A notification written before a route was renamed
+              lands here, and so does every stale bookmark. Home instead. */}
+          <Route path="*" element={<Navigate to="/member/home" replace />} />
         </Route>
+
+        {/* Anything else at all. Login decides where to send them from there,
+            because it is the one screen that knows whether anybody is signed
+            in — a blank page was the old answer and it looked like a crash. */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

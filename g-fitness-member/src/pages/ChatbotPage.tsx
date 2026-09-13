@@ -330,7 +330,7 @@ function Assistant() {
           <History size={18} />
           {conversations.length > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[12px] font-bold flex items-center justify-center"
               style={{ background: 'var(--color-primary)', color: '#fff' }}
             >
               {conversations.length}
@@ -341,7 +341,7 @@ function Assistant() {
 
       {saveError && (
         <div
-          className="flex-shrink-0 mb-2 px-3 py-2 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+          className="flex-shrink-0 mb-2 px-3 py-2 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
           style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
         >
           <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
@@ -534,7 +534,7 @@ function Assistant() {
                         <p className="text-xs font-semibold text-white truncate">
                           {c.title || 'New chat'}
                         </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                        <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                           {new Date(c.updatedAt).toLocaleDateString('en-US', {
                             month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                           })}
@@ -548,14 +548,14 @@ function Assistant() {
                         <div className="flex gap-1.5 flex-shrink-0">
                           <button
                             onClick={() => removeThread(c.id)}
-                            className="px-2.5 h-8 rounded-lg text-[11px] font-bold"
+                            className="px-2.5 h-8 rounded-lg text-[12px] font-bold"
                             style={{ background: 'var(--color-secondary)', color: '#000' }}
                           >
                             Delete
                           </button>
                           <button
                             onClick={() => setConfirmDelete(null)}
-                            className="px-2.5 h-8 rounded-lg text-[11px] font-semibold"
+                            className="px-2.5 h-8 rounded-lg text-[12px] font-semibold"
                             style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)' }}
                           >
                             Keep

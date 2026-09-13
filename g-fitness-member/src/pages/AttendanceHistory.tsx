@@ -7,6 +7,7 @@ import { getCurrentUser } from '../utils/auth';
 import { listMemberAttendance } from '../lib/api/attendance';
 import type { AttendanceRow } from '../types/db';
 import { dateKey, localDateKey } from '../utils/dates';
+import { Page } from '../components/ui/page';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -100,7 +101,7 @@ export default function AttendanceHistory() {
   ];
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
@@ -225,6 +226,6 @@ export default function AttendanceHistory() {
           })}
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

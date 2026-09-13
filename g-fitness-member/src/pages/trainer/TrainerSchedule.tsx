@@ -230,7 +230,7 @@ function ClassRowCard({
           )}
         </div>
         {editing && (
-          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="text-[12px] mt-1 text-right" style={{ color: 'var(--color-text-muted)' }}>
             {booked != null && booked > 0
               ? `At least ${booked} — that many are already booked in.`
               : 'How many people fit in the room.'}

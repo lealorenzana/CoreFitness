@@ -38,6 +38,29 @@
     /* Lifted with the surfaces so edges stay visible against the deeper bg. */
     --color-border:          #26243A;
 
+    /* ── Measure: one scale, so surfaces stop drifting apart ──────────────
+       Before this the app had nine different paddings and five vertical
+       rhythms — px-1 next to px-4, space-y-3 next to space-y-6 — because every
+       page invented its own. These are the only values a screen should use.
+
+       `--dock-clear` is the load-bearing one. The nav floats above the scroll
+       container, so the scroller must end above it or the last card sits under
+       the dock: 64px of nav, the check-in bump that rises out of it, and the
+       home indicator. Content was clearing 24px, which is why the QR button and
+       the chat head sat on top of real content on every long screen. */
+    --gutter:                20px;   /* page edge to content, both sides */
+    --card-pad:              16px;   /* inside a card */
+    --stack:                 24px;   /* between sections */
+    --stack-tight:           12px;   /* between items within a section */
+    --dock-clear:            116px;  /* scroll bottom, clears nav + bump */
+
+    /* Type scale. 12px is the floor and is not a suggestion: this is read at
+       arm's length, in a gym, often mid-set. */
+    --text-display:          22px;
+    --text-title:            16px;
+    --text-body:             14px;
+    --text-meta:             12px;
+
     /* The reference's cards are large and softly rounded. */
     --radius-card:           16px;
     --radius-panel:          24px;

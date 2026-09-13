@@ -13,6 +13,7 @@ import {
   formatRemindAt, toTimeInput, todayDow,
 } from '../lib/api/gymPlans';
 import { getCurrentMemberId } from '../services/bookingService';
+import { Page } from '../components/ui/page';
 
 /**
  * "Which days am I training, and when should you nudge me?"
@@ -85,7 +86,7 @@ export default function GymPlan() {
   const today = todayDow();
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate('/member/home')}
@@ -135,7 +136,7 @@ export default function GymPlan() {
                     >
                       {label}
                       {isToday && (
-                        <span className="text-[10px] font-semibold leading-none"
+                        <span className="text-[12px] font-semibold leading-none"
                           style={{ color: 'var(--color-secondary)' }}>
                           today
                         </span>
@@ -207,6 +208,6 @@ export default function GymPlan() {
           </button>
         </>
       )}
-    </div>
+    </Page>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from '../lib/api/workoutResources';
 import { getCurrentMemberId, getExperienceLevel, type ExperienceLevel } from '../services/bookingService';
 import type { ClassLevel } from '../types/db';
+import { Page } from '../components/ui/page';
 
 /**
  * Free workout resources, curated by the gym (migration 0019).
@@ -159,7 +160,7 @@ export default function Workouts() {
     level != null && (r.level === 'all_levels' || r.level === level);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
           className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -299,6 +300,6 @@ export default function Workouts() {
         These are free resources published by others, not Core Fitness programmes.
         Check with a trainer before starting something new.
       </p>
-    </div>
+    </Page>
   );
 }

@@ -47,10 +47,24 @@ export default function Layout() {
     <PhoneChassis>
       <Toaster />
 
+      {/* The gutter lives here and nowhere else, so every screen starts at the
+          same left edge. `--gutter` rather than px-4: the value is shared with
+          the dock and the sheets, and three places that must agree should not
+          be three literals.
+
+          No bottom padding on purpose — `<Page>` owns the clearance above the
+          floating dock, because the screens with their own footer (Track, the
+          assistant) need to opt out of it, and a fixed pb- here would push
+          their composer up by a dock's height for no reason. */}
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto px-4 py-4 pb-2 scrollbar-hide relative"
-        style={{ backgroundColor: 'var(--color-bg)' }}
+        className="flex-1 overflow-y-auto scrollbar-hide relative"
+        style={{
+          backgroundColor: 'var(--color-bg)',
+          paddingLeft: 'var(--gutter)',
+          paddingRight: 'var(--gutter)',
+          paddingTop: 'var(--gutter)',
+        }}
       >
         {/* Animated page transitions — 200ms fade + slide.
             `min-h-full flex flex-col` so a page can ask to fill the screen with

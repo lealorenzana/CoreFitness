@@ -18,6 +18,8 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentMembership } from '../lib/api/memberships';
 import { readCache, writeCache } from '../lib/pageCache';
+import { Page } from '../components/ui/page';
+import { formatPhone } from '../utils/phone';
 
 /** The flattened identity + plan this screen renders. */
 interface MemberSummary {
@@ -110,13 +112,13 @@ export default function Profile() {
 
   const contactRows = [
     { icon: Mail, label: 'Email', value: member.email },
-    { icon: Phone, label: 'Phone', value: member.phone },
+    { icon: Phone, label: 'Phone', value: formatPhone(member.phone) },
     { icon: MapPin, label: 'Home gym', value: member.gym },
     { icon: Calendar, label: 'Member since', value: member.joinDate },
   ].filter((r) => r.value);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate('/member/home')}
@@ -310,7 +312,7 @@ export default function Profile() {
               <button
                 onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 h-11 rounded-full font-semibold text-sm"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
               >
                 Cancel
               </button>
@@ -326,6 +328,6 @@ export default function Profile() {
         </div>,
         document.getElementById('modal-root')!
       )}
-    </div>
+    </Page>
   );
 }

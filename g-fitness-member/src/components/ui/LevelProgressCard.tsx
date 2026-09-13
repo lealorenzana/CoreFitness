@@ -171,6 +171,14 @@ export default function LevelProgressCard({
     >
       <Head
         onClick={linkToAchievements ? () => navigate('/member/achievements') : undefined}
+        /* A hairline under the header band.
+
+           The title sits 60px in — past the emblem — while everything below it
+           starts at the card's own padding, and on a 393px screen there is no
+           room to indent the body to match. When two blocks cannot share a left
+           edge, the fix is to stop pretending they do: the rule makes this a
+           header rather than a paragraph that failed to line up. */
+        style={{ borderBottom: '1px solid var(--color-border)' }}
         className={`w-full text-left p-4 flex items-center gap-3 ${linkToAchievements ? 'active:scale-[0.99] transition-transform' : ''}`}
       >
         <span
@@ -197,7 +205,7 @@ export default function LevelProgressCard({
         )}
       </Head>
 
-      <div className="px-4 pb-4 space-y-3">
+      <div className="p-4 space-y-3">
         {isTop ? (
           <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
             This is the top level. {prog.consistentWeeks} consistent weeks and{' '}
@@ -246,7 +254,8 @@ export default function LevelProgressCard({
         {declared != null && !canAdopt && declared !== prog.level && (
           <div
             className="p-3 rounded-xl"
-            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+            /* An explanation inside a card is an aside, not a third surface. */
+            style={{ background: 'var(--color-surface-high)' }}
           >
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               You told us you train at{' '}

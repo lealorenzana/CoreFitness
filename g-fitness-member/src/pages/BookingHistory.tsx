@@ -16,6 +16,7 @@ import {
   type MyBooking,
 } from '../services/bookingService';
 import type { BookingStatus } from '../types/db';
+import { Page } from '../components/ui/page';
 
 /**
  * The member's own bookings — group classes and personal training in one list,
@@ -116,7 +117,7 @@ export default function BookingHistory() {
   };
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
@@ -233,7 +234,7 @@ export default function BookingHistory() {
                 {row.cancellable && isUpcoming(row) && (
                   <button onClick={() => setPendingCancel(row)}
                     className="mt-3 w-full py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
                     <Trash2 size={13} /> {row.kind === 'pt' ? 'Withdraw request' : 'Cancel booking'}
                   </button>
                 )}
@@ -265,6 +266,6 @@ export default function BookingHistory() {
             : 'Your seat is released back to the class. You can book it again if it stays open.'}
         </p>
       </Modal>
-    </div>
+    </Page>
   );
 }

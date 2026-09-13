@@ -12,12 +12,13 @@ import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
-  TIER_STYLE, type AchievementDef, type AchievementRole,
+  tierStyle, type AchievementDef, type AchievementRole,
 } from '../data/achievements';
 import {
   catalogFor, categoriesFor, listUnlocks, loadCatalogue, syncAchievements,
 } from '../lib/api/achievements';
 import { getCurrentMemberId } from '../services/bookingService';
+import { Page } from '../components/ui/page';
 
 /**
  * The achievement gallery, shared by both roles.
@@ -79,7 +80,7 @@ export default function Achievements() {
   const modalRoot = typeof document !== 'undefined' ? document.getElementById('modal-root') : null;
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate(isTrainer ? '/trainer/profile' : '/member/progress')}
@@ -130,8 +131,8 @@ export default function Achievements() {
                 return (
                   <span key={t} className="inline-flex items-center gap-1.5 text-xs font-semibold"
                     style={{ color: 'var(--color-text-muted)' }}>
-                    <span className="w-2 h-2 rounded-full" style={{ background: TIER_STYLE[t].ring }} />
-                    {got}/{total} {TIER_STYLE[t].label}
+                    <span className="w-2 h-2 rounded-full" style={{ background: tierStyle(t).ring }} />
+                    {got}/{total} {tierStyle(t).label}
                   </span>
                 );
               })}
@@ -203,23 +204,23 @@ export default function Achievements() {
                     className="w-20 h-20 rounded-full flex items-center justify-center mb-3"
                     style={{
                       background: unlocked.has(detail.key)
-                        ? `${TIER_STYLE[detail.tier].ring}24` : 'var(--color-surface-high)',
+                        ? `${tierStyle(detail.tier).ring}24` : 'var(--color-surface-high)',
                       border: `2px solid ${unlocked.has(detail.key)
-                        ? TIER_STYLE[detail.tier].ring : 'var(--color-border)'}`,
+                        ? tierStyle(detail.tier).ring : 'var(--color-border)'}`,
                     }}
                   >
                     <detail.icon
                       size={34}
                       style={{
-                        color: unlocked.has(detail.key) ? TIER_STYLE[detail.tier].ring : 'var(--color-text-muted)',
+                        color: unlocked.has(detail.key) ? tierStyle(detail.tier).ring : 'var(--color-text-muted)',
                         opacity: unlocked.has(detail.key) ? 1 : 0.45,
                       }}
                     />
                   </span>
 
                   <span className="text-xs font-bold uppercase tracking-[0.16em] mb-1"
-                    style={{ color: TIER_STYLE[detail.tier].ring }}>
-                    {TIER_STYLE[detail.tier].label}
+                    style={{ color: tierStyle(detail.tier).ring }}>
+                    {tierStyle(detail.tier).label}
                   </span>
                   <h2 className="display text-xl text-white">{detail.title}</h2>
 
@@ -238,7 +239,7 @@ export default function Achievements() {
                   ) : (
                     <div
                       className="mt-3 px-4 py-3 rounded-xl flex items-start gap-2.5 text-left"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                      style={{ background: 'var(--color-surface-high)' }}
                     >
                       <Lock size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-text-muted)' }} />
                       <span className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
@@ -253,6 +254,6 @@ export default function Achievements() {
         </AnimatePresence>,
         modalRoot
       )}
-    </div>
+    </Page>
   );
 }

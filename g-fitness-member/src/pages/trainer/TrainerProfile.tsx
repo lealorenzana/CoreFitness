@@ -236,7 +236,7 @@ export default function TrainerProfile() {
               <div className="space-y-2 pt-1">
                 {ratings.filter((r) => r.comment).slice(0, 5).map((r, i) => (
                   <div key={`${r.period}-${i}`} className="rounded-xl p-3"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    style={{ background: 'var(--color-surface-high)' }}>
                     <div className="flex items-center gap-1 mb-1">
                       {Array.from({ length: 5 }, (_, n) => (
                         <Star key={n} size={11}
@@ -359,7 +359,7 @@ export default function TrainerProfile() {
               <button
                 onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 h-11 rounded-full font-semibold text-sm"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
               >
                 Cancel
               </button>

@@ -80,7 +80,13 @@ export default function FloatingChathead() {
       {/* Drag constraints container — fills the phone screen area above the dock */}
       <div
         ref={constraintsRef}
-        className="absolute inset-0 bottom-[72px] z-[200] pointer-events-none"
+        /* Sits above the dock rather than beside it. `bottom-[72px]` cleared
+           the bar itself but not the check-in bump that rises out of it, so at
+           rest the bubble covered the bottom-right corner of whatever card was
+           last on screen — a stat tile on Progress, a Redeem button on Rewards.
+           It is still draggable anywhere above this line. */
+        className="absolute inset-0 z-[200] pointer-events-none"
+        style={{ bottom: 'calc(var(--dock-clear) - 24px)' }}
       >
         <motion.div
           drag

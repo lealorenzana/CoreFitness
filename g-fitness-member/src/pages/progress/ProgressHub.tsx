@@ -108,7 +108,7 @@ export default function ProgressHub() {
 
       {summaryFailed && (
         <div
-          className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+          className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
           style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
         >
           <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
@@ -134,7 +134,7 @@ export default function ProgressHub() {
                 dayNumbers={home.weekDayNumbers}
                 todayIndex={home.todayIndex}
               />
-              <span className="flex items-center justify-center gap-1 mt-3 text-[11px] font-semibold"
+              <span className="flex items-center justify-center gap-1 mt-3 text-[12px] font-semibold"
                 style={{ color: 'var(--color-text-muted)' }}>
                 See every visit <ChevronRight size={12} />
               </span>

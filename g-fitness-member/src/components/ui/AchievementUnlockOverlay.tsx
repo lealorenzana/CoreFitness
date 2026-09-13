@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TIER_STYLE, type AchievementDef } from '../../data/achievements';
+import { tierStyle, type AchievementDef } from '../../data/achievements';
 
 /**
  * The unlock celebration.
@@ -59,7 +59,7 @@ export default function AchievementUnlockOverlay({
                   style={{
                     width: 2,
                     height: 26,
-                    background: TIER_STYLE[def.tier].ring,
+                    background: tierStyle(def.tier).ring,
                     transform: `rotate(${(360 / RAYS) * i}deg) translateY(-46px)`,
                   }}
                   initial={{ opacity: 0, scaleY: 0.2 }}
@@ -71,7 +71,7 @@ export default function AchievementUnlockOverlay({
               {/* Expanding ring */}
               <motion.span
                 className="absolute rounded-full"
-                style={{ width: 96, height: 96, border: `2px solid ${TIER_STYLE[def.tier].ring}` }}
+                style={{ width: 96, height: 96, border: `2px solid ${tierStyle(def.tier).ring}` }}
                 initial={{ scale: 0.6, opacity: 0.9 }}
                 animate={{ scale: 1.9, opacity: 0 }}
                 transition={{ duration: 1.1, delay: 0.2, ease: 'easeOut' }}
@@ -81,15 +81,15 @@ export default function AchievementUnlockOverlay({
               <motion.span
                 className="relative w-24 h-24 rounded-full flex items-center justify-center"
                 style={{
-                  background: `${TIER_STYLE[def.tier].ring}26`,
-                  border: `2px solid ${TIER_STYLE[def.tier].ring}`,
-                  boxShadow: `0 0 46px -6px ${TIER_STYLE[def.tier].glow}`,
+                  background: `${tierStyle(def.tier).ring}26`,
+                  border: `2px solid ${tierStyle(def.tier).ring}`,
+                  boxShadow: `0 0 46px -6px ${tierStyle(def.tier).glow}`,
                 }}
                 initial={{ scale: 0, rotate: -35 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.06 }}
               >
-                <def.icon size={42} style={{ color: TIER_STYLE[def.tier].ring }} />
+                <def.icon size={42} style={{ color: tierStyle(def.tier).ring }} />
               </motion.span>
             </div>
 
@@ -101,9 +101,9 @@ export default function AchievementUnlockOverlay({
             >
               <span
                 className="text-xs font-bold uppercase tracking-[0.18em] mb-2"
-                style={{ color: TIER_STYLE[def.tier].ring }}
+                style={{ color: tierStyle(def.tier).ring }}
               >
-                {TIER_STYLE[def.tier].label} unlocked
+                {tierStyle(def.tier).label} unlocked
               </span>
               <h2 className="display text-2xl text-white">{def.title}</h2>
               <p className="text-xs mt-2 max-w-[15rem] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>

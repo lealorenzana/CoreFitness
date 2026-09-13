@@ -144,7 +144,7 @@ export default function Rewards() {
         {Header}
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4">
           {error && (
-            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed"
+            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
@@ -152,16 +152,24 @@ export default function Rewards() {
           )}
 
           {/* ── Balance ────────────────────────────────────────────────────── */}
-          <div className="p-5 rounded-2xl text-center" style={panelStyle}>
+          {/* The balance is what a member opens this screen for, so it is the
+              one element on it allowed to be loud. Violet: points are
+              structure, not an action — the amber belongs on Redeem. */}
+          <div className="rounded-2xl text-center relative overflow-hidden"
+            style={{
+              padding: 24,
+              background: 'linear-gradient(160deg, rgba(124,58,237,0.30) 0%, var(--color-surface-raised) 62%)',
+              border: '1px solid var(--color-primary)',
+            }}>
             <Sparkles size={20} className="mx-auto mb-2" style={{ color: 'var(--color-primary)' }} />
-            <p className="display text-4xl text-white leading-none">
+            <p className="display text-white leading-none" style={{ fontSize: 44 }}>
               {balance == null ? '—' : balance.toLocaleString()}
             </p>
-            <p className="text-[11px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-[12px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
               points available to spend
             </p>
             {!mayRedeem && (
-              <p className="text-[10px] mt-3 leading-relaxed" style={{ color: 'var(--color-secondary)' }}>
+              <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--color-secondary)' }}>
                 Your plan earns points but does not include redeeming them yet.
                 They keep adding up — ask the front desk which plan lets you spend them.
               </p>
@@ -181,7 +189,7 @@ export default function Rewards() {
                 className="w-full p-4 flex items-center justify-between gap-2"
               >
                 <span className="text-xs font-bold text-white">How you earn</span>
-                <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                <span className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
                   {rules.length} way{rules.length === 1 ? '' : 's'}
                   <ChevronDown size={13} style={{
                     transform: showRules ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
@@ -205,7 +213,7 @@ export default function Rewards() {
 
           {/* ── Catalogue ──────────────────────────────────────────────────── */}
           <div>
-            <p className="text-xs font-bold text-white mb-2 px-1">Rewards</p>
+            <h2 className="display text-white mb-2" style={{ fontSize: 'var(--text-title)' }}>Rewards</h2>
             {rewards.length === 0 ? (
               <div className="p-5 rounded-2xl text-center" style={panelStyle}>
                 <Gift size={20} className="mx-auto mb-2" style={{ color: 'var(--color-text-muted)' }} />
@@ -220,15 +228,15 @@ export default function Rewards() {
                   const affordable = balance != null && balance >= r.costPoints;
                   return (
                     <div key={r.id} className="p-4 rounded-2xl" style={panelStyle}>
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-white">{r.name}</p>
+                          <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>{r.name}</p>
                           {r.description && (
-                            <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                            <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                               {r.description}
                             </p>
                           )}
-                          <p className="text-[11px] mt-1.5 font-semibold" style={{ color: 'var(--color-primary)' }}>
+                          <p className="text-[12px] mt-1.5 font-semibold" style={{ color: 'var(--color-primary)' }}>
                             {r.costPoints.toLocaleString()} points
                             {r.stock != null && !soldOut && (
                               <span style={{ color: 'var(--color-text-muted)' }}> · {r.stock} left</span>
@@ -238,7 +246,7 @@ export default function Rewards() {
                         <button
                           onClick={() => redeem(r)}
                           disabled={!mayRedeem || soldOut || !affordable || busy === r.id}
-                          className="px-3 h-9 rounded-full text-[11px] font-bold flex-shrink-0 disabled:opacity-35"
+                          className="px-3 h-9 rounded-full text-[12px] font-bold flex-shrink-0 disabled:opacity-35"
                           style={{ background: 'var(--color-secondary)', color: '#1A1200' }}
                         >
                           {busy === r.id ? '…' : soldOut ? 'Sold out' : 'Redeem'}
@@ -247,7 +255,7 @@ export default function Rewards() {
                       {/* Says WHY it is disabled. A greyed button with no reason
                           is the hidden-rulebook problem in miniature. */}
                       {mayRedeem && !soldOut && !affordable && balance != null && (
-                        <p className="text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                        <p className="text-[12px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
                           {(r.costPoints - balance).toLocaleString()} more points to go.
                         </p>
                       )}
@@ -261,29 +269,29 @@ export default function Rewards() {
           {/* ── My requests ────────────────────────────────────────────────── */}
           {mine.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-white mb-2 px-1">Your requests</p>
+              <h2 className="display text-white mb-2" style={{ fontSize: 'var(--text-title)' }}>Your requests</h2>
               <div className="space-y-2">
                 {mine.map((m) => (
                   <div key={m.id} className="p-3.5 rounded-2xl" style={panelStyle}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-white truncate">{m.rewardName}</p>
-                        <p className="text-[10px] mt-0.5 flex items-center gap-1"
+                        <p className="text-[12px] mt-0.5 flex items-center gap-1"
                            style={{ color: m.status === 'rejected' ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
                           {m.status === 'pending' ? <Clock size={9} />
                             : m.status === 'rejected' ? <X size={9} /> : <Check size={9} />}
                           {STATUS_LABEL[m.status]} · {m.costPoints} points
                         </p>
                         {m.decisionNote && (
-                          <p className="text-[10px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                          <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                             {m.decisionNote}
                           </p>
                         )}
                       </div>
                       {m.status === 'pending' && (
                         <button onClick={() => withdraw(m.id)} disabled={busy === m.id}
-                          className="text-[10px] font-semibold flex-shrink-0 px-2.5 h-8 rounded-full"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                          className="text-[12px] font-semibold flex-shrink-0 px-2.5 h-8 rounded-full"
+                          style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
                           Withdraw
                         </button>
                       )}

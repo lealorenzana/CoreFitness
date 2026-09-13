@@ -38,7 +38,7 @@ function SharedBlock({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+    <div className="p-3 rounded-xl" style={{ background: 'var(--color-surface-high)' }}>
       <p className="text-xs font-semibold mb-1.5 flex items-center gap-1.5"
         style={{ color: shared ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
         {shared ? <Icon size={12} /> : <EyeOff size={12} />} {label}
@@ -490,7 +490,7 @@ export default function TrainerMembers() {
                         <Send size={13} className="text-white" />
                       </button>
                     </div>
-                    <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                    <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
                       Saved to their record and sent to them. Unlike their rating of you,
                       this is not anonymous — they will see it came from you.
                     </p>

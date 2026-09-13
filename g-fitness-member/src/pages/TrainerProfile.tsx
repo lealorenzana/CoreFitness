@@ -20,6 +20,7 @@ import {
 import { getCurrentMemberId } from '../services/bookingService';
 import { Stars, StarInput } from '../components/ui/StarRating';
 import type { ClassRow } from '../types/db';
+import { Page } from '../components/ui/page';
 
 /**
  * A coach's profile, as a member sees it.
@@ -183,7 +184,7 @@ export default function TrainerProfile() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/trainers'))}
           className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -331,9 +332,9 @@ export default function TrainerProfile() {
                       maxLength={1000}
                       placeholder="What went well, what could be better? Only the gym and this coach can read it."
                       className="w-full mt-1.5 px-3 py-2 rounded-xl text-white text-sm resize-none"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                      style={{ background: 'var(--color-surface-high)' }}
                     />
-                    <span className="block text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                    <span className="block text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
                       {draftComment.trim().length === 0
                         ? 'Optional — but a score with a reason is the useful kind.'
                         : `${draftComment.length}/1000`}
@@ -415,7 +416,7 @@ export default function TrainerProfile() {
                           {h.comment}
                         </p>
                       ) : (
-                        <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                        <p className="text-[12px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
                           No reason written.
                         </p>
                       )}
@@ -546,7 +547,7 @@ export default function TrainerProfile() {
               <div className="space-y-2">
                 {upcoming.map((c) => (
                   <div key={c.id} className="rounded-xl p-3"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    style={{ background: 'var(--color-surface-high)' }}>
                     <p className="text-sm font-semibold text-white">{c.name}</p>
                     <div className="flex items-center gap-3 mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                       <span className="flex items-center gap-1">
@@ -571,6 +572,6 @@ export default function TrainerProfile() {
           </button>
         </>
       )}
-    </div>
+    </Page>
   );
 }

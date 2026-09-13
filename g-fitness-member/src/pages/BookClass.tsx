@@ -28,6 +28,7 @@ import { listEvents } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
 
 import type { ClassLevel } from '../types/db';
+import { Page } from '../components/ui/page';
 
 /**
  * Everything the first paint of this screen needs, cached as one object.
@@ -532,7 +533,7 @@ export default function BookClass() {
   }, []);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
@@ -637,7 +638,7 @@ export default function BookClass() {
                 {LEVELS.map((l) => (
                   <button key={l.id} disabled={busy} onClick={() => chooseLevel(l.id)}
                     className="w-full rounded-xl p-3 text-left transition-all active:scale-[0.98] disabled:opacity-50"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    style={{ background: 'var(--color-surface-high)' }}>
                     <p className="text-sm font-semibold text-white">{l.label}</p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{l.desc}</p>
                   </button>
@@ -935,11 +936,11 @@ export default function BookClass() {
               rows={2}
               placeholder="Anything your trainer should know? (optional)"
               className="w-full mt-2 rounded-xl p-3 text-xs text-white resize-none"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+              style={{ background: 'var(--color-surface-high)' }}
             />
           </div>
         )}
       </Modal>
-    </div>
+    </Page>
   );
 }

@@ -21,6 +21,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import SectionHeader from '../components/ui/SectionHeader';
 import { panelStyle } from '../components/ui/Card';
 import { Ruler, Target, Dumbbell, Sparkles } from 'lucide-react';
+import { Page } from '../components/ui/page';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; icon: LucideIcon; label: string; description: string }[] = [
@@ -256,7 +257,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate('/member/profile')}
@@ -432,7 +433,7 @@ export default function Settings() {
         }}>
           {sections.map((section, si) => (
             <div key={section.title}>
-              <p className="px-3.5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider"
+              <p className="px-3.5 pt-3 pb-1 text-[12px] font-bold uppercase tracking-wider"
                 style={{
                   color: 'var(--color-text-muted)',
                   borderTop: si > 0 ? '1px solid var(--color-border)' : 'none',
@@ -510,7 +511,7 @@ export default function Settings() {
                     <div
                       key={k}
                       className="p-3 rounded-xl flex items-center justify-between gap-3"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                      style={{ background: 'var(--color-surface-high)' }}
                     >
                       <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{k}</span>
                       <span className="text-xs font-semibold text-white text-right">{v}</span>
@@ -523,6 +524,6 @@ export default function Settings() {
           document.getElementById('modal-root')!
         )}
       </AnimatePresence>
-    </div>
+    </Page>
   );
 }

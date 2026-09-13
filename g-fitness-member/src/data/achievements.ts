@@ -39,6 +39,26 @@ export interface AchievementDef {
   category: string;
 }
 
+type TierStyle = { ring: string; glow: string; label: string };
+
+/**
+ * Read a tier's styling without trusting the tier.
+ *
+ * `TIER_STYLE[def.tier].ring` is what every caller wants, and it is one
+ * undefined away from taking the **whole app** down: the unlock overlay mounts
+ * in the shell, above the router, with no error boundary, so a tier the build
+ * does not know about blanks every screen rather than one badge.
+ *
+ * Today that cannot happen — `achievements.tier` is `not null` with a CHECK of
+ * exactly these four (0038). It is one migration away from being possible, and
+ * "a new tier makes the app unusable until the phone updates" is not a failure
+ * this should ever be able to have. Bronze is the floor for the same reason the
+ * column defaults to it.
+ */
+export function tierStyle(tier: AchievementTier | string | null | undefined): TierStyle {
+  return TIER_STYLE[tier as AchievementTier] ?? TIER_STYLE.bronze;
+}
+
 export const TIER_STYLE: Record<AchievementTier, { ring: string; glow: string; label: string }> = {
   bronze:   { ring: '#C77B3E', glow: 'rgba(199,123,62,0.35)',  label: 'Bronze' },
   silver:   { ring: '#A8B0BE', glow: 'rgba(168,176,190,0.35)', label: 'Silver' },

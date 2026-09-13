@@ -13,6 +13,7 @@ import {
   eventStatus, type EventRow,
 } from '../lib/api/events';
 import { getCurrentMemberId } from '../services/bookingService';
+import { Page } from '../components/ui/page';
 
 /**
  * Gym events — the real `events` table (migration 0014).
@@ -128,7 +129,7 @@ export default function Events() {
   }, [events, mine, tab]);
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button onClick={() => navigate('/member/home')}
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
@@ -294,10 +295,10 @@ export default function Events() {
                     label with nothing after it is worse than no label. */}
                 {(event.who_is_it_for || event.what_to_bring || event.contact) && (
                   <div className="rounded-xl p-3 mb-3 space-y-2"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    style={{ background: 'var(--color-surface-high)' }}>
                     {event.who_is_it_for && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                        <p className="text-[12px] font-semibold uppercase tracking-wide"
                           style={{ color: 'var(--color-primary)' }}>Who it's for</p>
                         <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                           {event.who_is_it_for}
@@ -306,7 +307,7 @@ export default function Events() {
                     )}
                     {event.what_to_bring && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                        <p className="text-[12px] font-semibold uppercase tracking-wide"
                           style={{ color: 'var(--color-primary)' }}>Bring</p>
                         <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                           {event.what_to_bring}
@@ -315,7 +316,7 @@ export default function Events() {
                     )}
                     {event.contact && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide"
+                        <p className="text-[12px] font-semibold uppercase tracking-wide"
                           style={{ color: 'var(--color-primary)' }}>Questions</p>
                         <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                           {event.contact}
@@ -363,6 +364,6 @@ export default function Events() {
       {!loading && events.length > 0 && tab === 'upcoming' && (
         <SectionHeader title="" hint="Registering tells the gym to expect you, so they can cater for the right number." />
       )}
-    </div>
+    </Page>
   );
 }

@@ -85,13 +85,13 @@ export default function PresetGoals({ memberId, onCreated }: Props) {
         <Target size={14} style={{ color: 'var(--color-primary)' }} />
         <p className="text-xs font-bold text-white">Ready-made goals</p>
       </div>
-      <p className="text-[10px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+      <p className="text-[12px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
         These track themselves from your check-ins and logged workouts. Each one
         says exactly how it is counted.
       </p>
 
       {error && (
-        <div className="px-3 py-2 rounded-xl flex items-start gap-2 text-[10px] leading-relaxed mb-3"
+        <div className="px-3 py-2 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed mb-3"
              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
           <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
           <span>{error}</span>
@@ -101,14 +101,14 @@ export default function PresetGoals({ memberId, onCreated }: Props) {
       <div className="space-y-2">
         {templates.map((t) => (
           <div key={t.key} className="rounded-xl overflow-hidden"
-               style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+               style={{ background: 'var(--color-surface-high)' }}>
             <button onClick={() => choose(t)} className="w-full p-3 text-left">
               <p className="text-xs font-semibold text-white">{t.label}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+              <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
                 {t.description}
               </p>
               {/* The rule, always visible — not behind the tap. */}
-              <p className="text-[10px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+              <p className="text-[12px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
                 Counted as: {t.measuredAs}
               </p>
             </button>
@@ -116,7 +116,7 @@ export default function PresetGoals({ memberId, onCreated }: Props) {
             {open === t.key && (
               <div className="px-3 pb-3 flex items-end gap-2">
                 <label className="flex-1 min-w-0">
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
                     Your target
                   </span>
                   <input
@@ -128,7 +128,7 @@ export default function PresetGoals({ memberId, onCreated }: Props) {
                   />
                 </label>
                 <button onClick={() => add(t)} disabled={busy}
-                  className="px-3.5 h-10 rounded-xl text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0 disabled:opacity-50"
+                  className="px-3.5 h-10 rounded-xl text-[12px] font-bold flex items-center gap-1.5 flex-shrink-0 disabled:opacity-50"
                   style={{ background: 'var(--color-secondary)', color: '#1A1200' }}>
                   <Plus size={13} /> {busy ? 'Adding…' : 'Set goal'}
                 </button>

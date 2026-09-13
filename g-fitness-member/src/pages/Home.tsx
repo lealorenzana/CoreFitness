@@ -13,7 +13,7 @@ import Notifications from '../components/Notifications';
 import Avatar from '../components/ui/Avatar';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
-import SectionHeader from '../components/ui/SectionHeader';
+import { Page } from '../components/ui/page';
 import { Pill } from '../components/ui/StatCard';
 import TodayPlanCard from '../components/ui/TodayPlanCard';
 import CheckInSheet from '../components/ui/CheckInSheet';
@@ -119,7 +119,7 @@ export default function Home() {
   // membership card above already links there the moment it matters, and
 
   return (
-    <div className="space-y-6 pb-4 min-h-full">
+    <Page className="min-h-full">
       {/* Greeting */}
       <motion.div
         initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
@@ -142,11 +142,17 @@ export default function Home() {
           {/* Membership + check-in */}
           <motion.section
             initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
-            className="p-5 relative overflow-hidden"
+            className="relative overflow-hidden"
             style={{
-              background: 'var(--color-primary)',
+              padding: 20,
+              /* Violet, still — but lit from the top-left rather than poured
+                 flat, with a hairline that catches the edge the way a real card
+                 does. The tokens stay the source of the hue; this only says
+                 where the light is. */
+              background:
+                'linear-gradient(152deg, #8B5CF6 0%, var(--color-primary) 46%, #5B21B6 100%)',
               borderRadius: 'var(--radius-panel)',
-              boxShadow: 'var(--shadow-panel)',
+              boxShadow: 'var(--shadow-panel), inset 0 1px 0 rgba(255,255,255,0.22)',
             }}
           >
             <div
@@ -231,19 +237,22 @@ export default function Home() {
                   leave "why can't I book this class?" to be discovered at the
                   point of failure, which is the worst possible place. */}
               {home.access && (
-                <div className="mt-3 pt-3 space-y-1.5"
+                <div className="mt-4 pt-4 grid grid-cols-2 gap-x-3 gap-y-2"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}>
                   {home.access.included.map((item) => (
-                    <p key={item} className="text-xs flex items-center gap-1.5 text-white">
-                      <Check size={12} className="flex-shrink-0" />
-                      {item}
+                    <p key={item} className="text-xs flex items-start gap-1.5 text-white leading-snug">
+                      <Check size={13} className="flex-shrink-0 mt-px" />
+                      <span className="min-w-0">{item}</span>
                     </p>
                   ))}
+                  {/* Excluded items span the row: "— not on this plan" is the
+                      half that matters and a two-column cell truncates it into
+                      something that reads like it IS included. */}
                   {home.access.excluded.map((item) => (
-                    <p key={item} className="text-xs flex items-center gap-1.5"
-                      style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      <X size={12} className="flex-shrink-0" />
-                      {item} — not on this plan
+                    <p key={item} className="col-span-2 text-xs flex items-start gap-1.5 leading-snug"
+                      style={{ color: 'rgba(255,255,255,0.62)' }}>
+                      <X size={13} className="flex-shrink-0 mt-px" />
+                      <span className="min-w-0">{item} — not on this plan</span>
                     </p>
                   ))}
                 </div>
@@ -346,8 +355,10 @@ export default function Home() {
           <TodayPlanCard checkedInToday={home.checkedInToday} />
 
           {/* Next session */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <SectionHeader title="Next session" />
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }} className="flex flex-col"
+            style={{ gap: 'var(--stack-tight)' }}>
+            <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Next session</h2>
             {/* The whole card, not just the pill on the right.
 
                 A member reaching for "what am I doing next" taps the thing that
@@ -418,6 +429,6 @@ export default function Home() {
       )}
 
       <CheckInSheet open={checkInOpen} onClose={() => setCheckInOpen(false)} />
-    </div>
+    </Page>
   );
 }

@@ -5,6 +5,7 @@ import { ArrowLeft, Lock, Eye, EyeOff, Check } from 'lucide-react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { supabase } from '../lib/supabaseClient';
 import { errorMessage } from '../utils/errorMessage';
+import { Page } from '../components/ui/page';
 
 /**
  * Change password — against real Supabase Auth.
@@ -110,7 +111,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -16 }} 
@@ -321,6 +322,6 @@ export default function ChangePassword() {
           <li>• Consider using a password manager</li>
         </ul>
       </motion.div>
-    </div>
+    </Page>
   );
 }

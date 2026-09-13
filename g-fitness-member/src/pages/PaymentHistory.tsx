@@ -11,6 +11,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { listMemberPayments } from '../lib/api/payments';
 import { getCurrentMembership, type MembershipWithPlan } from '../lib/api/memberships';
 import type { PaymentRow, PaymentStatus } from '../types/db';
+import { Page } from '../components/ui/page';
 
 /**
  * The member's real payment history.
@@ -75,7 +76,7 @@ export default function PaymentHistory() {
   const expiry = membership?.expiry_date ?? null;
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
           className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -193,6 +194,6 @@ export default function PaymentHistory() {
           )}
         </>
       )}
-    </div>
+    </Page>
   );
 }
