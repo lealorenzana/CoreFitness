@@ -263,6 +263,10 @@ export default function Register() {
         // Passed at last. The front desk sees which plan this person asked for
         // instead of guessing at approval time.
         requestedPlanId: formData.selectedPlanId || undefined,
+        // The checkbox above already blocks submission without it (line ~232),
+        // so this is always true here — sent anyway rather than hardcoded,
+        // because a consent record that cannot be false is not a record.
+        termsAccepted: formData.termsAccepted,
       });
       setIsLoading(false);
 

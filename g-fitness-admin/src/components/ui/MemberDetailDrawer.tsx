@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, User, CreditCard, CalendarCheck, TrendingUp, CalendarClock, MessageSquare,
-  Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, Trash2, Banknote, Pause, Play, Ban,
+  Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, FileCheck, Trash2, Banknote, Pause, Play, Ban,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import Badge from './Badge';
@@ -317,6 +317,17 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
             label="Check-in code"
             value={formatCheckInCode(profile.id)}
             mono
+          />
+          {/* The consent record (0079). NULL renders as the InfoCell's own
+              placeholder rather than as "not accepted" — everyone who joined
+              before 0079, and everyone the desk signed up on paper, is NULL
+              here, and showing that as a refusal would be a worse lie than
+              showing nothing. */}
+          <InfoCell
+            icon={FileCheck}
+            label="Agreed to terms"
+            value={member.terms_accepted_at ? formatDate(member.terms_accepted_at) : null}
+            className="col-span-2"
           />
         </div>
       </Section>

@@ -287,6 +287,10 @@ export async function registerMember(input: {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelationship?: string;
+  /** Whether the member ticked "I agree to the Terms and Privacy Policy".
+   *  Only the answer travels: the *time* is stamped by Postgres in 0079's
+   *  trigger, because a browser clock is not evidence of anything. */
+  termsAccepted?: boolean;
   /**
    * True when the new account is already signed in.
    *
@@ -317,6 +321,11 @@ export async function registerMember(input: {
         emergency_contact_name: input.emergencyContactName ?? '',
         emergency_contact_phone: input.emergencyContactPhone ?? '',
         emergency_contact_relationship: input.emergencyContactRelationship ?? '',
+        // Read by handle_new_member_signup() (0079), which stamps
+        // member_profiles.terms_accepted_at with its own clock when this is
+        // exactly 'true'. A string, because metadata reaches the trigger as
+        // text either way and `meta->>'terms_accepted'` compares against one.
+        terms_accepted: input.termsAccepted ? 'true' : 'false',
       },
     },
   });

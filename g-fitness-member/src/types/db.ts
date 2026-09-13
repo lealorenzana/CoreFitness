@@ -35,6 +35,13 @@ export interface MemberProfileRow {
   qr_code: string | null;
   experience_level: string | null;
   /**
+   * When this member accepted the Terms and Privacy Policy at sign-up (0079),
+   * stamped by Postgres rather than by the browser. **NULL means no record**,
+   * not a refusal: everyone who joined before 0079, and everyone signed up at
+   * the desk on paper, has NULL here.
+   */
+  terms_accepted_at: string | null;
+  /**
    * What the member is currently training for (0044):
    * 'bulking' | 'cutting' | 'maintaining', or NULL for not stated.
    *

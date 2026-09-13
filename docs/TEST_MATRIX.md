@@ -334,6 +334,10 @@ pass just as well against a version that handed them account control.
 | 6.0c | As staff, suspend anybody | Refused: "...beyond that is an admin action" | |
 | 6.0d | As staff, reactivate a member an **admin** suspended | Refused — reversing an admin decision is not desk work | |
 | 6.0e | As admin, reject a pending sign-up, then read Account history | Suspension recorded **with a reason**, not a blank | |
+| 6.0f | Sign up with the box ticked; open that member in admin -> Intake | **Agreed to terms** shows the date (0079) | |
+| 6.0g | Open a member who joined before 0079 | The field is blank, **not** "did not accept" | |
+| 6.0h | Read Terms -> section 3 against a real cancellation quote | The percentages on the page are the ones the dialog quotes | |
+| 6.0i | Read Privacy -> section 2, then turn a sharing switch off in Settings | What it claims the trainer can see matches what the trainer sees | |
 | 6.1 | Staff account → pricing, trainers, settings, audit log | All unreachable | |
 | 6.2 | Staff records a payment and a check-in | Both work | |
 | 6.3 | Member calls `set_account_status` from the console | Refused | **PASS** (Run 4) |

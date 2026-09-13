@@ -2,65 +2,85 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
+import GymContact from '../components/ui/GymContact';
 
+/**
+ * What the gym holds, who can see it, and what it does not do.
+ *
+ * Rewritten 2026-09-14 for the same reason as Terms: the boilerplate described
+ * a different company. It named **payment processors** as a category of people
+ * the gym shares data with, in a business that takes nothing but cash; claimed
+ * "regular security audits"; offered **deletion** of your data when members are
+ * archived precisely so the gym keeps its own books; offered a data **export**
+ * the app does not have; and described cookies "to analyse usage patterns",
+ * which nothing here does. Every one of those is a claim an IT expert can
+ * disprove in about a minute, and two of them are promises the gym would then
+ * be unable to keep.
+ *
+ * It also left out the one genuinely unusual thing this system does, which is
+ * 0032: **a member decides what their trainer can see**, enforced in row-level
+ * security rather than by hiding a screen. That is the paragraph worth reading.
+ *
+ * Framed against RA 10173, the Data Privacy Act of 2012, the way
+ * docs/MEMBERSHIP_POLICY.md is framed against RA 7394.
+ */
 const sections: { title: string; body: string | string[] }[] = [
   {
-    title: '1. Information We Collect',
+    title: '1. What the gym holds about you',
     body: [
-      'Personal details (name, email, phone number, address, birthdate)',
-      'Membership and payment information',
-      'Gym attendance and usage data',
-      'Health and fitness information (optional)',
-      'Communication preferences and feedback',
+      'Your name, email, phone, address and date of birth, and an emergency contact.',
+      'Your check-in code, and every check-in made with it.',
+      'Payments recorded at the desk — amount, method and date. No card or bank details, because the gym does not take them.',
+      'Anything you choose to log: workouts, measurements, goals, and how you rate a coach.',
+      'If you turn on notifications, the token your phone needs to receive them. You can turn it off again in Settings.',
     ],
   },
   {
-    title: '2. How We Use Your Information',
+    title: '2. Who can see it',
     body: [
-      'Provide and manage your gym membership',
-      'Process payments and maintain billing records',
-      'Send important updates about your membership',
-      'Improve our services and facilities',
-      'Communicate promotional offers (with your consent)',
+      'You.',
+      'The gym owner and the front desk, who need it to run the gym.',
+      'Your trainer sees only what you allow. Measurements, goals and workout logs are each a switch in Settings, and the database itself refuses a trainer the rest — it is not a hidden screen, it is a rule they cannot get around.',
+      'Nobody else. The gym does not sell, rent or trade any of it.',
     ],
   },
   {
-    title: '3. Information Sharing',
+    title: '3. Ratings you give a coach are anonymous to them',
+    body: 'A coach sees their scores and what was written, with no name attached — the database gives them a view that does not contain who wrote it. The gym can see the name, because a complaint nobody can follow up is not something a gym can act on, and one member quietly rating every coach one star is something it should be able to notice.',
+  },
+  {
+    title: '4. Where it is kept',
+    body: 'In a hosted PostgreSQL database (Supabase, Singapore region) reached over HTTPS, with the app itself served from Vercel. Access is enforced per row in the database, so a screen that forgets to filter still cannot show you somebody else\'s records. Your password is never stored by the gym — it is held, hashed, by the authentication service.',
+  },
+  {
+    title: '5. What this app does not do',
     body: [
-      'Service providers who assist in our operations',
-      'Payment processors for transaction handling',
-      'Legal authorities when required by law',
+      'No advertising, and no advertising identifiers.',
+      'No analytics or usage tracking, and no third-party tracking scripts.',
+      'No payment processor — payment happens in cash, at the desk.',
+      'The in-app assistant answers from fixed rules, in the app, using your own data — your membership, your bookings and the gym\'s prices never leave it. If the gym switches on the optional model fallback for general fitness questions, the only thing that leaves is the question you typed.',
     ],
   },
   {
-    title: '4. Data Security',
-    body: 'We implement industry-standard security measures including encryption, secure servers, and regular security audits.',
-  },
-  {
-    title: '5. Your Rights',
+    title: '6. Your rights under RA 10173',
     body: [
-      'Access and review your personal information',
-      'Request corrections to inaccurate data',
-      'Request deletion of your data (subject to legal requirements)',
-      'Opt-out of marketing communications',
-      'Export your data in a portable format',
+      'See what is held about you, and have anything wrong corrected — ask at the desk and it is fixed the same day.',
+      'Object to receiving announcements: notification preferences are yours, in Settings.',
+      'Complain to the National Privacy Commission if the gym gets this wrong.',
+      'Deletion has a limit worth stating plainly: an account is archived rather than erased, because attendance and payment history are the gym\'s own accounting records. Archiving ends access and hides you from the roster; the records behind it stay.',
     ],
   },
   {
-    title: '6. Cookies & Tracking',
-    body: 'Our mobile app may use cookies to enhance your experience, analyze usage patterns, and provide personalized content.',
+    title: '7. How long it is kept',
+    body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back.',
   },
   {
-    title: '7. Data Retention',
-    body: 'We retain personal information for as long as your membership is active and for a reasonable period thereafter to comply with legal obligations.',
+    title: '8. Under 18',
+    body: 'A member under 18 needs a parent or guardian to sign them up and to agree to this policy at the desk.',
   },
   {
-    title: "8. Children's Privacy",
-    body: 'Our services are not intended for individuals under 18. Minors must have parental consent to use our facilities.',
-  },
-  {
-    title: '9. Changes to Privacy Policy',
-    body: 'We may update this Privacy Policy periodically and will notify you of significant changes.',
+    title: '9. Changes to this policy',
+    body: 'If this changes in a way that matters, it is announced in the app and the date above changes with it.',
   },
 ];
 
@@ -91,10 +111,11 @@ export default function Privacy() {
             <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3"
               style={{ color: 'var(--color-text-secondary)' }}>
               <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Last Updated: May 19, 2026</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Last updated: 14 September 2026</p>
                 <p className="text-sm leading-relaxed">
-                  Core Fitness takes your privacy seriously. This policy explains how we collect, use,
-                  and protect your personal information.
+                  This describes what the gym actually holds and who can actually reach it — not a
+                  list of things a policy is expected to say. Written to the Data Privacy Act of
+                  2012 (RA 10173).
                 </p>
               </div>
 
@@ -120,14 +141,7 @@ export default function Privacy() {
                 </div>
               ))}
 
-              <div className="rounded-xl p-4 mt-2"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-primary)' }}>
-                <p className="text-sm leading-relaxed">
-                  <span className="font-bold text-white">Privacy concerns?</span>{' '}
-                  Email <a href="mailto:privacy@gfitness.com" className="font-semibold underline"
-                    style={{ color: 'var(--color-secondary)' }}>privacy@gfitness.com</a> or call +63 912 345 6789.
-                </p>
-              </div>
+              <GymContact lead="Something to correct, or to complain about?" accent="var(--color-primary)" />
               <div className="h-6" />
             </div>
           </motion.div>

@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 78 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 79 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -31,6 +31,10 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
   **jsQR** over the full frame, **never a crop**. **A control writing a flag nothing reads is a lie**; **a rule
   enforced only in SQL the user cannot read ambushes them** (0017 → 0041). **Per-user state never lives in
   `localStorage`** — *and a column is not the fix unless the row exists when the write runs* (0033 → 0036).
+- **The legal pages are part of the system.** Terms/Privacy were boilerplate that *contradicted* it —
+  "non-refundable" against 0073's pro-rata payout, a payment processor in a cash-only gym, deletion
+  where members are archived. Rewritten 2026-09-14: **change them in the commit that changes the rule**,
+  and contact details come from `gym_settings`, never typed in.
 - **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in `lib/api/mutate.ts`; `python
   scripts/audit-writes.py` counts them (116 writes, 91 guarded) and DATA_ACCESS says which 25 are deliberate. **Guard
   `.update(`/`.delete(` only** — adding `.select()` to an `INSERT` breaks a write the caller may make but not read
@@ -153,8 +157,8 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0077 are all live**; **0078** (the front desk may approve a sign-up — one transition, not an
-Edge Function) is written and replay-tested, **not yet pasted** — verified 2026-09-13 with `python
+**0001–0078 are all live**; **0079** (the terms checkbox becomes a record — a column plus the signup
+trigger's last body, from 0036) is written and replay-tested, **not yet pasted** — verified 2026-09-14 with `python
 scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials. **Run it
 rather than trusting a report that a migration was pasted**: 0070 was believed done for a day and had
 never executed. It probes **three objects per migration**, so a file that never ran is distinguishable

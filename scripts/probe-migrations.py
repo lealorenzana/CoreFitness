@@ -91,6 +91,10 @@ CHECKS = [
     # it would answer "live" from 0069 and report 0078 as a half-failed paste.
     # The behaviour is checked by scripts/sql/reasons-and-limits.mjs (4.5).
     ('0078', 'rpc migration_0078_applied',     lambda: rpc('migration_0078_applied')),
+    # 0079 adds a column AND replaces the signup trigger's body. The column is
+    # visible over REST; the trigger is not, so the marker carries that half.
+    ('0079', 'member_profiles.terms_accepted_at', lambda: table('member_profiles', 'terms_accepted_at')),
+    ('0079', 'rpc migration_0079_applied',     lambda: rpc('migration_0079_applied')),
 ]
 
 print('project: %s' % URL)

@@ -80,6 +80,16 @@ why frozen days extend the expiry, are recorded in
 
 ### What the member is told
 
+**The Terms page is where they read it.** `g-fitness-member/src/pages/Terms.tsx`
+sections 2-4 are this document's freeze and refund rules in the member's own
+words, and section 4 states why the tiers are a floor. Until 2026-09-14 that
+page said membership fees were **non-refundable** — the opposite of what
+`refund_quote()` pays out, on the one screen a member would think to check. If a
+rule here changes, change that page in the same commit; a policy the gym follows
+and a policy the member was shown are two different documents only when
+something has gone wrong.
+
+
 - The **quote** is shown before the cancellation is confirmed, with the rule
   that produced it. A number with no reason is not something anyone can accept
   or dispute.
