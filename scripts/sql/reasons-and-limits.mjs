@@ -111,6 +111,9 @@ await db.exec(sqlFile('0057_plans_freeze_events.sql'));
 await db.exec(sqlFile('0069_account_status_events.sql'));
 // 0074 also repairs one sentence in set_account_status. Applied on top, as live.
 await db.exec(sqlFile('0074_decision_guard_runs_first.sql'));
+// 0078 replaces the function body again, to let the front desk approve a
+// sign-up. Applied last, in migration order, so what is tested is what runs.
+await db.exec(sqlFile('0078_staff_approve_registrations.sql'));
 
 await db.exec(`
 insert into profiles (id, role, email, first_name, last_name) values
@@ -239,7 +242,10 @@ await refuses('4.4.2', 'and with whitespace',
 await as(ST);
 await refuses('4.4.3', 'The front desk suspends an account',
   `select set_account_status('${M1}', 'suspended', 'Unpaid dues');`,
-  'Only an admin');
+  // Since 0078 the desk gets its own sentence rather than the blanket "Only an
+  // admin" — it *can* now change one status, so a message implying otherwise
+  // would be a lie. Still refused, which is what this check is about.
+  'admin action');
 
 await as(M1);
 await refuses('4.4.4', 'The member suspends their own account to dodge a rule',
@@ -287,6 +293,70 @@ await allows('4.4.8', 'Reinstating needs no reason — it takes nothing away',
 await as(AD);
 await refuses('4.4.11', 'A status the system does not have',
   `select set_account_status('${M1}', 'banned', 'because');`, 'Unknown account status');
+
+// ════════════════════════════════════════════════════════════════════════════
+//  4.5 — the front desk approves a sign-up, and gains nothing else (0078)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// The whole point of 0078 is the narrowness. A test that only proved staff can
+// approve would pass just as well against `is_front_desk()` on the whole
+// function, which would hand the desk suspension and reinstatement too.
+{
+  const M2 = 'b0000000-0000-0000-0000-0000000000a2';
+  await asOwner();
+  await db.exec(`
+    insert into profiles (id, role, email, first_name, last_name, status) values
+      ('${M2}','member','new@corefitness-test.com','Newly','Signedup','pending_approval');
+    insert into member_profiles values ('${M2}');
+  `);
+
+  await as(ST);
+  await allows('4.5.1', 'The desk activates a pending sign-up',
+    `select set_account_status('${M2}', 'active');`);
+
+  await asOwner();
+  const ev = await one(`select status, previous_status, recorded_by::text as by
+                          from account_status_events where profile_id = '${M2}'
+                         order by created_at desc limit 1;`);
+  rec('4.5.2', 'and the event names the desk as the one who did it',
+    'active from pending_approval, by the desk', `${ev.status} from ${ev.previous_status}, by ${ev.by === ST ? 'the desk' : ev.by}`,
+    ev.status === 'active' && ev.previous_status === 'pending_approval' && ev.by === ST);
+
+  await as(ST);
+  await allows('4.5.3', 'Approving the same person twice is quiet, not an error',
+    `select set_account_status('${M2}', 'active');`);
+  await asOwner();
+  const n2 = await one(`select count(*)::int as n from account_status_events where profile_id = '${M2}';`);
+  rec('4.5.4', 'and still records exactly one event', 1, n2.n, n2.n === 1);
+
+  await as(ST);
+  await refuses('4.5.5', 'The desk suspends somebody, reason and all',
+    `select set_account_status('${M2}', 'suspended', 'Rude to a coach');`, 'admin action');
+
+  await as(ST);
+  await refuses('4.5.6', 'The desk archives somebody',
+    `select set_account_status('${M2}', 'archived', 'Moved away');`, 'admin action');
+
+  // The transition that separates "approve a sign-up" from "account control".
+  await as(AD);
+  await db.exec(`select set_account_status('${M2}', 'suspended', 'Unpaid dues');`);
+  await as(ST);
+  await refuses('4.5.7', 'The desk reverses an admin suspension',
+    `select set_account_status('${M2}', 'active');`, 'admin action');
+
+  await as(ST);
+  await refuses('4.5.8', 'The desk puts an account back into the approval queue',
+    `select set_account_status('${M2}', 'pending_approval');`, 'admin action');
+
+  // A member is not the front desk, and 0078 must not have widened the door.
+  await as(M1);
+  await refuses('4.5.9', 'A member approves themselves',
+    `select set_account_status('${M1}', 'active');`, 'Only an admin');
+
+  await as(AD);
+  await allows('4.5.10', 'An admin still reverses their own suspension',
+    `select set_account_status('${M2}', 'active');`);
+}
 
 await asOwner();
 const failures = results.filter((r) => !r.pass);

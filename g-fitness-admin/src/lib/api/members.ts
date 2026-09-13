@@ -1,4 +1,5 @@
 import { assertWrote } from './mutate';
+import { setAccountStatus } from './accountEvents';
 import { supabase } from '../supabaseClient';
 import { todayKey, addDays } from '../../utils/dates';
 import type {
@@ -99,8 +100,9 @@ export async function listPendingRegistrations(): Promise<PendingRegistrationRow
 }
 
 /**
- * Admin approval: activates the profile, creates the member_profiles +
- * memberships rows on the **free tier**, and clears the review-queue entry.
+ * Approval by admin **or front desk**: activates the profile, creates the
+ * member_profiles + memberships rows on the **free tier**, and clears the
+ * review-queue entry.
  *
  * No longer takes a plan. Approving a registration and selling a membership are
  * two different acts, and only the second one involves money — see the note on
@@ -116,13 +118,21 @@ export async function approveMemberRegistration(
   const authUserId = pending.auth_user_id;
   if (!authUserId) throw new Error('Pending registration has no linked auth account');
 
-  const { data: statusRows, error: statusError } = await supabase
-    .from('profiles')
-    .update({ status: 'active' })
-    .eq('id', authUserId)
-    .select('id');
-  if (statusError) throw statusError;
-  assertWrote(statusRows, 'That approval did not go through — only an admin can activate an account.');
+  // Through set_account_status(), not a direct UPDATE on profiles. Two reasons,
+  // and the second is why this changed (0078):
+  //
+  //  - the function is the only writer that records the transition in
+  //    `account_status_events`, so an approval now has the same history a
+  //    suspension has. The UPDATE left approval as the one status change nobody
+  //    could audit;
+  //  - `profiles` has no UPDATE policy for `staff`, so the front desk — the
+  //    people actually standing in front of the member who just signed up — got
+  //    a zero-row write and the "only an admin" message. 0078 lets them make
+  //    this one transition, inside the function, where the rule is written down.
+  //
+  // A raise arrives as a PostgrestError rather than zero rows, so `assertWrote`
+  // has nothing to guard here; the function itself is the guard.
+  await setAccountStatus(authUserId, 'active');
 
   // Everything the member typed at sign-up moves from the review queue onto
   // their real row here (0031). Without this the intake details — birth date,
@@ -267,15 +277,23 @@ export async function startFreeMembership(memberId: string): Promise<void> {
  * suspended (the auth account itself can't be deleted from the client —
  * that needs a service-role Edge Function, out of scope for this phase).
  */
-export async function rejectPendingRegistration(pending: PendingRegistrationRow): Promise<void> {
+export async function rejectPendingRegistration(
+  pending: PendingRegistrationRow,
+  reason?: string,
+): Promise<void> {
   if (pending.auth_user_id) {
-    const { data: rejectRows, error: statusError } = await supabase
-      .from('profiles')
-      .update({ status: 'suspended' })
-      .eq('id', pending.auth_user_id)
-      .select('id');
-    if (statusError) throw statusError;
-    assertWrote(rejectRows, 'That registration could not be rejected — only an admin can do that.');
+    // Through the function, like every other status change. This path used to
+    // UPDATE `profiles` directly, which made it the one way to suspend an
+    // account without saying why — the account went dark and the history that
+    // 0069 exists to keep was empty for exactly the people who would later ask
+    // what happened. The default is a sentence, not a shrug: a rejection at the
+    // review desk normally has no note attached, and "Registration rejected"
+    // with a timestamp and a name is still an answer.
+    await setAccountStatus(
+      pending.auth_user_id,
+      'suspended',
+      reason?.trim() || 'Registration rejected at review.',
+    );
   }
   const { error: deleteError } = await supabase
     .from('pending_registrations')

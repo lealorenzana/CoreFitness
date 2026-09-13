@@ -316,13 +316,24 @@ clock, not a queue.
 | 5.11 | Member checks the network payload on 5.9 | **No `file_path`** | |
 | 5.12 | As Trainer A, write feedback signed as Trainer B | Refused by the insert policy | |
 | 5.13 | Trainer leaves a member feedback | Member notified; the note names the coach | |
+| 5.14 | As admin, open that trainer -> Evaluations | The coach's notes to members appear under **Notes this coach wrote to members**, with names and dates | |
+| 5.15 | A coach with notes written but no ratings yet | "No evaluations yet" **and** the notes below it — not an empty tab | |
 
 ---
 
 ## 6. Roles and boundaries
 
+0078 added one permission to `staff` and the rows below are mostly about
+what it did **not** add. A test that only proved the desk can approve would
+pass just as well against a version that handed them account control.
+
 | # | Test | Expected | Result |
 |---|---|---|---|
+| 6.0a | Sign in as **staff**; approve a pending sign-up | Works: active, on the free tier, off the queue | |
+| 6.0b | Admin -> that member -> Account history | Shows `pending_approval -> active`, **recorded by the staff account** | |
+| 6.0c | As staff, suspend anybody | Refused: "...beyond that is an admin action" | |
+| 6.0d | As staff, reactivate a member an **admin** suspended | Refused — reversing an admin decision is not desk work | |
+| 6.0e | As admin, reject a pending sign-up, then read Account history | Suspension recorded **with a reason**, not a blank | |
 | 6.1 | Staff account → pricing, trainers, settings, audit log | All unreachable | |
 | 6.2 | Staff records a payment and a check-in | Both work | |
 | 6.3 | Member calls `set_account_status` from the console | Refused | **PASS** (Run 4) |
@@ -416,6 +427,43 @@ a rule nobody has looked at:
 
 The rules behind all three are the ones Run 4 executed. What is untested is
 the wiring from those rules to a screen a member is standing in front of.
+
+---
+
+## Run 5 — 13 September 2026 · after 0078, and a re-run of everything
+
+**76 checks, all passing.** 0078 replaces `set_account_status()`'s body so the
+front desk can approve a sign-up, which means every earlier assertion about that
+function had to be re-run rather than assumed — a body replacement is exactly
+the change that quietly breaks a rule nobody re-tested.
+
+| Script | Under test | Result |
+|---|---|---|
+| `replay-migrations.mjs` | every migration, in order, onto a clean database | **78 / 78 applied** |
+| `booking-conflicts.mjs` | 0068 — unchanged, re-run | **18 / 18** |
+| `trainer-decisions.mjs` | 0071 + 0074 — unchanged, re-run | **24 / 24** |
+| `reasons-and-limits.mjs` | 0057, 0069, 0074 **+ 0078 §4.5** | **34 / 34** |
+
+### What §4.5 asserts
+
+That the desk gained **one** transition and nothing else: it can activate a
+pending sign-up (and the event names the desk as the author), a second click is
+quiet rather than an error, and it is refused when suspending, archiving,
+reversing an admin's suspension, or pushing an account back into the queue. A
+member calling the same function on themselves is still refused outright.
+
+### The regression it caught
+
+Writing 0078 by copying 0069's body forward silently undid **0074's** repair of
+one sentence — "a reason is required to *suspended* an account" came back. The
+check that asserts the exact wording failed on the first run. Nobody would have
+noticed until a member asked the desk to read the screen out loud.
+
+### Still not run
+
+**The 97 rows in §1–§6 above with an empty Result cell.** Runs 1–5 are automated:
+they prove the schema is live, the rules hold in Postgres, and the apps agree
+with them. They do not prove what a person sees. That is the panel-day run.
 
 ---
 

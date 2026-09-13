@@ -1,5 +1,26 @@
 # Panel Hardening Implementation Plan
 
+> **Status, 13 September 2026.** Every task here is done and live except the
+> human test run. 0068–0072 were pasted days ago; the boxes saying "BLOCKED ON
+> USER" had simply never been ticked, and two more said "NOT built" about
+> screens that were built the same week — a tracker that lies is worse than no
+> tracker, because the next session re-derives the state from it. Re-audited
+> against the code, file by file, and corrected.
+>
+> **What is genuinely left:**
+> 1. **The 97 human rows in TEST_MATRIX §1–§6** — Task 10 Step 7. Automated runs
+>    1–4 pass (schema probe, 66 SQL checks, 38 app checks); these are the ones a
+>    person has to do with a phone in their hand.
+> 2. **An outstanding-balance card on member Home** — Task 3 Step 4, deliberately
+>    left; the gym is cash-only.
+> 3. **`fitness-assistant` is undeployed**, by choice: it needs a third-party API
+>    key, the rule table answers ~98%, and an unconfigured assistant is a
+>    supported state, not a broken one (`supabase/functions/fitness-assistant`).
+>
+> **Added since, outside this plan's list:** 0078 lets the front desk approve a
+> sign-up — one transition, `pending_approval → active` — and routes rejection
+> through the same function so it records a reason like every other suspension.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:executing-plans`.
 > Steps use checkbox (`- [ ]`) syntax. Tick them as they land — this file is the
 > tracker that survives a compaction, so an untidy checkbox costs a re-derivation.
@@ -148,7 +169,7 @@ Then `trg_booking_no_member_overlap()` on `bookings` and
 `trg_pt_no_member_overlap()` on `pt_sessions`, each raising a message naming the
 clash: `'You are already booked for % at %.'`. Exclude the row's own id on UPDATE.
 
-- [ ] **Step 2: Paste 0068, then probe it** — BLOCKED ON USER
+- [x] **Step 2: Paste 0068, then probe it** — pasted; live and probed 2026-09-13.
 
 Book a class and a PT session at the same hour as the same member; the second
 insert must raise. Book the same hour as a *different* member — must succeed.
@@ -185,7 +206,8 @@ on `profiles` cannot see a reason that is not a column.
 
 - [x] **Step 1: Write 0069** — table, `set_account_status()`, RLS (select: self,
       admin, staff; insert: **nobody** — the RPC is SECURITY DEFINER).
-- [ ] **Step 2: Paste and probe** — a suspend with a blank reason must raise. BLOCKED ON USER
+- [x] **Step 2: Paste and probe** — live. A blank reason raises; asserted by
+      `scripts/sql/reasons-and-limits.mjs` 4.4.1-4.4.2.
 - [x] **Step 3: Members.tsx** — the suspend dialog takes a required reason.
       Reactivate takes an optional one.
 - [x] **Step 4: MemberDetail.tsx** — landed in MemberDetailDrawer.tsx (the route is a redirect) — an "Account history" section listing events.
@@ -215,9 +237,14 @@ What is missing is (a) a PT session's payment link and (b) the member being
       `status='completed'` and `paid_on`, with a `.select()` zero-row guard.
 - [x] **Step 2: Notify the member** — `notify_once` with a dedupe key of
       `payment:<id>:paid`, so a double-click cannot send two receipts.
-- [~] **Step 3: PT payment** — payment_id column added in 0070; the UI that distinguishes unpaid from plan-covered is NOT written — a `pt_sessions.payment_id` link, so "paid" is
-      visible on the session, not only in the ledger.
-- [~] **Step 4: Member side** — PaymentHistory already distinguished statuses; the outstanding-balance card on Home is NOT done — PaymentHistory shows Paid/Pending distinctly and
+- [x] **Step 3: PT payment** — `pt_sessions.payment_id` (0070), read by
+      `services/bookingService.ts` and rendered on each row in
+      `pages/BookingHistory.tsx` as **Paid** or **In your plan**. An unknown
+      state renders nothing: a blank is honest where "unpaid" would be a claim.
+- [~] **Step 4: Member side** — PaymentHistory distinguishes Paid/Pending, and
+      the PT rows now say which. **Still not done:** an outstanding-balance card
+      on Home. Deliberately left: the gym is cash-only and the desk is the
+      place a balance gets settled — revisit only if members start asking. —
       Home surfaces an outstanding balance.
 - [x] **Step 5: Build, lint, commit** — commit 431be1d
 
@@ -264,8 +291,8 @@ so the escalation happens late at worst, never not at all.
 - [x] **Step 1: Write 0071** — `decided_by`/`decided_by_role` columns; update
       policies letting a trainer decide *their own* class bookings and PT
       sessions; `sweep_stale_requests()`; activity-log triggers.
-- [ ] **Step 2: Paste and probe** — BLOCKED ON USER. As a trainer, approve a session on another
-      trainer's roster: must be refused by RLS.
+- [x] **Step 2: Paste and probe** — live. A trainer deciding another trainer's
+      session is refused; `scripts/sql/trainer-decisions.mjs`, 24/24.
 - [x] **Step 3: TrainerBookings** — rewritten; class + PT in one queue, waiting time per row — Accept/Decline, with waiting time on each row.
       Delete the "read-only, deliberately" docstring; it is no longer true.
 - [x] **Step 4: Admin Bookings** — show who decided, allow reversal, run the sweep.
@@ -301,12 +328,17 @@ complaint it cannot follow up is not monitoring. Admin reads the base table.
 
 - [x] **Step 1: 0072** — `trainer_feedback` (trainer→member, T3), the
       `trainer_ratings_anon` view, tightened trainer SELECT policy.
-- [ ] **Step 2: Paste and probe** — BLOCKED ON USER. As a trainer, `select member_id from
-      trainer_ratings` must return nothing readable.
-- [~] **Step 3: Trainer app** — anonymised ratings shown on the profile; the compose-feedback form is NOT written — ratings + comments, no names; a form to leave a
-      member feedback and recommendations.
-- [ ] **Step 4: Admin Trainers** — API module written (lib/api/trainerRatings.ts), the panel is NOT built — an Evaluations panel: score distribution,
-      month over month, comments **with** names.
+- [x] **Step 2: Paste and probe** — live. The trainer reads `trainer_ratings_anon`,
+      which has no `member_id` column at all, so there is nothing to leak.
+- [x] **Step 3: Trainer app** — anonymised ratings on the profile
+      (`my_trainer_ratings()`), and the compose-feedback form in
+      `pages/trainer/TrainerMembers.tsx` writing through
+      `lib/api/trainerFeedback.ts`.
+- [x] **Step 4: Admin Trainers** — the Evaluations tab in
+      `components/ui/TrainerDetailDrawer.tsx`: month by month, every rating with
+      its author's name, and (2026-09-13) the notes the coach wrote back to
+      members. `lib/api/trainerRatings.ts` was a second, unimported copy of
+      readers that live in `lib/api/trainers.ts`; folded in and deleted.
 - [x] **Step 5: T6 credentials** — public_trainer_credentials view + a panel on the member trainer profile — confirm 0054's credentials render on the member
       app's trainer profile. If they do not, wire them.
 - [x] **Step 6: Build, lint, commit** — commit 22fe92d
@@ -430,8 +462,13 @@ Cash-only gym: a refund is a recorded desk transaction, not a gateway reversal.
 
 - [x] **Step 1:** `refund_quote(membership_id)` in SQL returning percentage **and
       the rule that produced it** — a number with no reason cannot be argued with.
-- [~] **Step 2:** tiers are editable data in `refund_rules`; the Settings screen for them is NOT built; seeded with the table above.
-- [ ] **Step 3:** Cancel dialog quote — NOT built; `refund_quote()` exists for it before confirming; the amount and
+- [x] **Step 2:** tiers are editable data in `refund_rules`, seeded with the
+      table above, and edited in Admin -> Settings -> **Refund Policy**
+      (`pages/Settings.tsx`, `lib/api/refundRules.ts`).
+- [x] **Step 3:** Cancel dialog quote — `components/ui/MembershipActionDialog.tsx`
+      calls `getRefundQuote()` before confirming and shows the amount **and**
+      the rule that produced it; a failed read says so rather than showing a
+      blank, which would read as "no refund due". The amount and
       reason land on `membership_events`.
 - [x] **Step 4:** `docs/MEMBERSHIP_POLICY.md`, linked from Terms so a member can
       read the rule that binds them — **a rule enforced only in SQL ambushes them**.
@@ -457,17 +494,23 @@ overlapping availability, and one staff account, then drive each app.
 - [x] **Step 1:** `scripts/seed-test-accounts.sql` — written, NOT executed (no DB access here) — re-runnable, every password recorded
       in `docs/TEST_MATRIX.md`. Emails on the existing `corefitness-test.com`
       domain so real members are never touched.
-- [~] **Step 2:** expectations written in TEST_MATRIX §2; results BLOCKED on the pastes — for each plan × feature, what the member
+- [x] **Step 2:** automated as `scripts/plan-gates.js` — 24/24, recorded as Run 3.
+      The human rows in §2 (2.5, 2.6) are for the panel run. — for each plan x feature, what the member
       should see. Drive it with Playwright and record the actual result.
       **A gate must lock and explain, never hide.**
-- [~] **Step 3:** written as §3.2; BLOCKED on the pastes — Trainer A booked solid at Tuesday 10:00, Trainer B
+- [x] **Step 3:** covered by `scripts/sql/booking-conflicts.mjs` (18/18) and
+      `trainer-scenarios.js` (14/14). — Trainer A booked solid at Tuesday 10:00, Trainer B
       free. A second member books B at Tuesday 10:00 and it must succeed.
-- [~] **Step 4:** written as §3.1; BLOCKED on the pastes — same member, class then PT at one time: refused.
-- [~] **Step 5:** written as §3.4; BLOCKED on the pastes — a request backdated 72h; run the sweep; assert
-      exactly the notifications in the ladder, and no duplicates on a second run.
-- [~] **Step 6:** written as §4; BLOCKED on the pastes: each
-      end to end, admin action visible on the member side.
-- [ ] **Step 7:** Record every result — the Result column is deliberately empty until run in `docs/TEST_MATRIX.md` — **including the
+- [x] **Step 4:** same member, class then PT at one time: refused — asserted in
+      `scripts/sql/booking-conflicts.mjs`, against 0068 replayed verbatim.
+- [x] **Step 5:** the 24h/48h/72h/<24h ladder and its dedupe, asserted in
+      `scripts/sql/trainer-decisions.mjs` (24/24) with a request backdated 72h
+      and the sweep run twice.
+- [~] **Step 6:** the SQL half is Run 4 (66 checks). The end-to-end half — an
+      admin action watched from the member's phone — is a human run, in §4.
+- [ ] **Step 7:** Record every result in `docs/TEST_MATRIX.md`. Runs 1-4 are
+      recorded (schema probe, 66 SQL checks, 38 app checks). **The 97 human rows
+      in §1-§6 are still empty and are the panel-day run.** — **including the
       failures**, which become fixes, not omissions.
 - [x] **Step 8:** commit 0d1eae0
 
@@ -485,9 +528,13 @@ Not a bug hunt — a read of the rules for gaps that only show up in use.
       legitimate caller? (0055 and 0062 both shipped this bug.)
 - [x] **Step 3:** each file asserts `rowsecurity` in a `do $$` block that raises: is RLS actually **on** for that
       table? Assert it in the file.
-- [~] **Step 4:** four open questions raised in TEST_MATRIX rather than silently decided — can a frozen member
-      book? Can a suspended one? Should a freeze extend the expiry date?
-- [~] **Step 5:** the write audit was the substantive find; the rest needs the pastes; record what is deliberate.
+- [x] **Step 4:** all five answered and written down in TEST_MATRIX
+      **Decisions - settled 7 September 2026**: a frozen member cannot book, a
+      freeze does extend the expiry, the 60-day ceiling is shown and not
+      enforced, admin evaluations show names, and RA 7394 constrains the refund
+      table.
+- [x] **Step 5:** the write audit was the substantive find (116 writes, 91
+      guarded); the 25 deliberate exceptions are listed in DATA_ACCESS.
 - [x] **Step 6:** CLAUDE.md at 206 lines, overflow routed to DATA_ACCESS and MEMBERSHIP_POLICY; MIGRATION_STATUS still owed (**overdue**), MIGRATION_STATUS, roadmap to 0072.
 - [x] **Step 7:** commit 076f6ce
 

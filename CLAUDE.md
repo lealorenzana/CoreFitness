@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 77 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 78 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -153,11 +153,12 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0076 are all live**; **0077** (Boostcamp's published og:image as its resource picture) is written and replay-tested, **not yet pasted** — verified 2026-09-12 with
-`python scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials.
-**Run it rather than trusting a report that a migration was pasted**: 0070 was believed done for a
-day and had never executed. It probes **three objects per migration**, so a file that never ran is
-distinguishable from one failed statement, and a protected object (42501) is a pass, not a miss.
+**0001–0077 are all live**; **0078** (the front desk may approve a sign-up — one transition, not an
+Edge Function) is written and replay-tested, **not yet pasted** — verified 2026-09-13 with `python
+scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials. **Run it
+rather than trusting a report that a migration was pasted**: 0070 was believed done for a day and had
+never executed. It probes **three objects per migration**, so a file that never ran is distinguishable
+from one failed statement, and a protected object (42501) is a pass, not a miss.
 **0074 closed a live privilege bug** — 0071's stamp triggers returned early when `status` was
 unchanged, *above* the checks that stop a trainer rewriting `member_id` or `starts_at`, so a trainer
 could reassign a seat or move somebody's session. Found by running the SQL, not by reading it.
@@ -169,8 +170,11 @@ Objective 2 named React Native / Express / MySQL / Firebase and the build uses n
 objective is being amended**, not the account of the system; replacement text is in that file.
 Outstanding:
 - **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); **members do see the coaches (no open hours) and past events**; part 2 goes in as `part2/` one file at a time; one paste removes both — **dashboard figures include it until removed**.
-- **Staff approving registrations** needs an Edge Function (RLS won't let `staff` set
-  `profiles.status`). **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
+- **Staff approving registrations is 0078, not an Edge Function** — staff already had the queue, the
+  intake write and the membership insert; only `profiles.status` refused them, so
+  `set_account_status()` allows **one** staff transition, `pending_approval → active`. Approval and
+  rejection both go through it, so approval has a history and a rejection states a reason.
+  **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
   `promote`; **a push does not deploy**, and env vars must exist in Vercel *before* deploying
   because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md); check with `scripts/verify-deploy.py`). **The APK never needs rebuilding

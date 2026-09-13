@@ -14,8 +14,8 @@ import {
   loadTrainerDetail, weekdayName, formatTimeOfDay, type TrainerDetail,
 } from '../../services/trainerDetailService';
 import {
-  listTrainerRatings, getTrainerMonths, periodLabel,
-  type TrainerRatingRow, type TrainerMonth,
+  listTrainerRatings, getTrainerMonths, periodLabel, listTrainerFeedback,
+  type TrainerRatingRow, type TrainerMonth, type TrainerFeedbackRow,
 } from '../../lib/api/trainers';
 
 /**
@@ -499,21 +499,26 @@ function Empty({ text }: { text: string }) {
 function EvaluationsTab({ trainerId }: { trainerId: string }) {
   const [rows, setRows] = useState<TrainerRatingRow[] | null>(null);
   const [months, setMonths] = useState<TrainerMonth[]>([]);
+  const [notes, setNotes] = useState<TrainerFeedbackRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [r, m, people] = await Promise.all([
+      const [r, m, people, f] = await Promise.all([
         listTrainerRatings(trainerId).catch(() => null),
         getTrainerMonths(trainerId).catch(() => []),
         // Falls back to an empty map rather than failing the tab: a name that
         // will not resolve renders as "A member", which is honest, where a
         // blank would look like the evaluation had no author.
         listMembers().catch(() => []),
+        // Its own catch, like the rest: the coach's notes failing to load must
+        // not blank the ratings this tab exists for.
+        listTrainerFeedback(trainerId).catch(() => []),
       ]);
       if (!alive) return;
+      setNotes(f);
       if (r === null) { setFailed(true); setRows([]); return; }
       const map: Record<string, string> = {};
       for (const person of people) {
@@ -530,13 +535,53 @@ function EvaluationsTab({ trainerId }: { trainerId: string }) {
     return <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading evaluations…</p>;
   }
 
+  /**
+   * What this coach writes to the people they train (0072) — the other half of
+   * what the gym asked to be able to see. Built here rather than inline because
+   * it has to appear in the no-ratings branch too: a new coach who has written
+   * notes for three members and been rated by nobody is exactly the case where
+   * "No evaluations yet" on its own would be misleading.
+   */
+  const feedbackSection = notes.length === 0 ? null : (
+    <Section title="Notes this coach wrote to members">
+      <div className="space-y-2">
+        {notes.map((n) => (
+          <div key={n.id} className="rounded-xl p-3"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-white truncate">
+                {names[n.member_id] ?? 'A member'}
+              </span>
+              <span className="text-[10px] ml-auto" style={{ color: 'var(--color-text-muted)' }}>
+                {formatDate(n.created_at)}
+              </span>
+            </div>
+            <p className="text-xs mt-1.5 leading-relaxed whitespace-pre-line"
+              style={{ color: 'var(--color-text-secondary)' }}>
+              {n.note}
+            </p>
+            {n.recommendation && (
+              <p className="text-[11px] mt-1.5 leading-relaxed"
+                style={{ color: 'var(--color-primary)' }}>
+                Recommended: {n.recommendation}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+
   if (failed) {
     return <Empty text="Couldn't load evaluations — a connection problem, not an empty record." />;
   }
 
   if (rows.length === 0) {
     return (
-      <Empty text="No evaluations yet. A member can evaluate a coach once they have completed a session with them, and once per month after that." />
+      <div className="space-y-4">
+        <Empty text="No evaluations yet. A member can evaluate a coach once they have completed a session with them, and once per month after that." />
+        {feedbackSection}
+      </div>
     );
   }
 
@@ -615,6 +660,8 @@ function EvaluationsTab({ trainerId }: { trainerId: string }) {
           </div>
         </Section>
       ))}
+
+      {feedbackSection}
     </div>
   );
 }

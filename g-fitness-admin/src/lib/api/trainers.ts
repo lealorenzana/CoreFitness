@@ -207,3 +207,34 @@ export async function listTrainerRatings(trainerId: string): Promise<TrainerRati
   if (error) throw error;
   return (data ?? []) as TrainerRatingRow[];
 }
+
+export interface TrainerFeedbackRow {
+  id: string;
+  member_id: string;
+  note: string;
+  recommendation: string | null;
+  created_at: string;
+}
+
+/**
+ * What a coach has written *to* their members — the other direction from the
+ * ratings above, and the half of the panel's monitoring request that had a
+ * reader but no screen (0072).
+ *
+ * Names are resolved by the caller from the member list it already has, rather
+ * than joined here: `trainer_feedback` has no FK PostgREST can embed through to
+ * `profiles`, and a failed embed would take the whole tab down with it.
+ *
+ * Nothing is anonymous in this direction and nothing should be. A note a coach
+ * wrote about somebody's training is signed work, visible to the member it is
+ * about (that is the point of it) and to the gym.
+ */
+export async function listTrainerFeedback(trainerId: string): Promise<TrainerFeedbackRow[]> {
+  const { data, error } = await supabase
+    .from('trainer_feedback')
+    .select('id, member_id, note, recommendation, created_at')
+    .eq('trainer_id', trainerId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as TrainerFeedbackRow[];
+}

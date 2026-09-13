@@ -193,6 +193,32 @@ changes and no code, which matters because free tiers change their terms.
 message.** Nothing breaks, nothing looks broken, and a demo cannot fail because a free tier was
 busy. Verify the fallback path by simply not setting them.
 
+#### Turning it on, start to finish
+
+**As of 13 September 2026 this function is not deployed and the secrets are unset** — deliberately,
+and the app is complete without it. Three commands, in this order, when somebody wants it:
+
+```bash
+npx supabase secrets set ASSISTANT_API_URL=... ASSISTANT_API_KEY=... ASSISTANT_MODEL=...
+```
+
+```bash
+npx supabase functions deploy fitness-assistant
+```
+
+```bash
+npx supabase functions list
+```
+
+The key has to come from whoever owns the provider account — get it from the provider's dashboard
+and paste it into the first command yourself. **Secrets before deploy**, not after: a function that
+boots without them answers 503 until it is redeployed or restarted.
+
+Then ask the chatbot something the rules do not cover — "how do I stop my wrists hurting on a front
+squat" — and watch it. A gym fact answered *identically* to before means the rule table caught it
+first, which is correct, not a failure. `npx supabase functions logs fitness-assistant` shows
+whether the call actually reached the model.
+
 Note that Ollama on a desk machine **cannot** serve the member app: the phone app is HTTPS, Ollama
 is HTTP on localhost, and browsers block mixed content outright. Ollama is only an option for
 something running on the same machine.

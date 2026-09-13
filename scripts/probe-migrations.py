@@ -85,6 +85,12 @@ CHECKS = [
     ('0075', 'rpc migration_0075_applied',     lambda: rpc('migration_0075_applied')),
     ('0076', 'rpc migration_0076_applied',     lambda: rpc('migration_0076_applied')),
     ('0077', 'rpc migration_0077_applied',     lambda: rpc('migration_0077_applied')),
+    # 0078 replaces set_account_status's body — no new object, same signature —
+    # so it too would read as live before it ran, and the marker is the only
+    # honest probe. Deliberately ONE check: probing set_account_status alongside
+    # it would answer "live" from 0069 and report 0078 as a half-failed paste.
+    # The behaviour is checked by scripts/sql/reasons-and-limits.mjs (4.5).
+    ('0078', 'rpc migration_0078_applied',     lambda: rpc('migration_0078_applied')),
 ]
 
 print('project: %s' % URL)
