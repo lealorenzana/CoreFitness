@@ -25,3 +25,8 @@ dist-ssr
 
 # Generated from public/core-fitness-logo.png by desktop/make-icon.ps1
 desktop/core-fitness-admin.ico
+
+# Built by desktop/build-exe.ps1. Machine-specific: it bakes in this checkout's
+# absolute path so a copy on the Desktop can still find serve.mjs.
+desktop/CoreFitnessAdmin.exe
+desktop/Installed.generated.cs
