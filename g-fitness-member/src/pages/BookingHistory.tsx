@@ -4,19 +4,18 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertCircle, ArrowLeft, Trash2, User, Dumbbell } from 'lucide-react';
-import Modal from '../components/ui/Modal';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { useLiveData } from '../hooks/useLiveData';
 import {
   getCurrentMemberId,
   listMyBookings,
-  cancelMyBooking,
   isUpcoming,
   type MyBooking,
 } from '../services/bookingService';
 import type { BookingStatus } from '../types/db';
 import { Page } from '../components/ui/page';
+import CancelBookingDialog from '../components/ui/CancelBookingDialog';
 
 /**
  * The member's own bookings — group classes and personal training in one list,
@@ -73,7 +72,6 @@ export default function BookingHistory() {
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [loading, setLoading] = useState(true);
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
-  const [busy, setBusy] = useState(false);
 
   /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
   const load = useCallback(async (quiet = false) => {
@@ -101,19 +99,18 @@ export default function BookingHistory() {
   const past = useMemo(() => rows.filter((r) => !isUpcoming(r)), [rows]);
   const visible = tab === 'upcoming' ? upcoming : past;
 
-  const confirmCancel = async () => {
-    if (!pendingCancel) return;
-    setBusy(true);
-    try {
-      await cancelMyBooking(pendingCancel);
-      toast.success(pendingCancel.kind === 'pt' ? 'Request withdrawn' : 'Booking cancelled');
-      setPendingCancel(null);
-      await load();
-    } catch (err) {
-      toast.error(errorMessage(err, 'Could not cancel that booking'));
-    } finally {
-      setBusy(false);
-    }
+  /**
+   * Cancelling now goes through `cancel_booking()` (0081), which wants a reason.
+   *
+   * The dialog owns the call and the validation; this only reloads the list and
+   * says so. The old path — `cancelMyBooking`, a PATCH to `status='cancelled'`
+   * — recorded no reason, no actor and no time, which is the gap 0037 wrote
+   * down and could not reconstruct.
+   */
+  const afterCancelled = async () => {
+    toast.success(pendingCancel?.kind === 'pt' ? 'Session cancelled' : 'Booking cancelled');
+    setPendingCancel(null);
+    await load();
   };
 
   return (
@@ -251,21 +248,15 @@ export default function BookingHistory() {
         + Book a Session
       </motion.button>
 
-      <Modal
-        isOpen={pendingCancel !== null}
-        onClose={() => !busy && setPendingCancel(null)}
-        title={pendingCancel?.kind === 'pt' ? 'Withdraw this request?' : 'Cancel this booking?'}
-        subtitle={pendingCancel?.title}
-        confirmLabel={busy ? 'Working…' : 'Yes, cancel it'}
-        cancelLabel="Keep it"
-        confirmDisabled={busy}
-        onConfirm={confirmCancel}>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          {pendingCancel?.kind === 'pt'
-            ? 'Your trainer will be free at that time again. You can request another slot afterwards.'
-            : 'Your seat is released back to the class. You can book it again if it stays open.'}
-        </p>
-      </Modal>
+      <CancelBookingDialog
+        open={pendingCancel !== null}
+        kind={pendingCancel?.kind === 'pt' ? 'pt' : 'class'}
+        id={pendingCancel?.id ?? null}
+        title={pendingCancel?.title ?? ''}
+        actor="member"
+        onClose={() => setPendingCancel(null)}
+        onCancelled={afterCancelled}
+      />
     </Page>
   );
 }

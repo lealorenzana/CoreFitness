@@ -1,10 +1,10 @@
 import { supabase } from '../lib/supabaseClient';
 import { listClasses } from '../lib/api/classes';
 import {
-  listMemberBookings, createBooking, cancelOwnBooking,
+  listMemberBookings, createBooking,
   listMemberCommitments, clashesWith, type Commitment,
 } from '../lib/api/bookings';
-import { listMemberPtSessions, requestPtSession, cancelPtSession } from '../lib/api/ptSessions';
+import { listMemberPtSessions, requestPtSession } from '../lib/api/ptSessions';
 import { listTrainerAvailability, computeOpenSlots, type OpenSlot } from '../lib/api/trainerAvailability';
 import {
   listPublicTrainers,
@@ -538,10 +538,16 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
   return rows.sort((a, b) => (b.startsAt ?? '').localeCompare(a.startsAt ?? ''));
 }
 
-export async function cancelMyBooking(row: MyBooking): Promise<void> {
-  if (row.kind === 'pt') await cancelPtSession(row.id);
-  else await cancelOwnBooking(row.id);
-}
+/**
+ * Cancelling lives in `cancelBooking()` (lib/api/cancellations.ts) now.
+ *
+ * What was here did two different wrong things: a class booking was PATCHed to
+ * `status='cancelled'` with no reason, no actor and no time — the gap 0037
+ * recorded and could not reconstruct — and a PT session was **deleted
+ * outright**, so a withdrawn request left no trace for either side to look back
+ * on. 0081 refuses both at the database now, so this could not have kept
+ * working; removing it is what stops it being reintroduced by habit.
+ */
 
 /** Upcoming vs past, by the session's own time rather than its status. */
 export function isUpcoming(row: MyBooking, now = Date.now()): boolean {

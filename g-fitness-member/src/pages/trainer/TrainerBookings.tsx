@@ -14,6 +14,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 import { Page } from '../../components/ui/page';
+import CancelBookingDialog from '../../components/ui/CancelBookingDialog';
 
 /**
  * Requests for this trainer's classes and their own 1-on-1 sessions.
@@ -60,6 +61,17 @@ interface Request {
   requestedAt: string;
 }
 
+/**
+ * Still in the future, so `cancel_booking()` will accept it.
+ *
+ * A class with no time on it (0001 allows that) counts as ahead: it has not
+ * happened, and refusing to let a coach cancel it would strand the booking.
+ */
+function isAhead(req: Request, now = Date.now()): boolean {
+  if (!req.startsAt) return true;
+  return new Date(req.startsAt).getTime() > now;
+}
+
 interface Snapshot {
   requests: Request[];
   names: Record<string, string>;
@@ -98,6 +110,8 @@ export default function TrainerBookings() {
   const [error, setError] = useState('');
   /** The row currently being decided, so its two buttons disable together. */
   const [deciding, setDeciding] = useState<string | null>(null);
+  /** The booking whose cancellation dialog is open, or null. */
+  const [pendingCancel, setPendingCancel] = useState<Request | null>(null);
 
   const load = useCallback(async (quiet = false) => {
     try {
@@ -331,6 +345,26 @@ export default function TrainerBookings() {
                 )}
               </div>
 
+              {/* An accepted session the coach can no longer make.
+                  0071 said this was the desk's job; 0081 reverses that at the
+                  gym's request, and the same dialog the member uses asks for a
+                  reason. Only while it is still ahead — `cancel_booking()`
+                  refuses a session that has started, so offering the button
+                  afterwards would be offering a refusal. */}
+              {req.status === 'approved' && isAhead(req) && (
+                <button
+                  onClick={() => setPendingCancel(req)}
+                  disabled={busy}
+                  className="mt-3 w-full h-9 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--color-text-secondary)',
+                    border: '1px solid var(--color-border)',
+                  }}>
+                  <X size={13} /> Cancel this session
+                </button>
+              )}
+
               {req.status === 'pending' && (
                 <div className="flex gap-2 mt-3">
                   <button
@@ -373,6 +407,21 @@ export default function TrainerBookings() {
           </div>
         )}
       </div>
+
+      <CancelBookingDialog
+        open={pendingCancel !== null}
+        kind={pendingCancel?.kind === 'pt' ? 'pt' : 'class'}
+        id={pendingCancel?.id ?? null}
+        title={pendingCancel?.title ?? ''}
+        actor="trainer"
+        onClose={() => setPendingCancel(null)}
+        onCancelled={async () => {
+          const who = pendingCancel ? names[pendingCancel.memberId] : null;
+          setPendingCancel(null);
+          toast.success(`Cancelled. ${who ?? 'The member'} has been told.`);
+          await load();
+        }}
+      />
     </Page>
   );
 }

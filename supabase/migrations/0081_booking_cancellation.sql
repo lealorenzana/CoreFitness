@@ -403,6 +403,45 @@ create policy pt_sessions_cancel_trainer on pt_sessions for update
   using (trainer_id = auth.uid() and get_my_role() = 'trainer')
   with check (trainer_id = auth.uid() and get_my_role() = 'trainer');
 
+-- ============================================================================
+-- 5. NO CANCELLATION WITHOUT A REASON — AS A RULE, NOT A CONVENTION
+-- ============================================================================
+-- Everything above is only as strong as the client choosing to use it. 0016's
+-- `bookings_cancel_self` still lets a member PATCH `status='cancelled'` straight
+-- at the table with no reason at all, and the admin app did the same thing from
+-- `cancelOwnBooking()`. A reason that any caller can skip is not required.
+--
+-- So the transition INTO 'cancelled' is refused unless it arrives through
+-- `cancel_booking()`, which is the only thing that sets this flag and has
+-- already checked ownership, timing and the reason. Nothing else about either
+-- table changes: approve, reject and the automatic expiry are untouched.
+--
+-- Deliberately a trigger and not a CHECK constraint. A CHECK on "reason is not
+-- null when status is cancelled" would reject every row already sitting at
+-- 'cancelled' from before this migration — real history, for which 0037
+-- established there is no honest answer — the moment anything updated it.
+create or replace function trg_require_cancellation_reason() returns trigger
+language plpgsql set search_path = public as $fn$
+begin
+  if new.status = 'cancelled' and old.status is distinct from 'cancelled'
+     and coalesce(current_setting('corefitness.cancelling', true), '') <> 'on' then
+    raise exception
+      'Cancel through the app so a reason is recorded (cancel_booking).';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_bookings_require_cancel_reason on bookings;
+create trigger trg_bookings_require_cancel_reason
+before update on bookings
+for each row execute function trg_require_cancellation_reason();
+
+drop trigger if exists trg_pt_require_cancel_reason on pt_sessions;
+create trigger trg_pt_require_cancel_reason
+before update on pt_sessions
+for each row execute function trg_require_cancellation_reason();
+
 -- Marker for scripts/probe-migrations.py.
 create or replace function migration_0081_applied() returns boolean
 language sql immutable as $fn$ select true $fn$;

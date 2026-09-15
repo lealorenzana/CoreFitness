@@ -91,6 +91,26 @@ create policy profiles_select_trainer on profiles for select
   );
 
 -- ============================================================================
+-- THE SAME HOLE, IN TWO MORE TABLES
+-- ============================================================================
+-- `memberships_select_trainer` and `attendance_select_trainer` are the same
+-- sentence as the one above — `using (get_my_role() = 'trainer')` — and the
+-- trainer roster reads both. Narrowing only `member_profiles` would have left
+-- every membership (plan, price tier, expiry, freeze history) and every
+-- check-in in the gym readable by any coach, which is most of what the roster
+-- was leaking in the first place.
+--
+-- Found by following the screen's own three reads rather than the one the
+-- complaint named.
+drop policy if exists memberships_select_trainer on memberships;
+create policy memberships_select_trainer on memberships for select
+  using (get_my_role() = 'trainer' and is_my_trainee(member_id));
+
+drop policy if exists attendance_select_trainer on attendance;
+create policy attendance_select_trainer on attendance for select
+  using (get_my_role() = 'trainer' and is_my_trainee(member_id));
+
+-- ============================================================================
 -- THE ROSTER, AS ONE READ
 -- ============================================================================
 -- The trainer app was assembling its roster from three unfiltered table reads

@@ -94,7 +94,11 @@ const PT_SOON  = 'e0000000-0000-4000-8000-000000000001'; // M1 + TA, future, pen
 const PT_PAST  = 'e0000000-0000-4000-8000-000000000002'; // M1 + TA, already started
 const PT_OTHER = 'e0000000-0000-4000-8000-000000000003'; // M2 + TB, future
 const CLS      = 'c0000000-0000-4000-8000-000000000001';
+// A second class at a different hour: 0068 refuses two bookings that overlap,
+// and it is right to — the member cannot be in two rooms at once.
+const CLS2     = 'c0000000-0000-4000-8000-000000000002';
 const BK       = 'f0000000-0000-4000-8000-000000000001'; // M1 on TA's class
+const BK2      = 'f0000000-0000-4000-8000-000000000002'; // M1 again, left live
 
 await db.exec(`
 insert into auth.users (id, email) values
@@ -120,10 +124,17 @@ insert into memberships (member_id, plan_id, status, start_date, expiry_date)
          current_date - 10, current_date + 20
     from unnest(array['${M1}','${M2}','${M3}']::uuid[]) p;
 
-insert into classes (id, name, trainer_id, scheduled_at, capacity)
-  values ('${CLS}','Morning Strength','${TA}', now() + interval '3 days', 12);
-insert into bookings (id, member_id, class_id, status)
-  values ('${BK}','${M1}','${CLS}','approved');
+insert into classes (id, name, trainer_id, scheduled_at, capacity) values
+  ('${CLS}','Morning Strength','${TA}', now() + interval '3 days', 12),
+  ('${CLS2}','Evening Mobility','${TA}', now() + interval '5 days', 10);
+insert into bookings (id, member_id, class_id, status) values
+  ('${BK}','${M1}','${CLS}','approved'),
+  ('${BK2}','${M1}','${CLS2}','pending');
+
+insert into attendance (member_id, check_in_time, method) values
+  ('${M1}', now() - interval '1 day', 'qr'),
+  ('${M1}', now() - interval '3 days', 'qr'),
+  ('${M2}', now() - interval '2 days', 'qr');
 
 insert into pt_sessions (id, member_id, trainer_id, starts_at, status) values
   ('${PT_SOON}','${M1}','${TA}', now() + interval '2 days','approved'),
@@ -243,6 +254,18 @@ rec('C15', 'the desk\'s cancellation is attributed to admin',
   (await db.query(`select cancelled_by_role from pt_sessions where id = '${PT_OTHER}'`))
     .rows[0].cancelled_by_role === 'admin', '');
 
+// The rule has to survive a client that skips the dialog entirely — which is
+// what 0016's policy and the admin app both used to do.
+await as(M1);
+await refuses('C16', 'a raw PATCH to cancelled, with no reason, is refused',
+  `update bookings set status = 'cancelled' where id = '${BK2}';`,
+  'so a reason is recorded');
+
+await asOwner();
+rec('C17', 'and that booking is still live afterwards',
+  (await db.query(`select status::text as s from bookings where id = '${BK2}'`)).rows[0].s !== 'cancelled',
+  (await db.query(`select status::text as s from bookings where id = '${BK2}'`)).rows[0].s);
+
 // ══ 0082  TRAINER VISIBILITY ════════════════════════════════════════════════
 await as(TA);
 {
@@ -269,6 +292,14 @@ await as(TA);
 
   const roster = await count('select count(*)::int as n from my_trainer_members');
   rec('V7', 'my_trainer_members returns the same one member', roster === 1, `${roster}`);
+
+  // The roster reads three tables, not one. Narrowing only the first would have
+  // left the other two handing over the whole gym.
+  const ms = await count('select count(*)::int as n from memberships');
+  rec('V12', 'memberships are narrowed to this trainer only', ms === 1, `${ms} of 3`);
+
+  const att = await count('select count(*)::int as n from attendance');
+  rec('V13', 'attendance is narrowed the same way', att === 2, `${att} rows, expected 2`);
 }
 
 await as(TB);
