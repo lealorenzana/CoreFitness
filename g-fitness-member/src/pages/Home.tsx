@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   QrCode,
-  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, Check, X, MessageSquare,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, CalendarCheck, Flame, Check, X, MessageSquare,
   ChevronRight,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
@@ -13,7 +13,7 @@ import Notifications from '../components/Notifications';
 import Avatar from '../components/ui/Avatar';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
-import { Page } from '../components/ui/page';
+import { Page, RingStat } from '../components/ui/page';
 import { Pill } from '../components/ui/StatCard';
 import TodayPlanCard from '../components/ui/TodayPlanCard';
 import CheckInSheet from '../components/ui/CheckInSheet';
@@ -353,6 +353,54 @@ export default function Home() {
 
           {/* Is today a training day? */}
           <TodayPlanCard checkedInToday={home.checkedInToday} />
+
+          {/* Your progress.
+
+              Asked for on Home, and built from numbers the screen already
+              loads — no new query, and nothing invented. Only "this week" gets
+              a ring: seven days is a real denominator, where a month of
+              check-ins and a count of bookings have no ceiling to be a
+              fraction of, and a ring drawn full on those would be decoration
+              dressed as a measurement. */}
+          <motion.section
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14 }} className="flex flex-col"
+            style={{ gap: 'var(--stack-tight)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Your progress</h2>
+              <button
+                onClick={() => navigate('/member/progress')}
+                className="flex items-center gap-1 font-semibold"
+                style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}
+              >
+                See activity <ChevronRight size={14} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <RingStat
+                icon={<CalendarCheck size={16} />}
+                value={home.checkInsThisMonth}
+                label="Visits this month"
+                onClick={() => navigate('/member/attendance-history')}
+              />
+              <RingStat
+                icon={<Flame size={16} />}
+                value={home.weekCheckIns.filter(Boolean).length}
+                unit="of 7"
+                label="Days this week"
+                fraction={home.weekCheckIns.filter(Boolean).length / 7}
+                tone="secondary"
+                onClick={() => navigate('/member/attendance-history')}
+              />
+              <RingStat
+                icon={<CalendarClock size={16} />}
+                value={home.upcomingCount}
+                label={home.upcomingCount === 1 ? 'Session booked' : 'Sessions booked'}
+                onClick={() => navigate('/member/booking-history')}
+              />
+            </div>
+          </motion.section>
 
           {/* Next session */}
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}

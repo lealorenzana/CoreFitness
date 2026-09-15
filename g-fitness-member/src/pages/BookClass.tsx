@@ -156,20 +156,20 @@ function ClassRow({
       className="rounded-2xl p-3 flex items-stretch gap-3"
       style={panelStyle}
     >
-      {/* Time is the column you scan, so it gets its own rail and the only
-          tabular figures on the row — proportional digits make a list of times
-          jitter left and right. */}
-      <div className="flex flex-col items-center justify-center px-1 flex-shrink-0"
-        style={{ minWidth: 58, borderRight: '1px solid var(--color-border)' }}>
-        <span className="text-sm font-bold text-white tabular-nums leading-tight">
-          {timeLabel(c.scheduledAt)}
-        </span>
-        <span className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-          {c.durationMinutes}m
-        </span>
+      {/* A mark for the kind of session, then the time above the name — the
+          arrangement from the reference the gym chose. The time keeps its
+          tabular figures: proportional digits make a list of times jitter left
+          and right as you scan down it. */}
+      <div className="flex-shrink-0 w-11 h-11 rounded-xl grid place-items-center self-center"
+        style={{ background: 'var(--color-primary-light)' }} aria-hidden>
+        <Dumbbell size={19} style={{ color: 'var(--color-primary)' }} />
       </div>
 
       <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+        <p className="tabular-nums leading-none"
+          style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+          {timeLabel(c.scheduledAt)} · {c.durationMinutes}m
+        </p>
         <div className="flex items-center gap-1.5 flex-wrap">
           <p className="text-sm font-bold text-white truncate">{c.name}</p>
           {c.recommended && (

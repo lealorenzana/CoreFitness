@@ -12,13 +12,12 @@ import Avatar from '../components/ui/Avatar';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { panelStyle } from '../components/ui/Card';
 import SectionHeader from '../components/ui/SectionHeader';
-import ListRow from '../components/ui/ListRow';
 import { Pill } from '../components/ui/StatCard';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentMembership } from '../lib/api/memberships';
 import { readCache, writeCache } from '../lib/pageCache';
-import { Page } from '../components/ui/page';
+import { Page, NavTile } from '../components/ui/page';
 import { formatPhone } from '../utils/phone';
 
 /** The flattened identity + plan this screen renders. */
@@ -199,79 +198,38 @@ export default function Profile() {
             </div>
           </motion.section>
 
-          {/* Everything else lives on its own page */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <SectionHeader title="Your account" />
-            <div className="space-y-2">
-              <ListRow
-                icon={Activity} tone="primary"
-                title="Progress"
-                subtitle="Measurements, workouts, goals and charts"
-                onClick={() => navigate('/member/progress')}
-              />
-              <ListRow
-                icon={Shield} tone="primary"
-                title="Membership"
-                subtitle="Your plan, days left and renewal"
-                onClick={() => navigate('/member/renew-membership')}
-              />
-              <ListRow
-                icon={CreditCard} tone="primary"
-                title="Payments"
-                subtitle="What you've paid and when"
-                onClick={() => navigate('/member/payments')}
-              />
-              <ListRow
-                icon={Calendar} tone="primary"
-                title="Attendance"
-                subtitle="Every gym visit on record"
-                onClick={() => navigate('/member/attendance-history')}
-              />
-              <ListRow
-                icon={CalendarCheck} tone="primary"
-                title="My bookings"
-                subtitle="Classes and personal training"
-                onClick={() => navigate('/member/booking-history')}
-              />
-              <ListRow
-                icon={ClipboardList} tone="primary"
-                title="Training plan"
-                subtitle="Your generated week, and how to rebuild it"
-                onClick={() => navigate('/member/plan')}
-              />
+          {/* Everything the app contains, visible without scrolling.
+
+              This was eleven stacked rows with a sentence of subtitle each —
+              roughly 800px of list on an 852px screen, so the member had to
+              scroll to find out what existed. Grouped into two grids: what you
+              do at the gym, and what you owe or have earned. Every destination
+              is the same one as before; none was added or dropped. */}
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }} className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
+            <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Your training</h2>
+            <div className="grid grid-cols-3 gap-2">
+              <NavTile icon={<Activity size={20} />} label="Progress" onClick={() => navigate('/member/progress')} />
+              <NavTile icon={<CalendarCheck size={20} />} label="My bookings" onClick={() => navigate('/member/booking-history')} />
+              <NavTile icon={<ClipboardList size={20} />} label="Training plan" onClick={() => navigate('/member/plan')} />
+              <NavTile icon={<BookOpen size={20} />} label="Free workouts" onClick={() => navigate('/member/workouts')} />
+              <NavTile icon={<Flag size={20} />} label="Challenges" onClick={() => navigate('/member/challenges')} />
+              <NavTile icon={<Trophy size={20} />} label="Events" onClick={() => navigate('/member/events')} />
+            </div>
+          </motion.section>
+
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }} className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
+            <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Membership</h2>
+            <div className="grid grid-cols-3 gap-2">
+              <NavTile icon={<Shield size={20} />} label="My plan" onClick={() => navigate('/member/renew-membership')} />
+              <NavTile icon={<CreditCard size={20} />} label="Payments" onClick={() => navigate('/member/payments')} />
+              <NavTile icon={<Calendar size={20} />} label="Attendance" onClick={() => navigate('/member/attendance-history')} />
               {/* Always listed, on every tier. A member whose plan does not
                   include points sees the locked card explaining what it is —
                   which is the point of locking rather than hiding (0049). */}
-              <ListRow
-                icon={Gift} tone="primary"
-                title="CORE Points"
-                subtitle="What you have earned, and what it buys"
-                onClick={() => navigate('/member/rewards')}
-              />
-              <ListRow
-                icon={BookOpen} tone="primary"
-                title="Free workouts"
-                subtitle="Routines and videos the gym recommends"
-                onClick={() => navigate('/member/workouts')}
-              />
-              <ListRow
-                icon={Trophy} tone="primary"
-                title="Events"
-                subtitle="What the gym has coming up"
-                onClick={() => navigate('/member/events')}
-              />
-              <ListRow
-                icon={Flag} tone="primary"
-                title="Challenges"
-                subtitle="Targets counted from your real check-ins"
-                onClick={() => navigate('/member/challenges')}
-              />
-              <ListRow
-                icon={SettingsIcon} tone="muted"
-                title="Settings"
-                subtitle="Password, privacy and about"
-                onClick={() => navigate('/member/settings')}
-              />
+              <NavTile icon={<Gift size={20} />} label="CORE Points" tone="secondary" onClick={() => navigate('/member/rewards')} />
+              <NavTile icon={<SettingsIcon size={20} />} label="Settings" tone="muted" onClick={() => navigate('/member/settings')} />
             </div>
           </motion.section>
 

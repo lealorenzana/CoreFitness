@@ -17,7 +17,7 @@ import {
 } from '../lib/api/workoutResources';
 import { getCurrentMemberId, getExperienceLevel, type ExperienceLevel } from '../services/bookingService';
 import type { ClassLevel } from '../types/db';
-import { Page } from '../components/ui/page';
+import { Page, CategoryRail } from '../components/ui/page';
 
 /**
  * Free workout resources, curated by the gym (migration 0019).
@@ -72,9 +72,9 @@ function categoryTone(category: string | null) {
 }
 
 /** The category's icon, resolved once. Was an IIFE inline in the card. */
-function CategoryIcon({ category }: { category: string | null }) {
+function CategoryIcon({ category, size = 17 }: { category: string | null; size?: number }) {
   const { icon: Icon, fg } = categoryTone(category);
-  return <Icon size={17} style={{ color: fg }} />;
+  return <Icon size={size} style={{ color: fg }} />;
 }
 
 /**
@@ -98,7 +98,7 @@ function ResourceBanner({ src }: { src: string }) {
   const [broken, setBroken] = useState(false);
   if (broken) return null;
   return (
-    <div className="w-full overflow-hidden rounded-xl mb-3"
+    <div className="w-full overflow-hidden"
       style={{ aspectRatio: '3 / 1', background: 'var(--color-bg)' }}>
       <img
         src={src}
@@ -203,26 +203,20 @@ export default function Workouts() {
       </motion.button>
 
       {categories.length > 1 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {['all', ...categories].map((c) => {
+        <CategoryRail
+          active={category}
+          onPick={setCategory}
+          items={['all', ...categories].map((c) => ({
+            id: c,
+            label: c === 'all' ? 'Everything' : c,
+            icon: c === 'all'
+              ? <BookOpen size={20} />
+              : <CategoryIcon category={c} size={20} />,
             // The count is the useful half: "Follow-along 3" tells you whether
             // a filter is worth tapping, which a bare label never did.
-            const n = c === 'all' ? resources.length : resources.filter((r) => r.category === c).length;
-            const active = category === c;
-            return (
-              <button key={c} onClick={() => setCategory(c)}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize flex items-center gap-1.5"
-                style={{
-                  background: active ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                  color: active ? '#fff' : 'var(--color-text-muted)',
-                  border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}>
-                {c === 'all' ? 'Everything' : c}
-                <span className="tabular-nums" style={{ opacity: 0.7 }}>{n}</span>
-              </button>
-            );
-          })}
-        </div>
+            count: c === 'all' ? resources.length : resources.filter((r) => r.category === c).length,
+          }))}
+        />
       )}
 
       {loading ? (
@@ -246,21 +240,38 @@ export default function Workouts() {
               // noreferrer alongside noopener: the destination has no business
               // knowing which member app screen sent the member there.
               rel="noopener noreferrer"
-              className="block rounded-2xl p-4 transition-all active:scale-[0.98]"
+              className="block rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
               style={panelStyle}>
-              {hasPreview(r) && <ResourceBanner src={r.image_url as string} />}
-              <div className="flex items-start gap-3">
+              {/* Picture first, edge to edge, with the category mark floated on
+                  it — the arrangement from the layout the gym asked for. The
+                  image is already a real column (0061/0076); this only stops
+                  boxing it inside the padding. */}
+              {hasPreview(r) && (
+                <div className="relative">
+                  <ResourceBanner src={r.image_url as string} />
+                  <span
+                    className="absolute top-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(8,8,14,0.72)', backdropFilter: 'blur(6px)' }}
+                    aria-hidden
+                  >
+                    <CategoryIcon category={r.category} />
+                  </span>
+                </div>
+              )}
+              <div className="flex items-start gap-3 p-4">
                 {/* A category mark, so twelve links stop reading as one list.
                     Colour and icon come from the category, which is a real
                     column the gym edits — not a hardcoded per-title map that
                     would go blank the moment they added a category. */}
-                <span
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: categoryTone(r.category).bg }}
-                  aria-hidden
-                >
-                  <CategoryIcon category={r.category} />
-                </span>
+                {!hasPreview(r) && (
+                  <span
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: categoryTone(r.category).bg }}
+                    aria-hidden
+                  >
+                    <CategoryIcon category={r.category} />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-white font-semibold text-sm">{r.title}</h3>
