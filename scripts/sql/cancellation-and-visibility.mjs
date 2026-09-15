@@ -322,6 +322,99 @@ await as(M1);
   rec('V11', 'a member still sees only themselves', n === 1, `${n}`);
 }
 
+// ══ 0083  THE DESK'S ATTENTION QUEUE ════════════════════════════════════════
+// A fresh cast: the earlier sessions are all cancelled by now.
+await asOwner();
+const PT_WAIT = 'e0000000-0000-4000-8000-000000000010';  // pending 4 days, TA
+const TC      = 'cccccccc-cccc-cccc-cccc-cccccccccccc';  // free then
+const TD      = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';  // busy then
+await db.exec(`
+insert into auth.users (id, email) values
+  ('${TC}','carla@corefitness-test.com'), ('${TD}','dino@corefitness-test.com');
+insert into profiles (id, role, first_name, last_name, email, status) values
+  ('${TC}','trainer','Carla','Mendoza','carla@corefitness-test.com','active'),
+  ('${TD}','trainer','Dino','Alvarez','dino@corefitness-test.com','active')
+on conflict (id) do nothing;
+insert into trainer_profiles (profile_id, focus_areas) values
+  ('${TC}', array['Strength']), ('${TD}', array['Strength'])
+on conflict (profile_id) do update set focus_areas = excluded.focus_areas;
+
+-- The member asked four days ago for a session three days out at 10:00.
+insert into pt_sessions (id, member_id, trainer_id, starts_at, duration_minutes, status, requested_at)
+values ('${PT_WAIT}','${M3}','${TA}',
+        date_trunc('day', now() + interval '3 days') + interval '10 hours',
+        60, 'pending', now() - interval '4 days');
+
+-- All three coaches work that weekday, 08:00-17:00.
+insert into trainer_availability (trainer_id, day_of_week, start_time, end_time, slot_minutes)
+select t, extract(dow from date_trunc('day', now() + interval '3 days'))::int,
+       '08:00', '17:00', 60
+  from unnest(array['${TA}','${TC}','${TD}']::uuid[]) t;
+
+-- ...but Dino already has 10:30, which OVERLAPS a 10:00 hour.
+insert into pt_sessions (member_id, trainer_id, starts_at, duration_minutes, status)
+values ('${M2}','${TD}',
+        date_trunc('day', now() + interval '3 days') + interval '10 hours 30 minutes',
+        60, 'approved');
+`);
+
+await as(AD);
+{
+  const q = await db.query(`select kind, member_name, days_waiting, urgency
+                              from bookings_needing_attention where id = '${PT_WAIT}'`);
+  const row = q.rows[0];
+  rec('A1', 'the pending session appears in the attention queue', row != null, JSON.stringify(row ?? null));
+  rec('A2', 'it counts whole days waiting', row && row.days_waiting === 4, `${row?.days_waiting}`);
+  rec('A3', 'four days pending reads as overdue', row && row.urgency === 'overdue', `${row?.urgency}`);
+
+  const sug = await db.query(`select trainer_name, shared_focus, upcoming_load
+                                from suggest_trainers_for_session('${PT_WAIT}')`);
+  const names = sug.rows.map((r) => r.trainer_name);
+  rec('A4', 'a free, qualified coach is suggested', names.includes('Carla Mendoza'), names.join(', ') || 'none');
+  rec('A5', 'a coach whose hour OVERLAPS is not suggested', !names.includes('Dino Alvarez'),
+    names.join(', ') || 'none');
+  rec('A6', 'the current trainer is not suggested to replace themselves',
+    !names.includes('Tere Bautista'), names.join(', ') || 'none');
+
+  await refuses('A7', 'reassigning to a busy trainer is refused at the write',
+    `select reassign_pt_session('${PT_WAIT}', '${TD}');`, 'no longer free');
+
+  await allows('A8', 'reassigning to the free coach is allowed',
+    `select reassign_pt_session('${PT_WAIT}', '${TC}');`);
+}
+
+await asOwner();
+{
+  const r = await db.query(`select trainer_id, previous_trainer_id, status::text as s,
+                                   reassigned_by, requested_at < now() - interval '3 days' as clock_kept
+                              from pt_sessions where id = '${PT_WAIT}'`);
+  const row = r.rows[0];
+  rec('A9', 'the move is recorded, with who it used to be',
+    row.trainer_id === TC && row.previous_trainer_id === TA && row.reassigned_by === AD,
+    JSON.stringify(row));
+  rec('A10', 'it stays pending — the new coach still accepts', row.s === 'pending', row.s);
+  rec('A11', 'the waiting clock is NOT reset by the move', row.clock_kept === true, `${row.clock_kept}`);
+
+  const n = await count(`select count(*)::int as n from notifications
+                          where user_id = '${TC}' and title = 'A session was assigned to you'`);
+  rec('A12', 'the new coach is told', n === 1, `${n}`);
+}
+
+await as(AD);
+{
+  const first = await db.query(`select remind_trainer('pt', '${PT_WAIT}') as ok`);
+  rec('A13', 'the desk can send a reminder', first.rows[0].ok === true, `${first.rows[0].ok}`);
+  const again = await db.query(`select remind_trainer('pt', '${PT_WAIT}') as ok`);
+  rec('A14', 'a second reminder the same day is not sent twice', again.rows[0].ok === false,
+    `${again.rows[0].ok}`);
+}
+
+await as(M1);
+await refuses('A15', 'a member cannot reassign anybody',
+  `select reassign_pt_session('${PT_WAIT}', '${TD}');`, 'front desk');
+await refuses('A16', 'a member cannot fish for trainer suggestions',
+  `select suggest_trainers_for_session('${PT_WAIT}');`, 'front desk');
+
 // ── Report ──────────────────────────────────────────────────────────────────
 await asOwner();
 const pad = (s, n) => String(s).padEnd(n);

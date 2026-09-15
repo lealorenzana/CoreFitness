@@ -109,6 +109,11 @@ CHECKS = [
     # trace over REST; the view and the marker carry it.
     ('0082', 'view my_trainer_members',        lambda: table('my_trainer_members', 'member_id')),
     ('0082', 'rpc migration_0082_applied',     lambda: rpc('migration_0082_applied')),
+    # 0083 adds three columns, a view and three functions. The view is the one
+    # the admin screen actually reads, so it gets its own line.
+    ('0083', 'pt_sessions.reassigned_at',      lambda: table('pt_sessions', 'reassigned_at')),
+    ('0083', 'view bookings_needing_attention', lambda: table('bookings_needing_attention', 'urgency')),
+    ('0083', 'rpc migration_0083_applied',     lambda: rpc('migration_0083_applied')),
 ]
 
 print('project: %s' % URL)
