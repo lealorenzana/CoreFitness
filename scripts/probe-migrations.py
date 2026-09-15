@@ -95,6 +95,11 @@ CHECKS = [
     # visible over REST; the trigger is not, so the marker carries that half.
     ('0079', 'member_profiles.terms_accepted_at', lambda: table('member_profiles', 'terms_accepted_at')),
     ('0079', 'rpc migration_0079_applied',     lambda: rpc('migration_0079_applied')),
+    # 0080 is policies and view bodies, which leave no trace over REST. The
+    # marker carries it; is_demo_row() is probe-able and worth its own line
+    # because a filter that matches nothing is the failure mode here.
+    ('0080', 'rpc is_demo_row',                lambda: rpc('is_demo_row', {'p': NIL})),
+    ('0080', 'rpc migration_0080_applied',     lambda: rpc('migration_0080_applied')),
 ]
 
 print('project: %s' % URL)

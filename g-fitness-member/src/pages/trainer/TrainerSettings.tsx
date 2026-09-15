@@ -12,6 +12,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { logout } from '../../utils/auth';
 import { playNotificationSound } from '../../utils/notificationSound';
 import { getMyPrefs, updateMyPrefs, DEFAULT_PREFS, type NotificationPrefs } from '../../lib/api/notificationPrefs';
+import { Page } from '../../components/ui/page';
 
 /**
  * Trainer settings.
@@ -67,6 +68,7 @@ function Switch({ on, busy }: { on: boolean; busy?: boolean }) {
 
 export default function TrainerSettings() {
   const navigate = useNavigate();
+
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [busy, setBusy] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -165,7 +167,7 @@ export default function TrainerSettings() {
   ];
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <button
           onClick={() => navigate('/trainer/profile')}
@@ -273,7 +275,7 @@ export default function TrainerSettings() {
         Core Fitness · Trainer · Version 1.0.0
       </p>
 
-      {createPortal(
+      {showAbout && createPortal(
         <AnimatePresence>
           {showAbout && (
             <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
@@ -325,7 +327,7 @@ export default function TrainerSettings() {
         document.getElementById('modal-root')!
       )}
 
-      {createPortal(
+      {confirmLogout && createPortal(
         <AnimatePresence>
           {confirmLogout && (
             <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
@@ -374,6 +376,6 @@ export default function TrainerSettings() {
         </AnimatePresence>,
         document.getElementById('modal-root')!
       )}
-    </div>
+    </Page>
   );
 }

@@ -7,7 +7,7 @@ prototype; **that migration is complete** — everything runs on Supabase, free 
 Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
 and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
 and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 79 migrations, RLS policies and four Edge Functions —
+app directory. `supabase/` holds 80 migrations, RLS policies and four Edge Functions —
 [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -160,8 +160,8 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0078 are all live**; **0079** (the terms checkbox becomes a record — a column plus the signup
-trigger's last body, from 0036) is written and replay-tested, **not yet pasted** — verified 2026-09-14 with `python
+**0001–0078 are all live**; **0079** (terms consent recorded) and **0080** (the demo data stops being
+visible to members) are written and replay-tested, **not yet pasted** — verified 2026-09-15 with `python
 scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials. **Run it
 rather than trusting a report that a migration was pasted**: 0070 was believed done for a day and had
 never executed. It probes **three objects per migration**, so a file that never ran is distinguishable
@@ -176,7 +176,7 @@ The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-
 Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of them — the
 objective is being amended**, not the account of the system; replacement text is in that file.
 Outstanding:
-- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); **members do see the coaches (no open hours) and past events**; part 2 goes in as `part2/` one file at a time; one paste removes both — **dashboard figures include it until removed**.
+- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); part 2 goes in as `part2/` one file at a time; one paste removes both — **dashboard figures include it until removed**. **0080 hides it from members**: `is_demo_row(id)` plus `sees_demo_data()` (everyone except a signed-in member), applied to the events/challenges/rewards/classes policies and the `public_trainers`/`class_availability` views. Admin and the desk still see all of it, so no dashboard figure moves.
 - **Staff approving registrations is 0078, not an Edge Function** — staff already had the queue, the
   intake write and the membership insert; only `profiles.status` refused them, so
   `set_account_status()` allows **one** staff transition, `pending_approval → active`. Approval and

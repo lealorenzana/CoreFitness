@@ -18,6 +18,7 @@ import {
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 import { errorMessage } from '../../utils/errorMessage';
+import { Page } from '../../components/ui/page';
 
 /**
  * The trainer's home screen.
@@ -140,7 +141,7 @@ export default function TrainerHome() {
   ];
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* ── Hero ───────────────────────────────────────────────────────────
           Bigger than before, and the specialisation is a pill rather than a
           line of loose violet text — as bare text a one-word specialisation
@@ -411,6 +412,6 @@ export default function TrainerHome() {
           </div>
         )}
       </motion.section>
-    </div>
+    </Page>
   );
 }

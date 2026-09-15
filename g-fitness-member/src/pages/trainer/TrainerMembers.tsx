@@ -18,6 +18,7 @@ import {
 import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
+import { Page } from '../../components/ui/page';
 
 /**
  * One block of a member's own data in the trainer's view.
@@ -260,7 +261,7 @@ export default function TrainerMembers() {
   if (loading) return <SkeletonList count={5} />;
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <div>
         <h1 className="display text-xl text-white">Gym Members</h1>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
@@ -501,6 +502,6 @@ export default function TrainerMembers() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </Page>
   );
 }

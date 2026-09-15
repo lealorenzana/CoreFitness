@@ -41,14 +41,23 @@ export default function TrainerLayout() {
 
       {/* The bell used to be absolutely positioned over the page, which put it
           on top of whatever each screen rendered in its top-right corner. */}
-      <div className="flex items-center justify-end gap-2 px-4 pt-3">
+      <div className="flex items-center justify-end gap-2 pt-3"
+        style={{ paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}>
         <Notifications />
       </div>
 
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto px-4 py-3 pb-2 scrollbar-hide relative"
-        style={{ backgroundColor: 'var(--color-bg)' }}
+        /* Same gutter as the member shell, from the same token: the trainer app
+           is the same app with a different dock, and two different left edges
+           in one binary is a thing people notice without being able to name.
+           Bottom clearance belongs to <Page>, as it does there. */
+        className="flex-1 overflow-y-auto py-3 scrollbar-hide relative"
+        style={{
+          backgroundColor: 'var(--color-bg)',
+          paddingLeft: 'var(--gutter)',
+          paddingRight: 'var(--gutter)',
+        }}
       >
         <AnimatePresence mode="popLayout">
           {/* `min-h-full flex flex-col` so a page can ask to fill the screen

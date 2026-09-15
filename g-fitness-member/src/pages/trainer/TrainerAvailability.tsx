@@ -16,6 +16,7 @@ import {
   deleteAvailability,
   type TrainerAvailabilityRow,
 } from '../../lib/api/trainerAvailability';
+import { Page } from '../../components/ui/page';
 
 /**
  * The trainer's bookable working hours — the rows a member's booking screen
@@ -76,6 +77,7 @@ const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
 
 export default function TrainerAvailability() {
   const navigate = useNavigate();
+
   const [trainerId, setTrainerId] = useState('');
   const [rows, setRows] = useState<TrainerAvailabilityRow[]>([]);
   const [bookedDows, setBookedDows] = useState<Set<number>>(new Set());
@@ -188,7 +190,7 @@ export default function TrainerAvailability() {
     .filter(([, items]) => items.length > 0);
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/trainer/schedule')}
@@ -316,7 +318,7 @@ export default function TrainerAvailability() {
           <main> is `relative` and scrolls, so an `absolute inset-0` overlay
           declared here would be clipped to the scrolling area and sit *under*
           the bottom nav. */}
-      {createPortal(
+      {showForm && createPortal(
       <AnimatePresence>
         {showForm && (
           <div className="absolute inset-0 flex items-end justify-center pointer-events-auto">
@@ -413,7 +415,7 @@ export default function TrainerAvailability() {
       )}
 
       {/* Delete confirmation */}
-      {createPortal(
+      {confirmDelete && createPortal(
       <AnimatePresence>
         {confirmDelete && (
           <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
@@ -484,6 +486,6 @@ export default function TrainerAvailability() {
       </AnimatePresence>,
       document.getElementById('modal-root')!
       )}
-    </div>
+    </Page>
   );
 }

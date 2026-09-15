@@ -13,6 +13,7 @@ import { getCurrentTrainerId } from '../../services/trainerService';
 import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
+import { Page } from '../../components/ui/page';
 
 /**
  * Requests for this trainer's classes and their own 1-on-1 sessions.
@@ -212,7 +213,7 @@ export default function TrainerBookings() {
   if (loading) return <SkeletonList count={4} />;
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="display text-xl text-white">Bookings</h1>
@@ -372,6 +373,6 @@ export default function TrainerBookings() {
           </div>
         )}
       </div>
-    </div>
+    </Page>
   );
 }

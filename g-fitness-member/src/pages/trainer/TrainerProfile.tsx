@@ -22,6 +22,7 @@ import {
 } from '../../services/trainerService';
 import { readCache, writeCache } from '../../lib/pageCache';
 import { errorMessage } from '../../utils/errorMessage';
+import { Page } from '../../components/ui/page';
 
 export default function TrainerProfile() {
   const navigate = useNavigate();
@@ -137,7 +138,7 @@ export default function TrainerProfile() {
   ].filter((i) => i.value);
 
   return (
-    <div className="space-y-5 pb-4">
+    <Page>
       {/* Identity. Given the same violet treatment as the member's membership
           card — this is the trainer's equivalent "who I am here" panel, and a
           flat grey box on the screen that carries your own name and face read
@@ -375,6 +376,6 @@ export default function TrainerProfile() {
         </div>,
         document.getElementById('modal-root')!
       )}
-    </div>
+    </Page>
   );
 }

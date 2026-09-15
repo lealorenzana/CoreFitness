@@ -13,6 +13,7 @@ import { getMyProfile, updateMyProfile } from '../../lib/api/profiles';
 import { getTrainer, updateTrainerProfile } from '../../lib/api/trainers';
 import { uploadMyAvatar, removeMyAvatar } from '../../lib/api/avatars';
 import { getCurrentTrainerId } from '../../services/trainerService';
+import { Page } from '../../components/ui/page';
 
 /**
  * Trainer self-service profile editing.
@@ -173,7 +174,7 @@ export default function TrainerEditProfile() {
   const fullName = `${form.firstName} ${form.lastName}`.trim();
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3">
         <button onClick={() => navigate('/trainer/profile')}
@@ -333,6 +334,6 @@ export default function TrainerEditProfile() {
         style={{ background: 'var(--color-secondary)' }}>
         <Save size={16} /> {saving ? 'Saving…' : 'Save changes'}
       </motion.button>
-    </div>
+    </Page>
   );
 }

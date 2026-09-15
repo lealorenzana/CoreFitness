@@ -68,6 +68,20 @@ there is no room to indent a card's body to clear a 48px emblem, so
 `LevelProgressCard` puts a hairline under its header band instead. An
 almost-alignment reads as a mistake; a stated boundary does not.
 
+**The trainer app is on the same system** (2026-09-15). It had been left on the
+old spacing when the member screens moved over, so the two halves of one binary
+had different gutters and the trainer's dock still sat on their content. All
+eight trainer pages use `<Page>`, and `TrainerLayout` takes its gutter from
+`--gutter` like the member shell.
+
+**`createPortal` is called when the modal opens, never on every render.**
+`document.getElementById('modal-root')!` from a render body throws *"Target
+container is not a DOM element"* on a cold load into that route — the root
+belongs to PhoneChassis, an ancestor, and nothing is committed yet. The member
+screens got away with it by writing `{open && createPortal(...)}`; the trainer's
+Settings and Availability called it unconditionally and **crashed to a blank
+screen on a refresh**. Guard on the dialog's own flag.
+
 **The type floor is 12px and 66 places were under it** — 10px and 11px labels,
 one at 9px. This is read at arm's length, in a gym, often mid-set.
 

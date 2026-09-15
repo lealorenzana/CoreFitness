@@ -13,6 +13,7 @@ import { getCurrentTrainerId } from '../../services/trainerService';
 import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { ClassRow } from '../../types/db';
+import { Page } from '../../components/ui/page';
 
 /**
  * The trainer's real class schedule, from `classes.trainer_id`.
@@ -386,7 +387,7 @@ export default function TrainerSchedule() {
   }, 0);
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <div>
         <h1 className="display text-xl text-white">My Schedule</h1>
         {/* "12 classes assigned to you" counted every occurrence ever, past
@@ -570,6 +571,6 @@ export default function TrainerSchedule() {
           </p>
         </div>
       )}
-    </div>
+    </Page>
   );
 }
