@@ -91,7 +91,7 @@ automated message goes through `notify_once`, whose **dedupe key sits behind a p
 
 ### Subscriptions gate features; the engagement loop is 0049–0061
 **Spec: [startup-features](docs/superpowers/specs/2026-09-04-startup-features-design.md). Plans,
-refunds and gating detail: [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md). 0017's four booking
+refunds and gating detail: [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md) · [AI_INTEGRATION](docs/AI_INTEGRATION.md). 0017's four booking
 columns are untouched and stay that way.** Gating *app areas* is `plan_features` (0049), resolved
 by `plan_allows()` — **the same function RLS calls**, so screen and database cannot drift. **Gates
 lock and explain, never hide**; **never gate the free workout library (0019)**, which exists *for*
@@ -205,6 +205,11 @@ Outstanding:
   `set_account_status()` allows **one** staff transition, `pending_approval → active`. Approval and
   rejection both go through it, so approval has a history and a rejection states a reason.
   **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%.
+  **The AI question is answered in [AI_INTEGRATION](docs/AI_INTEGRATION.md)**: the
+  integration is already written and provider-agnostic, Groq's free tier (30/min,
+  14,400/day, no card) covers this gym, and Ollama cannot be the deployed answer
+  because an Edge Function cannot reach a PC in Mamburao. The model is sent the
+  question and nothing else — no name, no id, no membership.
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
   `promote`; **a push does not deploy**, and env vars must exist in Vercel *before* deploying
   because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md); check with `scripts/verify-deploy.py`). **The APK never needs rebuilding
