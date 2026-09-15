@@ -398,6 +398,17 @@
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
+  /* The word must not be the thing that gives.
+
+     Without this, "Membership" rendered 51px wide against the 75px it needs and
+     was clipped to "Member" with no ellipsis — nothing to do with the max-width
+     below, which was never reached. `.dock__side` is `flex: 1 1 0`, so each half
+     is exactly half the bar whatever is in it, and the only shrinkable thing
+     inside the active pill was this label. The inactive sibling is an icon with
+     a 42px floor and gives up its padding instead. Measured at 393 and 360:
+     the label renders at its full 75px, the dock does not overflow, and the
+     check-in button stays dead centre. */
+  flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -408,7 +419,10 @@
 }
 
 .dock__item--active .dock__label {
-  max-width: 84px;
+  /* Sized when "Progress" (54px) was the longest label; "Membership" needs 75.
+     The cap only has to clear the longest word in `labels` — it exists to give
+     the reveal something to animate to, not to truncate anything. */
+  max-width: 110px;
   margin-left: 0.375rem;
   opacity: 1;
 }

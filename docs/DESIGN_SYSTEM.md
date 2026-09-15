@@ -128,6 +128,42 @@ where the set is genuinely open-ended (`CategoryRail`), where the cut tile is
 the affordance rather than a defect. `LinkRail` was deleted with its last
 caller.
 
+### A tile that only labels a destination is a tap that teaches nothing
+
+The Membership tab was four `NavTile`s on an otherwise empty screen: My plan,
+Payments, Attendance, CORE Points. It named its four destinations and stated
+nothing — not the plan, not the expiry, not the balance, not whether the
+membership was frozen — while the member opening that tab is asking exactly
+*what is the state of my membership*.
+
+Every cell now carries a real number **and** is the route to the screen that
+number belongs to, so there are no bare navigation tiles left on it. Four
+destinations, four facts, and the same wide/pair/wide bento as Book a Session.
+
+It does **not** repeat Home's card. Home's violet panel is the member's
+identity — name, photo, QR, today. This is the account: no QR, no name. The plan
+state appears on both because it answers two different questions, and the rest
+of the card does not.
+
+The screen is short, and that is allowed. Filling the space would have meant
+repeating the plan's included/excluded list from Home, and this project renders
+nothing rather than a placeholder.
+
+### The dock label must not be the thing that shrinks
+
+"Membership" rendered 51px wide against the 75px it needs and was clipped to
+"Member" with no ellipsis. The `max-width: 84px` cap looked like the culprit and
+was not — it was never reached. `.dock__side` is `flex: 1 1 0` so each half is
+exactly half the bar whatever is in it, and the only shrinkable thing inside the
+active pill was the label itself.
+
+`flex-shrink: 0` on `.dock__label` fixes it: the inactive sibling is an icon with
+a 42px floor and gives up its padding instead. The cap is now 110px, and exists
+only to give the reveal something to animate to. **Measure it rather than eyeball
+it** — at 393 and 360 the label renders at its full width, the dock does not
+overflow, and the check-in button stays dead centre (`fabOffCentre: 0`), which is
+the regression the two-equal-halves layout exists to prevent.
+
 ### An interview is not a form — `StepFlow`
 
 The plan builder asked its six questions as six bordered cards stacked on one
