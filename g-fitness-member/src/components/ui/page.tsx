@@ -329,17 +329,33 @@ export function RingStat({
  * matters here because the palette is deliberately small (amber acts, violet
  * structures, and that is the whole vocabulary).
  *
- * Two columns, not three. At 393px with a 20px gutter a third column leaves
- * ~105px a tile, which is under the width of "Intermediate" at the 12px type
- * floor — the floor is not negotiable in a gym, so the column count gives way.
+ * **Two columns by default, and that is not a style preference.** At 393px with
+ * a 20px gutter a third column leaves ~110px a cell, which is under the width
+ * of "Intermediate" at the 12px type floor — the floor is not negotiable in a
+ * gym, so the column count gives way. `cols={3}` is for grids whose cells carry
+ * an icon and one short label and no prose at all (`NavTile`), where 110px is
+ * plenty and three-up is what stops six destinations from taking three rows.
  *
  * Cells stretch to the tallest in their row (grid's default), so a row of
  * tiles has one baseline along the bottom if each one pushes its action down
  * with `mt-auto`.
  */
-export function Bento({ children, className }: { children: ReactNode; className?: string }) {
+export function Bento({
+  children,
+  className,
+  cols = 2,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** 3 only for icon-and-label cells — see above. */
+  cols?: 2 | 3;
+}) {
   return (
-    <div className={cn('grid grid-cols-2', className)} style={{ gap: 'var(--stack-tight)' }}>
+    // Two literal class names, never a template: Tailwind emits CSS only for
+    // names it can see in the source, so `grid-cols-${cols}` would produce a
+    // grid with no columns at all.
+    <div className={cn('grid', cols === 3 ? 'grid-cols-3' : 'grid-cols-2', className)}
+      style={{ gap: 'var(--stack-tight)' }}>
       {children}
     </div>
   );
@@ -521,48 +537,5 @@ export function NavTile({
         {label}
       </span>
     </button>
-  );
-}
-
-/**
- * A row of shortcuts to elsewhere in the same area of the app.
- *
- * Training's tab opens Book a Session, because booking is what a member opens
- * that tab to do — a hub page in front of it was one tap of furniture and half
- * a screen of white space. The other six training destinations ride along here
- * instead: small, scrollable, and out of the way of the task.
- *
- * Deliberately not `NavTile`. Those are 96px squares and this is a footnote to
- * a screen that already has a segmented control, a date rail and a filter row
- * above the first class — a second grid at the top would bury what the member
- * came for.
- */
-export function LinkRail({
-  items,
-}: {
-  items: { label: string; icon: ReactNode; onClick: () => void }[];
-}) {
-  return (
-    <div
-      className="flex gap-2 overflow-x-auto scrollbar-hide"
-      style={{ marginLeft: 'calc(var(--gutter) * -1)', marginRight: 'calc(var(--gutter) * -1)',
-               paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}
-    >
-      {items.map((it) => (
-        <button
-          key={it.label}
-          onClick={it.onClick}
-          className="flex-shrink-0 flex items-center gap-1.5 rounded-full whitespace-nowrap active:opacity-80"
-          style={{
-            ...panelStyle,
-            height: 34, paddingLeft: 12, paddingRight: 14,
-            fontSize: 'var(--text-meta)', color: 'var(--color-text-secondary)',
-          }}
-        >
-          <span style={{ color: 'var(--color-primary)' }}>{it.icon}</span>
-          {it.label}
-        </button>
-      ))}
-    </div>
   );
 }

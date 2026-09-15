@@ -32,7 +32,7 @@ import { listEvents } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
 
 import type { ClassLevel } from '../types/db';
-import { Page, LinkRail, Bento, BentoCell, RingStat } from '../components/ui/page';
+import { Page, Bento, BentoCell, RingStat, NavTile } from '../components/ui/page';
 
 /**
  * Everything the first paint of this screen needs, cached as one object.
@@ -688,21 +688,34 @@ export default function BookClass() {
 
           This screen IS the Training tab — the tab opens the thing a member
           came to do rather than a grid in front of it. These are the six other
-          training destinations, sized as a footnote so they do not compete with
-          the classes below. Hidden while a coach is selected: that view is a
-          single task, and a shortcut out of it mid-booking is an invitation to
-          lose your place. */}
+          training destinations.
+
+          They were a scrolling rail of chips, and a rail was the wrong shape
+          for a fixed set of six: two of them sat off the right edge with the
+          second one sliced down the middle, which reads as a screen that has
+          not finished loading rather than as something you can swipe. Six is a
+          number you can just show. Three across, two rows, nothing hidden and
+          nothing cut.
+
+          Violet, not amber: these are structure. Amber on this screen belongs
+          to Book, and six amber tiles above it would outshout the one control
+          that actually does something.
+
+          Hidden while a coach is selected — that view is a single task, and a
+          shortcut out of it mid-booking is an invitation to lose your place. */}
       {!selectedTrainer && (
-        <LinkRail
-          items={[
-            { label: 'Progress', icon: <Activity size={14} />, onClick: () => navigate('/member/progress') },
-            { label: 'My bookings', icon: <CalendarCheck size={14} />, onClick: () => navigate('/member/booking-history') },
-            { label: 'Training plan', icon: <ClipboardList size={14} />, onClick: () => navigate('/member/plan') },
-            { label: 'Free workouts', icon: <BookOpen size={14} />, onClick: () => navigate('/member/workouts') },
-            { label: 'Challenges', icon: <Flag size={14} />, onClick: () => navigate('/member/challenges') },
-            { label: 'Events', icon: <Trophy size={14} />, onClick: () => navigate('/member/events') },
-          ]}
-        />
+        <Bento cols={3}>
+          {([
+            ['Progress', <Activity size={18} />, '/member/progress'],
+            ['My bookings', <CalendarCheck size={18} />, '/member/booking-history'],
+            ['Training plan', <ClipboardList size={18} />, '/member/plan'],
+            ['Free workouts', <BookOpen size={18} />, '/member/workouts'],
+            ['Challenges', <Flag size={18} />, '/member/challenges'],
+            ['Events', <Trophy size={18} />, '/member/events'],
+          ] as const).map(([label, icon, to]) => (
+            <NavTile key={label} label={label} icon={icon} onClick={() => navigate(to)} />
+          ))}
+        </Bento>
       )}
 
       {/* Tabs — hidden while picking a slot, that flow has its own back button.

@@ -121,8 +121,9 @@ portal to a root, never inline**: `<main>` is `relative` and scrolls, so `absolu
 `tabSubPaths` needs **one row per tab, in navRoutes order** — a mismatch lights
 the wrong tab rather than failing. **The Training tab opens Book a Session
 itself** — a hub in front of it was one tap of furniture and half a screen of
-white space — with the other six training destinations as a `LinkRail` under
-the header. Progress is reached from there and from Home's "Your progress ->
+white space — with the other six training destinations as a 3-across `NavTile`
+grid under the header (a scrolling rail sliced two of them off the right edge,
+which reads as unfinished; a fixed set of six is a number you can just show). Progress is reached from there and from Home's "Your progress ->
 See activity".
 Home stays *today* only; Profile is the account and owns Settings, listed there
 and nowhere else. **`/member/bookings` and `/member/book` are aliases**, not

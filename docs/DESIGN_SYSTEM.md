@@ -112,6 +112,21 @@ palette is deliberately two colours and cannot carry emphasis on its own.
 - `RingStat` takes `wide` too, so a gauge can sit in a bento — and its existing
   contract holds: **omit `fraction` and the ring is a bare track**, because a
   roster has no ceiling to be a fraction of.
+- **`cols={3}` only for icon-and-label cells** (`NavTile`), where 110px is
+  plenty and three-up is what stops six destinations from taking three rows.
+  Both column counts are literal class names in a conditional, never
+  `grid-cols-${n}` — Tailwind emits CSS only for names it can see, so the
+  template would produce a grid with no columns at all.
+
+**A rail was the wrong shape for a fixed set of six.** Book a Session carried
+its six sibling destinations as a scrolling chip rail; two sat off the right
+edge with the second sliced down the middle, which reads as a screen that has
+not finished loading rather than as something you can swipe. Six is a number you
+can simply show: three across, two rows, `NavTile`, violet because navigation is
+structure and amber on that screen belongs to Book. A rail still earns its place
+where the set is genuinely open-ended (`CategoryRail`), where the cut tile is
+the affordance rather than a defect. `LinkRail` was deleted with its last
+caller.
 
 ## Colour convention
 

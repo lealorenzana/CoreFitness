@@ -205,15 +205,24 @@ async (page) => {
    */
   const grids = () => page.evaluate(() => {
     const out = [];
-    for (const g of document.querySelectorAll('div.grid.grid-cols-2')) {
+    for (const g of document.querySelectorAll('div.grid')) {
       if (!g.style.gap) continue;
       const box = g.getBoundingClientRect();
       out.push({
         width: Math.round(box.width),
-        cells: [...g.children].map((c) => ({
-          width: Math.round(c.getBoundingClientRect().width),
-          text: (c.innerText || '').replace(/\s+/g, ' ').slice(0, 300),
-        })),
+        right: Math.round(box.right),
+        // How many columns the browser actually resolved. A class name that
+        // emitted no CSS reports "none" here rather than two tracks, which is
+        // the failure this whole file exists to catch.
+        cols: getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length,
+        cells: [...g.children].map((c) => {
+          const b = c.getBoundingClientRect();
+          return {
+            width: Math.round(b.width),
+            right: Math.round(b.right),
+            text: (c.innerText || '').replace(/\s+/g, ' ').slice(0, 300),
+          };
+        }),
       });
     }
     return out;
@@ -230,8 +239,9 @@ async (page) => {
   const body1 = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   const all = await grids();
 
-  // The header bento comes first: the weekly ring and the coaches cell.
-  const head = all[0];
+  // Found by content, not by position — the shortcut grid now sits above it,
+  // and an index would quietly assert the wrong grid.
+  const head = all.find((g) => g.cells.some((c) => /classes (booked )?this week/i.test(c.text)));
   check('B1 header bento has two cells side by side',
     head != null && head.cells.length >= 2 && head.cells[0].width < head.width * 0.6,
     head ? `cells ${head.cells.map((c) => c.width).join('/')} of ${head.width}` : 'no grid');
@@ -240,8 +250,25 @@ async (page) => {
   check('B3 coaches cell counts the roster', /3\s*coaches/i.test(body1));
   check('B4 next event still surfaced', body1.toLowerCase().includes('barangay fun run'));
 
+  // The six training shortcuts. They were a scrolling rail whose last two chips
+  // sat off the right edge; the whole point of the grid is that nothing is cut,
+  // so that is what gets measured — every tile's right edge inside the grid's.
+  const SHORTCUTS = ['Progress', 'My bookings', 'Training plan', 'Free workouts', 'Challenges', 'Events'];
+  const shortcuts = all.find((g) => g.cells.length === 6 && /Progress/.test(g.cells[0].text));
+  check('B20 the six shortcuts are one grid of six', shortcuts != null,
+    all.map((g) => `${g.cells.length}@${g.cols}col`).join(' '));
+  if (shortcuts) {
+    check('B21 three across, resolved by the browser', shortcuts.cols === 3, `${shortcuts.cols} columns`);
+    check('B22 nothing runs past the right edge',
+      shortcuts.cells.every((c) => c.right <= shortcuts.right + 1),
+      `grid ends ${shortcuts.right}, widest tile ends ${Math.max(...shortcuts.cells.map((c) => c.right))}`);
+    const gone = SHORTCUTS.filter((n) => !shortcuts.cells.some((c) => c.text.includes(n)));
+    check('B23 all six destinations survived the rail', gone.length === 0, gone.join(', '));
+  }
+
   // The day grids. Day one has four classes: feature, two squares, widened tail.
-  const dayGrids = all.filter((g) => g.cells.some((c) => /Book|Full|Busy|Confirmed|Pending/.test(c.text)));
+  const dayGrids = all.filter((g) => g.cols === 2
+    && g.cells.some((c) => /Book|Full|Busy|Confirmed|Pending/.test(c.text)));
   const four = dayGrids.find((g) => g.cells.length === 4);
   check('B5 a four-class day renders four cells', four != null, `${dayGrids.length} day grids`);
   if (four) {
@@ -286,7 +313,7 @@ async (page) => {
   await page.waitForTimeout(700);
   await page.screenshot({ path: 'shots/bento-02-coaches.png', fullPage: true });
   const ptGrids = await grids();
-  const coaches = ptGrids.find((g) => g.cells.length === 3 && /Kenji/.test(g.cells[0].text));
+  const coaches = ptGrids.find((g) => g.cols === 2 && g.cells.length === 3 && /Kenji/.test(g.cells[0].text));
   check('B14 three coaches render as a bento', coaches != null,
     ptGrids.map((g) => g.cells.length).join(','));
   if (coaches) {
