@@ -259,3 +259,67 @@ from `authenticated`** and reached only through a SECURITY DEFINER function that
 It reads exactly like protection and is none. **Assert `enable row level security` in the same
 file that adds the policy** — and remember an `EXISTS` subquery inside a policy is itself
 RLS-filtered (0050), so it can only reach tables the caller can already read.
+
+## Cancelling, trainer visibility, and the attention queue (0081–0083)
+
+Added 2026-09-15 from a system-wide review. All three are written and
+replay-tested; see CLAUDE.md's roadmap for whether they are pasted.
+
+### A cancellation records why, who and when — or does not happen
+
+Members could self-cancel from 0016 and the row recorded nothing. 0037 wrote the
+gap down while reconstructing history: "`bookings` stores no `cancelled_at` and
+no `cancelled_by`, so for every booking already sitting at status='cancelled'
+there is no honest answer to 'when?' or 'by whom?'."
+
+- **The status enum did not grow.** "Cancelled by member/trainer/admin" as four
+  terminal states would turn every `status = 'cancelled'` check into an IN list,
+  including 0015's partial unique indexes that free a trainer's slot. Who
+  cancelled is an *attribute*: `cancelled_by_role`, stamped server-side.
+- **Reasons are a table**, not an enum — `point_rules` and `achievements` are
+  the precedent. The desk can add one without a migration, and `is_active`
+  retires one without orphaning the bookings that cite it.
+- **A trigger refuses a bare `status='cancelled'` update**, so the reason is
+  mandatory however the write arrives. Deliberately a trigger and not a CHECK: a
+  CHECK would reject every pre-existing cancelled row — real history — the
+  moment anything touched it.
+- **0081 reverses 0071 on one point.** 0071 said "a trainer decides, and the
+  only decisions are yes and no. Cancelling on a member's behalf is the desk's
+  job." The gym asked for the opposite. The escape is a transaction-local flag
+  only `cancel_booking()` sets, so a trainer PATCHing the table directly still
+  gets the old refusal, and the column pins run above it — cancelling cannot
+  smuggle in a change of `member_id` or `starts_at`.
+
+### "My members" is derived, never stored
+
+`member_profiles`, `profiles`, `memberships` and `attendance` **all** read
+`using (get_my_role() = 'trainer')` — every member's name, plan, expiry, freeze
+history and check-in, readable by any coach. This mattered more than the roster
+looked: 0032 exists so members choose what a trainer may see, and that care was
+undone one level up.
+
+`is_my_trainee()` derives it from PT sessions and classes taught — the same two
+joins `may_rate_trainer()` uses, so who a coach may see and who may rate them
+cannot drift apart. No assignment table for a fact the bookings already state.
+
+**Policies for one command are OR'd.** The first draft added a narrow policy
+*beside* 0006's wide-open one and changed nothing at all; the suite caught it
+("3 member rows"). Replace the wide policy, never sit next to it.
+
+### The attention queue leaves the clock alone
+
+0071's `sweep_stale_requests()` already escalated — trainer at 24h, member at
+48h, every admin at 72h. 0083 adds where that notification should have pointed.
+
+- `suggest_trainers_for_session()`: **availability filters, everything else only
+  ranks.** Overlap is half-open (`overlaps`), so a 10:30 session collides with a
+  10:00 hour. It does not invent a qualification match — a PT session has no
+  "requested service", only free-text notes.
+- `reassign_pt_session()` leaves the session **pending** (the new coach still
+  accepts — the two-stage approval 0071 removed) and does **not** reset
+  `requested_at` (the member really has been waiting; resetting would hide the
+  delay from the queue that exists to surface it).
+- `remind_trainer()` is dedupe-keyed by **Manila day**, not by session: the
+  sweep's once-ever rule is right for a sweep and wrong for a person chasing
+  someone. It returns whether a message was created, so the screen can say
+  "already reminded today" instead of claiming to have sent one.

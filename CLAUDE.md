@@ -79,6 +79,12 @@ a contradiction. Availability is **per trainer** and always was. Class generatio
 `INSERT … SELECT` and a raising trigger would lose a whole timetable over one template.
 **Trainers decide their own bookings** (0071) — final and immediate, `decided_by_role` stamped,
 admin able to reverse; a two-stage approval tells a member "approved" and then takes it back.
+**Cancelling is `cancel_booking()` (0081) and nothing else** — a bare `status='cancelled'` update is
+refused by a trigger, and the enum did **not** grow ("cancelled by X" is `cancelled_by_role`). It
+**deliberately reverses 0071**: a trainer may now cancel, through that function only. **A trainer sees
+only their own trainees** (0082) — four tables read `using (get_my_role() = 'trainer')` and handed
+over the whole gym. Detail for all three, and 0083's attention queue, in
+[DATA_ACCESS](docs/DATA_ACCESS.md).
 
 ### Notifications and web push
 The `notifications` row is the **record**, always awaited; the push is the **alert** —
@@ -183,11 +189,13 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0078 are all live**; **0079** (terms consent recorded) and **0080** (the demo data stops being
-visible to members) are written and replay-tested, **not yet pasted** — verified 2026-09-15 with `python
-scripts/probe-migrations.py`, which reads the schema over REST and needs no DB credentials. **Run it
-rather than trusting a report that a migration was pasted**: 0070 was believed done for a day and had
-never executed. It probes **three objects per migration**, so a file that never ran is distinguishable
+**0001–0080 are live** (0079/0080 pasted 2026-09-15). **0081** (a cancellation records its reason,
+actor and time), **0082** (a trainer sees only their own members) and **0083** (the desk's attention
+queue, trainer suggestions and reassignment) are written and replay-tested at 83/83, **not yet
+pasted** — and the app already calls them, so the cancel dialogs, the attention panel and the
+visibility fix do nothing until they are. Verify with `python scripts/probe-migrations.py`, which
+reads the schema over REST and needs no DB credentials. **Run it rather than trusting a report that a
+migration was pasted**: 0070 was believed done for a day and had never executed. It probes **three objects per migration**, so a file that never ran is distinguishable
 from one failed statement, and a protected object (42501) is a pass, not a miss.
 **0074 closed a live privilege bug** — 0071's stamp triggers returned early when `status` was
 unchanged, *above* the checks that stop a trainer rewriting `member_id` or `starts_at`, so a trainer
@@ -199,7 +207,7 @@ The panel's list is tracked in [the hardening plan](docs/superpowers/plans/2026-
 Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of them — the
 objective is being amended**, not the account of the system; replacement text is in that file.
 Outstanding:
-- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, SEED- payments and past classes, then coaches, PT, events, rewards and the audit log (ids `5eed____-0000-4000-8000-`); part 2 goes in as `part2/` one file at a time; one paste removes both — **dashboard figures include it until removed**. **0080 hides it from members**: `is_demo_row(id)` plus `sees_demo_data()` (everyone except a signed-in member), applied to the events/challenges/rewards/classes policies and the `public_trainers`/`class_availability` views. Admin and the desk still see all of it, so no dashboard figure moves.
+- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, payments, classes, coaches, events and rewards (ids `5eed____-0000-4000-8000-`); part 2 goes in as `part2/` one file at a time and one paste removes both — **dashboard figures include it until removed**. 0080 hides it from *members* via `is_demo_row()`/`sees_demo_data()`; admin and the desk still see it, so no figure moves.
 - **Staff approving registrations is 0078, not an Edge Function** — staff already had the queue, the
   intake write and the membership insert; only `profiles.status` refused them, so
   `set_account_status()` allows **one** staff transition, `pending_approval → active`. Approval and
