@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Award, BadgeCheck, Calendar, Clock, MapPin, Dumbbell, Target, Trophy, Star,
+  ArrowLeft, Award, BadgeCheck, Calendar, Clock, MapPin, Dumbbell, Target, Trophy, Star, Lock,
 } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -266,13 +266,41 @@ export default function TrainerProfile() {
             )}
           </motion.div>
 
-          {/* Rating. Shown only to members the database says may rate this coach
-              — `may_rate_trainer()` requires a *completed* session with them, so
-              a member who has never trained with this coach sees nothing here
-              rather than a form that would be rejected on submit.
+          {/* Not eligible yet, and SAYING SO.
 
-              The same function is re-checked inside the INSERT and UPDATE
-              policies, so this is an explanation of the rule, never the rule. */}
+              This block used to be `{eligible && …}` and nothing else: a member
+              the database will not let rate this coach saw no form, no stars and
+              no sentence — which is indistinguishable from the feature being
+              broken, and is what "users cannot rate a coach" turned out to mean.
+              The machinery was fine the whole time; the gate hid itself.
+
+              It is the trap this project has a rule about — a rule enforced only
+              in SQL that the user cannot read ambushes them — and the house
+              answer is that gates lock and explain rather than hide.
+
+              `may_rate_trainer()` is still the rule, and is re-checked inside
+              the INSERT and UPDATE policies. This only reads it out loud. */}
+          {!eligible && !loading && (
+            <div className="rounded-2xl p-4 flex items-start gap-2.5" style={panelStyle}>
+              <Lock size={15} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-text-muted)' }} />
+              <div className="min-w-0">
+                <p className="text-white font-semibold text-sm">Evaluations open after your first session</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                  You can evaluate {trainer.first_name} once you have finished a class they taught or a
+                  1-on-1 with them. It keeps scores to members who have actually trained with a coach.
+                </p>
+                <button
+                  onClick={() => navigate('/member/book-class', { state: { trainerId: trainer.id } })}
+                  className="mt-3 h-10 px-4 rounded-full font-bold text-xs"
+                  style={{ background: 'var(--color-secondary)', color: '#1A1200' }}
+                >
+                  Book a session
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Rating. Shown to members the database says may rate this coach. */}
           {eligible && (
             <div className="rounded-2xl p-4" style={panelStyle}>
               <h3 className="text-white font-semibold mb-1 text-sm flex items-center gap-2">
