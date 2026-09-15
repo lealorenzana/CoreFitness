@@ -8,6 +8,8 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import type { AttendanceRow } from '../types/db';
 import { dateKey, localDateKey } from '../utils/dates';
 import { Page } from '../components/ui/page';
+import WeekRings from '../components/ui/WeekRings';
+import { panelStyle } from '../components/ui/Card';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -75,6 +77,34 @@ export default function AttendanceHistory() {
         .map((d) => Number(d.slice(8, 10))),
     [checkInDates, selectedMonth, selectedYear]
   );
+  /**
+   * This week, Sunday to Saturday. Moved here from Progress (2026-09-16).
+   *
+   * It is attendance data, its own call to action was "See every visit ->"
+   * pointing at this page, and here it is the subject rather than a passenger.
+   * Home was the other candidate and is the wrong one: Home already carries
+   * "Days this week — 2 of 7" as a ring, so the strip would have stated one
+   * fact twice on one screen in two shapes.
+   *
+   * Derived from `checkInDates`, which the page already computed — the same
+   * rows the list and the heatmap below use, so the three cannot disagree, and
+   * no second read. `records` is all-time, not the selected month, so a week
+   * spanning a month boundary is still whole.
+   */
+  const week = useMemo(() => {
+    const now = new Date();
+    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const visited = new Set(checkInDates);
+    const days: boolean[] = [];
+    const dayNumbers: number[] = [];
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i);
+      days.push(visited.has(dateKey(d)));
+      dayNumbers.push(d.getDate());
+    }
+    return { days, dayNumbers, todayIndex: now.getDay() };
+  }, [checkInDates]);
+
   const { current: currentStreak, longest: longestStreak } = useMemo(() => computeStreaks(checkInDates), [checkInDates]);
   const totalCheckIns = records.length;
   const attendanceRate = useMemo(() => {
@@ -115,6 +145,16 @@ export default function AttendanceHistory() {
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Track your gym visits</p>
         </div>
       </motion.div>
+
+      {/* The week first: it is the answer to "have I been in lately", and the
+          month heatmap and the streaks below are the longer view of the same
+          rows. No "See every visit" link — you are already looking at it. */}
+      <div>
+        <h2 className="display text-white mb-2" style={{ fontSize: 'var(--text-title)' }}>This week</h2>
+        <div className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
+          <WeekRings days={week.days} dayNumbers={week.dayNumbers} todayIndex={week.todayIndex} />
+        </div>
+      </div>
 
       {/* Stats grid — flat cards */}
       <div className="grid grid-cols-2 gap-3">

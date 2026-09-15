@@ -198,7 +198,15 @@ export default function WeekRings({
                     while a run is actually going. The `<Check />` below is a
                     settled count and stays still. */}
                 <MotionIcon icon={Flame} motion="flick" size={14} color="var(--color-secondary)" />
-                <span style={{ color: 'var(--color-secondary)' }}>{run} days in a row</span>
+                {/* "this week" is not decoration. The strip holds seven days
+                    and cannot see further, and on Attendance History this sits
+                    directly above an all-time "Current streak" computed from
+                    every check-in — which read as a flat contradiction ("2 days
+                    in a row" over "Current streak 0 days") until this said
+                    which week it meant. The component's own docstring had
+                    always promised this wording; the markup did not deliver
+                    it. */}
+                <span style={{ color: 'var(--color-secondary)' }}>{run} days in a row this week</span>
               </>
             ) : (
               <>

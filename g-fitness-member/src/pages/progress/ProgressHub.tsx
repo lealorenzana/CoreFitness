@@ -1,14 +1,10 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronRight, Trophy } from 'lucide-react';
 
-import LevelProgressCard   from '../../components/ui/LevelProgressCard';
-import WeekRings           from '../../components/ui/WeekRings';
-import SectionHeader       from '../../components/ui/SectionHeader';
 import MyCoreCard          from '../../components/ui/MyCoreCard';
-import { panelStyle }      from '../../components/ui/Card';
-import { Page }            from '../../components/ui/page';
+import { Page, Row }       from '../../components/ui/page';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
 import BodyProgressTab     from './tabs/BodyProgressTab';
@@ -108,10 +104,25 @@ export default function ProgressHub() {
         </div>
       </motion.div>
 
-      {/* Above the tabs rather than inside one: the level is the summary of
-          everything the five tabs break down, and burying it in a tab would
-          make it findable only by whoever already knew it existed. */}
-      <LevelProgressCard />
+      {/* The level card lives on Achievements, and only there.
+ 
+          It was rendered on both screens — the same bars, the same two
+          counters, the same "Next: Intermediate" — and the earned level *is*
+          the achievements concept, so Progress was showing another page's
+          headline above its own tabs.
+ 
+          What stays is the link, not the card. `/member/achievements` had
+          exactly one entry point in the whole app and it was that card's
+          chevron; deleting it outright would have orphaned the page, which is
+          the failure `audit-routes.py` exists to catch and which has already
+          happened three times here. */}
+      <Row
+        lead={<Trophy size={18} style={{ color: 'var(--color-secondary)' }} />}
+        title="Achievements and level"
+        meta="What you have earned, and what is next"
+        trailing={<ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} />}
+        onClick={() => navigate('/member/achievements')}
+      />
 
       {summaryFailed && (
         <div
@@ -123,37 +134,14 @@ export default function ProgressHub() {
         </div>
       )}
 
-      {home && (
-        <>
-          <div>
-            <SectionHeader title="This week" />
-            {/* Seven rings showing which days you trained, and — until now —
-                no way to reach the eighth day, or last month. The whole record
-                is one screen away and this panel is the obvious place a member
-                taps looking for it. */}
-            <button
-              onClick={() => navigate('/member/attendance-history')}
-              className="p-4 w-full text-left transition-transform active:scale-[0.99]"
-              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
-            >
-              <WeekRings
-                days={home.weekCheckIns}
-                dayNumbers={home.weekDayNumbers}
-                todayIndex={home.todayIndex}
-              />
-              <span className="flex items-center justify-center gap-1 mt-3 text-[12px] font-semibold"
-                style={{ color: 'var(--color-text-muted)' }}>
-                See every visit <ChevronRight size={12} />
-              </span>
-            </button>
-          </div>
-
-          {/* These two counters used to be their own StatCards here. MyCoreCard
-              carries them now, alongside workouts logged and goals reached, so
-              the screen states each number once instead of twice. */}
-          <MyCoreCard home={home} memberId={home.memberId} />
-        </>
-      )}
+      {/* "This week" moved to Attendance History (2026-09-16).
+ 
+          It is attendance data, its own call to action was "See every visit ->"
+          pointing at that page, and it is the subject there rather than a
+          passenger. Home was the other candidate and is the wrong one: Home
+          already carries "Days this week — 2 of 7" as a ring, so the strip
+          would have stated one fact twice on one screen in two shapes. */}
+      {home && <MyCoreCard home={home} memberId={home.memberId} />}
 
       {/* Segmented control — five equal cells, no scrolling. Violet marks the
           selection, per the app's colour convention. */}
