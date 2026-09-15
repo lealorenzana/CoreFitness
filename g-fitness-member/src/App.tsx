@@ -41,7 +41,8 @@ import TrainerEditProfile from './pages/trainer/TrainerEditProfile';
 import Achievements from './pages/Achievements';
 import NotificationsAll from './pages/NotificationsAll';
 import GymPlan from './pages/GymPlan';
-import Menu from './pages/Menu';
+import Training from './pages/Training';
+import MembershipHub from './pages/MembershipHub';
 
 
 type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
@@ -209,7 +210,6 @@ function App() {
               contradicted Home, which reads the real membership. Redirected
               rather than deleted so older links and notification action_urls
               still land somewhere sensible. */}
-          <Route path="membership" element={<Navigate to="/member/renew-membership" replace />} />
           <Route path="workouts" element={<Workouts />} />
           <Route path="plan" element={<PlanBuilder />} />
           <Route path="track" element={<WorkoutTracker />} />
@@ -226,7 +226,19 @@ function App() {
           <Route path="change-email" element={<ChangeEmail />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
-          <Route path="menu" element={<Menu />} />
+          <Route path="training" element={<Training />} />
+          <Route path="membership" element={<MembershipHub />} />
+          {/* Aliases for paths that exist only in notification rows.
+
+              0030/0051-0055/0071 write `action_url` values that were never
+              routes here: three notification types point at /member/bookings
+              and one at /member/book. Before the catch-all they rendered a
+              blank screen; with it they land on Home — so a member tapping
+              "your session is confirmed" arrives somewhere that does not
+              mention their session. Fixing the SQL would not help the rows
+              already sitting in the table; an alias fixes both. */}
+          <Route path="bookings" element={<Navigate to="/member/booking-history" replace />} />
+          <Route path="book" element={<Navigate to="/member/book-class" replace />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
           {/* An unknown path under /member rendered the shell with an empty

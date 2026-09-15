@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, LayoutGrid, User, QrCode } from 'lucide-react';
+import { Home, Dumbbell, CreditCard, User, QrCode } from 'lucide-react';
 import CheckInSheet from './CheckInSheet';
 
 /**
@@ -21,13 +21,13 @@ import CheckInSheet from './CheckInSheet';
 
 const navRoutes = [
   '/member/home',
-  '/member/book-class',
-  '/member/menu',
+  '/member/training',
+  '/member/membership',
   '/member/profile',
 ];
 
-const icons = [Home, Calendar, LayoutGrid, User];
-const labels = ['Home', 'Book', 'Menu', 'Profile'];
+const icons = [Home, Dumbbell, CreditCard, User];
+const labels = ['Home', 'Training', 'Membership', 'Profile'];
 
 /**
  * Every route that should light up each tab, including its sub-pages.
@@ -42,17 +42,21 @@ const labels = ['Home', 'Book', 'Menu', 'Profile'];
 const tabSubPaths: string[][] = [
   // Home is only "right now": today, your membership, your next session.
   ['/member/home', '/member/notifications'],
-  // Book is anything forward-looking, including what the gym has announced.
-  ['/member/book-class', '/member/chatbot', '/member/trainers', '/member/trainer/',
-   '/member/events', '/member/challenges'],
-  // Menu owns everything it links to — including Progress, which lost its own
-  // tab. A dock that highlighted Profile while you read your payment history
-  // was telling you something untrue about where you were, and the same would
-  // be true of Menu highlighting nothing at all.
-  ['/member/menu', '/member/progress', '/member/achievements', '/member/track',
-   '/member/booking-history', '/member/attendance-history', '/member/payments',
-   '/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/workouts', '/member/plan', '/member/rewards'],
+  // Training: the tab that offers a session, and everything that follows from
+  // having taken one. Includes the aliases old notifications still point at
+  // (/member/book, /member/bookings).
+  //
+  // **One row per tab, in the same order as navRoutes.** This list briefly had
+  // five rows against four tabs while Book was folded in here, which lights the
+  // wrong tab rather than failing — the kind of mistake that ships.
+  ['/member/training', '/member/book-class', '/member/book', '/member/bookings',
+   '/member/booking-history', '/member/progress', '/member/achievements',
+   '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts',
+   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges',
+   '/member/chatbot'],
+  // Membership is the money-and-access half.
+  ['/member/membership', '/member/renew', '/member/renew-membership',
+   '/member/payments', '/member/attendance-history', '/member/rewards'],
   // Profile is the account and nothing else: who you are, and how to change it.
   ['/member/profile', '/member/settings', '/member/edit-profile',
    '/member/change-password', '/member/change-email'],
