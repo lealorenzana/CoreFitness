@@ -95,8 +95,14 @@ async (page) => {
   // Mutated per scenario before each reload.
   let TABLES = { ...base };
   let RPC = {
-    my_features: ['points_earn', 'points_redeem', 'challenges']
-      .map((key) => ({ key, label: key, description: '', enabled: true })),
+    // Real labels, not the keys. `planAccess` reads `label`, so a fixture that
+    // sets `label: key` puts "points_earn" on the plan list and invites the
+    // reader to file a bug against the app.
+    my_features: [
+      { key: 'points_earn', label: 'Earn CORE Points', description: '', enabled: true },
+      { key: 'points_redeem', label: 'Spend CORE Points', description: '', enabled: true },
+      { key: 'challenges', label: 'Gym challenges', description: '', enabled: true },
+    ],
     plan_allows: true, member_points_balance: 340, member_commitments: [],
     member_progression: [{ level: 3, points: 340, next_level_points: 500 }],
     goal_progress: [], sync_my_achievements: 0,
@@ -162,9 +168,16 @@ async (page) => {
   check('M3 the countdown is there', /18\s*days/i.test(body), body.match(/\d+ days/)?.[0] ?? '');
   check('M4 the points balance is real', /340/.test(body));
   check('M5 visits this month counted from rows', /visits this month/i.test(body));
-  check('M6 the last payment is the CONFIRMED one, by paid_on',
-    body.includes('1,500') && !body.includes('9,999') && !body.includes('900'),
-    body.match(/₱[\d,]+/g)?.join(' ') ?? 'none');
+  // The page lists the recent payments now rather than summarising the newest,
+  // so the old "900 must not appear" no longer describes the design — 900 is a
+  // real confirmed payment and belongs. What still matters, and is the whole
+  // point of the fixture, is that money the desk has NOT confirmed never shows,
+  // and that the newest by `paid_on` leads.
+  const shown = body.match(/₱[\d,]+/g) ?? [];
+  check('M6 pending money is never shown as paid',
+    !body.includes('9,999'), shown.join(' ') || 'none');
+  check('M6b confirmed payments are listed, newest by paid_on first',
+    shown[0] === '₱1,500' && shown.includes('₱900'), shown.join(' ') || 'none');
 
   // Geometry, on the same rules as Book a Session.
   const grid = await page.evaluate(() => {
@@ -181,12 +194,11 @@ async (page) => {
     }
     return null;
   });
-  check('M7 four cells: wide, pair, wide',
-    grid != null && grid.cells.length === 4
+  check('M7 the bento is a wide plan cell over a pair',
+    grid != null && grid.cells.length === 3
       && grid.cells[0].width > grid.width * 0.9
       && grid.cells[1].width < grid.width * 0.6
-      && grid.cells[2].width < grid.width * 0.6
-      && grid.cells[3].width > grid.width * 0.9,
+      && grid.cells[2].width < grid.width * 0.6,
     grid ? `${grid.cells.map((c) => c.width).join('/')} of ${grid.width}` : 'no bento');
 
   // Every cell is the route to the screen its number belongs to.
@@ -194,7 +206,7 @@ async (page) => {
     ['PREMIUM', '/member/renew-membership'],
     ['CORE points to spend', '/member/rewards'],
     ['visits this month', '/member/attendance-history'],
-    ['Last payment', '/member/payments'],
+    ['See all', '/member/payments'],
   ]) {
     await open();
     await page.getByText(label, { exact: false }).first().click().catch(() => {});

@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, CreditCard, Calendar, Gift, Snowflake, AlertTriangle,
-  ArrowRight, Infinity as InfinityIcon,
+  ArrowRight, Infinity as InfinityIcon, Check, X, Play, XCircle,
 } from 'lucide-react';
 import { Page, PageTitle, Bento, BentoCell, RingStat } from '../components/ui/page';
+import { panelStyle } from '../components/ui/Card';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMembershipHub, type MembershipHub as Hub } from '../services/membershipHubService';
@@ -190,46 +191,150 @@ export default function MembershipHub() {
               onClick={() => navigate('/member/attendance-history')}
             />
 
-            {/* ── The last payment ────────────────────────────────────────
-                `paid_on`, never `created_at` — the desk records Monday's cash
-                on Tuesday often enough that the two disagree. "No payments
-                recorded" is the honest empty state on a cash-only free tier,
-                not a zero. */}
-            <BentoCell wide onClick={() => navigate('/member/payments')}>
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-                  style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                  <CreditCard size={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  {hub!.paymentsFailed ? (
-                    <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                      Payments could not be loaded
-                    </p>
-                  ) : hub!.lastPayment ? (
-                    <>
-                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                        {peso(hub!.lastPayment.amount)}
-                      </p>
-                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                        Last payment · {dayLabel(hub!.lastPayment.paidOn)} · {hub!.lastPayment.method}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                        No payments recorded
-                      </p>
-                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                        The gym takes cash at the front desk
-                      </p>
-                    </>
-                  )}
-                </div>
-                <ArrowRight size={16} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-              </div>
-            </BentoCell>
           </Bento>
+
+          {/* ── What the plan actually gets you ────────────────────────────
+              Moved off Home (2026-09-16). CLAUDE.md's rule is that **Home stays
+              today only**, and a list of entitlements is not today — it is the
+              account, which is this screen. Home keeps the facts that are about
+              today: the plan's name, the expiry, the countdown, the frozen or
+              cancelled state, and the QR.
+
+              Both halves are shown, as they were on Home. Listing only what is
+              included leaves "why can't I book this class?" to be discovered at
+              the point of failure, which is the worst possible place. */}
+          {home.access && (
+            <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
+              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>
+                What your plan includes
+              </h2>
+              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
+                <div className="flex flex-col gap-y-2">
+                  {home.access.included.map((item) => (
+                    <p key={item} className="flex items-start gap-2 text-white leading-snug"
+                      style={{ fontSize: 'var(--text-meta)' }}>
+                      <Check size={14} className="flex-shrink-0 mt-px" style={{ color: 'var(--color-primary)' }} />
+                      <span className="min-w-0">{item}</span>
+                    </p>
+                  ))}
+                  {home.access.excluded.map((item) => (
+                    <p key={item} className="flex items-start gap-2 leading-snug"
+                      style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+                      <X size={14} className="flex-shrink-0 mt-px" />
+                      <span className="min-w-0">{item} — not on this plan</span>
+                    </p>
+                  ))}
+                </div>
+                {!home.access.isFullAccess && (
+                  <button
+                    onClick={() => navigate('/member/renew-membership')}
+                    className="w-full h-11 mt-3 rounded-full font-bold"
+                    style={{ fontSize: 'var(--text-meta)', background: 'var(--color-secondary)', color: '#1A1200' }}
+                  >
+                    Compare plans
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ── What you have paid ─────────────────────────────────────────
+              The rows themselves, not a summary of the newest one. `paid_on`,
+              never `created_at` — the desk records Monday's cash on Tuesday
+              often enough that the two disagree. */}
+          <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Payments</h2>
+              {hub!.recentPayments.length > 0 && (
+                <button onClick={() => navigate('/member/payments')}
+                  className="flex items-center gap-1 font-semibold"
+                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
+                  See all <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
+
+            {hub!.paymentsFailed ? (
+              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
+                <p style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
+                  Your payments could not be loaded. That is not a statement that there are none.
+                </p>
+              </div>
+            ) : hub!.recentPayments.length === 0 ? (
+              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
+                <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
+                  No payments recorded
+                </p>
+                <p className="mt-1 leading-relaxed"
+                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+                  Normal on the free tier. The gym takes cash at the front desk, and anything you
+                  pay is receipted here.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
+                {hub!.recentPayments.map((p) => (
+                  <div key={`${p.paidOn}:${p.amount}`}
+                    className="rounded-2xl flex items-center gap-3"
+                    style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
+                    <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      <CreditCard size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
+                        {peso(p.amount)}
+                      </p>
+                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+                        {dayLabel(p.paidOn)} · {p.method}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ── What has happened to this membership ───────────────────────
+              0057 has recorded freezes, unfreezes and cancellations since it
+              shipped, `membership_events_select_self` has always let a member
+              read their own, and nothing in the member app ever did — so "when
+              was I frozen, and why?" had no answer outside the desk's screen.
+
+              Renders nothing when there are none, which is most memberships. */}
+          {hub!.events.length > 0 && (
+            <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
+              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>
+                Membership history
+              </h2>
+              <div className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
+                {hub!.events.map((e) => (
+                  <div key={e.id} className="rounded-2xl flex items-start gap-3"
+                    style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
+                    <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
+                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                      {e.kind === 'freeze' ? <Snowflake size={17} />
+                        : e.kind === 'unfreeze' ? <Play size={17} />
+                        : <XCircle size={17} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
+                        {e.kind === 'freeze' ? 'Membership frozen'
+                          : e.kind === 'unfreeze' ? 'Membership restarted'
+                          : 'Membership cancelled'}
+                      </p>
+                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+                        {new Date(e.created_at).toLocaleDateString('en-PH', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                        })}
+                        {e.reason ? ` · ${e.reason}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </motion.div>
       )}
     </Page>

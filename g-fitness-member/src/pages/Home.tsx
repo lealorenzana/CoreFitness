@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   QrCode,
-  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, CalendarCheck, Flame, Check, X, MessageSquare,
+  AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, CalendarCheck, Flame, MessageSquare,
   ChevronRight, Snowflake,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
@@ -257,26 +257,35 @@ export default function Home() {
                   Both halves are shown. Listing only what is included would
                   leave "why can't I book this class?" to be discovered at the
                   point of failure, which is the worst possible place. */}
-              {home.access && (
-                <div className="mt-4 pt-4 grid grid-cols-2 gap-x-3 gap-y-2"
-                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}>
-                  {home.access.included.map((item) => (
-                    <p key={item} className="text-xs flex items-start gap-1.5 text-white leading-snug">
-                      <Check size={13} className="flex-shrink-0 mt-px" />
-                      <span className="min-w-0">{item}</span>
-                    </p>
-                  ))}
-                  {/* Excluded items span the row: "— not on this plan" is the
-                      half that matters and a two-column cell truncates it into
-                      something that reads like it IS included. */}
-                  {home.access.excluded.map((item) => (
-                    <p key={item} className="col-span-2 text-xs flex items-start gap-1.5 leading-snug"
-                      style={{ color: 'rgba(255,255,255,0.62)' }}>
-                      <X size={13} className="flex-shrink-0 mt-px" />
-                      <span className="min-w-0">{item} — not on this plan</span>
-                    </p>
-                  ))}
-                </div>
+              {/* The entitlement list moved to Membership (2026-09-16).
+
+                  It was the longest thing on this card and the least "today":
+                  the rule for this screen is that Home is today only, and a
+                  list of what the plan does and does not cover is the account.
+                  Membership is the screen named after that question, and it had
+                  a page of empty space under four navigation tiles.
+
+                  What stays here is everything that IS today — the plan's name,
+                  the expiry, the countdown, frozen and cancelled, and the code
+                  you check in with. The one line below is what a member needs
+                  *on Home* about the gap: that there is one, and where to read
+                  it. Nothing is stated twice. */}
+              {home.access && !home.access.isFullAccess && (
+                <button
+                  onClick={() => navigate('/member/membership')}
+                  className="w-full mt-4 pt-4 flex items-center gap-2 text-left"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}
+                >
+                  <span className="text-xs flex-1" style={{ color: 'rgba(255,255,255,0.78)' }}>
+                    {home.access.excluded.length === 1
+                      ? `${home.access.excluded[0]} is not on this plan`
+                      : `${home.access.excluded.length} things are not on this plan`}
+                  </span>
+                  <span className="text-xs font-bold text-white whitespace-nowrap">
+                    See what is included
+                  </span>
+                  <ChevronRight size={14} className="text-white flex-shrink-0" />
+                </button>
               )}
 
               {/* Status flags — only ever rendered when true */}

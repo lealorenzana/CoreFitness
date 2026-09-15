@@ -180,3 +180,32 @@ export async function hasUsedFreemiumTrial(memberId: string): Promise<boolean> {
   if (error) return false;
   return data != null;
 }
+
+/**
+ * This member's own freeze, unfreeze and cancel events (0057).
+ *
+ * `membership_events_select_self` has allowed a member to read these since the
+ * migration shipped and nothing in the member app ever did, so "when was my
+ * membership frozen, and why?" had no answer outside the front desk's screen.
+ *
+ * Newest first, and deliberately unbounded-but-small: a membership accumulates
+ * a handful of these in its life, not a feed.
+ */
+export interface MyMembershipEvent {
+  id: string;
+  kind: 'freeze' | 'unfreeze' | 'cancel';
+  /** Required for freeze and cancel; an unfreeze needs no justification. */
+  reason: string | null;
+  created_at: string;
+}
+
+export async function listMyMembershipEvents(memberId: string): Promise<MyMembershipEvent[]> {
+  const { data, error } = await supabase
+    .from('membership_events')
+    .select('id, kind, reason, created_at')
+    .eq('member_id', memberId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []) as MyMembershipEvent[];
+}

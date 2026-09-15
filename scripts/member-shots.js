@@ -180,8 +180,17 @@ async (page) => {
   };
 
   const RPC = {
-    my_features: ['workout_tracker', 'plan_builder', 'ai_model', 'points_earn', 'points_redeem', 'challenges']
-      .map((key) => ({ key, label: key, description: '', enabled: true })),
+    // Real labels, not the keys. `planAccess` reads `label`, so a fixture that
+    // sets `label: key` puts "points_earn" on the plan list and invites the
+    // reader to file a bug against the app.
+    my_features: [
+      { key: 'workout_tracker', label: 'Workout tracker', description: '', enabled: true },
+      { key: 'plan_builder', label: 'Training plan builder', description: '', enabled: true },
+      { key: 'ai_model', label: 'Fitness assistant', description: '', enabled: true },
+      { key: 'points_earn', label: 'Earn CORE Points', description: '', enabled: true },
+      { key: 'points_redeem', label: 'Spend CORE Points', description: '', enabled: true },
+      { key: 'challenges', label: 'Gym challenges', description: '', enabled: true },
+    ],
     plan_allows: true,
     member_points_balance: 340,
     member_progression: [{ level: 3, points: 340, next_level_points: 500 }],

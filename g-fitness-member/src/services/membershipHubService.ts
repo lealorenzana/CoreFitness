@@ -1,6 +1,7 @@
 import { getMemberHome, type MemberHome } from './memberHomeService';
 import { getBalance } from '../lib/api/points';
 import { listMemberPayments } from '../lib/api/payments';
+import { listMyMembershipEvents, type MyMembershipEvent } from '../lib/api/memberships';
 
 /**
  * Everything the Membership tab states, assembled in one place.
@@ -33,6 +34,10 @@ export interface PaymentSummary {
 
 export interface MembershipHub {
   home: MemberHome;
+  /** The last few confirmed payments, newest first. Empty is normal. */
+  recentPayments: PaymentSummary[];
+  /** Freezes, unfreezes and cancellations. Empty for most memberships. */
+  events: MyMembershipEvent[];
   /** Null when the balance could not be read. Zero is a real, different answer. */
   points: number | null;
   pointsFailed: boolean;
@@ -42,7 +47,7 @@ export interface MembershipHub {
 }
 
 export async function getMembershipHub(memberId: string): Promise<MembershipHub> {
-  const [home, points, payments] = await Promise.all([
+  const [home, points, payments, events] = await Promise.all([
     getMemberHome(memberId),
     getBalance(memberId).then(
       (n) => ({ ok: true as const, n }),
@@ -52,6 +57,9 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
       (rows) => ({ ok: true as const, rows }),
       () => ({ ok: false as const, rows: [] })
     ),
+    // Most memberships have none of these, and a failure here is not worth
+    // taking the screen down for — the section simply does not render.
+    listMyMembershipEvents(memberId).catch(() => [] as MyMembershipEvent[]),
   ]);
 
   // Most recent by the date the money changed hands, not by when the row was
@@ -62,9 +70,15 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     .sort((a, b) => b.paid_on.localeCompare(a.paid_on));
 
   const latest = paid[0];
+  const summarise = (p: (typeof paid)[number]): PaymentSummary =>
+    ({ amount: Number(p.amount), paidOn: p.paid_on, method: p.method });
 
   return {
     home,
+    // Three: enough to show a rhythm, few enough that the full history stays
+    // worth opening.
+    recentPayments: paid.slice(0, 3).map(summarise),
+    events,
     points: points.ok ? points.n : null,
     pointsFailed: !points.ok,
     lastPayment: latest
