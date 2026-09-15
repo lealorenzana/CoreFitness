@@ -3,7 +3,10 @@ import { panelStyle } from '../components/ui/Card';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Clock, Users, ArrowLeft, Sparkles, Dumbbell, Lock, X, Trophy, ArrowRight } from 'lucide-react';
+import {
+  Calendar, Clock, Users, ArrowLeft, Sparkles, Dumbbell, Lock, X, Trophy, ArrowRight,
+  Activity, CalendarCheck, ClipboardList, BookOpen, Flag,
+} from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import { useLiveData } from '../hooks/useLiveData';
 import DateRail, { buildRail } from '../components/ui/DateRail';
@@ -28,7 +31,7 @@ import { listEvents } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
 
 import type { ClassLevel } from '../types/db';
-import { Page } from '../components/ui/page';
+import { Page, LinkRail } from '../components/ui/page';
 
 /**
  * Everything the first paint of this screen needs, cached as one object.
@@ -565,6 +568,27 @@ export default function BookClass() {
           </button>
         )}
       </motion.div>
+
+      {/* The rest of Training, one tap away.
+
+          This screen IS the Training tab — the tab opens the thing a member
+          came to do rather than a grid in front of it. These are the six other
+          training destinations, sized as a footnote so they do not compete with
+          the classes below. Hidden while a coach is selected: that view is a
+          single task, and a shortcut out of it mid-booking is an invitation to
+          lose your place. */}
+      {!selectedTrainer && (
+        <LinkRail
+          items={[
+            { label: 'Progress', icon: <Activity size={14} />, onClick: () => navigate('/member/progress') },
+            { label: 'My bookings', icon: <CalendarCheck size={14} />, onClick: () => navigate('/member/booking-history') },
+            { label: 'Training plan', icon: <ClipboardList size={14} />, onClick: () => navigate('/member/plan') },
+            { label: 'Free workouts', icon: <BookOpen size={14} />, onClick: () => navigate('/member/workouts') },
+            { label: 'Challenges', icon: <Flag size={14} />, onClick: () => navigate('/member/challenges') },
+            { label: 'Events', icon: <Trophy size={14} />, onClick: () => navigate('/member/events') },
+          ]}
+        />
+      )}
 
       {/* The gym's next announcement.
           Was a full amber card with a 44px icon tile and three lines of its

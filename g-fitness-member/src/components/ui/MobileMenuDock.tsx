@@ -21,7 +21,7 @@ import CheckInSheet from './CheckInSheet';
 
 const navRoutes = [
   '/member/home',
-  '/member/training',
+  '/member/book-class',
   '/member/membership',
   '/member/profile',
 ];

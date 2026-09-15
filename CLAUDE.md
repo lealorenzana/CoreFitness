@@ -115,9 +115,11 @@ set `pointer-events-auto` or it paints perfectly and cannot be tapped (shipped 3
 portal to a root, never inline**: `<main>` is `relative` and scrolls, so `absolute inset-0` lands
 −2000px up a scrolled list. **The dock is Home · Training · Membership · Profile** plus the QR bump, and
 `tabSubPaths` needs **one row per tab, in navRoutes order** — a mismatch lights
-the wrong tab rather than failing. **Progress and Book are not tabs**
-(2026-09-15): Progress is reached from Home's "Your progress -> See activity"
-and from the Training grid; Book a session is the Training grid's first tile.
+the wrong tab rather than failing. **The Training tab opens Book a Session
+itself** — a hub in front of it was one tap of furniture and half a screen of
+white space — with the other six training destinations as a `LinkRail` under
+the header. Progress is reached from there and from Home's "Your progress ->
+See activity".
 Home stays *today* only; Profile is the account and owns Settings, listed there
 and nowhere else. **`/member/bookings` and `/member/book` are aliases**, not
 routes anyone links to by hand: 0030/0051-0055 write them as notification

@@ -427,3 +427,46 @@ export function NavTile({
     </button>
   );
 }
+
+/**
+ * A row of shortcuts to elsewhere in the same area of the app.
+ *
+ * Training's tab opens Book a Session, because booking is what a member opens
+ * that tab to do — a hub page in front of it was one tap of furniture and half
+ * a screen of white space. The other six training destinations ride along here
+ * instead: small, scrollable, and out of the way of the task.
+ *
+ * Deliberately not `NavTile`. Those are 96px squares and this is a footnote to
+ * a screen that already has a segmented control, a date rail and a filter row
+ * above the first class — a second grid at the top would bury what the member
+ * came for.
+ */
+export function LinkRail({
+  items,
+}: {
+  items: { label: string; icon: ReactNode; onClick: () => void }[];
+}) {
+  return (
+    <div
+      className="flex gap-2 overflow-x-auto scrollbar-hide"
+      style={{ marginLeft: 'calc(var(--gutter) * -1)', marginRight: 'calc(var(--gutter) * -1)',
+               paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}
+    >
+      {items.map((it) => (
+        <button
+          key={it.label}
+          onClick={it.onClick}
+          className="flex-shrink-0 flex items-center gap-1.5 rounded-full whitespace-nowrap active:opacity-80"
+          style={{
+            ...panelStyle,
+            height: 34, paddingLeft: 12, paddingRight: 14,
+            fontSize: 'var(--text-meta)', color: 'var(--color-text-secondary)',
+          }}
+        >
+          <span style={{ color: 'var(--color-primary)' }}>{it.icon}</span>
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}

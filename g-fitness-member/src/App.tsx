@@ -41,7 +41,6 @@ import TrainerEditProfile from './pages/trainer/TrainerEditProfile';
 import Achievements from './pages/Achievements';
 import NotificationsAll from './pages/NotificationsAll';
 import GymPlan from './pages/GymPlan';
-import Training from './pages/Training';
 import MembershipHub from './pages/MembershipHub';
 
 
@@ -226,7 +225,8 @@ function App() {
           <Route path="change-email" element={<ChangeEmail />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
-          <Route path="training" element={<Training />} />
+          {/* The Training tab opens Book a Session; this keeps the path alive. */}
+          <Route path="training" element={<Navigate to="/member/book-class" replace />} />
           <Route path="membership" element={<MembershipHub />} />
           {/* Aliases for paths that exist only in notification rows.
 
