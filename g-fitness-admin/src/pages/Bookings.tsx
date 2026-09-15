@@ -19,6 +19,7 @@ import { setPtSessionStatus } from '../lib/api/ptSessions';
 import { notifyUser } from '../lib/api/notify';
 import { loadBookingQueue, type QueueRow } from '../services/bookingQueueService';
 import { sweepStaleRequests } from '../lib/api/bookings';
+import BookingAttentionPanel from '../components/ui/BookingAttentionPanel';
 import type { BookingStatus } from '../types/db';
 
 /**
@@ -253,6 +254,11 @@ export default function Bookings() {
         { label: 'Personal training', value: rows.filter((r) => r.kind === 'pt').length, icon: User,
           onClick: () => setKindFilter('pt') },
       ]} />
+
+      {/* Above the queue, and only when there is something in it. These are the
+          bookings the escalation ladder has already been shouting about — see
+          sweep_stale_requests() in 0071 — with somewhere for the desk to act. */}
+      <BookingAttentionPanel onChanged={load} />
 
       <Section
         title="Queue" icon={Calendar} count={visible.length}
