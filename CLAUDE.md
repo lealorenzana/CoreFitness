@@ -101,7 +101,11 @@ and `challenge_participants` have **no INSERT policy for any role**, and challen
 **deleting one is `retire_plan()`, never a `delete`**. Freeze and cancel need a **reason** (0057),
 and **a refund is `max(pro-rata for the unused term, the gym's tier) − a documented fee`** (0073) —
 RA 7394 expects pro-rata, so the tiers are a **floor**, and lowering one does not cut the payout.
-**Frozen means no access at all**, and frozen days are **credited back to the expiry** — so the
+**Frozen means no access at all** — and **Home says so** (2026-09-15): it had no
+concept of the state, so a frozen member read a healthy card counting down days
+and found out only by tapping Book, or at the desk. Frozen replaces the
+countdown, because those days are not running down. Cancelled stays usable to
+the expiry and the card labels it. Frozen days are **credited back to the expiry** — so the
 60-day yearly ceiling (0070) is *shown* in the freeze dialog and **never enforced**: members were
 told about the monthly limit and never about a yearly one. Decisions in
 [TEST_MATRIX](docs/TEST_MATRIX.md).

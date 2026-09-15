@@ -44,6 +44,23 @@ export interface MemberHome {
   neverExpires: boolean;
   daysLeft: number | null;
   expired: boolean;
+  /**
+   * Frozen (0057): the member keeps their days but has **no access at all** —
+   * `membership_is_usable()` accepts 'active' and 'cancelled' and not this.
+   *
+   * Home had no idea. A frozen member saw a healthy card counting down days
+   * remaining, and found out only by walking to Book a Session, tapping, and
+   * reading the refusal — or by turning up at the desk. The rule was enforced
+   * in SQL and readable nowhere, which is the trap CLAUDE.md names.
+   */
+  frozen: boolean;
+  /**
+   * Cancelled, and still usable until the expiry date — that is deliberate
+   * (TEST_MATRIX, 7 September). Worth saying out loud on the card, because
+   * everything else about it looks like a live membership right up to the day
+   * it stops.
+   */
+  cancelled: boolean;
   /** Membership runs out within a week — drives the renew nudge. */
   expiringSoon: boolean;
   checkInsThisMonth: number;
@@ -159,6 +176,8 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     neverExpires,
     daysLeft,
     expired,
+    frozen: membership?.status === 'frozen',
+    cancelled: membership?.status === 'cancelled',
     expiringSoon: !expired && !neverExpires && daysLeft != null && daysLeft <= 7,
     checkInsThisMonth: checkInDates.filter((d) => d.startsWith(thisMonth)).length,
     checkedInToday: checkInSet.has(today),

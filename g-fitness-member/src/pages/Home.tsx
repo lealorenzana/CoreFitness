@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   QrCode,
   AlertCircle, CheckCircle, Ban, ArrowRight, CalendarClock, CalendarCheck, Flame, Check, X, MessageSquare,
-  ChevronRight,
+  ChevronRight, Snowflake,
   // Aliased: an unaliased `Infinity` import shadows the global number in this
   // module, which would silently break any `repeat: Infinity` added later.
   Infinity as InfinityIcon,
@@ -191,7 +191,25 @@ export default function Home() {
 
               {/* A lifetime plan has no date and no countdown, so it gets a
                   sentence rather than a "Valid until —" beside a "— days". */}
-              {term.kind === 'unlimited' ? (
+              {/* Frozen replaces the countdown rather than sitting beside it.
+
+                  The days are not running down — 0057 credits them back to the
+                  expiry when the membership restarts — so "18 days remaining"
+                  is not merely unhelpful here, it is untrue. */}
+              {home.frozen ? (
+                <div
+                  className="mt-4 pt-4"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}
+                >
+                  <p className="flex items-center gap-2 font-bold text-white text-sm">
+                    <Snowflake size={16} className="flex-shrink-0" /> Membership frozen
+                  </p>
+                  <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.78)' }}>
+                    You cannot check in or book while it is frozen, and the days you have left are
+                    being kept for you. Ask the front desk to start it again.
+                  </p>
+                </div>
+              ) : term.kind === 'unlimited' ? (
                 <div
                   className="flex items-center gap-2 mt-4 pt-4"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}
@@ -206,7 +224,10 @@ export default function Home() {
                 >
                   <div>
                     <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                      Valid until
+                      {/* Cancelled is still usable until the date (TEST_MATRIX,
+                          7 September). The card otherwise looks identical to a
+                          live membership right up to the day it stops. */}
+                      {home.cancelled ? 'Cancelled · access until' : 'Valid until'}
                     </p>
                     <p className="font-bold text-sm text-white mt-0.5">{expiryLabel}</p>
                   </div>
