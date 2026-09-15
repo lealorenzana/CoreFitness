@@ -85,6 +85,34 @@ screen on a refresh**. Guard on the dialog's own flag.
 **The type floor is 12px and 66 places were under it** — 10px and 11px labels,
 one at 9px. This is read at arm's length, in a gym, often mid-set.
 
+### The bento grid — `Bento` / `BentoCell`
+
+Added 2026-09-15 for Book a Session, which was a stack of identical full-width
+rows: honest, and completely flat. Every class looked exactly as important as
+every other, so a fortnight of timetable read as a spreadsheet. A bento gives a
+screen a hierarchy it can state in **layout**, which matters here because the
+palette is deliberately two colours and cannot carry emphasis on its own.
+
+- **Two columns, never three.** At 393px with a 20px gutter a third column
+  leaves ~105px a cell, which is narrower than "Intermediate" at the 12px floor.
+  The floor does not move; the column count does. (The PT slot grid is the one
+  exception at three columns — a slot is a time and a length and nothing else.)
+- **`wide` is an inline `gridColumn`, not `col-span-2`.** A class name has
+  emitted no CSS in this app before, and a span that silently does nothing
+  leaves a grid that is merely ugly rather than broken — so it would ship.
+- **Hierarchy has to be real.** On the timetable the wide cell is the day's
+  *first* class, because the next thing happening is what a member opened the
+  screen for. It is deliberately **not** the recommended class: a filter can
+  empty "recommended", and a day always has a first.
+- **Never end a grid half empty.** With an odd tail, the last cell widens. A
+  half-width hole at the bottom of a day reads as a missing class.
+- **Cells stretch to the tallest in the row** (grid's default), so push each
+  cell's action to its own bottom with `mt-auto` and a row of buttons lines up
+  however unevenly the names above them wrap.
+- `RingStat` takes `wide` too, so a gauge can sit in a bento — and its existing
+  contract holds: **omit `fraction` and the ring is a bare track**, because a
+  roster has no ceiling to be a fraction of.
+
 ## Colour convention
 
 **Amber = primary action. Violet = selection and structure.** Home's "Book a Session", "Save goal"

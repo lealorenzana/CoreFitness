@@ -265,15 +265,18 @@ export function RingStat({
   fraction,
   tone = 'primary',
   onClick,
+  wide = false,
 }: {
   icon: ReactNode;
   value: ReactNode;
   unit?: string;
-  label: string;
+  label: ReactNode;
   /** 0–1. Omit when the number has no target. */
   fraction?: number;
   tone?: 'primary' | 'secondary';
   onClick?: () => void;
+  /** Span both columns of a `Bento`. Ignored outside one. */
+  wide?: boolean;
 }) {
   const accent = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
   const R = 15;                      // radius of a 36px ring with a 3px stroke
@@ -285,7 +288,10 @@ export function RingStat({
     <Tag
       onClick={onClick}
       className={cn('rounded-2xl text-left', onClick && 'w-full active:opacity-80')}
-      style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: 'var(--card-pad)' }}
+      style={{
+        background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)',
+        padding: 'var(--card-pad)', gridColumn: wide ? 'span 2' : undefined,
+      }}
     >
       <span className="relative grid place-items-center" style={{ width: 36, height: 36 }}>
         <svg width="36" height="36" className="absolute inset-0 -rotate-90" aria-hidden>
@@ -311,6 +317,96 @@ export function RingStat({
       </p>
     </Tag>
   );
+}
+
+/**
+ * A bento grid: two columns, and a cell may take both.
+ *
+ * The app's lists were all one shape — a full-width row, repeated — which is
+ * honest but flat: every class on the timetable looked exactly as important as
+ * every other, so a screen of them read as a spreadsheet. A bento gives the
+ * page a hierarchy it can express in *layout* rather than in colour, which
+ * matters here because the palette is deliberately small (amber acts, violet
+ * structures, and that is the whole vocabulary).
+ *
+ * Two columns, not three. At 393px with a 20px gutter a third column leaves
+ * ~105px a tile, which is under the width of "Intermediate" at the 12px type
+ * floor — the floor is not negotiable in a gym, so the column count gives way.
+ *
+ * Cells stretch to the tallest in their row (grid's default), so a row of
+ * tiles has one baseline along the bottom if each one pushes its action down
+ * with `mt-auto`.
+ */
+export function Bento({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('grid grid-cols-2', className)} style={{ gap: 'var(--stack-tight)' }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One cell of a `Bento`.
+ *
+ * `wide` spans both columns. It is an inline `gridColumn` rather than a
+ * `col-span-2` class on purpose: this app is Tailwind v4 with no config, class
+ * names have silently emitted no CSS here before, and a span that quietly does
+ * nothing would leave a ragged grid rather than an error.
+ *
+ * Renders a real `<button>` when it has an `onClick` and a `<div>` otherwise —
+ * two branches instead of a dynamic tag, so `disabled` is typed and a
+ * non-interactive cell cannot be focused. `text-left` is not optional: a
+ * `<button>` centres its content, which is the layout trap this design system
+ * has already paid for twice.
+ */
+export function BentoCell({
+  children,
+  wide = false,
+  tone = 'panel',
+  onClick,
+  disabled,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  wide?: boolean;
+  /** `flat` is a tint for a cell sitting inside another card, not a third edge. */
+  tone?: 'panel' | 'primary' | 'secondary' | 'flat';
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const skin: CSSProperties =
+    tone === 'primary'
+      ? { background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.32)' }
+      : tone === 'secondary'
+        ? { background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }
+        : tone === 'flat'
+          ? { background: 'var(--color-surface-high)', border: '1px solid transparent' }
+          : panelStyle;
+
+  const box = cn('rounded-2xl flex flex-col text-left', className);
+  const css: CSSProperties = {
+    ...skin,
+    padding: 'var(--card-pad)',
+    gridColumn: wide ? 'span 2' : undefined,
+    ...style,
+  };
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={cn(box, 'active:opacity-80 disabled:cursor-not-allowed')}
+        style={css}
+      >
+        {children}
+      </button>
+    );
+  }
+  return <div className={box} style={css}>{children}</div>;
 }
 
 /**
