@@ -100,6 +100,15 @@ CHECKS = [
     # because a filter that matches nothing is the failure mode here.
     ('0080', 'rpc is_demo_row',                lambda: rpc('is_demo_row', {'p': NIL})),
     ('0080', 'rpc migration_0080_applied',     lambda: rpc('migration_0080_applied')),
+    # 0081 adds columns to two tables, a lookup table and the cancel function.
+    # Three different kinds of object, so a half-applied paste is visible.
+    ('0081', 'bookings.cancelled_by_role',     lambda: table('bookings', 'cancelled_by_role')),
+    ('0081', 'table cancellation_reasons',     lambda: table('cancellation_reasons', 'key')),
+    ('0081', 'rpc migration_0081_applied',     lambda: rpc('migration_0081_applied')),
+    # 0082 is policies plus one view and one function. The policies leave no
+    # trace over REST; the view and the marker carry it.
+    ('0082', 'view my_trainer_members',        lambda: table('my_trainer_members', 'member_id')),
+    ('0082', 'rpc migration_0082_applied',     lambda: rpc('migration_0082_applied')),
 ]
 
 print('project: %s' % URL)
