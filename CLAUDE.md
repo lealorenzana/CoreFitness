@@ -113,8 +113,12 @@ told about the monthly limit and never about a yearly one. Decisions in
 portal by id into four roots that are **all `pointer-events: none`**, so a portalled child **must**
 set `pointer-events-auto` or it paints perfectly and cannot be tapped (shipped 3×). **Overlays
 portal to a root, never inline**: `<main>` is `relative` and scrolls, so `absolute inset-0` lands
-−2000px up a scrolled list. **Home is *today* only** — counters, the level card and MY CORE live on
-Progress, events and challenges on Book, and the dock's `tabSubPaths` must match. **Per-member
+−2000px up a scrolled list. **The dock is Home · Book · Menu · Profile** plus the QR bump, and `tabSubPaths`
+must match it. **Progress is not a tab** (2026-09-15): it is reached from Home's
+"Your progress -> See activity" and from the **Menu** grid, which is the old
+Profile hub promoted to the slot Progress had — eleven destinations you can see
+at once instead of 800px of list. Home stays *today* only; Profile is the
+account and owns Settings, which is listed there and nowhere else. **Per-member
 caches are memory-only and cleared in `logout()`**.
 
 ### Styling and design system

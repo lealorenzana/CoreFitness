@@ -41,6 +41,7 @@ import TrainerEditProfile from './pages/trainer/TrainerEditProfile';
 import Achievements from './pages/Achievements';
 import NotificationsAll from './pages/NotificationsAll';
 import GymPlan from './pages/GymPlan';
+import Menu from './pages/Menu';
 
 
 type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
@@ -225,6 +226,7 @@ function App() {
           <Route path="change-email" element={<ChangeEmail />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
+          <Route path="menu" element={<Menu />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
           {/* An unknown path under /member rendered the shell with an empty

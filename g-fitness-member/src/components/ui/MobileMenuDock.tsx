@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, TrendingUp, User, QrCode } from 'lucide-react';
+import { Home, Calendar, LayoutGrid, User, QrCode } from 'lucide-react';
 import CheckInSheet from './CheckInSheet';
 
 /**
@@ -22,12 +22,12 @@ import CheckInSheet from './CheckInSheet';
 const navRoutes = [
   '/member/home',
   '/member/book-class',
-  '/member/progress',
+  '/member/menu',
   '/member/profile',
 ];
 
-const icons = [Home, Calendar, TrendingUp, User];
-const labels = ['Home', 'Book', 'Progress', 'Profile'];
+const icons = [Home, Calendar, LayoutGrid, User];
+const labels = ['Home', 'Book', 'Menu', 'Profile'];
 
 /**
  * Every route that should light up each tab, including its sub-pages.
@@ -45,11 +45,17 @@ const tabSubPaths: string[][] = [
   // Book is anything forward-looking, including what the gym has announced.
   ['/member/book-class', '/member/chatbot', '/member/trainers', '/member/trainer/',
    '/member/events', '/member/challenges'],
-  ['/member/progress', '/member/achievements', '/member/track'],
-  // Profile is the account: everything about you, your history and your plan.
-  ['/member/profile', '/member/booking-history', '/member/attendance-history',
-   '/member/payments', '/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/workouts', '/member/plan', '/member/rewards', '/member/settings'],
+  // Menu owns everything it links to — including Progress, which lost its own
+  // tab. A dock that highlighted Profile while you read your payment history
+  // was telling you something untrue about where you were, and the same would
+  // be true of Menu highlighting nothing at all.
+  ['/member/menu', '/member/progress', '/member/achievements', '/member/track',
+   '/member/booking-history', '/member/attendance-history', '/member/payments',
+   '/member/membership', '/member/renew', '/member/renew-membership',
+   '/member/workouts', '/member/plan', '/member/rewards'],
+  // Profile is the account and nothing else: who you are, and how to change it.
+  ['/member/profile', '/member/settings', '/member/edit-profile',
+   '/member/change-password', '/member/change-email'],
 ];
 
 export default function MobileMenuDock() {

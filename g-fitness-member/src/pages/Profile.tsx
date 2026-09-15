@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Mail, Phone, MapPin, Calendar, LogOut, Shield, Edit, CreditCard,
-  ArrowLeft, Activity, Settings as SettingsIcon,
-  CalendarCheck, BookOpen, ClipboardList, Trophy, Gift, Flag,
+  Mail, Phone, MapPin, Calendar, LogOut, Edit, ArrowLeft, ChevronRight,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { logout } from '../utils/auth';
 import Avatar from '../components/ui/Avatar';
@@ -17,7 +16,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentMembership } from '../lib/api/memberships';
 import { readCache, writeCache } from '../lib/pageCache';
-import { Page, NavTile } from '../components/ui/page';
+import { Page } from '../components/ui/page';
 import { formatPhone } from '../utils/phone';
 
 /** The flattened identity + plan this screen renders. */
@@ -198,39 +197,33 @@ export default function Profile() {
             </div>
           </motion.section>
 
-          {/* Everything the app contains, visible without scrolling.
+          {/* Settings stays here, and only here.
 
-              This was eleven stacked rows with a sentence of subtitle each —
-              roughly 800px of list on an 852px screen, so the member had to
-              scroll to find out what existed. Grouped into two grids: what you
-              do at the gym, and what you owe or have earned. Every destination
-              is the same one as before; none was added or dropped. */}
+              It is the account's own screen — password, privacy, notifications
+              — so it belongs beside the identity rather than in the Menu grid
+              with the training pages. It was listed in both for a day; one of
+              them had to go. */}
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }} className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
-            <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Your training</h2>
-            <div className="grid grid-cols-3 gap-2">
-              <NavTile icon={<Activity size={20} />} label="Progress" onClick={() => navigate('/member/progress')} />
-              <NavTile icon={<CalendarCheck size={20} />} label="My bookings" onClick={() => navigate('/member/booking-history')} />
-              <NavTile icon={<ClipboardList size={20} />} label="Training plan" onClick={() => navigate('/member/plan')} />
-              <NavTile icon={<BookOpen size={20} />} label="Free workouts" onClick={() => navigate('/member/workouts')} />
-              <NavTile icon={<Flag size={20} />} label="Challenges" onClick={() => navigate('/member/challenges')} />
-              <NavTile icon={<Trophy size={20} />} label="Events" onClick={() => navigate('/member/events')} />
-            </div>
-          </motion.section>
-
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18 }} className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
-            <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Membership</h2>
-            <div className="grid grid-cols-3 gap-2">
-              <NavTile icon={<Shield size={20} />} label="My plan" onClick={() => navigate('/member/renew-membership')} />
-              <NavTile icon={<CreditCard size={20} />} label="Payments" onClick={() => navigate('/member/payments')} />
-              <NavTile icon={<Calendar size={20} />} label="Attendance" onClick={() => navigate('/member/attendance-history')} />
-              {/* Always listed, on every tier. A member whose plan does not
-                  include points sees the locked card explaining what it is —
-                  which is the point of locking rather than hiding (0049). */}
-              <NavTile icon={<Gift size={20} />} label="CORE Points" tone="secondary" onClick={() => navigate('/member/rewards')} />
-              <NavTile icon={<SettingsIcon size={20} />} label="Settings" tone="muted" onClick={() => navigate('/member/settings')} />
-            </div>
+            transition={{ delay: 0.15 }}>
+            <button
+              onClick={() => navigate('/member/settings')}
+              className="w-full flex items-center gap-3 rounded-2xl text-left"
+              style={{ ...panelStyle, padding: 'var(--card-pad)' }}
+            >
+              <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+                <SettingsIcon size={20} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-white" style={{ fontSize: 'var(--text-body)' }}>
+                  Settings
+                </span>
+                <span className="block mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+                  Password, privacy, notifications and about
+                </span>
+              </span>
+              <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
+            </button>
           </motion.section>
 
           <button
