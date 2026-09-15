@@ -65,10 +65,25 @@ async (page) => {
     bookings: [{ id: 'b1', member_id: 'm1', class_id: 'c1', status: 'pending',
       requested_at: iso(-1, 10, 0), approved_at: null, rejected_at: null, decided_by: null,
       decided_by_role: null, decided_at: null, classes: CLASSES[0] }],
+    // `requested_at` is NOT NULL default now() in 0015, so a live row always has
+    // one — and the queue sorts on it. Omitting it here threw "Cannot read
+    // properties of undefined (reading 'localeCompare')" onto the screen and
+    // emptied every filter. Third fixture column to do this (slot_minutes,
+    // day_of_week): when a trainer screen looks broken, diff the fixture
+    // against the migration before reading the component.
     pt_sessions: [{ id: 'pt1', member_id: 'm2', trainer_id: 't1', starts_at: iso(1, 16, 0),
-      duration_minutes: 60, status: 'pending', notes: 'Deadlift technique', payment_id: null, created_at: iso(-2, 9, 0) },
+      duration_minutes: 60, status: 'pending', notes: 'Deadlift technique', payment_id: null,
+      requested_at: iso(-2, 9, 0), created_at: iso(-2, 9, 0) },
       { id: 'pt2', member_id: 'm1', trainer_id: 't1', starts_at: iso(-3, 8, 0),
-        duration_minutes: 60, status: 'approved', notes: null, payment_id: 'pay1', created_at: iso(-6, 9, 0) }],
+        duration_minutes: 60, status: 'approved', notes: null, payment_id: 'pay1',
+        requested_at: iso(-6, 9, 0), created_at: iso(-6, 9, 0) },
+      // Approved AND still ahead — the only shape that shows the coach's own
+      // cancel control (0081). The past one above must not, and that asymmetry
+      // is the point: cancel_booking() refuses a session that has started, so
+      // offering the button there would be offering a refusal.
+      { id: 'pt3', member_id: 'm1', trainer_id: 't1', starts_at: iso(4, 9, 0),
+        duration_minutes: 60, status: 'approved', notes: null, payment_id: null,
+        requested_at: iso(-1, 9, 0), created_at: iso(-1, 9, 0) }],
     // slot_minutes is NOT NULL with a CHECK in the real schema (0015); leaving
     // it out of the fixture put "NaN slots a week" on the schedule screen and
     // sent me looking for a bug in the app.
@@ -78,6 +93,13 @@ async (page) => {
       file_path: null, mime_type: null, status: 'verified', verified_at: iso(-100, 9, 0), note: null }],
     trainer_feedback: [{ id: 'f1', trainer_id: 't1', member_id: 'm1', note: 'Good progress on hinge pattern.',
       recommendation: 'Two sessions a week.', created_at: iso(-4, 9, 0) }],
+    // 0082: the roster reads this narrowed view, not the three unfiltered
+    // tables it used to join on the phone.
+    my_trainer_members: [M1, M2].map((m, i) => ({
+      member_id: m.id, name: `${m.first_name} ${m.last_name}`, photo_url: null,
+      experience_level: 'intermediate', last_visit: iso(-(i + 1), 7, 0),
+      visits_last_30: [6, 3][i], upcoming_with_me: [1, 0][i],
+    })),
     trainer_ratings: [], trainer_evaluation_months: [], trainer_busy_slots: [],
     notifications: [{ id: 'n1', user_id: 't1', type: 'booking', title: 'New session request',
       message: 'Miguel asked for Tuesday 4:00 PM.', action_url: '/trainer/bookings', metadata: null,

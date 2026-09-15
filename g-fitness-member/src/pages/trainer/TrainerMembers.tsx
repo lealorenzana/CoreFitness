@@ -9,9 +9,8 @@ import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { panelStyle } from '../../components/ui/Card';
 import { supabase } from '../../lib/supabaseClient';
-import { listMembers } from '../../lib/api/members';
 import { listMemberships } from '../../lib/api/memberships';
-import { listAttendance } from '../../lib/api/attendance';
+import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import {
   getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer,
 } from '../../services/trainerService';
@@ -123,10 +122,22 @@ export default function TrainerMembers() {
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const [rows, memberships, attendance] = await Promise.all([
-        listMembers(),
-        listMemberships(),
-        listAttendance().catch(() => []),
+      /*
+        One narrowed read, not three unfiltered ones.
+
+        This used to call `listMembers()` — every member in the gym — and then
+        join `listMemberships()` and `listAttendance()` to it on the phone,
+        counting thirty days of the whole gym's check-ins to show one trainer
+        their own. 0082 narrowed all three at the database, and
+        `my_trainer_members` does the counting in SQL where the rows already are.
+
+        `memberships` stays, for the plan label beside each name. It is narrowed
+        by the same rule now, so it is a label on a list the database chose —
+        not the thing choosing the list.
+      */
+      const [roster, memberships] = await Promise.all([
+        listMyTrainerMembers(),
+        listMemberships().catch(() => []),
       ]);
 
       // Newest membership per member — same rule as the admin roster.
@@ -136,26 +147,17 @@ export default function TrainerMembers() {
         if (!existing || m.created_at > existing.created_at) newest.set(m.member_id, m);
       }
 
-      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const lastVisit = new Map<string, string>();
-      const visits30 = new Map<string, number>();
-      for (const a of attendance) {
-        const prev = lastVisit.get(a.member_id);
-        if (!prev || a.check_in_time > prev) lastVisit.set(a.member_id, a.check_in_time);
-        if (a.check_in_time >= cutoff) visits30.set(a.member_id, (visits30.get(a.member_id) ?? 0) + 1);
-      }
-
       setMembers(
-        writeCache(CACHE_KEY, rows.map(({ profile, member }) => {
-          const ms = newest.get(profile.id);
+        writeCache(CACHE_KEY, roster.map((r) => {
+          const ms = newest.get(r.member_id);
           return {
-            id: profile.id,
-            name: `${profile.first_name} ${profile.last_name}`,
+            id: r.member_id,
+            name: r.name,
             planName: ms?.membership_plans?.name ?? 'No plan',
             membershipStatus: ms?.status ?? 'none',
-            experienceLevel: member.experience_level,
-            lastVisit: lastVisit.get(profile.id) ?? null,
-            visitsLast30: visits30.get(profile.id) ?? 0,
+            experienceLevel: r.experience_level,
+            lastVisit: r.last_visit,
+            visitsLast30: r.visits_last_30,
           };
         }))
       );
@@ -263,9 +265,16 @@ export default function TrainerMembers() {
   return (
     <Page>
       <div>
-        <h1 className="display text-xl text-white">Gym Members</h1>
+        {/* The title and this line both described the old behaviour — "everyone
+            at the gym, not a per-trainer roster" — which was true only because
+            the policy handed over every member row. 0082 made it a real roster;
+            leaving the sentence would have been the screen describing a version
+            of itself that no longer exists. */}
+        <h1 className="display text-xl text-white">My Members</h1>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {members.length} active {members.length === 1 ? 'member' : 'members'} · everyone at the gym, not a per-trainer roster
+          {members.length === 0
+            ? 'Members appear here once they book a class you teach or a session with you'
+            : `${members.length} ${members.length === 1 ? 'member' : 'members'} who train with you`}
         </p>
       </div>
 

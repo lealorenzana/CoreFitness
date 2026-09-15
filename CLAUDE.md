@@ -189,11 +189,10 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0080 are live** (0079/0080 pasted 2026-09-15). **0081** (a cancellation records its reason,
-actor and time), **0082** (a trainer sees only their own members) and **0083** (the desk's attention
-queue, trainer suggestions and reassignment) are written and replay-tested at 83/83, **not yet
-pasted** — and the app already calls them, so the cancel dialogs, the attention panel and the
-visibility fix do nothing until they are. Verify with `python scripts/probe-migrations.py`, which
+**0001–0083 are all live** — 0079/0080 pasted 2026-09-15, 0081/0082/0083 on 2026-09-16, each
+confirmed by the probe (nine rows across the three). 0081 records a cancellation's reason, actor and
+time; 0082 stops a trainer reading the whole gym; 0083 is the desk's attention queue, trainer
+suggestions and reassignment. Verify with `python scripts/probe-migrations.py`, which
 reads the schema over REST and needs no DB credentials. **Run it rather than trusting a report that a
 migration was pasted**: 0070 was believed done for a day and had never executed. It probes **three objects per migration**, so a file that never ran is distinguishable
 from one failed statement, and a protected object (42501) is a pass, not a miss.

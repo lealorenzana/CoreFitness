@@ -47,27 +47,44 @@ export default function CancelBookingDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Loaded once the dialog is actually opened, not on every mount of the page
-  // behind it: a list that is never shown does not need fetching.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setError(null);
-    listCancellationReasons(actor)
-      .then((rows) => { if (!cancelled) setReasons(rows); })
-      .catch((err) => { if (!cancelled) setError(errorMessage(err, 'Could not load the reasons.')); });
-    return () => { cancelled = true; };
-  }, [open, actor]);
+  /*
+    Reset during render when `open` flips, not in an effect.
 
-  // Cleared when the dialog closes, so the next cancellation does not open
-  // pre-filled with the last one's reason — which would make a stray double tap
-  // file a reason nobody chose.
-  useEffect(() => {
-    if (open) return;
+    The draft did both of these as effects and lint was right to refuse it: a
+    setState called synchronously inside an effect is the rule this project has
+    now shipped four times. The documented alternatives are a lazy initialiser,
+    separating the fetch from the state application, or — for exactly this case,
+    state that has to follow a prop — comparing against the previous value
+    during render. That is React's own "adjusting state when a prop changes".
+
+    The clearing matters: without it the next cancellation opens pre-filled with
+    the last one's reason, and a stray double tap files a reason nobody chose.
+  */
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     setReason('');
     setNote('');
     setError(null);
-  }, [open]);
+  }
+
+  // Loaded once the dialog is actually opened, not on every mount of the page
+  // behind it: a list that is never shown does not need fetching. The IIFE is
+  // the house workaround — the same lint rule follows a directly called async
+  // function into the setState inside it.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await listCancellationReasons(actor);
+        if (!cancelled) setReasons(rows);
+      } catch (err) {
+        if (!cancelled) setError(errorMessage(err, 'Could not load the reasons.'));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, actor]);
 
   const chosen = reasons.find((r) => r.key === reason) ?? null;
   const noteRequired = chosen?.needs_note === true;
