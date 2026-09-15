@@ -128,6 +128,67 @@ where the set is genuinely open-ended (`CategoryRail`), where the cut tile is
 the affordance rather than a defect. `LinkRail` was deleted with its last
 caller.
 
+### An interview is not a form — `StepFlow`
+
+The plan builder asked its six questions as six bordered cards stacked on one
+scroll, each with a small label and a row of 28px chips. Everything was correct
+and it read as a form to fill in. The same six questions in the app's own
+onboarding shape — progress across the top, one question in the display face,
+full-width targets, Back and Next — read as an interview, which is what the
+feature actually is.
+
+`StepFlow` portals to `#phone-overlay-root`, so the questions sit over whichever
+screen was already mounted and closing returns to it with nothing re-fetched.
+The page underneath therefore has to be **unconditional**, not another branch of
+the step machine: a flow that opens over nothing closes onto a blank screen.
+
+**Omit `valid` for an optional step** — that is what turns Next into "Skip". The
+final step always shows the submit label instead, so do not assert on "Skip"
+there; assert that an empty answer does not block submitting.
+
+### A card that looks like a control must be one
+
+Challenges drew a full card — picture, title, description, points, days left —
+and made a 60px pill the only tappable thing in it. Tapping the title did
+nothing, which on a phone reads as a broken screen rather than as a card with a
+button on it.
+
+The card is the button now. Three rules came out of it:
+
+- **Only in the safe direction.** Joining is the whole-card tap; leaving keeps
+  the small deliberate pill. Joining is additive and undone by one tap; leaving
+  gives up a place in something you may be seven sessions into, and a stray tap
+  while scrolling should not do that.
+- **The pill stays either way**, as a `<span>` when the card around it is the
+  control. It is the visible affordance, not the target.
+- **Never a `<button>` inside a `<button>`.** Invalid HTML, and the inner one
+  swallows the outer's clicks in exactly the corner a member aims for.
+
+### Back undoes a step; it does not navigate
+
+Five member screens hardcoded `navigate('/member/home')` behind their back
+arrow. Once the Training grid shipped, opening Progress from it and pressing
+back landed the member on Home — a screen they had never been on. The arrow was
+taking them somewhere rather than undoing what they did.
+
+The house pattern, which five other screens already used:
+
+```ts
+window.history.length > 1 ? navigate(-1) : navigate('/member/home')
+```
+
+The guard matters: a cold load into the route (a notification, a bookmark) has
+nothing behind it, and Home is the right floor. Verified by walking the route in
+a browser — `scripts/back-navigation-check.js`, not by reading the handler.
+
+**A screen with its own inner scroller still owes `--dock-clear`.** `<Page>`
+applies it; a hand-rolled `flex-1 overflow-y-auto` does not, and the dock floats
+over whatever the scroll ends on. Progress reserved 16px under a dock 116px
+tall. Measure it by scrolling to the end and comparing the last text node's
+bottom against the dock's top — at rest, a floating dock sits over mid-page
+content on every scrolling screen, so a hit test at `scrollTop: 0` proves
+nothing.
+
 ## Colour convention
 
 **Amber = primary action. Violet = selection and structure.** Home's "Book a Session", "Save goal"

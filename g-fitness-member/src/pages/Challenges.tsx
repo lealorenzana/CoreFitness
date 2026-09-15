@@ -122,7 +122,10 @@ export default function Challenges() {
     >
       <div className="flex-1 min-h-0 flex flex-col">
         {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4">
+        {/* The dock floats over this scroller, so the scroll has to end above
+            it — the same clearance `<Page>` applies, from the same token. */}
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3"
+          style={{ paddingBottom: 'var(--dock-clear)' }}>
           {error && (
             <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
@@ -171,8 +174,31 @@ export default function Challenges() {
                 : Math.min(100, Math.round((c.progress / c.target) * 100));
               const done = c.completedOn != null;
               const left = daysLeft(c.endsOn);
-              return (
-                <div key={c.id} className="p-4 rounded-2xl" style={panelStyle}>
+
+              /*
+                The whole card joins; only leaving needs aiming at.
+
+                Every one of these cards looked like a control and only a 60px
+                pill in the corner was one — you could tap the title, the
+                description, the points, the days left, and nothing happened.
+                On a phone that reads as a broken screen rather than as a card
+                with a button on it.
+
+                So an unjoined challenge *is* the button, and the pill stays as
+                the visible affordance rather than as the only target. The
+                asymmetry is deliberate: joining is additive and undone by one
+                tap, while leaving gives up a place in something you may be
+                seven sessions into. The safe direction gets the big target;
+                the undoing direction stays deliberate.
+
+                Never a <button> inside a <button> — invalid, and the inner one
+                swallows the outer's clicks in exactly the corner a member aims
+                for. When the card is the control the pill renders as a <span>.
+              */
+              const cardJoins = !c.joined && !done;
+
+              const body = (
+                <>
                   {/* Only when the gym attached one. */}
                   {c.imageUrl && (
                     <img
@@ -223,7 +249,7 @@ export default function Challenges() {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mt-3">
+                  <div className="flex items-center justify-between gap-3 mt-3">
                     <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
                       {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
                       {c.rewardPoints > 0 && (
@@ -232,16 +258,40 @@ export default function Challenges() {
                         </span>
                       )}
                     </p>
-                    {!done && (
+
+                    {/* Same pill either way. A <span> when the card around it
+                        is the button, a real <button> when leaving. */}
+                    {cardJoins ? (
+                      <span className="px-3.5 h-9 rounded-full text-[12px] font-bold flex items-center flex-shrink-0"
+                        style={{ background: 'var(--color-secondary)', color: '#1A1200',
+                                 opacity: busy === c.id ? 0.5 : 1 }}>
+                        {busy === c.id ? '…' : 'Join'}
+                      </span>
+                    ) : !done ? (
                       <button onClick={() => toggle(c)} disabled={busy === c.id}
-                        className="px-3.5 h-9 rounded-full text-[12px] font-bold disabled:opacity-50"
-                        style={c.joined
-                          ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
-                          : { background: 'var(--color-secondary)', color: '#1A1200' }}>
-                        {busy === c.id ? '…' : c.joined ? 'Leave' : 'Join'}
+                        className="px-3.5 h-9 rounded-full text-[12px] font-bold disabled:opacity-50 flex-shrink-0"
+                        style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+                        {busy === c.id ? '…' : 'Leave'}
                       </button>
-                    )}
+                    ) : null}
                   </div>
+                </>
+              );
+
+              return cardJoins ? (
+                <button
+                  key={c.id}
+                  onClick={() => toggle(c)}
+                  disabled={busy === c.id}
+                  aria-label={`Join ${c.title}`}
+                  className="w-full p-4 rounded-2xl text-left transition-transform active:scale-[0.99] disabled:cursor-not-allowed"
+                  style={panelStyle}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div key={c.id} className="p-4 rounded-2xl" style={panelStyle}>
+                  {body}
                 </div>
               );
             })}

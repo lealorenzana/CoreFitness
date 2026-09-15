@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RefreshCw, ClipboardList, AlertTriangle } from 'lucide-react';
 import { panelStyle } from '../components/ui/Card';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -11,6 +10,7 @@ import { renderPlan } from '../utils/planRender';
 import { asFocus, FOCUS_LABEL, type TrainingFocus } from '../utils/trainingFocus';
 import { errorMessage } from '../utils/errorMessage';
 import FeatureLock from '../components/ui/FeatureLock';
+import StepFlow from '../components/ui/StepFlow';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
 
@@ -57,42 +57,53 @@ const PREFERENCES: { id: Preference; label: string }[] = [
 const MINUTES: PlanInputs['sessionMinutes'][] = [30, 45, 60, 90];
 
 /**
- * One question: a label and a row of mutually exclusive chips.
+ * The answers to one question, as a set of mutually exclusive targets.
  *
- * Defined at module scope, NOT inside PlanBuilder. Declaring a component in
- * the render body creates a brand-new component *type* on every render, so
- * React unmounts and remounts the whole subtree each time instead of updating
- * it - throwing away DOM state and any focus inside it. It renders correctly
- * either way, which is what makes the mistake easy to keep.
+ * No card and no label of its own: `StepFlow` puts the question in the display
+ * face above this and gives the body its padding. What used to be here was six
+ * bordered cards stacked on one screen, each with its own small label and a row
+ * of 28px chips — the whole interview at once, which is the shape that made the
+ * screen feel like a form to fill in rather than a few things to answer.
+ *
+ * Stacks full width when the options carry a hint and wraps as chips when they
+ * do not: "Training regularly / Comfortable with the main lifts" needs a line
+ * to itself, and "3 days" very much does not.
+ *
+ * Module scope, NOT inside PlanBuilder. A component declared in a render body
+ * is a brand-new component *type* every render, so React unmounts and remounts
+ * the subtree instead of updating it — throwing away DOM state and any focus
+ * inside it. It renders correctly either way, which is what makes the mistake
+ * easy to keep.
  */
-function Choice<T extends string | number>({
-  label, options, value, onPick,
+function Options<T extends string | number>({
+  options, value, onPick,
 }: {
-  label: string;
   options: { id: T; label: string; hint?: string }[];
   value: T;
   onPick: (v: T) => void;
 }) {
+  const stacked = options.some((o) => o.hint);
   return (
-    <div className="p-4 rounded-2xl" style={panelStyle}>
-    <p className="text-xs font-bold text-white mb-2.5">{label}</p>
-    <div className="flex flex-wrap gap-2">
+    <div className={stacked ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
       {options.map((o) => {
         const on = o.id === value;
         return (
           <button
             key={String(o.id)}
             onClick={() => onPick(o.id)}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors"
+            aria-pressed={on}
+            className={`rounded-2xl text-left font-semibold transition-colors ${stacked ? 'w-full px-4 py-3.5' : 'px-4 py-3'}`}
             style={{
-              background: on ? 'var(--color-primary)' : 'var(--color-surface-high)',
+              fontSize: 'var(--text-body)',
+              background: on ? 'var(--color-primary)' : 'var(--color-surface-raised)',
               color: on ? '#fff' : 'var(--color-text-secondary)',
               border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
             }}
           >
             {o.label}
             {o.hint && (
-              <span className="block text-[12px] font-normal mt-0.5" style={{ color: on ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}>
+              <span className="block font-normal mt-0.5"
+                style={{ fontSize: 'var(--text-meta)', color: on ? 'rgba(255,255,255,0.78)' : 'var(--color-text-muted)' }}>
                 {o.hint}
               </span>
             )}
@@ -100,8 +111,7 @@ function Choice<T extends string | number>({
         );
       })}
     </div>
-  </div>
-);
+  );
 }
 
 export default function PlanBuilder() {
@@ -233,6 +243,118 @@ export default function PlanBuilder() {
     );
   }
 
+  /**
+   * The interview, one question a screen.
+   *
+   * Six panels stacked on one scroll is a form. The same six questions in the
+   * app's own onboarding shape — progress across the top, one question in the
+   * display face, big targets, Back and Next — is an interview, and this is the
+   * screen the whole feature is: answer these and you get a week.
+   *
+   * `StepFlow` portals to `#phone-overlay-root`, so it sits above the dock and
+   * over whichever screen returned below. It is declared here rather than in a
+   * branch of its own precisely because it is an overlay: the page underneath
+   * stays mounted, and closing returns to it with nothing re-fetched.
+   *
+   * The last question is the only optional one — `valid` omitted rather than
+   * `true`, which is what turns its Next into "Skip". A blank injury note has
+   * to stay blank: this project does not put words in a member's mouth about
+   * their own body.
+   */
+  const flow = (
+    <StepFlow
+      open={step === 'questions'}
+      title="Build your week"
+      submitLabel="Build my plan"
+      saving={saving}
+      onClose={() => setStep(saved ? 'plan' : 'intro')}
+      onSubmit={generate}
+      steps={[
+        {
+          id: 'experience',
+          title: 'How much training have you done?',
+          hint: 'It sets how much volume the week starts with.',
+          valid: true,
+          render: (
+            <Options
+              options={EXPERIENCES}
+              value={answers.experience}
+              onPick={(experience) => setAnswers((a) => ({ ...a, experience }))}
+            />
+          ),
+        },
+        {
+          id: 'focus',
+          title: 'What are you training for?',
+          valid: true,
+          render: (
+            <Options
+              options={FOCUSES.map((f) => ({ id: f, label: FOCUS_LABEL[f] }))}
+              value={answers.focus}
+              onPick={(focus) => setAnswers((a) => ({ ...a, focus }))}
+            />
+          ),
+        },
+        {
+          id: 'days',
+          title: 'How many days a week?',
+          hint: 'Pick the number you can actually keep to, not the best week you have ever had.',
+          valid: true,
+          render: (
+            <Options
+              options={[2, 3, 4, 5, 6].map((d) => ({ id: d, label: `${d} days` }))}
+              value={answers.daysPerWeek}
+              onPick={(daysPerWeek) => setAnswers((a) => ({ ...a, daysPerWeek }))}
+            />
+          ),
+        },
+        {
+          id: 'minutes',
+          title: 'How long is a session?',
+          valid: true,
+          render: (
+            <Options
+              options={MINUTES.map((m) => ({ id: m, label: `${m} min` }))}
+              value={answers.sessionMinutes}
+              onPick={(sessionMinutes) => setAnswers((a) => ({ ...a, sessionMinutes }))}
+            />
+          ),
+        },
+        {
+          id: 'where',
+          title: 'Where do you want to train?',
+          valid: true,
+          render: (
+            <Options
+              options={PREFERENCES}
+              value={answers.preference}
+              onPick={(preference) => setAnswers((a) => ({ ...a, preference }))}
+            />
+          ),
+        },
+        {
+          id: 'limitations',
+          title: 'Anything to work around?',
+          hint: 'An old injury, a sore shoulder. This does not change the exercises — it tells you to have a coach adjust them, because that is not something an app should decide.',
+          answered: answers.limitations.trim().length > 0,
+          render: (
+            <input
+              value={answers.limitations}
+              onChange={(e) => setAnswers((a) => ({ ...a, limitations: e.target.value }))}
+              placeholder="Optional"
+              className="field-input w-full h-12 px-4 rounded-2xl text-white"
+              style={{
+                fontSize: 'var(--text-body)',
+                background: 'var(--color-surface-raised)',
+                border: '1px solid var(--color-border)',
+              }}
+            />
+          ),
+        },
+      ]}
+    />
+  );
+
   // ── The plan ──────────────────────────────────────────────────────────────
   if (step === 'plan' && saved) {
     const view = renderPlan(saved.spec);
@@ -307,6 +429,7 @@ export default function PlanBuilder() {
             Book a coach to review this <ArrowRight size={16} />
           </button>
         </div>
+        {flow}
       </div>
     );
   }
@@ -327,14 +450,16 @@ export default function PlanBuilder() {
     );
   }
 
-  // ── Intro ─────────────────────────────────────────────────────────────────
-  if (step === 'intro') {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-          {Err}
-          <div className="p-5 rounded-2xl text-center" style={panelStyle}>
+  // ── Intro, and the floor under the flow ───────────────────────────────────
+  // No condition: the questions are an overlay now, so `step === 'questions'`
+  // has to leave a screen mounted beneath them, or the flow opens over nothing
+  // and closing lands on a blank page.
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      {Header}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+        {Err}
+        <div className="p-5 rounded-2xl text-center" style={panelStyle}>
             <span
               className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
               style={{ background: 'var(--color-primary-light)' }}
@@ -343,9 +468,10 @@ export default function PlanBuilder() {
             </span>
             <p className="display text-lg text-white">Build a training week</p>
             <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Five questions, then a week of sessions you can start on. It uses the
-              equipment this gym actually has, and it is built from a fixed set of
-              rules — not a chatbot guessing, so it says the same thing twice.
+              Six short questions, the last one optional, then a week of sessions you
+              can start on. It uses the equipment this gym actually has, and it is
+              built from a fixed set of rules — not a chatbot guessing, so it says
+              the same thing twice.
             </p>
             <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
               It is a starting point, not a prescription. Anything about an injury,
@@ -360,81 +486,8 @@ export default function PlanBuilder() {
               Start <ArrowRight size={16} />
             </button>
           </div>
-        </div>
       </div>
-    );
-  }
-
-  // ── Questions ──────────────────────────────────────────
-  return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      {Header}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4"
-      >
-        {Err}
-
-        <Choice
-          label="Training Experience"
-          options={EXPERIENCES}
-          value={answers.experience}
-          onPick={(experience) => setAnswers((a) => ({ ...a, experience }))}
-        />
-
-        <Choice
-          label="Training Goal"
-          options={FOCUSES.map((f) => ({ id: f, label: FOCUS_LABEL[f] }))}
-          value={answers.focus}
-          onPick={(focus) => setAnswers((a) => ({ ...a, focus }))}
-        />
-
-        <Choice
-          label="Days per Week"
-          options={[2, 3, 4, 5, 6].map((d) => ({ id: d, label: `${d} days` }))}
-          value={answers.daysPerWeek}
-          onPick={(daysPerWeek) => setAnswers((a) => ({ ...a, daysPerWeek }))}
-        />
-
-        <Choice
-          label="Session Length"
-          options={MINUTES.map((m) => ({ id: m, label: `${m} min` }))}
-          value={answers.sessionMinutes}
-          onPick={(sessionMinutes) => setAnswers((a) => ({ ...a, sessionMinutes }))}
-        />
-
-        <Choice
-          label="Preferred Location"
-          options={PREFERENCES}
-          value={answers.preference}
-          onPick={(preference) => setAnswers((a) => ({ ...a, preference }))}
-        />
-
-        <div className="p-4 rounded-2xl" style={panelStyle}>
-          <p className="text-xs font-bold text-white mb-1">Anything to work around?</p>
-          <p className="text-[12px] mb-2.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            An old injury, a sore shoulder. This does not change the exercises —
-            it tells you to have a coach adjust them, because that is not
-            something an app should decide.
-          </p>
-          <input
-            value={answers.limitations}
-            onChange={(e) => setAnswers((a) => ({ ...a, limitations: e.target.value }))}
-            placeholder="Optional"
-            className="field-input w-full h-11 px-3 rounded-xl text-xs text-white"
-            style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}
-          />
-        </div>
-
-        <button
-          onClick={generate}
-          disabled={saving}
-          className="w-full h-12 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ background: 'var(--color-primary)', color: '#fff' }}
-        >
-          {saving ? 'Saving…' : <>Build my plan <ArrowRight size={16} /></>}
-        </button>
-      </motion.div>
+      {flow}
     </div>
   );
 }

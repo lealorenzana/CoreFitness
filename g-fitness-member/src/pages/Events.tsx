@@ -131,7 +131,7 @@ export default function Events() {
   return (
     <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => navigate('/member/home')}
+        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
           aria-label="Back">

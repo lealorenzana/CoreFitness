@@ -33,6 +33,7 @@ import { readCache, writeCache } from '../lib/pageCache';
 
 import type { ClassLevel } from '../types/db';
 import { Page, Bento, BentoCell, RingStat, NavTile } from '../components/ui/page';
+import { CLAMP_2 } from '../components/ui/styles';
 
 /**
  * Everything the first paint of this screen needs, cached as one object.
@@ -114,20 +115,6 @@ function groupByDay<T>(rows: T[], iso: (row: T) => string): [string, T[]][] {
   }
   return [...map.entries()];
 }
-
-/**
- * Two lines, then an ellipsis.
- *
- * Declared inline rather than as `line-clamp-2`: the member app is Tailwind v4
- * with no config file, and this codebase has already shipped class names that
- * emitted no CSS at all. An inline property cannot fail to exist.
- */
-const CLAMP_2: CSSProperties = {
-  display: '-webkit-box',
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
-  overflow: 'hidden',
-};
 
 /**
  * What the Book button says, and whether it can be pressed.

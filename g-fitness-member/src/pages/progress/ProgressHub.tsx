@@ -8,6 +8,7 @@ import WeekRings           from '../../components/ui/WeekRings';
 import SectionHeader       from '../../components/ui/SectionHeader';
 import MyCoreCard          from '../../components/ui/MyCoreCard';
 import { panelStyle }      from '../../components/ui/Card';
+import { Page }            from '../../components/ui/page';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
 import BodyProgressTab     from './tabs/BodyProgressTab';
@@ -88,9 +89,15 @@ export default function ProgressHub() {
   };
 
   return (
-    <div className="space-y-4 pb-4">
+    <Page>
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => navigate('/member/home')}
+        {/* Back to wherever you came from. This was hardcoded to Home, so a
+            member who opened Progress from the Training grid was thrown to a
+            screen they had not been on — the back arrow was navigating them
+            somewhere rather than undoing their last step. The guard is the
+            house pattern: a cold load into this route (a notification, a
+            bookmark) has nothing to go back to, and Home is the right floor. */}
+        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
           <ArrowLeft size={18} />
@@ -185,6 +192,6 @@ export default function ProgressHub() {
         transition={{ duration: 0.2 }}>
         {renderTab()}
       </motion.div>
-    </div>
+    </Page>
   );
 }

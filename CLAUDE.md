@@ -126,7 +126,13 @@ grid under the header (a scrolling rail sliced two of them off the right edge,
 which reads as unfinished; a fixed set of six is a number you can just show). Progress is reached from there and from Home's "Your progress ->
 See activity".
 Home stays *today* only; Profile is the account and owns Settings, listed there
-and nowhere else. **`/member/bookings` and `/member/book` are aliases**, not
+and nowhere else. **A back arrow undoes the last step, never navigates**:
+`window.history.length > 1 ? navigate(-1) : navigate('/member/home')` is the
+pattern, and five screens hardcoded Home instead — so opening Progress from the
+Training grid and pressing back landed you on a screen you had never been on.
+**A screen with its own inner scroller still owes `--dock-clear`** (Progress,
+Challenges): `<Page>` applies it, a hand-rolled `overflow-y-auto` does not, and
+the dock floats over whatever the scroll ends on. **`/member/bookings` and `/member/book` are aliases**, not
 routes anyone links to by hand: 0030/0051-0055 write them as notification
 `action_url`s, and before the aliases those taps landed on Home. **Per-member
 caches are memory-only and cleared in `logout()`**.
@@ -138,6 +144,7 @@ caches are memory-only and cleared in `logout()`**.
   — verify against the built bundle, not the source.
 - Tokens are CSS custom properties in each `src/index.css`, never `brand-*`/`dark-*`. **Amber = primary action, violet = selection/structure. Type floor is 12px.** No greens or reds; `.display` (Anton) is opt-in. Primitives first — member `Card`/`StepFlow`/`Bento`, admin `FormField`, `DatePicker`, `TimePicker`, `Popover`, `kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`, `SectionTabs`; the z-index ladder and the rest of the traps are in DESIGN_SYSTEM.
 - **Layout traps that each cost a session:** `cn()`/tailwind-merge **silently drops a bare `flex`** beside `flex-col`, leaving `display: block`; **`minmax(0, 1fr)`, never bare `1fr`**; Tailwind emits CSS **only for literal class names** — which is why `Bento`'s `wide` is an inline `gridColumn`, since a span that does nothing is ugly rather than broken and would ship; **a `<button>` centres its content**.
+- **A card that looks like a control must be one.** Challenges rendered a full card and made a 60px pill the only target, so tapping the title did nothing — which reads as a broken screen. The card is the button now, with the pill kept as the visible affordance. **Only in the safe direction**: joining is the whole-card tap, leaving stays the small deliberate one. **Never a `<button>` inside a `<button>`** — invalid, and the inner one eats the outer's clicks.
 - **A bento is two columns, and its hierarchy must be real.** Book a Session leads each day with its *first* class full width (not the recommended one — a filter can empty that, and a day always has a first) and widens an odd tail, because a half-width hole reads as a missing class.
 - **On a non-compositing page (background tab, locked phone, this harness) neither `rAF` nor CSS transitions run** — **never gate visibility or correctness on an animation having run**, and count a DOM node rather than asking whether it is visible. **`AnimatePresence` never unmounts an exiting child**, which left `Modal` with invisible descendants at `pointer-events: auto` over the whole screen. Wrong twice each: **native pickers**, **focus rings**, **popovers in scrolling modals**.
 - **Never declare a component inside a render body.** For `set-state-in-effect`: a lazy initialiser, **compare against the previous prop during render** to reset on a change, or separate fetch from state application — and the rule follows a *directly called* async function into its setState, so wrap it in an IIFE. Shipped 3×, caught by lint each time.
