@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sparkle } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
+import Avatar from '../components/ui/Avatar';
 import { useLiveData } from '../hooks/useLiveData';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -583,15 +584,8 @@ export default function BookClass() {
                     <LineRow
                       key={t.id}
                       gutterWidth={46}
-                      gutter={
-                        <span className="grid place-items-center rounded-full" style={{
-                          width: 36, height: 36, fontSize: 13, fontWeight: 500,
-                          border: '1px solid var(--color-primary)', color: 'var(--color-primary-300)',
-                          background: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
-                        }}>
-                          {`${t.first_name[0] ?? ''}${t.last_name[0] ?? ''}`.toUpperCase()}
-                        </span>
-                      }
+                      // The coach's photo when they have one — this was initials only.
+                      gutter={<Avatar name={trainerName(t)} photoUrl={t.photo_url} size={36} />}
                       title={trainerName(t)}
                       meta={t.specialization ?? 'General training'}
                       action="Open times"

@@ -43,7 +43,7 @@ async (page) => {
   };
 
   const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
-    role: 'member', status: 'active', phone: '+639171112222', photo_url: null, created_at: iso(-120, 9, 0) };
+    role: 'member', status: 'active', phone: '+639171112222', photo_url: '/pwa-192x192.png', created_at: iso(-120, 9, 0) };
   const COACH = { id: 't1', first_name: 'Kenji', last_name: 'Ramos', email: 'kenji@corefitness-test.com',
     role: 'trainer', status: 'active', phone: null, photo_url: null, created_at: iso(-300, 9, 0) };
 

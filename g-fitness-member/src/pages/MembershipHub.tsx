@@ -1,3 +1,4 @@
+import Avatar from '../components/ui/Avatar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Minus } from '@phosphor-icons/react';
@@ -111,7 +112,6 @@ export default function MembershipHub() {
   }
 
   const term = membershipTerm(home.daysLeft, home.neverExpires);
-  const initials = home.fullName.split(/\s+/).map((w) => w[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   const termTotal = home.startDate && home.expiryDate
     ? Math.round((localDate(home.expiryDate).getTime() - localDate(home.startDate).getTime()) / 86_400_000)
@@ -134,14 +134,9 @@ export default function MembershipHub() {
 
       {/* ── Identity ── */}
       <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left" style={{ gap: 13 }}>
-        <span className="grid place-items-center rounded-full flex-none" style={{
-          width: 46, height: 46, fontSize: 15, fontWeight: 500,
-          border: '1px solid var(--color-primary)', color: 'var(--color-primary-300)',
-          background: 'color-mix(in srgb, var(--color-primary) 16%, transparent)',
-          boxShadow: '0 0 18px -8px var(--color-primary)',
-        }}>
-          {initials || '—'}
-        </span>
+        {/* The shared Avatar, so an uploaded photo shows. This was a hand-drawn
+            initials disc that never looked at `photo_url` at all. */}
+        <Avatar name={home.fullName} photoUrl={home.photoUrl} size={46} />
         <span className="min-w-0">
           <span className="block truncate" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{home.fullName}</span>
           <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
