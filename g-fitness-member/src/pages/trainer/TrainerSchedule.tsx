@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Clock, ChevronRight, X, MapPin, Users, Pencil } from 'lucide-react';
+import { ClockCountdown, MapPin, PencilSimple, Users, X } from '@phosphor-icons/react';
 import { SkeletonList } from '../../components/ui/Skeleton';
-import { panelStyle } from '../../components/ui/Card';
 import DateRail, { buildRail } from '../../components/ui/DateRail';
 import { listTrainerClasses, setClassCapacity } from '../../lib/api/classes';
 import { toast } from '../../components/ui/Toast';
@@ -14,24 +12,23 @@ import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { ClassRow } from '../../types/db';
 import { Page } from '../../components/ui/page';
+import { Eyebrow, Panel, ProgressBar, StatusPill, TextTabs } from '../../components/ui/noc';
 
 /**
  * The trainer's real class schedule, from `classes.trainer_id`.
  *
  * This screen used to carry a row of weekday chips labelled "Available days",
- * writing the comma-joined string on `trainer_profiles.availability`. It read
- * exactly like setting your bookable days and did nothing of the sort — no slot
- * is ever generated from it, so a trainer could tick Monday and Wednesday and
- * remain unbookable. Real hours live in `trainer_availability` (0015) and are
- * now edited on their own screen; what's left here is a summary that links to
- * it and tells the truth when it's empty.
+ * writing a string nothing read. Real hours live in `trainer_availability`
+ * (0015) and are edited on their own screen; what's left here is a summary that
+ * links to it and tells the truth when it's empty.
  *
  * Two views of the same rows, because they answer different questions. The
- * **week strip** answers "what does my week look like, am I free Thursday" —
- * which a flat list cannot show. The **agenda** answers "what am I teaching
- * next", which is what a trainer opens this for. A month grid would answer
- * neither well on a 375px screen: the cells come out around 45px, too small for
- * a class name, and with roughly one class a day most of the grid is empty.
+ * **date strip** answers "what does my fortnight look like, am I free Thursday";
+ * the **agenda** answers "what am I teaching next". A month grid would answer
+ * neither well on a 375px screen.
+ *
+ * Drawn in the member app's Nocturne style (2026-09-18): text tabs, the orb
+ * date strip, and classes as rows on the page rather than a card each.
  */
 
 /** Local calendar key. Never toISOString — that shifts to UTC near midnight. */
@@ -63,35 +60,31 @@ const LEVEL_LABEL: Record<string, string> = {
 /**
  * One class in the agenda.
  *
- * The old row was a generic ListRow: the same violet dumbbell tile on every
- * line, the time buried in a subtitle beside "120 min", and a right-hand
- * "4 capacity". Three problems with that. A schedule is scanned by **time**,
- * so the time has to be the anchor, not a detail. "120 min" makes the reader
- * work out when it ends. And capacity is the wrong number — a trainer wants to
- * know how many people are actually coming, which is a count of `bookings`, not
- * a ceiling on the class.
+ * A schedule is scanned by **time**, so the time is the anchor in the gutter;
+ * the end time is shown so nobody works out "120 min"; and the number is how
+ * many are *coming* — a count of `bookings` — not only the ceiling.
  *
  * `booked` is null when the booking query failed. That renders the ceiling
  * alone rather than "0 of 4", which would be an invented zero standing for
  * "unknown" on the one screen a trainer plans their day from.
  */
-function ClassRowCard({
+function ClassLine({
   cls,
   booked,
   isNext,
+  last,
   onCapacityChanged,
 }: {
   cls: ClassRow;
   booked: number | null;
   isNext: boolean;
+  last: boolean;
   onCapacityChanged: (id: string, capacity: number) => void;
 }) {
   /**
    * Editing the class size, which migration 0071 made a trainer's own decision.
-   *
-   * The gym sets the timetable; the person standing in the room knows how many
-   * of them fit. Only this one number is editable, and the database enforces
-   * that rather than trusting this screen.
+   * Only this one number is editable, and the database enforces that rather
+   * than trusting this screen.
    */
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(cls.capacity));
@@ -123,121 +116,110 @@ function ClassRowCard({
       setSaving(false);
     }
   };
-  const fill = booked == null ? 0 : Math.min(1, booked / Math.max(1, cls.capacity));
-  const accent = isNext ? 'var(--color-secondary)' : 'var(--color-primary)';
 
   const meta = [durationLabel(cls.duration_minutes), LEVEL_LABEL[cls.level] ?? cls.level].filter(Boolean);
 
   return (
-    <div
-      className="flex items-stretch gap-3 p-3 overflow-hidden"
-      style={{
-        ...panelStyle,
-        borderRadius: 'var(--radius-card)',
-        // Amber spine on the very next class. Everything on this screen is
-        // "coming up"; only one of them is next.
-        borderLeft: `3px solid ${accent}`,
-      }}
-    >
-      {/* Time column — the thing you scan down */}
-      <div className="flex flex-col items-end justify-start w-14 flex-shrink-0 pt-0.5">
-        <span className="flex items-baseline gap-0.5">
-          <span className="text-sm font-bold text-white leading-none">{from.clock}</span>
-          <span className="text-xs font-semibold leading-none" style={{ color: 'var(--color-text-muted)' }}>
-            {from.suffix}
-          </span>
-        </span>
-        <span className="text-xs mt-1 leading-none" style={{ color: 'var(--color-text-muted)' }}>
-          {to.clock} {to.suffix}
-        </span>
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-bold text-white truncate">{cls.name}</p>
-          {isNext && (
-            <span
-              className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0"
-              style={{ background: 'var(--color-secondary)', color: '#000' }}
-            >
-              Next
+    <div>
+      <div className="flex items-start" style={{ gap: 12, padding: '13px 0' }}>
+        {/* Time gutter — the thing you scan down */}
+        <div className="flex-none whitespace-nowrap" style={{ width: 62 }}>
+          <span className="flex items-baseline" style={{ gap: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1, color: isNext ? 'var(--color-secondary)' : 'var(--color-text-primary)' }}>
+              {from.clock}
             </span>
-          )}
+            <span style={{ fontSize: 12, lineHeight: 1, color: 'var(--color-text-muted)' }}>{from.suffix}</span>
+          </span>
+          <span className="block" style={{ fontSize: 12, marginTop: 5, lineHeight: 1, color: 'var(--color-text-muted)' }}>
+            {to.clock} {to.suffix}
+          </span>
         </div>
 
-        <p className="text-xs mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
-          style={{ color: 'var(--color-text-muted)' }}>
-          {meta.join(' · ')}
-          {cls.location && (
-            <span className="inline-flex items-center gap-0.5">
-              <MapPin size={10} /> {cls.location}
-            </span>
-          )}
-        </p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between" style={{ gap: 8 }}>
+            <p className="truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{cls.name}</p>
+            {/* Amber on the very next class. Everything here is "coming up";
+                only one of them is next. */}
+            {isNext && <StatusPill label="Next" tone="action" />}
+          </div>
 
-        {/* How full it is. A bar reads faster than "3/20" and still carries the
-            exact numbers beside it. */}
-        <div className="flex items-center gap-2 mt-2">
-          <span className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg)' }}>
-            <span
-              className="block h-full rounded-full"
-              style={{
-                width: `${fill * 100}%`,
-                background: full ? 'var(--color-secondary)' : 'var(--color-primary)',
-              }}
-            />
-          </span>
-          {editing ? (
-            <span className="flex items-center gap-1.5 flex-shrink-0">
-              <input
-                type="number"
-                inputMode="numeric"
-                value={draft}
-                min={Math.max(1, floor)}
-                autoFocus
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void save();
-                  if (e.key === 'Escape') { setDraft(String(cls.capacity)); setEditing(false); }
-                }}
-                className="w-14 h-7 px-2 rounded-lg text-xs font-semibold text-white text-center"
-                style={{
-                  background: 'var(--color-bg)',
-                  border: `1px solid ${valid ? 'var(--color-border)' : 'var(--color-secondary)'}`,
-                }}
-              />
-              <button onClick={() => void save()} disabled={!valid || saving}
-                className="h-7 px-2 rounded-lg text-xs font-bold disabled:opacity-40"
-                style={{ background: 'var(--color-secondary)', color: '#000' }}>
-                {saving ? '…' : 'Save'}
-              </button>
-            </span>
-          ) : (
-            /* Tappable, and it says so by looking like a control rather than a
-               label. Trainers were shown this number for a year and could not
-               change it. */
-            <button
-              onClick={() => { setDraft(String(cls.capacity)); setEditing(true); }}
-              className="text-xs font-semibold flex items-center gap-1 flex-shrink-0 px-1.5 py-0.5 rounded-md"
-              style={{
-                color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
-                border: '1px solid var(--color-border)',
-              }}
-            >
-              <Users size={11} />
-              {booked == null ? `${cls.capacity} places` : `${booked}/${cls.capacity}`}
-              <Pencil size={9} style={{ color: 'var(--color-text-muted)' }} />
-            </button>
-          )}
-        </div>
-        {editing && (
-          <p className="text-[12px] mt-1 text-right" style={{ color: 'var(--color-text-muted)' }}>
-            {booked != null && booked > 0
-              ? `At least ${booked} — that many are already booked in.`
-              : 'How many people fit in the room.'}
+          <p className="flex flex-wrap items-center" style={{ fontSize: 12, marginTop: 3, columnGap: 6, color: 'var(--color-text-secondary)' }}>
+            {meta.join(' · ')}
+            {cls.location && (
+              <span className="inline-flex items-center" style={{ gap: 3 }}>
+                <MapPin size={12} /> {cls.location}
+              </span>
+            )}
           </p>
-        )}
+
+          {/* How full it is: a bar, with the exact numbers beside it. */}
+          <div className="flex items-center" style={{ gap: 10, marginTop: 9 }}>
+            <div className="flex-1 min-w-0">
+              {booked != null
+                ? <ProgressBar fraction={booked / Math.max(1, cls.capacity)} tone={full ? 'action' : 'structure'} />
+                : <div style={{ height: 4, borderRadius: 2, background: 'var(--color-surface-high)' }} />}
+            </div>
+            {editing ? (
+              <span className="flex items-center flex-none" style={{ gap: 6 }}>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={draft}
+                  min={Math.max(1, floor)}
+                  autoFocus
+                  aria-label="Class size"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void save();
+                    if (e.key === 'Escape') { setDraft(String(cls.capacity)); setEditing(false); }
+                  }}
+                  className="text-center"
+                  style={{
+                    width: 56, height: 32, borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    color: 'var(--color-text-primary)', background: 'var(--color-surface)',
+                    border: `1px solid ${valid ? 'var(--color-hairline)' : 'var(--color-secondary)'}`,
+                  }}
+                />
+                <button onClick={() => void save()} disabled={!valid || saving}
+                  className="noc-press disabled:opacity-40"
+                  style={{
+                    height: 32, padding: '0 11px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
+                    color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
+                    background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
+                  }}>
+                  {saving ? '…' : 'Save'}
+                </button>
+              </span>
+            ) : (
+              /* Tappable, and it says so by looking like a control rather than a
+                 label. Trainers were shown this number for a year and could not
+                 change it. */
+              <button
+                onClick={() => { setDraft(String(cls.capacity)); setEditing(true); }}
+                className="flex-none inline-flex items-center noc-press"
+                aria-label={`Change class size, now ${cls.capacity}`}
+                style={{
+                  gap: 5, padding: '5px 9px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
+                  color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+                  border: '1px solid var(--color-hairline)',
+                }}
+              >
+                <Users size={13} />
+                {booked == null ? `${cls.capacity} places` : `${booked}/${cls.capacity}`}
+                <PencilSimple size={11} style={{ color: 'var(--color-text-muted)' }} />
+              </button>
+            )}
+          </div>
+          {editing && (
+            <p className="text-right" style={{ fontSize: 12, marginTop: 5, color: 'var(--color-text-muted)' }}>
+              {booked != null && booked > 0
+                ? `At least ${booked} — that many are already booked in.`
+                : 'How many people fit in the room.'}
+            </p>
+          )}
+        </div>
       </div>
+      {!last && <div className="hair" />}
     </div>
   );
 }
@@ -263,11 +245,8 @@ export default function TrainerSchedule() {
   const [classes, setClasses] = useState<ClassRow[]>(cached?.classes ?? []);
 
   /**
-   * Reflects a saved class size without refetching the whole screen.
-   *
-   * The write already succeeded — re-reading three tables to learn a number we
-   * just set would flash the agenda for nothing, and on a phone that is the
-   * difference between the change feeling instant and feeling broken.
+   * Reflects a saved class size without refetching the whole screen — the write
+   * already succeeded, and re-reading three tables would flash the agenda.
    */
   const applyCapacity = (id: string, capacity: number) =>
     setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, capacity } : c)));
@@ -327,14 +306,8 @@ export default function TrainerSchedule() {
 
   if (loading) return <SkeletonList count={4} />;
 
-  // Grouped by CALENDAR DATE, not weekday name.
-  //
-  // This screen used to bucket by weekday — every Monday session, whatever week
-  // it belonged to, landed under one "MONDAY" heading, and the row showed only
-  // a time. Four separate occurrences of a weekly class then rendered as four
-  // identical lines, which reads as a duplication bug rather than as a
-  // schedule. The date is the thing that distinguishes them, so the date is
-  // what groups them.
+  // Grouped by CALENDAR DATE, not weekday name — four occurrences of a weekly
+  // class under one "MONDAY" heading read as a duplication bug.
   const now = Date.now();
   const scheduled = classes.filter((c) => c.scheduled_at);
   const upcoming = scheduled
@@ -374,8 +347,7 @@ export default function TrainerSchedule() {
   // silently would lose them — the gym needs to notice and set a time.
   const undated = classes.filter((c) => !c.scheduled_at);
 
-  // Fourteen days from today, via the shared rail so the member's Book a
-  // Session calendar and this one cannot drift apart.
+  // Fourteen days from today.
   const strip = buildRail(14, dayKeyOf, (key) =>
     upcoming.filter((c) => dayKeyOf(new Date(c.scheduled_at as string)) === key).length
   );
@@ -385,172 +357,125 @@ export default function TrainerSchedule() {
     const [eh, em] = a.end_time.split(':').map(Number);
     return sum + Math.max(0, Math.floor((eh * 60 + em - (sh * 60 + sm)) / a.slot_minutes));
   }, 0);
+  const hourDays = new Set(availability.map((a) => a.day_of_week)).size;
+  const noHours = availability.length === 0;
 
   return (
     <Page>
-      <div>
-        <h1 className="display text-xl text-white">My Schedule</h1>
-        {/* "12 classes assigned to you" counted every occurrence ever, past
-            included, which is not a number a trainer can act on. */}
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {upcoming.length === 0
-            ? 'Nothing scheduled ahead'
-            : `${upcoming.length} ${upcoming.length === 1 ? 'class' : 'classes'} coming up`}
-        </p>
-      </div>
+      {/* "12 classes assigned to you" counted every occurrence ever, past
+          included, which is not a number a trainer can act on. */}
+      <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+        {upcoming.length === 0
+          ? 'Nothing scheduled ahead'
+          : `${upcoming.length} ${upcoming.length === 1 ? 'class' : 'classes'} coming up`}
+      </p>
 
-      {error && (
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>{error}</p>
-        </div>
-      )}
+      {error && <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>}
 
       {/* Bookable hours — a summary, not an editor. Amber when unset, because
-          "no hours" means members literally cannot book this trainer, and that
-          is worth interrupting for. */}
-      <button
-        onClick={() => navigate('/trainer/availability')}
-        className="w-full p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-        style={
-          availability.length === 0
-            ? {
-                background: 'var(--color-secondary-light)',
-                border: '1px solid rgba(245,158,11,0.30)',
-                borderRadius: 'var(--radius-panel)',
-              }
-            : { ...panelStyle, borderRadius: 'var(--radius-panel)' }
-        }
-      >
-        <span
-          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background: availability.length === 0 ? 'var(--color-secondary)' : 'var(--color-primary-light)',
-          }}
-        >
-          <Clock
-            size={19}
-            style={{ color: availability.length === 0 ? '#000' : 'var(--color-primary)' }}
-          />
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-sm font-semibold text-white">Bookable hours</span>
-          <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-            {availability.length === 0
-              ? 'Not set — members can’t book you 1-on-1 yet'
-              : `${slotsPerWeek} ${slotsPerWeek === 1 ? 'slot' : 'slots'} a week across ${
-                  new Set(availability.map((a) => a.day_of_week)).size
-                } ${new Set(availability.map((a) => a.day_of_week)).size === 1 ? 'day' : 'days'}`}
+          "no hours" means members literally cannot book this trainer. */}
+      <Panel glow={noHours ? 'action' : 'structure'} onClick={() => navigate('/trainer/availability')}>
+        <div className="flex items-center" style={{ gap: 12 }}>
+          <ClockCountdown size={22} weight="duotone" className="flex-none"
+            style={{ color: noHours ? 'var(--color-secondary)' : 'var(--color-primary-300)' }} />
+          <div className="flex-1 min-w-0">
+            <Eyebrow tone={noHours ? 'action' : undefined}>Bookable hours</Eyebrow>
+            <p style={{ fontSize: 14, marginTop: 4, color: 'var(--color-text-primary)' }}>
+              {noHours
+                ? 'Not set — members can’t book you 1-on-1 yet'
+                : `${slotsPerWeek} ${slotsPerWeek === 1 ? 'slot' : 'slots'} a week across ${hourDays} ${hourDays === 1 ? 'day' : 'days'}`}
+            </p>
+          </div>
+          <span className="flex-none" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+            {noHours ? 'Set' : 'Edit'}
           </span>
-        </span>
-        <ChevronRight size={18} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-      </button>
+        </div>
+      </Panel>
 
       {/* Upcoming vs past. A trainer opening this wants "what am I teaching
-          next", not a wall of history sorted by weekday. */}
+          next", not a wall of history. */}
       {classes.length > 0 && (
-        <div className="grid grid-cols-2 gap-1 p-1"
-          style={{ ...panelStyle, borderRadius: 'var(--radius-btn)' }} role="tablist">
-          {([['upcoming', 'Upcoming', upcoming.length], ['past', 'Past', past.length]] as const).map(
-            ([id, label, count]) => (
-              <button key={id} onClick={() => { setTab(id); setSelectedDay(null); }} role="tab" aria-selected={tab === id}
-                className="py-2 rounded-full font-semibold text-xs transition-colors"
-                style={{
-                  background: tab === id ? 'var(--color-primary)' : 'transparent',
-                  color: tab === id ? '#fff' : 'var(--color-text-muted)',
-                }}>
-                {label} ({count})
-              </button>
-            )
-          )}
-        </div>
+        <TextTabs
+          label="Classes"
+          tabs={[
+            { id: 'upcoming', label: `Upcoming (${upcoming.length})` },
+            { id: 'past', label: `Past (${past.length})` },
+          ]}
+          active={tab}
+          onChange={(id) => { setTab(id); setSelectedDay(null); }}
+        />
       )}
 
-      {/* The next two weeks at a glance. Dots, not names — at this width a name
-          would truncate to nothing useful, and the count is the thing you scan
-          for. Tapping filters the agenda below rather than opening a day view,
-          so the detail never leaves the screen you're already on. */}
+      {/* The next two weeks at a glance. Tapping filters the agenda below. */}
       {tab === 'upcoming' && upcoming.length > 0 && (
         <DateRail days={strip} selected={selectedDay} onSelect={setSelectedDay} />
       )}
 
       {selectedDay && (
-        <div className="flex items-center justify-between gap-3 px-1">
-          <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+        <div className="flex items-center justify-between" style={{ gap: 12 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
             {visible.length === 0
               ? 'Nothing on this day'
               : `${visible.length} ${visible.length === 1 ? 'class' : 'classes'} on this day`}
           </p>
           <button
             onClick={() => setSelectedDay(null)}
-            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+            className="inline-flex items-center noc-press"
+            style={{ gap: 5, fontSize: 12.5, color: 'var(--color-primary-300)' }}
           >
-            <X size={11} /> Show all
+            <X size={12} /> Show all
           </button>
         </div>
       )}
 
       {classes.length === 0 && !error ? (
-        <div className="p-8 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          <Dumbbell size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="text-sm font-semibold text-white">No classes assigned</p>
-          {/* This used to say "Class scheduling isn't built yet". It has been
-              built for some time; a stale apology reads as a broken feature. */}
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+        <div className="text-center" style={{ padding: '32px 12px' }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>No classes assigned</p>
+          <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
             The gym schedules classes and assigns them to a trainer. Yours will appear here once
             the front desk puts you on one.
           </p>
         </div>
       ) : visible.length === 0 && !selectedDay ? (
-        <div className="p-8 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          <Dumbbell size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="text-sm font-semibold text-white">
+        <div className="text-center" style={{ padding: '32px 12px' }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
             {tab === 'upcoming' ? 'Nothing coming up' : 'No past classes'}
           </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>
             {tab === 'upcoming'
               ? 'Every class you teach has already happened. The gym schedules new ones.'
               : 'Classes move here once their time has passed.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="flex flex-col noc-rows" style={{ gap: 18 }}>
           {groups.map(([label, items], gi) => (
-            <motion.div key={label + gi}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(gi * 0.04, 0.25) }}>
-              {/* Day heading carries the date as well as the word. "Tomorrow"
-                  alone forces the reader to work out which date that is, and
-                  the bare dates below it had no anchor to count from. */}
-              <div className="flex items-baseline justify-between gap-3 mb-2">
-                <p className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: 'var(--color-text-secondary)' }}>
-                  {label}
-                </p>
-                <span className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-                {/* "Tomorrow" without a date makes the reader work out which
-                    date that is before the plain dates below mean anything.
-                    Only shown where the label isn't already the date. */}
+            <section key={label + gi}>
+              {/* The day heading carries the date as well as the word where the
+                  word is not already the date. */}
+              <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
+                <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{label}</h2>
                 {(label === 'Today' || label === 'Tomorrow') && (
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {new Date(items[0].scheduled_at as string).toLocaleDateString('en-US', {
                       weekday: 'short', month: 'short', day: 'numeric',
                     })}
-                  </p>
+                  </span>
                 )}
               </div>
-              <div className="space-y-2">
-                {items.map((cls) => (
-                  <ClassRowCard
+              <div style={{ marginTop: 2 }}>
+                {items.map((cls, i) => (
+                  <ClassLine
                     key={cls.id}
                     cls={cls}
                     booked={bookedByClass ? bookedByClass.get(cls.id) ?? 0 : null}
                     isNext={tab === 'upcoming' && cls.id === upcoming[0]?.id}
+                    last={i === items.length - 1}
                     onCapacityChanged={applyCapacity}
                   />
                 ))}
               </div>
-            </motion.div>
+            </section>
           ))}
         </div>
       )}
@@ -558,18 +483,14 @@ export default function TrainerSchedule() {
       {/* Surfaced rather than dropped: a class with no time can never appear on
           a dated schedule, and silently hiding it means nobody fixes it. */}
       {undated.length > 0 && (
-        <div className="p-4" style={{
-          background: 'var(--color-secondary-light)',
-          border: '1px solid rgba(245,158,11,0.30)',
-          borderRadius: 'var(--radius-panel)',
-        }}>
-          <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>
+        <Panel glow="action">
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
             {undated.length} {undated.length === 1 ? 'class has' : 'classes have'} no time set
           </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
             {undated.map((c) => c.name).join(', ')} — ask the front desk to schedule {undated.length === 1 ? 'it' : 'them'}.
           </p>
-        </div>
+        </Panel>
       )}
     </Page>
   );

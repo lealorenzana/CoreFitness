@@ -44,7 +44,7 @@ function greetingFor(now: Date): string {
  * A square icon control that matches the bell: 34px visible, 44px to a thumb.
  * Module scope — never declared inside the header's render body.
  */
-function IconButton({
+export function IconButton({
   label, onClick, children, badge,
 }: {
   label: string;

@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Clock, CalendarClock, AlertCircle, X } from 'lucide-react';
+import { Plus, Trash, WarningCircle } from '@phosphor-icons/react';
 import { SkeletonList } from '../../components/ui/Skeleton';
-import { panelStyle } from '../../components/ui/Card';
 import { Field, Select } from '../../components/ui/Field';
+import GlassSheet from '../../components/ui/GlassSheet';
+import Modal from '../../components/ui/Modal';
+import { Chip, Eyebrow, NocButton, Panel } from '../../components/ui/noc';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { getCurrentTrainerId } from '../../services/trainerService';
@@ -16,7 +15,7 @@ import {
   deleteAvailability,
   type TrainerAvailabilityRow,
 } from '../../lib/api/trainerAvailability';
-import { Page } from '../../components/ui/page';
+import { Page, PageTitle } from '../../components/ui/page';
 
 /**
  * The trainer's bookable working hours — the rows a member's booking screen
@@ -76,8 +75,6 @@ const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
 });
 
 export default function TrainerAvailability() {
-  const navigate = useNavigate();
-
   const [trainerId, setTrainerId] = useState('');
   const [rows, setRows] = useState<TrainerAvailabilityRow[]>([]);
   const [bookedDows, setBookedDows] = useState<Set<number>>(new Set());
@@ -191,22 +188,7 @@ export default function TrainerAvailability() {
 
   return (
     <Page>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/trainer/schedule')}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          aria-label="Back to schedule"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Bookable hours</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            When members can book you 1-on-1
-          </p>
-        </div>
-      </div>
+      <PageTitle back fallback="/trainer/schedule" title="Bookable hours" subtitle="When members can book you 1-on-1" />
 
       {loading ? (
         <SkeletonList count={3} />
@@ -215,277 +197,151 @@ export default function TrainerAvailability() {
           {/* The number that matters, derived rather than stored. Zero windows
               means zero slots, and the screen says so plainly instead of
               looking like an empty list that might still work. */}
-          <div className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  Open 1-on-1 slots each week
-                </p>
-                <p className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="display text-2xl text-white">{totalSlots}</span>
-                  <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                    {totalSlots === 1 ? 'slot' : 'slots'}
-                  </span>
-                </p>
-              </div>
-              <span
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-primary-light)' }}
-              >
-                <CalendarClock size={20} style={{ color: 'var(--color-primary)' }} />
+          <Panel glow={totalSlots === 0 ? 'action' : 'structure'}>
+            <Eyebrow tone={totalSlots === 0 ? 'action' : undefined}>Open 1-on-1 slots each week</Eyebrow>
+            <p className="flex items-baseline" style={{ gap: 7, marginTop: 6 }}>
+              <span style={{
+                fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1,
+                letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)',
+              }}>
+                {totalSlots}
               </span>
-            </div>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{totalSlots === 1 ? 'slot' : 'slots'}</span>
+            </p>
+            <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
               {totalSlots === 0
                 ? 'Members cannot book a session with you until you add hours here.'
                 : 'A slot disappears from the member’s booking screen once it is taken or clashes with a class you teach.'}
             </p>
-          </div>
+          </Panel>
 
           {rows.length === 0 ? (
-            <div className="p-8 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-              <Clock size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-              <p className="text-sm font-semibold text-white">No hours set</p>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            <div className="text-center" style={{ padding: '24px 12px' }}>
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>No hours set</p>
+              <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                 Add the times you are free to coach. Members pick from those, so nothing gets booked
                 outside them.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {byDay.map(([dow, items], gi) => (
-                <motion.div
-                  key={dow}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(gi * 0.04, 0.2) }}
-                >
-                  <p
-                    className="text-xs font-semibold uppercase tracking-wider mb-2"
-                    style={{ color: 'var(--color-text-muted)' }}
-                  >
+            <div className="flex flex-col noc-rows" style={{ gap: 16 }}>
+              {byDay.map(([dow, items]) => (
+                <section key={dow}>
+                  <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                     {DAY_NAMES[dow]}
-                  </p>
-                  <div className="space-y-2">
-                    {items.map((row) => (
-                      <div
-                        key={row.id}
-                        className="p-3.5 flex items-center gap-3"
-                        style={{ ...panelStyle, borderRadius: 'var(--radius-card)' }}
-                      >
-                        <span
-                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--color-primary-light)' }}
-                        >
-                          <Clock size={17} style={{ color: 'var(--color-primary)' }} />
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white">
-                            {timeLabel(row.start_time)} – {timeLabel(row.end_time)}
-                          </p>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                            {slotsIn(row)} × {row.slot_minutes} min
-                          </p>
+                  </h2>
+                  <div style={{ marginTop: 2 }}>
+                    {items.map((row, i) => (
+                      <div key={row.id}>
+                        <div className="flex items-center" style={{ gap: 12, padding: '12px 0' }}>
+                          <div className="flex-1 min-w-0">
+                            <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                              {timeLabel(row.start_time)} – {timeLabel(row.end_time)}
+                            </p>
+                            <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
+                              {slotsIn(row)} × {row.slot_minutes} min
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setConfirmDelete(row)}
+                            className="flex-none grid place-items-center noc-press"
+                            style={{
+                              width: 36, height: 36, borderRadius: 8,
+                              border: '1px solid var(--color-hairline)', color: 'var(--color-text-secondary)',
+                            }}
+                            aria-label={`Remove ${timeLabel(row.start_time)} to ${timeLabel(row.end_time)} on ${DAY_NAMES[dow]}`}
+                          >
+                            <Trash size={16} />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setConfirmDelete(row)}
-                          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
-                          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
-                          aria-label={`Remove ${timeLabel(row.start_time)} to ${timeLabel(row.end_time)} on ${DAY_NAMES[dow]}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {i < items.length - 1 && <div className="hair" />}
                       </div>
                     ))}
                   </div>
-                </motion.div>
+                </section>
               ))}
             </div>
           )}
 
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full h-12 rounded-full font-semibold text-sm text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            <Plus size={17} /> Add hours
-          </button>
+          <NocButton variant="action" className="w-full" icon={<Plus size={16} weight="bold" />} onClick={() => setShowForm(true)}>
+            Add hours
+          </NocButton>
         </>
       )}
 
-      {/* Add form.
-          Portalled to #modal-root rather than rendered in place: TrainerLayout's
-          <main> is `relative` and scrolls, so an `absolute inset-0` overlay
-          declared here would be clipped to the scrolling area and sit *under*
-          the bottom nav. */}
-      {showForm && createPortal(
-      <AnimatePresence>
-        {showForm && (
-          <div className="absolute inset-0 flex items-end justify-center pointer-events-auto">
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/75"
-              onClick={() => setShowForm(false)}
-            />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="relative w-full p-5 space-y-4"
-              style={{
-                background: 'var(--color-surface-raised)',
-                borderTop: '1px solid var(--color-border)',
-                borderTopLeftRadius: 'var(--radius-panel)',
-                borderTopRightRadius: 'var(--radius-panel)',
-              }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="display text-lg text-white">Add hours</h2>
-                <button
-                  onClick={() => setShowForm(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}
-                  aria-label="Close"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+      {/* Add form — the app's glass sheet, portalled over the whole shell. */}
+      <GlassSheet
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Add hours"
+        subtitle="A window members can book you in"
+        footer={
+          <NocButton variant="fill" className="w-full" onClick={handleAdd} disabled={saving}>
+            {saving ? 'Adding…' : 'Add hours'}
+          </NocButton>
+        }
+      >
+        <div className="flex flex-col" style={{ gap: 16 }}>
+          <Field label="Day" as="div">
+            <div className="flex flex-wrap" style={{ gap: 7, marginTop: 6 }}>
+              {[1, 2, 3, 4, 5, 6, 0].map((dow) => (
+                <Chip key={dow} label={DAY_SHORT[dow]} on={Number(form.day) === dow}
+                  onClick={() => setForm({ ...form, day: String(dow) })} />
+              ))}
+            </div>
+          </Field>
 
-              <Field label="Day" as="div">
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
-                    const selected = Number(form.day) === dow;
-                    return (
-                      <button
-                        key={dow}
-                        type="button"
-                        onClick={() => setForm({ ...form, day: String(dow) })}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold active:scale-95 transition-transform"
-                        style={{
-                          background: selected ? 'var(--color-primary)' : 'var(--color-bg)',
-                          color: selected ? '#fff' : 'var(--color-text-muted)',
-                          border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                        }}
-                      >
-                        {DAY_SHORT[dow]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="From">
-                  <Select value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })}>
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>{timeLabel(`${t}:00`)}</option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Until">
-                  <Select value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })}>
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>{timeLabel(`${t}:00`)}</option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-
-              <Field label="Session length" hint="How long one booking with you runs.">
-                <Select value={form.slot} onChange={(e) => setForm({ ...form, slot: e.target.value })}>
-                  <option value="30">30 minutes</option>
-                  <option value="45">45 minutes</option>
-                  <option value="60">1 hour</option>
-                  <option value="90">1 hour 30 minutes</option>
-                </Select>
-              </Field>
-
-              <button
-                onClick={handleAdd}
-                disabled={saving}
-                className="w-full h-12 rounded-full font-semibold text-sm text-white disabled:opacity-50"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                {saving ? 'Adding…' : 'Add hours'}
-              </button>
-            </motion.div>
+          <div className="grid grid-cols-2" style={{ gap: 12 }}>
+            <Field label="From">
+              <Select value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })}>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{timeLabel(`${t}:00`)}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Until">
+              <Select value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })}>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{timeLabel(`${t}:00`)}</option>
+                ))}
+              </Select>
+            </Field>
           </div>
-        )}
-      </AnimatePresence>,
-      document.getElementById('modal-root')!
-      )}
 
-      {/* Delete confirmation */}
-      {confirmDelete && createPortal(
-      <AnimatePresence>
-        {confirmDelete && (
-          <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80"
-              onClick={() => setConfirmDelete(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative p-5 w-full max-w-[300px]"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-panel)',
-                boxShadow: 'var(--shadow-panel)',
-              }}
-            >
-              <h3 className="display text-lg text-white mb-1">Remove these hours?</h3>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                {DAY_NAMES[confirmDelete.day_of_week]}, {timeLabel(confirmDelete.start_time)} –{' '}
-                {timeLabel(confirmDelete.end_time)}. Members will no longer see these slots.
-              </p>
+          <Field label="Session length" hint="How long one booking with you runs.">
+            <Select value={form.slot} onChange={(e) => setForm({ ...form, slot: e.target.value })}>
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="90">1 hour 30 minutes</option>
+            </Select>
+          </Field>
+        </div>
+      </GlassSheet>
 
-              {/* Deleting a window does not cancel what is already booked in it.
-                  Saying so up front avoids a trainer assuming a session went
-                  away and not turning up for it. */}
-              {bookedDows.has(confirmDelete.day_of_week) && (
-                <div
-                  className="flex items-start gap-2 mt-3 p-2.5"
-                  style={{
-                    background: 'var(--color-secondary-light)',
-                    border: '1px solid rgba(245,158,11,0.30)',
-                    borderRadius: 'var(--radius-card)',
-                  }}
-                >
-                  <AlertCircle size={14} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                    You already have a session booked on a {DAY_SHORT[confirmDelete.day_of_week]}. It stays
-                    booked — cancel it from Bookings if you can’t make it.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-5">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 h-11 rounded-full font-semibold text-sm"
-                  style={{
-                    background: 'var(--color-bg)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  Keep
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 h-11 rounded-full font-semibold text-sm text-black"
-                  style={{ background: 'var(--color-secondary)' }}
-                >
-                  Remove
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>,
-      document.getElementById('modal-root')!
-      )}
+      {/* Delete confirmation — the shared glass Modal. */}
+      <Modal
+        isOpen={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        title="Remove these hours"
+        subtitle={confirmDelete
+          ? `${DAY_NAMES[confirmDelete.day_of_week]}, ${timeLabel(confirmDelete.start_time)} – ${timeLabel(confirmDelete.end_time)}. Members will no longer see these slots.`
+          : undefined}
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        onConfirm={() => { if (confirmDelete) void handleDelete(confirmDelete); }}
+      >
+        {/* Deleting a window does not cancel what is already booked in it.
+            Saying so up front avoids a trainer assuming a session went away
+            and not turning up for it. */}
+        {confirmDelete && bookedDows.has(confirmDelete.day_of_week) ? (
+          <p className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+            <WarningCircle size={16} className="flex-none" style={{ color: 'var(--color-secondary)', marginTop: 1 }} />
+            You already have a session booked on a {DAY_SHORT[confirmDelete.day_of_week]}. It stays
+            booked — cancel it from Bookings if you can’t make it.
+          </p>
+        ) : <span />}
+      </Modal>
     </Page>
   );
 }

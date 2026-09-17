@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 /**
  * A horizontal strip of dates with a load indicator on each — the app's
  * "calendar", and deliberately not a month grid.
@@ -49,104 +47,76 @@ export function buildRail(
   });
 }
 
+/**
+ * Drawn in the orb language of the member app's week marks and Train matrix
+ * (Nocturne): frosted glass for an empty day, lavender glass for a day with
+ * something on, the turning gradient ring for today, the violet orb for the
+ * chosen day. Dots, not names — at this width a name truncates to nothing.
+ */
 export default function DateRail({
   days,
   selected,
   onSelect,
-  /** Colour of the load dots. Amber reads as "available", violet as "booked". */
-  tone = 'secondary',
 }: {
   days: RailDay[];
   selected: string | null;
   onSelect: (key: string | null) => void;
-  tone?: 'secondary' | 'primary';
 }) {
-  const dot = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
-
   return (
-    <div className="-mx-1">
-      <div className="flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-hide">
-        {days.map(({ key, date, count }, i) => {
-          const isToday = i === 0;
-          const isSelected = selected === key;
-          const has = count > 0;
-          const month = date.getDate() === 1 || i === 0;
+    <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 7, margin: '0 calc(var(--gutter) * -1)', padding: '2px var(--gutter) 4px' }}>
+      {days.map(({ key, date, count }, i) => {
+        const isToday = i === 0;
+        const isSelected = selected === key;
+        const has = count > 0;
+        const month = date.getDate() === 1 || i === 0;
+        const cls = [
+          'orb-cell flex-none flex flex-col items-center noc-press',
+          isSelected ? 'orb-cell--on' : isToday ? 'orb-cell--ring orb-spin' : has ? 'orb-cell--busy' : '',
+        ].join(' ');
 
-          return (
-            <motion.button
-              key={key}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.02, 0.2) }}
-              onClick={() => onSelect(isSelected ? null : key)}
-              aria-pressed={isSelected}
-              aria-label={date.toLocaleDateString('en-US', {
-                weekday: 'long', month: 'long', day: 'numeric',
-              })}
-              className="flex-shrink-0 w-12 py-2 rounded-2xl flex flex-col items-center gap-1 active:scale-95 transition-transform"
-              style={{
-                background: isSelected
-                  ? 'var(--color-primary)'
-                  : has
-                    ? 'var(--color-surface-high)'
-                    : 'var(--color-bg)',
-                border: `1px solid ${
-                  isSelected
-                    ? 'var(--color-primary)'
-                    : isToday
-                      ? 'var(--color-secondary)'
-                      : 'var(--color-border)'
-                }`,
-                opacity: has || isToday || isSelected ? 1 : 0.5,
-              }}
-            >
-              <span
-                className="text-xs font-semibold leading-none"
-                style={{
-                  color: isSelected ? '#fff' : isToday ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                }}
-              >
-                {DAY_LETTERS[date.getDay()]}
+        return (
+          <button
+            key={key}
+            onClick={() => onSelect(isSelected ? null : key)}
+            aria-pressed={isSelected}
+            aria-label={date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            className={cls}
+            style={{ width: 46, padding: '8px 0 7px', gap: 4, borderRadius: 12 }}
+          >
+            <span style={{
+              fontSize: 12, lineHeight: 1, fontWeight: 600,
+              color: isSelected ? '#fff' : isToday ? 'var(--color-secondary)' : 'var(--color-text-muted)',
+            }}>
+              {DAY_LETTERS[date.getDay()]}
+            </span>
+            <span style={{
+              fontSize: 15, lineHeight: 1, fontWeight: 700,
+              color: isSelected ? '#fff' : has || isToday ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+            }}>
+              {date.getDate()}
+            </span>
+            {/* The month only where it changes, so a strip crossing into a new
+                month doesn't silently restart at 1. */}
+            {month ? (
+              <span style={{ fontSize: 12, lineHeight: 1, color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--color-text-muted)' }}>
+                {date.toLocaleDateString('en-US', { month: 'short' })}
               </span>
-              <span
-                className="text-sm font-bold leading-none"
-                style={{ color: isSelected || has ? '#fff' : 'var(--color-text-muted)' }}
-              >
-                {date.getDate()}
+            ) : (
+              <span className="flex items-center" style={{ height: 12, gap: 3 }}>
+                {count === 0 ? null : count <= 3 ? (
+                  Array.from({ length: count }, (_, n) => (
+                    <span key={n} className="orb-dot" style={{ width: 5, height: 5 }} />
+                  ))
+                ) : (
+                  <span style={{ fontSize: 12, lineHeight: 1, fontWeight: 700, color: isSelected ? '#fff' : 'var(--color-primary-300)' }}>
+                    {count}
+                  </span>
+                )}
               </span>
-              {/* The month only where it changes, so a strip crossing into
-                  September doesn't silently restart at 1. */}
-              {month ? (
-                <span
-                  className="text-xs leading-none"
-                  style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : 'var(--color-text-muted)' }}
-                >
-                  {date.toLocaleDateString('en-US', { month: 'short' })}
-                </span>
-              ) : (
-                <span className="h-1.5 flex items-center gap-0.5">
-                  {count === 0 ? null : count <= 3 ? (
-                    Array.from({ length: count }, (_, n) => (
-                      <span
-                        key={n}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: isSelected ? '#fff' : dot }}
-                      />
-                    ))
-                  ) : (
-                    <span
-                      className="text-xs font-bold leading-none"
-                      style={{ color: isSelected ? '#fff' : dot }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </span>
-              )}
-            </motion.button>
-          );
-        })}
-      </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

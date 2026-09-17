@@ -333,9 +333,14 @@ app afterwards. Two specifics worth keeping in mind:
 
 ## Navigation
 
-The bottom nav is a floating pill (`.dock`) with a raised amber centre button opening the check-in
-QR. `overflow: visible` on `.dock` is load-bearing — a stray `overflow: hidden` clips the button's
-top half with no other symptom. Trainers get the same pill without the centre button.
+Both roles use an **in-flow bar**, never a floating dock (the `.dock` pill and its CSS are gone).
+Members: `TabBar` — Today · Train · You · More and the check-in block. Trainers (2026-09-18):
+`TrainerBottomNav` — Home · Members · Schedule · Bookings · Profile, drawn the same way, no check-in.
+Each tab root gets a header (`TabHeader` / `TrainerTabHeader`): greeting and photo on the first tab,
+title with the bell and Settings elsewhere, then the eyebrow and a rail of plain icon pills.
+`memberNav.ts` and `trainerNav.ts` own the tabs, the path rows that light them, and the rails.
+Trainer pages are built from the same kit (`noc.tsx`, `Field`), their overlays are `GlassSheet` or
+`Modal`, and `DateRail` uses the orb cells of the member week marks.
 
 The trainers directory **lost its nav tab** to make room. It is reached from Home's shortcuts and
 the Book screen's "Coaches" button. If you remove both, put the tab back — a routed page nothing

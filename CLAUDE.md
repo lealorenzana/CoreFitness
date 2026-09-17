@@ -106,8 +106,8 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
   [TabBar.tsx](g-fitness-member/src/components/layout/TabBar.tsx). The bar is **in flow, not floating**:
   `<main>` ends where the bar begins (`--bar-height`), so nothing scrolls under it and `--dock-clear` is
   breathing room only. `memberNav.ts` owns tabs, rails and the More sheet; `TAB_PATHS` needs **one row
-  per tab** or the wrong tab lights. The member dock and floating chat head are **gone**; `.dock*` CSS
-  survives for **TrainerBottomNav only**.
+  per tab** or the wrong tab lights. **The trainer shell mirrors it** (2026-09-18): `trainerNav.ts`,
+  `TrainerTabHeader`, an in-flow five-tab bar; the `.dock*` CSS is deleted. Sheets use `GlassSheet`.
 - **Pages portal into roots that are `pointer-events: none`**: the always-mounted wrapper owns
   `pointerEvents: open ? 'auto' : 'none'` — **never** on an `AnimatePresence` child, which keeps its last
   props while exiting and eats every tap (shipped 4×). Overlays portal, never `absolute` inside `<main>`.

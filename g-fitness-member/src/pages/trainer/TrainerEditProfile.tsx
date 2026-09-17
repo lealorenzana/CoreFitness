@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Save, Clock, ChevronRight } from 'lucide-react';
 import Avatar from '../../components/ui/Avatar';
 import { Field, TextInput, TextArea } from '../../components/ui/Field';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import CredentialsSection from '../../components/ui/CredentialsSection';
-import { panelStyle } from '../../components/ui/Card';
 import { getMyProfile, updateMyProfile } from '../../lib/api/profiles';
 import { getTrainer, updateTrainerProfile } from '../../lib/api/trainers';
 import { uploadMyAvatar, removeMyAvatar } from '../../lib/api/avatars';
 import { getCurrentTrainerId } from '../../services/trainerService';
-import { Page } from '../../components/ui/page';
+import { Page, PageTitle } from '../../components/ui/page';
+import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
 
 /**
  * Trainer self-service profile editing.
@@ -175,79 +173,57 @@ export default function TrainerEditProfile() {
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3">
-        <button onClick={() => navigate('/trainer/profile')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div>
-          <h1 className="display text-xl text-white">Edit profile</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            What members see on your profile
+      <PageTitle back fallback="/trainer/profile" title="Edit profile" subtitle="What members see on your profile" />
+
+      {/* Photo — the member Edit profile's layout. */}
+      <section className="flex items-center" style={{ gap: 16 }}>
+        <label htmlFor="trainer-photo" className="flex-none cursor-pointer" style={{ opacity: photoBusy ? 0.5 : 1 }}
+          aria-label="Choose a profile photo">
+          <Avatar name={fullName} photoUrl={photoUrl} size={76} />
+        </label>
+        <input id="trainer-photo" type="file" accept="image/jpeg,image/png,image/webp"
+          onChange={handlePhotoPick} disabled={photoBusy} className="hidden" />
+        <div className="flex-1 min-w-0">
+          <p style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>Profile photo</p>
+          <p style={{ fontSize: 12, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+            JPG, PNG or WebP. Large photos are resized automatically.
           </p>
-        </div>
-      </motion.div>
-
-      {/* Photo */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="rounded-2xl p-4" style={panelStyle}>
-        <div className="flex items-center gap-4">
-          <div className="relative" style={{ opacity: photoBusy ? 0.5 : 1 }}>
-            <Avatar name={fullName} photoUrl={photoUrl} size={72} />
-            <label htmlFor="trainer-photo"
-              className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer border-2"
-              style={{ background: 'var(--color-secondary)', borderColor: 'var(--color-surface-raised)' }}>
-              <Camera size={12} className="text-black" />
+          <div className="flex items-center" style={{ gap: 16, marginTop: 8, fontSize: 13 }}>
+            <label htmlFor="trainer-photo" className="cursor-pointer" style={{ color: 'var(--color-secondary)' }}>
+              {photoBusy ? 'Uploading…' : photoUrl ? 'Change photo' : 'Choose photo'}
             </label>
-            <input id="trainer-photo" type="file" accept="image/jpeg,image/png,image/webp"
-              onChange={handlePhotoPick} disabled={photoBusy} className="hidden" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">Profile photo</p>
-            <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
-              JPG, PNG or WebP. Large photos are resized automatically.
-            </p>
-            <div className="flex items-center gap-2">
-              <label htmlFor="trainer-photo"
-                className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer"
-                style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-                {photoBusy ? 'Uploading…' : photoUrl ? 'Change' : 'Choose photo'}
-              </label>
-              {photoUrl && !photoBusy && (
-                <button onClick={handleRemovePhoto}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{ background: 'transparent', color: '#f87171', border: '1px solid var(--color-border)' }}>
-                  Remove
-                </button>
-              )}
-            </div>
+            {photoUrl && !photoBusy && (
+              <button type="button" onClick={handleRemovePhoto} style={{ color: 'var(--color-text-secondary)' }}>
+                Remove
+              </button>
+            )}
           </div>
         </div>
-      </motion.div>
+      </section>
 
-      {/* Details */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="rounded-2xl p-4 space-y-3" style={panelStyle}>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="rule" style={{ marginTop: -8 }} />
+
+      <section className="flex flex-col" style={{ gap: 14 }}>
+        <SectionHead title="Name and contact" />
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
           <Field label="First name">
-            <TextInput value={form.firstName}
+            <TextInput value={form.firstName} autoComplete="given-name"
               onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
           </Field>
           <Field label="Last name">
-            <TextInput value={form.lastName}
+            <TextInput value={form.lastName} autoComplete="family-name"
               onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
           </Field>
         </div>
 
         <Field label="Phone">
-          <TextInput type="tel" value={form.phone} placeholder="+63 XXX XXX XXXX"
+          <TextInput type="tel" value={form.phone} placeholder="+63 XXX XXX XXXX" autoComplete="tel"
             onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </Field>
+      </section>
 
+      <section className="flex flex-col" style={{ gap: 14 }}>
+        <SectionHead title="Your coaching" />
         <Field label="Specialization" hint="Shown under your name, e.g. Strength & Conditioning">
           <TextInput value={form.specialization}
             onChange={(e) => setForm({ ...form, specialization: e.target.value })} />
@@ -260,8 +236,7 @@ export default function TrainerEditProfile() {
 
         {/* Background. Every one of these is optional and the member profile
             renders each section only when it is filled, so a coach who skips
-            the lot gets the same clean page as before rather than a column of
-            empty headings. */}
+            the lot gets a clean page rather than a column of empty headings. */}
         <Field label="Years coaching" hint="Leave blank rather than guessing — blank shows nothing at all">
           <TextInput
             type="number"
@@ -293,47 +268,25 @@ export default function TrainerEditProfile() {
           <TextArea rows={4} value={form.achievements}
             onChange={(e) => setForm({ ...form, achievements: e.target.value })} />
         </Field>
+      </section>
 
+      <section className="flex flex-col" style={{ gap: 14 }}>
+        <SectionHead title="Availability" />
         {/* Still description only — nothing generates a bookable slot from this
-            text. The hint used to say "the gym sets your bookable hours", which
-            stopped being true when the trainer got their own hours screen, so
-            it now points there instead of at the front desk. */}
+            text, so the real hours screen sits right under it. */}
         <Field label="Availability note" hint="Just a description members read — it doesn't create slots">
           <TextInput value={form.availability} placeholder="e.g. Mornings and weekends"
             onChange={(e) => setForm({ ...form, availability: e.target.value })} />
         </Field>
+        <div>
+          <LineRow title="Set your bookable hours" meta="The real times members can book" action="Open" actionTone="structure"
+            onClick={() => navigate('/trainer/availability')} last />
+        </div>
+      </section>
 
-        <button
-          type="button"
-          onClick={() => navigate('/trainer/availability')}
-          className="w-full p-3 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-          style={{
-            background: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-card)',
-          }}
-        >
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--color-primary-light)' }}>
-            <Clock size={16} style={{ color: 'var(--color-primary)' }} />
-          </span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-xs font-semibold text-white">Set your bookable hours</span>
-            <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              The real times members can book
-            </span>
-          </span>
-          <ChevronRight size={16} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-        </button>
-      </motion.div>
-
-      <motion.button
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-        onClick={save} disabled={saving}
-        className="w-full py-3.5 rounded-full text-sm font-bold text-black flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.99] transition-transform"
-        style={{ background: 'var(--color-secondary)' }}>
-        <Save size={16} /> {saving ? 'Saving…' : 'Save changes'}
-      </motion.button>
+      <NocButton variant="fill" className="w-full" onClick={save} disabled={saving}>
+        {saving ? 'Saving…' : 'Save changes'}
+      </NocButton>
     </Page>
   );
 }

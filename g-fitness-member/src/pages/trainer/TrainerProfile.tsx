@@ -1,17 +1,10 @@
 import { SkeletonList } from '../../components/ui/Skeleton';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  Calendar, Users, LogOut, Pencil, Mail, Phone, Clock, Trophy, Star,
-  Settings as SettingsIcon,
-} from 'lucide-react';
+import { Star } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
-import ListRow from '../../components/ui/ListRow';
-import SectionHeader from '../../components/ui/SectionHeader';
-import StatCard from '../../components/ui/StatCard';
-import { panelStyle } from '../../components/ui/Card';
+import Modal from '../../components/ui/Modal';
+import { InlineStat, LineRow, NocButton, Panel, SectionHead, StatusPill } from '../../components/ui/noc';
 import { logout } from '../../utils/auth';
 import { listMyRatings, summarise, type AnonymousRating } from '../../lib/api/trainerFeedback';
 import {
@@ -95,287 +88,164 @@ export default function TrainerProfile() {
 
   if (loading) return <SkeletonList count={3} />;
 
+  const logoutModal = (
+    <Modal
+      isOpen={showLogoutConfirm}
+      onClose={() => setShowLogoutConfirm(false)}
+      title="Log out"
+      subtitle="You will need your email and password to get back in."
+      confirmLabel="Log out"
+      cancelLabel="Stay signed in"
+      onConfirm={() => void handleLogout()}
+    >
+      <span />
+    </Modal>
+  );
+
   if (error || !overview) {
     return (
-      <div className="space-y-4 pb-4">
-        <div className="py-12 text-center px-6">
-          <p className="text-xs text-white mb-1">Couldn't load your profile</p>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
+      <Page>
+        <div className="text-center" style={{ padding: '40px 24px' }}>
+          <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>Couldn't load your profile</p>
+          <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>{error}</p>
         </div>
         {/* Logout stays reachable — being unable to load a profile must never
             trap someone in the app with no way out. */}
-        <button onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 p-3 rounded-full text-xs font-semibold transition-colors active:scale-[0.98]"
-          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)' }}>
-          <LogOut size={14} /> Logout
-        </button>
-      </div>
+        <NocButton variant="ghost" className="w-full" onClick={() => void handleLogout()}>Log out</NocButton>
+      </Page>
     );
   }
 
   const { profile, trainer } = overview.trainer;
   const fullName = `${profile.first_name} ${profile.last_name}`;
-  // Initials now come from <Avatar>, which owns that fallback for the whole app.
 
   // Derived, not stored: a second state holding the average would be one more
   // thing to keep in step with the list it came from.
   const ratingSummary = summarise(ratings ?? []);
 
-  const stats = [
-    { icon: Calendar, label: 'Sessions this week', value: overview.sessionsThisWeek },
-    { icon: Users, label: 'Members', value: overview.membersAssigned },
-  ];
-
   // A missing phone renders nothing rather than an em dash placeholder.
   const info = [
-    { icon: Mail, label: 'Email', value: profile.email },
-    { icon: Phone, label: 'Phone', value: profile.phone },
+    { label: 'Email', value: profile.email },
+    { label: 'Phone', value: profile.phone },
     {
-      icon: Calendar,
-      label: 'Coaching since',
+      label: 'Since',
       value: new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
     },
+    { label: 'Hours', value: trainer.availability },
   ].filter((i) => i.value);
+
+  const withComments = (ratings ?? []).filter((r) => r.comment);
 
   return (
     <Page>
-      {/* Identity. Given the same violet treatment as the member's membership
-          card — this is the trainer's equivalent "who I am here" panel, and a
-          flat grey box on the screen that carries your own name and face read
-          as the least important thing in the app. */}
-      <motion.section
-        initial={{ opacity: 0, scale: 0.97, y: -8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-        className="p-5 relative overflow-hidden"
-        style={{
-          background: 'var(--color-primary)',
-          borderRadius: 'var(--radius-panel)',
-          boxShadow: 'var(--shadow-panel)',
-        }}
-      >
-        <div
-          className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-25 pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(245,158,11,0.55) 0%, transparent 70%)',
-            transform: 'translate(30%, -35%)',
-          }}
-        />
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="relative flex-shrink-0">
-            <span
-              className="block rounded-full"
-              style={{ padding: 3, background: 'rgba(255,255,255,0.25)' }}
-            >
-              <Avatar name={fullName} photoUrl={profile.photo_url} size={72} />
-            </span>
-            <button
-              onClick={() => navigate('/trainer/profile/edit')}
-              aria-label="Edit profile"
-              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-black active:scale-90 transition-transform"
-              style={{ background: 'var(--color-secondary)', border: '2px solid var(--color-primary)' }}
-            >
-              <Pencil size={14} />
-            </button>
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              Coach
-            </p>
-            <h1 className="display text-2xl text-white truncate leading-tight">{fullName}</h1>
-            {trainer.specialization && (
-              <span
-                className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold"
-                style={{ background: 'rgba(0,0,0,0.28)', color: '#fff' }}
-              >
-                {trainer.specialization}
-              </span>
-            )}
-          </div>
-        </div>
-      </motion.section>
+      {/* Identity — the member Profile's layout: the whole row opens Edit. */}
+      <button onClick={() => navigate('/trainer/profile/edit')} className="w-full flex items-center text-left" style={{ gap: 14 }}>
+        <Avatar name={fullName} photoUrl={profile.photo_url} size={64} />
+        <span className="flex-1 min-w-0">
+          <span className="block truncate" style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            {fullName}
+          </span>
+          <span className="flex flex-wrap" style={{ gap: 6, marginTop: 7 }}>
+            <StatusPill label="Coach" tone="structure" />
+            {trainer.specialization && <StatusPill label={trainer.specialization} tone="muted" />}
+          </span>
+        </span>
+        <span className="flex-none" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Edit</span>
+      </button>
+
+      <div className="grid grid-cols-2" style={{ gap: 12 }}>
+        <InlineStat value={overview.sessionsThisWeek} label="Sessions this week" />
+        <InlineStat value={overview.membersAssigned} label="Members" />
+      </div>
+
+      <div className="rule" />
 
       {trainer.bio && (
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <SectionHeader title="About" />
-          <div className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{trainer.bio}</p>
-          </div>
-        </motion.section>
+        <section>
+          <SectionHead title="About" />
+          <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>{trainer.bio}</p>
+        </section>
       )}
 
-      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 gap-2">
-        {stats.map((s) => (
-          <StatCard key={s.label} value={s.value} label={s.label} icon={s.icon} />
-        ))}
-      </motion.section>
-
       {ratings !== null && ratings.length > 0 && (
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <SectionHeader title="How members rate you" />
-          <div className="p-4 space-y-3" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white tabular-nums">
+        <section>
+          <SectionHead title="How members rate you" />
+          <Panel glow="structure" style={{ marginTop: 12 }}>
+            <p className="flex items-baseline" style={{ gap: 8 }}>
+              <span className="tabular-nums" style={{
+                fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1,
+                letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)',
+              }}>
                 {ratingSummary.average!.toFixed(1)}
               </span>
-              <Star size={16} style={{ color: 'var(--color-secondary)', fill: 'var(--color-secondary)' }} />
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <Star size={18} weight="fill" style={{ color: 'var(--color-secondary)' }} />
+              <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
                 from {ratingSummary.count} {ratingSummary.count === 1 ? 'evaluation' : 'evaluations'}
               </span>
-            </div>
-
+            </p>
             {/* Said plainly rather than left to be inferred. A coach who thinks
                 they can work out who wrote a review behaves differently towards
-                the members they suspect — so the guarantee is worth stating,
-                and it is a guarantee the database keeps, not this screen. */}
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                the members they suspect — and it is a guarantee the database
+                keeps, not this screen. */}
+            <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>
               Evaluations are anonymous. The gym can see who wrote them; you cannot.
             </p>
+          </Panel>
 
-            {ratings.filter((r) => r.comment).length > 0 && (
-              <div className="space-y-2 pt-1">
-                {ratings.filter((r) => r.comment).slice(0, 5).map((r, i) => (
-                  <div key={`${r.period}-${i}`} className="rounded-xl p-3"
-                    style={{ background: 'var(--color-surface-high)' }}>
-                    <div className="flex items-center gap-1 mb-1">
+          {withComments.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              {withComments.slice(0, 5).map((r, i, arr) => (
+                <div key={`${r.period}-${i}`}>
+                  <div style={{ padding: '12px 0' }}>
+                    <div className="flex items-center" style={{ gap: 3 }}>
                       {Array.from({ length: 5 }, (_, n) => (
-                        <Star key={n} size={11}
-                          style={{
-                            color: n < r.stars ? 'var(--color-secondary)' : 'var(--color-border)',
-                            fill: n < r.stars ? 'var(--color-secondary)' : 'transparent',
-                          }} />
+                        <Star key={n} size={12} weight={n < r.stars ? 'fill' : 'regular'}
+                          style={{ color: n < r.stars ? 'var(--color-secondary)' : 'var(--color-text-muted)' }} />
                       ))}
-                      <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+                      <span style={{ fontSize: 12, marginLeft: 6, color: 'var(--color-text-muted)' }}>
                         {new Date(r.period).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                    <p style={{ fontSize: 14, marginTop: 5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
                       {r.comment}
                     </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.section>
-      )}
-
-      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <SectionHeader
-          title="Details"
-          action={
-            <button onClick={() => navigate('/trainer/profile/edit')}
-              className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>
-              Edit
-            </button>
-          }
-        />
-        <div className="p-4 space-y-3" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          {info.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.label} className="flex items-center gap-3">
-                <Icon size={16} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-                <div className="min-w-0">
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{item.label}</p>
-                  <p className="text-sm text-white truncate">{item.value}</p>
+                  {i < arr.length - 1 && <div className="hair" />}
                 </div>
-              </div>
-            );
-          })}
-          {trainer.availability && (
-            <div className="flex items-center gap-3">
-              <Clock size={16} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-              <div className="min-w-0">
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Availability</p>
-                <p className="text-sm text-white">{trainer.availability}</p>
-              </div>
+              ))}
             </div>
           )}
-        </div>
-      </motion.section>
-
-      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <SectionHeader title="Your account" />
-        <div className="space-y-2">
-          <ListRow
-            icon={Clock} tone="primary"
-            title="Bookable hours"
-            subtitle="When members can book you 1-on-1"
-            onClick={() => navigate('/trainer/availability')}
-          />
-          <ListRow
-            icon={Trophy} tone="secondary"
-            title="Achievements"
-            subtitle="Milestones from the coaching you have done"
-            onClick={() => navigate('/trainer/achievements')}
-          />
-          <ListRow
-            icon={SettingsIcon} tone="muted"
-            title="Settings"
-            subtitle="Sound, password and about"
-            onClick={() => navigate('/trainer/settings')}
-          />
-        </div>
-      </motion.section>
-
-      <button onClick={() => setShowLogoutConfirm(true)}
-        className="w-full p-4 flex items-center justify-center gap-2 font-semibold text-sm"
-        style={{
-          background: 'var(--color-secondary-light)',
-          border: '1px solid rgba(245,158,11,0.30)',
-          color: 'var(--color-secondary)',
-          borderRadius: 'var(--radius-btn)',
-        }}>
-        <LogOut size={17} /> Log out
-      </button>
-
-      {/* Same confirmation the member side has had all along — this screen was
-          the odd one out, signing a trainer straight out on one tap of a button
-          that sits directly under the settings list they were aiming for.
-
-          `pointer-events-auto` is required: #modal-root is `pointer-events:
-          none` so it doesn't swallow taps for the whole app, and without it
-          this dialog would render perfectly and refuse every click. */}
-      {showLogoutConfirm && createPortal(
-        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setShowLogoutConfirm(false)} />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="relative p-6 max-w-[300px] w-full z-10"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-panel)',
-              boxShadow: 'var(--shadow-panel)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="display text-lg text-white mb-1">Log out?</h3>
-            <p className="text-xs mb-5" style={{ color: 'var(--color-text-muted)' }}>
-              You'll need your email and password to get back in.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 h-11 rounded-full font-semibold text-sm"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 h-11 rounded-full font-semibold text-sm text-black"
-                style={{ background: 'var(--color-secondary)' }}
-              >
-                Log out
-              </button>
-            </div>
-          </motion.div>
-        </div>,
-        document.getElementById('modal-root')!
+        </section>
       )}
+
+      <section>
+        <SectionHead title="Details" meta={
+          <button onClick={() => navigate('/trainer/profile/edit')} style={{ color: 'var(--color-secondary)' }}>Edit</button>
+        } />
+        <div style={{ marginTop: 4 }}>
+          {info.map((row, i) => (
+            <LineRow key={row.label} gutter={row.label} gutterWidth={64} title={row.value} last={i === info.length - 1} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <SectionHead title="Your account" />
+        <div style={{ marginTop: 4 }}>
+          <LineRow title="Bookable hours" meta="When members can book you 1-on-1" action="Open" actionTone="structure"
+            onClick={() => navigate('/trainer/availability')} />
+          <LineRow title="Achievements" meta="Milestones from the coaching you have done" action="Open" actionTone="structure"
+            onClick={() => navigate('/trainer/achievements')} />
+          <LineRow title="Settings" meta="Sound, password and about" action="Open" actionTone="structure"
+            onClick={() => navigate('/trainer/settings')} last />
+        </div>
+      </section>
+
+      <NocButton variant="ghost" className="w-full" onClick={() => setShowLogoutConfirm(true)}>
+        Log out
+      </NocButton>
+
+      {logoutModal}
     </Page>
   );
 }

@@ -87,7 +87,7 @@ async (page) => {
     // slot_minutes is NOT NULL with a CHECK in the real schema (0015); leaving
     // it out of the fixture put "NaN slots a week" on the schedule screen and
     // sent me looking for a bug in the app.
-    trainer_availability: [1, 3, 5].map((d, i) => ({ id: `ta${i}`, trainer_id: 't1', weekday: d,
+    trainer_availability: [1, 3, 5].map((d, i) => ({ id: `ta${i}`, trainer_id: 't1', day_of_week: d,
       start_time: '08:00', end_time: '17:00', slot_minutes: 60, is_active: true })),
     trainer_credentials: [{ id: 'cr1', trainer_id: 't1', title: 'NASM Certified Personal Trainer',
       file_path: null, mime_type: null, status: 'verified', verified_at: iso(-100, 9, 0), note: null }],
@@ -153,7 +153,7 @@ async (page) => {
     ['01-home', '/trainer/home'], ['02-bookings', '/trainer/bookings'],
     ['03-schedule', '/trainer/schedule'], ['04-members', '/trainer/members'],
     ['05-availability', '/trainer/availability'], ['06-profile', '/trainer/profile'],
-    ['07-settings', '/trainer/settings'],
+    ['07-settings', '/trainer/settings'], ['08-edit-profile', '/trainer/profile/edit'],
   ];
   const out = [];
   for (const [name, path] of SCREENS) {
@@ -163,5 +163,20 @@ async (page) => {
     await page.screenshot({ path: `shots/trainer-${name}.png` });
     out.push(`${name.padEnd(16)} ${page.url().replace('http://localhost:5173', '').padEnd(24)} ${(await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 70)}`);
   }
+
+  // The member detail is a glass sheet (portalled) — open it and prove it takes taps.
+  await page.goto('http://localhost:5173/trainer/members', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  await page.locator('main button', { hasText: 'Lea Lorenzana' }).first().click();
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: 'shots/trainer-09-member-sheet.png' });
+  await page.getByRole('button', { name: 'Send a recommendation' }).click();
+  await page.waitForTimeout(300);
+  const formShown = await page.getByPlaceholder('What they should do next…').isVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.waitForTimeout(300);
+  const closed = await page.getByRole('dialog').count() === 0;
+  out.push(`member sheet: form opens=${formShown} closes=${closed}`);
   return out.join('\n');
 }

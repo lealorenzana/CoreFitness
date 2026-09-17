@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Clock, Calendar, CalendarCheck, Check, X, Dumbbell, Users } from 'lucide-react';
+import { Barbell, CalendarBlank, Check, Clock, UsersThree, X } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
-import { Pill } from '../../components/ui/StatCard';
-import { panelStyle } from '../../components/ui/Card';
+import { Chip, NocButton, Panel, StatusPill } from '../../components/ui/noc';
 import { toast } from '../../components/ui/Toast';
 import { listTrainerBookings, updateBookingStatus } from '../../lib/api/bookings';
 import { listTrainerPtSessions, setPtSessionStatus } from '../../lib/api/ptSessions';
@@ -42,11 +40,16 @@ import CancelBookingDialog from '../../components/ui/CancelBookingDialog';
  * unexplained ordering is worse than an obvious one.
  */
 
-const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; label: string }> = {
-  pending: { bg: 'rgba(245,158,11,0.15)', color: 'var(--color-secondary)', label: 'Pending' },
-  approved: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Approved' },
-  rejected: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)', label: 'Declined' },
-  cancelled: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'Cancelled' },
+/** Colour roles: amber is something still to do, violet something settled. */
+const STATUS_CONFIG: Record<BookingStatus, { tone: 'action' | 'structure' | 'muted'; label: string }> = {
+  pending: { tone: 'action', label: 'Pending' },
+  approved: { tone: 'structure', label: 'Approved' },
+  rejected: { tone: 'muted', label: 'Declined' },
+  cancelled: { tone: 'muted', label: 'Cancelled' },
+};
+
+const FILTER_LABEL: Record<'all' | BookingStatus, string> = {
+  pending: 'Pending', approved: 'Approved', rejected: 'Declined', cancelled: 'Cancelled', all: 'All',
 };
 
 /** A class booking and a PT session, flattened into the one queue a trainer works. */
@@ -228,62 +231,41 @@ export default function TrainerBookings() {
 
   return (
     <Page>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Bookings</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Your classes and 1-on-1 sessions · you decide these
-          </p>
-        </div>
-        {pendingCount > 0 && (
-          <div className="flex-shrink-0 mt-1">
-            <Pill label={`${pendingCount} pending`} tone="secondary" />
-          </div>
-        )}
-      </div>
+      {/* The title is the shell's header now. */}
+      <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+        Your classes and 1-on-1 sessions
+        {pendingCount > 0 && <span style={{ color: 'var(--color-secondary)' }}> · {pendingCount} pending</span>}
+      </p>
 
       {/* Named separately from the pending count: "4 pending" is a workload,
           "1 waiting over a day" is a person who has not heard back. The gym is
           notified about these too (0071), so the trainer is better off seeing
           it here first. */}
       {overdueCount > 0 && (
-        <div className="rounded-xl p-3"
-          style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
-          <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>
+        <Panel glow="action">
+          <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
             {overdueCount === 1
               ? 'One member has been waiting more than a day.'
               : `${overdueCount} members have been waiting more than a day.`}
           </p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+          <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
             Declining is a decision too — it lets them book someone else.
           </p>
-        </div>
+        </Panel>
       )}
 
-      {error && (
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>{error}</p>
-        </div>
-      )}
+      {error && <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>}
 
-      {/* Filter Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+      <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, margin: '0 calc(var(--gutter) * -1)', padding: '2px var(--gutter)' }}>
         {(['pending', 'approved', 'rejected', 'cancelled', 'all'] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)}
-            className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors capitalize"
-            style={{
-              background: filter === f ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: filter === f ? '#fff' : 'var(--color-text-muted)',
-              border: `1px solid ${filter === f ? 'var(--color-primary)' : 'var(--color-border)'}`,
-            }}>
-            {f === 'all'
+          <Chip key={f} on={filter === f} onClick={() => setFilter(f)}
+            label={f === 'all'
               ? `All (${requests.length})`
-              : `${f} (${requests.filter((r) => r.status === f).length})`}
-          </button>
+              : `${FILTER_LABEL[f]} (${requests.filter((r) => r.status === f).length})`} />
         ))}
       </div>
 
-      <div className="space-y-2">
+      <div className="noc-rows">
         {filtered.map((req, i) => {
           const config = STATUS_CONFIG[req.status];
           const memberName = names[req.memberId] ?? 'Member';
@@ -292,112 +274,81 @@ export default function TrainerBookings() {
           const busy = deciding === req.id;
 
           return (
-            <motion.div key={`${req.kind}:${req.id}`}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.3) }}
-              className="p-4"
-              style={{
-                ...panelStyle,
-                borderRadius: 'var(--radius-panel)',
-                // The only row that gets an edge is one somebody is waiting on.
-                // Highlighting every pending row highlights nothing.
-                ...(overdue ? { borderColor: 'var(--color-secondary)' } : {}),
-              }}>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar name={memberName} photoUrl={photos[req.memberId] ?? null} size={36} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{memberName}</p>
-                    <p className="text-xs truncate flex items-center gap-1"
-                      style={{ color: 'var(--color-text-muted)' }}>
+            <div key={`${req.kind}:${req.id}`}>
+              <div style={{ padding: '14px 0' }}>
+                <div className="flex items-center" style={{ gap: 12 }}>
+                  <Avatar name={memberName} photoUrl={photos[req.memberId] ?? null} size={38} />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{memberName}</p>
+                    <p className="truncate flex items-center" style={{ gap: 5, fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
                       {req.kind === 'pt'
-                        ? <Dumbbell size={10} style={{ color: 'var(--color-secondary)' }} />
-                        : <Users size={10} style={{ color: 'var(--color-secondary)' }} />}
+                        ? <Barbell size={13} style={{ color: 'var(--color-primary-300)' }} />
+                        : <UsersThree size={13} style={{ color: 'var(--color-primary-300)' }} />}
                       {req.title}
                     </p>
                   </div>
+                  <StatusPill label={config.label} tone={config.tone} />
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0"
-                  style={{ background: config.bg, color: config.color }}>
-                  {config.label}
-                </span>
-              </div>
 
-              <div className="flex items-center gap-3 text-xs flex-wrap"
-                style={{ color: 'var(--color-text-secondary)' }}>
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={12} style={{ color: 'var(--color-secondary)' }} />
-                  {req.startsAt
-                    ? new Date(req.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                    : 'Not scheduled'}
-                </span>
-                {req.startsAt && (
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={12} style={{ color: 'var(--color-secondary)' }} />
-                    {new Date(req.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                <div className="flex items-center flex-wrap" style={{ gap: 14, marginTop: 9, paddingLeft: 50, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+                  <span className="inline-flex items-center" style={{ gap: 5 }}>
+                    <CalendarBlank size={13} style={{ color: 'var(--color-text-muted)' }} />
+                    {req.startsAt
+                      ? new Date(req.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      : 'Not scheduled'}
                   </span>
-                )}
-                {waited && (
-                  <span className="font-semibold"
-                    style={{ color: overdue ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
-                    {waited}
-                  </span>
-                )}
-              </div>
-
-              {/* An accepted session the coach can no longer make.
-                  0071 said this was the desk's job; 0081 reverses that at the
-                  gym's request, and the same dialog the member uses asks for a
-                  reason. Only while it is still ahead — `cancel_booking()`
-                  refuses a session that has started, so offering the button
-                  afterwards would be offering a refusal. */}
-              {req.status === 'approved' && isAhead(req) && (
-                <button
-                  onClick={() => setPendingCancel(req)}
-                  disabled={busy}
-                  className="mt-3 w-full h-9 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--color-text-secondary)',
-                    border: '1px solid var(--color-border)',
-                  }}>
-                  <X size={13} /> Cancel this session
-                </button>
-              )}
-
-              {req.status === 'pending' && (
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => decide(req, 'approved')}
-                    disabled={busy}
-                    className="flex-1 h-9 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ background: 'var(--color-secondary)', color: '#000' }}>
-                    <Check size={13} /> Accept
-                  </button>
-                  <button
-                    onClick={() => decide(req, 'rejected')}
-                    disabled={busy}
-                    className="flex-1 h-9 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{
-                      background: 'transparent',
-                      color: 'var(--color-text-secondary)',
-                      border: '1px solid var(--color-border)',
-                    }}>
-                    <X size={13} /> Decline
-                  </button>
+                  {req.startsAt && (
+                    <span className="inline-flex items-center" style={{ gap: 5 }}>
+                      <Clock size={13} style={{ color: 'var(--color-text-muted)' }} />
+                      {new Date(req.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  )}
+                  {/* The only row that gets colour is one somebody is waiting
+                      on. Highlighting every pending row highlights nothing. */}
+                  {waited && (
+                    <span style={{ fontWeight: 600, color: overdue ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                      {waited}
+                    </span>
+                  )}
                 </div>
-              )}
-            </motion.div>
+
+                {/* An accepted session the coach can no longer make. 0081 lets a
+                    trainer cancel, with a reason, through the same dialog the
+                    member uses — only while it is still ahead, because
+                    `cancel_booking()` refuses a session that has started. */}
+                {req.status === 'approved' && isAhead(req) && (
+                  <div style={{ marginTop: 11, paddingLeft: 50 }}>
+                    <NocButton variant="ghost" className="w-full" disabled={busy} icon={<X size={14} />}
+                      onClick={() => setPendingCancel(req)} style={{ height: 40 }}>
+                      Cancel this session
+                    </NocButton>
+                  </div>
+                )}
+
+                {req.status === 'pending' && (
+                  <div className="flex" style={{ gap: 8, marginTop: 11, paddingLeft: 50 }}>
+                    <NocButton variant="action" className="flex-1" disabled={busy} icon={<Check size={14} weight="bold" />}
+                      onClick={() => decide(req, 'approved')} style={{ height: 40 }}>
+                      Accept
+                    </NocButton>
+                    <NocButton variant="ghost" className="flex-1" disabled={busy} icon={<X size={14} />}
+                      onClick={() => decide(req, 'rejected')} style={{ height: 40 }}>
+                      Decline
+                    </NocButton>
+                  </div>
+                )}
+              </div>
+              {i < filtered.length - 1 && <div className="hair" />}
+            </div>
           );
         })}
 
         {filtered.length === 0 && !error && (
-          <div className="p-8 text-center" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-            <CalendarCheck size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-            <p className="text-sm font-semibold text-white">
-              {filter === 'all' ? 'No booking requests yet' : `Nothing ${filter}`}
+          <div className="text-center" style={{ padding: '32px 12px' }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {filter === 'all' ? 'No booking requests yet' : `Nothing ${FILTER_LABEL[filter].toLowerCase()}`}
             </p>
-            <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+            <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
               {filter === 'pending'
                 ? 'Nobody is waiting on you. Requests appear here as they come in.'
                 : filter === 'all'
