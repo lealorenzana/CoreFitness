@@ -99,22 +99,30 @@ export default function TabBar() {
               key={tab.id}
               onClick={() => { if (location.pathname !== tab.path) navigate(tab.path); }}
               aria-current={isActive && onRoot ? 'page' : undefined}
-              className="flex-1 flex flex-col items-center justify-start"
+              className="flex-1 flex flex-col items-center justify-start noc-press"
               style={{
                 gap: 5,
                 paddingTop: 9,
                 color: isActive ? 'var(--color-primary-400)' : 'var(--color-text-muted)',
               }}
             >
+              {/* The mark scales open on the tab you land on and closes on the
+                  one you left, so the selection visibly moves across the bar. */}
               <span
                 aria-hidden
+                className="noc-mark"
                 style={{
                   width: 16, height: 2, borderRadius: 1,
-                  background: isActive && onRoot ? 'var(--color-primary)' : 'transparent',
-                  boxShadow: isActive && onRoot ? '0 0 8px var(--color-primary)' : 'none',
+                  background: 'var(--color-primary)',
+                  boxShadow: '0 0 8px var(--color-primary)',
+                  transform: isActive && onRoot ? 'scaleX(1)' : 'scaleX(0)',
+                  opacity: isActive && onRoot ? 1 : 0,
                 }}
               />
-              <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
+              {/* Keyed on the state, so becoming active remounts it and it pops. */}
+              <span key={isActive ? 'on' : 'off'} className={isActive ? 'noc-pop flex' : 'flex'}>
+                <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
+              </span>
               <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{tab.label}</span>
             </button>
           );
@@ -124,7 +132,7 @@ export default function TabBar() {
           onClick={() => setMenuOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={menuOpen}
-          className="flex-1 flex flex-col items-center justify-start"
+          className="flex-1 flex flex-col items-center justify-start noc-press"
           style={{ gap: 5, paddingTop: 9, color: 'var(--color-text-muted)' }}
         >
           <span aria-hidden style={{ width: 16, height: 2 }} />
@@ -137,7 +145,8 @@ export default function TabBar() {
         <button
           onClick={() => setSheetOpen(true)}
           aria-label={checkedIn ? 'Checked in today. Show my code' : 'Check in. Show my code'}
-          className="flex-none flex flex-col items-center justify-center"
+          // Breathes while there is a check-in to do; still once it is done.
+          className={`flex-none flex flex-col items-center justify-center noc-press${checkedIn ? '' : ' noc-breathe'}`}
           style={{
             width: 92,
             marginTop: 10,
@@ -149,7 +158,9 @@ export default function TabBar() {
             color: blockColour,
           }}
         >
-          <QrCode size={21} weight={checkedIn ? 'regular' : 'bold'} />
+          <span key={checkedIn ? 'done' : 'todo'} className="noc-pop flex">
+            <QrCode size={21} weight={checkedIn ? 'regular' : 'bold'} />
+          </span>
           <span style={{ fontSize: 12 }}>{checkedIn ? 'Checked in' : 'Check in'}</span>
         </button>
       </nav>

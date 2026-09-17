@@ -131,7 +131,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
   Tailwind emits CSS **only for literal class names**; **a `<button>` centres its content**; **never a
   `<button>` inside a `<button>`**. **Never declare a component inside a render body.** For
   `set-state-in-effect`: lazy initialiser, compare-during-render, or wrap the async call in an IIFE.
-- **On a non-compositing page neither `rAF` nor CSS transitions run** — never gate correctness on an animation.
+- **Motion is CSS in `index.css` (`noc-*`), never framer's rAF-driven `initial`** — rAF stops on a non-compositing page.
 - **Copy is a claim**: screens read `point_rules`, `cancellation_reasons`, `gym_settings`,
   `membership_plans` — the prototype's 20-point visit and two-hour cancel rule do not exist. **Gym names
   and addresses are never typed in.** Fixtures need **real column names and a real `Content-Range`**.
@@ -178,7 +178,7 @@ never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is w
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
   `promote`; **a push does not deploy**, and env vars must exist in Vercel *before* deploying
   because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md); check with `scripts/verify-deploy.py`). **The APK never needs rebuilding
-  for a code change**; admin serves `dist/`, so **admin changes need `npm run build`**.
+  for a code change**; admin serves `dist/`, so **admin changes need `npm run build`**. `lib/appUpdate.ts` reloads an open app onto a new deploy.
 
 ### Verifying work
 **A green build proves nothing** — every visual bug here compiled perfectly. **Every recipe, the SQL

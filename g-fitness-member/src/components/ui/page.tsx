@@ -46,7 +46,7 @@ export function Page({
 }) {
   return (
     <div
-      className={cn('flex flex-col', className)}
+      className={cn('flex flex-col noc-stack', className)}
       style={{
         gap: 'var(--stack)',
         paddingBottom: dockClear ? 'var(--dock-clear)' : undefined,

@@ -223,3 +223,19 @@ and a Vercel login wall both return 200:
 The page was also opened at 375×812 and read back: the login screen renders, no console errors,
 every asset 200. The manifest and package ID were unchanged by this deploy, so the existing APK
 needed no rebuild.
+
+
+## A deploy reaching phones that already have the app (2026-09-17)
+
+Until this date the service worker was registered by the plugin's plain `registerSW.js`, which never
+reloads the page. With `registerType: 'autoUpdate'` the new worker took control in the background,
+but an open (or resumed) app kept running the old JavaScript from the precache — so after the
+Nocturne deploy a phone still showed the old dock and chat head, and a fresh browser with an old
+worker showed the old Today screen and the new Train screen side by side.
+
+`g-fitness-member/src/lib/appUpdate.ts` now registers through `virtual:pwa-register`, which reloads
+once when a new worker takes control, and asks for an update whenever the app returns to the
+foreground and every 30 minutes. **Phones still on a build from before this fix** run the old
+registration code, so for them the first launch after a deploy fetches the update and the **next**
+launch shows it — fully close the app (swipe it away) and reopen it once. From then on updates arrive
+by themselves.

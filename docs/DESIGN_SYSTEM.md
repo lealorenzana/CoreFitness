@@ -691,3 +691,27 @@ rebuild were fixture columns (`notification_prefs.cat_*`, `public_trainers.id`,
 `workout_logs.completed_at`). `plan-gates.js`, `trainer-scenarios.js`, `rating-gate-check.js` and
 `back-navigation-check.js` were updated for the new wording and shell and pass (plan-gates also checks the lock marks on Today);
 `book-class-bento-check.js` and `membership-hub-check.js` tested the removed layouts and were deleted; git history keeps them.
+
+### Motion (2026-09-17)
+
+One vocabulary, defined once at the foot of `g-fitness-member/src/index.css`, all inside
+`@media (prefers-reduced-motion: no-preference)` and transform/opacity only:
+
+| Class | Where | What |
+|---|---|---|
+| `noc-screen` | Layout, keyed on the pathname | the screen fades in (220ms) |
+| `noc-stack` | `<Page>` | its sections rise 10px and fade, 45ms apart, capped at the eighth |
+| `noc-rows` | lists (Today agenda, Train days, coaches, bookings, activity, More sheet) | rows follow, 30ms apart |
+| `noc-pop` | tab icon on becoming active, check-in icon on state change | overshoot 0.82 → 1.12 → 1 |
+| `noc-mark` / `noc-underline` | tab-bar mark, `TextTabs` underline | scale transition, so selection moves |
+| `noc-grow-x` / `noc-grow-y` | `ProgressBar` fill, trained `WeekMarks` | fill from the origin |
+| `noc-sweep` | a glowing `Panel`'s top line | draws in |
+| `noc-breathe` | the check-in block while there is a check-in to do | slow amber glow, stops once checked in |
+| `noc-press` / `noc-press-soft` / `noc-row` | buttons, chips, tappable panels, rows | give under the finger |
+
+**Why CSS and not framer for entrances:** framer's `initial={{ opacity: 0 }}` is driven by
+requestAnimationFrame, which does not run on a non-compositing page, so the element stays invisible —
+the shell's old page fade had exactly that shape. Sheets and modals keep their framer springs (they
+are opened by a tap on a live page). `scripts/motion-check.js` proves every animated element ends
+fully opaque, the bar responds, and reduced motion turns the layer off (11 checks). Screenshot
+harnesses shoot with `animations: 'disabled'`.

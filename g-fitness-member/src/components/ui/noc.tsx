@@ -132,7 +132,7 @@ export function LineRow({
   return (
     <div>
       {onClick ? (
-        <button onClick={onClick} className="w-full flex items-center text-left" style={rowStyle}>{body}</button>
+        <button onClick={onClick} className="w-full flex items-center text-left noc-row" style={rowStyle}>{body}</button>
       ) : (
         <div className="flex items-center" style={rowStyle}>{body}</div>
       )}
@@ -185,7 +185,7 @@ export function NocButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={cn('flex items-center justify-center transition-opacity disabled:opacity-50 disabled:cursor-not-allowed', className)}
+      className={cn('flex items-center justify-center noc-press disabled:opacity-50 disabled:cursor-not-allowed', className)}
       style={{ height: 46, borderRadius: 'var(--radius-btn)', gap: 7, fontSize: 14, fontWeight: 500, ...skin, ...style }}
     >
       {icon}
@@ -215,7 +215,8 @@ export function ProgressBar({
     <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}
       className="overflow-hidden" style={{ height: 4, borderRadius: 2, background: 'var(--color-surface-high)', ...style }}>
       {/* A 2% floor so "started" never renders as an empty track. */}
-      <div style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%`, height: '100%', background: fill,
+      {/* Grows in from the left — transform only, so the width stays the truth. */}
+      <div className="noc-grow-x" style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%`, height: '100%', background: fill,
         boxShadow: `0 0 12px ${fill}` }} />
     </div>
   );
@@ -263,15 +264,21 @@ export function TextTabs<T extends string>({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className="flex-none whitespace-nowrap"
+            className="flex-none whitespace-nowrap relative noc-press"
             style={{
-              paddingBottom: 5,
+              paddingBottom: 7,
               color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
               fontWeight: on ? 500 : 400,
-              borderBottom: `2px solid ${on ? 'var(--color-primary)' : 'transparent'}`,
             }}
           >
             {t.label}
+            {/* The underline scales in from the left rather than appearing, so
+                switching tabs reads as the selection moving. */}
+            <span aria-hidden className="noc-underline absolute left-0 right-0 bottom-0" style={{
+              height: 2, borderRadius: 1, background: 'var(--color-primary)',
+              boxShadow: on ? '0 0 8px var(--color-primary)' : 'none',
+              transform: on ? 'scaleX(1)' : 'scaleX(0)', opacity: on ? 1 : 0,
+            }} />
           </button>
         );
       })}
@@ -285,7 +292,7 @@ export function Chip({ label, on, onClick }: { label: string; on?: boolean; onCl
     <button
       onClick={onClick}
       aria-pressed={on}
-      className="flex-none whitespace-nowrap"
+      className="flex-none whitespace-nowrap noc-press"
       style={{
         padding: '8px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
         border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
@@ -344,7 +351,7 @@ export function Panel({
     ...style,
   };
   const topLine = glow ? (
-    <span aria-hidden style={{
+    <span aria-hidden className="noc-sweep" style={{
       position: 'absolute', top: 0, left: 16, right: 16, height: 1,
       background: `linear-gradient(to right, rgb(${hue}), transparent)`,
     }} />
@@ -352,7 +359,7 @@ export function Panel({
 
   if (onClick) {
     return (
-      <button onClick={onClick} aria-label={ariaLabel} className={cn('w-full text-left block', className)} style={css}>
+      <button onClick={onClick} aria-label={ariaLabel} className={cn('w-full text-left block noc-press-soft', className)} style={css}>
         {topLine}{children}
       </button>
     );

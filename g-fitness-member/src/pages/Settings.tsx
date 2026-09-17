@@ -70,11 +70,13 @@ function Switch({ on, busy }: { on: boolean; busy?: boolean }) {
       }}
     >
       <span
-        className="absolute rounded-full transition-transform"
+        className="absolute rounded-full"
         style={{
           top: 3, left: 3, width: 18, height: 18,
           background: on ? '#fff' : 'var(--color-text-muted)',
           transform: on ? 'translateX(18px)' : 'translateX(0)',
+          // A little overshoot, so the knob lands rather than slides.
+          transition: 'transform 0.3s var(--ease-spring), background-color 0.2s ease',
         }}
       />
     </span>

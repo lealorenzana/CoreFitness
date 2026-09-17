@@ -231,7 +231,7 @@ export default function MembershipHub() {
             Nothing yet. Check-ins earn points, and payments at the desk appear here.
           </p>
         ) : (
-          <div style={{ marginTop: 4 }}>
+          <div className="noc-rows" style={{ marginTop: 4 }}>
             {activity.map((a, i) => {
               const l = activityLine(a);
               return (

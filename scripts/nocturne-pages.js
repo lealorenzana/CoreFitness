@@ -292,7 +292,7 @@ async (page) => {
     await page.goto(`http://localhost:5173${path}`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: `shots/noc-${name}.png` });
+    await page.screenshot({ path: `shots/noc-${name}.png`, animations: 'disabled' });
     const r = await page.evaluate(() => {
       const main = document.querySelector('main');
       const bar = document.querySelector('nav[aria-label="Main"]');

@@ -1,20 +1,12 @@
 /**
- * Nocturne redesign shots: the shell and whichever screens are being rebuilt.
- * Same fixture harness as member-shots.js (copied, not imported — the Playwright
- * runner loads one file). Writes shots/noc-<name>.png.
+ * Motion check (Nocturne, 2026-09-17).
  *
- * Photographs the member app, screen by screen, on a phone-sized viewport.
+ * Proves the motion layer in index.css does what it says: screens and sections
+ * animate, every animated element finishes fully opaque, the tab bar's mark and
+ * icon respond, the check-in block breathes, and a member who asked for reduced
+ * motion gets none of it. Same fixture harness as nocturne-shots.js.
  *
- * The design pass needs to *see* the app, and the app is behind a login. This
- * plants a session and answers every Supabase call from fixtures, so the shots
- * are of the real components with realistic content and nothing touches the
- * live project. Premium plan, so no screen is locked and every design is
- * visible.
- *
- * Writes shots/member-NN-<name>.png. `shots/.gitignore` excludes *.png, so
- * these are regenerated, never committed.
- *
- * Playwright runner's `filename` argument, member dev server on :5173.
+ * Playwright runner's `filename`, member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -272,38 +264,90 @@ async (page) => {
   // and sits inside the Android range the gym's members actually carry.
   await page.setViewportSize({ width: 393, height: 852 });
 
-  // The screens still to rebuild, photographed before and after. Each is photographed, and the
-  // bar-clearance and 12px-floor checks run on every one of them.
-  const SCREENS = [
-    ['workouts',   '/member/workouts'],
-    ['gymplan',    '/member/gym-plan'],
-    ['planbuild',  '/member/plan'],
-    ['track',      '/member/track'],
-    ['renew',      '/member/renew-membership'],
-    ['profile',    '/member/profile'],
-    ['editprof',   '/member/profile/edit'],
-    ['settings',   '/member/settings'],
-    ['password',   '/member/change-password'],
-    ['email',      '/member/change-email'],
-    ['chat',       '/member/chatbot'],
-  ];
-
   const out = [];
-  for (const [name, path] of SCREENS) {
-    await page.goto(`http://localhost:5173${path}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-    await page.screenshot({ path: `shots/rest-${name}.png`, animations: 'disabled' });
-    const r = await page.evaluate(() => {
-      const main = document.querySelector('main');
-      const bar = document.querySelector('nav[aria-label="Main"]');
-      const small = [...document.querySelectorAll('main *')]
-        .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
-        .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 12).length;
-      const title = document.querySelector('main h1')?.textContent?.trim() ?? '(no h1)';
-      return `${title} · clear=${main && bar ? Math.round(bar.getBoundingClientRect().top - main.getBoundingClientRect().bottom) : '?'} · under12px=${small}`;
-    });
-    out.push(`${name.padEnd(13)} ${r}`);
-  }
-  return out.join(String.fromCharCode(10));
+  const check = (name, ok, detail) => out.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail != null ? ` — ${detail}` : ''}`);
+  const BASE = 'http://localhost:5173';
+
+  // ── 1. Motion on: the screen and its sections animate, and END visible ────
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(`${BASE}/member/home`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+  await page.waitForSelector('main .noc-stack', { timeout: 9000 });
+
+  const names = await page.evaluate(() => {
+    const screen = document.querySelector('main > .noc-screen');
+    const stack = document.querySelector('main .noc-stack');
+    return {
+      screen: screen ? getComputedStyle(screen).animationName : null,
+      first: stack?.children[0] ? getComputedStyle(stack.children[0]).animationName : null,
+      thirdDelay: stack?.children[2] ? getComputedStyle(stack.children[2]).animationDelay : null,
+      stackCount: stack ? stack.children.length : 0,
+    };
+  });
+  check('screen fades in', names.screen === 'noc-fade', names.screen);
+  check('sections rise', names.first === 'noc-rise', names.first);
+  check('sections are staggered', names.thirdDelay === '0.09s', names.thirdDelay);
+
+  // The rule that matters: whatever animates must finish fully visible.
+  await page.waitForTimeout(1500);
+  const settled = await page.evaluate(() => {
+    const els = [...document.querySelectorAll('.noc-stack > *, .noc-rows > *, .noc-screen')];
+    const faint = els.filter((e) => parseFloat(getComputedStyle(e).opacity) < 0.999);
+    const running = document.getAnimations().filter((a) => a.playState === 'running')
+      .map((a) => a.animationName ?? a.constructor.name);
+    return { total: els.length, faint: faint.length, running: [...new Set(running)] };
+  });
+  check('every animated element ends fully opaque', settled.faint === 0, `${settled.total} checked, ${settled.faint} faint`);
+  check('only the check-in breathe keeps running', settled.running.every((n) => n === 'noc-breathe'), settled.running.join(',') || 'none');
+
+  // ── 2. The tab bar: the mark moves, the icon pops ──────────────────────────
+  await page.getByRole('button', { name: 'Train', exact: true }).click();
+  await page.waitForTimeout(80);
+  const bar = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]');
+    const btns = [...nav.querySelectorAll('button')];
+    const train = btns.find((b) => b.textContent.includes('Train'));
+    const today = btns.find((b) => b.textContent.includes('Today'));
+    return {
+      pop: getComputedStyle(train.querySelector('.noc-pop')).animationName,
+      trainMarkTransition: getComputedStyle(train.querySelector('.noc-mark')).transitionProperty,
+      todayPop: today.querySelector('.noc-pop') != null,
+    };
+  });
+  await page.screenshot({ path: 'shots/motion-mid-train.png', animations: 'allow' });
+  check('chosen tab icon pops', bar.pop === 'noc-pop', bar.pop);
+  check('the tab you left does not pop', bar.todayPop === false);
+  check('the tab mark transitions its scale', /transform/.test(bar.trainMarkTransition), bar.trainMarkTransition);
+  await page.waitForTimeout(600);
+  const marks = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]');
+    return [...nav.querySelectorAll('.noc-mark')].map((m) => new DOMMatrix(getComputedStyle(m).transform).a);
+  });
+  check('mark sits under Train only', marks[0] === 0 && marks[1] === 1 && marks[2] === 0, JSON.stringify(marks));
+
+  // ── 3. Check-in block breathes until checked in ────────────────────────────
+  const breathe = await page.evaluate(() => {
+    const b = document.querySelector('nav[aria-label="Main"] button[aria-label^="Check in"]');
+    return b ? getComputedStyle(b).animationName : 'no block';
+  });
+  check('check-in block breathes', breathe === 'noc-breathe', breathe);
+
+  // ── 4. Reduced motion: nothing animates at all ─────────────────────────────
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`${BASE}/member/membership`, { waitUntil: 'domcontentloaded' });
+  // The boot splash has its own fade and spinner, outside this motion layer.
+  await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+  await page.waitForSelector('main .noc-stack', { timeout: 9000 });
+  await page.waitForTimeout(300);
+  const still = await page.evaluate(() => ({
+    running: document.getAnimations().filter((a) => a.playState === 'running')
+      .map((a) => a.animationName ?? a.transitionProperty ?? 'anim'),
+    stack: getComputedStyle(document.querySelector('main .noc-stack').children[0]).animationName,
+  }));
+  const ours = still.running.filter((n) => String(n).startsWith('noc-'));
+  check('reduced motion: none of the motion layer runs', ours.length === 0 && still.stack === 'none',
+    `ours=${ours.join(',') || 'none'}; other=${still.running.filter((n) => !String(n).startsWith('noc-')).join(',') || 'none'}`);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+  return out.join('\n');
 }

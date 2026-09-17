@@ -347,7 +347,7 @@ export default function Home() {
       </section>
 
       {/* ── Agenda ── */}
-      <section aria-label="Your day">
+      <section aria-label="Your day" className="noc-rows">
         {entries.map((e, i) => {
           const content = (
             <>

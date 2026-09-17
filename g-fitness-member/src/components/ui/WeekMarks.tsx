@@ -43,7 +43,8 @@ export default function WeekMarks({
         return (
           <div key={i} role="listitem" className="flex-1 text-center"
             aria-label={`${DAY_NAMES[i]} ${dayNumbers[i]}: ${trained ? 'trained' : isPlanned ? 'planned' : isNow ? 'today' : 'rest'}`}>
-            <div aria-hidden style={{
+            <div aria-hidden className={trained ? 'noc-grow-y' : undefined} style={{
+              animationDelay: `${120 + i * 55}ms`,
               height: 30, borderRadius: 5, border,
               background: trained ? 'var(--color-primary)' : 'var(--color-surface-high)',
               boxShadow: trained ? '0 0 10px -3px var(--color-primary)' : 'none',

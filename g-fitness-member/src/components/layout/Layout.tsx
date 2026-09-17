@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import TabBar from './TabBar';
 import TabHeader from './TabHeader';
 import { tabRootFor } from './memberNav';
@@ -62,20 +61,16 @@ export default function Layout() {
       >
         {/* `min-h-full flex flex-col` so a page can ask to fill the screen with
             `flex-1` — the assistant needs its transcript to take the slack and
-            its composer to sit on the bar. Opacity only, 150ms: animation is
-            decoration, and nothing here waits for it to finish. */}
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={location.pathname}
-            className="min-h-full flex flex-col"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+            its composer to sit on the bar.
+
+            Keyed on the pathname so each screen arrives with `.noc-screen` and
+            its sections rise in turn (`.noc-stack` on <Page>). CSS rather than
+            the framer fade this replaced: framer's `initial={{ opacity: 0 }}`
+            is driven by rAF, and on a page that is not compositing it stays at
+            zero — the trap CLAUDE.md names. */}
+        <div key={location.pathname} className="min-h-full flex flex-col noc-screen">
+          <Outlet />
+        </div>
       </main>
 
       <TabBar />

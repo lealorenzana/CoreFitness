@@ -578,7 +578,7 @@ export default function BookClass() {
                   Personal training opens once the gym adds its coaching team.
                 </p>
               ) : (
-                <div style={{ marginTop: 4 }}>
+                <div className="noc-rows" style={{ marginTop: 4 }}>
                   {trainers.map((t, i) => (
                     <LineRow
                       key={t.id}
@@ -674,7 +674,7 @@ export default function BookClass() {
                         : 'Nothing on this day. Pick another in the week above.'}
                   </p>
                 ) : (
-                  <div>
+                  <div className="noc-rows">
                     {dayClasses.map((c, i) => {
                       const a = classAction(c, classBlock !== null);
                       return (
@@ -705,7 +705,7 @@ export default function BookClass() {
                       : 'No open times on this day. Pick another in the week above.'}
                   </p>
                 ) : (
-                  <div>
+                  <div className="noc-rows">
                     {daySlots.map((s, i) => {
                       // A clashing slot is shown and refused, never hidden —
                       // hiding it would say "this coach has no 10am", which is a

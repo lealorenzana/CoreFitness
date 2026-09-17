@@ -47,7 +47,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
 
   return (
     <header className="flex-none" style={{ padding: '6px var(--gutter) 0' }}>
-      <h1>
+      <h1 key={tab.id} className="noc-rise">
         <span className="screen-title block">{line1}</span>
         {/* A non-breaking space holds the line's height while You's plan name
             loads, so the rail does not jump up and then down. */}
@@ -71,7 +71,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
           <button
             key={d.path}
             onClick={() => navigate(d.path)}
-            className="flex-none whitespace-nowrap transition-colors"
+            className="flex-none whitespace-nowrap noc-press"
             style={{
               padding: '8px 13px',
               borderRadius: 'var(--radius-pill)',

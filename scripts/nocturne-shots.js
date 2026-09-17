@@ -284,7 +284,7 @@ async (page) => {
     await page.goto(`http://localhost:5173${path}`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1400);
-    await page.screenshot({ path: `shots/noc-${name}.png` });
+    await page.screenshot({ path: `shots/noc-${name}.png`, animations: 'disabled' });
     // Nothing may sit under the bar: the last visible pixel of <main> must end
     // at or above the bar's top edge.
     const m = await page.evaluate(() => {
@@ -304,7 +304,7 @@ async (page) => {
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: 'More' }).click();
   await page.waitForTimeout(400);
-  await page.screenshot({ path: 'shots/noc-everything.png' });
+  await page.screenshot({ path: 'shots/noc-everything.png', animations: 'disabled' });
   out.push(`everything dialog: ${await page.getByRole('dialog', { name: 'Everything' }).count()}`);
 
   return out.join('\n');

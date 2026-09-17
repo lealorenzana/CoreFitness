@@ -37,7 +37,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
       role="dialog"
       aria-modal="true"
       aria-label="Everything"
-      className="absolute inset-0 flex flex-col pointer-events-auto"
+      className="absolute inset-0 flex flex-col pointer-events-auto noc-sheet"
       style={{
         background: 'var(--color-bg)',
         paddingTop: 'env(safe-area-inset-top)',
@@ -60,7 +60,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '14px var(--gutter) var(--stack)' }}>
+      <div className="flex-1 overflow-y-auto scrollbar-hide noc-rows" style={{ padding: '14px var(--gutter) var(--stack)' }}>
         {EVERYTHING.map(({ group, items }) => (
           <section key={group} style={{ marginBottom: 24 }}>
             <h3 className="flex items-center" style={{ gap: 10, marginBottom: 6 }}>

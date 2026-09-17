@@ -118,7 +118,7 @@ export default function BookingHistory() {
           </p>
         </div>
       ) : (
-        <section>
+        <section className="noc-rows">
           {visible.map((row, i) => {
             const status = STATUS[row.status];
             const when = row.startsAt ? new Date(row.startsAt) : null;

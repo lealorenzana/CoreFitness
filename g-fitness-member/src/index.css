@@ -742,3 +742,109 @@ html, body {
 .overflow-x-auto {
   overscroll-behavior: contain;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Motion — Nocturne (2026-09-17)
+
+   One vocabulary, used everywhere, so the app moves like one thing:
+
+     rise     a screen and its sections arrive: 10px up, fade in, staggered
+     pop      the tab you just chose, the mark you just earned: a small overshoot
+     grow     a bar or a week mark fills from its origin
+     sweep    a hero panel's top edge draws in
+     breathe  the check-in block, while there is a check-in to do
+     press    anything tappable gives under the finger
+
+   Rules:
+   - **Transform and opacity only**, so it stays on the compositor on a cheap
+     Android phone.
+   - **CSS, not rAF.** Framer drives its animations from requestAnimationFrame,
+     which does not run on a non-compositing page (CLAUDE.md), and the shell's old
+     `initial={{ opacity: 0 }}` page fade was exactly that trap.
+   - **Everything is inside `prefers-reduced-motion: no-preference`.** A member
+     who asked for less motion gets a still app, not a slower one.
+   - Screenshot harnesses take shots with `animations: 'disabled'`, which jumps
+     every animation here to its end state.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes noc-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes noc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes noc-pop {
+  0%   { transform: scale(0.82); }
+  60%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+@keyframes noc-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes noc-grow-y { from { transform: scaleY(0.2); opacity: 0.4; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes noc-sweep  { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes noc-breathe {
+  0%, 100% { box-shadow: 0 0 22px -9px var(--color-secondary); }
+  50%      { box-shadow: 0 0 30px -6px var(--color-secondary); }
+}
+@keyframes noc-sheet-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A screen arriving. Keyed on the pathname in Layout, so it runs per screen. */
+  .noc-screen { animation: noc-fade 0.22s ease-out both; }
+
+  /* Its sections, one after another. Capped at the eighth so a long screen
+     never makes someone wait for the part they scrolled to. */
+  .noc-stack > * { animation: noc-rise 0.46s var(--ease-out-soft) backwards; }
+  .noc-stack > *:nth-child(2) { animation-delay: 45ms; }
+  .noc-stack > *:nth-child(3) { animation-delay: 90ms; }
+  .noc-stack > *:nth-child(4) { animation-delay: 135ms; }
+  .noc-stack > *:nth-child(5) { animation-delay: 180ms; }
+  .noc-stack > *:nth-child(6) { animation-delay: 220ms; }
+  .noc-stack > *:nth-child(7) { animation-delay: 255ms; }
+  .noc-stack > *:nth-child(n+8) { animation-delay: 285ms; }
+
+  /* Rows inside a list, a beat behind their section. */
+  .noc-rows > * { animation: noc-rise 0.4s var(--ease-out-soft) backwards; }
+  .noc-rows > *:nth-child(2) { animation-delay: 30ms; }
+  .noc-rows > *:nth-child(3) { animation-delay: 60ms; }
+  .noc-rows > *:nth-child(4) { animation-delay: 90ms; }
+  .noc-rows > *:nth-child(5) { animation-delay: 120ms; }
+  .noc-rows > *:nth-child(n+6) { animation-delay: 140ms; }
+
+  .noc-pop   { animation: noc-pop 0.42s var(--ease-spring); }
+  .noc-rise  { animation: noc-rise 0.46s var(--ease-out-soft) backwards; }
+  .noc-sweep { transform-origin: left center; animation: noc-sweep 0.8s var(--ease-out-soft) 0.12s backwards; }
+  .noc-grow-x { transform-origin: left center; animation: noc-grow-x 0.9s var(--ease-out-soft) 0.18s backwards; }
+  .noc-grow-y { transform-origin: bottom center; animation: noc-grow-y 0.5s var(--ease-spring) backwards; }
+  .noc-breathe { animation: noc-breathe 2.8s ease-in-out infinite; }
+  .noc-sheet { animation: noc-sheet-in 0.32s var(--ease-out-soft) both; }
+
+  /* The tab mark and the text-tab underline slide their scale, not their layout. */
+  .noc-mark {
+    transform-origin: center;
+    transition: transform 0.32s var(--ease-spring), opacity 0.2s ease, background-color 0.2s ease;
+  }
+  .noc-underline {
+    transform-origin: left center;
+    transition: transform 0.3s var(--ease-out-soft), opacity 0.2s ease;
+  }
+
+  /* Tap feedback. */
+  .noc-press {
+    transition: transform 0.14s var(--ease-out-soft), opacity 0.14s ease, filter 0.2s ease,
+      color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .noc-press:active:not(:disabled) { transform: scale(0.96); }
+  .noc-press-soft { transition: transform 0.16s var(--ease-out-soft), background-color 0.2s ease; }
+  .noc-press-soft:active:not(:disabled) { transform: scale(0.985); }
+  .noc-row { transition: opacity 0.14s ease; }
+  .noc-row:active { opacity: 0.62; }
+  @media (hover: hover) {
+    .noc-press:hover:not(:disabled) { filter: brightness(1.12); }
+  }
+}
