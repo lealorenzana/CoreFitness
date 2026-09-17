@@ -64,3 +64,17 @@ export function addDays(key: string, days: number): string {
   const [y, m, d] = key.split('-').map(Number);
   return dateKey(new Date(y, m - 1, d + days));
 }
+
+const MONTH_SHORT = new Intl.DateTimeFormat('en-US', { month: 'short' });
+
+/**
+ * "Sep 16 – 22" for the seven days starting `from`, or "Sep 28 – Oct 4" when
+ * they cross a month. Built from local calendar parts, never an ISO string.
+ */
+export function weekRangeLabel(from: Date): string {
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+  const a = `${MONTH_SHORT.format(from)} ${from.getDate()}`;
+  return from.getMonth() === to.getMonth()
+    ? `${a} – ${to.getDate()}`
+    : `${a} – ${MONTH_SHORT.format(to)} ${to.getDate()}`;
+}

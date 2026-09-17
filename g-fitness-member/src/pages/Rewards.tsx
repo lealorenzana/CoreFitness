@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, AlertTriangle, Clock, Check, X, Sparkles, ChevronDown } from 'lucide-react';
-import { panelStyle } from '../components/ui/Card';
+import { WarningCircle } from '@phosphor-icons/react';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
 import { useFeatures } from '../hooks/useFeatures';
@@ -12,35 +10,41 @@ import {
   type PointRule, type Reward, type Redemption,
 } from '../lib/api/points';
 import { errorMessage } from '../utils/errorMessage';
+import { Page, PageTitle } from '../components/ui/page';
+import { Eyebrow, LineRow, SectionHead, StatusPill } from '../components/ui/noc';
+import { SkeletonList } from '../components/ui/Skeleton';
 
 /**
- * CORE Points — the balance, what it buys, and what you have asked for.
+ * CORE Points — the balance, what it buys, how you earn, and what you have
+ * asked for (Nocturne redesign).
  *
  * ## Earning and spending are separately gated
  *
  * `points_earn` and `points_redeem` are two features (0049), and the ladder
  * turns them on at different tiers. A member who can earn but not yet redeem
- * sees their balance growing and is told plainly what unlocks spending — which
- * is the honest version of that state, and a better upgrade argument than
- * hiding the screen.
+ * sees their balance growing and is told plainly what unlocks spending.
  *
- * ## The rules are published
+ * ## The rules are published, in full, every visit
  *
  * "How do I earn points" is the first question anyone asks, and a scheme that
- * will not answer it is a slot machine. The table comes from `point_rules`, so
- * a gym running a double-points week does not have to ship an app update for
- * the screen to say so.
+ * will not answer it is a slot machine. The list comes from `point_rules`, so a
+ * double-points week needs no app update. It used to sit collapsed; You now
+ * links here as "How you earn points", and a link that lands on a closed
+ * accordion has not answered anything.
+ *
+ * The prototype's version said "Twenty points a check-in… nothing else earns
+ * points". The real rule is 10, admin-editable, and five other things earn —
+ * which is why this reads the table and never a sentence.
  */
 
-const STATUS_LABEL: Record<Redemption['status'], string> = {
-  pending: 'Waiting for the gym',
-  approved: 'Approved — collect at the desk',
-  rejected: 'Not approved',
-  fulfilled: 'Collected',
+const STATUS: Record<Redemption['status'], { label: string; tone: 'structure' | 'action' | 'muted' }> = {
+  pending: { label: 'Waiting for the gym', tone: 'action' },
+  approved: { label: 'Approved — collect at the desk', tone: 'structure' },
+  rejected: { label: 'Not approved', tone: 'muted' },
+  fulfilled: { label: 'Collected', tone: 'muted' },
 };
 
 export default function Rewards() {
-  const navigate = useNavigate();
   const { features } = useFeatures();
   const mayRedeem = isEnabled(features, 'points_redeem');
 
@@ -52,7 +56,6 @@ export default function Rewards() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [showRules, setShowRules] = useState(false);
 
   const load = useCallback(async (id: string) => {
     const [b, r, w, m] = await Promise.all([
@@ -110,199 +113,147 @@ export default function Rewards() {
     }
   };
 
-  const Header = (
-    <div className="flex items-center gap-3 mb-4">
-      <button onClick={() => navigate(-1)}
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-        <ArrowLeft size={18} />
-      </button>
-      <div className="min-w-0">
-        <h1 className="display text-xl text-white leading-none">CORE Points</h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Earn by training. Spend at the desk.
-        </p>
-      </div>
-    </div>
+  const title = (
+    <PageTitle back title="Spend points"
+      subtitle={balance == null ? 'Earn by training. Spend at the desk.' : `${balance.toLocaleString()} available · earn by training, spend at the desk`} />
   );
 
-  if (loading) {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <p className="text-xs px-1" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
-      </div>
-    );
-  }
+  if (loading) return <Page>{title}<SkeletonList count={3} /></Page>;
 
   return (
-    <FeatureLock
-      feature="points_earn"
-      context={<div className="flex-1 min-h-0 flex flex-col">{Header}</div>}
-    >
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4">
+    <Page>
+      {title}
+      <FeatureLock feature="points_earn" context={null}>
+        <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
           {error && (
-            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
-                 style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
+            <p className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+              <WarningCircle size={15} className="flex-none" style={{ marginTop: 1 }} /> {error}
+            </p>
           )}
 
-          {/* ── Balance ────────────────────────────────────────────────────── */}
-          {/* The balance is what a member opens this screen for, so it is the
-              one element on it allowed to be loud. Violet: points are
-              structure, not an action — the amber belongs on Redeem. */}
-          <div className="rounded-2xl text-center relative overflow-hidden"
-            style={{
-              padding: 24,
-              background: 'linear-gradient(160deg, rgba(124,58,237,0.30) 0%, var(--color-surface-raised) 62%)',
-              border: '1px solid var(--color-primary)',
-            }}>
-            <Sparkles size={20} className="mx-auto mb-2" style={{ color: 'var(--color-primary)' }} />
-            <p className="display text-white leading-none" style={{ fontSize: 44 }}>
+          {/* The balance is what a member opens this screen for — the one
+              element allowed to be loud. Violet: points are something you have,
+              and the amber belongs on Redeem. */}
+          <section style={{ padding: '14px 0', borderTop: '1px solid rgba(233, 233, 237, 0.12)', borderBottom: '1px solid rgba(233, 233, 237, 0.12)' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>CORE points</p>
+            <p style={{ fontSize: 38, fontWeight: 500, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
               {balance == null ? '—' : balance.toLocaleString()}
             </p>
-            <p className="text-[12px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
-              points available to spend
-            </p>
             {!mayRedeem && (
-              <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--color-secondary)' }}>
-                Your plan earns points but does not include redeeming them yet.
-                They keep adding up — ask the front desk which plan lets you spend them.
+              <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.55, color: 'var(--color-secondary)' }}>
+                Your plan earns points but does not include spending them yet. They keep adding up — ask the
+                front desk which plan lets you spend them.
               </p>
             )}
-          </div>
+          </section>
 
-          {/* ── How to earn ────────────────────────────────────────────────────
-              Reference, not news. The rules matter enormously the first time and
-              never change after — so they sat above the rewards every visit,
-              pushing the thing you came to spend points on below the fold. One
-              tap away, and still published: a scheme that will not say how you
-              earn is a slot machine. */}
-          {rules.length > 0 && (
-            <div className="rounded-2xl overflow-hidden" style={panelStyle}>
-              <button
-                onClick={() => setShowRules((v) => !v)}
-                className="w-full p-4 flex items-center justify-between gap-2"
-              >
-                <span className="text-xs font-bold text-white">How you earn</span>
-                <span className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
-                  {rules.length} way{rules.length === 1 ? '' : 's'}
-                  <ChevronDown size={13} style={{
-                    transform: showRules ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
-                  }} />
-                </span>
-              </button>
-              {showRules && (
-                <div className="px-4 pb-4 space-y-1.5">
-                  {rules.map((r) => (
-                    <div key={r.key} className="flex items-center justify-between">
-                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{r.label}</span>
-                      <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
-                        +{r.points}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Catalogue ──────────────────────────────────────────────────── */}
-          <div>
-            <h2 className="display text-white mb-2" style={{ fontSize: 'var(--text-title)' }}>Rewards</h2>
+          {/* ── Catalogue ── */}
+          <section>
+            <SectionHead title="Rewards" meta={rewards.length ? `${rewards.length} to choose from` : undefined} />
             {rewards.length === 0 ? (
-              <div className="p-5 rounded-2xl text-center" style={panelStyle}>
-                <Gift size={20} className="mx-auto mb-2" style={{ color: 'var(--color-text-muted)' }} />
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  The gym has not added any rewards yet. Your points keep counting.
-                </p>
-              </div>
+              <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                The gym has not added any rewards yet. Your points keep counting.
+              </p>
             ) : (
-              <div className="space-y-2">
-                {rewards.map((r) => {
+              <div style={{ marginTop: 4 }}>
+                {rewards.map((r, i) => {
                   const soldOut = r.stock != null && r.stock <= 0;
                   const affordable = balance != null && balance >= r.costPoints;
+                  const disabled = !mayRedeem || soldOut || !affordable || busy === r.id;
                   return (
-                    <div key={r.id} className="p-4 rounded-2xl" style={panelStyle}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>{r.name}</p>
+                    <div key={r.id}>
+                      <div className="flex items-center" style={{ gap: 12, padding: '15px 0' }}>
+                        <div className="flex-1 min-w-0">
+                          <p style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{r.name}</p>
                           {r.description && (
-                            <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                              {r.description}
+                            <p style={{ fontSize: 12, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-secondary)' }}>{r.description}</p>
+                          )}
+                          <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-primary-300)' }}>
+                            {r.costPoints.toLocaleString()} points
+                            {r.stock != null && !soldOut && <span style={{ color: 'var(--color-text-muted)' }}> · {r.stock} left</span>}
+                          </p>
+                          {/* Says WHY it is disabled. A greyed button with no
+                              reason is the hidden-rulebook problem in miniature. */}
+                          {mayRedeem && !soldOut && !affordable && balance != null && (
+                            <p style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-muted)' }}>
+                              {(r.costPoints - balance).toLocaleString()} more points to go.
                             </p>
                           )}
-                          <p className="text-[12px] mt-1.5 font-semibold" style={{ color: 'var(--color-primary)' }}>
-                            {r.costPoints.toLocaleString()} points
-                            {r.stock != null && !soldOut && (
-                              <span style={{ color: 'var(--color-text-muted)' }}> · {r.stock} left</span>
-                            )}
-                          </p>
                         </div>
                         <button
                           onClick={() => redeem(r)}
-                          disabled={!mayRedeem || soldOut || !affordable || busy === r.id}
-                          className="px-3 h-9 rounded-full text-[12px] font-bold flex-shrink-0 disabled:opacity-35"
-                          style={{ background: 'var(--color-secondary)', color: '#1A1200' }}
+                          disabled={disabled}
+                          className="flex-none disabled:cursor-not-allowed"
+                          style={{
+                            height: 40, padding: '0 16px', borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 500,
+                            color: disabled ? 'var(--color-text-muted)' : 'var(--color-secondary)',
+                            border: `1px solid ${disabled ? 'var(--color-hairline)' : 'var(--color-secondary)'}`,
+                          }}
                         >
                           {busy === r.id ? '…' : soldOut ? 'Sold out' : 'Redeem'}
                         </button>
                       </div>
-                      {/* Says WHY it is disabled. A greyed button with no reason
-                          is the hidden-rulebook problem in miniature. */}
-                      {mayRedeem && !soldOut && !affordable && balance != null && (
-                        <p className="text-[12px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
-                          {(r.costPoints - balance).toLocaleString()} more points to go.
-                        </p>
-                      )}
+                      {i < rewards.length - 1 && <div className="hair" />}
                     </div>
                   );
                 })}
               </div>
             )}
-          </div>
+          </section>
 
-          {/* ── My requests ────────────────────────────────────────────────── */}
+          {/* ── Requests ── */}
           {mine.length > 0 && (
-            <div>
-              <h2 className="display text-white mb-2" style={{ fontSize: 'var(--text-title)' }}>Your requests</h2>
-              <div className="space-y-2">
-                {mine.map((m) => (
-                  <div key={m.id} className="p-3.5 rounded-2xl" style={panelStyle}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{m.rewardName}</p>
-                        <p className="text-[12px] mt-0.5 flex items-center gap-1"
-                           style={{ color: m.status === 'rejected' ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
-                          {m.status === 'pending' ? <Clock size={9} />
-                            : m.status === 'rejected' ? <X size={9} /> : <Check size={9} />}
-                          {STATUS_LABEL[m.status]} · {m.costPoints} points
-                        </p>
+            <section>
+              <SectionHead title="Your requests" />
+              <div style={{ marginTop: 4 }}>
+                {mine.map((m, i) => (
+                  <div key={m.id}>
+                    <div className="flex items-start" style={{ gap: 12, padding: '13px 0' }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate" style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{m.rewardName}</p>
+                        <div className="flex items-center flex-wrap" style={{ gap: 8, marginTop: 6 }}>
+                          <StatusPill label={STATUS[m.status].label} tone={STATUS[m.status].tone} />
+                          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{m.costPoints} points</span>
+                        </div>
                         {m.decisionNote && (
-                          <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                            {m.decisionNote}
-                          </p>
+                          <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>{m.decisionNote}</p>
                         )}
                       </div>
                       {m.status === 'pending' && (
-                        <button onClick={() => withdraw(m.id)} disabled={busy === m.id}
-                          className="text-[12px] font-semibold flex-shrink-0 px-2.5 h-8 rounded-full"
-                          style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+                        <button onClick={() => withdraw(m.id)} disabled={busy === m.id} className="flex-none disabled:opacity-50"
+                          style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                           Withdraw
                         </button>
                       )}
                     </div>
+                    {i < mine.length - 1 && <div className="hair" />}
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
+          )}
+
+          {/* ── How you earn ── */}
+          {rules.length > 0 && (
+            <section>
+              <Eyebrow mark>How you earn</Eyebrow>
+              <div style={{ marginTop: 4 }}>
+                {rules.map((r, i) => (
+                  <LineRow
+                    key={r.key}
+                    title={r.label}
+                    action={<span style={{ fontSize: 13.5, color: 'var(--color-primary-300)' }}>+{r.points}</span>}
+                    last={i === rules.length - 1}
+                  />
+                ))}
+              </div>
+              <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                Set by the gym. A plan that does not include earning points does not collect them.
+              </p>
+            </section>
           )}
         </div>
-      </div>
-    </FeatureLock>
+      </FeatureLock>
+    </Page>
   );
 }

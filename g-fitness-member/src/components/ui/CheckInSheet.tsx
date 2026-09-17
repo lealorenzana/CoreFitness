@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { Ban, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
+import { ArrowClockwise, CheckCircle, Prohibit } from '@phosphor-icons/react';
+import { NocButton } from './noc';
 import { generateSecureQR, getQRTimeRemaining } from '../../utils/qrCode';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { getCurrentMemberId } from '../../services/bookingService';
@@ -11,7 +12,8 @@ import { errorMessage } from '../../utils/errorMessage';
 import { toast } from './Toast';
 
 /**
- * The check-in QR, as a full-screen sheet the bottom nav can open anywhere.
+ * The check-in QR, as a bottom sheet the bar's check-in block opens anywhere
+ * (Nocturne redesign).
  *
  * It used to live inside Home, which meant the one thing a member does every
  * single visit was three taps deep if they happened to be on another screen.
@@ -134,168 +136,141 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
   if (!root) return null;
 
   const expired = remaining === 0;
+  const validTo = home?.expiryDate
+    ? new Date(`${home.expiryDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null;
 
   return createPortal(
+    // Always mounted, and the only node that declares pointer-events — the
+    // pattern Modal and StepFlow already use. The backdrop used to carry
+    // `pointer-events-auto` *inside* AnimatePresence, and an exiting child is
+    // kept mounted until its animation finishes, which on a page that is not
+    // compositing is never: an invisible layer over the whole app, eating taps.
+    <div className="absolute inset-0" style={{ pointerEvents: open ? 'auto' : 'none' }}>
     <AnimatePresence>
       {open && (
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/85 backdrop-blur-sm pointer-events-auto"
+            className="absolute inset-0"
+            style={{ background: 'rgba(8, 8, 14, 0.8)' }}
           />
           <motion.div
-            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             role="dialog" aria-modal="true" aria-label="Check-in QR code"
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] max-w-sm pointer-events-auto"
+            className="absolute inset-x-0 bottom-0 flex flex-col items-center"
+            style={{
+              background: 'var(--color-surface)',
+              borderRadius: '20px 20px 0 0',
+              boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.2), 0 -18px 44px rgba(0, 0, 0, 0.6)',
+              padding: '12px var(--gutter) calc(20px + env(safe-area-inset-bottom))',
+              gap: 14,
+            }}
           >
-            <div
-              className="p-6 text-center relative"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-panel)',
-                boxShadow: 'var(--shadow-panel)',
-              }}
-            >
-              <button
-                onClick={onClose} aria-label="Close"
-                className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-              >
-                <X size={18} />
-              </button>
+            <div aria-hidden style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
 
-              <h3 className="display text-xl text-white mb-1">Check in</h3>
-
-              {loading || !home ? (
-                <div className="py-10">
-                  <div className="mx-auto w-48 h-48 rounded-2xl animate-pulse" style={{ background: 'var(--color-surface-high)' }} />
-                </div>
-              ) : home.expired ? (
-                <div className="py-8">
-                  <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3"
-                    style={{ background: 'var(--color-secondary-light)' }}>
-                    <Ban size={26} style={{ color: 'var(--color-secondary)' }} />
-                  </div>
-                  <p className="text-sm font-semibold text-white">
-                    {home.expiryDate ? 'Your membership has expired' : 'No active membership'}
+            {loading || !home ? (
+              <>
+                <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Check in</p>
+                <div className="animate-pulse" style={{ width: 224, height: 224, borderRadius: 14, background: 'var(--color-surface-high)' }} />
+              </>
+            ) : home.expired ? (
+              <>
+                <div className="text-center">
+                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                    {home.expiryDate ? 'Membership expired' : 'No active membership'}
                   </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Renew at the front desk or in the app to check in again.
+                  <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
+                    No code is shown — the desk would refuse it.
                   </p>
                 </div>
-              ) : home.checkedInToday ? (
-                <div className="py-8">
-                  <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3"
-                    style={{ background: 'var(--color-primary-light)' }}>
-                    <CheckCircle size={26} style={{ color: 'var(--color-primary)' }} />
-                  </div>
-                  <p className="text-sm font-semibold text-white">
-                    {justScanned ? 'Scanned — you are logged in' : "You're already checked in today"}
+                <div className="grid place-items-center" style={{ width: 224, height: 160, borderRadius: 14, background: 'var(--color-surface-high)' }}>
+                  <Prohibit size={64} style={{ color: 'var(--color-secondary)' }} />
+                </div>
+                <p className="text-center" style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+                  Renew at the front desk or in the app to check in again.
+                </p>
+              </>
+            ) : home.checkedInToday ? (
+              <>
+                <div className="text-center">
+                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                    {justScanned ? 'Scanned — you are in' : 'Checked in'}
                   </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
                     {justScanned
                       ? `Your attendance is recorded. Have a good session, ${home.firstName}.`
-                      : `Have a good session, ${home.firstName}.`}
+                      : `You are already checked in today. Have a good session, ${home.firstName}.`}
                   </p>
                 </div>
-              ) : (
-                <>
-                  <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
-                    Show this to the front desk
+                <div className="grid place-items-center" style={{ width: 224, height: 224, borderRadius: 14, background: 'var(--color-surface-high)' }}>
+                  <CheckCircle size={90} style={{ color: 'var(--color-primary-400)' }} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-center">
+                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Check in</p>
+                  {/* The countdown is gone; the expiry is not. A code that never
+                      expires can be screenshotted and used by someone else, so
+                      it still carries a timestamp — but it regenerates itself a
+                      second before it dies, so the member has nothing to do.
+                      "Expires in 12s" only started a small panic in a queue. */}
+                  <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
+                    Show this at the desk. It refreshes itself every 60 seconds.
                   </p>
-                  <div className="bg-white p-4 rounded-2xl inline-block mb-4"
-                    style={{ opacity: expired ? 0.3 : 1, filter: expired ? 'blur(2px)' : undefined }}>
-                    {/* `level` and `marginSize` are both stated, because
-                        qrcode.react's defaults are wrong for scanning a phone
-                        screen with a desk webcam:
+                </div>
 
-                        - Default level is "L" — 7% error correction, the
-                          weakest of the four. Measured on this exact payload:
-                          "M" (15%) still encodes to version 3, 29x29, the same
-                          module count as "L". Double the error correction for
-                          no extra density is free, so there is no reason to
-                          stay on the default.
+                {/* White, always: a desk webcam reads black on white. `level`
+                    and `marginSize` are stated because qrcode.react's defaults
+                    are wrong for scanning a phone screen — "L" is the weakest
+                    correction when "M" encodes to the same 29×29 here, and a
+                    zero margin leaves no quiet zone. `size` counts the margin,
+                    so 224 keeps modules at ~6px. */}
+                <div style={{
+                  borderRadius: 14, overflow: 'hidden', background: '#FFFFFF', lineHeight: 0,
+                  boxShadow: '0 0 40px -10px var(--color-primary)',
+                  opacity: expired ? 0.3 : 1, filter: expired ? 'blur(2px)' : undefined,
+                }}>
+                  <QRCodeSVG value={qr || home.memberId} size={224} level="M" marginSize={4} />
+                </div>
 
-                        - Default marginSize is 0. The white `p-4` wrapper below
-                          gave about 2.6 modules of quiet zone; the spec asks for
-                          4. Stating it puts the light border inside the SVG
-                          where it cannot be clipped by a layout change.
+                {/* The fallback when the camera won't cooperate. Never expires —
+                    it identifies the member, it authorises nothing. `.selectable`
+                    opts back into text selection; this is the one string in the
+                    app most worth being able to copy. */}
+                <p className="selectable" style={{
+                  fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 19,
+                  letterSpacing: '0.34em', color: 'var(--color-primary-300)',
+                }}>
+                  {formatCheckInCode(home.memberId)}
+                </p>
+                <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
+                  {home.planName ?? 'Membership'}{validTo ? ` · valid to ${validTo}` : ''} · read the code out if the camera fails
+                </p>
 
-                        `size` counts the margin: qrcode.react renders a
-                        `viewBox` of `modules + margin*2` at `size` px, so
-                        leaving it at 180 would have SHRUNK each module from
-                        6.2px to 4.9px and made scanning harder, not easier.
-                        224/37 keeps modules at ~6px. */}
-                    <QRCodeSVG value={qr || home.memberId} size={224} level="M" marginSize={4} />
-                  </div>
+                {/* The manual refresh survives for the case the timer cannot
+                    cover: a backgrounded phone, where setInterval is throttled
+                    and the code really can go stale on screen. */}
+                {expired && (
+                  <NocButton variant="action" className="w-full" style={{ height: 48 }}
+                    icon={<ArrowClockwise size={15} />} onClick={() => regenerate(home.memberId)}>
+                    Tap to refresh your code
+                  </NocButton>
+                )}
+              </>
+            )}
 
-                  {/*
-                    The countdown is gone. The expiry is not.
-
-                    A code that never expires is one a member can screenshot and
-                    send to a friend, who then checks in as them — that is what
-                    the short window prevents, and it is the reason the code has
-                    a timestamp at all.
-
-                    But the code **regenerates itself** a second before it dies,
-                    so the member never had anything to do about the countdown.
-                    All "Expires in 12s" ever did was start a small panic in a
-                    queue about a problem the app had already solved — and the
-                    number moving every second pulls the eye away from the thing
-                    the scanner actually needs pointed at it.
-
-                    So the mechanism stays, silently, and the screen says the one
-                    thing worth knowing: hold it up, it stays valid.
-
-                    The manual button survives for the case the timer cannot
-                    cover — a backgrounded phone, where `setInterval` is
-                    throttled and the code really can go stale on screen.
-                  */}
-                  {expired ? (
-                    <button
-                      onClick={() => regenerate(home.memberId)}
-                      className="w-full h-11 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2"
-                      style={{ background: 'var(--color-secondary)' }}
-                    >
-                      <RefreshCw size={15} /> Tap to refresh your code
-                    </button>
-                  ) : (
-                    <p className="text-xs flex items-center justify-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                      <Clock size={12} /> Refreshes itself — just hold it up to the scanner
-                    </p>
-                  )}
-
-                  {/* The fallback when the camera won't cooperate. Always shown,
-                      and never expires — it identifies the member, it doesn't
-                      authorise anything. */}
-                  <div
-                    className="mt-4 pt-4"
-                    style={{ borderTop: '1px solid var(--color-border)' }}
-                  >
-                    <p className="text-xs mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                      Camera not working? Read out your code
-                    </p>
-                    {/* `.selectable` opts back into text selection — the app
-                        shell is `user-select: none` so a long press can't
-                        highlight the interface, and this is the one string
-                        most worth being able to copy. */}
-                    <p
-                      className="display text-2xl tracking-[0.15em] selectable"
-                      style={{ color: 'var(--color-secondary)' }}
-                    >
-                      {formatCheckInCode(home.memberId)}
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
+            <NocButton variant="ghost" className="w-full" style={{ height: 48 }} onClick={onClose}>
+              Close
+            </NocButton>
           </motion.div>
         </>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    </div>,
     root
   );
 }

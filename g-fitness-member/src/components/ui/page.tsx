@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ArrowLeft } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { panelStyle } from './Card';
 
@@ -58,50 +58,64 @@ export function Page({
 }
 
 /**
- * The title block: what this screen is, and one line on what it is for.
+ * A pushed screen's header (Nocturne): a text "Back" row, then a 26px title
+ * and one line on what the screen is for.
  *
- * `back` is opt-in. A tab root (Home, Book, Progress, Profile) has nowhere to
- * go back *to* — the dock is the way out — and a back arrow there is a control
- * that lies about the structure of the app.
+ * `back` is opt-in. A tab root (Today, Train, You) has nowhere to go back *to*
+ * — the bar is the way out, and the shell draws a root's header itself — and a
+ * back control there lies about the structure of the app.
+ *
+ * **Back undoes the last step; it never navigates somewhere fixed.** Five
+ * screens once hardcoded Home, so opening Progress from Train and pressing back
+ * landed on a screen the member had never been on. `history.length > 1` guards
+ * the one case `navigate(-1)` gets wrong: a screen opened directly (a
+ * notification tap, a cold start) with nothing behind it, where -1 leaves the
+ * app. Home is the only sane landing for that.
  */
 export function PageTitle({
   title,
   subtitle,
   back = false,
   action,
+  fallback = '/member/home',
 }: {
   title: string;
   subtitle?: string;
   back?: boolean;
   action?: ReactNode;
+  /** Where Back lands when there is no history. A screen shared with trainers passes theirs. */
+  fallback?: string;
 }) {
   const navigate = useNavigate();
   return (
-    <header className="flex items-start gap-3">
+    <header className="flex flex-col">
       {back && (
         <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="flex-shrink-0 grid place-items-center rounded-full"
-          style={{
-            width: 36, height: 36, marginTop: 2,
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-          }}
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(fallback))}
+          className="self-start flex items-center"
+          // 44px tall to a thumb; the visible row is the 13px line inside it.
+          style={{ gap: 7, height: 44, marginTop: -12, marginBottom: 2, fontSize: 13, color: 'var(--color-primary-300)' }}
         >
-          <ChevronLeft size={18} />
+          <ArrowLeft size={15} />
+          Back
         </button>
       )}
-      <div className="min-w-0 flex-1">
-        <h1 className="display text-white" style={{ fontSize: 'var(--text-display)' }}>{title}</h1>
-        {subtitle && (
-          <p className="mt-1 leading-snug" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-            {subtitle}
-          </p>
-        )}
+      <div className="flex items-start" style={{ gap: 12 }}>
+        <div className="min-w-0 flex-1">
+          <h1 style={{
+            fontSize: 'var(--text-display)', fontWeight: 500, letterSpacing: '-0.02em',
+            lineHeight: 1.12, color: 'var(--color-text-primary)',
+          }}>
+            {title}
+          </h1>
+          {subtitle && (
+            <p style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {action && <div className="flex-shrink-0 self-center">{action}</div>}
       </div>
-      {action && <div className="flex-shrink-0 self-center">{action}</div>}
     </header>
   );
 }
@@ -146,49 +160,6 @@ export function Section({
       )}
       {children}
     </section>
-  );
-}
-
-/**
- * A number with its label, for the tile grids.
- *
- * Deliberately borderless. The grids it replaces were cards inside a card
- * inside the page — three nested radii and three borders around one number,
- * which is what made Progress look busy at a glance. A tint is enough
- * separation when the parent already has an edge.
- */
-export function Tile({
-  value,
-  label,
-  icon,
-  onClick,
-  tone = 'default',
-}: {
-  value: ReactNode;
-  label: string;
-  icon?: ReactNode;
-  onClick?: () => void;
-  tone?: 'default' | 'primary' | 'secondary';
-}) {
-  const colour =
-    tone === 'primary' ? 'var(--color-primary)'
-    : tone === 'secondary' ? 'var(--color-secondary)'
-    : 'var(--color-text-primary)';
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      onClick={onClick}
-      className={cn('rounded-xl text-left', onClick && 'w-full')}
-      style={{ background: 'var(--color-surface-high)', padding: 'var(--card-pad)' }}
-    >
-      {icon && <div className="mb-2" style={{ color: 'var(--color-text-muted)' }}>{icon}</div>}
-      <p className="display leading-none" style={{ fontSize: 'var(--text-display)', color: colour }}>
-        {value}
-      </p>
-      <p className="mt-1.5 leading-snug" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-        {label}
-      </p>
-    </Tag>
   );
 }
 
@@ -316,226 +287,5 @@ export function RingStat({
         {label}
       </p>
     </Tag>
-  );
-}
-
-/**
- * A bento grid: two columns, and a cell may take both.
- *
- * The app's lists were all one shape — a full-width row, repeated — which is
- * honest but flat: every class on the timetable looked exactly as important as
- * every other, so a screen of them read as a spreadsheet. A bento gives the
- * page a hierarchy it can express in *layout* rather than in colour, which
- * matters here because the palette is deliberately small (amber acts, violet
- * structures, and that is the whole vocabulary).
- *
- * **Two columns by default, and that is not a style preference.** At 393px with
- * a 20px gutter a third column leaves ~110px a cell, which is under the width
- * of "Intermediate" at the 12px type floor — the floor is not negotiable in a
- * gym, so the column count gives way. `cols={3}` is for grids whose cells carry
- * an icon and one short label and no prose at all (`NavTile`), where 110px is
- * plenty and three-up is what stops six destinations from taking three rows.
- *
- * Cells stretch to the tallest in their row (grid's default), so a row of
- * tiles has one baseline along the bottom if each one pushes its action down
- * with `mt-auto`.
- */
-export function Bento({
-  children,
-  className,
-  cols = 2,
-}: {
-  children: ReactNode;
-  className?: string;
-  /** 3 only for icon-and-label cells — see above. */
-  cols?: 2 | 3;
-}) {
-  return (
-    // Two literal class names, never a template: Tailwind emits CSS only for
-    // names it can see in the source, so `grid-cols-${cols}` would produce a
-    // grid with no columns at all.
-    <div className={cn('grid', cols === 3 ? 'grid-cols-3' : 'grid-cols-2', className)}
-      style={{ gap: 'var(--stack-tight)' }}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * One cell of a `Bento`.
- *
- * `wide` spans both columns. It is an inline `gridColumn` rather than a
- * `col-span-2` class on purpose: this app is Tailwind v4 with no config, class
- * names have silently emitted no CSS here before, and a span that quietly does
- * nothing would leave a ragged grid rather than an error.
- *
- * Renders a real `<button>` when it has an `onClick` and a `<div>` otherwise —
- * two branches instead of a dynamic tag, so `disabled` is typed and a
- * non-interactive cell cannot be focused. `text-left` is not optional: a
- * `<button>` centres its content, which is the layout trap this design system
- * has already paid for twice.
- */
-export function BentoCell({
-  children,
-  wide = false,
-  tone = 'panel',
-  onClick,
-  disabled,
-  className,
-  style,
-}: {
-  children: ReactNode;
-  wide?: boolean;
-  /** `flat` is a tint for a cell sitting inside another card, not a third edge. */
-  tone?: 'panel' | 'primary' | 'secondary' | 'flat';
-  onClick?: () => void;
-  disabled?: boolean;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  const skin: CSSProperties =
-    tone === 'primary'
-      ? { background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.32)' }
-      : tone === 'secondary'
-        ? { background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }
-        : tone === 'flat'
-          ? { background: 'var(--color-surface-high)', border: '1px solid transparent' }
-          : panelStyle;
-
-  const box = cn('rounded-2xl flex flex-col text-left', className);
-  const css: CSSProperties = {
-    ...skin,
-    padding: 'var(--card-pad)',
-    gridColumn: wide ? 'span 2' : undefined,
-    ...style,
-  };
-
-  if (onClick) {
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={cn(box, 'active:opacity-80 disabled:cursor-not-allowed')}
-        style={css}
-      >
-        {children}
-      </button>
-    );
-  }
-  return <div className={box} style={css}>{children}</div>;
-}
-
-/**
- * A horizontal rail of icon tiles — the reference's Categories row.
- *
- * Scrolls rather than wraps: a wrapping grid of eight categories pushes the
- * content below it off a phone screen, and the rail says "there is more this
- * way" by cutting the last tile, which a wrapped grid cannot.
- *
- * Every tile keeps its count. A filter is worth tapping or it is not, and the
- * number is the only thing on the tile that answers that.
- */
-export function CategoryRail({
-  items,
-  active,
-  onPick,
-}: {
-  items: { id: string; label: string; icon: ReactNode; count?: number }[];
-  active?: string;
-  onPick: (id: string) => void;
-}) {
-  return (
-    <div
-      className="flex gap-2 overflow-x-auto scrollbar-hide"
-      // The rail runs edge to edge while the page keeps its gutter: a row that
-      // stops short of the screen edge reads as a mistake rather than as a
-      // scroller.
-      style={{ marginLeft: 'calc(var(--gutter) * -1)', marginRight: 'calc(var(--gutter) * -1)',
-               paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}
-    >
-      {items.map((it) => {
-        const on = it.id === active;
-        return (
-          <button
-            key={it.id}
-            onClick={() => onPick(it.id)}
-            className="flex-shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-colors"
-            style={{
-              width: 78, height: 78,
-              background: on ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-              border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              color: on ? '#fff' : 'var(--color-text-secondary)',
-            }}
-          >
-            {it.icon}
-            <span className="font-semibold capitalize leading-none truncate max-w-[68px]"
-              style={{ fontSize: 'var(--text-meta)' }}>
-              {it.label}
-            </span>
-            {it.count != null && (
-              <span className="tabular-nums leading-none"
-                style={{ fontSize: 'var(--text-meta)', opacity: 0.65 }}>
-                {it.count}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * One destination in a hub grid.
- *
- * Profile was eleven stacked rows, each with a title and a sentence of
- * subtitle — about 800px of scrolling to see what the app contains, on a screen
- * 852px tall. Everything was *there* and nothing was visible.
- *
- * Three to a row, icon and label only. The subtitles were the reason the list
- * was long, and they were explaining destinations whose names already say it:
- * "Payments — what you've paid and when". Where a name genuinely needs help,
- * the section header above the grid does it once for the whole group.
- */
-export function NavTile({
-  icon,
-  label,
-  onClick,
-  tone = 'primary',
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-  tone?: 'primary' | 'secondary' | 'muted';
-}) {
-  const accent =
-    tone === 'secondary' ? 'var(--color-secondary)'
-    : tone === 'muted' ? 'var(--color-text-muted)'
-    : 'var(--color-primary)';
-  const wash =
-    tone === 'secondary' ? 'var(--color-secondary-light)'
-    : tone === 'muted' ? 'var(--color-surface-high)'
-    : 'var(--color-primary-light)';
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-2xl flex flex-col items-center justify-center gap-2 text-center active:opacity-80"
-      style={{
-        ...panelStyle,
-        // Tall enough for two lines of label without the row jumping when one
-        // tile wraps and its neighbours do not.
-        minHeight: 96,
-        paddingLeft: 8, paddingRight: 8, paddingTop: 12, paddingBottom: 12,
-      }}
-    >
-      <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-        style={{ background: wash, color: accent }}>
-        {icon}
-      </span>
-      <span className="font-semibold text-white leading-tight"
-        style={{ fontSize: 'var(--text-meta)' }}>
-        {label}
-      </span>
-    </button>
   );
 }

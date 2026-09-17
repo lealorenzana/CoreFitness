@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Minus, Plus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Minus, Plus, X } from '@phosphor-icons/react';
+import { NocButton } from './noc';
 
 /**
  * A one-question-per-screen flow, in the shape of the onboarding wizard.
@@ -21,7 +22,7 @@ import { ArrowLeft, ArrowRight, Check, Minus, Plus, X } from 'lucide-react';
 
 export interface FlowStep {
   id: string;
-  /** The question, in the display face. Keep it short — it sets in Anton. */
+  /** The question, at 26px. Keep it short — it is the whole screen's headline. */
   title: string;
   hint?: string;
   /**
@@ -131,38 +132,48 @@ export default function StepFlow({
           aria-modal="true"
           aria-label={title}
         >
-          {/* Header: progress across the top, so "how much is left" is answered
-              before the member starts typing. */}
-          <div className="px-4 pt-4 pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                {title} · {index + 1} of {steps.length}
-              </p>
+          {/* Header: the way back, the way out, and how much is left — answered
+              before the member starts typing. Back is a text row that says
+              which way it goes ("Previous question"), never a bare arrow. */}
+          <div className="flex-shrink-0" style={{ padding: '12px var(--gutter) 0' }}>
+            <div className="flex items-center justify-between" style={{ gap: 12 }}>
+              <button onClick={back} className="flex items-center"
+                style={{ gap: 7, height: 44, fontSize: 13, color: 'var(--color-primary-300)' }}>
+                <ArrowLeft size={15} /> {index === 0 ? 'Cancel' : 'Previous question'}
+              </button>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+                className="grid place-items-center flex-shrink-0"
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}
               >
-                <X size={17} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="flex gap-1.5">
+            {/* Structure, so violet: a segment per question, lit up to here. */}
+            <div className="flex" style={{ gap: 5, marginTop: 6 }}>
               {steps.map((s, i) => (
                 <div
                   key={s.id}
-                  className="h-1 flex-1 rounded-full transition-colors"
-                  style={{ background: i <= index ? 'var(--color-secondary)' : 'var(--color-surface-high)' }}
+                  className="flex-1"
+                  style={{
+                    height: 3, borderRadius: 2,
+                    background: i <= index ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                    boxShadow: i === index ? '0 0 8px var(--color-primary)' : 'none',
+                  }}
                 />
               ))}
             </div>
+            <p style={{ fontSize: 12, marginTop: 18, color: 'var(--color-text-muted)' }}>
+              {title} · {index + 1} of {steps.length}
+            </p>
           </div>
 
           {/* One step at a time. popLayout rather than wait: the exiting child
               never blocks the entering one, so a stalled animation can't leave
               the flow showing a step number with no content under it. */}
-          <div className="flex-1 overflow-y-auto px-4 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '0 var(--gutter)' }}>
             <AnimatePresence mode="popLayout">
               <motion.div
                 key={step.id}
@@ -171,49 +182,38 @@ export default function StepFlow({
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.18 }}
               >
-                <h2 className="display text-2xl text-white mt-2">{step.title}</h2>
+                <h2 style={{
+                  fontSize: 26, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.2,
+                  marginTop: 8, color: 'var(--color-text-primary)',
+                }}>
+                  {step.title}
+                </h2>
                 {step.hint && (
-                  <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
                     {step.hint}
                   </p>
                 )}
-                <div className="mt-5 pb-4">{step.render}</div>
+                <div style={{ marginTop: 24, paddingBottom: 16 }}>{step.render}</div>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          <div
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-3"
-            style={{ borderTop: '1px solid var(--color-border)' }}
-          >
-            <button
-              onClick={back}
-              className="h-12 px-4 rounded-full font-semibold text-sm flex items-center gap-1.5 flex-shrink-0"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              <ArrowLeft size={16} /> {index === 0 ? 'Cancel' : 'Back'}
-            </button>
-
-            <button
+          {/* One action. "Skip" is itself the action on an optional step the
+              member has left empty — the only honest word for advancing past a
+              question with no answer. */}
+          <div className="flex-shrink-0" style={{ padding: '12px var(--gutter) calc(16px + env(safe-area-inset-bottom))' }}>
+            <NocButton
+              variant={optional && !isLast ? 'ghost' : 'action'}
+              className="w-full"
+              style={{ height: 48, fontSize: 14.5 }}
               onClick={next}
               disabled={blocked || saving}
-              className="flex-1 h-12 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{ background: 'var(--color-secondary)' }}
+              icon={saving ? undefined : isLast ? <Check size={16} /> : undefined}
             >
-              {saving ? 'Saving…' : isLast ? (
-                <>
-                  <Check size={16} /> {submitLabel}
-                </>
-              ) : (
-                <>
-                  {optional ? 'Skip' : 'Next'} <ArrowRight size={16} />
-                </>
+              {saving ? 'Saving…' : isLast ? submitLabel : optional ? 'Skip' : (
+                <span className="flex items-center" style={{ gap: 7 }}>Next <ArrowRight size={15} /></span>
               )}
-            </button>
+            </NocButton>
           </div>
         </motion.div>
       )}
@@ -282,15 +282,9 @@ export function BigNumberInput({
     /* Border comes from the .bignum-panel rule, not from the style object
        below: an inline border cannot be overridden on focus. */
     <div>
-    <div
-      className="bignum-panel flex items-center justify-between gap-2 p-4"
-      style={{
-        background: 'var(--color-surface-raised)',
-        borderRadius: 'var(--radius-panel)',
-      }}
-    >
+    <div className="flex items-center justify-between" style={{ gap: 12 }}>
       <NudgeButton label={`Decrease by ${step}`} onClick={() => nudge(-1)}>
-        <Minus size={20} />
+        <Minus size={19} />
       </NudgeButton>
 
       <div className="flex-1 min-w-0 flex items-baseline justify-center gap-1.5">
@@ -302,23 +296,25 @@ export function BigNumberInput({
           placeholder="—"
           onChange={(e) => onChange(e.target.value)}
           aria-label={unit ? `Value in ${unit}` : 'Value'}
-          className="bignum bg-transparent border-none text-center text-white min-w-0"
+          className="bignum bg-transparent border-none text-center min-w-0"
           style={{
             fontSize: 46,
-            fontWeight: 700,
+            fontWeight: 500,
+            letterSpacing: '-0.03em',
             lineHeight: 1.1,
+            color: 'var(--color-text-primary)',
             width: `${Math.max(2, value.length || 1)}ch`,
           }}
         />
         {unit && (
-          <span className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="flex-shrink-0" style={{ fontSize: 15, color: 'var(--color-text-muted)' }}>
             {unit}
           </span>
         )}
       </div>
 
-      <NudgeButton label={`Increase by ${step}`} onClick={() => nudge(1)}>
-        <Plus size={20} />
+      <NudgeButton label={`Increase by ${step}`} onClick={() => nudge(1)} primary>
+        <Plus size={19} />
       </NudgeButton>
     </div>
 
@@ -326,8 +322,8 @@ export function BigNumberInput({
       <button
         type="button"
         onClick={() => seed != null && onChange(String(seed))}
-        className="w-full mt-2 py-2 rounded-full text-xs font-semibold"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+        className="w-full text-center"
+        style={{ marginTop: 16, fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-primary-300)' }}
       >
         {seedLabel} · tap to reuse
       </button>
@@ -336,20 +332,26 @@ export function BigNumberInput({
   );
 }
 
+/** A 52px square. `primary` is the + side: adding is the action, so amber. */
 function NudgeButton({
-  label, onClick, children,
+  label, onClick, children, primary,
 }: {
   label: string;
   onClick: () => void;
   children: ReactNode;
+  primary?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
-      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
+      className="grid place-items-center flex-shrink-0"
+      style={{
+        width: 52, height: 52, borderRadius: 8,
+        border: `1px solid ${primary ? 'var(--color-secondary)' : 'var(--color-hairline)'}`,
+        color: primary ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+      }}
     >
       {children}
     </button>
@@ -371,29 +373,24 @@ export function ChoiceTile({
   return (
     <button
       onClick={onClick}
-      className="w-full p-4 text-left flex items-center gap-3"
+      className="w-full text-left flex items-center"
+      aria-pressed={selected}
       style={{
-        background: selected ? 'var(--color-primary-light)' : 'var(--color-surface-raised)',
-        border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-        borderRadius: 'var(--radius-card)',
+        gap: 12, minHeight: 52, padding: '10px 16px',
+        background: selected ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'transparent',
+        border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
+        borderRadius: 'var(--radius-btn)',
       }}
     >
       <span className="flex-1 min-w-0">
-        <span className="block text-sm font-semibold text-white">{label}</span>
+        <span className="block" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{label}</span>
         {description && (
-          <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
             {description}
           </span>
         )}
       </span>
-      {selected && (
-        <span
-          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          <Check size={14} className="text-white" />
-        </span>
-      )}
+      {selected && <Check size={16} className="flex-shrink-0" style={{ color: 'var(--color-primary-300)' }} />}
     </button>
   );
 }

@@ -33,15 +33,15 @@ export function Field({ label, hint, children, className, as = 'label' }: FieldP
   const Tag = as;
   return (
     <Tag className={cn('block', className)}>
-      <span className="text-xs block font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+      <span className="block" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
         {label}
       </span>
       {hint && (
-        <span className="text-xs block mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+        <span className="block" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
           {hint}
         </span>
       )}
-      <span className="block mt-1.5">{children}</span>
+      <span className="block" style={{ marginTop: 8 }}>{children}</span>
     </Tag>
   );
 }
@@ -60,7 +60,9 @@ export function TextInput({ className, ...props }: InputHTMLAttributes<HTMLInput
  */
 export function FieldError({ children }: { children: ReactNode }) {
   return (
-    <p className="text-xs mt-1" style={{ color: '#f87171' }} role="alert">
+    // Amber, as the toasts are: the design system has no red, and a problem you
+    // can fix is the next thing to do.
+    <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-secondary)' }} role="alert">
       {children}
     </p>
   );

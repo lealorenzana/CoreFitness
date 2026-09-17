@@ -1,12 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  ArrowLeft, Bell, Volume2, CalendarCheck, CreditCard, Shield as ShieldIcon, Ticket,
-  Lock, Mail, Shield, HelpCircle, FileText, Info, ChevronRight, X,
-  type LucideIcon,
-} from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { playNotificationSound } from '../utils/notificationSound';
@@ -17,21 +10,22 @@ import {
 import {
   getSharePrefs, saveSharePrefs, SHARE_ALL, type SharePrefs,
 } from '../lib/api/sharePrefs';
+import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import { getCurrentMemberId } from '../services/bookingService';
-import SectionHeader from '../components/ui/SectionHeader';
-import { panelStyle } from '../components/ui/Card';
-import { Ruler, Target, Dumbbell, Sparkles } from 'lucide-react';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { LineRow, SectionHead } from '../components/ui/noc';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
-const SHARE_ROWS: { key: keyof SharePrefs; icon: LucideIcon; label: string; description: string }[] = [
-  { key: 'shareMeasurements', icon: Ruler, label: 'Body measurements', description: 'Weight, body fat and tape measurements' },
-  { key: 'shareGoals', icon: Target, label: 'Goals', description: 'What you are working towards' },
-  { key: 'shareWorkouts', icon: Dumbbell, label: 'Workout log', description: 'Sessions you record yourself' },
+const SHARE_ROWS: { key: keyof SharePrefs; label: string; description: string }[] = [
+  { key: 'shareMeasurements', label: 'Body measurements', description: 'Weight, body fat and tape measurements' },
+  { key: 'shareGoals', label: 'Goals', description: 'What you are working towards' },
+  { key: 'shareWorkouts', label: 'Workout log', description: 'Sessions you record yourself' },
 ];
 
+const APP_VERSION = '1.0.0';
+
 /**
- * Settings.
+ * Settings (Nocturne redesign).
  *
  * This page used to be almost entirely decorative. Six switches — Push, Email,
  * SMS, Sound, Dark Mode — wrote a flag to localStorage that **nothing ever read
@@ -55,37 +49,81 @@ const SHARE_ROWS: { key: keyof SharePrefs; icon: LucideIcon; label: string; desc
  * its `notifications` row, because the bell is the history of what happened to
  * your membership and silencing a channel must not erase it.
  *
- * The Terms and Privacy rows pointed at `/member/terms` and `/member/privacy`.
- * Neither route exists — both pages are mounted at the top level — so both rows
- * were dead links onto the catch-all. Also removed:
- * `localStorage.getItem('memberEmail') || 'eya.lorenzana@email.com'`, which
- * namespaced every setting here under one real person's address.
+ * **About** was a modal with "Core Fitness Mamburao" and the address typed in.
+ * It is now a section at the foot of the page reading `gym_settings`, so the
+ * admin's Settings screen is the one place those words are written — and a
+ * section is one fewer overlay that can trap a tap.
  */
 
-type Row = {
-  icon: LucideIcon;
-  label: string;
-  description: string;
-  action: () => void;
-};
-
+/** A switch: violet when on (what you have), a hairline track when off. */
 function Switch({ on, busy }: { on: boolean; busy?: boolean }) {
   return (
     <span
-      className="relative w-12 h-6 rounded-full flex-shrink-0 transition-colors"
-      style={{ background: on ? 'var(--color-primary)' : 'var(--color-border)', opacity: busy ? 0.5 : 1 }}
+      aria-hidden
+      className="relative flex-none transition-colors"
+      style={{
+        width: 44, height: 26, borderRadius: 13,
+        background: on ? 'var(--color-primary)' : 'transparent',
+        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
+        boxShadow: on ? '0 0 12px -4px var(--color-primary)' : 'none',
+        opacity: busy ? 0.5 : 1,
+      }}
     >
       <span
-        className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
-        style={{ transform: on ? 'translateX(26px)' : 'translateX(2px)' }}
+        className="absolute rounded-full transition-transform"
+        style={{
+          top: 3, left: 3, width: 18, height: 18,
+          background: on ? '#fff' : 'var(--color-text-muted)',
+          transform: on ? 'translateX(18px)' : 'translateX(0)',
+        }}
       />
     </span>
   );
 }
 
+/** One switch row: the whole row is the button, the switch shows its state. */
+function SwitchRow({
+  label, description, on, busy, disabled, onToggle, last,
+}: {
+  label: string;
+  description: string;
+  on: boolean;
+  busy?: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  last?: boolean;
+}) {
+  return (
+    <div>
+      <button
+        role="switch"
+        aria-checked={on}
+        onClick={onToggle}
+        disabled={disabled}
+        className="w-full flex items-center text-left disabled:opacity-60"
+        style={{ gap: 14, padding: '13px 0' }}
+      >
+        <span className="flex-1 min-w-0">
+          <span className="block" style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{label}</span>
+          <span className="block" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-secondary)' }}>
+            {description}
+          </span>
+        </span>
+        <Switch on={on} busy={busy} />
+      </button>
+      {!last && <div className="hair" />}
+    </div>
+  );
+}
+
+function Footnote({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>{children}</p>
+  );
+}
+
 export default function Settings() {
   const navigate = useNavigate();
-  const [showAboutModal, setShowAboutModal] = useState(false);
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [pushOn, setPushOn] = useState(false);
@@ -94,6 +132,7 @@ export default function Settings() {
   // Defaults to sharing everything, which is what a member with no row has —
   // the same state the app was in before these switches existed.
   const [share, setShare] = useState<SharePrefs>(SHARE_ALL);
+  const [gym, setGym] = useState<GymSettingsRow | null>(null);
   const support = pushSupport();
 
   useEffect(() => {
@@ -105,8 +144,9 @@ export default function Settings() {
       setPushOn(enabled);
       setSwReady(sw);
 
-      // Separate from the batch above: it needs the member id first, and a
-      // failure here must not blank the notification switches.
+      // Separate from the batch above: a failure here must not blank the
+      // notification switches.
+      getGymSettings().then((g) => { if (!cancelled) setGym(g); }).catch(() => {});
       const id = await getCurrentMemberId().catch(() => null);
       if (!id || cancelled) return;
       const s = await getSharePrefs(id).catch(() => SHARE_ALL);
@@ -177,353 +217,126 @@ export default function Settings() {
     }
   };
 
-  const categoryRows: { key: keyof NotificationPrefs; icon: LucideIcon; label: string; description: string }[] = [
-    { key: 'booking', icon: CalendarCheck, label: 'Bookings', description: 'Class and PT approvals' },
-    { key: 'payment', icon: CreditCard, label: 'Payments', description: 'Receipts and dues' },
-    { key: 'membership', icon: ShieldIcon, label: 'Membership', description: 'Renewals and expiry' },
-    { key: 'event', icon: Ticket, label: 'Events', description: 'What the gym has coming up' },
+  const categoryRows: { key: keyof NotificationPrefs; label: string; description: string }[] = [
+    { key: 'booking', label: 'Bookings', description: 'Class and PT approvals' },
+    { key: 'payment', label: 'Payments', description: 'Receipts and dues' },
+    { key: 'membership', label: 'Membership', description: 'Renewals and expiry' },
+    { key: 'event', label: 'Events', description: 'What the gym has coming up' },
   ];
 
-  const sections: { title: string; items: Row[] }[] = [
-    {
-      title: 'Training preferences',
-      items: [
-        {
-          // Onboarding had no way back into it. That was survivable while its
-          // answers went nowhere; now that experience level and interests drive
-          // what Book a Session recommends, "I picked the wrong thing" needed an
-          // answer other than "make a new account".
-          //
-          // It also matters because migration 0036 marks every member who
-          // registered before it as already onboarded — correct, so the flow
-          // stops replaying, but it means their interests are empty until they
-          // can get back here.
-          icon: Sparkles,
-          label: 'Interests & experience',
-          description: 'Change what we recommend you',
-          action: () => navigate('/onboarding'),
-        },
-      ],
-    },
-    {
-      title: 'Security & privacy',
-      items: [
-        {
-          // Was the one account detail nobody could change: Edit Profile
-          // rendered the field disabled under "Ask the front desk", and the
-          // front desk had no way to do it either.
-          icon: Mail,
-          label: 'Change email',
-          description: 'The address you sign in with',
-          action: () => navigate('/member/change-email'),
-        },
-        {
-          icon: Lock,
-          label: 'Change password',
-          description: 'Update your password',
-          action: () => navigate('/member/change-password'),
-        },
-        {
-          icon: Shield,
-          label: 'Privacy policy',
-          description: 'How your data is handled',
-          action: () => navigate('/privacy'),
-        },
-      ],
-    },
-    {
-      title: 'Support & about',
-      items: [
-        {
-          icon: HelpCircle,
-          label: 'Help',
-          description: 'Ask the in-app assistant',
-          action: () => navigate('/member/chatbot'),
-        },
-        {
-          icon: FileText,
-          label: 'Terms of service',
-          description: 'Read our terms',
-          action: () => navigate('/terms'),
-        },
-        {
-          icon: Info,
-          label: 'About',
-          description: 'Version 1.0.0',
-          action: () => setShowAboutModal(true),
-        },
-      ],
-    },
+  /** Where to go from here. Each row is the button; the right word says so. */
+  const links: { label: string; description: string; to: string }[] = [
+    // Onboarding had no way back into it. Now that experience level and
+    // interests drive what Train recommends, "I picked the wrong thing" needed an
+    // answer other than "make a new account" — and 0036 marked every earlier
+    // member onboarded, so their interests are empty until they get back here.
+    { label: 'Interests & experience', description: 'Change what we recommend you', to: '/onboarding' },
+    // Was the one account detail nobody could change.
+    { label: 'Change email', description: 'The address you sign in with', to: '/member/change-email' },
+    { label: 'Change password', description: 'Update your password', to: '/member/change-password' },
+    { label: 'Help', description: 'Ask the in-app assistant', to: '/member/chatbot' },
+    { label: 'Privacy policy', description: 'How your data is handled', to: '/privacy' },
+    { label: 'Terms of service', description: 'Refunds, freezes and the rest of the rules', to: '/terms' },
   ];
+
+  const about = [
+    ['Version', APP_VERSION],
+    ['Gym', gym?.gym_name ?? null],
+    ['Address', gym?.address ?? null],
+    ['Phone', gym?.phone ?? null],
+    ['Email', gym?.email ?? null],
+  ].filter((r): r is [string, string] => Boolean(r[1]));
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/member/profile')}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Settings</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Manage your preferences</p>
-        </div>
-      </motion.div>
+      <PageTitle back fallback="/member/profile" title="Settings" subtitle="Alerts, privacy and your account" />
 
       {/* Notifications — every switch here does something observable. */}
-      <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="text-xs font-semibold uppercase tracking-wider px-1 mb-2"
-          style={{ color: 'var(--color-text-muted)' }}>
-          Notifications
-        </h2>
-
-        <div className="overflow-hidden" style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-panel)',
-        }}>
-          <button
-            onClick={togglePush}
+      <section>
+        <SectionHead title="Notifications" />
+        <div style={{ marginTop: 2 }}>
+          <SwitchRow
+            label="Push notifications"
+            // Says what is actually true of THIS device, rather than implying a
+            // setting that follows the member everywhere.
+            description={unavailableReason ?? (busy === 'push' ? 'Working…' : 'On this device')}
+            on={pushOn}
+            busy={busy === 'push'}
             disabled={unavailableReason !== null || busy === 'push'}
-            className="w-full p-3.5 flex items-center gap-3 text-left disabled:opacity-60"
-            style={{ borderBottom: '1px solid var(--color-border)' }}
-          >
-            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--color-primary-light)' }}>
-              <Bell size={18} style={{ color: 'var(--color-primary)' }} />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-white">Push notifications</span>
-              <span className="block text-xs mt-0.5 leading-snug" style={{ color: 'var(--color-text-muted)' }}>
-                {/* Says what is actually true of THIS device, rather than
-                    implying a setting that follows the member everywhere. */}
-                {unavailableReason ?? (busy === 'push' ? 'Working…' : 'On this device')}
-              </span>
-            </span>
-            <Switch on={pushOn} busy={busy === 'push'} />
-          </button>
-
-          <button
-            onClick={() => togglePref('soundEnabled')}
+            onToggle={togglePush}
+          />
+          <SwitchRow
+            label="Sound"
+            description="A chime when something arrives in the app"
+            on={prefs.soundEnabled}
+            busy={busy === 'soundEnabled'}
             disabled={busy === 'soundEnabled'}
-            className="w-full p-3.5 flex items-center gap-3 text-left disabled:opacity-60"
-            style={{ borderBottom: '1px solid var(--color-border)' }}
-          >
-            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--color-primary-light)' }}>
-              <Volume2 size={18} style={{ color: 'var(--color-primary)' }} />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-white">Sound</span>
-              <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                A chime when something arrives in the app
-              </span>
-            </span>
-            <Switch on={prefs.soundEnabled} busy={busy === 'soundEnabled'} />
-          </button>
-
-          {categoryRows.map((row, i) => {
-            const Icon = row.icon;
-            return (
-              <button
-                key={row.key}
-                onClick={() => togglePref(row.key)}
-                disabled={busy === row.key}
-                className="w-full p-3.5 flex items-center gap-3 text-left disabled:opacity-60"
-                style={{ borderBottom: i < categoryRows.length - 1 ? '1px solid var(--color-border)' : 'none' }}
-              >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-surface-high)' }}>
-                  <Icon size={18} style={{ color: 'var(--color-text-secondary)' }} />
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-white">{row.label}</span>
-                  <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                    {row.description}
-                  </span>
-                </span>
-                <Switch on={Boolean(prefs[row.key])} busy={busy === row.key} />
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="text-xs mt-2 px-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-          Muting a category stops the alert, not the record — everything still
-          appears in your notifications bell.
-        </p>
-      </motion.section>
-
-      {/* What your trainer sees.
-          These are enforced by RLS (migration 0032), not by hiding a panel:
-          switching one off removes those rows from every trainer's queries.
-          The wording names trainers specifically, because gym staff are
-          deliberately not gated and a switch implying otherwise would be the
-          same lie as the six dead ones this page used to carry. */}
-      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-        <SectionHeader title="What your trainer sees" />
-        <div
-          className="overflow-hidden"
-          style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
-        >
-          {SHARE_ROWS.map((row, i) => {
-            const Icon = row.icon;
-            return (
-              <button
-                key={row.key}
-                onClick={() => toggleShare(row.key)}
-                disabled={busy === row.key}
-                className="w-full p-3.5 flex items-center gap-3 text-left disabled:opacity-60"
-                style={{ borderBottom: i < SHARE_ROWS.length - 1 ? '1px solid var(--color-border)' : 'none' }}
-              >
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-primary-light)' }}>
-                  <Icon size={18} style={{ color: 'var(--color-primary)' }} />
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-white">{row.label}</span>
-                  <span className="block text-xs mt-0.5 leading-snug" style={{ color: 'var(--color-text-muted)' }}>
-                    {row.description}
-                  </span>
-                </span>
-                <Switch on={share[row.key]} busy={busy === row.key} />
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="text-xs mt-2 px-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-          Your name, membership and gym check-ins are always visible to gym staff — that is how the
-          front desk runs. These switches cover the personal logs you keep in Progress.
-        </p>
-      </motion.section>
-
-      {/*
-        The seven link rows, as one list instead of three headed cards.
-
-        They were split across "Training preferences" (one item), "Security &
-        privacy" (three) and "Support & about" (three) — three headings, three
-        card borders and three gaps to carry seven destinations, on a page that
-        already scrolls past six switches to reach them. The grouping was
-        editorially tidy and cost the member two extra screens of scrolling.
-
-        Each row also carried a 40px violet icon tile. On a list where every row
-        is the same kind of thing — go somewhere — the icons distinguished
-        nothing and set the row height. The label is what anyone reads.
-
-        Sub-headings survive as quiet dividers inside the one card, so the
-        grouping is still legible without being three separate objects.
-      */}
-      <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <h2 className="text-xs font-semibold uppercase tracking-wider px-1 mb-2"
-          style={{ color: 'var(--color-text-muted)' }}>
-          Account &amp; app
-        </h2>
-
-        <div className="overflow-hidden" style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-panel)',
-        }}>
-          {sections.map((section, si) => (
-            <div key={section.title}>
-              <p className="px-3.5 pt-3 pb-1 text-[12px] font-bold uppercase tracking-wider"
-                style={{
-                  color: 'var(--color-text-muted)',
-                  borderTop: si > 0 ? '1px solid var(--color-border)' : 'none',
-                }}>
-                {section.title}
-              </p>
-              {section.items.map((item, index) => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className="w-full px-3.5 py-3 flex items-center gap-3 text-left"
-                  style={{
-                    borderBottom:
-                      index < section.items.length - 1 ? '1px solid var(--color-border)' : 'none',
-                  }}
-                >
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-white">{item.label}</span>
-                    <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
-                      {item.description}
-                    </span>
-                  </span>
-                  <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
-                </button>
-              ))}
-            </div>
+            onToggle={() => togglePref('soundEnabled')}
+          />
+          {categoryRows.map((row, i) => (
+            <SwitchRow
+              key={row.key}
+              label={row.label}
+              description={row.description}
+              on={Boolean(prefs[row.key])}
+              busy={busy === row.key}
+              disabled={busy === row.key}
+              onToggle={() => togglePref(row.key)}
+              last={i === categoryRows.length - 1}
+            />
           ))}
         </div>
-      </motion.section>
+        <Footnote>
+          Muting a category stops the alert, not the record — everything still appears in Updates.
+        </Footnote>
+      </section>
 
-      <p className="text-center text-xs pt-2" style={{ color: 'var(--color-text-muted)' }}>
-        Core Fitness · Version 1.0.0
-      </p>
-
-      <AnimatePresence>
-        {showAboutModal && createPortal(
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowAboutModal(false)}
-              className="absolute inset-0 bg-black/85 backdrop-blur-sm z-50 pointer-events-auto"
+      {/* What your trainer sees.
+          Enforced by RLS (migration 0032), not by hiding a panel: switching one
+          off removes those rows from every trainer's queries. The wording names
+          trainers specifically, because gym staff are deliberately not gated and
+          a switch implying otherwise would be the same lie as the six dead ones
+          this page used to carry. */}
+      <section>
+        <SectionHead title="What your trainer sees" />
+        <div style={{ marginTop: 2 }}>
+          {SHARE_ROWS.map((row, i) => (
+            <SwitchRow
+              key={row.key}
+              label={row.label}
+              description={row.description}
+              on={share[row.key]}
+              busy={busy === row.key}
+              disabled={busy === row.key}
+              onToggle={() => toggleShare(row.key)}
+              last={i === SHARE_ROWS.length - 1}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[85%] max-w-sm pointer-events-auto"
-            >
-              <div
-                className="p-6 text-center relative"
-                style={{
-                  background: 'var(--color-surface-raised)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-panel)',
-                  boxShadow: 'var(--shadow-panel)',
-                }}
-              >
-                <button
-                  onClick={() => setShowAboutModal(false)}
-                  aria-label="Close"
-                  className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                >
-                  <X size={18} />
-                </button>
+          ))}
+        </div>
+        <Footnote>
+          Your name, membership and gym check-ins are always visible to gym staff — that is how the
+          front desk runs. These switches cover the personal logs you keep in Progress.
+        </Footnote>
+      </section>
 
-                <img src="/logo.png" alt="" className="w-16 h-16 mx-auto mb-3" />
-                <h3 className="display text-xl text-white">Core Fitness</h3>
-                <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Member app</p>
+      <section>
+        <SectionHead title="Account & app" />
+        <div style={{ marginTop: 2 }}>
+          {links.map((l, i) => (
+            <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
+              onClick={() => navigate(l.to)} last={i === links.length - 1} />
+          ))}
+        </div>
+      </section>
 
-                <div className="mt-4 space-y-2 text-left">
-                  {[
-                    ['Version', '1.0.0'],
-                    ['Gym', 'Core Fitness Mamburao'],
-                    ['Location', 'Mamburao, Occidental Mindoro'],
-                  ].map(([k, v]) => (
-                    <div
-                      key={k}
-                      className="p-3 rounded-xl flex items-center justify-between gap-3"
-                      style={{ background: 'var(--color-surface-high)' }}
-                    >
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{k}</span>
-                      <span className="text-xs font-semibold text-white text-right">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </>,
-          document.getElementById('modal-root')!
-        )}
-      </AnimatePresence>
+      <section>
+        <SectionHead title="About" meta="Core Fitness member app" />
+        <div style={{ marginTop: 2 }}>
+          {about.map(([k, v], i) => (
+            <LineRow key={k} gutter={k} gutterWidth={72} title={v} last={i === about.length - 1} />
+          ))}
+        </div>
+      </section>
     </Page>
   );
 }

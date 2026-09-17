@@ -213,36 +213,42 @@ export default function BodyMap({
 }: BodyMapProps) {
   const states = useMemo(() => buildStates(data), [data]);
   const [view, setView] = useState<BodyView>('front');
-  const [selected, setSelected] = useState<BodyRegionKey | null>(null);
+  const measured = (Object.keys(states) as BodyRegionKey[]).filter((k) => !states[k].empty);
+  // Open on the first measured group rather than on nothing: the lower half of
+  // the tab is the part that says what a number means, and an empty panel
+  // under a lit figure reads as a screen still loading.
+  const [selected, setSelected] = useState<BodyRegionKey | null>(() => measured[0] ?? null);
 
   const active = selected ? states[selected] : null;
-  const measured = (Object.keys(states) as BodyRegionKey[]).filter((k) => !states[k].empty);
+  const unmeasured = ORDER.filter((k) => states[k].empty);
 
   return (
     <div>
       {/* Front / back — the part of "3D" that actually helps, since half the
-          muscle groups are on the back. */}
-      <div className="flex items-center justify-center gap-1 p-1 rounded-full mx-auto mb-2"
-        style={{ background: 'var(--color-surface-high)', width: 'fit-content' }}
-        role="tablist" aria-label="Body view">
+          muscle groups are on the back. Two text toggles, not a pill switch:
+          the label swaps, never the measurement, because one circumference
+          covers both sides. */}
+      <div className="flex justify-end" style={{ gap: 14, fontSize: 12.5 }} role="tablist" aria-label="Body view">
         {(['front', 'back'] as BodyView[]).map((v) => (
           <button
             key={v}
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            className="px-5 h-8 rounded-full text-xs font-bold capitalize"
-            style={{
-              background: view === v ? 'var(--color-primary)' : 'transparent',
-              color: view === v ? '#FFFFFF' : 'var(--color-text-muted)',
-            }}
+            className="capitalize"
+            style={{ color: view === v ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}
           >
             {v}
           </button>
         ))}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex" style={{ gap: 14, marginTop: 10 }}>
+        {/* The figure. Its SVG is moved here unchanged — the generated paths,
+            the `screen` blend, `isolation: isolate` and the magnitude ramp are
+            exactly what they were; DESIGN_SYSTEM records what approximating
+            them cost. */}
+        <div className="flex-none" style={{ width: 132 }}>
         <svg
           viewBox={`0 0 ${ART_WIDTH} ${ART_HEIGHT}`}
           className="w-full"
@@ -306,164 +312,157 @@ export default function BodyMap({
             );
           })}
         </svg>
+        </div>
+
+        {/* The measurement column: one row per measured group, then one row
+            naming the rest. Rows are the second way in to a region — a finger
+            that misses a small muscle on a 132px figure still gets there. */}
+        {showLegend && (
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            {measured.map((key) => {
+              const st = states[key];
+              const on = selected === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelected(on ? null : key)}
+                  aria-pressed={on}
+                  className="text-left"
+                  style={{ padding: '9px 0', borderBottom: '1px solid var(--color-separator)' }}
+                >
+                  <span className="flex items-baseline justify-between" style={{ gap: 8, fontSize: 13.5 }}>
+                    <span className="flex items-center min-w-0" style={{ gap: 7 }}>
+                      <span aria-hidden className="flex-none rounded-full" style={{ width: 7, height: 7, background: st.fill }} />
+                      <span className="truncate" style={{ color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
+                        {LABEL[view][key]}
+                      </span>
+                    </span>
+                    <span className="flex-none" style={{ color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
+                      {st.latest} cm
+                    </span>
+                  </span>
+                  <span className="block" style={{ fontSize: 12, marginTop: 2, color: on ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
+                    {st.delta == null ? 'First reading' : st.delta === 0 ? 'No change' : `${st.delta > 0 ? '+' : ''}${st.delta} cm`}
+                  </span>
+                </button>
+              );
+            })}
+            {unmeasured.length > 0 && (
+              <div style={{ padding: '9px 0' }}>
+                <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+                  {unmeasured.map((k) => LABEL[view][k]).join(', ')}
+                </p>
+                <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                  {onLogRegion ? 'Not measured — tap one on the figure' : 'Not measured yet'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showLegend && (
         <>
-          {!active && (
-            <p className="text-xs mt-1 px-1 leading-relaxed text-center"
-              style={{ color: 'var(--color-text-muted)' }}>
+          <div className="rule" style={{ margin: '16px 0' }} />
+
+          {!active ? (
+            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
               {measured.length === 0
-                ? onLogRegion
-                  ? 'Tap a muscle to log it.'
-                  : 'Log a measurement to light up the map.'
+                ? onLogRegion ? 'Tap a muscle to log it.' : 'Log a measurement to light up the map.'
                 : 'Brighter means that measurement moved more than your others — not that it moved the right way.'}
             </p>
-          )}
-
-          {active && (
-            <div className="mt-2 p-3 rounded-xl"
-              style={{ background: 'var(--color-surface-high)' }}>
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-sm font-bold text-white">{LABEL[view][active.key]}</p>
-                {active.latest != null && (
-                  <p className="text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
-                    {active.latest} cm
-                  </p>
-                )}
-              </div>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          ) : (
+            <div>
+              <p className="eyebrow" style={{ color: 'var(--color-primary-300)' }}>Showing · {LABEL[view][active.key]}</p>
+              <p style={{ fontSize: 15, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-primary)' }}>
                 {active.latest == null
                   ? 'Not measured yet.'
                   : active.delta == null
-                    ? 'Your first reading, so there is nothing to compare it to yet.'
+                    ? `${active.latest} cm — your first reading, so there is nothing to compare it to yet.`
                     : active.delta === 0
-                      ? 'Unchanged since your last reading.'
-                      : `${active.delta > 0 ? 'Up' : 'Down'} ${Math.abs(active.delta)} cm since your last reading.`}
+                      ? `${active.latest} cm, unchanged since your last reading.`
+                      : `${active.latest} cm, ${active.delta > 0 ? 'up' : 'down'} ${Math.abs(active.delta)} cm since your last reading.`}
               </p>
               {/* What the change means, given what the member said they are
                   training for. Null whenever no honest claim can be made — an
-                  unstated focus, a first reading, or no change at all — and the
-                  panel simply reports the number, exactly as it did before. */}
+                  unstated focus, a first reading, or no change at all. */}
               {(() => {
                 const verdict = interpretChange(focus, SITE_KIND[active.key], active.delta);
                 return verdict ? (
-                  <p className="text-xs mt-1.5 font-semibold leading-relaxed"
-                    style={{ color: 'var(--color-secondary)' }}>
+                  <p style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
                     {verdict}
                   </p>
                 ) : null;
               })()}
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
                 {SITE_NOTE[active.key]}
               </p>
-              {onLogRegion && (
-                <button
-                  onClick={() => onLogRegion(active.key)}
-                  className="mt-2.5 w-full h-9 rounded-full text-xs font-bold text-black"
-                  style={{ background: 'var(--color-secondary)' }}
-                >
-                  {active.latest == null
-                    ? `Log ${LABEL[view][active.key].toLowerCase()}`
-                    : `Update ${LABEL[view][active.key].toLowerCase()}`}
-                </button>
-              )}
 
-              {/*
-                What trains this part.
-
-                The map used to answer one question — "how big is it, and has it
-                moved" — and stop. That leaves the member holding a number with
-                nothing to do about it. The exercises come from the gym's own
-                `exercises` catalogue, so this lists movements the equipment here
-                actually supports rather than a generic anatomy chart.
-
-                A region the gym has nothing catalogued for (the neck) says so.
-                An empty list under a heading would read as a loading failure.
-              */}
+              {/* What trains this part — from the gym's own `exercises`
+                  catalogue, so it lists movements the equipment here supports.
+                  A region with nothing catalogued (the neck) says so; an empty
+                  list under a heading would read as a loading failure. */}
               {exercisesFor && (() => {
                 const list = exercisesFor(active.key);
                 const note = trainingNoteFor?.(active.key);
                 return (
-                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <p className="text-xs font-bold uppercase tracking-wider mb-1.5"
-                      style={{ color: 'var(--color-text-secondary)' }}>
-                      Trains this
-                    </p>
+                  <div style={{ marginTop: 18 }}>
+                    <p className="eyebrow" style={{ marginBottom: 8 }}>Trains this</p>
                     {list.length === 0 ? (
-                      <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                         {note ?? 'Nothing in the gym’s catalogue targets this directly.'}
                       </p>
                     ) : (
                       <>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap" style={{ gap: 8 }}>
                           {list.map((e) => (
-                            <span key={e.id}
-                              className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                              style={{
-                                background: 'var(--color-primary-light)',
-                                color: 'var(--color-primary)',
-                              }}>
+                            <span key={e.id} style={{
+                              padding: '6px 11px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
+                              border: '1px solid var(--color-primary-800)', color: 'var(--color-primary-300)',
+                            }}>
                               {e.name}
                             </span>
                           ))}
                         </div>
                         {note && (
-                          <p className="text-xs mt-2 leading-relaxed"
-                            style={{ color: 'var(--color-text-muted)' }}>
-                            {note}
-                          </p>
-                        )}
-                        {onTrainRegion && (
-                          <button
-                            onClick={() => onTrainRegion(active.key)}
-                            className="mt-2.5 w-full h-9 rounded-full text-xs font-bold"
-                            style={{ background: 'var(--color-primary)', color: '#fff' }}
-                          >
-                            Track a set for this
-                          </button>
+                          <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>{note}</p>
                         )}
                       </>
                     )}
                   </div>
                 );
               })()}
-            </div>
-          )}
 
-          {/* Only measured groups are listed. The unmeasured ones already show
-              on the figure as dashed outlines, and listing all nine twice is how
-              an earlier version ended up needing a paragraph to explain itself. */}
-          {measured.length > 0 && (
-            <div className="grid grid-cols-2 gap-1.5 mt-2.5">
-              {measured.map((key) => {
-                const s = states[key];
-                const on = selected === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelected(on ? null : key)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left"
-                    style={{
-                      background: on ? 'var(--color-surface-high)' : 'var(--color-bg)',
-                      border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    }}
-                  >
-                    <span className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: s.fill }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-white truncate">
-                        {LABEL[view][key]}
-                      </span>
-                      <span className="block text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {s.latest} cm{s.delta != null && s.delta !== 0
-                          ? ` · ${s.delta > 0 ? '+' : ''}${s.delta}`
-                          : ''}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+              {(onLogRegion || onTrainRegion) && (
+                <div className="flex" style={{ gap: 9, marginTop: 18 }}>
+                  {onLogRegion && (
+                    <button
+                      onClick={() => onLogRegion(active.key)}
+                      className="flex-1"
+                      style={{
+                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 500,
+                        color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
+                        background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
+                        boxShadow: '0 0 26px -10px var(--color-secondary)',
+                      }}
+                    >
+                      {active.latest == null ? 'Log a reading' : 'New reading'}
+                    </button>
+                  )}
+                  {onTrainRegion && exercisesFor && exercisesFor(active.key).length > 0 && (
+                    <button
+                      onClick={() => onTrainRegion(active.key)}
+                      className="flex-1"
+                      style={{
+                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 500,
+                        color: 'var(--color-text-secondary)', border: '1px solid var(--color-hairline)',
+                      }}
+                    >
+                      Track a set
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </>

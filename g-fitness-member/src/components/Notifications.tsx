@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, X, CheckCheck, Archive, ArrowRight } from 'lucide-react';
+import { Bell, X, Checks, Archive, ArrowRight } from '@phosphor-icons/react';
 import { notificationService, type Notification } from '../services/notificationService';
 import { supabase } from '../lib/supabaseClient';
 import { getMyPrefs } from '../lib/api/notificationPrefs';
@@ -192,7 +192,7 @@ export default function Notifications() {
                   <button onClick={markAllRead} aria-label="Mark all as read"
                     className="h-9 px-3 rounded-full text-xs font-semibold flex items-center gap-1.5"
                     style={{ background: 'var(--color-surface-high)', color: 'var(--color-secondary)' }}>
-                    <CheckCheck size={14} /> Read all
+                    <Checks size={14} /> Read all
                   </button>
                 )}
                 <button onClick={close} aria-label="Close"
@@ -299,26 +299,39 @@ export default function Notifications() {
 
   return (
     <div className="relative">
+      {/* 34px visible, 44px to a thumb: the invisible ring of padding is the
+          tap target, the hairline square is what you see. The count moved into
+          the aria-label and onto Today, where "2 updates" is a sentence; on the
+          bell it was a number in a badge competing with the title beside it.
+          The dot is amber — something waiting is a call to look — and it is
+          rendered only when there is something, never a zero. */}
       <button
         onClick={() => (isOpen ? close() : open())}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-        className="relative w-11 h-11 rounded-full flex items-center justify-center transition-colors"
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          color: unreadCount > 0 ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
-        }}
+        className="relative grid place-items-center"
+        style={{ width: 44, height: 44, margin: -5 }}
       >
-        <Bell size={19} />
-        {unreadCount > 0 && (
-          <motion.span
-            initial={{ scale: 0 }} animate={{ scale: 1 }}
-            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xs font-bold text-black"
-            style={{ background: 'var(--color-secondary)' }}
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </motion.span>
-        )}
+        <span
+          className="relative grid place-items-center"
+          style={{
+            width: 34, height: 34, borderRadius: 8,
+            border: '1px solid rgba(233, 233, 237, 0.14)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <Bell size={16} />
+          {unreadCount > 0 && (
+            <span
+              aria-hidden
+              className="absolute rounded-full"
+              style={{
+                top: 7, right: 8, width: 7, height: 7,
+                background: 'var(--color-secondary)',
+                boxShadow: '0 0 8px var(--color-secondary)',
+              }}
+            />
+          )}
+        </span>
       </button>
 
       {overlayRoot && isOpen ? createPortal(panel, overlayRoot) : null}

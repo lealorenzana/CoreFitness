@@ -1,47 +1,15 @@
-import {
-  Calendar, CreditCard, Award, Info, BookOpen, Target, Users,
-  TrendingUp, AlertCircle, Dumbbell, type LucideIcon,
-} from 'lucide-react';
-
 /**
- * How a notification looks, in one place.
+ * How a notification is grouped, in one place.
  *
- * The bell and the full-list screen both draw the same rows. When the icon map
- * and the day-bucketing lived inside the bell component, the only way to build
- * a second screen was to copy them — and a copied lookup table is how this
- * codebase ended up with four different membership plan lists.
+ * The bell and the full-list screen both draw the same rows. When the
+ * day-bucketing lived inside the bell component, the only way to build a second
+ * screen was to copy it — and a copied lookup is how this codebase once ended
+ * up with four different membership plan lists.
+ *
+ * The per-type icon map that lived here went with the Nocturne redesign
+ * (2026-09-16): rows mark unread with a dot and read by their title, and a
+ * notification type no longer needs an entry here before it can be written.
  */
-
-export const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
-  payment: CreditCard,
-  membership: CreditCard,
-  event: Calendar,
-  achievement: Award,
-  booking: BookOpen,
-  goal_milestone: Target,
-  trainer_feedback: Users,
-  recommendation: Users,
-  trainer_recommendation: Users,
-  attendance: TrendingUp,
-  /** Written by `send_due_gym_reminders()` (0030), not by any client. */
-  gym_plan: Dumbbell,
-  system: AlertCircle,
-
-  // ── 0053's automated reminders ────────────────────────────────────────────
-  // These types were already being written before they were listed here, so
-  // they fell through to the generic `Info` icon: a "your membership ends
-  // tomorrow" warning looked identical to a system notice. The map is the only
-  // thing that decides, so a new server-side notification type has to be added
-  // here in the same change that starts writing it.
-  /** `send_membership_expiry_reminders()` — 7, 3 and 1 days out. */
-  expiry: CreditCard,
-  /** Goal reached, badge unlocked, reward now claimable. */
-  success: Award,
-};
-
-export function iconFor(type: string): LucideIcon {
-  return NOTIFICATION_ICONS[type] ?? Info;
-}
 
 /** Today / Yesterday / This week / Earlier — a flat list of 40 reads as noise. */
 export function bucketOf(iso: string): string {

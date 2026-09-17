@@ -926,3 +926,88 @@ Both were reported as missing. Neither was.
 
 The lesson both share: **a feature is not shipped when the query works, it is shipped when a route
 leads to it.** Grep for the path, not just the component.
+
+---
+
+## Detail moved out of CLAUDE.md (2026-09-17)
+
+CLAUDE.md is kept to 150–200 lines. These paragraphs were cut from it word for word, so nothing
+learned was lost; CLAUDE.md keeps a one-line pointer to each.
+
+### Migrations and the probe
+
+**0001–0083 are all live** — 0079/0080 pasted 2026-09-15, 0081/0082/0083 on 2026-09-16, each
+confirmed by the probe (nine rows across the three). 0081 records a cancellation's reason, actor and
+time; 0082 stops a trainer reading the whole gym; 0083 is the desk's attention queue, trainer
+suggestions and reassignment. Verify with `python scripts/probe-migrations.py`, which
+reads the schema over REST and needs no DB credentials. **Run it rather than trusting a report that a
+migration was pasted**: 0070 was believed done for a day and had never executed. It probes **three
+objects per migration**, so a file that never ran is distinguishable from one failed statement, and a
+protected object (42501) is a pass, not a miss.
+
+**0074 closed a live privilege bug** — 0071's stamp triggers returned early when `status` was
+unchanged, *above* the checks that stop a trainer rewriting `member_id` or `starts_at`, so a trainer
+could reassign a seat or move somebody's session. Found by running the SQL, not by reading it.
+Migrations are pasted by hand, so **`db push` is wrong here**; hand over **one at a time** (a
+444-line buffer broke the SQL Editor's splitter mid-`$$`), all re-runnable.
+
+**Manuscript Objective 2 named React Native / Express / MySQL / Firebase and the build uses none of
+them — the objective is being amended**, not the account of the system; replacement text is in
+[OBJECTIVES_TRACE](OBJECTIVES_TRACE.md).
+
+### Staff approval and the AI question
+
+**Staff approving registrations is 0078, not an Edge Function** — staff already had the queue, the
+intake write and the membership insert; only `profiles.status` refused them, so
+`set_account_status()` allows **one** staff transition, `pending_approval → active`. Approval and
+rejection both go through it, so approval has a history and a rejection states a reason.
+
+**`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%. **The AI question is
+answered in [AI_INTEGRATION](AI_INTEGRATION.md)**: the integration is already written and
+provider-agnostic, Groq's free tier (30/min, 14,400/day, no card) covers this gym, and Ollama cannot
+be the deployed answer because an Edge Function cannot reach a PC in Mamburao. The model is sent the
+question and nothing else — no name, no id, no membership.
+
+### Frozen memberships on Home
+
+**Frozen means no access at all** — and **Home says so** (2026-09-15): it had no concept of the
+state, so a frozen member read a healthy card counting down days and found out only by tapping Book,
+or at the desk. Frozen replaces the countdown, because those days are not running down. Cancelled
+stays usable to the expiry and the card labels it. Frozen days are **credited back to the expiry** —
+so the 60-day yearly ceiling (0070) is *shown* in the freeze dialog and **never enforced**: members
+were told about the monthly limit and never about a yearly one.
+
+### The two test harnesses
+
+`scripts/plan-gates.js` and `scripts/trainer-scenarios.js` go into the Playwright runner's `filename`
+argument and drive the real app over a routed network — they prove the **app** agrees with the rules
+and reach no Postgres. `scripts/sql/*.mjs` then run **the rules themselves** (66 checks;
+`replay-migrations.mjs` first replays every migration — the only faithful schema, and what cleared
+part 2): they apply a migration verbatim onto a minimal fixture in `@electric-sql/pglite` — real
+Postgres in Node, because **Docker has never started here** — and act as a real `authenticated` role,
+because **a table owner bypasses RLS** and would pass every assertion regardless. **RLS filters rows
+and does not raise**, so the right result for a forbidden write is *zero rows and no error*.
+
+### Audits
+
+Two more audits beside `audit-writes.py`, both finding real things: **`audit-dead-code.py`** (a module
+copied per app and then fixed in only one is the trap — the member app carried eight admin-only
+functions nothing called) and **`audit-routes.py`** (a route nothing links to; three have shipped).
+
+### Booking rules (the full paragraph)
+
+Classes (`bookings` → `classes`) and 1-on-1 (`pt_sessions`) are separate tables (0015); 0017
+counts quota per plan and **quota has no opinion about clashes**. 0068 adds them, comparing
+**half-open intervals with `overlaps`, never `starts_at = starts_at`** — a 60-minute 10:00 class
+collides with a 10:30 session. No override: a freeze limit is policy, being in two rooms at once is
+a contradiction. Availability is **per trainer** and always was. Class generation **reports**
+(`trainer_schedule_conflicts()`) rather than raising, because `generate_class_instances()` is one
+`INSERT … SELECT` and a raising trigger would lose a whole timetable over one template.
+**Trainers decide their own bookings** (0071) — final and immediate, `decided_by_role` stamped,
+admin able to reverse; a two-stage approval tells a member "approved" and then takes it back.
+**Cancelling is `cancel_booking()` (0081) and nothing else** — a bare `status='cancelled'` update is
+refused by a trigger, and the enum did **not** grow ("cancelled by X" is `cancelled_by_role`). It
+**deliberately reverses 0071**: a trainer may now cancel, through that function only. **A trainer sees
+only their own trainees** (0082) — four tables read `using (get_my_role() = 'trainer')` and handed
+over the whole gym. Detail for all three, and 0083's attention queue, in
+[DATA_ACCESS](DATA_ACCESS.md).

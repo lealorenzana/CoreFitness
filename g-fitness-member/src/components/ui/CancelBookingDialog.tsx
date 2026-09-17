@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { WarningCircle } from '@phosphor-icons/react';
 import Modal from './Modal';
 import {
   listCancellationReasons, cancelBooking, type CancellationReason,
@@ -118,8 +118,8 @@ export default function CancelBookingDialog({
       confirmDisabled={busy || incomplete}
       onConfirm={submit}
     >
-      <div className="space-y-3">
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+      <div className="flex flex-col" style={{ gap: 14 }}>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
           {actor === 'member'
             ? (kind === 'pt'
                 ? 'Your coach is told, and the slot goes back on their calendar. You can book another time afterwards.'
@@ -128,8 +128,8 @@ export default function CancelBookingDialog({
         </p>
 
         <div>
-          <p className="text-xs font-bold text-white mb-2">Why is it being cancelled?</p>
-          <div className="space-y-1.5">
+          <p style={{ fontSize: 13.5, marginBottom: 10, color: 'var(--color-text-primary)' }}>Why is it being cancelled?</p>
+          <div className="flex flex-col" style={{ gap: 8 }}>
             {reasons.map((r) => {
               const on = r.key === reason;
               return (
@@ -140,12 +140,15 @@ export default function CancelBookingDialog({
                   aria-checked={on}
                   disabled={busy}
                   onClick={() => setReason(r.key)}
-                  className="w-full px-3 py-2.5 rounded-xl text-left font-semibold transition-colors disabled:opacity-50"
+                  className="w-full text-left disabled:opacity-50"
+                  // 50px rows: a reason is picked mid-conversation at the desk
+                  // or on the way out the door, not with a steady finger.
+                  // Selection is state, so violet.
                   style={{
-                    fontSize: 'var(--text-body)',
-                    background: on ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                    color: on ? '#fff' : 'var(--color-text-secondary)',
-                    border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    minHeight: 50, padding: '0 16px', fontSize: 14.5, borderRadius: 'var(--radius-btn)',
+                    background: on ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'transparent',
+                    color: on ? 'var(--color-primary-300)' : 'var(--color-text-primary)',
+                    border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
                   }}
                 >
                   {r.label}
@@ -158,7 +161,7 @@ export default function CancelBookingDialog({
         {/* Only for the reason that needs it, and required when shown. */}
         {noteRequired && (
           <div>
-            <label htmlFor="cancel-note" className="text-xs font-bold text-white block mb-1.5">
+            <label htmlFor="cancel-note" className="block" style={{ fontSize: 13.5, marginBottom: 8, color: 'var(--color-text-primary)' }}>
               Tell us why
             </label>
             <textarea
@@ -169,15 +172,13 @@ export default function CancelBookingDialog({
               maxLength={500}
               disabled={busy}
               placeholder="A sentence is plenty"
-              className="field-input w-full rounded-xl p-3 text-white resize-none"
-              style={{
-                fontSize: 'var(--text-meta)',
-                background: 'var(--color-surface-high)',
-                border: '1px solid var(--color-border)',
-              }}
+              // No inline border: `.field-input` owns it, and an inline one
+              // would silently beat the focus ring (DESIGN_SYSTEM).
+              className="field-input w-full resize-none"
+              style={{ fontSize: 14, padding: 12 }}
             />
             {note.trim() === '' && (
-              <p className="mt-1" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
+              <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
                 Needed before you can confirm.
               </p>
             )}
@@ -185,9 +186,8 @@ export default function CancelBookingDialog({
         )}
 
         {error && (
-          <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 leading-relaxed"
-            style={{ fontSize: 'var(--text-meta)', background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-            <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+          <div className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+            <WarningCircle size={15} className="flex-shrink-0" style={{ marginTop: 1 }} />
             <span>{error}</span>
           </div>
         )}

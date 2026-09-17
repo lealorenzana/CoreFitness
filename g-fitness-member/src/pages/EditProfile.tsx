@@ -1,7 +1,5 @@
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Lock, Save, Camera } from 'lucide-react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { errorMessage } from '../utils/errorMessage';
 import { supabase } from '../lib/supabaseClient';
@@ -9,7 +7,17 @@ import { getMyProfile, updateMyProfile } from '../lib/api/profiles';
 import { Field, TextInput, FieldError } from '../components/ui/Field';
 import Avatar from '../components/ui/Avatar';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
+import { Page, PageTitle } from '../components/ui/page';
+import { NocButton, SectionHead } from '../components/ui/noc';
 
+/**
+ * Edit the member's own name, phone, photo and (optionally) password
+ * (Nocturne redesign — sections on the page rather than four glass cards).
+ *
+ * The password section keeps its place, and now asks for **eight** characters,
+ * not six: Change Password asks for eight, and two screens that change the same
+ * password under different rules is a rule nobody can state.
+ */
 export default function EditProfile() {
   const navigate = useNavigate();
 
@@ -20,6 +28,11 @@ export default function EditProfile() {
     firstName: '', lastName: '', email: '', phone: '',
     currentPassword: '', newPassword: '', confirmPassword: '',
   });
+
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,11 +50,6 @@ export default function EditProfile() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState(false);
 
   /**
    * Uploads immediately rather than waiting for Save.
@@ -83,7 +91,6 @@ export default function EditProfile() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error for this field
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' });
     }
@@ -92,12 +99,8 @@ export default function EditProfile() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -109,15 +112,13 @@ export default function EditProfile() {
       newErrors.phone = 'Phone number must be in format +63 XXX XXX XXXX';
     }
 
-    // Password validation (only if user wants to change password)
+    // Password validation (only if the member wants to change it)
     if (formData.currentPassword || formData.newPassword || formData.confirmPassword) {
-      if (!formData.currentPassword) {
-        newErrors.currentPassword = 'Current password is required';
-      }
+      if (!formData.currentPassword) newErrors.currentPassword = 'Current password is required';
       if (!formData.newPassword) {
         newErrors.newPassword = 'New password is required';
-      } else if (formData.newPassword.length < 6) {
-        newErrors.newPassword = 'Password must be at least 6 characters';
+      } else if (formData.newPassword.length < 8) {
+        newErrors.newPassword = 'Password must be at least 8 characters';
       }
       if (formData.newPassword !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
@@ -130,7 +131,7 @@ export default function EditProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       showErrorToast({ type: 'validation', message: 'Please fix the errors in the form' });
       return;
@@ -162,7 +163,7 @@ export default function EditProfile() {
         if (pwError) throw pwError;
       }
 
-      showSuccessToast(formData.newPassword ? 'Profile and password updated' : 'Profile updated successfully!');
+      showSuccessToast(formData.newPassword ? 'Profile and password updated' : 'Profile updated');
       setFormData({ ...formData, currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => navigate('/member/profile'), 800);
     } catch (err) {
@@ -172,209 +173,127 @@ export default function EditProfile() {
     }
   };
 
+  /** An error edge in the action colour — the design system has no red. */
+  const edge = (key: string) => (errors[key] ? { borderColor: 'var(--color-secondary)' } : undefined);
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
-      >
-        <button
-          onClick={() => navigate('/member/profile')}
-          className="w-10 h-10 rounded-xl border flex items-center justify-center text-white/40 hover:text-white transition-all duration-200"
-          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-3xl font-orbitron font-bold text-gradient">Edit Profile</h1>
-          <p className="text-white/40 mt-1">Update your personal information</p>
-        </div>
-      </motion.div>
+    <Page>
+      <PageTitle back fallback="/member/profile" title="Edit profile" subtitle="Your name, photo and how the gym reaches you" />
 
-      {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        onSubmit={handleSubmit}
-        className="space-y-6"
-      >
-        {/* Profile Photo */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="text-white font-semibold text-lg flex items-center gap-2 mb-4">
-            <Camera size={20} style={{ color: 'var(--color-primary)' }} />
-            Profile Photo
-          </h2>
-          
-          <div className="flex items-center gap-6">
-            <div className="relative" style={{ opacity: photoBusy ? 0.5 : 1 }}>
-              <Avatar
-                name={`${formData.firstName} ${formData.lastName}`.trim()}
-                photoUrl={profilePhoto}
-                size={96}
-                className="border-2"
-              />
-              <label htmlFor="photo-upload"
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2"
-                style={{ background: 'var(--color-secondary)', borderColor: 'var(--color-surface)' }}>
-                <Camera size={14} className="text-black" />
+      <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: 'var(--stack)' }}>
+        {/* Photo */}
+        <section className="flex items-center" style={{ gap: 16 }}>
+          <label htmlFor="photo-upload" className="flex-none cursor-pointer" style={{ opacity: photoBusy ? 0.5 : 1 }}
+            aria-label="Choose a profile photo">
+            <Avatar name={`${formData.firstName} ${formData.lastName}`.trim()} photoUrl={profilePhoto} size={76} />
+          </label>
+          <input
+            id="photo-upload"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
+            disabled={photoBusy}
+            className="hidden"
+          />
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>Profile photo</p>
+            {/* Honest about what the server actually accepts: the bucket
+                rejects GIF, and caps at 2 MB after the client resizes. */}
+            <p style={{ fontSize: 12, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+              JPG, PNG or WebP. Large photos are resized automatically.
+            </p>
+            <div className="flex items-center" style={{ gap: 16, marginTop: 8, fontSize: 13 }}>
+              <label htmlFor="photo-upload" className="cursor-pointer" style={{ color: 'var(--color-secondary)' }}>
+                {photoBusy ? 'Uploading…' : profilePhoto ? 'Change photo' : 'Choose photo'}
               </label>
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handlePhotoChange}
-                disabled={photoBusy}
-                className="hidden"
-              />
-            </div>
-
-            <div className="flex-1">
-              <p className="text-white font-medium mb-1">Profile picture</p>
-              {/* Honest about what the server actually accepts: the bucket
-                  rejects GIF, and caps at 2 MB after the client resizes. */}
-              <p className="text-white/40 text-sm mb-3">
-                JPG, PNG or WebP. Large photos are resized automatically.
-              </p>
-              <div className="flex items-center gap-2">
-                <label htmlFor="photo-upload"
-                  className="inline-block px-4 py-2 rounded-full text-sm font-semibold cursor-pointer border transition-colors"
-                  style={{
-                    background: 'var(--color-surface)',
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text-secondary)',
-                  }}>
-                  {photoBusy ? 'Uploading…' : profilePhoto ? 'Change photo' : 'Choose photo'}
-                </label>
-                {profilePhoto && !photoBusy && (
-                  <button type="button" onClick={handleRemovePhoto}
-                    className="px-4 py-2 rounded-full text-sm font-semibold border transition-colors"
-                    style={{ background: 'transparent', borderColor: 'var(--color-border)', color: '#f87171' }}>
-                    Remove
-                  </button>
-                )}
-              </div>
+              {profilePhoto && !photoBusy && (
+                <button type="button" onClick={handleRemovePhoto} style={{ color: 'var(--color-text-secondary)' }}>
+                  Remove
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Personal Information */}
-        <div className="glass-card rounded-2xl p-6 space-y-4">
-          <h2 className="text-white font-semibold text-lg flex items-center gap-2">
-            <User size={20} style={{ color: 'var(--color-primary)' }} />
-            Personal Information
-          </h2>
+        <div className="rule" style={{ marginTop: -8 }} />
 
-          <div className="grid grid-cols-2 gap-4">
+        {/* Name */}
+        <section className="flex flex-col" style={{ gap: 14 }}>
+          <SectionHead title="Name" />
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
             <div>
-              <Field label="First Name">
-                <TextInput type="text" name="firstName" value={formData.firstName} onChange={handleChange}
-                  className={errors.firstName ? 'border-red-500' : undefined} />
+              <Field label="First name">
+                <TextInput type="text" name="firstName" autoComplete="given-name" value={formData.firstName}
+                  onChange={handleChange} style={edge('firstName')} />
               </Field>
               {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
             </div>
-
             <div>
-              <Field label="Last Name">
-                <TextInput type="text" name="lastName" value={formData.lastName} onChange={handleChange}
-                  className={errors.lastName ? 'border-red-500' : undefined} />
+              <Field label="Last name">
+                <TextInput type="text" name="lastName" autoComplete="family-name" value={formData.lastName}
+                  onChange={handleChange} style={edge('lastName')} />
               </Field>
               {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Contact Information */}
-        <div className="glass-card rounded-2xl p-6 space-y-4">
-          <h2 className="text-white font-semibold text-lg flex items-center gap-2">
-            <Mail size={20} style={{ color: 'var(--color-primary)' }} />
-            Contact Information
-          </h2>
-
+        {/* Contact */}
+        <section className="flex flex-col" style={{ gap: 14 }}>
+          <SectionHead title="Contact" />
           <div>
             {/* Read-only here because this is the login identity: changing it
                 needs a password check and an email confirmation round-trip,
                 which is a screen of its own. The hint used to say "Ask the
                 front desk" — they had no way to do it either. */}
-            <Field label="Email Address">
+            <Field label="Email address">
               <TextInput type="email" name="email" value={formData.email} readOnly disabled
-                className="cursor-not-allowed" />
+                className="cursor-not-allowed" style={{ color: 'var(--color-text-secondary)' }} />
             </Field>
-            <button
-              type="button"
-              onClick={() => navigate('/member/change-email')}
-              className="text-xs font-semibold mt-1.5"
-              style={{ color: 'var(--color-secondary)' }}
-            >
+            <button type="button" onClick={() => navigate('/member/change-email')}
+              style={{ fontSize: 13, marginTop: 8, color: 'var(--color-primary-300)' }}>
               Change email
             </button>
           </div>
-
           <div>
-            <Field label="Phone Number">
-              <TextInput type="tel" name="phone" value={formData.phone} onChange={handleChange}
-                placeholder="+63 XXX XXX XXXX"
-                className={errors.phone ? 'border-red-500' : undefined} />
+            <Field label="Phone number">
+              <TextInput type="tel" name="phone" autoComplete="tel" value={formData.phone} onChange={handleChange}
+                placeholder="+63 XXX XXX XXXX" style={edge('phone')} />
             </Field>
             {errors.phone && <FieldError>{errors.phone}</FieldError>}
           </div>
-        </div>
+        </section>
 
-        {/* Change Password */}
-        <div className="glass-card rounded-2xl p-6 space-y-4">
-          <h2 className="text-white font-semibold text-lg flex items-center gap-2">
-            <Lock size={20} style={{ color: 'var(--color-primary)' }} />
-            Change Password
-          </h2>
-          <p className="text-white/40 text-sm">Leave blank if you don't want to change your password</p>
-
+        {/* Password */}
+        <section className="flex flex-col" style={{ gap: 14 }}>
+          <SectionHead title="Password" meta="Leave blank to keep it" />
           <div>
-            <Field label="Current Password">
-              <TextInput type="password" name="currentPassword" value={formData.currentPassword} onChange={handleChange}
-                className={errors.currentPassword ? 'border-red-500' : undefined} />
+            <Field label="Current password">
+              <TextInput type="password" name="currentPassword" autoComplete="current-password"
+                value={formData.currentPassword} onChange={handleChange} style={edge('currentPassword')} />
             </Field>
             {errors.currentPassword && <FieldError>{errors.currentPassword}</FieldError>}
           </div>
-
           <div>
-            <Field label="New Password">
-              <TextInput type="password" name="newPassword" value={formData.newPassword} onChange={handleChange}
-                className={errors.newPassword ? 'border-red-500' : undefined} />
+            <Field label="New password" hint="At least 8 characters.">
+              <TextInput type="password" name="newPassword" autoComplete="new-password"
+                value={formData.newPassword} onChange={handleChange} style={edge('newPassword')} />
             </Field>
             {errors.newPassword && <FieldError>{errors.newPassword}</FieldError>}
           </div>
-
           <div>
-            <Field label="Confirm New Password">
-              <TextInput type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
-                className={errors.confirmPassword ? 'border-red-500' : undefined} />
+            <Field label="Confirm new password">
+              <TextInput type="password" name="confirmPassword" autoComplete="new-password"
+                value={formData.confirmPassword} onChange={handleChange} style={edge('confirmPassword')} />
             </Field>
             {errors.confirmPassword && <FieldError>{errors.confirmPassword}</FieldError>}
           </div>
-        </div>
+        </section>
 
-        {/* Submit Button — flat yellow */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 text-black"
-          style={{ background: 'var(--color-secondary)' }}
-        >
-          {isLoading ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save size={20} />
-              Save Changes
-            </>
-          )}
-        </button>
-      </motion.form>
-    </div>
+        <NocButton type="submit" variant="action" disabled={isLoading} className="w-full">
+          {isLoading ? 'Saving…' : 'Save changes'}
+        </NocButton>
+      </form>
+    </Page>
   );
 }

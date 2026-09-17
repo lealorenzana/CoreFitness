@@ -1,76 +1,69 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import BottomNav from './BottomNav';
-import FloatingChathead from '../ui/FloatingChathead';
+import TabBar from './TabBar';
+import TabHeader from './TabHeader';
+import { tabRootFor } from './memberNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
-import { useFeatures } from '../../hooks/useFeatures';
-import { isEnabled } from '../../lib/api/planFeatures';
 
 /**
- * The assistant chathead, shown only for plans that include it (`ai_model`,
- * 0049).
+ * The member shell (Nocturne redesign, 2026-09-16), top to bottom:
  *
- * A Free Plan member was told "AI assistant - not on this plan" on their
- * membership card and then had this button following them around every screen,
- * which reads as either a broken lock or an empty promise. The route still
- * exists and explains itself (see ChatbotPage) - it is the floating button that
- * stops advertising something the plan does not include.
+ *   header   — only on the three tab roots: title, eyebrow, bell, rail
+ *   <main>   — the one scroller
+ *   bar      — Today · Train · You · More, and the check-in block
  *
- * Its own component so `Layout` can remount it per route. A failed check
- * deliberately falls through to *showing* it: a lock that appears because the
- * network dropped is the same lie as an empty list reading "nothing here", and
- * `FeatureLock` treats a failed check the same way.
+ * All three are in flow. Nothing floats over the scroller: the old dock did,
+ * and so did the assistant's draggable chat head, and between them they covered
+ * the last row of most long screens (measured on Home: the chat head sat 40×48px
+ * over the Next session button).
+ *
+ * **The chat head is gone; the assistant is not.** It is at `/member/chatbot`,
+ * reached from the Today rail, Today's "Ask the assistant" button and Everything —
+ * three places a member will look, instead of one bubble following them over
+ * every screen. `ChatbotPage` still gates it by plan (0049) and explains itself.
  */
-function ChatheadGate() {
-  const { features, loading, error } = useFeatures();
-  if (!error && (loading || !isEnabled(features, 'ai_model'))) return null;
-  return <FloatingChathead />;
-}
-
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
-
+  const root = tabRootFor(location.pathname);
 
   // Was `mainRef.current.scrollTo(0, 0)` on every pathname change — a deliberate
   // reset that sent the member back to the top of Home every time they came
   // back to it. A screen visited before now resumes where it was left; a screen
-  // seen for the first time still starts at the top, which is all the old line
-  // was ever getting right.
+  // seen for the first time still starts at the top.
   useScrollMemory(mainRef, location.pathname);
 
   return (
     <PhoneChassis>
       <Toaster />
 
-      {/* The gutter lives here and nowhere else, so every screen starts at the
-          same left edge. `--gutter` rather than px-4: the value is shared with
-          the dock and the sheets, and three places that must agree should not
-          be three literals.
+      {root && <TabHeader tab={root} />}
 
-          No bottom padding on purpose — `<Page>` owns the clearance above the
-          floating dock, because the screens with their own footer (Track, the
-          assistant) need to opt out of it, and a fixed pb- here would push
-          their composer up by a dock's height for no reason. */}
+      {/* The gutter lives here and nowhere else, so every screen starts at the
+          same left edge.
+
+          No bottom padding on purpose — `<Page>` owns the breathing room at the
+          end of a screen, because screens with their own footer (Track, the
+          assistant's composer) opt out of it. */}
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto scrollbar-hide relative"
+        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative"
         style={{
           backgroundColor: 'var(--color-bg)',
           paddingLeft: 'var(--gutter)',
           paddingRight: 'var(--gutter)',
-          paddingTop: 'var(--gutter)',
+          // A root's header already ends in the rail's own padding.
+          paddingTop: root ? 4 : 'var(--gutter)',
         }}
       >
-        {/* Animated page transitions — 200ms fade + slide.
-            `min-h-full flex flex-col` so a page can ask to fill the screen with
+        {/* `min-h-full flex flex-col` so a page can ask to fill the screen with
             `flex-1` — the assistant needs its transcript to take the slack and
-            its composer to sit on the dock. Ordinary pages are unaffected: they
-            still size to their content. */}
+            its composer to sit on the bar. Opacity only, 150ms: animation is
+            decoration, and nothing here waits for it to finish. */}
         <AnimatePresence mode="popLayout">
           <motion.div
             key={location.pathname}
@@ -85,14 +78,7 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
-      <BottomNav />
-
-      {/* Draggable floating AI chathead — only for plans that include it.
-          Keyed by route so it re-reads entitlements on every navigation: this
-          sits in the shell, which never remounts, and `invalidateFeatures()`
-          only affects the next mount. Without the key a member who upgraded
-          mid-session would keep the free layout until they restarted the app. */}
-      <ChatheadGate key={location.pathname} />
+      <TabBar />
 
       {/* Sits at shell level so an unlock earned on any screen can surface
           there, rather than only on the page that happened to load it. */}

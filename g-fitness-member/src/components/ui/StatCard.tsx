@@ -16,29 +16,25 @@ import { panelStyle } from './Card';
 
 export type PillTone = 'primary' | 'secondary' | 'muted';
 
-const pillTones: Record<PillTone, { background: string; color: string; border: string }> = {
-  primary: {
-    background: 'var(--color-primary-light)',
-    color: 'var(--color-primary)',
-    border: '1px solid rgba(124,58,237,0.30)',
-  },
+/**
+ * Nocturne's status marker: outlined, 4px radius, no fill. `primary` is state
+ * (violet — text at the 300 step, since #7C3AED is 3.5:1), `secondary` is a call
+ * to act (amber).
+ */
+const pillTones: Record<PillTone, { color: string; border: string }> = {
+  primary: { color: 'var(--color-primary-300)', border: '1px solid var(--color-primary-800)' },
   secondary: {
-    background: 'var(--color-secondary-light)',
     color: 'var(--color-secondary)',
-    border: '1px solid rgba(245,158,11,0.30)',
+    border: '1px solid color-mix(in srgb, var(--color-secondary) 55%, transparent)',
   },
-  muted: {
-    background: 'var(--color-bg)',
-    color: 'var(--color-text-muted)',
-    border: '1px solid var(--color-border)',
-  },
+  muted: { color: 'var(--color-text-secondary)', border: '1px solid var(--color-hairline)' },
 };
 
 export function Pill({ label, tone = 'muted' }: { label: string; tone?: PillTone }) {
   return (
     <span
-      className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
-      style={pillTones[tone]}
+      className="inline-block whitespace-nowrap"
+      style={{ ...pillTones[tone], fontSize: 12, lineHeight: 1.4, padding: '1px 8px', borderRadius: 4 }}
     >
       {label}
     </span>

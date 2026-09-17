@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Check, AlertTriangle, Dumbbell } from 'lucide-react';
-import { panelStyle } from '../components/ui/Card';
+import { Check, Plus, Trash } from '@phosphor-icons/react';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { Field, Select, TextInput } from '../components/ui/Field';
+import { Page, PageTitle } from '../components/ui/page';
+import { NocButton, Panel, SectionHead } from '../components/ui/noc';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
 import {
@@ -13,7 +15,7 @@ import {
 import { errorMessage } from '../utils/errorMessage';
 
 /**
- * Recording a workout while you are doing it (migration 0050).
+ * Recording a workout while you are doing it (migration 0050) — Nocturne redesign.
  *
  * ## One open session, resumed
  *
@@ -160,163 +162,125 @@ export default function WorkoutTracker() {
     .filter((e) => sets.some((s) => s.exerciseId === e.id))
     .map((e) => ({ exercise: e, rows: sets.filter((s) => s.exerciseId === e.id) }));
 
-  const Header = (
-    <div className="flex items-center gap-3 mb-4">
-      <button onClick={() => navigate(-1)}
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-        <ArrowLeft size={18} />
-      </button>
-      <div className="min-w-0">
-        <h1 className="display text-xl text-white leading-none">Track a workout</h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          {logId ? `${grouped.length} exercise${grouped.length === 1 ? '' : 's'} · ${sets.length} set${sets.length === 1 ? '' : 's'}` : 'Record what you lift, set by set'}
-        </p>
-      </div>
-    </div>
+  const title = (
+    <PageTitle back fallback="/member/progress?tab=workouts" title="Track a workout"
+      subtitle={logId
+        ? `${grouped.length} exercise${grouped.length === 1 ? '' : 's'} · ${sets.length} set${sets.length === 1 ? '' : 's'} so far`
+        : 'Record what you lift, set by set'} />
   );
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <p className="text-xs px-1" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
-      </div>
+      <Page>
+        {title}
+        <SkeletonList count={2} />
+      </Page>
     );
   }
 
   const Err = error && (
-    <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed mb-3"
-         style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-      <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-      <span>{error}</span>
-    </div>
+    <p role="alert" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-secondary)' }}>{error}</p>
   );
 
   return (
-    <FeatureLock
-      feature="workout_tracker"
-      context={<div className="flex-1 min-h-0 flex flex-col">{Header}</div>}
-    >
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 pb-4">
-          {Err}
+    <FeatureLock feature="workout_tracker" context={<Page>{title}</Page>}>
+      <Page>
+        {title}
+        {Err}
 
-          {!logId ? (
-            <div className="p-5 rounded-2xl text-center" style={panelStyle}>
-              <span className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-                    style={{ background: 'var(--color-primary-light)' }}>
-                <Dumbbell size={26} style={{ color: 'var(--color-primary)' }} />
-              </span>
-              <p className="display text-lg text-white">Start a session</p>
-              <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                Add each set as you finish it. Nothing is lost if you lock your
-                phone — every set saves as you enter it.
+        {!logId ? (
+          <>
+            <Panel glow="structure" filled>
+              <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Start a session</p>
+              <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>
+                Add each set as you finish it. Nothing is lost if you lock your phone — every set saves as you
+                enter it, and coming back here picks the session up where you left it.
               </p>
-              <button onClick={begin} disabled={busy}
-                className="w-full h-12 rounded-2xl font-semibold text-sm mt-4 disabled:opacity-50"
-                style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                {busy ? 'Starting…' : 'Start workout'}
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* ── The set entry form ─────────────────────────────────────── */}
-              <div className="p-4 rounded-2xl space-y-2.5" style={panelStyle}>
-                <p className="text-xs font-bold text-white">Add a set</p>
+            </Panel>
+            <NocButton variant="action" onClick={begin} disabled={busy} className="w-full">
+              {busy ? 'Starting…' : 'Start workout'}
+            </NocButton>
+          </>
+        ) : (
+          <>
+            {/* ── The set entry form ── */}
+            <section className="flex flex-col" style={{ gap: 12 }}>
+              <SectionHead title="Add a set"
+                meta={chosen ? `Set ${nextSetNumber(chosen.id)} of ${chosen.name}` : undefined} />
 
-                <select
-                  value={exerciseId}
-                  onChange={(e) => setExerciseId(e.target.value)}
-                  className="field-input w-full h-11 px-3 rounded-xl text-xs text-white"
-                  style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}
-                >
+              <Field label="Exercise">
+                <Select value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
                   <option value="">Choose an exercise…</option>
                   {exercises.map((e) => (
                     <option key={e.id} value={e.id}>{e.name}</option>
                   ))}
-                </select>
+                </Select>
+              </Field>
 
-                {chosen && (chosen.isTimed ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Minutes</span>
-                      <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)}
-                        placeholder="0"
-                        className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
-                        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-                    </label>
-                    <label className="block">
-                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Seconds</span>
-                      <input inputMode="numeric" value={seconds} onChange={(e) => setSeconds(e.target.value)}
-                        placeholder="0"
-                        className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
-                        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-                    </label>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Reps</span>
-                      <input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)}
-                        placeholder="8"
-                        className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
-                        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-                    </label>
-                    <label className="block">
-                      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Weight (kg)</span>
-                      <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)}
-                        placeholder="Optional"
-                        className="field-input w-full h-11 px-3 rounded-xl text-xs text-white mt-1"
-                        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-                    </label>
-                  </div>
-                ))}
+              {chosen && (chosen.isTimed ? (
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                  <Field label="Minutes">
+                    <TextInput inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} placeholder="0" />
+                  </Field>
+                  <Field label="Seconds">
+                    <TextInput inputMode="numeric" value={seconds} onChange={(e) => setSeconds(e.target.value)} placeholder="0" />
+                  </Field>
+                </div>
+              ) : (
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                  <Field label="Reps">
+                    <TextInput inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="8" />
+                  </Field>
+                  <Field label="Weight (kg)">
+                    <TextInput inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Optional" />
+                  </Field>
+                </div>
+              ))}
 
-                <button onClick={record} disabled={!canAdd || busy}
-                  className="w-full h-11 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40"
-                  style={{ background: 'var(--color-secondary)', color: '#1A1200' }}>
-                  <Plus size={14} /> Add set
-                </button>
-              </div>
+              <NocButton variant="action" onClick={record} disabled={!canAdd || busy} icon={<Plus size={15} />} className="w-full">
+                Add set
+              </NocButton>
+            </section>
 
-              {/* ── What has been recorded ─────────────────────────────────── */}
-              {grouped.map(({ exercise, rows }) => (
-                <div key={exercise.id} className="p-4 rounded-2xl" style={panelStyle}>
-                  <p className="text-xs font-bold text-white mb-2">{exercise.name}</p>
-                  <div className="space-y-1.5">
-                    {rows.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between">
-                        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                          <span style={{ color: 'var(--color-text-muted)' }}>Set {s.setNumber}</span>
-                          {'  '}
+            {/* ── What has been recorded ── */}
+            {grouped.map(({ exercise, rows }) => (
+              <section key={exercise.id}>
+                <SectionHead title={exercise.name} meta={`${rows.length} set${rows.length === 1 ? '' : 's'}`} />
+                <div style={{ marginTop: 2 }}>
+                  {rows.map((s, i) => (
+                    <div key={s.id}>
+                      <div className="flex items-center" style={{ gap: 12, minHeight: 44 }}>
+                        <span className="flex-none" style={{ width: 48, fontSize: 13, color: 'var(--color-text-muted)' }}>
+                          Set {s.setNumber}
+                        </span>
+                        <span className="flex-1" style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>
                           {s.durationSeconds != null
                             ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s`
                             : `${s.reps} reps${s.weightKg != null ? ` × ${s.weightKg} kg` : ''}`}
                         </span>
-                        <button onClick={() => remove(s.id)} className="p-1.5 rounded-lg"
-                          style={{ color: 'var(--color-text-muted)' }} aria-label="Remove set">
-                          <Trash2 size={13} />
+                        <button onClick={() => remove(s.id)} aria-label={`Remove set ${s.setNumber} of ${exercise.name}`}
+                          className="grid place-items-center flex-none"
+                          style={{ width: 44, height: 44, marginRight: -12, color: 'var(--color-text-muted)' }}>
+                          <Trash size={15} />
                         </button>
                       </div>
-                    ))}
-                  </div>
+                      {i < rows.length - 1 && <div className="hair" />}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </section>
+            ))}
 
-              {sets.length > 0 && (
-                <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  onClick={finish} disabled={busy}
-                  className="w-full h-12 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                  style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                  <Check size={16} /> {busy ? 'Finishing…' : 'Finish workout'}
-                </motion.button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+            {/* Finishing is the member saying the session is over — structure,
+                not the next action, which is still "Add set" until it is. */}
+            {sets.length > 0 && (
+              <NocButton variant="structure" onClick={finish} disabled={busy} icon={<Check size={15} />} className="w-full">
+                {busy ? 'Finishing…' : 'Finish workout'}
+              </NocButton>
+            )}
+          </>
+        )}
+      </Page>
     </FeatureLock>
   );
 }

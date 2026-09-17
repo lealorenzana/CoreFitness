@@ -9,6 +9,13 @@
       "port": 5173
     },
     {
+      "name": "nocturne",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5180"],
+      "cwd": "Nocturne mobile app scope/design_handoff_member_nocturne",
+      "port": 5180
+    },
+    {
       "name": "admin",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

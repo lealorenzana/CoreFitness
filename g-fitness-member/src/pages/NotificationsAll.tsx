@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Bell, Trash2, CheckCheck, Mail, MailOpen, Archive, ArchiveRestore, X,
-  ArrowRight,
-} from 'lucide-react';
+import { Archive, Checks, Envelope, EnvelopeOpen, Trash } from '@phosphor-icons/react';
 
 import NotificationListItem from '../components/ui/NotificationListItem';
 import NotificationDetail from '../components/ui/NotificationDetail';
@@ -14,7 +10,9 @@ import { errorMessage } from '../utils/errorMessage';
 import { bucketize } from '../utils/notificationDisplay';
 import { notificationService, type Notification } from '../services/notificationService';
 import { supabase } from '../lib/supabaseClient';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { TextTabs } from '../components/ui/noc';
+import Modal from '../components/ui/Modal';
 
 /**
  * Every notification the user has, including the ones swiped out of the bell.
@@ -66,7 +64,7 @@ export default function NotificationsAll() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // Archived rows are excluded from Inbox — that is what archiving is for.
   // Cleared rows are *not*: swiping out of the bell is not the same as filing
@@ -164,160 +162,74 @@ export default function NotificationsAll() {
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(isTrainer ? '/trainer/home' : '/member/home')}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="display text-xl text-white">Updates</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {loading ? 'Loading…' : `${all.length} total · ${unreadCount} unread`}
-          </p>
-        </div>
-        {/* Announcements and events are the two halves of "what has the gym
-            told me", and they lived on unrelated screens — one behind the bell,
-            one under Book. This is the crossing between them.
-
-            Hidden while selecting, so the header never holds three controls;
-            and hidden for a trainer, because /member/events is a member route
-            that is not on their nav — a link that leads somewhere they cannot
-            use is worse than no link. */}
-        {!isTrainer && !selecting && (
-          <button
-            onClick={() => navigate('/member/events')}
-            className="h-9 px-3 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            Events <ArrowRight size={12} />
+      {/* Back undoes the last step. It hardcoded Home — the rule in CLAUDE.md,
+          broken here — so opening Updates from Train and pressing back landed
+          somewhere the member had not been. A trainer falls back to theirs. */}
+      <PageTitle
+        back
+        fallback={isTrainer ? '/trainer/home' : '/member/home'}
+        title="Updates"
+        subtitle={loading ? undefined : `${all.length} total · ${unreadCount} unread`}
+        action={!loading && all.length > 0 ? (
+          <button onClick={() => (selecting ? exitSelect() : setSelecting(true))}
+            style={{ fontSize: 13, color: selecting ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
+            {selecting ? 'Done' : 'Select'}
           </button>
-        )}
-        {!loading && all.length > 0 && (
-          <button
-            onClick={() => (selecting ? exitSelect() : setSelecting(true))}
-            className="h-9 px-3 rounded-full text-xs font-semibold flex-shrink-0"
-            style={{
-              background: selecting ? 'var(--color-secondary)' : 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              color: selecting ? '#000' : 'var(--color-text-secondary)',
-            }}
-          >
-            {selecting ? 'Cancel' : 'Select'}
-          </button>
-        )}
-      </motion.div>
+        ) : undefined}
+      />
 
-      {/* Tabs */}
-      <div
-        className="grid grid-cols-3 gap-1 p-1"
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-btn)',
-        }}
-        role="tablist"
-      >
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={active}
-              onClick={() => { setTab(t.id); setSelected(new Set()); }}
-              className="py-2 rounded-full text-xs font-semibold transition-colors"
-              style={{
-                background: active ? 'var(--color-primary)' : 'transparent',
-                color: active ? '#fff' : 'var(--color-text-muted)',
-              }}
-            >
-              {t.label}
-              {t.id === 'unread' && unreadCount > 0 && ` (${unreadCount})`}
+      <TextTabs<Tab>
+        label="Notifications"
+        tabs={TABS.map((t) => ({ id: t.id, label: t.id === 'unread' && unreadCount > 0 ? `Unread · ${unreadCount}` : t.label }))}
+        active={tab}
+        onChange={(id) => { setTab(id); setSelected(new Set()); }}
+      />
+
+      {/* Announcements and events are the other half of "what has the gym told
+          me". Hidden for a trainer: /member/events is not on their nav, and a
+          link to somewhere they cannot use is worse than none. */}
+      {!isTrainer && !selecting && (
+        <div className="flex items-center justify-between" style={{ gap: 12, marginTop: -8, fontSize: 13 }}>
+          <button onClick={() => navigate('/member/events')} style={{ color: 'var(--color-primary-300)' }}>
+            Events and announcements
+          </button>
+          {unreadCount > 0 && (
+            <button onClick={markAllRead} className="flex items-center" style={{ gap: 6, color: 'var(--color-secondary)' }}>
+              <Checks size={15} /> Mark all as read
             </button>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* Select-all bar, only while selecting. */}
-      <AnimatePresence>
-        {selecting && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div
-              className="p-3 flex items-center justify-between gap-3"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-card)',
-              }}
-            >
-              <button
-                onClick={toggleSelectAll}
-                disabled={visible.length === 0}
-                className="text-xs font-bold disabled:opacity-40"
-                style={{ color: 'var(--color-secondary)' }}
-              >
-                {allSelected ? 'Clear selection' : `Select all (${visible.length})`}
-              </button>
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {selected.size} selected
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {!selecting && unreadCount > 0 && (
-        <button
-          onClick={markAllRead}
-          className="w-full h-10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}
-        >
-          <CheckCheck size={14} /> Mark all as read
-        </button>
+      {selecting && (
+        <div className="flex items-center justify-between" style={{ gap: 12, marginTop: -8, fontSize: 13 }}>
+          <button onClick={toggleSelectAll} disabled={visible.length === 0} className="disabled:opacity-40"
+            style={{ color: 'var(--color-secondary)' }}>
+            {allSelected ? 'Clear selection' : `Select all · ${visible.length}`}
+          </button>
+          <span style={{ color: 'var(--color-text-muted)' }}>{selected.size} selected</span>
+        </div>
       )}
 
       {loading ? (
         <SkeletonList count={5} />
       ) : visible.length === 0 ? (
-        <div className="p-10 text-center" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-panel)' }}>
-          <Bell size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="text-sm font-semibold text-white">
-            {tab === 'archived' ? 'Nothing archived' : tab === 'unread' ? 'Nothing unread' : 'Nothing yet'}
-          </p>
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            {tab === 'archived'
-              ? 'Swipe a notification right in the bell to file it here.'
-              : 'Booking approvals, payment receipts and gym announcements land here.'}
-          </p>
-        </div>
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+          {tab === 'archived'
+            ? 'Nothing archived. Swipe a notification right in the bell to file it here.'
+            : tab === 'unread'
+              ? 'Nothing unread.'
+              : 'Nothing yet. Booking decisions, payment receipts and gym announcements land here.'}
+        </p>
       ) : (
-        <div
-          className="overflow-hidden"
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-panel)',
-            // Room for the action bar so the last row is never trapped under it.
-            marginBottom: selecting && selected.size > 0 ? '5rem' : undefined,
-          }}
-        >
+        <div style={{
+          margin: '0 calc(var(--card-pad) * -1)',
+          // Room for the action bar so the last row is never trapped under it.
+          marginBottom: selecting && selected.size > 0 ? '5rem' : undefined,
+        }}>
           {buckets.map(([label, items]) => (
             <div key={label}>
-              <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider"
-                style={{ color: 'var(--color-text-muted)' }}>
-                {label}
-              </p>
+              <p className="eyebrow" style={{ padding: '14px var(--card-pad) 4px' }}>{label}</p>
               {items.map((n) => (
                 <NotificationListItem
                   key={n.id}
@@ -333,112 +245,53 @@ export default function NotificationsAll() {
         </div>
       )}
 
-      {/* Bulk action bar. Floats above the dock while something is selected. */}
-      <AnimatePresence>
-        {selecting && selected.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
-            className="fixed left-3 right-3 bottom-24 z-[60] p-2 flex items-center gap-2"
-            style={{
-              background: 'var(--color-surface-high)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-panel)',
-              boxShadow: 'var(--shadow-panel)',
-            }}
-          >
-            <button
-              onClick={() => bulkSetRead(true)}
-              className="flex-1 h-10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-              style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)' }}
-            >
-              <MailOpen size={14} /> Read
-            </button>
-            <button
-              onClick={() => bulkSetRead(false)}
-              className="flex-1 h-10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-              style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)' }}
-            >
-              <Mail size={14} /> Unread
-            </button>
-            <button
-              onClick={() => bulkArchive(tab !== 'archived')}
-              className="flex-1 h-10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-              style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)' }}
-            >
-              {tab === 'archived' ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-              {tab === 'archived' ? 'Restore' : 'Archive'}
-            </button>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-11 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
-              aria-label={`Delete ${selected.size} notifications`}
-            >
-              <Trash2 size={15} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Bulk actions, above the bar while something is selected. Fixed, and
+          measured from the bar's own height rather than a guess at the dock. */}
+      {selecting && selected.size > 0 && (
+        <div
+          className="fixed z-[60] flex items-center"
+          style={{
+            left: 'var(--gutter)', right: 'var(--gutter)',
+            bottom: 'calc(var(--bar-height) + env(safe-area-inset-bottom) + 12px)',
+            gap: 6, padding: 6, borderRadius: 12,
+            background: 'var(--color-surface)',
+            boxShadow: '0 0 0 1px rgba(233, 233, 237, 0.18), 0 10px 30px rgba(0, 0, 0, 0.6)',
+          }}
+        >
+          <button onClick={() => bulkSetRead(true)} className="flex-1 flex items-center justify-center"
+            style={{ gap: 6, height: 40, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            <EnvelopeOpen size={15} /> Read
+          </button>
+          <button onClick={() => bulkSetRead(false)} className="flex-1 flex items-center justify-center"
+            style={{ gap: 6, height: 40, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            <Envelope size={15} /> Unread
+          </button>
+          <button onClick={() => bulkArchive(tab !== 'archived')} className="flex-1 flex items-center justify-center"
+            style={{ gap: 6, height: 40, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            <Archive size={15} /> {tab === 'archived' ? 'Restore' : 'Archive'}
+          </button>
+          <button onClick={() => setConfirmDelete(true)} className="grid place-items-center flex-none"
+            style={{ width: 44, height: 40, borderRadius: 8, color: 'var(--color-secondary)', border: '1px solid color-mix(in srgb, var(--color-secondary) 55%, transparent)' }}
+            aria-label={`Delete ${selected.size} notifications`}>
+            <Trash size={16} />
+          </button>
+        </div>
+      )}
 
-      {/* Delete is the one irreversible action in the whole feature, so it asks. */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <motion.div
-            className="fixed inset-0 z-[260] flex items-center justify-center p-6"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setConfirmDelete(false)}
-          >
-            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.75)' }} />
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-sm p-5"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-panel)',
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                  <Trash2 size={18} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-bold text-white">
-                    Delete {selected.size} notification{selected.size === 1 ? '' : 's'}?
-                  </h2>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                    This cannot be undone. Archiving keeps them out of the way without removing the
-                    record.
-                  </p>
-                </div>
-                <button onClick={() => setConfirmDelete(false)} aria-label="Cancel"
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
-                  <X size={15} />
-                </button>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="flex-1 h-11 rounded-full text-sm font-semibold"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                >
-                  Keep them
-                </button>
-                <button
-                  onClick={bulkDelete}
-                  className="flex-1 h-11 rounded-full text-sm font-bold text-white"
-                  style={{ background: 'var(--color-secondary)' }}
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Delete is the one irreversible action in the feature, so it asks —
+          through Modal, which portals and releases pointer events correctly.
+          This was an inline `fixed` overlay inside the scroller. */}
+      <Modal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title={`Delete ${selected.size} notification${selected.size === 1 ? '' : 's'}`}
+        subtitle="This cannot be undone. Archiving keeps them out of the way without removing the record."
+        cancelLabel="Keep them"
+        confirmLabel="Delete"
+        onConfirm={bulkDelete}
+      >
+        <span />
+      </Modal>
 
       <NotificationDetail
         notification={detail}

@@ -1,12 +1,8 @@
-import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, ChevronRight, Trophy } from 'lucide-react';
+import { Trophy } from '@phosphor-icons/react';
 
-import MyCoreCard          from '../../components/ui/MyCoreCard';
-import { Page, Row }       from '../../components/ui/page';
-import { getCurrentMemberId } from '../../services/bookingService';
-import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
+import { Page, PageTitle } from '../../components/ui/page';
+import { LineRow, TextTabs } from '../../components/ui/noc';
 import BodyProgressTab     from './tabs/BodyProgressTab';
 import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
@@ -14,17 +10,21 @@ import GoalsTab            from './tabs/GoalsTab';
 import TrainerFeedbackTab  from './tabs/TrainerFeedbackTab';
 
 /**
- * The Progress Hub.
+ * Progress — one screen, five tabs under one title (Nocturne redesign).
  *
- * Five tabs, all visible at once. It used to carry seven in a horizontally
- * scrolling strip, so "Membership" and "Trainer" sat off the right edge of a
- * 375px screen where nobody found them.
+ * The "My Core" tile grid is gone. Every number on it now has a home where it
+ * is the subject rather than a passenger: visits and the next session are on
+ * Today, points on You, workouts logged on the Workouts tab, goals on Goals.
+ * Four tiles restating other screens' headlines above this screen's own tabs is
+ * the duplication Progress was already cleared of once (the level card).
  *
- * Two of those seven are gone rather than moved: Attendance and Membership each
- * duplicated a full page that already exists (`/member/attendance-history` and
- * `/member/membership`), both linked from Profile. The attendance tab also
- * showed a "Consistency Score" computed against a **hardcoded target of 20
- * visits a month** — a number the gym never set and no member agreed to.
+ * The tab lives in the URL (`?tab=`) and is **read on every render**, not copied
+ * into state once. The header rails on Train and in Everything link straight to
+ * Goals or Charts, and when this screen is already open those taps change only
+ * the search string — the component does not remount, so a value read once on
+ * mount ignored them and the rail looked broken. Tapping a tab here replaces
+ * the entry rather than pushing one, so the back gesture still leaves Progress
+ * instead of touring its tabs.
  */
 
 const tabs = [
@@ -43,143 +43,41 @@ function isTabId(value: string | null): value is TabId {
 
 export default function ProgressHub() {
   const navigate = useNavigate();
-  // `?tab=` lets Home link straight to Coach when a note is waiting. Read once
-  // into state rather than driven from the URL: the tab strip is local
-  // navigation, and pushing five history entries for five taps would turn the
-  // phone's back gesture into a tour of the tabs instead of a way out.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const requested = params.get('tab');
-  const [active, setActive] = useState<TabId>(isTabId(requested) ? requested : 'body');
+  const active: TabId = isTabId(requested) ? requested : 'body';
 
-  // This week's visits and the two counters moved here from Home, which was
-  // carrying ten stacked sections. They belong with the level card: all three
-  // answer "am I getting anywhere", which is what this screen is for.
-  const [home, setHome] = useState<MemberHome | null>(null);
-  const [summaryFailed, setSummaryFailed] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const id = await getCurrentMemberId();
-        if (!id) { if (!cancelled) setSummaryFailed(true); return; }
-        const data = await getMemberHome(id);
-        if (!cancelled) setHome(data);
-      } catch {
-        // Named, not degraded to zeros. A silent 0 here would read as "you did
-        // not train this week", which is a different and much worse claim than
-        // "this did not load".
-        if (!cancelled) setSummaryFailed(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const renderTab = () => {
-    switch (active) {
-      case 'body':      return <BodyProgressTab />;
-      case 'workouts':  return <WorkoutProgressTab />;
-      case 'goals':     return <GoalsTab />;
-      case 'dashboard': return <VisualDashboardTab />;
-      case 'feedback':  return <TrainerFeedbackTab />;
-    }
-  };
+  const select = (id: TabId) => setParams({ tab: id }, { replace: true });
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        {/* Back to wherever you came from. This was hardcoded to Home, so a
-            member who opened Progress from the Training grid was thrown to a
-            screen they had not been on — the back arrow was navigating them
-            somewhere rather than undoing their last step. The guard is the
-            house pattern: a cold load into this route (a notification, a
-            bookmark) has nothing to go back to, and Home is the right floor. */}
-        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Progress</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Track every part of your journey</p>
-        </div>
-      </motion.div>
+      <PageTitle back title="Progress" subtitle="Your body, your training, and what your coach has said" />
 
-      {/* The level card lives on Achievements, and only there.
- 
-          It was rendered on both screens — the same bars, the same two
-          counters, the same "Next: Intermediate" — and the earned level *is*
-          the achievements concept, so Progress was showing another page's
-          headline above its own tabs.
- 
-          What stays is the link, not the card. `/member/achievements` had
-          exactly one entry point in the whole app and it was that card's
-          chevron; deleting it outright would have orphaned the page, which is
-          the failure `audit-routes.py` exists to catch and which has already
-          happened three times here. */}
-      <Row
-        lead={<Trophy size={18} style={{ color: 'var(--color-secondary)' }} />}
-        title="Achievements and level"
-        meta="What you have earned, and what is next"
-        trailing={<ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} />}
-        onClick={() => navigate('/member/achievements')}
-      />
+      <TextTabs<TabId> label="Progress" tabs={[...tabs]} active={active} onChange={select} gap={18} />
 
-      {summaryFailed && (
-        <div
-          className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
-          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
-        >
-          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-          <span>Could not load this week&apos;s visits. Pull down to try again.</span>
-        </div>
-      )}
-
-      {/* "This week" moved to Attendance History (2026-09-16).
- 
-          It is attendance data, its own call to action was "See every visit ->"
-          pointing at that page, and it is the subject there rather than a
-          passenger. Home was the other candidate and is the wrong one: Home
-          already carries "Days this week — 2 of 7" as a ring, so the strip
-          would have stated one fact twice on one screen in two shapes. */}
-      {home && <MyCoreCard home={home} memberId={home.memberId} />}
-
-      {/* Segmented control — five equal cells, no scrolling. Violet marks the
-          selection, per the app's colour convention. */}
-      <div
-        className="grid grid-cols-5 gap-1 p-1"
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-btn)',
-        }}
-        role="tablist"
-      >
-        {tabs.map((t) => {
-          const isActive = active === t.id;
-          return (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActive(t.id)}
-              className="py-2 rounded-full text-xs font-semibold transition-colors"
-              style={{
-                background: isActive ? 'var(--color-primary)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--color-text-muted)',
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+      {/* The level lives on Achievements, and only there — this is its link,
+          not a copy of its card. Achievements had exactly one entry point in
+          the app, and removing it would orphan the page (audit-routes.py). */}
+      <div style={{ marginTop: -8 }}>
+        <LineRow
+          gutterWidth={30}
+          gutter={<Trophy size={18} style={{ color: 'var(--color-primary-400)' }} />}
+          title="Achievements and level"
+          meta="What you have earned, and what is next"
+          action="Open"
+          actionTone="structure"
+          onClick={() => navigate('/member/achievements')}
+          last
+        />
       </div>
 
-      <motion.div key={active}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}>
-        {renderTab()}
-      </motion.div>
+      <div key={active}>
+        {active === 'body' && <BodyProgressTab />}
+        {active === 'workouts' && <WorkoutProgressTab />}
+        {active === 'goals' && <GoalsTab />}
+        {active === 'dashboard' && <VisualDashboardTab />}
+        {active === 'feedback' && <TrainerFeedbackTab />}
+      </div>
     </Page>
   );
 }

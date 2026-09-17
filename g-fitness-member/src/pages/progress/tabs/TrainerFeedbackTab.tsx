@@ -1,32 +1,34 @@
-import { panelStyle } from '../../../components/ui/Card';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, ChevronRight, X, CalendarPlus, User } from 'lucide-react';
+import { X } from '@phosphor-icons/react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import EmptyState from '../../../components/ui/EmptyState';
 import Avatar from '../../../components/ui/Avatar';
-import { Pill } from '../../../components/ui/StatCard';
+import { NocButton, StatusPill } from '../../../components/ui/noc';
 import { progressService, type TrainerFeedback } from '../../../services/progressService';
 import { notificationService } from '../../../services/notificationService';
 
 /**
- * Notes a trainer has sent this member.
+ * Notes a trainer has sent this member (Nocturne redesign).
  *
  * These are real `notifications` rows — when a trainer sends a recommendation
  * from their app it inserts one, and this reads them back. There is no separate
  * feedback table on purpose: two tables holding the same message would
- * eventually disagree, and the member would see one version in their bell and a
- * different one here.
+ * eventually disagree with the bell.
  *
- * The cards used to be inert blocks of text with the message clipped to two
- * lines and no way to read the rest — a long note from a coach was literally
- * unreadable. Tapping one now opens it in full, names the trainer who wrote it,
- * marks it read, and offers to book with them.
+ * Tapping a note opens it in full, names the coach, marks it read, and offers
+ * their profile and a booking.
+ *
+ * **The sheet renders only while open.** It used to sit in an always-mounted
+ * `AnimatePresence` inside the portal with a `pointer-events-auto` backdrop —
+ * the exact shape CLAUDE.md records leaving invisible descendants over the whole
+ * screen, because an exiting child that never unmounts keeps eating taps.
+ * Animation is decoration here; nothing waits for it.
+ *
+ * The prototype's closing line said notes are "written after a session". That is
+ * not a rule this app has — a coach can send one at any time — so it is not said.
  */
-
 export default function TrainerFeedbackTab() {
   const memberId = useMemberId();
   const navigate = useNavigate();
@@ -49,8 +51,7 @@ export default function TrainerFeedbackTab() {
 
   const openNote = (note: TrainerFeedback) => {
     setOpen(note);
-    // Reading it here counts everywhere — the same row backs the bell, so
-    // leaving it unread would keep a badge for something already read.
+    // Reading it here counts everywhere — the same row backs the bell.
     if (!note.read) {
       setItems((list) => list.map((n) => (n.id === note.id ? { ...n, read: true } : n)));
       void notificationService.markAsRead(memberId, note.id).catch(() => {});
@@ -60,137 +61,111 @@ export default function TrainerFeedbackTab() {
   if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
 
   if (items.length === 0) {
-    return <EmptyState icon={MessageSquare} title="No trainer notes yet"
-      message="When a trainer sends you a recommendation, it appears here and in your notifications." />;
+    return (
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+        No notes from a coach yet. When one sends you a recommendation, it appears here and in your updates.
+      </p>
+    );
   }
 
-  const modalRoot = typeof document !== 'undefined' ? document.getElementById('modal-root') : null;
+  const modalRoot = document.getElementById('modal-root');
+  const dated = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <>
-      <div className="space-y-2">
-        {items.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => openNote(f)}
-            className="w-full p-4 text-left flex items-start gap-3 active:scale-[0.99] transition-transform"
-            style={{
-              ...panelStyle,
-              borderRadius: 'var(--radius-panel)',
-              // Unread notes carry the same violet wash as the bell, so the two
-              // surfaces agree about what is new.
-              background: f.read ? 'var(--color-surface-raised)' : 'var(--color-primary-light)',
-            }}
-          >
-            <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: f.read ? 'var(--color-surface-high)' : 'var(--color-primary)' }}>
-              <MessageSquare size={15} style={{ color: f.read ? 'var(--color-text-secondary)' : '#fff' }} />
-            </span>
-
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="block text-sm font-semibold text-white truncate">
-                  {f.trainerName ?? 'Your trainer'}
+      <div className="flex flex-col" style={{ gap: 14 }}>
+        {items.map((f, i) => {
+          // The newest note is filled, older ones sit on the page — the one
+          // most likely to matter reads first without a label saying so.
+          const newest = i === 0;
+          return (
+            <button
+              key={f.id}
+              onClick={() => openNote(f)}
+              className="w-full text-left"
+              style={{
+                padding: 15,
+                borderRadius: 12,
+                background: newest ? 'var(--color-surface)' : 'transparent',
+                boxShadow: newest ? 'var(--shadow-panel)' : '0 0 0 1px rgba(233, 233, 237, 0.08)',
+              }}
+            >
+              <span className="flex items-center justify-between" style={{ gap: 10, fontSize: 12 }}>
+                <span className="flex items-center min-w-0" style={{ gap: 8 }}>
+                  <span className="truncate" style={{ color: newest || !f.read ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
+                    {f.trainerName ?? 'Your coach'}
+                  </span>
+                  {!f.read && <StatusPill label="New" tone="action" />}
                 </span>
-                {!f.read && <Pill label="New" tone="secondary" />}
+                <span className="flex-none" style={{ color: 'var(--color-text-muted)' }}>{dated(f.sentAt)}</span>
               </span>
-              <span className="block text-xs mt-1 leading-relaxed line-clamp-2"
-                style={{ color: 'var(--color-text-secondary)' }}>
+              <span className="block line-clamp-3" style={{ fontSize: 14, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-primary)' }}>
                 {f.content}
               </span>
-              <span className="block text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                {new Date(f.sentAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                {' · tap to read'}
-              </span>
-            </span>
-
-            <ChevronRight size={16} className="flex-shrink-0 mt-1" style={{ color: 'var(--color-text-muted)' }} />
-          </button>
-        ))}
+            </button>
+          );
+        })}
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          Notes come from your coaches. Reply at the desk or in your next session — this is not a chat.
+        </p>
       </div>
 
-      {modalRoot && createPortal(
-        <AnimatePresence>
-          {open && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setOpen(null)}
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
-              />
-              <motion.div
-                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-                role="dialog" aria-modal="true" aria-label="Trainer note"
-                // Flush to the bottom edge, full width. `max-w-md` + centring
-                // left a margin down both sides on anything wider than 448px,
-                // so the sheet floated in the middle of a black screen instead
-                // of reading as a sheet rising from the bottom.
-                className="absolute inset-x-0 bottom-0 pointer-events-auto"
-              >
-                <div className="p-5 pb-8" style={{
-                  background: 'var(--color-surface-raised)',
-                  borderTop: '1px solid var(--color-border)',
-                  borderTopLeftRadius: 'var(--radius-panel)',
-                  borderTopRightRadius: 'var(--radius-panel)',
-                  boxShadow: 'var(--shadow-panel)',
-                }}>
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar name={open.trainerName ?? 'Trainer'} photoUrl={null} size={44} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white truncate">
-                          {open.trainerName ?? 'Your trainer'}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                          {new Date(open.sentAt).toLocaleDateString('en-US', {
-                            weekday: 'long', month: 'long', day: 'numeric',
-                          })}
-                          {' · '}
-                          {new Date(open.sentAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                    <button onClick={() => setOpen(null)} aria-label="Close"
-                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                      <X size={17} />
-                    </button>
-                  </div>
-
-                  {/* The whole note, wrapped — no clamp. This is the point of
-                      opening it. `whitespace-pre-wrap` keeps the coach's own
-                      line breaks instead of running everything together. */}
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap"
-                    style={{ color: 'var(--color-text-primary)' }}>
-                    {open.content}
+      {modalRoot && open && createPortal(
+        <div className="absolute inset-0 pointer-events-auto">
+          <div onClick={() => setOpen(null)} className="absolute inset-0" style={{ background: 'rgba(8, 8, 14, 0.78)' }} />
+          <div
+            role="dialog" aria-modal="true" aria-label="Note from your coach"
+            className="absolute inset-x-0 bottom-0"
+            style={{
+              background: 'var(--color-surface)',
+              borderRadius: '20px 20px 0 0',
+              boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.18), 0 -18px 44px rgba(0, 0, 0, 0.6)',
+              padding: '12px var(--gutter) calc(28px + env(safe-area-inset-bottom))',
+            }}
+          >
+            <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
+            <div className="flex items-start justify-between" style={{ gap: 12, marginTop: 14 }}>
+              <div className="flex items-center min-w-0" style={{ gap: 12 }}>
+                <Avatar name={open.trainerName ?? 'Coach'} photoUrl={null} size={42} />
+                <div className="min-w-0">
+                  <p className="truncate" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{open.trainerName ?? 'Your coach'}</p>
+                  <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                    {new Date(open.sentAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    {' · '}
+                    {new Date(open.sentAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                   </p>
-
-                  <div className="flex gap-2 mt-6">
-                    {open.trainerId && (
-                      <button
-                        onClick={() => { setOpen(null); navigate(`/member/trainer/${open.trainerId}`); }}
-                        className="flex-1 h-11 rounded-full font-semibold text-sm flex items-center justify-center gap-2"
-                        style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-                        <User size={15} /> Profile
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setOpen(null);
-                        navigate('/member/book-class', open.trainerId ? { state: { trainerId: open.trainerId } } : undefined);
-                      }}
-                      className="flex-1 h-11 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2"
-                      style={{ background: 'var(--color-secondary)' }}>
-                      <CalendarPlus size={15} /> Book a session
-                    </button>
-                  </div>
                 </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>,
-        modalRoot
+              </div>
+              <button onClick={() => setOpen(null)} aria-label="Close" className="grid place-items-center flex-none"
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* The whole note, wrapped — no clamp; this is the point of opening
+                it. `pre-wrap` keeps the coach's own line breaks. */}
+            <p className="whitespace-pre-wrap" style={{ fontSize: 14.5, marginTop: 18, lineHeight: 1.6, color: 'var(--color-text-primary)' }}>
+              {open.content}
+            </p>
+
+            <div className="flex" style={{ gap: 9, marginTop: 22 }}>
+              {open.trainerId && (
+                <NocButton variant="ghost" className="flex-1"
+                  onClick={() => { setOpen(null); navigate(`/member/trainer/${open.trainerId}`); }}>
+                  Profile
+                </NocButton>
+              )}
+              <NocButton variant="action" className="flex-1"
+                onClick={() => {
+                  setOpen(null);
+                  navigate('/member/book-class', open.trainerId ? { state: { trainerId: open.trainerId } } : undefined);
+                }}>
+                Book a session
+              </NocButton>
+            </div>
+          </div>
+        </div>,
+        modalRoot,
       )}
     </>
   );

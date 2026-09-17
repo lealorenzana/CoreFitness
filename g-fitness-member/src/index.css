@@ -1,14 +1,29 @@
-/* Inter for body; Anton for display headings.
-   Anton is a single weight (400) heavy condensed face — it carries the
-   uppercase section headers that give the design its punch, and costs one
-   small file because there are no other weights to load. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Anton&display=swap');
+/* Inter only. Anton is gone (Nocturne redesign, 2026-09-16): headings are Inter
+   500, and hierarchy comes from size and space rather than from a heavy
+   condensed face shouting in capitals.
+
+   600 and 700 stay loaded although Nocturne tops out at 500 for headings: ~500
+   `font-semibold`/`font-bold` call sites remain on screens not yet rebuilt, and
+   an unloaded weight is synthesised — a smeared faux-bold, which is worse than
+   the weight it replaces. Drop them when nothing asks for them. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
-   G-FITNESS — MEMBER APP TOKENS
-   3 colors only: Violet + Yellow + Black
+   CORE FITNESS — MEMBER APP TOKENS
+   Nocturne structure, Core Fitness colour.
+
+   The layout, type scale, radii and hairline elevation come from the Nocturne
+   handoff (`Nocturne mobile app scope/`). The colour does NOT: its single
+   lavender accent read as bland, so the brand stays — violet, amber, black —
+   in the roles this app already had:
+
+     violet  where you are and what you have — active tab, selection, progress
+     amber   what you can do next — book, renew, spend, save, check in
+
+   Violet #7C3AED is 3.5:1 on the ground (small text needs 4.5). It is a fill, a border, a mark and a
+   glow; it is never small text. Violet text is --color-primary-300.
    ═══════════════════════════════════════════════════════════════ */
 
 @layer base {
@@ -18,56 +33,94 @@
        background pushed down and the cards lifted, or every surface merges.
        Admin keeps the original values — the two apps are allowed to differ. */
     --color-bg:              #08080E;
+    /* Nocturne has two surfaces, page and card, and rebuilt screens use only
+       these two plus a hairline. `raised` keeps a slight step above `surface`
+       for now because 114 call sites on unrebuilt screens nest one inside the
+       other, and collapsing them would dissolve those cards into their parents.
+       Collapse it once nothing nests. */
     --color-surface:         #12121C;
-    --color-surface-raised:  #191826;
-    /* One step above raised, for cards sitting on a raised panel. */
-    --color-surface-high:    #221F33;
+    --color-surface-raised:  #161522;
+    /* Inset tint only — a progress track, an empty matrix cell. Never a card. */
+    --color-surface-high:    #1E1D2B;
 
     --color-primary:         #7C3AED;
     --color-primary-light:   #1E1333;
     --color-primary-hover:   #6D28D9;
+    --color-primary-lift:    #8B5CF6;
+    --color-primary-deep:    #5B21B6;
+
+    /* Violet ramp, same hue as the brand (Tailwind violet; #7C3AED is 600).
+       300 is the text step: 10.8:1 on the ground where 600 is 3.5:1. */
+    --color-primary-200:     #ddd6fe;
+    --color-primary-300:     #c4b5fd;
+    --color-primary-400:     #a78bfa;
+    --color-primary-600:     #7c3aed;
+    --color-primary-700:     #6d28d9;
+    --color-primary-800:     #5b21b6;
+    --color-primary-900:     #2e1065;
 
     --color-secondary:       #F59E0B;
     --color-secondary-light: #1F1A0A;
     --color-secondary-hover: #D97706;
 
-    --color-text-primary:    #FFFFFF;
-    --color-text-secondary:  #9CA3AF;
-    --color-text-muted:      #6B7280;
+    /* Amber ramp (#F59E0B is 500). Amber text needs no lighter step: 9.3:1. */
+    --color-secondary-200:   #fde68a;
+    --color-secondary-300:   #fcd34d;
+    --color-secondary-700:   #b45309;
+    --color-secondary-900:   #451a03;
 
-    /* Lifted with the surfaces so edges stay visible against the deeper bg. */
-    --color-border:          #26243A;
+    /* Nocturne's text ramp. Legibility, not identity: the old muted #6B7280
+       measured 4.1:1 here and carried 12px meta text. #9397ab is the darkest
+       text allowed anywhere; nothing darker is ever text. */
+    --color-text-primary:    #e9e9ed;
+    --color-text-secondary:  #b2b6ca;
+    --color-text-muted:      #9397ab;
+
+    /* Hairlines. On a dark ground elevation is an edge, not a drop shadow. */
+    --color-border:          rgba(233, 233, 237, 0.14);
+    --color-hairline:        rgba(233, 233, 237, 0.16);
+    --color-separator:       rgba(233, 233, 237, 0.08);
 
     /* ── Measure: one scale, so surfaces stop drifting apart ──────────────
        Before this the app had nine different paddings and five vertical
        rhythms — px-1 next to px-4, space-y-3 next to space-y-6 — because every
        page invented its own. These are the only values a screen should use.
 
-       `--dock-clear` is the load-bearing one. The nav floats above the scroll
-       container, so the scroller must end above it or the last card sits under
-       the dock: 64px of nav, the check-in bump that rises out of it, and the
-       home indicator. Content was clearing 24px, which is why the QR button and
-       the chat head sat on top of real content on every long screen. */
+       The bar is IN FLOW, not floating. The old dock hovered over the scroller,
+       so every screen owed it 116px of bottom padding, and a screen that forgot
+       (or had its own inner scroller) put its last row under the dock; its
+       raised check-in bump covered content even on screens that remembered. The
+       Nocturne handoff made the bar `position: absolute` with a 104px pad —
+       the same trap at a new number. Here `<main>` simply ends where the bar
+       begins, so nothing can be under it, and `--dock-clear` is only the
+       breathing room at the end of a page. */
     --gutter:                20px;   /* page edge to content, both sides */
     --card-pad:              16px;   /* inside a card */
     --stack:                 24px;   /* between sections */
     --stack-tight:           12px;   /* between items within a section */
-    --dock-clear:            116px;  /* scroll bottom, clears nav + bump */
+    --bar-height:            66px;   /* above the safe-area inset, which the chassis pads */
+    --dock-clear:            24px;   /* end-of-page breathing room, nothing more */
 
-    /* Type scale. 12px is the floor and is not a suggestion: this is read at
-       arm's length, in a gym, often mid-set. */
-    --text-display:          22px;
-    --text-title:            16px;
+    /* Type scale (Nocturne). 12px is the floor and is not a suggestion: this is
+       read at arm's length, in a gym, often mid-set. Headings are weight 500 —
+       size and space carry hierarchy, never weight past that. */
+    --text-screen:           31px;   /* a tab root's two-line title */
+    --text-display:          26px;   /* a pushed screen's title */
+    --text-hero:             40px;   /* the one numeral a screen leads with */
+    --text-title:            17px;   /* section heading */
     --text-body:             14px;
     --text-meta:             12px;
+    --tracking-screen:       -0.028em;
+    --tracking-hero:         -0.035em;
+    --tracking-eyebrow:      0.12em;
 
-    /* The reference's cards are large and softly rounded. */
-    --radius-card:           16px;
-    --radius-panel:          24px;
-    --radius-btn:            99px;
-    --shadow-card:           0 2px 16px rgba(0,0,0,0.4);
-    /* Cards read as lifted rather than outlined, like the reference. */
-    --shadow-panel:          0 8px 28px rgba(0,0,0,0.55);
+    /* One radius for a card, 8px for a control; pills are for filter chips. */
+    --radius-card:           14px;
+    --radius-panel:          14px;
+    --radius-btn:            8px;
+    --radius-pill:           99px;
+    --shadow-card:           0 0 0 1px rgba(233, 233, 237, 0.10);
+    --shadow-panel:          0 0 0 1px rgba(233, 233, 237, 0.14);
 
     /* Legacy aliases — keep older class names alive */
     --brand-yellow:          var(--color-secondary);
@@ -88,13 +141,6 @@
     --text-secondary:        var(--color-text-secondary);
     --text-muted:            var(--color-text-muted);
 
-    /* Bottom-nav tokens */
-    --component-inactive-color:       var(--color-text-secondary);
-    --component-bg:                   var(--color-surface);
-    --component-shadow:               rgba(124,58,237,0.15);
-    --component-active-bg:            var(--color-primary-light);
-    --component-line-inactive-color:  rgba(124,58,237,0.08);
-    --component-active-color-default: var(--color-primary);
 
     --muted-foreground:               var(--color-text-muted);
     --card:                           var(--color-surface);
@@ -138,33 +184,81 @@
 /* Form controls.
    Every input/select/textarea in the app should carry `.field-input` rather than
    re-declaring the same background + border inline, which is how the focus ring
-   got lost in the first place. Sits inset (--color-bg) because controls live
-   inside raised panels.
+   got lost in the first place. Filled with --color-surface (see the rule below)
+   and 46px tall, the same height as NocButton, so a field and its button align.
 
    Deliberately in `components`, not `utilities`: Tailwind orders components
    *before* utilities, so a caller passing `className="py-3"` still wins. In the
    utilities layer this class would silently beat it. */
 @layer components {
-  /* Display headings: heavy, condensed, uppercase — the single biggest reason
-     the reference reads the way it does. Body copy stays Inter; this is opt-in
-     per heading rather than a global override, so long strings (a member's own
-     name, a class title) never get squeezed into all-caps. */
+  /* Display headings — Inter 500, sentence case, tight tracking.
+
+     This was Anton, uppercase. The class name survives on purpose: 80 call
+     sites, most on screens not yet rebuilt, and every one of them should get the
+     new heading without being touched. Their source text was always written in
+     sentence case ("Your progress") and CSS shouted it, so dropping the
+     transform restores what the author wrote. */
   .display {
-    font-family: 'Anton', 'Inter', system-ui, sans-serif;
-    font-weight: 400;      /* Anton ships one weight; 400 IS the heavy cut */
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-    line-height: 1.05;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
+
+  /* A tab root's title: two lines at one size, the second muted. */
+  .screen-title {
+    font-size: var(--text-screen);
+    font-weight: 500;
+    letter-spacing: var(--tracking-screen);
+    line-height: 1.04;
+    color: var(--color-text-primary);
+  }
+  .screen-title + .screen-title { color: var(--color-text-muted); }
+
+  /* Eyebrow: small, spaced, uppercase. The one place capitals are right —
+     a label about a section, never content. */
+  .eyebrow {
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  /* A rule that fades at its right end — Nocturne's signature. In-list
+     separators stay solid (`.hair`), because a list that fades between rows
+     reads as a list with missing lines. */
+  .rule {
+    height: 1px;
+    flex: none;
+    background: linear-gradient(to right, var(--color-hairline),
+      var(--color-hairline) calc(100% - 48px), transparent);
+  }
+  .hair {
+    height: 1px;
+    flex: none;
+    background: var(--color-separator);
+  }
+
+  /* Horizontal scroller with no visible bar: the header's feature rail. */
+  .rail {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar { display: none; }
 
   .field-input {
     width: 100%;
-    background: var(--color-bg);
+    /* Surface, not ground: Nocturne forms sit on the page, not inside a raised
+       panel, so an input filled with the page colour read as a hole. */
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text-primary);
-    border-radius: 12px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    border-radius: var(--radius-btn);
+    min-height: 46px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.4;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
@@ -305,7 +399,14 @@
   .border-theme         { border-color: var(--color-border); }
 }
 
-/* ── Bottom nav dock ─────────────────────────────────────────────
+
+/* ── Trainer bottom nav dock ─────────────────────────────────────
+   The TRAINER nav only (`TrainerBottomNav`). The member app replaced its
+   dock with the in-flow bar in `TabBar` (Nocturne redesign, 2026-09-16), but
+   the trainer side is out of that redesign's scope and still renders these
+   classes — deleting this block with the member dock left the trainer nav
+   unstyled. The member-only centre check-in button (`.dock__fab`) is gone.
+
    A floating pill rather than a full-width bar: it reads as an object
    sitting on the app instead of a border welded to the bottom edge, which
    is most of why the reference design feels light.
@@ -470,32 +571,6 @@
   .dock__label { transition-duration: 0.01ms; }
   .dock__item--active .dock__icon-wrap { animation: none; }
 }
-
-/* Centre check-in button — the one action a member performs every visit.
-   Amber, because the colour convention makes amber the primary action; it is
-   deliberately the only amber thing in the nav. Raised out of the pill with a
-   ring of page background so it reads as floating above it rather than as an
-   oversized tab. */
-.dock__fab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 58px;
-  height: 58px;
-  margin-top: -26px;
-  border-radius: 50%;
-  background: var(--color-secondary);
-  color: #000;
-  border: 4px solid var(--color-bg);
-  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.dock__fab:hover  { background: var(--color-secondary-hover); }
-.dock__fab:active { transform: scale(0.93); }
 
 /* Toast animations */
 .phone-toast { animation: phoneToastIn 0.3s ease-out; }

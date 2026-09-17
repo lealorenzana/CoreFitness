@@ -1,10 +1,7 @@
-import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, Users, Check, ArrowLeft, ArrowRight, CalendarX , Ticket } from 'lucide-react';
+import { Check } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import SectionHeader from '../components/ui/SectionHeader';
-import { panelStyle } from '../components/ui/Card';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -13,7 +10,8 @@ import {
   eventStatus, type EventRow,
 } from '../lib/api/events';
 import { getCurrentMemberId } from '../services/bookingService';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { NocButton, Panel, ProgressBar, StatusPill, TextTabs } from '../components/ui/noc';
 
 /**
  * Gym events — the real `events` table (migration 0014).
@@ -79,7 +77,7 @@ export default function Events() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const toggle = async (event: EventRow) => {
     if (!memberId || busy) return;
@@ -130,239 +128,131 @@ export default function Events() {
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-          aria-label="Back">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="display text-xl text-white">Events</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            What the gym has coming up
-          </p>
-        </div>
-        {/* The other half of the same section — see NotificationsAll. */}
-        <button
-          onClick={() => navigate('/member/notifications')}
-          className="h-9 px-3 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          Announcements <ArrowRight size={12} />
-        </button>
-      </motion.div>
+      <PageTitle back title="Events" subtitle="What the gym has coming up"
+        action={
+          // The other half of "what has the gym told me" — see NotificationsAll.
+          <button onClick={() => navigate('/member/notifications')} style={{ fontSize: 13, color: 'var(--color-primary-300)' }}>
+            Updates
+          </button>
+        } />
 
-      <div
-        className="grid grid-cols-3 gap-1 p-1"
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-btn)',
-        }}
-        role="tablist"
-      >
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button key={t.id} role="tab" aria-selected={active} onClick={() => setTab(t.id)}
-              className="py-2 rounded-full text-xs font-semibold transition-colors"
-              style={{
-                background: active ? 'var(--color-primary)' : 'transparent',
-                color: active ? '#fff' : 'var(--color-text-muted)',
-              }}>
-              {t.label}
-              {t.id === 'mine' && mine.size > 0 && ` (${mine.size})`}
-            </button>
-          );
-        })}
-      </div>
+      <TextTabs<Tab>
+        label="Events"
+        tabs={TABS.map((t) => ({ id: t.id, label: t.id === 'mine' && mine.size > 0 ? `${t.label} · ${mine.size}` : t.label }))}
+        active={tab}
+        onChange={setTab}
+      />
 
       {loading ? (
         <SkeletonList count={3} />
       ) : visible.length === 0 ? (
-        <div className="p-10 text-center"
-          style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          <CalendarX size={36} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="text-sm font-semibold text-white">
-            {tab === 'mine' ? 'Nothing booked' : tab === 'past' ? 'Nothing yet' : 'No events scheduled'}
-          </p>
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            {tab === 'mine'
-              ? 'Register for an event and it appears here.'
-              : 'When the gym schedules something, it shows up here.'}
-          </p>
-        </div>
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+          {tab === 'mine'
+            ? 'Nothing booked. Register for an event and it appears here.'
+            : tab === 'past' ? 'Nothing yet.' : 'No events scheduled. When the gym schedules something, it shows up here.'}
+        </p>
       ) : (
-        <div className="space-y-3">
-          {visible.map(({ event, status }, i) => {
+        <div className="flex flex-col" style={{ gap: 14 }}>
+          {visible.map(({ event, status }) => {
             const going = mine.has(event.id);
             const taken = counts.get(event.id) ?? 0;
             const full = taken >= event.capacity && !going;
             const closed = status === 'Completed' || status === 'Cancelled';
             const start = new Date(event.starts_at);
             const end = new Date(start.getTime() + event.duration_minutes * 60_000);
-            const pct = event.capacity > 0 ? Math.min(100, (taken / event.capacity) * 100) : 0;
+            const time = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
             return (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.05, 0.3) }}
-                className="p-4"
-                style={{
-                  ...panelStyle,
-                  borderRadius: 'var(--radius-panel)',
-                  boxShadow: 'var(--shadow-panel)',
-                  // Cancelled is muted, not amber: amber is the app's "needs
-                  // your attention" tone and a cancelled event needs nothing.
-                  borderLeft: `4px solid ${
-                    status === 'Cancelled' ? 'var(--color-border)' : 'var(--color-primary)'
-                  }`,
-                  opacity: closed ? 0.75 : 1,
-                }}
-              >
-                {/* The gym's own picture, when there is one. A cancelled
-                    event keeps its poster — the card's muted border and the
-                    Cancelled pill carry that, and hiding the picture would
-                    make a cancelled event harder to recognise, not easier. */}
+              // Going is filled, the rest sit on the page: the one you are
+              // attending reads first without a label saying so.
+              <Panel key={event.id} filled={going} style={{ opacity: closed ? 0.75 : 1 }}>
+                {/* The gym's own picture, when there is one. A cancelled event
+                    keeps it — hiding it would make the event harder to
+                    recognise, and the status pill already says cancelled. */}
                 {event.image_url && (
-                  <img
-                    src={event.image_url}
-                    alt=""
-                    loading="lazy"
-                    className="w-full rounded-xl object-cover mb-2.5"
-                    style={{ aspectRatio: '16 / 9', background: 'var(--color-surface-high)' }}
-                  />
-                )}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-sm font-bold text-white leading-snug min-w-0">{event.title}</h3>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={
-                      status === 'Cancelled'
-                        ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
-                        : status === 'Ongoing'
-                          ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
-                          : { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
-                    }>
-                    {status}
-                  </span>
-                </div>
-
-                {event.description && (
-                  <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                    {event.description}
-                  </p>
+                  <img src={event.image_url} alt="" loading="lazy" className="w-full object-cover"
+                    style={{ aspectRatio: '16 / 9', marginBottom: 12, borderRadius: 10, background: 'var(--color-surface-high)' }} />
                 )}
 
-                <div className="space-y-1.5 mb-3">
-                  <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Calendar size={13} style={{ color: 'var(--color-primary)' }} />
-                    {start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                <div className="flex items-center justify-between" style={{ gap: 10 }}>
+                  <p className="eyebrow" style={{ color: status === 'Ongoing' ? 'var(--color-primary-300)' : undefined }}>
+                    {start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {time(start)}–{time(end)}
                   </p>
-                  <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Clock size={13} style={{ color: 'var(--color-primary)' }} />
-                    {start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    {' – '}
-                    {end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                  {event.location && (
-                    <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                      <MapPin size={13} style={{ color: 'var(--color-primary)' }} />
-                      {event.location}
-                    </p>
+                  {status !== 'Upcoming' && (
+                    <StatusPill label={status} tone={status === 'Ongoing' ? 'structure' : 'muted'} />
                   )}
-                  <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Users size={13} style={{ color: 'var(--color-primary)' }} />
-                    {taken}/{event.capacity} registered
-                    {!full && ` · ${event.capacity - taken} ${event.capacity - taken === 1 ? 'place' : 'places'} left`}
-                  </p>
-                  {/* NULL fee is free; 0 is deliberately priced at zero. Saying
-                      "₱0" for a free event reads like a placeholder, and saying
-                      "Free" for a ₱0 event would erase a decision the gym made. */}
-                  <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Ticket size={13} style={{ color: 'var(--color-primary)' }} />
-                    {event.fee == null ? 'Free' : `₱${Number(event.fee).toLocaleString()} — pay at the desk`}
-                  </p>
                 </div>
+                <p style={{ fontSize: 16, fontWeight: 500, marginTop: 8, color: 'var(--color-text-primary)' }}>{event.title}</p>
+                {event.description && (
+                  <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>{event.description}</p>
+                )}
+
+                <p style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+                  {[
+                    event.location,
+                    // NULL fee is free; 0 is deliberately priced at zero. "₱0"
+                    // reads like a placeholder, and "Free" for a ₱0 event would
+                    // erase a decision the gym made.
+                    event.fee == null ? 'Free' : `₱${Number(event.fee).toLocaleString('en-PH')}, paid at the desk`,
+                  ].filter(Boolean).join(' · ')}
+                </p>
 
                 {/* The three things that decide whether someone turns up (0057).
-                    Each is absent rather than shown empty: a "What to bring:"
-                    label with nothing after it is worse than no label. */}
+                    Each is absent rather than shown empty. */}
                 {(event.who_is_it_for || event.what_to_bring || event.contact) && (
-                  <div className="rounded-xl p-3 mb-3 space-y-2"
-                    style={{ background: 'var(--color-surface-high)' }}>
-                    {event.who_is_it_for && (
-                      <div>
-                        <p className="text-[12px] font-semibold uppercase tracking-wide"
-                          style={{ color: 'var(--color-primary)' }}>Who it's for</p>
-                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                          {event.who_is_it_for}
-                        </p>
+                  <div className="flex flex-col" style={{ gap: 8, marginTop: 12 }}>
+                    {([
+                      ['Who it is for', event.who_is_it_for],
+                      ['Bring', event.what_to_bring],
+                      ['Questions', event.contact],
+                    ] as const).filter(([, v]) => v).map(([label, value]) => (
+                      <div key={label}>
+                        <p className="eyebrow">{label}</p>
+                        <p style={{ fontSize: 13, marginTop: 3, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>{value}</p>
                       </div>
-                    )}
-                    {event.what_to_bring && (
-                      <div>
-                        <p className="text-[12px] font-semibold uppercase tracking-wide"
-                          style={{ color: 'var(--color-primary)' }}>Bring</p>
-                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                          {event.what_to_bring}
-                        </p>
-                      </div>
-                    )}
-                    {event.contact && (
-                      <div>
-                        <p className="text-[12px] font-semibold uppercase tracking-wide"
-                          style={{ color: 'var(--color-primary)' }}>Questions</p>
-                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                          {event.contact}
-                        </p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
-                <div className="h-1.5 rounded-full mb-3 overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
-                  <div className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: full ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
+                <div className="flex justify-between" style={{ marginTop: 14, fontSize: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>
+                    {full ? 'Full' : `${event.capacity - taken} ${event.capacity - taken === 1 ? 'place' : 'places'} left`}
+                  </span>
+                  <span style={{ color: 'var(--color-text-primary)' }}>{taken} / {event.capacity}</span>
                 </div>
+                <ProgressBar style={{ marginTop: 7 }} fraction={event.capacity > 0 ? taken / event.capacity : null} />
 
                 {closed ? (
-                  <p className="text-xs text-center py-2" style={{ color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: 12.5, marginTop: 14, color: 'var(--color-text-muted)' }}>
                     {status === 'Cancelled' ? 'This event was cancelled.' : 'This event has finished.'}
                     {going && status === 'Completed' && ' You were registered.'}
                   </p>
+                ) : going ? (
+                  <div className="flex items-center justify-between" style={{ marginTop: 14, fontSize: 13 }}>
+                    <span className="flex items-center" style={{ gap: 6, color: 'var(--color-primary-300)' }}>
+                      <Check size={15} /> You are going
+                    </span>
+                    <button onClick={() => void toggle(event)} disabled={busy === event.id} className="disabled:opacity-50"
+                      style={{ color: 'var(--color-text-secondary)' }}>
+                      {busy === event.id ? 'Saving…' : 'Cancel registration'}
+                    </button>
+                  </div>
                 ) : (
-                  <button
-                    onClick={() => void toggle(event)}
-                    disabled={busy === event.id || (full && !going)}
-                    className="w-full h-11 rounded-full font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-                    style={
-                      going
-                        ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }
-                        : full
-                          ? { background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }
-                          : { background: 'var(--color-secondary)', color: '#000' }
-                    }
-                  >
-                    {busy === event.id ? 'Saving…'
-                      : going ? <><Check size={15} /> You're going — tap to cancel</>
-                      : full ? 'Full'
-                      : 'Register'}
-                  </button>
+                  <NocButton variant="action" className="w-full" style={{ marginTop: 14 }}
+                    onClick={() => void toggle(event)} disabled={busy === event.id || full}>
+                    {busy === event.id ? 'Saving…' : full ? 'Full' : 'Register'}
+                  </NocButton>
                 )}
-              </motion.div>
+              </Panel>
             );
           })}
         </div>
       )}
 
       {!loading && events.length > 0 && tab === 'upcoming' && (
-        <SectionHeader title="" hint="Registering tells the gym to expect you, so they can cater for the right number." />
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+          Registering tells the gym to expect you, so they can cater for the right number.
+        </p>
       )}
     </Page>
   );

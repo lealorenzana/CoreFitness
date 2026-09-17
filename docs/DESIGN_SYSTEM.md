@@ -620,3 +620,74 @@ around the torso covers pectorals *and* lats. So the two views share a
 measurement, the label changes with the view, and the detail panel names the
 site. Storing a separate "triceps" number would be inventing a measurement
 nobody can take — the same class of lie as a hardcoded 4.9 star rating.
+
+---
+
+## Nocturne — the member app, from 2026-09-17
+
+The member app was rebuilt on the structure of the Claude Design **Nocturne** prototype
+(`Nocturne mobile app scope/design_handoff_member_nocturne/`), **in Core Fitness colour**. The
+prototype was near-monochrome; the gym's owner asked for the violet and amber back, so Nocturne
+supplies type, spacing, radii and hairlines and Core Fitness supplies the colour. Plan:
+[2026-09-16-nocturne-member-redesign](superpowers/plans/2026-09-16-nocturne-member-redesign.md).
+Anything above this section that describes the member dock, bento grids, `NavTile`, Anton or the
+floating chat head is **history** — the admin app is unchanged.
+
+### Tokens (member `src/index.css`)
+
+| Token | Value | Use |
+|---|---|---|
+| `--color-bg` | `#08080E` | page ground |
+| `--color-surface` / `-raised` / `-high` | `#12121C` / `#161522` / `#1E1D2B` | filled panels, inputs, empty cells |
+| `--color-primary` | `#7C3AED` | violet fills and edges — **3.5:1, never small text** |
+| `--color-primary-300` | `#c4b5fd` | violet **text** (10.8:1) |
+| `--color-secondary` | `#F59E0B` | amber — actions (9.3:1) |
+| `--color-text-primary` / `-secondary` / `-muted` | `#e9e9ed` / `#b2b6ca` / `#9397ab` | muted is the darkest text allowed |
+| `--color-hairline` / `--color-separator` | 16% / 8% white | edges, row dividers |
+| `--bar-height` / `--dock-clear` | `66px` / `24px` | bar in flow; clear is breathing room only |
+| `--radius-card` / `--radius-btn` / `--radius-pill` | `14px` / `8px` / `99px` | |
+
+Inter 400/500/600/700 only. `.display` survives as Inter 500 sentence case so unrebuilt call sites
+inherit the new heading. Helpers: `.eyebrow` (spaced capitals), `.rule` (fading rule), `.hair`
+(solid row divider), `.screen-title`.
+
+### Colour roles — enforced by variant name in `noc.tsx`
+
+- **structure (violet)** — where you are, what you have: the selected tab, a chosen day, progress,
+  "Active", a switch that is on, the current plan.
+- **action (amber)** — what you can do next: Book, Renew, Save, Send, Check in, Start. Also errors
+  and warnings, because a problem you can fix is the next thing to do.
+- **muted / ghost** — a secondary way out ("Log out", "See payment history").
+
+One amber `fill` slab per screen at most (Renew on an expired membership).
+
+### The kit
+
+`components/ui/noc.tsx`: `Eyebrow`, `SectionHead`, `LineRow`, `NocButton` (46px), `ProgressBar`
+(**renders nothing without a fraction**), `StatusPill`, `TextTabs`, `Chip`, `InlineStat`, `Panel`
+(`glow` for the one hero panel). `components/ui/page.tsx`: `Page`, `PageTitle` (text "← Back" row,
+`fallback` route). `Field`/`TextInput`/`Select`: 46px, surface fill, amber `FieldError`.
+`StepFlow`'s `ChoiceTile` for any pick-one list. `WeekMarks` draws a week identically on Today and
+Attendance.
+
+Rules the rebuild kept to:
+- **A list is rows on the page, not a card per row.** Cards inside cards made every screen read busy.
+- **A number needs a real denominator** — Attendance Rate (visits ÷ 30) and the 20-visit
+  Consistency Score were removed; the count stays.
+- **Copy reads the tables**, never the prototype: points from `point_rules`, cancel reasons from
+  `cancellation_reasons`, gym name/address/hours from `gym_settings`, plans from `membership_plans`.
+  Prototype claims that were false here: 20 points a visit, a two-hour cancel rule, extra tiers and
+  guest passes, an "Email me" setting.
+- **Name a thing for what it is.** The rule-based assistant is "Ask the assistant", never "coach".
+- **Tap targets ≥ 44px**, including row delete buttons and the back row.
+
+### Verifying
+
+`scripts/nocturne-shots.js` (tab roots), `nocturne-pages.js` and `nocturne-rest.js` (every other
+member screen) photograph a 393×852 phone into `shots/` and report, per screen, the gap between
+`<main>` and the bar (**must be 0**) and the count of text nodes under 12px (**must be 0**). Their
+fixtures must use real column names and a real `Content-Range` count; three apparent bugs in this
+rebuild were fixture columns (`notification_prefs.cat_*`, `public_trainers.id`,
+`workout_logs.completed_at`). `plan-gates.js`, `trainer-scenarios.js`, `rating-gate-check.js` and
+`back-navigation-check.js` were updated for the new wording and shell and pass (plan-gates also checks the lock marks on Today);
+`book-class-bento-check.js` and `membership-hub-check.js` tested the removed layouts and were deleted; git history keeps them.

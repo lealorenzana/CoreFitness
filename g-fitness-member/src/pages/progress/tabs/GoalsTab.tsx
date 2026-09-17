@@ -1,12 +1,11 @@
-import { panelStyle } from '../../../components/ui/Card';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
-import { Target, Plus, Check, Trash2, ChevronDown, Lightbulb, Trophy } from 'lucide-react';
+import { Plus, Check, Lightbulb, Trophy } from '@phosphor-icons/react';
+import { InlineStat, NocButton, ProgressBar, StatusPill } from '../../../components/ui/noc';
 import { useMemberId } from '../hooks/useMemberId';
 import PresetGoals from '../../../components/ui/PresetGoals';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import EmptyState from '../../../components/ui/EmptyState';
 import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
 import { progressService, goalProgressPct, type Goal } from '../../../services/progressService';
@@ -31,19 +30,17 @@ const METRICS = [
 ] as const;
 
 /**
- * Status colours, in the app's two hues.
+ * Status, in the kit's roles.
  *
- * "Achieved" used to be `#22c55e` — a green, in an app whose design system has
- * none, sitting next to a green progress bar. It read as a traffic light in a
- * palette that deliberately avoids them, and it was the only green on the
- * screen. Achieved is now **amber**, the colour this app already uses for the
- * thing that matters, and past-deadline steps back to muted rather than
- * shouting: a missed date is information, not a failure to punish someone with.
+ * "Achieved" was once `#22c55e` — a green, in an app whose design system has
+ * none. It is amber: reaching a goal is the thing that matters. In progress is
+ * state, so violet. Past deadline steps back to muted rather than shouting: a
+ * missed date is information, not a failure to punish someone with.
  */
-const STATUS_STYLE: Record<Goal['status'], { bg: string; color: string; label: string }> = {
-  active: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', label: 'In progress' },
-  achieved: { bg: 'var(--color-secondary-light)', color: 'var(--color-secondary)', label: 'Achieved' },
-  overdue: { bg: 'var(--color-bg)', color: 'var(--color-text-muted)', label: 'Past deadline' },
+const STATUS: Record<Goal['status'], { label: string; tone: 'structure' | 'action' | 'muted' }> = {
+  active: { label: 'In progress', tone: 'structure' },
+  achieved: { label: 'Achieved', tone: 'action' },
+  overdue: { label: 'Past deadline', tone: 'muted' },
 };
 
 export default function GoalsTab() {
@@ -69,7 +66,11 @@ export default function GoalsTab() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
+  // Refetches when the member id resolves; `load` is rebuilt each render and is
+  // deliberately not a dependency. The IIFE is what the set-state-in-effect rule
+  // needs — it follows a directly called function into its setState.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void (async () => { await load(); })(); }, [memberId]);
 
   const save = async () => {
     if (!form.title.trim()) return toast.error('Give the goal a name');
@@ -150,11 +151,9 @@ export default function GoalsTab() {
                   key={example}
                   type="button"
                   onClick={() => setForm({ ...form, title: example })}
-                  className="px-3 py-2 rounded-full text-xs font-semibold"
                   style={{
-                    background: 'var(--color-surface-raised)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text-secondary)',
+                    padding: '8px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
+                    border: '1px solid var(--color-hairline)', color: 'var(--color-text-secondary)',
                   }}
                 >
                   {example}
@@ -226,11 +225,11 @@ export default function GoalsTab() {
                     key={label}
                     type="button"
                     onClick={() => setForm({ ...form, deadline: selected ? '' : iso })}
-                    className="py-3 rounded-2xl text-sm font-semibold transition-colors"
                     style={{
-                      background: selected ? 'var(--color-primary-light)' : 'var(--color-surface-raised)',
-                      border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      color: selected ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      height: 48, borderRadius: 'var(--radius-btn)', fontSize: 14,
+                      background: selected ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'transparent',
+                      border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
+                      color: selected ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
                     }}
                   >
                     In {label}
@@ -248,7 +247,7 @@ export default function GoalsTab() {
           {form.deadline && (
             <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
               Target:{' '}
-              <span className="font-semibold" style={{ color: 'var(--color-secondary)' }}>
+              <span style={{ color: 'var(--color-primary-300)' }}>
                 {new Date(`${form.deadline}T00:00:00`).toLocaleDateString('en-US', {
                   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
                 })}
@@ -262,77 +261,14 @@ export default function GoalsTab() {
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
 
-  // Achieved goals are the ones that pile up. Splitting them out is what lets
-  // the tab open onto what is still in play rather than a mixed list where a
-  // goal finished in March sits above one due next week.
+  // Achieved goals are the ones that pile up. Splitting them out lets the tab
+  // open onto what is still in play rather than a mixed list where a goal
+  // finished in March sits above one due next week.
   const open = goals.filter((g) => g.status !== 'achieved');
   const done = goals.filter((g) => g.status === 'achieved');
-  const closest = open
-    .map((g) => ({ g, pct: goalProgressPct(g) }))
-    .filter((x): x is { g: Goal; pct: number } => x.pct != null)
-    .sort((a, b) => b.pct - a.pct)[0];
 
   return (
-    <div className="space-y-4">
-      {/* Two real counts and, when there is one, the goal closest to done.
-          Every number here is derived from rows — an empty section says zero
-          rather than being hidden, so "no goals achieved yet" is a fact the
-          member can read instead of an absence they have to infer. */}
-      {goals.length > 0 && (
-        <div className="rounded-2xl p-4" style={panelStyle}>
-          <div className="flex items-center gap-6">
-            <div>
-              <p className="text-2xl font-bold text-white leading-none">{open.length}</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>in progress</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold leading-none" style={{ color: 'var(--color-secondary)' }}>
-                {done.length}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>achieved</p>
-            </div>
-          </div>
-          {closest && (
-            <p className="text-xs mt-3 pt-3" style={{ color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)' }}>
-              Closest to done:{' '}
-              <span className="font-semibold text-white">{closest.g.title}</span>
-              {' '}— {closest.pct}% there
-            </p>
-          )}
-        </div>
-      )}
-
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-3.5 rounded-2xl text-sm font-bold text-black flex items-center justify-center gap-2"
-        style={{ background: 'var(--color-secondary)' }}>
-        <Plus size={17} /> Set a goal
-      </button>
-
-      {/* The five presets (0055), behind a toggle rather than always open.
-          They are for someone who does not know what to set; a member who
-          already has goals scrolls past five suggestion cards every visit to
-          reach their own. Collapsed by default, one tap away. */}
-      {memberId && (
-        <div>
-          <button
-            onClick={() => setShowIdeas((v) => !v)}
-            className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
-            style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          >
-            <Lightbulb size={14} />
-            {showIdeas ? 'Hide goal ideas' : 'Not sure what to aim for? Browse ideas'}
-            <ChevronDown size={14} style={{
-              transform: showIdeas ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
-            }} />
-          </button>
-          {showIdeas && (
-            <div className="mt-2">
-              <PresetGoals memberId={memberId} onCreated={load} />
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
       <StepFlow
         open={showForm}
         title="Set a goal"
@@ -343,68 +279,84 @@ export default function GoalsTab() {
         onSubmit={save}
       />
 
+      {goals.length > 0 && (
+        <div className="flex" style={{ gap: 24 }}>
+          <InlineStat value={open.length} label="in progress" />
+          <InlineStat value={done.length} label="achieved" />
+        </div>
+      )}
+
       {goals.length === 0 ? (
-        <EmptyState icon={Target} title="No goals yet"
-          message="Set one and it tracks itself from the measurements you log." />
+        // A sentence, not a zero: a goal is the only thing that turns a reading
+        // into a fraction, and without one the app shows numbers and nothing else.
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+          No goal set. A goal is what turns a reading into progress — set one and it tracks itself from the
+          measurements you log.
+        </p>
       ) : (
-        <div className="space-y-4">
-          {open.length > 0 && (
-            <div className="space-y-2">
-              {open.map((g) => (
-                <GoalCard key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />
-              ))}
-            </div>
-          )}
-
-          {/* Completed goals behind a button. They are worth keeping — the
-              count above is only meaningful because they are still there — but
-              a finished goal has nothing left to act on, so it does not earn
-              space above the ones that do. */}
-          {done.length > 0 && (
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowDone((v) => !v)}
-                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
-                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-              >
-                <Trophy size={14} style={{ color: 'var(--color-secondary)' }} />
-                {showDone
-                  ? 'Hide achieved goals'
-                  : `Show ${done.length} achieved goal${done.length === 1 ? '' : 's'}`}
-                <ChevronDown size={14} style={{
-                  transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
-                }} />
-              </button>
-              {showDone && (
-                <div className="space-y-2">
-                  {done.map((g) => (
-                    <GoalCard key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {open.length === 0 && done.length > 0 && !showDone && (
-            <p className="text-xs text-center px-6" style={{ color: 'var(--color-text-muted)' }}>
+        <section className="flex flex-col" style={{ gap: 22 }}>
+          {open.map((g) => <GoalRow key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />)}
+          {open.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
               Nothing in progress. Set another goal, or look back at what you have already done.
             </p>
           )}
-        </div>
+        </section>
+      )}
+
+      <NocButton variant="action" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>
+        Set a goal
+      </NocButton>
+
+      {/* The presets (0055), behind a control. They are for someone who does
+          not know what to set; a member who already has goals should not
+          scroll past five suggestions every visit to reach their own. */}
+      {memberId && (
+        <section>
+          <button onClick={() => setShowIdeas((v) => !v)} className="flex items-center"
+            style={{ gap: 7, fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+            <Lightbulb size={15} />
+            {showIdeas ? 'Hide goal ideas' : 'Not sure what to aim for? Browse ideas'}
+          </button>
+          {showIdeas && (
+            <div style={{ marginTop: 12 }}>
+              <PresetGoals memberId={memberId} onCreated={load} />
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Achieved goals behind a control: worth keeping — the count above means
+          something only because they are still there — but a finished goal has
+          nothing left to act on. */}
+      {done.length > 0 && (
+        <section>
+          <NocButton variant="ghost" className="w-full" icon={<Trophy size={15} />}
+            onClick={() => setShowDone((v) => !v)}>
+            {showDone ? 'Hide achieved goals' : `Show ${done.length} achieved goal${done.length === 1 ? '' : 's'}`}
+          </NocButton>
+          {showDone && (
+            <div className="flex flex-col" style={{ gap: 22, marginTop: 18 }}>
+              {done.map((g) => <GoalRow key={g.id} goal={g} onAchieve={markAchieved} onRemove={remove} />)}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
 }
 
+const shortDay = (key: string) =>
+  new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
 /**
- * One goal.
+ * One goal: name and where it stands, a bar only when there is a real
+ * denominator, then what to do about it.
  *
  * Module level, not declared inside the tab's render — a component defined
- * during render is a fresh type every pass and remounts its subtree, which
- * would restart the progress bar's transition on every keystroke in the form
- * above it.
+ * during render is a fresh type every pass and remounts its subtree.
  */
-function GoalCard({
+function GoalRow({
   goal: g, onAchieve, onRemove,
 }: {
   goal: Goal;
@@ -412,90 +364,61 @@ function GoalCard({
   onRemove: (g: Goal) => void;
 }) {
   const pct = goalProgressPct(g);
-  const style = STATUS_STYLE[g.status];
-  const unit = METRICS.find((m) => m.id === g.metric)?.unit ?? '';
+  const status = STATUS[g.status];
+  const metric = METRICS.find((m) => m.id === g.metric);
+  const unit = metric?.unit ?? '';
   return (
-              <div className="rounded-2xl p-4" style={panelStyle}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    {/* The metric always shows, above the title.
-                        A goal called "50" with no target rendered as the bare
-                        string "50" and nothing else — the member could not tell
-                        what they had meant by it either. The category and the
-                        date it was set are the two things that make a terse
-                        title readable again. */}
-                    <p
-                      className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                      style={{ color: 'var(--color-primary)' }}
-                    >
-                      {METRICS.find((m) => m.id === g.metric)?.label ?? 'Goal'}
-                    </p>
-                    <p className="text-sm font-semibold text-white break-words">{g.title}</p>
-                    {g.targetValue != null ? (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                        Target {g.targetValue}{unit}
-                        {g.currentValue != null && ` · now ${g.currentValue}${unit}`}
-                        {g.deadline && ` · by ${new Date(`${g.deadline}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                      </p>
-                    ) : (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                        No target set
-                        {g.deadline && ` · by ${new Date(`${g.deadline}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                        {` · set ${new Date(g.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0"
-                    style={{ background: style.bg, color: style.color }}>
-                    {style.label}
-                  </span>
-                </div>
+    <div>
+      {/* The metric always shows above the title: a goal called "50" with no
+          target rendered as the bare string "50", and the member could not
+          tell what they had meant by it either. */}
+      <div className="flex items-center justify-between" style={{ gap: 10 }}>
+        <p className="eyebrow">{metric?.label ?? 'Goal'}</p>
+        <StatusPill label={status.label} tone={status.tone} />
+      </div>
+      <div className="flex items-baseline justify-between" style={{ gap: 12, marginTop: 6 }}>
+        <span className="break-words min-w-0" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{g.title}</span>
+        {g.currentValue != null && (
+          <span className="flex-none" style={{ fontSize: 13.5, color: 'var(--color-primary-300)' }}>
+            {g.currentValue}{unit ? ` ${unit}` : ''}
+          </span>
+        )}
+      </div>
 
-                {pct != null ? (
-                  <>
-                    {/* The two numbers the bar is drawn from, spelled out.
-                        A bar alone says "some of the way" and makes the member
-                        do the arithmetic to find out how far is left. */}
-                    {g.currentValue != null && g.targetValue != null && (
-                      <div className="flex items-baseline justify-between mb-1.5">
-                        <span className="text-lg font-bold text-white">
-                          {g.currentValue}<span className="text-xs font-normal">{unit}</span>
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                          {Math.abs(g.targetValue - g.currentValue).toFixed(1).replace(/\.0$/, '')}{unit} to go
-                        </span>
-                      </div>
-                    )}
-                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, background: 'var(--color-secondary)' }} />
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{pct}% there</p>
-                  </>
-                ) : (
-                  // No bar rather than a guessed one — see goalProgressPct.
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {g.metric === 'custom'
-                      ? 'Tracked by you — mark it done when you get there.'
-                      : 'Log a measurement to start tracking this.'}
-                  </p>
-                )}
+      {pct != null ? (
+        <>
+          <ProgressBar fraction={pct / 100} style={{ marginTop: 9 }} />
+          <p className="flex justify-between" style={{ fontSize: 12, marginTop: 7, color: 'var(--color-text-secondary)' }}>
+            <span>
+              {g.currentValue != null && g.targetValue != null
+                ? `${Math.abs(g.targetValue - g.currentValue).toFixed(1).replace(/\.0$/, '')}${unit ? ` ${unit}` : ''} to go · ${pct}% there`
+                : `${pct}% there`}
+            </span>
+            {g.deadline && <span>by {shortDay(g.deadline)}</span>}
+          </p>
+        </>
+      ) : (
+        // No bar rather than a guessed one — see goalProgressPct.
+        <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          {g.metric === 'custom'
+            ? 'Tracked by you — mark it done when you get there.'
+            : 'Log a measurement to start tracking this.'}
+          {g.targetValue != null ? ` Target ${g.targetValue}${unit ? ` ${unit}` : ''}.` : ''}
+          {g.deadline ? ` By ${shortDay(g.deadline)}.` : ''}
+        </p>
+      )}
 
-                {g.status !== 'achieved' && (
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={() => onAchieve(g)}
-                      className="flex-1 py-2.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5"
-                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                      <Check size={12} /> Mark achieved
-                    </button>
-                    <button onClick={() => onRemove(g)}
-                      aria-label={`Delete goal: ${g.title}`}
-                      className="px-3.5 py-2.5 rounded-full text-xs font-semibold"
-                      style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
+      {g.status !== 'achieved' && (
+        <div className="flex items-center justify-between" style={{ marginTop: 10, fontSize: 12.5 }}>
+          <button onClick={() => onAchieve(g)} className="flex items-center" style={{ gap: 6, color: 'var(--color-secondary)' }}>
+            <Check size={14} /> Mark achieved
+          </button>
+          <button onClick={() => onRemove(g)} aria-label={`Remove goal: ${g.title}`}
+            style={{ color: 'var(--color-text-secondary)' }}>
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Lock, SealCheck, X } from '@phosphor-icons/react';
 
-import AchievementBadge from '../components/ui/AchievementBadge';
 import LevelProgressCard from '../components/ui/LevelProgressCard';
-import SectionHeader from '../components/ui/SectionHeader';
-import { panelStyle } from '../components/ui/Card';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -18,7 +15,8 @@ import {
   catalogFor, categoriesFor, listUnlocks, loadCatalogue, syncAchievements,
 } from '../lib/api/achievements';
 import { getCurrentMemberId } from '../services/bookingService';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { LineRow, ProgressBar, SectionHead } from '../components/ui/noc';
 
 /**
  * The achievement gallery, shared by both roles.
@@ -34,7 +32,6 @@ import { Page } from '../components/ui/page';
  * unlock it.
  */
 export default function Achievements() {
-  const navigate = useNavigate();
   const location = useLocation();
   const isTrainer = location.pathname.startsWith('/trainer');
   const role: AchievementRole = isTrainer ? 'trainer' : 'member';
@@ -72,72 +69,49 @@ export default function Achievements() {
     }
   }, [role]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const earnedCount = catalog.filter((a) => unlocked.has(a.key)).length;
   const pct = catalog.length ? Math.round((earnedCount / catalog.length) * 100) : 0;
 
   const modalRoot = typeof document !== 'undefined' ? document.getElementById('modal-root') : null;
+  const unlockedOn = (key: string) =>
+    new Date(`${unlocked.get(key)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(isTrainer ? '/trainer/profile' : '/member/progress')}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Achievements</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {loading ? 'Checking what you have earned…' : `${earnedCount} of ${catalog.length} unlocked`}
-          </p>
-        </div>
-      </motion.div>
+      {/* Back undoes the last step. It navigated to Progress (or the trainer
+          profile) whatever the member had come from. */}
+      <PageTitle back fallback={isTrainer ? '/trainer/profile' : '/member/progress'}
+        title="Achievements"
+        subtitle={loading ? 'Checking what you have earned…' : `${earnedCount} of ${catalog.length} unlocked`} />
 
       {loading ? (
         <SkeletonList count={4} />
       ) : (
         <>
-          {/* Overall completion */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="p-4"
-            style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
-          >
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="display text-2xl text-white">{pct}%</span>
-              <span className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                {earnedCount}/{catalog.length}
+          <section>
+            <div className="flex items-baseline justify-between">
+              <span style={{ fontSize: 'var(--text-hero)', fontWeight: 500, lineHeight: 1, letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)' }}>
+                {pct}%
               </span>
+              <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{earnedCount} of {catalog.length}</span>
             </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'var(--color-secondary)' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </div>
-            <div className="flex gap-3 mt-3 flex-wrap">
+            <ProgressBar style={{ marginTop: 12 }} fraction={catalog.length ? earnedCount / catalog.length : null} />
+            <div className="flex flex-wrap" style={{ gap: '8px 16px', marginTop: 12 }}>
               {(['bronze', 'silver', 'gold', 'platinum'] as const).map((t) => {
                 const total = catalog.filter((a) => a.tier === t).length;
                 if (total === 0) return null;
                 const got = catalog.filter((a) => a.tier === t && unlocked.has(a.key)).length;
                 return (
-                  <span key={t} className="inline-flex items-center gap-1.5 text-xs font-semibold"
-                    style={{ color: 'var(--color-text-muted)' }}>
-                    <span className="w-2 h-2 rounded-full" style={{ background: tierStyle(t).ring }} />
+                  <span key={t} className="inline-flex items-center" style={{ gap: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    <span aria-hidden className="rounded-full" style={{ width: 7, height: 7, background: tierStyle(t).ring }} />
                     {got}/{total} {tierStyle(t).label}
                   </span>
                 );
               })}
             </div>
-          </motion.div>
+          </section>
 
           {/* Members get the level rules restated here; a trainer has no level.
               `linkToAchievements` is off because we are already on that page. */}
@@ -148,17 +122,29 @@ export default function Achievements() {
             const got = items.filter((a) => unlocked.has(a.key)).length;
             return (
               <section key={cat}>
-                <SectionHeader title={cat} hint={`${got} of ${items.length}`} />
-                <div className="grid grid-cols-3 gap-2">
-                  {items.map((def, i) => (
-                    <AchievementBadge
-                      key={def.key}
-                      def={def}
-                      unlocked={unlocked.has(def.key)}
-                      index={i}
-                      onClick={() => setDetail(def)}
-                    />
-                  ))}
+                <SectionHead title={cat} meta={`${got} of ${items.length}`} />
+                <div style={{ marginTop: 4 }}>
+                  {/* Earned first — within a category the list reads as "what you
+                      have, then what is next", the order the member scans for. */}
+                  {[...items].sort((a, b) => Number(unlocked.has(b.key)) - Number(unlocked.has(a.key))).map((def, i) => {
+                    const have = unlocked.has(def.key);
+                    const Icon = def.icon;
+                    return (
+                      <LineRow
+                        key={def.key}
+                        gutterWidth={30}
+                        gutter={<Icon size={19} style={{ color: have ? tierStyle(def.tier).ring : 'var(--color-text-muted)', opacity: have ? 1 : 0.6 }} />}
+                        title={def.title}
+                        dim={!have}
+                        // A locked row states the rule that would unlock it —
+                        // every one, so nothing here is a mystery.
+                        meta={have ? `${tierStyle(def.tier).label} · unlocked ${unlockedOn(def.key)}` : def.requirement}
+                        action={have ? <SealCheck size={17} weight="fill" style={{ color: 'var(--color-primary-400)' }} /> : undefined}
+                        onClick={() => setDetail(def)}
+                        last={i === items.length - 1}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
@@ -166,93 +152,73 @@ export default function Achievements() {
         </>
       )}
 
-      {/* Detail sheet. Portalled to #modal-root because `<main>` scrolls and is
-          `relative` — a fixed overlay rendered inline would scroll with it. */}
+      {/* Detail sheet, portalled. The wrapper is always mounted and is the only
+          node declaring pointer-events — the overlay used to carry
+          `pointer-events-auto` inside AnimatePresence, which leaves an invisible
+          tap-eating layer when an exit animation never finishes. */}
       {modalRoot && createPortal(
-        <AnimatePresence>
-          {detail && (
-            <motion.div
-              /* #modal-root is `pointer-events-none` — see PhoneChassis. */
-              className="absolute inset-0 z-[230] flex items-end pointer-events-auto"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setDetail(null)}
-            >
-              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.7)' }} />
+        <div className="absolute inset-0 z-[230]" style={{ pointerEvents: detail ? 'auto' : 'none' }}>
+          <AnimatePresence>
+            {detail && (
               <motion.div
-                className="relative w-full p-5 pb-8"
-                style={{
-                  background: 'var(--color-surface-raised)',
-                  borderTop: '1px solid var(--color-border)',
-                  borderTopLeftRadius: 'var(--radius-panel)',
-                  borderTopRightRadius: 'var(--radius-panel)',
-                }}
-                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 flex items-end"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setDetail(null)}
               >
-                <button
-                  onClick={() => setDetail(null)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}
-                  aria-label="Close"
+                <div className="absolute inset-0" style={{ background: 'rgba(8, 8, 14, 0.78)' }} />
+                <motion.div
+                  className="relative w-full flex flex-col items-center text-center"
+                  style={{
+                    background: 'var(--color-surface)',
+                    borderRadius: '20px 20px 0 0',
+                    boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.2), 0 -18px 44px rgba(0, 0, 0, 0.6)',
+                    padding: '12px var(--gutter) calc(28px + env(safe-area-inset-bottom))',
+                  }}
+                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog" aria-modal="true" aria-label={detail.title}
                 >
-                  <X size={15} />
-                </button>
+                  <div aria-hidden style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
+                  <button onClick={() => setDetail(null)} aria-label="Close" className="absolute grid place-items-center"
+                    style={{ top: 14, right: 16, width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
+                    <X size={16} />
+                  </button>
 
-                <div className="flex flex-col items-center text-center">
-                  <span
-                    className="w-20 h-20 rounded-full flex items-center justify-center mb-3"
-                    style={{
-                      background: unlocked.has(detail.key)
-                        ? `${tierStyle(detail.tier).ring}24` : 'var(--color-surface-high)',
-                      border: `2px solid ${unlocked.has(detail.key)
-                        ? tierStyle(detail.tier).ring : 'var(--color-border)'}`,
-                    }}
-                  >
-                    <detail.icon
-                      size={34}
-                      style={{
-                        color: unlocked.has(detail.key) ? tierStyle(detail.tier).ring : 'var(--color-text-muted)',
-                        opacity: unlocked.has(detail.key) ? 1 : 0.45,
-                      }}
-                    />
-                  </span>
-
-                  <span className="text-xs font-bold uppercase tracking-[0.16em] mb-1"
-                    style={{ color: tierStyle(detail.tier).ring }}>
-                    {tierStyle(detail.tier).label}
-                  </span>
-                  <h2 className="display text-xl text-white">{detail.title}</h2>
-
-                  {unlocked.has(detail.key) ? (
-                    <>
-                      <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                        {detail.description}
-                      </p>
-                      <p className="text-xs mt-3 font-semibold" style={{ color: 'var(--color-secondary)' }}>
-                        Unlocked{' '}
-                        {new Date(`${unlocked.get(detail.key)}T00:00:00`).toLocaleDateString('en-US', {
-                          month: 'long', day: 'numeric', year: 'numeric',
-                        })}
-                      </p>
-                    </>
-                  ) : (
-                    <div
-                      className="mt-3 px-4 py-3 rounded-xl flex items-start gap-2.5 text-left"
-                      style={{ background: 'var(--color-surface-high)' }}
-                    >
-                      <Lock size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-text-muted)' }} />
-                      <span className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                        {detail.requirement}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  {(() => {
+                    const have = unlocked.has(detail.key);
+                    const ring = tierStyle(detail.tier).ring;
+                    return (
+                      <>
+                        <span className="grid place-items-center rounded-full" style={{
+                          width: 84, height: 84, marginTop: 22,
+                          background: have ? `color-mix(in srgb, ${ring} 16%, transparent)` : 'var(--color-surface-high)',
+                          boxShadow: `inset 0 0 0 1px ${have ? ring : 'rgba(233, 233, 237, 0.14)'}${have ? `, 0 0 30px -10px ${ring}` : ''}`,
+                        }}>
+                          <detail.icon size={34} style={{ color: have ? ring : 'var(--color-text-muted)', opacity: have ? 1 : 0.5 }} />
+                        </span>
+                        <p className="eyebrow" style={{ marginTop: 14, color: ring }}>{tierStyle(detail.tier).label}</p>
+                        <h2 style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: 'var(--color-text-primary)' }}>{detail.title}</h2>
+                        {have ? (
+                          <>
+                            <p style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>{detail.description}</p>
+                            <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-primary-300)' }}>Unlocked {unlockedOn(detail.key)}</p>
+                          </>
+                        ) : (
+                          <p className="flex items-start text-left" style={{ gap: 8, marginTop: 12, fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+                            <Lock size={15} className="flex-none" style={{ marginTop: 2, color: 'var(--color-text-muted)' }} />
+                            {detail.requirement}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        modalRoot
+            )}
+          </AnimatePresence>
+        </div>,
+        modalRoot,
       )}
     </Page>
   );

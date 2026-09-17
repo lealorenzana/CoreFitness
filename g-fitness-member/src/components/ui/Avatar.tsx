@@ -48,8 +48,11 @@ export default function Avatar({
   const initials = initialsOf(name);
   const showPhoto = Boolean(photoUrl) && !failed;
 
-  const bg = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
-  const fg = tone === 'secondary' ? '#000' : '#fff';
+  // Nocturne's disc: a tint and an edge in the role colour, the initials in
+  // its text-safe step. A solid violet slab with white initials read as a
+  // button; this reads as a person.
+  const edge = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
+  const fg = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary-300)';
 
   return (
     <div
@@ -57,7 +60,8 @@ export default function Avatar({
       style={{
         width: size,
         height: size,
-        background: showPhoto ? 'var(--color-surface-raised)' : bg,
+        background: showPhoto ? 'var(--color-surface-raised)' : `color-mix(in srgb, ${edge} 16%, transparent)`,
+        boxShadow: showPhoto ? undefined : `inset 0 0 0 1px ${edge}`,
         color: fg,
       }}
       // Empty alt/label when there is no name — an avatar reading "unknown
@@ -74,7 +78,7 @@ export default function Avatar({
           onError={() => setFailed(true)}
         />
       ) : (
-        <span className="font-bold leading-none" style={{ fontSize: Math.round(size * 0.38) }}>
+        <span className="leading-none" style={{ fontSize: Math.round(size * 0.34), fontWeight: 500 }}>
           {initials}
         </span>
       )}

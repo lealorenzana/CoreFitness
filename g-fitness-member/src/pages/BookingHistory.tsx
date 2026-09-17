@@ -1,9 +1,6 @@
-import { SkeletonList } from '../components/ui/Skeleton';
-import { panelStyle } from '../components/ui/Card';
-import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertCircle, ArrowLeft, Trash2, User, Dumbbell } from 'lucide-react';
+import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { useLiveData } from '../hooks/useLiveData';
@@ -14,56 +11,39 @@ import {
   type MyBooking,
 } from '../services/bookingService';
 import type { BookingStatus } from '../types/db';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { NocButton, StatusPill, TextTabs } from '../components/ui/noc';
 import CancelBookingDialog from '../components/ui/CancelBookingDialog';
 
 /**
  * The member's own bookings — group classes and personal training in one list,
- * because "what am I doing this week" is one question.
+ * because "what am I doing this week" is one question (Nocturne redesign).
  *
  * Upcoming vs past is decided by the session's own time, not its status. A
- * booking that was approved for last Tuesday belongs in history even though it
- * is still `approved`; the old screen filed it under Upcoming forever.
+ * booking approved for last Tuesday belongs in history even though it is still
+ * `approved`; the old screen filed it under Upcoming forever.
+ *
+ * Status is state, so its pill is violet — except a request still waiting and a
+ * decline, which are the two a member may need to act on, so amber.
  */
 
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  pending: 'Awaiting approval',
-  approved: 'Confirmed',
-  rejected: 'Declined',
-  cancelled: 'Cancelled',
-};
-
-const STATUS_STYLE: Record<BookingStatus, { color: string; background: string }> = {
-  pending: { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' },
-  approved: { color: 'var(--color-primary)', background: 'var(--color-primary-light)' },
-  rejected: { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' },
-  cancelled: { color: 'var(--color-text-muted)', background: 'rgba(148,163,184,0.15)' },
+const STATUS: Record<BookingStatus, { label: string; tone: 'structure' | 'action' | 'muted' }> = {
+  pending: { label: 'Awaiting approval', tone: 'action' },
+  approved: { label: 'Confirmed', tone: 'structure' },
+  rejected: { label: 'Declined', tone: 'action' },
+  cancelled: { label: 'Cancelled', tone: 'muted' },
 };
 
 /**
- * What the member owes, in one word — or nothing at all.
+ * What the member owes, in words — or nothing at all.
  *
- * 'unknown' renders null on purpose. A blank is honest; "unpaid" would be a
+ * 'unknown' renders nothing on purpose. A blank is honest; "unpaid" would be a
  * claim about somebody's money made by a screen that cannot see the till.
  */
-function PaymentChip({ payment }: { payment: MyBooking['payment'] }) {
-  if (payment === 'unknown') return null;
-  const paid = payment === 'paid';
-  return (
-    <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-      style={{
-        background: paid ? 'var(--color-primary-light)' : 'var(--color-surface-raised)',
-        color: paid ? 'var(--color-primary)' : 'var(--color-text-muted)',
-      }}>
-      {paid ? 'Paid' : 'In your plan'}
-    </span>
-  );
-}
-
-function statusIcon(status: BookingStatus) {
-  if (status === 'pending') return <AlertCircle size={13} />;
-  if (status === 'approved') return <CheckCircle size={13} />;
-  return <XCircle size={13} />;
+function paymentWords(payment: MyBooking['payment']): string | null {
+  if (payment === 'paid') return 'Paid';
+  if (payment === 'included') return 'In your plan';
+  return null;
 }
 
 export default function BookingHistory() {
@@ -90,22 +70,22 @@ export default function BookingHistory() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  // The status a member checks here is changed by the front desk, not by them.
+  // The status a member checks here is changed by someone else — the coach or
+  // the desk — not by them.
   useLiveData(() => load(true));
 
-  const upcoming = useMemo(() => rows.filter((r) => isUpcoming(r)), [rows]);
+  const upcoming = useMemo(
+    () => rows.filter((r) => isUpcoming(r)).sort((a, b) => (a.startsAt ?? '').localeCompare(b.startsAt ?? '')),
+    [rows],
+  );
   const past = useMemo(() => rows.filter((r) => !isUpcoming(r)), [rows]);
   const visible = tab === 'upcoming' ? upcoming : past;
 
   /**
-   * Cancelling now goes through `cancel_booking()` (0081), which wants a reason.
-   *
-   * The dialog owns the call and the validation; this only reloads the list and
-   * says so. The old path — `cancelMyBooking`, a PATCH to `status='cancelled'`
-   * — recorded no reason, no actor and no time, which is the gap 0037 wrote
-   * down and could not reconstruct.
+   * Cancelling goes through `cancel_booking()` (0081), which wants a reason.
+   * The dialog owns the call and the validation; this only reloads and says so.
    */
   const afterCancelled = async () => {
     toast.success(pendingCancel?.kind === 'pt' ? 'Session cancelled' : 'Booking cancelled');
@@ -115,138 +95,73 @@ export default function BookingHistory() {
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">My Bookings</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Classes and personal training
-          </p>
-        </div>
-      </motion.div>
+      <PageTitle back title="My bookings" subtitle="Requested, confirmed and past — classes and 1-on-1" />
 
-      {/* Violet marks the selection, matching the Progress Hub control. */}
-      <div className="grid grid-cols-2 gap-1 p-1"
-        style={{ ...panelStyle, borderRadius: 'var(--radius-btn)' }} role="tablist">
-        {([['upcoming', 'Upcoming', upcoming.length], ['past', 'Past', past.length]] as const).map(([id, label, count]) => (
-          <button key={id} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
-            className="py-2 rounded-full font-semibold text-xs transition-colors"
-            style={{
-              background: tab === id ? 'var(--color-primary)' : 'transparent',
-              color: tab === id ? '#fff' : 'var(--color-text-muted)',
-            }}>
-            {label} ({count})
-          </button>
-        ))}
-      </div>
+      <TextTabs<'upcoming' | 'past'>
+        label="Bookings"
+        tabs={[
+          { id: 'upcoming', label: `Upcoming · ${upcoming.length}` },
+          { id: 'past', label: `Past · ${past.length}` },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
       {loading ? (
         <SkeletonList />
       ) : visible.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center"
-          style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          <Calendar size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="text-sm font-semibold text-white">
-            {tab === 'upcoming' ? 'Nothing booked yet' : 'No past sessions'}
-          </p>
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+        <div className="flex flex-col" style={{ gap: 16 }}>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
             {tab === 'upcoming'
-              ? 'Book a class or a 1-on-1 session and it appears here straight away, even before the desk approves it.'
-              : 'Sessions move here once their time has passed.'}
+              ? 'Nothing booked yet. Book a class or a 1-on-1 session and it appears here straight away, even before it is confirmed.'
+              : 'No past sessions. They move here once their time has passed.'}
           </p>
-          {tab === 'upcoming' && (
-            <button onClick={() => navigate('/member/book-class')}
-              className="mt-4 px-6 h-10 rounded-full font-semibold text-sm text-black"
-              style={{ background: 'var(--color-secondary)' }}>
-              Book a session
-            </button>
-          )}
-        </motion.div>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <section>
           {visible.map((row, i) => {
-            const style = STATUS_STYLE[row.status];
+            const status = STATUS[row.status];
+            const when = row.startsAt ? new Date(row.startsAt) : null;
+            const pay = row.kind === 'pt' ? paymentWords(row.payment) : null;
+            const canCancel = row.cancellable && isUpcoming(row);
             return (
-              <motion.div key={`${row.kind}-${row.id}`}
-                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.05, 0.3) }}
-                className="p-4"
-                style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: row.kind === 'pt' ? 'var(--color-secondary-light)' : 'var(--color-primary-light)' }}>
-                      {row.kind === 'pt'
-                        ? <User size={16} style={{ color: 'var(--color-secondary)' }} />
-                        : <Dumbbell size={16} style={{ color: 'var(--color-primary)' }} />}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-white font-semibold text-sm truncate">{row.title}</h3>
-                      <p className="text-xs flex items-center gap-1.5 flex-wrap"
-                        style={{ color: 'var(--color-text-muted)' }}>
-                        {row.subtitle}
-                        {/* Only on 1-on-1 sessions. A class is covered by the
-                            plan or it is not bookable, so a chip on every class
-                            row would be noise saying the same thing forever. */}
-                        {row.kind === 'pt' && <PaymentChip payment={row.payment} />}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0"
-                    style={style}>
-                    {statusIcon(row.status)} {STATUS_LABEL[row.status]}
+              <div key={`${row.kind}-${row.id}`}>
+                <div className="flex items-start" style={{ gap: 12, padding: '14px 0' }}>
+                  <span className="flex-none" style={{ width: 56, fontSize: 12.5, lineHeight: 1.4, color: 'var(--color-text-muted)' }}>
+                    {when ? (
+                      <>
+                        {when.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')}
+                        <br />
+                        {when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </>
+                    ) : 'Not set'}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate" style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{row.title}</span>
+                    <span className="block" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-secondary)' }}>
+                      {[row.subtitle, `${row.durationMinutes} min`, row.location, pay].filter(Boolean).join(' · ')}
+                    </span>
+                    <span className="flex items-center justify-between" style={{ marginTop: 8, gap: 10 }}>
+                      <StatusPill label={status.label} tone={status.tone} />
+                      {canCancel && (
+                        <button onClick={() => setPendingCancel(row)}
+                          style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+                          {row.kind === 'pt' && row.status === 'pending' ? 'Withdraw request' : 'Cancel'}
+                        </button>
+                      )}
+                    </span>
                   </span>
                 </div>
-
-                <div className="space-y-1.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  <div className="flex items-center gap-2">
-                    <Calendar size={13} style={{ color: 'var(--color-secondary)' }} />
-                    <span>
-                      {row.startsAt
-                        ? new Date(row.startsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-                        : 'Not scheduled yet'}
-                    </span>
-                  </div>
-                  {row.startsAt && (
-                    <div className="flex items-center gap-2">
-                      <Clock size={13} style={{ color: 'var(--color-secondary)' }} />
-                      <span>
-                        {new Date(row.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {row.durationMinutes} min
-                      </span>
-                    </div>
-                  )}
-                  {row.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin size={13} style={{ color: 'var(--color-secondary)' }} />
-                      <span>{row.location}</span>
-                    </div>
-                  )}
-                </div>
-
-                {row.cancellable && isUpcoming(row) && (
-                  <button onClick={() => setPendingCancel(row)}
-                    className="mt-3 w-full py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5"
-                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
-                    <Trash2 size={13} /> {row.kind === 'pt' ? 'Withdraw request' : 'Cancel booking'}
-                  </button>
-                )}
-              </motion.div>
+                {i < visible.length - 1 && <div className="hair" />}
+              </div>
             );
           })}
-        </div>
+        </section>
       )}
 
-      <motion.button initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-        onClick={() => navigate('/member/book-class')}
-        className="w-full py-3.5 rounded-full font-semibold text-black"
-        style={{ background: 'var(--color-secondary)' }}>
-        + Book a Session
-      </motion.button>
+      <NocButton variant="action" onClick={() => navigate('/member/book-class')}>
+        Book a session
+      </NocButton>
 
       <CancelBookingDialog
         open={pendingCancel !== null}

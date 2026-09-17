@@ -1,14 +1,15 @@
-import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { ArrowLeft, Lock, Eye, EyeOff, Check } from 'lucide-react';
+import { Check, Eye, EyeSlash } from '@phosphor-icons/react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { supabase } from '../lib/supabaseClient';
 import { errorMessage } from '../utils/errorMessage';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { Field } from '../components/ui/Field';
+import { Eyebrow, NocButton } from '../components/ui/noc';
 
 /**
- * Change password — against real Supabase Auth.
+ * Change password — against real Supabase Auth (Nocturne redesign).
  *
  * This screen used to be theatre. `handleSubmit` ran a `setTimeout(…, 1500)`
  * under a `// Simulate API call` comment, showed "Password changed
@@ -21,7 +22,61 @@ import { Page } from '../components/ui/page';
  * field is checked explicitly with `signInWithPassword` first. Without that,
  * anyone with a borrowed unlocked phone could change the account's password
  * without knowing it.
+ *
+ * **Only eight characters is a rule.** The old list headed "Password
+ * Requirements" put mixed case, a number and a symbol beside it, and the form
+ * accepted a password with none of them — a requirement the submit does not
+ * enforce is a suggestion wearing a uniform. They are now listed as what makes
+ * it stronger, under the one thing that is required.
  */
+
+function strengthOf(password: string): { score: number; label: string } {
+  if (!password) return { score: 0, label: '' };
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  const label = score <= 2 ? 'Weak' : score === 3 ? 'Fair' : score === 4 ? 'Good' : 'Strong';
+  return { score, label };
+}
+
+/** A password input with a show/hide toggle inside its right edge. */
+function PasswordInput({
+  value, onChange, shown, onToggle, placeholder, autoComplete,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  shown: boolean;
+  onToggle: () => void;
+  placeholder: string;
+  autoComplete: string;
+}) {
+  return (
+    <span className="relative block">
+      <input
+        type={shown ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        className="field-input"
+        style={{ paddingRight: 48 }}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={shown ? 'Hide password' : 'Show password'}
+        className="absolute top-0 right-0 grid place-items-center"
+        style={{ width: 46, height: 46, color: 'var(--color-text-muted)' }}
+      >
+        {shown ? <EyeSlash size={18} /> : <Eye size={18} />}
+      </button>
+    </span>
+  );
+}
+
 export default function ChangePassword() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,35 +92,19 @@ export default function ChangePassword() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Password strength checker
-  const getPasswordStrength = (password: string) => {
-    if (!password) return { strength: 0, label: '', color: '' };
-    
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (password.length >= 12) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[^a-zA-Z0-9]/.test(password)) strength++;
-
-    if (strength <= 2) return { strength, label: 'Weak', color: 'var(--color-secondary)' };
-    if (strength <= 3) return { strength, label: 'Fair', color: '#f59e0b' };
-    if (strength <= 4) return { strength, label: 'Good', color: 'var(--color-primary)' };
-    return { strength, label: 'Strong', color: 'var(--color-primary)' };
-  };
-
-  const passwordStrength = getPasswordStrength(newPassword);
-
-  const requirements = [
-    { label: 'At least 8 characters', met: newPassword.length >= 8 },
-    { label: 'Contains uppercase & lowercase', met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
-    { label: 'Contains a number', met: /\d/.test(newPassword) },
-    { label: 'Contains special character', met: /[^a-zA-Z0-9]/.test(newPassword) },
+  const strength = strengthOf(newPassword);
+  const longEnough = newPassword.length >= 8;
+  const stronger = [
+    { label: '12 characters or more', met: newPassword.length >= 12 },
+    { label: 'Upper and lower case', met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
+    { label: 'A number', met: /\d/.test(newPassword) },
+    { label: 'A symbol', met: /[^a-zA-Z0-9]/.test(newPassword) },
   ];
+  const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!currentPassword || !newPassword || !confirmPassword) {
       showErrorToast({ type: 'validation', message: 'Please fill in all fields' });
       return;
@@ -112,216 +151,86 @@ export default function ChangePassword() {
 
   return (
     <Page>
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -16 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        className="flex items-center gap-3"
-      >
-        <button
-          onClick={() => navigate(backTo)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-          style={{ 
-            background: 'var(--color-surface-raised)', 
-            border: '1px solid var(--color-border)', 
-            color: 'var(--color-text-secondary)' 
-          }}
-          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-secondary)')}
-          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Change Password</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            Update your account password
-          </p>
-        </div>
-      </motion.div>
+      <PageTitle back fallback={backTo} title="Change password" subtitle="You will stay signed in on this phone" />
 
-      {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
-        {/* Current Password */}
-        <div className="rounded-2xl p-5 space-y-4" 
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <div>
-            <label className="text-sm font-semibold text-white mb-2 block">
-              Current Password
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Lock size={18} style={{ color: 'var(--color-text-muted)' }} />
-              </div>
-              <input
-                type={showCurrent ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                className="field-input pl-10 pr-12 py-3"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent(!showCurrent)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+      <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: 18 }}>
+        <Field label="Current password" as="div">
+          <PasswordInput value={currentPassword} onChange={setCurrentPassword} shown={showCurrent}
+            onToggle={() => setShowCurrent((v) => !v)} placeholder="Your password now" autoComplete="current-password" />
+        </Field>
+
+        <div className="rule" />
+
+        <Field label="New password" hint="At least 8 characters." as="div">
+          <PasswordInput value={newPassword} onChange={setNewPassword} shown={showNew}
+            onToggle={() => setShowNew((v) => !v)} placeholder="Choose a new one" autoComplete="new-password" />
+        </Field>
+
+        {newPassword && (
+          <section>
+            <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
+              <Eyebrow>Strength</Eyebrow>
+              <span style={{ fontSize: 12.5, color: strength.score >= 4 ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
+                {strength.label}
+              </span>
             </div>
-          </div>
-        </div>
-
-        {/* New Password */}
-        <div className="rounded-2xl p-5 space-y-4" 
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <div>
-            <label className="text-sm font-semibold text-white mb-2 block">
-              New Password
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Lock size={18} style={{ color: 'var(--color-text-muted)' }} />
-              </div>
-              <input
-                type={showNew ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-                className="field-input pl-10 pr-12 py-3"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew(!showNew)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-
-            {/* Password Strength */}
-            {newPassword && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    Password Strength
-                  </span>
-                  <span className="text-xs font-semibold" style={{ color: passwordStrength.color }}>
-                    {passwordStrength.label}
-                  </span>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg)' }}>
-                  <div 
-                    className="h-full transition-all duration-300"
-                    style={{ 
-                      width: `${(passwordStrength.strength / 5) * 100}%`,
-                      background: passwordStrength.color
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Requirements */}
-          {newPassword && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                Password Requirements:
-              </p>
-              {requirements.map((req) => (
-                <div key={req.label} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ 
-                      background: req.met ? 'var(--color-primary)' : 'var(--color-border)' 
-                    }}
-                  >
-                    {req.met && <Check size={10} className="text-white" />}
-                  </div>
-                  <span 
-                    className="text-xs"
-                    style={{ color: req.met ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
-                  >
-                    {req.label}
-                  </span>
-                </div>
+            {/* Five segments, one per point the checker awards. */}
+            <div className="flex" style={{ gap: 4, marginTop: 8 }} aria-hidden>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className="flex-1" style={{
+                  height: 4, borderRadius: 2,
+                  background: i < strength.score
+                    ? (strength.score >= 4 ? 'var(--color-primary)' : 'var(--color-secondary)')
+                    : 'var(--color-surface-high)',
+                }} />
               ))}
             </div>
-          )}
-        </div>
 
-        {/* Confirm Password */}
-        <div className="rounded-2xl p-5" 
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <label className="text-sm font-semibold text-white mb-2 block">
-            Confirm New Password
-          </label>
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <Lock size={18} style={{ color: 'var(--color-text-muted)' }} />
-            </div>
-            <input
-              type={showConfirm ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              className="field-input pl-10 pr-12 py-3"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          
-          {confirmPassword && newPassword !== confirmPassword && (
-            <p className="text-xs mt-2" style={{ color: 'var(--color-secondary)' }}>
+            <ul className="flex flex-col" style={{ gap: 7, marginTop: 14 }}>
+              <li className="flex items-center" style={{ gap: 8, fontSize: 12.5,
+                color: longEnough ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
+                <Check size={14} weight="bold" style={{ opacity: longEnough ? 1 : 0.35 }} />
+                Required: at least 8 characters
+              </li>
+              {stronger.map((r) => (
+                <li key={r.label} className="flex items-center" style={{ gap: 8, fontSize: 12.5,
+                  color: r.met ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
+                  <Check size={14} weight="bold" style={{ opacity: r.met ? 1 : 0.35 }} />
+                  Stronger with: {r.label.toLowerCase()}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <Field label="Confirm new password" as="div">
+          <PasswordInput value={confirmPassword} onChange={setConfirmPassword} shown={showConfirm}
+            onToggle={() => setShowConfirm((v) => !v)} placeholder="Type it again" autoComplete="new-password" />
+          {mismatch && (
+            <span className="block" role="alert" style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-secondary)' }}>
               Passwords do not match
-            </p>
+            </span>
           )}
-        </div>
+        </Field>
 
-        {/* Submit Button */}
-        <button
+        <NocButton
           type="submit"
+          variant="action"
+          className="w-full"
           disabled={isLoading || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-          className="w-full py-3.5 rounded-xl font-bold text-black transition-opacity disabled:opacity-50"
-          style={{ background: 'var(--color-secondary)' }}
         >
-          {isLoading ? 'Updating...' : 'Change Password'}
-        </button>
-      </motion.form>
+          {isLoading ? 'Updating…' : 'Change password'}
+        </NocButton>
+      </form>
 
-      {/* Security Tips */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="rounded-2xl p-5"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-      >
-        <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-          <Lock size={16} style={{ color: 'var(--color-primary)' }} />
-          Security Tips
-        </h3>
-        <ul className="space-y-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          <li>• Use a unique password you don't use elsewhere</li>
-          <li>• Make it at least 12 characters long</li>
-          <li>• Include numbers, symbols, and mixed case letters</li>
-          <li>• Avoid personal information like birthdays or names</li>
-          <li>• Consider using a password manager</li>
+      <section>
+        <Eyebrow mark>Keeping it safe</Eyebrow>
+        <ul className="flex flex-col" style={{ gap: 6, marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          <li>Use a password you do not use anywhere else.</li>
+          <li>Longer beats cleverer — a short sentence is easy to remember.</li>
+          <li>Leave out birthdays and names.</li>
         </ul>
-      </motion.div>
+      </section>
     </Page>
   );
 }

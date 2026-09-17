@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, RefreshCw, ClipboardList, AlertTriangle } from 'lucide-react';
-import { panelStyle } from '../components/ui/Card';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { Page, PageTitle } from '../components/ui/page';
+import { Eyebrow, NocButton, Panel, SectionHead } from '../components/ui/noc';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentPlan, savePlan, type SavedPlan } from '../lib/api/workoutPlans';
@@ -10,7 +11,7 @@ import { renderPlan } from '../utils/planRender';
 import { asFocus, FOCUS_LABEL, type TrainingFocus } from '../utils/trainingFocus';
 import { errorMessage } from '../utils/errorMessage';
 import FeatureLock from '../components/ui/FeatureLock';
-import StepFlow from '../components/ui/StepFlow';
+import StepFlow, { ChoiceTile } from '../components/ui/StepFlow';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
 
@@ -65,7 +66,7 @@ const MINUTES: PlanInputs['sessionMinutes'][] = [30, 45, 60, 90];
  * of 28px chips — the whole interview at once, which is the shape that made the
  * screen feel like a form to fill in rather than a few things to answer.
  *
- * Stacks full width when the options carry a hint and wraps as chips when they
+ * Stacks full width when the options carry a hint and sits two across when they
  * do not: "Training regularly / Comfortable with the main lifts" needs a line
  * to itself, and "3 days" very much does not.
  *
@@ -84,32 +85,16 @@ function Options<T extends string | number>({
 }) {
   const stacked = options.some((o) => o.hint);
   return (
-    <div className={stacked ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
-      {options.map((o) => {
-        const on = o.id === value;
-        return (
-          <button
-            key={String(o.id)}
-            onClick={() => onPick(o.id)}
-            aria-pressed={on}
-            className={`rounded-2xl text-left font-semibold transition-colors ${stacked ? 'w-full px-4 py-3.5' : 'px-4 py-3'}`}
-            style={{
-              fontSize: 'var(--text-body)',
-              background: on ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-              color: on ? '#fff' : 'var(--color-text-secondary)',
-              border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-            }}
-          >
-            {o.label}
-            {o.hint && (
-              <span className="block font-normal mt-0.5"
-                style={{ fontSize: 'var(--text-meta)', color: on ? 'rgba(255,255,255,0.78)' : 'var(--color-text-muted)' }}>
-                {o.hint}
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <div className="grid" style={{ gap: 8, gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))' }}>
+      {options.map((o) => (
+        <ChoiceTile
+          key={String(o.id)}
+          label={o.label}
+          description={o.hint}
+          selected={o.id === value}
+          onClick={() => onPick(o.id)}
+        />
+      ))}
     </div>
   );
 }
@@ -192,54 +177,20 @@ export default function PlanBuilder() {
     }
   };
 
-  const Header = (
-    <div className="flex items-center gap-3 flex-shrink-0 pb-4">
-      <button
-        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/workouts'))}
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-        aria-label="Back"
-      >
-        <ArrowLeft size={18} />
-      </button>
-      <div className="min-w-0 flex-1">
-        <h1 className="display text-xl text-white leading-none">Your plan</h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          A training week built around your answers
-        </p>
-      </div>
-      {step === 'plan' && saved && mayBuild && (
-        <button
-          onClick={() => setStep('questions')}
-          className="px-3 h-10 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-        >
-          <RefreshCw size={14} /> Rebuild
-        </button>
-      )}
-    </div>
+  const title = (
+    <PageTitle back fallback="/member/workouts" title="Your plan" subtitle="A training week built around your answers" />
   );
 
   const Err = error && (
-    <div
-      className="mb-3 px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
-      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
-    >
-      <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-      <span>{error}</span>
-    </div>
+    <p role="alert" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-secondary)' }}>{error}</p>
   );
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: 'var(--color-surface-high)' }} />
-          ))}
-        </div>
-      </div>
+      <Page>
+        {title}
+        <SkeletonList count={3} />
+      </Page>
     );
   }
 
@@ -247,14 +198,13 @@ export default function PlanBuilder() {
    * The interview, one question a screen.
    *
    * Six panels stacked on one scroll is a form. The same six questions in the
-   * app's own onboarding shape — progress across the top, one question in the
-   * display face, big targets, Back and Next — is an interview, and this is the
-   * screen the whole feature is: answer these and you get a week.
+   * app's own onboarding shape — progress across the top, one question at a
+   * time, big targets, Back and Next — is an interview, and this is the screen
+   * the whole feature is: answer these and you get a week.
    *
-   * `StepFlow` portals to `#phone-overlay-root`, so it sits above the dock and
-   * over whichever screen returned below. It is declared here rather than in a
-   * branch of its own precisely because it is an overlay: the page underneath
-   * stays mounted, and closing returns to it with nothing re-fetched.
+   * `StepFlow` portals to `#phone-overlay-root`, so it sits above the bar and
+   * over whichever screen returned below. The page underneath stays mounted, and
+   * closing returns to it with nothing re-fetched.
    *
    * The last question is the only optional one — `valid` omitted rather than
    * `true`, which is what turns its Next into "Skip". A blank injury note has
@@ -342,12 +292,7 @@ export default function PlanBuilder() {
               value={answers.limitations}
               onChange={(e) => setAnswers((a) => ({ ...a, limitations: e.target.value }))}
               placeholder="Optional"
-              className="field-input w-full h-12 px-4 rounded-2xl text-white"
-              style={{
-                fontSize: 'var(--text-body)',
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-              }}
+              className="field-input"
             />
           ),
         },
@@ -359,78 +304,70 @@ export default function PlanBuilder() {
   if (step === 'plan' && saved) {
     const view = renderPlan(saved.spec);
     return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-4 pb-4">
-          {Err}
+      <Page>
+        {title}
+        {Err}
 
-          <div className="p-4 rounded-2xl" style={panelStyle}>
-            <p className="display text-lg text-white leading-tight">{view.headline}</p>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              {view.intro}
-            </p>
-            <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
-              Built {new Date(saved.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              {' · '}
-              {FOCUS_LABEL[saved.spec.inputs.focus]}
-            </p>
-          </div>
+        <Panel glow="structure" filled>
+          <Eyebrow>
+            Built {new Date(saved.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {' · '}{FOCUS_LABEL[saved.spec.inputs.focus]}
+          </Eyebrow>
+          <p style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.3, marginTop: 8, color: 'var(--color-text-primary)' }}>
+            {view.headline}
+          </p>
+          <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>{view.intro}</p>
+          {mayBuild && (
+            <button onClick={() => setStep('questions')} style={{ fontSize: 13, marginTop: 12, color: 'var(--color-primary-300)' }}>
+              Answer again and rebuild
+            </button>
+          )}
+        </Panel>
 
-          {/* Straight from the spec — never through the renderer. A reworded
-              set count is a set count nothing verified. */}
-          {saved.spec.days.map((d) => (
-            <div key={d.label} className="p-4 rounded-2xl" style={panelStyle}>
-              <div className="flex items-baseline justify-between gap-2 mb-3">
-                <p className="text-sm font-bold text-white">{d.label}</p>
-                <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>{d.focus}</p>
-              </div>
-              <div className="space-y-2.5">
-                {d.exercises.map((e) => (
-                  <div key={e.name} className="flex gap-3">
-                    <span
-                      className="text-[12px] font-bold tabular-nums flex-shrink-0 pt-0.5"
-                      style={{ color: 'var(--color-secondary)', minWidth: 58 }}
-                    >
+        {/* Straight from the spec — never through the renderer. A reworded set
+            count is a set count nothing verified. */}
+        {saved.spec.days.map((d) => (
+          <section key={d.label}>
+            <SectionHead title={d.label} meta={d.focus} />
+            <div style={{ marginTop: 4 }}>
+              {d.exercises.map((e, i) => (
+                <div key={e.name}>
+                  <div className="flex items-start" style={{ gap: 12, padding: '11px 0' }}>
+                    <span className="flex-none tabular-nums" style={{ width: 62, fontSize: 13, color: 'var(--color-secondary)' }}>
                       {e.sets} × {e.reps}
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-xs text-white leading-snug">{e.name}</p>
+                    <span className="flex-1 min-w-0">
+                      <span className="block" style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{e.name}</span>
                       {e.note && (
-                        <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                        <span className="block" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                           {e.note}
-                        </p>
+                        </span>
                       )}
-                    </div>
+                    </span>
                   </div>
-                ))}
-              </div>
+                  {i < d.exercises.length - 1 && <div className="hair" />}
+                </div>
+              ))}
             </div>
-          ))}
+          </section>
+        ))}
 
-          {view.sections.map((s) => (
-            <div key={s.title} className="p-4 rounded-2xl" style={panelStyle}>
-              <p className="text-sm font-bold text-white mb-2">{s.title}</p>
-              <ul className="space-y-1.5">
-                {s.lines.map((l) => (
-                  <li key={l} className="text-xs leading-relaxed flex gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                    <span style={{ color: 'var(--color-primary)' }}>•</span>
-                    <span>{l}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        {view.sections.map((s) => (
+          <section key={s.title}>
+            <Eyebrow mark>{s.title}</Eyebrow>
+            <ul className="flex flex-col" style={{ gap: 8, marginTop: 10 }}>
+              {s.lines.map((l) => (
+                <li key={l} style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>{l}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
-          <button
-            onClick={() => navigate('/member/trainers')}
-            className="w-full h-12 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"
-            style={{ background: 'var(--color-primary)', color: '#fff' }}
-          >
-            Book a coach to review this <ArrowRight size={16} />
-          </button>
-        </div>
+        <NocButton variant="action" onClick={() => navigate('/member/trainers')} className="w-full">
+          Book a coach to review this
+        </NocButton>
         {flow}
-      </div>
+      </Page>
     );
   }
 
@@ -441,53 +378,34 @@ export default function PlanBuilder() {
   // allows, and the reason that split exists.
   if (!mayBuild) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-          <FeatureLock feature="plan_builder">{null}</FeatureLock>
-        </div>
-      </div>
+      <Page>
+        {title}
+        <FeatureLock feature="plan_builder">{null}</FeatureLock>
+      </Page>
     );
   }
 
   // ── Intro, and the floor under the flow ───────────────────────────────────
-  // No condition: the questions are an overlay now, so `step === 'questions'`
-  // has to leave a screen mounted beneath them, or the flow opens over nothing
-  // and closing lands on a blank page.
+  // No condition: the questions are an overlay, so `step === 'questions'` has to
+  // leave a screen mounted beneath them, or closing lands on a blank page.
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      {Header}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-        {Err}
-        <div className="p-5 rounded-2xl text-center" style={panelStyle}>
-            <span
-              className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-              style={{ background: 'var(--color-primary-light)' }}
-            >
-              <ClipboardList size={26} style={{ color: 'var(--color-primary)' }} />
-            </span>
-            <p className="display text-lg text-white">Build a training week</p>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Six short questions, the last one optional, then a week of sessions you
-              can start on. It uses the equipment this gym actually has, and it is
-              built from a fixed set of rules — not a chatbot guessing, so it says
-              the same thing twice.
-            </p>
-            <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              It is a starting point, not a prescription. Anything about an injury,
-              a health condition or what you should eat belongs with a coach or a
-              doctor.
-            </p>
-            <button
-              onClick={() => setStep('questions')}
-              className="w-full h-12 mt-4 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"
-              style={{ background: 'var(--color-primary)', color: '#fff' }}
-            >
-              Start <ArrowRight size={16} />
-            </button>
-          </div>
-      </div>
+    <Page>
+      {title}
+      {Err}
+      <Panel glow="structure" filled>
+        <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Build a training week</p>
+        <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>
+          Six short questions, the last one optional, then a week of sessions you can start on. It sticks to a
+          barbell, dumbbells, a bench and a pull-up bar, and it is built from a fixed set of rules — not a chatbot
+          guessing, so the same answers always give the same week.
+        </p>
+        <p style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 10, color: 'var(--color-text-muted)' }}>
+          It is a starting point, not a prescription. Anything about an injury, a health condition or what you
+          should eat belongs with a coach or a doctor.
+        </p>
+      </Panel>
+      <NocButton variant="action" onClick={() => setStep('questions')} className="w-full">Start</NocButton>
       {flow}
-    </div>
+    </Page>
   );
 }

@@ -1,43 +1,39 @@
-import { SkeletonList } from '../components/ui/Skeleton';
-import { panelStyle } from '../components/ui/Card';
-import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Calendar, CheckCircle, Clock, XCircle, Banknote, ArrowLeft } from 'lucide-react';
-import EmptyState from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listMemberPayments } from '../lib/api/payments';
 import { getCurrentMembership, type MembershipWithPlan } from '../lib/api/memberships';
 import type { PaymentRow, PaymentStatus } from '../types/db';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { InlineStat, NocButton, StatusPill } from '../components/ui/noc';
 
 /**
- * The member's real payment history.
+ * The member's real payment history (Nocturne redesign).
  *
  * This screen used to `setPayments(FALLBACK)` unconditionally — six invented
- * invoices totalling ₱11,500, two of them paid by GCash and bank transfer even
- * though the gym is cash-only, plus a hardcoded "Next Payment Due: June 30,
- * 2024 · ₱2,500" that never moved.
+ * invoices totalling ₱11,500, two paid by GCash and bank transfer in a cash-only
+ * gym, plus a hardcoded "Next Payment Due: June 30, 2024".
  *
- * Amounts shown are dated by `paid_on` (when the cash was handed over), not
- * `created_at` (when the front desk keyed it in). Those diverge whenever a
- * payment is recorded late, and the member's receipt should match the day they
- * actually paid.
+ * Amounts are dated by `paid_on` (when the cash changed hands), never
+ * `created_at` (when the desk keyed it in). They diverge whenever a payment is
+ * recorded late, and a receipt should match the day the member actually paid.
+ *
+ * The refund line points at the Terms rather than restating a rule: the
+ * prototype's "within seven days and before your first check-in" was half the
+ * policy — 0073 also pays pro-rata after that — and a half-rule on a money
+ * screen is the most expensive kind.
  */
 
-const STATUS_ICON: Record<PaymentStatus, React.ReactNode> = {
-  completed: <CheckCircle size={14} style={{ color: 'var(--color-primary)' }} />,
-  pending: <Clock size={14} style={{ color: 'var(--color-secondary)' }} />,
-  failed: <XCircle size={14} style={{ color: 'var(--color-secondary)' }} />,
+const STATUS: Record<PaymentStatus, { label: string; tone: 'structure' | 'action' | 'muted' }> = {
+  completed: { label: 'Paid', tone: 'structure' },
+  pending: { label: 'Pending', tone: 'action' },
+  failed: { label: 'Not completed', tone: 'muted' },
 };
 
-const STATUS_STYLE: Record<PaymentStatus, { background: string; color: string }> = {
-  completed: { background: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-  pending: { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' },
-  failed: { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' },
-};
+const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
 
 export default function PaymentHistory() {
   const navigate = useNavigate();
@@ -72,126 +68,74 @@ export default function PaymentHistory() {
 
   const completed = payments.filter((p) => p.status === 'completed');
   const totalPaid = completed.reduce((sum, p) => sum + Number(p.amount), 0);
-
+  const sorted = [...payments].sort((a, b) => (b.paid_on ?? '').localeCompare(a.paid_on ?? ''));
   const expiry = membership?.expiry_date ?? null;
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Payment History</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>All your transactions</p>
-        </div>
-      </motion.div>
+      <PageTitle back title="Payments" subtitle="Recorded at the desk — the gym takes cash" />
 
-      {loading ? (
-        <SkeletonList />
-      ) : (
+      {loading ? <SkeletonList /> : (
         <>
-          <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
-            className="rounded-2xl p-5" style={{ background: 'var(--color-primary)', border: '1px solid var(--color-primary-hover)' }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
-                <Banknote size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="text-white/70 text-xs uppercase tracking-wide">Total Paid</p>
-                <p className="text-2xl font-bold text-white">₱{totalPaid.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div>
-                <p className="text-white/60 text-xs">Payments</p>
-                <p className="text-white font-bold">{completed.length}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white/60 text-xs">Current Plan</p>
-                <p className="text-white font-bold">{membership?.membership_plans?.name ?? 'None'}</p>
-              </div>
-            </div>
-          </motion.div>
+          <div className="flex flex-wrap" style={{ gap: 24 }}>
+            <InlineStat value={peso(totalPaid)} label="paid in all" />
+            <InlineStat value={completed.length} label={completed.length === 1 ? 'payment' : 'payments'} />
+            <InlineStat value={membership?.membership_plans?.name ?? 'None'} label="current plan" />
+          </div>
 
-          {payments.length === 0 ? (
-            <EmptyState icon={CreditCard} title="No payments yet"
-              message="Payments recorded at the front desk will appear here." />
-          ) : (
-            <div className="space-y-2">
-              {payments.map((p, idx) => {
-                const style = STATUS_STYLE[p.status];
-                return (
-                  <motion.div key={p.id}
-                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(0.1 + idx * 0.05, 0.4) }}
-                    className="rounded-2xl p-4" style={panelStyle}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--color-secondary)' }}>
-                          <Banknote size={18} className="text-black" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-white font-semibold text-sm truncate">Membership payment</p>
-                          {p.invoice_number && (
-                            <p className="text-xs font-mono truncate" style={{ color: 'var(--color-text-muted)' }}>
-                              {p.invoice_number}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-white font-bold">₱{Number(p.amount).toLocaleString()}</p>
-                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{p.method}</p>
-                      </div>
+          <section>
+            {sorted.length === 0 ? (
+              <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+                No payments yet. Payments recorded at the front desk appear here.
+              </p>
+            ) : (
+              <>
+                <div className="rule" style={{ marginBottom: 4 }} />
+                {sorted.map((p, i) => (
+                  <div key={p.id}>
+                    <div className="flex items-start" style={{ gap: 12, padding: '13px 0' }}>
+                      <span className="flex-none" style={{ width: 56, fontSize: 12.5, lineHeight: 1.4, color: 'var(--color-text-muted)' }}>
+                        {new Date(`${p.paid_on}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        <br />
+                        {new Date(`${p.paid_on}T00:00:00`).getFullYear()}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-baseline justify-between" style={{ gap: 10 }}>
+                          <span style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{peso(Number(p.amount))}</span>
+                          <StatusPill label={STATUS[p.status].label} tone={STATUS[p.status].tone} />
+                        </span>
+                        <span className="block" style={{ fontSize: 12, marginTop: 3, color: 'var(--color-text-secondary)' }}>
+                          Membership · {p.method}
+                          {p.invoice_number && <span style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace' }}> · {p.invoice_number}</span>}
+                        </span>
+                        {p.notes && (
+                          <span className="block" style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>{p.notes}</span>
+                        )}
+                      </span>
                     </div>
+                    {i < sorted.length - 1 && <div className="hair" />}
+                  </div>
+                ))}
+              </>
+            )}
+          </section>
 
-                    <div className="flex items-center gap-3 text-xs">
-                      <div className="flex items-center gap-1" style={{ color: 'var(--color-text-secondary)' }}>
-                        <Calendar size={12} style={{ color: 'var(--color-text-muted)' }} />
-                        {new Date(`${p.paid_on}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold uppercase text-xs" style={style}>
-                        {STATUS_ICON[p.status]} {p.status}
-                      </div>
-                    </div>
-
-                    {p.notes && (
-                      <p className="text-xs mt-2 px-2 py-1 rounded-lg"
-                        style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                        {p.notes}
-                      </p>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Renewal prompt — only when there is a real expiry to show. */}
+          {/* Renewal — only when there is a real expiry to show. */}
           {expiry && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-              className="rounded-2xl p-4"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-secondary)' }}>
-              <div className="flex items-center gap-3 mb-3">
-                <Clock size={20} style={{ color: 'var(--color-secondary)' }} />
-                <div>
-                  <p className="text-white font-semibold text-sm">Membership valid until</p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {new Date(`${expiry}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => navigate('/member/renew-membership')}
-                className="w-full py-2.5 rounded-full font-semibold text-sm text-black flex items-center justify-center gap-2"
-                style={{ background: 'var(--color-secondary)' }}>
-                <CreditCard size={14} /> Renew
-              </button>
-            </motion.div>
+            <section className="flex flex-col" style={{ gap: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                Your membership runs until{' '}
+                <span style={{ color: 'var(--color-text-primary)' }}>
+                  {new Date(`${expiry}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>.
+              </p>
+              <NocButton variant="action" onClick={() => navigate('/member/renew-membership')}>Renew</NocButton>
+            </section>
           )}
+
+          <button onClick={() => navigate('/terms')} className="self-start" style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+            How refunds work
+          </button>
         </>
       )}
     </Page>

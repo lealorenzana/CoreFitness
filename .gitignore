@@ -10,3 +10,11 @@ CoreFitness-System-Documentation.html
 # Playwright MCP's scratch output (console logs, page snapshots). Written into
 # the repo root by the tool itself, never by this project.
 .playwright-mcp/
+
+# Dev-time secrets for the scripts in scripts/ (image generation, etc).
+# These never reach either app bundle - they are read by Node at the root.
+# The root had no .env rule until now, so a key pasted here would have been
+# a tracked file rather than an ignored one.
+.env
+.env.*
+!.env.example

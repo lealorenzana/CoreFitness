@@ -1,13 +1,12 @@
-import { panelStyle } from '../../../components/ui/Card';
 import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../components/ui/BodyMap';
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Plus, TrendingDown, TrendingUp, Minus, ChevronDown, History } from 'lucide-react';
+import { Plus, ClockCounterClockwise } from '@phosphor-icons/react';
+import { Chip, Eyebrow, InlineStat, LineRow, NocButton, SectionHead } from '../../../components/ui/noc';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import EmptyState from '../../../components/ui/EmptyState';
 import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
 import {
@@ -92,17 +91,6 @@ function lastTwo(
     if (v != null) seen.push(v);
   }
   return { latest: seen[0] ?? null, previous: seen[1] ?? null };
-}
-
-function Trend({ value, unit }: { value: number | null; unit: string }) {
-  if (value == null) return null;
-  const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
-  return (
-    <span className="text-xs flex items-center gap-0.5" style={{ color: 'var(--color-text-muted)' }}>
-      <Icon size={10} />
-      {value > 0 ? '+' : ''}{value} {unit}
-    </span>
-  );
 }
 
 /** Progress is a bottom-nav tab and this is the tab it opens on. */
@@ -304,184 +292,144 @@ export default function BodyProgressTab() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* What the member is training for.
-          Placed here rather than in Settings because this is the screen whose
-          numbers it reinterprets — the body map reads it to say whether a change
-          is the one being trained for, and a control that changes what you are
-          looking at belongs next to it. */}
-      <div className="rounded-2xl p-3" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] mb-2"
-          style={{ color: 'var(--color-text-secondary)' }}>
-          Right now I'm
-        </p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(['bulking', 'cutting', 'maintaining'] as TrainingFocus[]).map((f) => {
-            const on = focus === f;
-            return (
-              <button
-                key={f}
-                onClick={async () => {
-                  // Tapping the current one clears it — "not stated" has to stay
-                  // reachable, or a mis-tap is permanent.
-                  const next = on ? null : f;
-                  const previous = focus;
-                  setFocus(next);
-                  try {
-                    await setTrainingFocus(memberId, next);
-                  } catch (err) {
-                    setFocus(previous);
-                    toast.error(errorMessage(err, 'Could not save that'));
-                  }
-                }}
-                className="h-9 rounded-full text-xs font-bold"
-                style={{
-                  background: on ? 'var(--color-primary)' : 'var(--color-bg)',
-                  color: on ? '#FFFFFF' : 'var(--color-text-muted)',
-                  border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                {FOCUS_LABEL[f]}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-          {focus
-            ? FOCUS_BLURB[focus]
-            : 'Tell us and the map will say whether a change is the one you are training for.'}
-        </p>
-      </div>
-
-      <button onClick={() => { setStartStep(undefined); setShowForm(true); }}
-        className="w-full py-2.5 rounded-full text-sm font-semibold text-black flex items-center justify-center gap-2"
-        style={{ background: 'var(--color-secondary)' }}>
-        <Plus size={15} /> Log a measurement
-      </button>
+    <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
+      {/* The body first: it is what this tab is opened to look at. The map is
+          drawn whether or not anything has been logged — an outlined figure
+          saying "tap a muscle" is a better empty state than a generic icon, and
+          it shows what the reward for logging looks like. */}
+      <BodyMap
+        data={mapData}
+        focus={focus}
+        onLogRegion={(region) => {
+          setStartStep(REGION_STEP[region]);
+          setShowForm(true);
+        }}
+        // The catalogue is loaded once for the whole tab and filtered per
+        // region here — see utils/regionMuscles.ts for why the two
+        // vocabularies do not line up.
+        exercisesFor={(region) => {
+          const groups = REGION_MUSCLE_GROUPS[region];
+          return exercises.filter((e) => groups.includes(e.muscleGroup)).slice(0, 8);
+        }}
+        trainingNoteFor={(region) => REGION_TRAINING_NOTE[region]}
+        onTrainRegion={() => navigate('/member/track')}
+      />
 
       <StepFlow
         open={showForm}
-        title="Log a measurement"
+        title="Log a reading"
         steps={steps}
-        submitLabel="Save measurement"
+        submitLabel="Save reading"
         saving={saving}
         initialStepId={startStep}
         onClose={() => setShowForm(false)}
         onSubmit={save}
       />
 
-      {/* The map is drawn whether or not anything has been logged — an outlined
-          figure saying "log one to light this up" is a better empty state than
-          a generic icon, and it shows what the reward for logging looks like. */}
-      <div className="rounded-2xl p-4"
-        style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] mb-2"
-          style={{ color: 'var(--color-text-secondary)' }}>
-          Your measurements
+      {/* What the member is training for. Here rather than in Settings because
+          this is the screen whose numbers it reinterprets — the map reads it to
+          say whether a change is the one being trained for. Tapping the current
+          choice clears it: "not stated" has to stay reachable, or a mis-tap is
+          permanent. */}
+      <section>
+        <Eyebrow>Right now I'm</Eyebrow>
+        <div className="flex flex-wrap" style={{ gap: 8, marginTop: 10 }}>
+          {(['bulking', 'cutting', 'maintaining'] as TrainingFocus[]).map((f) => (
+            <Chip
+              key={f}
+              label={FOCUS_LABEL[f]}
+              on={focus === f}
+              onClick={async () => {
+                const next = focus === f ? null : f;
+                const previous = focus;
+                setFocus(next);
+                try {
+                  await setTrainingFocus(memberId, next);
+                } catch (err) {
+                  setFocus(previous);
+                  toast.error(errorMessage(err, 'Could not save that'));
+                }
+              }}
+            />
+          ))}
+        </div>
+        <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          {focus
+            ? FOCUS_BLURB[focus]
+            : 'Tell us and the map will say whether a change is the one you are training for.'}
         </p>
-        <BodyMap
-          data={mapData}
-          focus={focus}
-          onLogRegion={(region) => {
-            setStartStep(REGION_STEP[region]);
-            setShowForm(true);
-          }}
-          // Tapping a muscle now answers "what do I do about it?" as well as
-          // "how big is it?". The catalogue is loaded once for the whole tab
-          // and filtered per region here — see utils/regionMuscles.ts for why
-          // the two vocabularies do not line up.
-          exercisesFor={(region) => {
-            const groups = REGION_MUSCLE_GROUPS[region];
-            return exercises
-              .filter((e) => groups.includes(e.muscleGroup))
-              .slice(0, 8);
-          }}
-          trainingNoteFor={(region) => REGION_TRAINING_NOTE[region]}
-          onTrainRegion={() => navigate('/member/track')}
-        />
-      </div>
+      </section>
+
+      <NocButton variant="action" icon={<Plus size={15} />}
+        onClick={() => { setStartStep(undefined); setShowForm(true); }}>
+        Log a full reading
+      </NocButton>
 
       {!latest ? (
-        <EmptyState icon={Activity} title="No measurements yet"
-          message="Tap a body part above to log it, or use the button at the top. Nothing is shared without your trainer asking." />
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+          No measurements yet. Tap a body part above to log it. Nothing is shared with a trainer unless you allow it.
+        </p>
       ) : (
-        <>
+        <section>
+          <div className="rule" style={{ marginBottom: 14 }} />
+          <SectionHead
+            title="Latest reading"
+            meta={new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          />
+
           {latestBmi != null && (
-            <div className="rounded-2xl p-4" style={panelStyle}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>BMI</p>
-                  <p className="text-3xl font-bold text-white">{latestBmi}</p>
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold"
-                  style={{ background: 'var(--color-bg)', color: bmiColor(latestBmi) }}>
-                  {bmiLabel(latestBmi)}
-                </span>
-              </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-                A general indicator only — it doesn't distinguish muscle from fat.
-              </p>
+            <div className="flex items-end justify-between" style={{ gap: 12, marginTop: 12 }}>
+              <InlineStat value={latestBmi} label="BMI" />
+              <span style={{ fontSize: 12.5, color: bmiColor(latestBmi) }}>{bmiLabel(latestBmi)}</span>
             </div>
           )}
-
-          <div className="rounded-2xl p-4 space-y-2" style={panelStyle}>
-            <p className="text-xs font-semibold text-white mb-1">
-              Latest · {new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {latestBmi != null && (
+            <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
+              A general indicator only — it does not tell muscle from fat.
             </p>
-            {FIELDS.map((f) => {
-              const value = latest[f.key];
-              if (value == null) return null;
+          )}
+
+          <div style={{ marginTop: 8 }}>
+            {FIELDS.filter((f) => latest[f.key] != null).map((f, i, shown) => {
+              const change = delta(latest[f.key], previous ? previous[f.key] : null);
               return (
-                <div key={f.key} className="flex items-center justify-between py-1"
-                  style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{f.label}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{value} {f.unit}</span>
-                    <Trend value={delta(value, previous ? previous[f.key] : null)} unit={f.unit} />
-                  </span>
-                </div>
+                <LineRow
+                  key={f.key}
+                  title={f.label}
+                  meta={change == null ? undefined : change === 0 ? 'No change' : `${change > 0 ? '+' : ''}${change} ${f.unit} since the last reading`}
+                  action={<span style={{ color: 'var(--color-text-primary)', fontSize: 14 }}>{latest[f.key]} {f.unit}</span>}
+                  last={i === shown.length - 1}
+                />
               );
             })}
           </div>
 
-          {/* Every reading ever taken, behind a button.
-              The card above already says what the latest one was and how it
-              moved, which is the question this tab is opened to answer. The
-              full list only grows, and on a member who has logged for a year it
-              is the last thing on the screen and the longest. */}
+          {/* Every reading ever taken, behind a control. The rows above answer
+              the question this tab is opened for; the full list only grows. */}
           {entries.length > 1 && (
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowHistory((v) => !v)}
-                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
-                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-              >
-                <History size={14} />
-                {showHistory
-                  ? 'Hide history'
-                  : `Show all ${entries.length} readings`}
-                <ChevronDown size={14} style={{
-                  transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
-                }} />
-              </button>
+            <>
+              <NocButton variant="ghost" className="w-full" style={{ marginTop: 16 }}
+                icon={<ClockCounterClockwise size={15} />}
+                onClick={() => setShowHistory((v) => !v)}>
+                {showHistory ? 'Hide history' : `Show all ${entries.length} readings`}
+              </NocButton>
               {showHistory && (
-                <div className="space-y-2">
-                  {[...entries].reverse().map((e) => (
-                    <div key={e.id} className="rounded-xl p-3 flex items-center justify-between" style={panelStyle}>
-                      <span className="text-xs text-white">
-                        {new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {e.weight != null ? `${e.weight} kg` : '—'}
-                        {e.bodyFatPct != null && ` · ${e.bodyFatPct}% fat`}
-                      </span>
-                    </div>
+                <div style={{ marginTop: 8 }}>
+                  {[...entries].reverse().map((e, i, all) => (
+                    <LineRow
+                      key={e.id}
+                      gutterWidth={60}
+                      gutter={new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      title={e.weight != null ? `${e.weight} kg` : 'No weight logged'}
+                      meta={e.bodyFatPct != null ? `${e.bodyFatPct}% body fat` : undefined}
+                      last={i === all.length - 1}
+                    />
                   ))}
                 </div>
               )}
-            </div>
+            </>
           )}
-        </>
+        </section>
       )}
     </div>
   );

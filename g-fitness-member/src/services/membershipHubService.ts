@@ -1,5 +1,8 @@
 import { getMemberHome, type MemberHome } from './memberHomeService';
-import { getBalance } from '../lib/api/points';
+import {
+  getBalance, listLedger, listMyRedemptions, listRewards,
+  type LedgerEntry, type Redemption, type Reward,
+} from '../lib/api/points';
 import { listMemberPayments } from '../lib/api/payments';
 import { listMyMembershipEvents, type MyMembershipEvent } from '../lib/api/memberships';
 
@@ -44,10 +47,26 @@ export interface MembershipHub {
   /** Null when there are no payments at all, which is normal on a free tier. */
   lastPayment: PaymentSummary | null;
   paymentsFailed: boolean;
+  /** Active rewards, cheapest first. Null when they could not be read. */
+  rewards: Reward[] | null;
+  /**
+   * One statement of what has moved on this account, newest first: points
+   * earned, points spent, money paid, and the membership's own events. Built
+   * only from rows that exist; a source that failed is left out and named in
+   * `activityGaps` rather than silently thinning the list.
+   */
+  activity: ActivityRow[];
+  activityGaps: string[];
 }
 
+export type ActivityRow =
+  | { kind: 'earned'; at: string; title: string; points: number }
+  | { kind: 'spent'; at: string; title: string; points: number; status: Redemption['status'] }
+  | { kind: 'paid'; at: string; title: string; amount: number; method: string }
+  | { kind: 'membership'; at: string; title: string; note: string | null };
+
 export async function getMembershipHub(memberId: string): Promise<MembershipHub> {
-  const [home, points, payments, events] = await Promise.all([
+  const [home, points, payments, events, rewards, ledger, redemptions] = await Promise.all([
     getMemberHome(memberId),
     getBalance(memberId).then(
       (n) => ({ ok: true as const, n }),
@@ -60,6 +79,9 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     // Most memberships have none of these, and a failure here is not worth
     // taking the screen down for — the section simply does not render.
     listMyMembershipEvents(memberId).catch(() => [] as MyMembershipEvent[]),
+    listRewards().catch(() => null),
+    listLedger(memberId, 20).catch(() => null as LedgerEntry[] | null),
+    listMyRedemptions(memberId).catch(() => null as Redemption[] | null),
   ]);
 
   // Most recent by the date the money changed hands, not by when the row was
@@ -73,8 +95,35 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
   const summarise = (p: (typeof paid)[number]): PaymentSummary =>
     ({ amount: Number(p.amount), paidOn: p.paid_on, method: p.method });
 
+  const activity: ActivityRow[] = [
+    ...(ledger ?? []).map((l): ActivityRow => ({ kind: 'earned', at: l.createdAt, title: l.label, points: l.points })),
+    // A rejected request never took the points, so it is not an entry in a
+    // statement of what moved.
+    ...(redemptions ?? []).filter((r) => r.status !== 'rejected')
+      .map((r): ActivityRow => ({ kind: 'spent', at: r.requestedAt, title: r.rewardName, points: r.costPoints, status: r.status })),
+    // `paid_on` is a calendar date; noon keeps it on its own day when sorted
+    // against timestamps in UTC+8.
+    ...paid.slice(0, 10).map((p): ActivityRow => ({
+      kind: 'paid', at: `${p.paid_on}T12:00:00`, title: 'Payment', amount: Number(p.amount), method: p.method,
+    })),
+    ...events.map((e): ActivityRow => ({
+      kind: 'membership', at: e.created_at,
+      title: e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled',
+      note: e.reason,
+    })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  const activityGaps = [
+    ledger == null ? 'points earned' : null,
+    redemptions == null ? 'rewards' : null,
+    !payments.ok ? 'payments' : null,
+  ].filter((x): x is string => x != null);
+
   return {
     home,
+    rewards,
+    activity,
+    activityGaps,
     // Three: enough to show a rhythm, few enough that the full history stays
     // worth opening.
     recentPayments: paid.slice(0, 3).map(summarise),

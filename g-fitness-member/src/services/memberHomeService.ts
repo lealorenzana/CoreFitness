@@ -4,8 +4,13 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import { listMyBookings, isUpcoming, type MyBooking } from './bookingService';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { planAccess, type PlanAccess } from '../utils/planAccess';
-import { getMyFeatures } from '../lib/api/planFeatures';
+import { getMyFeatures, isEnabled } from '../lib/api/planFeatures';
 import { progressService } from './progressService';
+import { listMyPlan } from '../lib/api/gymPlans';
+import { getGymSettings } from '../lib/api/settings';
+import { listRules } from '../lib/api/points';
+import { getUnreadCount } from '../lib/api/notifications';
+import { listChallenges } from '../lib/api/challenges';
 
 /**
  * The member's home screen, assembled from real rows.
@@ -29,6 +34,10 @@ export interface MemberHome {
   /** The value encoded into the check-in QR. Always the member's auth id. */
   memberId: string;
   planName: string | null;
+  /** When the account was created ('Member since'). ISO, or null if the profile could not be read. */
+  memberSince: string | null;
+  /** The current membership's first day, 'YYYY-MM-DD' — with `expiryDate`, the length of the term. */
+  startDate: string | null;
   /**
    * What the plan includes and, more to the point, what it does not (0017).
    *
@@ -65,6 +74,8 @@ export interface MemberHome {
   expiringSoon: boolean;
   checkInsThisMonth: number;
   checkedInToday: boolean;
+  /** When today's first check-in was recorded (ISO), or null. For "Checked in at 9:41". */
+  checkInAtToday: string | null;
   /** Sun→Sat of the current week; true where an attendance row exists. */
   weekCheckIns: boolean[];
   /** The calendar day-of-month for each of those seven days, same order. */
@@ -171,6 +182,8 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     photoUrl: member?.profile.photo_url ?? null,
     memberId,
     planName: membership?.membership_plans?.name ?? null,
+    memberSince: member?.profile.created_at ?? null,
+    startDate: membership?.start_date ?? null,
     access: planAccess(membership?.membership_plans, features),
     expiryDate,
     neverExpires,
@@ -181,6 +194,12 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
     expiringSoon: !expired && !neverExpires && daysLeft != null && daysLeft <= 7,
     checkInsThisMonth: checkInDates.filter((d) => d.startsWith(thisMonth)).length,
     checkedInToday: checkInSet.has(today),
+    // Earliest of today's rows — `listMemberAttendance` is newest-first.
+    checkInAtToday:
+      attendance
+        .filter((a) => toDateString(new Date(a.check_in_time)) === today)
+        .map((a) => a.check_in_time)
+        .sort()[0] ?? null,
     weekCheckIns,
     weekDayNumbers,
     todayIndex,
@@ -202,5 +221,67 @@ export async function getMemberHome(memberId: string): Promise<MemberHome> {
       unread.length === 0
         ? null
         : { count: unread.length, title: unread[0].title, from: unread[0].trainerName ?? null },
+  };
+}
+
+/**
+ * What Today needs beyond the membership card (Nocturne redesign, 2026-09-16).
+ *
+ * Separate from `getMemberHome` on purpose: the check-in sheet polls that every
+ * four seconds while it is open, and this runs a progress RPC per challenge.
+ * Only Today asks for it.
+ *
+ * **Every field is null when its read fails, and Today renders nothing for a
+ * null** — never a default. "The floor is open until 9 PM" with no closing
+ * time on record would be a sentence the gym never said; "20 points added" was
+ * exactly that in the prototype, where the real rule is 10 and admin-editable.
+ */
+export interface TodayExtras {
+  /** Active planned weekdays, 0 = Sunday (0030). */
+  plannedDays: number[] | null;
+  remindAt: string | null;
+  /** `gym_settings.closing_time`, 'HH:MM[:SS]'. */
+  closingTime: string | null;
+  /** The `checkin` rule's points — only when this plan actually earns points. */
+  checkinPoints: number | null;
+  unreadCount: number | null;
+  /**
+   * The joined, unfinished challenge ending soonest, with its progress as the
+   * server computed it inside the challenge's own window. Null when none, or
+   * when its progress could not be read — a bar with an unknown numerator is
+   * not drawn.
+   */
+  challenge: { id: string; title: string; progress: number; target: number; endsOn: string } | null;
+}
+
+export async function getTodayExtras(memberId: string): Promise<TodayExtras> {
+  const [plan, settings, rules, unread, challenges, features] = await Promise.all([
+    listMyPlan(memberId).catch(() => null),
+    getGymSettings().catch(() => null),
+    listRules().catch(() => null),
+    getUnreadCount(memberId).catch(() => null),
+    listChallenges(memberId).catch(() => null),
+    getMyFeatures().catch(() => null),
+  ]);
+
+  // `award_points` checks the plan (0051): a member whose plan does not earn
+  // points gets nothing for checking in, so the sentence must not promise any.
+  const earns = features != null && isEnabled(features, 'points_earn');
+  const rule = rules?.find((r) => r.key === 'checkin') ?? null;
+
+  const current = (challenges ?? [])
+    .filter((c) => c.joined && !c.completedOn && c.progress != null && c.target > 0)
+    .sort((a, b) => a.endsOn.localeCompare(b.endsOn))[0];
+
+  return {
+    plannedDays: plan == null ? null : plan.filter((r) => r.active).map((r) => r.day_of_week),
+    remindAt: plan?.[0]?.remind_at ?? null,
+    closingTime: settings?.closing_time ?? null,
+    checkinPoints: earns && rule ? rule.points : null,
+    unreadCount: unread,
+    challenge: current
+      ? { id: current.id, title: current.title, progress: current.progress as number,
+          target: current.target, endsOn: current.endsOn }
+      : null,
   };
 }

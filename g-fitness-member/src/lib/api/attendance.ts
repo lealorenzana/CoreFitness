@@ -19,6 +19,28 @@ export async function listMemberAttendance(memberId: string): Promise<Attendance
   return data ?? [];
 }
 
+/**
+ * Whether this member has a check-in at or after `since`.
+ *
+ * For the bar's check-in block, which is on every screen and needs one yes/no —
+ * not the whole of Home's service, and not every check-in the member has ever
+ * made. `head: true` with a count reads no rows at all.
+ *
+ * Pass local midnight as a `Date`. Converting that *instant* to ISO is correct
+ * here: it is compared against a timestamptz. The rule against `toISOString()`
+ * in `utils/dates.ts` is about calendar dates, where the UTC day is yesterday
+ * for the first eight hours of a Manila morning.
+ */
+export async function checkedInSince(memberId: string, since: Date): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('attendance')
+    .select('id', { count: 'exact', head: true })
+    .eq('member_id', memberId)
+    .gte('check_in_time', since.toISOString());
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 /** Admin/trainer only per RLS (attendance_insert_staff) — a member never self-reports a check-in. */
 export async function recordCheckIn(input: {
   memberId: string;

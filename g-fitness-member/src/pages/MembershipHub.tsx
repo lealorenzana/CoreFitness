@@ -1,342 +1,343 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Shield, CreditCard, Calendar, Gift, Snowflake, AlertTriangle,
-  ArrowRight, Infinity as InfinityIcon, Check, X, Play, XCircle,
-} from 'lucide-react';
-import { Page, PageTitle, Bento, BentoCell, RingStat } from '../components/ui/page';
-import { panelStyle } from '../components/ui/Card';
+import { Check, Minus } from '@phosphor-icons/react';
+import { Page } from '../components/ui/page';
+import { Eyebrow, LineRow, NocButton, ProgressBar, SectionHead } from '../components/ui/noc';
+import Modal from '../components/ui/Modal';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
-import { getMembershipHub, type MembershipHub as Hub } from '../services/membershipHubService';
+import {
+  getMembershipHub, type ActivityRow, type MembershipHub as Hub,
+} from '../services/membershipHubService';
 import { membershipTerm } from '../utils/membershipTerm';
 import { errorMessage } from '../utils/errorMessage';
+import { useLiveData } from '../hooks/useLiveData';
+import { useSetTabHeader } from '../components/layout/tabHeaderStore';
+import { readCache, writeCache } from '../lib/pageCache';
+import { logout } from '../utils/auth';
 
-/**
- * The money-and-access half of the app, as a dock tab.
- *
- * Takes over `/member/membership`, which used to redirect to the plan screen.
- * Nothing links to that path expecting the redirect — the expiry notifications
- * point at `/member/renew`, which still resolves.
- *
- * ## It was four tiles and no answer
- *
- * The screen named its four destinations — My plan, Payments, Attendance, CORE
- * Points — and stated nothing at all: not the plan, not the expiry, not the
- * balance, not whether the membership was frozen. A member opening the
- * Membership tab is asking *what is the state of my membership*, and the tab
- * answered by offering four more taps.
- *
- * Every cell now carries a real number **and** is the route to the screen that
- * number belongs to, which is the same treatment Book a Session got: a tile
- * that only labels a destination is a tap you have to spend before you learn
- * anything. Four destinations, four facts, no bare navigation tiles.
- *
- * ## What it deliberately does not repeat
- *
- * Home's violet card is the member's *identity* — their name, their QR, today.
- * This is the *account*. The plan state appears in both because it is the
- * answer to two different questions, but the card is not duplicated: no QR, no
- * name, no photo. Nothing here is invented and nothing is summed on the phone.
- */
+const CACHE_KEY = 'member:membership';
+
 function peso(n: number): string {
   return `₱${n.toLocaleString('en-PH')}`;
 }
 
-function dayLabel(key: string): string {
-  // Parsed as local parts, never `new Date('YYYY-MM-DD')` — that is read as UTC
-  // and renders the day before for the first eight hours of a Manila day.
+/** 'YYYY-MM-DD' parsed as local parts — `new Date('YYYY-MM-DD')` is read as UTC. */
+function localDate(key: string): Date {
   const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  });
+  return new Date(y, m - 1, d);
 }
 
+const shortDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+function activityLine(a: ActivityRow): { title: string; sub: string | null; amount: string; tone: string } {
+  switch (a.kind) {
+    case 'earned':
+      return { title: a.title, sub: 'Points earned', amount: `+${a.points}`, tone: 'var(--color-primary-300)' };
+    case 'spent':
+      return {
+        title: `Redeemed ${a.title.toLowerCase()}`,
+        sub: a.status === 'pending' ? 'Requested — waiting for the desk'
+          : a.status === 'fulfilled' ? 'Collected at the desk' : 'Approved — collect at the desk',
+        amount: `−${a.points}`,
+        tone: 'var(--color-text-muted)',
+      };
+    case 'paid':
+      return { title: `Payment · ${a.method}`, sub: 'Recorded at the desk', amount: peso(a.amount), tone: 'var(--color-text-primary)' };
+    case 'membership':
+      return { title: a.title, sub: a.note, amount: '', tone: 'var(--color-text-muted)' };
+  }
+}
+
+/**
+ * You — the account, as one statement (Nocturne redesign, 2026-09-16).
+ *
+ * Membership, points and payments merge into one screen: who you are, the term
+ * you are on, what you can spend, and what has moved. The four navigation tiles
+ * are gone; their destinations are in the header rail.
+ *
+ * **The user asked (2026-09-16) for this screen to carry its content rather than
+ * links to it**, so what the plan includes and the membership's history stay
+ * here as sections — the prototype had shrunk both back to links.
+ *
+ * Every figure is a row: the term bar is `start_date → expiry_date` (never the
+ * plan's nominal length, which a freeze credit makes wrong), the balance is the
+ * SQL function that already nets out pending requests, and a source that fails
+ * is named rather than thinning the list silently. Frozen replaces the term bar,
+ * because the countdown is untrue while frozen (0057).
+ */
 export default function MembershipHub() {
   const navigate = useNavigate();
-  const [hub, setHub] = useState<Hub | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readCache<Hub>(CACHE_KEY);
+  const [hub, setHub] = useState<Hub | null>(cached ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState<string | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const id = await getCurrentMemberId();
-        if (!id) throw new Error('Your session could not be verified. Please sign in again.');
-        const data = await getMembershipHub(id);
-        if (!cancelled) setHub(data);
-      } catch (err) {
-        // Named, never degraded to zeros. "You have no membership" and "this
-        // did not load" are different sentences and only one of them is true.
-        if (!cancelled) setError(errorMessage(err, 'Could not load your membership.'));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    try {
+      const id = await getCurrentMemberId();
+      if (!id) throw new Error('Your session could not be verified. Please sign in again.');
+      setHub(writeCache(CACHE_KEY, await getMembershipHub(id)));
+      setError(null);
+    } catch (err) {
+      // Named, never degraded to zeros: "you have no membership" and "this did
+      // not load" are different sentences and only one of them is true.
+      if (!quiet) setError(errorMessage(err, 'Could not load your membership.'));
+    } finally {
+      if (!quiet) setLoading(false);
+    }
   }, []);
 
+  const revisit = useRef(cached !== undefined);
+  useEffect(() => { void load(revisit.current); }, [load]);
+  useLiveData(() => load(true));
+
   const home = hub?.home ?? null;
-  const term = membershipTerm(home?.daysLeft ?? null, home?.neverExpires ?? false);
+  useSetTabHeader('you', undefined, home ? (home.planName ?? 'No membership') : undefined);
+
+  if (loading && !hub) return <Page><SkeletonList /></Page>;
+
+  if (!hub || !home) {
+    return (
+      <Page>
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-secondary)' }}>
+          {error ?? 'Could not load your membership.'}
+        </p>
+        <NocButton variant="ghost" onClick={() => void load()}>Try again</NocButton>
+      </Page>
+    );
+  }
+
+  const term = membershipTerm(home.daysLeft, home.neverExpires);
+  const initials = home.fullName.split(/\s+/).map((w) => w[0] ?? '').join('').slice(0, 2).toUpperCase();
+
+  const termTotal = home.startDate && home.expiryDate
+    ? Math.round((localDate(home.expiryDate).getTime() - localDate(home.startDate).getTime()) / 86_400_000)
+    : null;
+
+  const rewards = hub.rewards ?? [];
+  const balance = hub.points;
+  const affordable = balance == null ? null
+    : [...rewards].reverse().find((r) => r.costPoints <= balance && r.stock !== 0) ?? null;
+  const nextUp = balance == null ? null
+    : rewards.find((r) => r.costPoints > balance && r.stock !== 0) ?? null;
+
+  const activity = hub.activity.slice(0, 8);
 
   return (
     <Page>
-      <PageTitle title="Membership" subtitle="Your plan, what you have paid, what you have earned" />
-
       {error && (
-        <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 leading-relaxed"
-          style={{ fontSize: 'var(--text-meta)', background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>
+      )}
+
+      {/* ── Identity ── */}
+      <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left" style={{ gap: 13 }}>
+        <span className="grid place-items-center rounded-full flex-none" style={{
+          width: 46, height: 46, fontSize: 15, fontWeight: 500,
+          border: '1px solid var(--color-primary)', color: 'var(--color-primary-300)',
+          background: 'color-mix(in srgb, var(--color-primary) 16%, transparent)',
+          boxShadow: '0 0 18px -8px var(--color-primary)',
+        }}>
+          {initials || '—'}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{home.fullName}</span>
+          <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+            {home.memberSince
+              ? `Member since ${new Date(home.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              : 'Edit your profile'}
+          </span>
+        </span>
+      </button>
+
+      {/* ── The term ── */}
+      <section>
+        <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
+          <span style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{home.planName ?? 'No membership'}</span>
+          <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+            {home.frozen ? 'frozen'
+              : term.kind === 'unlimited' ? 'no expiry'
+              : home.expiryDate
+                ? `${home.expired ? 'expired' : home.cancelled ? 'access until' : 'expires'} ${shortDate(localDate(home.expiryDate))}`
+                : ''}
+          </span>
         </div>
-      )}
 
-      {loading ? (
-        <SkeletonList />
-      ) : home == null ? null : (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <Bento>
-            {/* ── The plan itself, and its state ──────────────────────────
-                Wide, and the route to the plan screen: this cell *is* "My
-                plan", so a tile repeating the words underneath would be one
-                more tap that teaches nothing. */}
-            <BentoCell wide onClick={() => navigate('/member/renew-membership')}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold uppercase"
-                    style={{ fontSize: 'var(--text-meta)', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                    <Shield size={11} /> {home.planName ?? 'No plan'}
-                  </span>
-                </div>
-                <ArrowRight size={16} className="flex-shrink-0 mt-1" style={{ color: 'var(--color-text-muted)' }} />
-              </div>
-
-              {/* Frozen replaces the countdown rather than sitting beside it.
-                  0057 credits those days back to the expiry, so they are not
-                  running down — "18 days remaining" here would not merely be
-                  unhelpful, it would be untrue. Same rule as Home. */}
-              {home.frozen ? (
-                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <p className="flex items-center gap-2 font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                    <Snowflake size={15} className="flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-                    Membership frozen
-                  </p>
-                  <p className="mt-1.5 leading-relaxed"
-                    style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-secondary)' }}>
-                    You cannot check in or book while it is frozen, and the days you have left are
-                    being kept for you. Ask the front desk to start it again.
-                  </p>
-                </div>
-              ) : term.kind === 'unlimited' ? (
-                <div className="mt-3 pt-3 flex items-center gap-2" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <InfinityIcon size={17} className="flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-                  <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>{term.caption}</p>
-                </div>
-              ) : (
-                <div className="mt-3 pt-3 flex items-end justify-between gap-3"
-                  style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <div className="min-w-0">
-                    <p className="uppercase tracking-wide"
-                      style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                      {/* Cancelled stays usable until the date — that is
-                          deliberate, and everything else about the card looks
-                          like a live membership right up to the day it stops. */}
-                      {home.cancelled ? 'Cancelled · access until' : 'Valid until'}
-                    </p>
-                    <p className="font-bold text-white mt-0.5" style={{ fontSize: 'var(--text-body)' }}>
-                      {home.expiryDate ? dayLabel(home.expiryDate) : '—'}
-                    </p>
-                  </div>
-                  <p className="flex items-baseline gap-1 flex-shrink-0">
-                    <span className="display leading-none"
-                      style={{
-                        fontSize: 'var(--text-display)',
-                        color: term.kind === 'expired' ? 'var(--color-secondary)' : '#fff',
-                      }}>
-                      {term.value}
-                    </span>
-                    {term.unit && (
-                      <span style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                        {term.unit}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              )}
-            </BentoCell>
-
-            {/* ── CORE Points ─────────────────────────────────────────────
-                No `fraction`: a balance has no ceiling to be a fraction of, so
-                the ring stays a bare track rather than drawing a gauge that
-                measures nothing. Listed on every tier — a plan without points
-                gets the locked screen explaining what they are, which is the
-                whole point of locking rather than hiding (0049). */}
-            <RingStat
-              icon={<Gift size={16} />}
-              value={hub!.pointsFailed ? '—' : hub!.points}
-              label={hub!.pointsFailed ? 'CORE points · not available' : 'CORE points to spend'}
-              tone="secondary"
-              onClick={() => navigate('/member/rewards')}
-            />
-
-            {/* ── Visits this month ───────────────────────────────────────
-                Real check-in rows, counted in the service Home already uses.
-                The route it leads to is the full record. */}
-            <RingStat
-              icon={<Calendar size={16} />}
-              value={home.checkInsThisMonth}
-              label="visits this month"
-              onClick={() => navigate('/member/attendance-history')}
-            />
-
-          </Bento>
-
-          {/* ── What the plan actually gets you ────────────────────────────
-              Moved off Home (2026-09-16). CLAUDE.md's rule is that **Home stays
-              today only**, and a list of entitlements is not today — it is the
-              account, which is this screen. Home keeps the facts that are about
-              today: the plan's name, the expiry, the countdown, the frozen or
-              cancelled state, and the QR.
-
-              Both halves are shown, as they were on Home. Listing only what is
-              included leaves "why can't I book this class?" to be discovered at
-              the point of failure, which is the worst possible place. */}
-          {home.access && (
-            <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
-              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>
-                What your plan includes
-              </h2>
-              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
-                <div className="flex flex-col gap-y-2">
-                  {home.access.included.map((item) => (
-                    <p key={item} className="flex items-start gap-2 text-white leading-snug"
-                      style={{ fontSize: 'var(--text-meta)' }}>
-                      <Check size={14} className="flex-shrink-0 mt-px" style={{ color: 'var(--color-primary)' }} />
-                      <span className="min-w-0">{item}</span>
-                    </p>
-                  ))}
-                  {home.access.excluded.map((item) => (
-                    <p key={item} className="flex items-start gap-2 leading-snug"
-                      style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                      <X size={14} className="flex-shrink-0 mt-px" />
-                      <span className="min-w-0">{item} — not on this plan</span>
-                    </p>
-                  ))}
-                </div>
-                {!home.access.isFullAccess && (
-                  <button
-                    onClick={() => navigate('/member/renew-membership')}
-                    className="w-full h-11 mt-3 rounded-full font-bold"
-                    style={{ fontSize: 'var(--text-meta)', background: 'var(--color-secondary)', color: '#1A1200' }}
-                  >
-                    Compare plans
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* ── What you have paid ─────────────────────────────────────────
-              The rows themselves, not a summary of the newest one. `paid_on`,
-              never `created_at` — the desk records Monday's cash on Tuesday
-              often enough that the two disagree. */}
-          <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>Payments</h2>
-              {hub!.recentPayments.length > 0 && (
-                <button onClick={() => navigate('/member/payments')}
-                  className="flex items-center gap-1 font-semibold"
-                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-                  See all <ArrowRight size={13} />
-                </button>
-              )}
+        {home.frozen ? (
+          <p style={{ marginTop: 9, fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+            You cannot check in or book while it is frozen, and the days you have left are kept for you.
+            Ask the front desk to start it again.
+          </p>
+        ) : term.kind === 'countdown' && termTotal != null && termTotal > 0 && home.daysLeft != null ? (
+          <>
+            <ProgressBar style={{ marginTop: 9 }} fraction={home.daysLeft / termTotal} />
+            <div className="flex justify-between" style={{ marginTop: 7, fontSize: 12 }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>
+                {home.daysLeft === 0 ? 'Last day of this term' : `${home.daysLeft} of ${termTotal} days left`}
+                {home.cancelled ? ' · cancelled' : ''}
+              </span>
+              <button onClick={() => navigate('/member/renew-membership')} style={{ color: 'var(--color-secondary)' }}>
+                Renew
+              </button>
             </div>
+          </>
+        ) : home.expired ? (
+          <NocButton variant="fill" className="w-full" style={{ marginTop: 12 }}
+            onClick={() => navigate('/member/renew-membership')}>
+            Renew membership
+          </NocButton>
+        ) : null}
+      </section>
 
-            {hub!.paymentsFailed ? (
-              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
-                <p style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-                  Your payments could not be loaded. That is not a statement that there are none.
-                </p>
-              </div>
-            ) : hub!.recentPayments.length === 0 ? (
-              <div className="rounded-2xl" style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
-                <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                  No payments recorded
-                </p>
-                <p className="mt-1 leading-relaxed"
-                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                  Normal on the free tier. The gym takes cash at the front desk, and anything you
-                  pay is receipted here.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
-                {hub!.recentPayments.map((p) => (
-                  <div key={`${p.paidOn}:${p.amount}`}
-                    className="rounded-2xl flex items-center gap-3"
-                    style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
-                    <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      <CreditCard size={18} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                        {peso(p.amount)}
-                      </p>
-                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                        {dayLabel(p.paidOn)} · {p.method}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ── What has happened to this membership ───────────────────────
-              0057 has recorded freezes, unfreezes and cancellations since it
-              shipped, `membership_events_select_self` has always let a member
-              read their own, and nothing in the member app ever did — so "when
-              was I frozen, and why?" had no answer outside the desk's screen.
-
-              Renders nothing when there are none, which is most memberships. */}
-          {hub!.events.length > 0 && (
-            <section className="flex flex-col mt-6" style={{ gap: 'var(--stack-tight)' }}>
-              <h2 className="display text-white" style={{ fontSize: 'var(--text-title)' }}>
-                Membership history
-              </h2>
-              <div className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
-                {hub!.events.map((e) => (
-                  <div key={e.id} className="rounded-2xl flex items-start gap-3"
-                    style={{ ...panelStyle, padding: 'var(--card-pad)' }}>
-                    <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                      {e.kind === 'freeze' ? <Snowflake size={17} />
-                        : e.kind === 'unfreeze' ? <Play size={17} />
-                        : <XCircle size={17} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                        {e.kind === 'freeze' ? 'Membership frozen'
-                          : e.kind === 'unfreeze' ? 'Membership restarted'
-                          : 'Membership cancelled'}
-                      </p>
-                      <p className="mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                        {new Date(e.created_at).toLocaleDateString('en-PH', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
-                        {e.reason ? ` · ${e.reason}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+      {/* ── Points ── */}
+      <section className="flex items-end justify-between" style={{
+        gap: 12, padding: '14px 0',
+        borderTop: '1px solid rgba(233, 233, 237, 0.12)', borderBottom: '1px solid rgba(233, 233, 237, 0.12)',
+      }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>CORE points</p>
+          <p style={{ fontSize: 38, fontWeight: 500, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+            {balance ?? '—'}
+          </p>
+          {balance == null && (
+            <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>Your balance could not be read</p>
           )}
-        </motion.div>
+        </div>
+        <div className="text-right min-w-0">
+          {affordable && (
+            <p className="truncate" style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+              {affordable.name} · {affordable.costPoints}
+            </p>
+          )}
+          {nextUp && balance != null && (
+            <p className="truncate" style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-secondary)' }}>
+              {nextUp.name} · {nextUp.costPoints - balance} to go
+            </p>
+          )}
+          <button onClick={() => navigate('/member/rewards')}
+            style={{ fontSize: 12.5, marginTop: 7, color: 'var(--color-secondary)' }}>
+            Spend points
+          </button>
+        </div>
+      </section>
+
+      {/* ── Activity ── */}
+      <section>
+        <SectionHead title="Activity" meta={balance != null ? `Balance ${balance}` : undefined} />
+        {activity.length === 0 ? (
+          <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+            Nothing yet. Check-ins earn points, and payments at the desk appear here.
+          </p>
+        ) : (
+          <div style={{ marginTop: 4 }}>
+            {activity.map((a, i) => {
+              const l = activityLine(a);
+              return (
+                <LineRow
+                  key={`${a.kind}:${a.at}:${i}`}
+                  gutterWidth={46}
+                  gutter={<span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{shortDate(new Date(a.at))}</span>}
+                  title={l.title}
+                  meta={l.sub ?? undefined}
+                  action={l.amount ? <span style={{ fontSize: 13.5, color: l.tone }}>{l.amount}</span> : undefined}
+                  last={i === activity.length - 1}
+                />
+              );
+            })}
+          </div>
+        )}
+        {hub.activityGaps.length > 0 && (
+          <p style={{ marginTop: 8, fontSize: 12, color: 'var(--color-secondary)' }}>
+            Could not load {hub.activityGaps.join(' or ')} — this list may be missing entries.
+          </p>
+        )}
+        <div className="flex flex-wrap" style={{ gap: '14px 20px', marginTop: 14, fontSize: 13 }}>
+          <button onClick={() => navigate('/member/payments')} style={{ color: 'var(--color-primary-300)' }}>All payments</button>
+          <button onClick={() => navigate('/member/rewards')} style={{ color: 'var(--color-primary-300)' }}>How you earn points</button>
+          <button onClick={() => navigate('/member/attendance-history')} style={{ color: 'var(--color-primary-300)' }}>Attendance</button>
+        </div>
+      </section>
+
+      {/* ── What the plan gets you — both halves ── */}
+      {home.access && (
+        <section>
+          <SectionHead title={`What ${home.planName ?? 'your plan'} includes`} />
+          <div style={{ marginTop: 6 }}>
+            {home.access.included.map((item) => (
+              <p key={item} className="flex items-start" style={{
+                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)',
+                fontSize: 14, color: 'var(--color-text-primary)',
+              }}>
+                <Check size={15} className="flex-none" style={{ marginTop: 2, color: 'var(--color-primary-400)' }} />
+                {item}
+              </p>
+            ))}
+            {home.access.excluded.map((item) => (
+              <p key={item} className="flex items-start" style={{
+                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)',
+                fontSize: 14, color: 'var(--color-text-muted)',
+              }}>
+                <Minus size={15} className="flex-none" style={{ marginTop: 2 }} />
+                {item} — not on this plan
+              </p>
+            ))}
+          </div>
+          {!home.access.isFullAccess && (
+            <NocButton variant="action" className="w-full" style={{ marginTop: 14 }}
+              onClick={() => navigate('/member/renew-membership')}>
+              Compare plans
+            </NocButton>
+          )}
+        </section>
       )}
+
+      {/* ── What has happened to this membership (0057) ── */}
+      {hub.events.length > 0 && (
+        <section>
+          <SectionHead title="Membership history" />
+          <div style={{ marginTop: 4 }}>
+            {hub.events.map((e, i) => (
+              <LineRow
+                key={e.id}
+                title={e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled'}
+                meta={`${new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${e.reason ? ` · ${e.reason}` : ''}`}
+                last={i === hub.events.length - 1}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── The account ── */}
+      <section className="flex flex-col" style={{ gap: 12 }}>
+        <Eyebrow mark>Account</Eyebrow>
+        <div className="flex flex-wrap" style={{ gap: '14px 20px', fontSize: 13 }}>
+          <button onClick={() => navigate('/member/profile')} style={{ color: 'var(--color-primary-300)' }}>Profile</button>
+          <button onClick={() => navigate('/member/settings')} style={{ color: 'var(--color-primary-300)' }}>Settings</button>
+          <button onClick={() => navigate('/member/change-password')} style={{ color: 'var(--color-primary-300)' }}>Change password</button>
+          <button onClick={() => navigate('/member/change-email')} style={{ color: 'var(--color-primary-300)' }}>Change email</button>
+          <button onClick={() => setConfirmLogout(true)} style={{ color: 'var(--color-text-secondary)' }}>Log out</button>
+        </div>
+      </section>
+
+      <Modal
+        isOpen={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title="Log out"
+        subtitle="You will need your email and password to get back in."
+        confirmLabel="Log out"
+        cancelLabel="Stay signed in"
+        onConfirm={async () => {
+          // `logout()` clears push, the session, every per-user key and both
+          // caches — the one sign-out path. Nothing to add here.
+          await logout();
+          navigate('/');
+        }}
+      >
+        <span />
+      </Modal>
     </Page>
   );
 }

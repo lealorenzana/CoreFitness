@@ -107,20 +107,27 @@ async (page) => {
 
   const out = [];
 
-  // Reached from the Training grid, which is how a member gets to all three.
-  for (const tile of ['Progress', 'Events', 'Training plan']) {
+  // Reached from Train. Progress and Training plan sit on Train's rail; Events
+  // left Train in the Nocturne redesign and is opened from the More sheet —
+  // which is the harder case, since the sheet is an overlay, not a page, and
+  // back must still land on Train rather than on the sheet or on Today.
+  for (const [tile, viaMore] of [['Progress', false], ['Events and announcements', true], ['Training plan', false]]) {
     await page.goto('http://localhost:5173/member/book-class', { waitUntil: 'domcontentloaded' });
     await settle();
+    if (viaMore) {
+      await page.getByRole('button', { name: 'More', exact: true }).first().click();
+      await page.waitForTimeout(600);
+    }
     const t = page.getByRole('button', { name: tile, exact: true }).first();
-    if (!(await t.count())) { out.push(`FAIL  ${tile}: no tile on Book a Session`); continue; }
+    if (!(await t.count())) { out.push(`FAIL  ${tile}: not reachable from Train`); continue; }
     await t.click();
     await page.waitForTimeout(1300);
     const landed = at();
-    // The round back button at the top left of the screen we just opened.
-    await page.locator('button').first().click();
+    // The Back link at the top of the screen we just opened.
+    await page.getByRole('button', { name: /Back/ }).first().click();
     await page.waitForTimeout(1000);
     const back = at();
-    out.push(`${back === '/member/book-class' ? 'PASS' : 'FAIL'}  ${tile.padEnd(14)} ${landed.padEnd(24)} back -> ${back}`);
+    out.push(`${back === '/member/book-class' ? 'PASS' : 'FAIL'}  ${tile.padEnd(26)} ${landed.padEnd(24)} back -> ${back}`);
   }
 
   // A cold load has nothing behind it, so back must fall to Home rather than

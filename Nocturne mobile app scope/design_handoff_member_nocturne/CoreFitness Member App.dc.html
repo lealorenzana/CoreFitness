@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/nocturne-f37c0c1a-d78a-4813-8daf-384f95313c85/styles.css">
+<script src="_ds/nocturne-f37c0c1a-d78a-4813-8daf-384f95313c85/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+body{margin:0;background:#0e0f18;font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
+.ph,.ph-fill{display:inline-block;line-height:1}
+.scr{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 104px;display:flex;flex-direction:column;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.rule{height:1px;background:linear-gradient(to right,rgba(233,233,237,.16),rgba(233,233,237,.16) calc(100% - 48px),transparent);flex:none}
+.hair{height:1px;background:rgba(233,233,237,.08);flex:none}
+.lrow{display:flex;align-items:center;gap:12px;padding:13px 0;cursor:pointer}
+.tapc{cursor:pointer}
+.rail{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:12px 20px 2px}
+.rail::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+
+<div style="display:flex;align-items:flex-start;gap:26px;padding:34px">
+<div style="width:393px;height:852px;background:#161826;border-radius:38px;box-shadow:0 0 0 1px #9397ab,0 16px 40px rgba(0,0,0,.65);overflow:hidden;position:relative;display:flex;flex-direction:column">
+
+  <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600;color:#e9e9ed;flex:none"><span>9:41</span><span style="display:flex;gap:6px;font-size:14px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+
+  <div style="flex:none;padding:4px 20px 0">
+    <div>
+      <div style="font-size:31px;font-weight:500;letter-spacing:-.028em;color:#e9e9ed;line-height:1.04">{{ screenTitle }}</div>
+      <div style="font-size:31px;font-weight:500;letter-spacing:-.028em;color:#9397ab;line-height:1.04">{{ screenSub }}</div>
+    </div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:14px">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9397ab">{{ screenEyebrow }}</div>
+      <div class="tapc" onClick="{{ goUpdates }}" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(233,233,237,.14);display:grid;place-items:center;color:#b2b6ca;font-size:16px;position:relative"><i class="ph ph-bell"></i><span style="position:absolute;top:7px;right:8px;width:{{ dotSize }};height:{{ dotSize }};border-radius:50%;background:#9184d9;box-shadow:0 0 8px #9184d9"></span></div>
+    </div>
+    <div class="rule" style="margin-top:12px"></div>
+    <div class="rail">
+      <sc-for list="{{ subNav }}" as="n" hint-placeholder-count="5">
+        <span class="tapc" onClick="{{ n.on }}" style="flex:none;padding:8px 13px;border-radius:99px;border:1px solid {{ n.br }};background:{{ n.bg }};color:{{ n.fg }};font-size:12.5px;white-space:nowrap">{{ n.label }}</span>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ atToday }}" hint-placeholder-val="{{ true }}">
+  <div class="scr" style="gap:0">
+    <div style="flex:none;position:relative;overflow:hidden;border-radius:14px;box-shadow:0 0 0 1px #3f424d;padding:16px 16px 14px;background:radial-gradient(150% 120% at 8% 0%,rgba(145,132,217,.20) 0%,transparent 66%)">
+      <div style="position:absolute;top:0;left:16px;right:16px;height:1px;background:linear-gradient(to right,#9184d9,transparent)"></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+        <div><div style="font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:#9397ab">September</div><div style="display:flex;align-items:baseline;gap:6px;margin-top:6px"><span style="font-size:40px;font-weight:500;letter-spacing:-.035em;color:#e9e9ed;line-height:1">7</span><span style="font-size:14px;color:#b2b6ca">of 12 sessions</span></div></div>
+        <div style="text-align:right"><div style="font-size:12px;color:#b2b6ca">{{ updatesLabel }}</div><div style="font-size:12px;color:#9397ab;margin-top:3px">18 days left on Premium</div></div>
+      </div>
+      <div style="margin-top:14px;height:4px;border-radius:2px;background:#292b31;overflow:hidden"><div style="width:58%;height:100%;background:#9184d9;box-shadow:0 0 12px #9184d9"></div></div>
+    </div>
+    <div style="display:flex;gap:6px;padding:18px 0 20px;flex:none">
+      <sc-for list="{{ weekMarks }}" as="m" hint-placeholder-count="7">
+        <div style="flex:1;text-align:center"><div style="height:30px;border-radius:5px;background:{{ m.bg }};border:{{ m.br }}"></div><div style="font-size:12px;color:{{ m.fg }};margin-top:6px">{{ m.d }}</div></div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:14px;flex:none">
+      <div style="width:44px;flex:none;display:flex;flex-direction:column;font-size:12px;color:#9397ab;padding-top:2px">
+        <div style="height:96px">Now</div><div style="height:104px">Thu</div><div style="height:96px">Mon</div><div>Later</div>
+      </div>
+      <div style="flex:1;min-width:0;border-left:1px solid rgba(233,233,237,.12);padding-left:16px;position:relative">
+        <div style="position:absolute;left:-4px;top:5px;width:7px;height:7px;border-radius:50%;background:#9184d9;box-shadow:0 0 9px #9184d9"></div>
+        <div class="tapc" onClick="{{ openCheckin }}" style="height:96px">
+          <div style="font-size:15px;font-weight:500;color:#e9e9ed">{{ checkedLabel }}</div>
+          <div style="font-size:12.5px;color:#9397ab;margin-top:3px;line-height:1.45">{{ checkedSub }}</div>
+          <span style="display:inline-block;margin-top:8px;font-size:12px;color:#9184d9">{{ checkedCta }}</span>
+        </div>
+        <div style="position:absolute;left:-4px;top:101px;width:7px;height:7px;border-radius:50%;background:#3f424d"></div>
+        <div class="tapc" onClick="{{ goBookings }}" style="height:104px">
+          <div style="font-size:15px;font-weight:500;color:#e9e9ed">Personal Training · 4:00 PM</div>
+          <div style="font-size:12.5px;color:#9397ab;margin-top:3px">Kenji Ramos · 60 min</div>
+          <span style="display:inline-block;margin-top:7px;font-size:11.5px;color:#d2cefd;border:1px solid #5d5294;border-radius:4px;padding:2px 8px">Awaiting approval</span>
+        </div>
+        <div style="position:absolute;left:-4px;top:205px;width:7px;height:7px;border-radius:50%;background:#3f424d"></div>
+        <div class="tapc" onClick="{{ goEvents }}" style="height:96px">
+          <div style="font-size:15px;font-weight:500;color:#e9e9ed">Barangay fun run</div>
+          <div style="font-size:12.5px;color:#9397ab;margin-top:3px">Sep 22 · 5 km · 150 points</div>
+          <span style="display:inline-block;margin-top:7px;font-size:12px;color:#9184d9">Join</span>
+        </div>
+        <div style="position:absolute;left:-4px;top:301px;width:7px;height:7px;border-radius:50%;background:#3f424d"></div>
+        <div>
+          <div style="font-size:15px;font-weight:500;color:#9397ab">Nothing after this</div>
+          <div style="font-size:12.5px;color:#9397ab;margin-top:3px;line-height:1.45">{{ challengeNudge }}</div>
+        </div>
+      </div>
+    </div>
+    <div style="height:18px;flex:none"></div>
+    <div class="rule"></div>
+    <div style="display:flex;gap:9px;padding-top:16px;flex:none">
+      <div class="tapc" onClick="{{ goTracker }}" style="flex:1;height:46px;border-radius:8px;border:1px solid rgba(233,233,237,.16);color:#b2b6ca;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:500"><i class="ph ph-barbell" style="font-size:15px"></i>Track a lift</div>
+      <div class="tapc" onClick="{{ goAssistant }}" style="flex:1;height:46px;border-radius:8px;border:1px solid rgba(233,233,237,.16);color:#b2b6ca;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:500"><i class="ph ph-chat-teardrop-dots" style="font-size:15px"></i>Ask the coach</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atTrain }}" hint-placeholder-val="{{ false }}">
+  <div class="scr" style="gap:16px">
+    <div style="display:flex;gap:22px;font-size:12.5px;flex:none">
+      <sc-for list="{{ trainTabs }}" as="t" hint-placeholder-count="3">
+        <span class="tapc" onClick="{{ t.on }}" style="color:{{ t.fg }};position:relative;padding-bottom:5px;border-bottom:{{ t.bb }}">{{ t.label }}</span>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:52px repeat(7,1fr);gap:5px;align-items:center;flex:none">
+      <span></span>
+      <sc-for list="{{ dayHeads }}" as="d" hint-placeholder-count="7">
+        <span class="tapc" onClick="{{ d.on }}" style="font-size:12px;color:{{ d.fg }};text-align:center">{{ d.d }}</span>
+      </sc-for>
+      <span style="font-size:12px;color:#9397ab">AM</span>
+      <sc-for list="{{ rowAM }}" as="c" hint-placeholder-count="7">
+        <div class="tapc" onClick="{{ c.on }}" style="height:38px;border-radius:6px;background:{{ c.bg }};border:{{ c.br }};display:grid;place-items:center;font-size:12px;color:{{ c.fg }}">{{ c.n }}</div>
+      </sc-for>
+      <span style="font-size:12px;color:#9397ab">Mid</span>
+      <sc-for list="{{ rowMid }}" as="c" hint-placeholder-count="7">
+        <div class="tapc" onClick="{{ c.on }}" style="height:38px;border-radius:6px;background:{{ c.bg }};border:{{ c.br }};display:grid;place-items:center;font-size:12px;color:{{ c.fg }}">{{ c.n }}</div>
+      </sc-for>
+      <span style="font-size:12px;color:#9397ab">PM</span>
+      <sc-for list="{{ rowPM }}" as="c" hint-placeholder-count="7">
+        <div class="tapc" onClick="{{ c.on }}" style="height:38px;border-radius:6px;background:{{ c.bg }};border:{{ c.br }};display:grid;place-items:center;font-size:12px;color:{{ c.fg }}">{{ c.n }}</div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:#b2b6ca;flex:none">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#232532"></span>Classes on</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#1c1e2b"></span>Nothing on</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:5px;height:5px;border-radius:50%;background:#9184d9"></span>Yours</span>
+    </div>
+    <div class="rule"></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex:none">
+      <div style="font-size:17px;font-weight:500;color:#e9e9ed">{{ dayTitle }}</div>
+      <div style="font-size:12px;color:#9397ab">{{ daySub }}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;flex:none">
+      <sc-for list="{{ daySessions }}" as="s" hint-placeholder-count="4">
+        <div>
+          <div class="lrow" onClick="{{ s.on }}"><span style="width:52px;flex:none;font-size:13px;color:#9397ab">{{ s.time }}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;color:{{ s.titleFg }}">{{ s.name }}</span><span style="display:block;font-size:12px;color:#b2b6ca;margin-top:2px">{{ s.meta }}</span></span><span style="font-size:13px;color:{{ s.ctaFg }};flex:none">{{ s.cta }}</span></div>
+          <div class="hair"></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:18px 20px;font-size:13px;color:#9184d9;padding-top:4px;flex:none">
+      <span class="tapc" onClick="{{ goBody }}">Progress</span>
+      <span class="tapc" onClick="{{ goTracker }}">Track a lift</span>
+      <span class="tapc" onClick="{{ goWorkouts }}">Free workouts</span>
+      <span class="tapc" onClick="{{ goPlan }}">Training plan</span>
+      <span class="tapc" onClick="{{ goTrainers }}">Coaches</span>
+      <span class="tapc" onClick="{{ goChallenges }}">Challenges</span>
+      <span class="tapc" onClick="{{ goEvents }}">Events</span>
+      <span class="tapc" onClick="{{ goBookings }}">My bookings</span>
+      <span class="tapc" onClick="{{ goAchievements }}">Achievements</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ atYou }}" hint-placeholder-val="{{ false }}">
+  <div class="scr" style="gap:16px">
+    <div style="display:flex;align-items:center;gap:13px;flex:none">
+      <div class="tapc" onClick="{{ goEditProfile }}" style="width:46px;height:46px;border-radius:50%;border:1px solid #9184d9;background:color-mix(in srgb,#9184d9 14%,transparent);color:#d2cefd;display:grid;place-items:center;font-size:15px;font-weight:500;flex:none">LL</div>
+      <div style="min-width:0"><div style="font-size:14px;color:#e9e9ed">Lea Lorenzana</div><div style="font-size:12px;color:#9397ab;margin-top:2px">Member since May 19, 2026 · Mamburao</div></div>
+    </div>
+    <div style="flex:none">
+      <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:14px;color:#e9e9ed">Premium</span><span style="font-size:12.5px;color:#9397ab">expires Oct 4</span></div>
+      <div style="margin-top:9px;height:4px;border-radius:2px;background:#292b31;overflow:hidden"><div style="width:60%;height:100%;background:#9184d9;box-shadow:0 0 10px #9184d9"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:7px"><span style="font-size:12px;color:#b2b6ca">18 of 30 days left</span><span class="tapc" onClick="{{ goRenew }}" style="font-size:12px;color:#9184d9">Renew</span></div>
+    </div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:14px 0;border-top:1px solid rgba(233,233,237,.12);border-bottom:1px solid rgba(233,233,237,.12);flex:none">
+      <div><div style="font-size:12px;color:#9397ab">CORE points</div><div style="font-size:38px;font-weight:500;letter-spacing:-.03em;color:#e9e9ed;line-height:1.1;margin-top:4px">{{ points }}</div></div>
+      <div style="text-align:right"><div style="font-size:12.5px;color:#d2cefd">Shaker bottle · 200</div><div style="font-size:12px;color:#b2b6ca;margin-top:4px">{{ nextRewardLine }}</div><div class="tapc" onClick="{{ goRewards }}" style="font-size:12.5px;color:#9184d9;margin-top:7px">Spend points</div></div>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex:none"><div style="font-size:17px;font-weight:500;color:#e9e9ed">Activity</div><div style="font-size:12px;color:#9397ab">Balance {{ points }}</div></div>
+    <div style="display:flex;flex-direction:column;flex:none">
+      <sc-for list="{{ ledger }}" as="l" hint-placeholder-count="5">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 0"><span style="width:46px;flex:none;font-size:12px;color:#b2b6ca">{{ l.date }}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;color:#e9e9ed">{{ l.title }}</span><span style="display:block;font-size:12px;color:#b2b6ca;margin-top:2px">{{ l.sub }}</span></span><span style="font-size:13.5px;color:{{ l.fg }};flex:none">{{ l.amt }}</span></div>
+          <div class="hair"></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px 20px;font-size:13px;color:#9184d9;padding-top:4px;flex:none">
+      <span class="tapc" onClick="{{ goIncludes }}">What Premium includes</span>
+      <span class="tapc" onClick="{{ goHistory }}">Membership history</span>
+      <span class="tapc" onClick="{{ goAnn }}">Announcements</span>
+      <span class="tapc" onClick="{{ goEarn }}">How you earn points</span>
+      <span class="tapc" onClick="{{ goPayments }}">Payments</span>
+      <span class="tapc" onClick="{{ goAttendance }}">Attendance</span>
+      <span class="tapc" onClick="{{ goRewards }}">Rewards</span>
+      <span class="tapc" onClick="{{ goSettings }}">Settings</span>
+      <span class="tapc" onClick="{{ goUpdates }}">Updates</span>
+      <span style="color:#b2b6ca">Log out</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:88px;background:#161826;border-top:1px solid rgba(233,233,237,.12);display:flex;align-items:stretch;padding:0 14px 22px">
+    <sc-for list="{{ barItems }}" as="b" hint-placeholder-count="4">
+      <div class="tapc" onClick="{{ b.on }}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding-top:12px;color:{{ b.fg }}">
+        <div style="width:16px;height:2px;border-radius:1px;background:{{ b.mark }}"></div>
+        <i class="{{ b.icon }}" style="font-size:20px"></i>
+        <span style="font-size:12px;letter-spacing:.02em">{{ b.label }}</span>
+      </div>
+    </sc-for>
+    <div style="width:1px;margin:16px 10px 4px;background:rgba(233,233,237,.12)"></div>
+    <div class="tapc" onClick="{{ openCheckin }}" style="width:92px;flex:none;margin-top:12px;border-radius:10px;border:1px solid #9184d9;color:#9184d9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;box-shadow:0 0 22px -9px #9184d9">
+      <i class="ph ph-qr-code" style="font-size:21px"></i>
+      <span style="font-size:12px">{{ checkinChip }}</span>
+    </div>
+  </div>
+
+  {{ overlay }}
+</div>
+
+<div style="width:250px;color:#b2b6ca;font-size:12px;line-height:1.7;padding-top:8px">
+  <div style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#9184d9;margin-bottom:10px">Working prototype</div>
+  <div>Bottom bar: Today, Train, You and More, with the check-in code as its own accent block behind a hairline. More opens <strong style="color:#e9e9ed;font-weight:500">Everything</strong> — all 26 screens, grouped. The header keeps the big date, the bell, and a scrolling rail of that tab's own screens.</div>
+  <div style="margin-top:14px">Live: pick a day in the matrix, book a class, tap any muscle, log a reading or a set, run the six-question plan builder, switch chart metrics, add a goal, redeem a reward, join a challenge, rate a coach, cancel with a reason.</div>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:740,&quot;height&quot;:930}}">
+const AC = '#9184d9', AC_L = '#d2cefd', TXT = '#e9e9ed', MUT = '#9397ab', DIM = '#b2b6ca', OFF = '#9397ab';
+
+const DAYS = [
+  { d: 'T', title: 'Tuesday 16', am: 2, mid: 0, pm: 3, mine: false },
+  { d: 'W', title: 'Wednesday 17', am: 2, mid: 1, pm: 3, mine: false },
+  { d: 'T', title: 'Thursday 18', am: 1, mid: 0, pm: 2, mine: true },
+  { d: 'F', title: 'Friday 19', am: 0, mid: 1, pm: 2, mine: false },
+  { d: 'S', title: 'Saturday 20', am: 3, mid: 0, pm: 1, mine: false },
+  { d: 'S', title: 'Sunday 21', am: 0, mid: 1, pm: 0, mine: false },
+  { d: 'M', title: 'Monday 22', am: 2, mid: 0, pm: 3, mine: false },
+];
+
+const SESSIONS = {
+  classes: [
+    { id: 'c-hiit', time: '6:00 AM', name: 'Morning HIIT', meta: 'Kenji · 8 of 12 places' },
+    { id: 'c-str', time: '8:00 AM', name: 'Strength basics', meta: 'Mara · beginner' },
+    { id: 'c-mob', time: '12:00', name: 'Lunch mobility', meta: 'Kenji · 30 min' },
+    { id: 'c-box', time: '5:00 PM', name: 'Boxing circuit', meta: 'Full · join the waitlist', full: true },
+    { id: 'c-core', time: '7:00 PM', name: 'Core & conditioning', meta: 'Dan · 45 min' },
+  ],
+  pt: [
+    { id: 'p-1', time: '7:00 AM', name: 'Kenji Ramos', meta: 'Strength · 60 min' },
+    { id: 'p-2', time: '9:00 AM', name: 'Mara Villa', meta: 'Mobility · 45 min' },
+    { id: 'p-3', time: '4:00 PM', name: 'Kenji Ramos', meta: 'Strength · 60 min', mine: true },
+    { id: 'p-4', time: '6:00 PM', name: 'Dan Ocampo', meta: 'Boxing · 60 min' },
+  ],
+  events: [
+    { id: 'e-run', time: 'Sep 22', name: 'Barangay fun run', meta: '5 km around the plaza · 150 points' },
+    { id: 'e-open', time: 'Oct 5', name: 'Open gym day', meta: 'Bring one guest free' },
+  ],
+};
+
+const MUSCLES = {
+  core: { label: 'Abs & obliques', back: 'Lower back', cm: 78, delta: -2.4,
+    note: 'One reading around your waist. It covers your abs and your lower back.',
+    verdict: 'Down 2.4 cm since your last reading — the direction you said you are training for.' },
+  thighs: { label: 'Quads', back: 'Hamstrings', cm: 56, delta: 1.2,
+    note: 'One reading around your thigh. It covers quads and hamstrings.',
+    verdict: 'Up 1.2 cm. You are cutting, so watch this one over the next month.' },
+  chest: { label: 'Chest', back: 'Back & lats', cm: 92, delta: 0.8,
+    note: 'One reading around your torso. It covers your chest and your back.',
+    verdict: 'Up 0.8 cm while your waist came in — the shape you are training for.' },
+  arms: { label: 'Biceps', back: 'Triceps', cm: 31, delta: 0.4,
+    note: 'One reading around your upper arm. It covers biceps and triceps.',
+    verdict: null },
+};
+
+const PATHS = {
+  chestFront: ['M183 200 L183 209 L183 219 L183 228 L183 237 L183 247 L183 256 L183 265 L183 275 L183 284 L183 293 L183 303 L258 303 L258 293 L258 284 L258 275 L258 265 L258 256 L258 247 L258 237 L258 228 L258 219 L258 209 L258 200 Z', 'M265 200 L265 209 L265 219 L265 228 L265 237 L265 247 L265 256 L265 265 L265 275 L265 284 L265 293 L265 303 L340 303 L340 293 L340 284 L340 275 L340 265 L340 256 L340 247 L340 237 L340 228 L340 219 L340 209 L340 200 Z'],
+  chestBack: ['M185 200 L185 211 L185 221 L185 232 L185 243 L185 253 L185 264 L185 275 L185 285 L185 296 L185 307 L185 317 L185 328 L185 339 L187 349 L191 360 L195 371 L197 381 L197 392 L196 403 L195 413 L196 424 L257 424 L257 413 L257 403 L257 392 L257 381 L257 371 L257 360 L256 349 L256 339 L256 328 L256 317 L256 307 L256 296 L256 285 L256 275 L256 264 L256 253 L256 243 L256 232 L256 221 L256 211 L256 200 Z', 'M267 200 L267 211 L267 221 L267 232 L267 243 L267 253 L267 264 L267 275 L267 285 L267 296 L267 307 L267 317 L267 328 L267 339 L266 349 L265 360 L265 371 L265 381 L265 392 L265 403 L265 413 L266 424 L327 424 L327 413 L326 403 L325 392 L325 381 L327 371 L331 360 L335 349 L338 339 L338 328 L338 317 L338 307 L338 296 L338 285 L338 275 L338 264 L338 253 L338 243 L338 232 L338 221 L338 211 L338 200 Z'],
+  coreFront: ['M213 319 L213 328 L213 337 L215 347 L217 356 L219 365 L221 375 L221 384 L221 393 L221 403 L220 412 L220 421 L221 431 L221 440 L219 449 L217 459 L217 468 L216 477 L215 487 L307 487 L307 477 L306 468 L305 459 L303 449 L301 440 L301 431 L302 421 L302 412 L301 403 L301 393 L301 384 L301 375 L303 365 L305 356 L307 347 L309 337 L309 328 L309 319 Z', 'M179 319 L179 329 L179 340 L183 351 L187 361 L191 372 L193 383 L193 393 L191 404 L191 415 L191 425 L193 436 L189 447 L187 457 L185 468 L183 479 L215 479 L217 468 L217 457 L219 447 L221 436 L221 425 L220 415 L221 404 L221 393 L221 383 L221 372 L218 361 L215 351 L213 340 L213 329 L213 319 Z', 'M309 319 L309 329 L309 340 L307 351 L304 361 L301 372 L301 383 L301 393 L301 404 L302 415 L301 425 L301 436 L303 447 L305 457 L306 468 L307 479 L339 479 L338 468 L335 457 L333 447 L329 436 L331 425 L331 415 L331 404 L330 393 L329 383 L331 372 L335 361 L339 351 L343 340 L343 329 L343 319 Z'],
+  coreBack: ['M204 433 L203 441 L201 449 L199 457 L197 465 L197 473 L196 481 L195 489 L327 489 L326 481 L325 473 L325 465 L323 457 L321 449 L319 441 L318 433 Z'],
+  arms: ['M121 227 L118 236 L115 245 L114 255 L114 264 L115 273 L117 283 L120 292 L117 301 L113 311 L111 320 L110 329 L111 339 L112 348 L172 348 L173 339 L176 329 L176 320 L176 311 L176 301 L176 292 L176 283 L176 273 L176 264 L176 255 L176 245 L176 236 L176 227 Z', 'M347 227 L347 236 L347 245 L347 255 L347 264 L347 273 L347 283 L347 292 L347 301 L347 311 L347 320 L347 329 L349 339 L349 348 L410 348 L411 339 L412 329 L411 320 L409 311 L406 301 L403 292 L405 283 L407 273 L409 264 L408 255 L407 245 L405 236 L401 227 Z'],
+  thighs: ['M167 577 L167 588 L168 599 L169 609 L170 620 L171 631 L173 641 L177 652 L181 663 L185 673 L187 684 L187 695 L187 705 L187 716 L243 716 L245 705 L247 695 L249 684 L249 673 L249 663 L249 652 L250 641 L251 631 L251 620 L253 609 L255 599 L257 588 L258 577 Z', 'M264 577 L265 588 L267 599 L269 609 L271 620 L271 631 L273 641 L273 652 L273 663 L273 673 L274 684 L275 695 L277 705 L279 716 L335 716 L335 705 L335 695 L336 684 L337 673 L341 663 L346 652 L349 641 L351 631 L353 620 L353 609 L355 599 L355 588 L355 577 Z'],
+};
+
+const REWARDS = [
+  { id: 'r1', name: 'Gym towel', sub: 'Collect at the desk.', cost: 100, left: 3 },
+  { id: 'r2', name: 'Protein shake', sub: 'Any flavour, at the bar.', cost: 150, left: 8 },
+  { id: 'r3', name: 'Shaker bottle', sub: 'Collect at the desk.', cost: 200, left: 5 },
+  { id: 'r4', name: 'One free PT session', sub: 'Sixty minutes with any coach.', cost: 800, left: 2 },
+];
+
+const CHALLENGES = [
+  { id: 'c1', name: 'Twelve sessions in September', sub: 'Three a week, near enough.', have: 7, goal: 12, days: 18 },
+  { id: 'c2', name: 'Fifty kilometres in October', sub: 'Treadmill, road or plaza — all counted.', have: 0, goal: 50, days: 33 },
+  { id: 'c3', name: 'Bring a friend', sub: 'One guest check-in earns you both points.', have: 0, goal: 1, days: 12 },
+];
+
+const WORKOUTS = [
+  { id: 'w1', name: 'Full-body starter', meta: '6 exercises · 40 min · beginner' },
+  { id: 'w2', name: 'Push day', meta: '5 exercises · 50 min · intermediate' },
+  { id: 'w3', name: 'Pull day', meta: '5 exercises · 50 min · intermediate' },
+  { id: 'w4', name: 'Ten-minute core', meta: '4 exercises · 10 min · any level' },
+  { id: 'w5', name: 'Mobility flow', meta: '8 movements · 20 min · any level' },
+];
+
+const TRAINERS = [
+  { id: 't1', name: 'Kenji Ramos', meta: 'Strength · 4 years at Mamburao', init: 'KR' },
+  { id: 't2', name: 'Mara Villa', meta: 'Mobility and beginners · 2 years', init: 'MV' },
+  { id: 't3', name: 'Dan Ocampo', meta: 'Boxing and conditioning · 6 years', init: 'DO' },
+];
+
+const NOTES = [
+  { id: 'n1', when: 'Today', title: 'Your session is confirmed', body: 'Kenji approved your Tuesday 4:00 PM session.', ago: '2 hours ago' },
+  { id: 'n2', when: 'Today', title: 'A note from your coach', body: 'Keep the waist reading weekly — it is moving well.', ago: '5 hours ago' },
+  { id: 'n3', when: 'Earlier', title: 'Payment received', body: 'Thanks — ₱1,500 recorded at the desk.', ago: '1 week ago' },
+  { id: 'n4', when: 'Earlier', title: 'Challenge halfway', body: 'Six of twelve September sessions done.', ago: '2 weeks ago' },
+];
+
+const ANSWERS = {
+  'What should I train today?': 'You trained legs on Sunday and your waist reading is the one moving. Boxing circuit at 5 PM or the ten-minute core would both fit — and either finishes your eighth September session.',
+  'How do I freeze my membership?': 'Ask the front desk. A freeze holds your remaining days rather than spending them, up to sixty days a year. Your eighteen days would be waiting when you restart.',
+  'Am I on track this month?': 'Seven of twelve sessions with eighteen days left. Two a week from here finishes it with room to spare.',
+};
+
+const EMPTY_REGIONS = {
+  neck: ['M247 131 L247 139 L247 147 L247 155 L245 163 L239 171 L233 179 L289 179 L283 171 L277 163 L275 155 L275 147 L275 139 L275 131 Z'],
+  shoulders: ['M174 191 L149 200 L134 209 L126 219 L121 228 L117 237 L115 247 L114 256 L176 256 L176 247 L176 237 L176 228 L176 219 L176 209 L176 200 L176 191 Z', 'M347 191 L347 200 L347 209 L347 219 L347 228 L347 237 L347 247 L347 256 L409 256 L407 247 L405 237 L401 228 L397 219 L388 209 L373 200 L348 191 Z'],
+  forearms: ['M111 371 L107 381 L104 392 L103 403 L103 413 L102 424 L101 435 L102 445 L103 456 L104 467 L105 477 L106 488 L107 499 L109 509 L110 520 L111 531 L147 531 L142 520 L142 509 L144 499 L145 488 L148 477 L151 467 L155 456 L157 445 L160 435 L161 424 L161 413 L160 403 L160 392 L164 381 L167 371 Z', 'M354 371 L358 381 L362 392 L363 403 L362 413 L361 424 L362 435 L365 445 L367 456 L371 467 L374 477 L377 488 L379 499 L380 509 L380 520 L375 531 L411 531 L412 520 L413 509 L415 499 L416 488 L417 477 L418 467 L419 456 L420 445 L421 435 L421 424 L419 413 L419 403 L418 392 L415 381 L412 371 Z'],
+  hips: ['M182 499 L181 507 L181 515 L181 523 L181 531 L181 539 L172 547 L171 555 L169 563 L169 571 L257 571 L257 563 L257 555 L256 547 L341 539 L341 531 L341 523 L341 515 L341 507 L341 499 Z'],
+  calves: ['M185 731 L183 741 L181 752 L180 763 L181 773 L183 784 L186 795 L189 805 L193 816 L194 827 L197 837 L199 848 L238 848 L239 837 L241 827 L241 816 L243 805 L246 795 L248 784 L249 773 L249 763 L247 752 L245 741 L243 731 Z', 'M279 731 L277 741 L275 752 L273 763 L273 773 L274 784 L276 795 L279 805 L281 816 L282 827 L283 837 L285 848 L323 848 L325 837 L328 827 L330 816 L333 805 L336 795 L339 784 L341 773 L342 763 L341 752 L340 741 L337 731 Z'],
+};
+
+const LOGGED = [
+  { id: 'l1', date: 'Sep 14', name: 'Morning HIIT', meta: '6 exercises · 45 min · 4,200 kg lifted' },
+  { id: 'l2', date: 'Sep 12', name: 'Push day', meta: '5 exercises · 52 min · 5,100 kg lifted' },
+  { id: 'l3', date: 'Sep 9', name: 'Core & mobility', meta: '4 exercises · 30 min' },
+  { id: 'l4', date: 'Sep 5', name: 'Pull day', meta: '5 exercises · 48 min · 4,650 kg lifted' },
+];
+
+const GOALS = {
+  g1: { name: 'Waist to 75 cm', have: 78, goal: 75, start: 86, unit: 'cm', note: 'Down 8 cm since May' },
+  g2: { name: 'Bench press 50 kg', have: 42.5, goal: 50, start: 35, unit: 'kg', note: 'Up 7.5 kg since July' },
+  g3: { name: 'Twelve sessions a month', have: 7, goal: 12, start: 0, unit: '', note: 'Counted from check-ins' },
+  g4: { name: 'Run 5 km without stopping', have: 3.2, goal: 5, start: 1, unit: 'km', note: 'Logged on the treadmill' },
+};
+
+const COACH_NOTES = [
+  { date: 'Sep 15', from: 'Kenji Ramos', text: 'Waist is coming in nicely. Keep the readings weekly — Sunday morning is the most consistent time to take one.' },
+  { date: 'Sep 8', from: 'Kenji Ramos', text: 'Add one more set to bench and hold the weight for a fortnight before going up again.' },
+  { date: 'Aug 26', from: 'Mara Villa', text: 'Your hip mobility is the limit on squat depth. Ten minutes of the mobility flow before legs.' },
+];
+
+const ANN = [
+  { id: 'a1', date: 'Sep 15', title: 'New Saturday class: Boxing basics', body: 'Dan is opening a 9 AM beginners boxing class from this Saturday. Twelve places, booked in the app like any other class.' },
+  { id: 'a2', date: 'Sep 10', title: 'Aircon repair, Wednesday morning', body: 'The upstairs floor is closed 6 AM to 10 AM on Wednesday while the unit is replaced. Ground floor and all classes run as normal.' },
+  { id: 'a3', date: 'Sep 1', title: 'September challenge is live', body: 'Twelve sessions this month earns 300 CORE points. Joining is in Challenges, and it counts from your real check-ins.' },
+];
+
+const TERMS_HISTORY = [
+  { date: 'Sep 4, 2026', title: 'Premium renewed', sub: 'One month to Oct 4 · ₱1,500 cash' },
+  { date: 'Aug 4, 2026', title: 'Premium renewed', sub: 'One month to Sep 4 · ₱1,500 cash' },
+  { date: 'Jul 12, 2026', title: 'Membership unfrozen', sub: '9 days credited back' },
+  { date: 'Jul 3, 2026', title: 'Membership frozen', sub: 'Requested at the desk' },
+  { date: 'Jul 3, 2026', title: 'Premium renewed', sub: 'One month to Aug 4 · ₱1,500 GCash' },
+  { date: 'May 19, 2026', title: 'Joined Core Fitness', sub: 'Free Access · Mamburao' },
+];
+
+const QS = [
+  { q: 'How many days a week can you train?', a: ['Two', 'Three', 'Four', 'Five or more'] },
+  { q: 'Which days suit you?', a: ['Weekdays', 'Weekends', 'Any day'] },
+  { q: 'What time do you usually come?', a: ['Early morning', 'Lunch', 'Evening'] },
+  { q: 'What are you training for?', a: ['Cutting', 'Bulking', 'Maintaining'] },
+  { q: 'How long is a session?', a: ['30 min', '45 min', '60 min', '90 min'] },
+  { q: 'Anything to work around?', a: ['Nothing', 'Knees', 'Shoulders', 'Lower back'], optional: true },
+];
+
+const WDETAIL = [
+  { name: 'Barbell bench press', meta: '4 × 8 · 42.5 kg' },
+  { name: 'Incline dumbbell press', meta: '3 × 10 · 14 kg' },
+  { name: 'Shoulder press', meta: '3 × 10 · 12 kg' },
+  { name: 'Cable fly', meta: '3 × 12 · 10 kg' },
+  { name: 'Triceps pushdown', meta: '3 × 12 · 20 kg' },
+];
+
+const SERIES = {
+  waist: { label: 'Waist', unit: 'cm', vals: [86, 84, 83, 81, 80, 78], floor: 70, note: 'Eight centimetres down across five months. The steepest month was August, when you trained eleven times.' },
+  weight: { label: 'Body weight', unit: 'kg', vals: [68, 67, 66, 65, 64, 63.4], floor: 58, note: 'Four and a half kilos, all of it since you set the cutting focus in June.' },
+  bench: { label: 'Bench press', unit: 'kg', vals: [35, 37.5, 37.5, 40, 40, 42.5], floor: 30, note: 'Seven and a half kilos while cutting, which is the part worth noticing.' },
+  visits: { label: 'Visits a month', unit: '', vals: [4, 6, 9, 11, 7, 7], floor: 0, note: 'August was your best month. September has eighteen days left.' },
+};
+
+class Component extends DCLogic {
+  state = {
+    tab: 'today', route: null, checkin: false, checkedIn: false,
+    trainTab: 'classes', day: 0, booked: [],
+    view: 'front', muscle: 'core', metric: 'waist',
+    goals: ['g1', 'g2'], builderStep: 0, builderAns: {}, measureVal: 78,
+    ratingFor: null, cancelFor: null, workout: null, frozen: false,
+    points: 340, redeemed: [], joined: ['c1'],
+    sets: [{ w: 40, r: 12 }, { w: 42.5, r: 10 }], w: 42.5, r: 10,
+    unread: 2, chat: [], trainer: null, toast: null,
+    prefs: { push: true, email: false, sound: true },
+  };
+
+  go = (route) => this.setState({ route });
+  back = () => this.setState({ route: null });
+  setTab = (tab) => this.setState({ tab, route: null });
+  flash = (toast) => { this.setState({ toast }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: null }), 2200); };
+
+  renderVals() {
+    const s = this.state;
+    const at = (r) => s.route === r;
+    const root = s.route === null;
+
+    const tabs = ['today', 'train', 'you'].map((id) => ({
+      label: id === 'today' ? 'Today' : id === 'train' ? 'Train' : 'You',
+      fg: s.tab === id ? TXT : '#9397ab', fw: s.tab === id ? 500 : 400,
+      mark: s.tab === id && root ? AC : 'transparent',
+      on: () => this.setTab(id),
+    }));
+
+    const weekMarks = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => {
+      const done = i === 0 || (i === 1 && s.checkedIn);
+      const today = i === 1;
+      return {
+        d, bg: done ? AC : '#292b31',
+        br: today && !done ? '1px solid ' + AC : i === 3 ? '1px dashed #5d5294' : '1px solid transparent',
+        fg: done || today ? AC_L : OFF,
+      };
+    });
+
+    const list = SESSIONS[s.trainTab];
+    const daySessions = list.map((it) => {
+      const isBooked = s.booked.indexOf(it.id) >= 0 || it.mine;
+      return {
+        time: it.time, name: it.name, meta: isBooked ? 'Booked — tap to manage' : it.meta,
+        titleFg: it.full ? MUT : TXT,
+        cta: isBooked ? 'Booked' : it.full ? 'Wait' : s.trainTab === 'events' ? 'Join' : 'Book',
+        ctaFg: isBooked ? AC_L : it.full ? DIM : AC,
+        on: () => {
+          if (isBooked) return this.go('bookings');
+          this.setState({ booked: s.booked.concat([it.id]) });
+          this.flash(it.name + ' requested');
+        },
+      };
+    });
+
+    const cell = (n, i) => ({
+      n: n || '', bg: n ? (i === s.day ? 'color-mix(in srgb,#9184d9 16%,transparent)' : '#232532') : '#1c1e2b',
+      br: i === s.day && n ? '1px solid ' + AC : '1px solid transparent',
+      fg: i === s.day ? AC_L : DIM, on: () => this.setState({ day: i }),
+    });
+
+    const m = MUSCLES[s.muscle];
+    const mLabel = s.view === 'front' ? m.label : m.back;
+    const torsoChest = s.view === 'front' ? PATHS.chestFront : PATHS.chestBack;
+    const torsoCore = s.view === 'front' ? PATHS.coreFront : PATHS.coreBack;
+    const tint = (k) => {
+      const sel = s.muscle === k;
+      const mag = Math.abs(MUSCLES[k].delta) / 2.4;
+      const c = [Math.round(124 + (245 - 124) * mag), Math.round(58 + (158 - 58) * mag), Math.round(237 + (11 - 237) * mag)];
+      return { fill: 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')', op: sel ? 0.8 : 0.26, stroke: sel ? TXT : 'none', sw: sel ? 4 : 0 };
+    };
+    const bodyPaths = [];
+    Object.keys(EMPTY_REGIONS).forEach((k) => {
+      EMPTY_REGIONS[k].forEach((d, i) => bodyPaths.push({
+        key: 'e-' + k + i, d, fill: 'transparent', op: 0,
+        stroke: 'rgba(255,255,255,0.20)', sw: 1.5, dash: '5 7',
+        on: () => this.go('measure'),
+      }));
+    });
+    [['chest', torsoChest], ['core', torsoCore], ['arms', PATHS.arms], ['thighs', PATHS.thighs]].forEach((pair) => {
+      const t = tint(pair[0]);
+      pair[1].forEach((d, i) => bodyPaths.push({
+        key: pair[0] + i, d, fill: t.fill, op: t.op, stroke: t.stroke, sw: t.sw,
+        on: () => this.setState({ muscle: pair[0] }),
+      }));
+    });
+
+    const rewards = REWARDS.map((r) => {
+      const done = s.redeemed.indexOf(r.id) >= 0;
+      const can = s.points >= r.cost && !done;
+      return {
+        name: r.name, sub: r.sub, cost: r.cost + ' points · ' + r.left + ' left',
+        gap: can || done ? '' : (r.cost - s.points) + ' more points to go.',
+        cta: done ? 'Redeemed' : 'Redeem', fg: can ? AC : DIM,
+        br: '1px solid ' + (can ? AC : 'rgba(233,233,237,.16)'),
+        on: () => { if (!can) return; this.setState({ points: s.points - r.cost, redeemed: s.redeemed.concat([r.id]) }); this.flash(r.name + ' redeemed — collect at the desk'); },
+      };
+    });
+
+    const challenges = CHALLENGES.map((c) => {
+      const inIt = s.joined.indexOf(c.id) >= 0;
+      return {
+        name: c.name, sub: c.sub, state: inIt ? 'In progress' : 'Open to join',
+        count: inIt ? c.have + ' / ' + c.goal : 'Goal ' + c.goal,
+        pct: (inIt ? (c.have / c.goal) * 100 : 0) + '%',
+        days: c.days + ' days left', cta: inIt ? 'Leave' : 'Join',
+        fg: inIt ? DIM : AC, br: '1px solid ' + (inIt ? 'rgba(233,233,237,.16)' : AC),
+        on: () => this.setState({ joined: inIt ? s.joined.filter((x) => x !== c.id) : s.joined.concat([c.id]) }),
+      };
+    });
+
+    const ledgerBase = [
+      { date: 'Sep 14', title: 'Checked in', sub: 'Morning HIIT', amt: '+20', fg: AC_L },
+      { date: 'Sep 12', title: 'Checked in', sub: 'Boxing circuit', amt: '+20', fg: AC_L },
+      { date: 'Sep 8', title: 'Redeemed towel', sub: 'Collected at the desk', amt: '−100', fg: MUT },
+      { date: 'Sep 4', title: 'Payment · cash', sub: 'Premium, one month', amt: '₱1,500', fg: TXT },
+      { date: 'Sep 1', title: 'Joined challenge', sub: 'Twelve sessions in September', amt: '7/12', fg: DIM },
+    ];
+    const ledger = s.redeemed.map((id) => {
+      const r = REWARDS.filter((x) => x.id === id)[0];
+      return { date: 'Today', title: 'Redeemed ' + r.name.toLowerCase(), sub: 'Collect at the desk', amt: '−' + r.cost, fg: MUT };
+    }).concat(s.checkedIn ? [{ date: 'Today', title: 'Checked in', sub: 'Gym floor', amt: '+20', fg: AC_L }] : []).concat(ledgerBase);
+
+    const nextReward = REWARDS.filter((r) => r.cost > s.points)[0];
+
+    return {
+      atToday: root && s.tab === 'today', atTrain: root && s.tab === 'train', atYou: root && s.tab === 'you',
+      tabs, weekMarks,
+      screenTitle: s.tab === 'today' ? 'Tuesday' : s.tab === 'train' ? 'This week' : 'Your account',
+      screenSub: s.tab === 'today' ? '16 September' : s.tab === 'train' ? 'Sep 16 – 22' : 'Premium',
+      dotSize: s.unread ? '7px' : '0px',
+      subNav: ({
+        today: [['updates', 'Updates'], ['announcements', 'Announcements'], ['assistant', 'Ask the coach'], ['measure', 'Log a reading'], ['tracker', 'Track a lift']],
+        train: [['body', 'Progress'], ['bookings', 'My bookings'], ['plan', 'Training plan'], ['workouts', 'Free workouts'], ['trainers', 'Coaches'], ['challenges', 'Challenges'], ['achievements', 'Achievements'], ['plog', 'Logged workouts'], ['goals', 'Goals'], ['charts', 'Charts'], ['coach', 'Coach notes']],
+        you: [['history', 'Membership history'], ['includes', 'What Premium includes'], ['renew', 'Renew'], ['payments', 'Payments'], ['attendance', 'Attendance'], ['rewards', 'Spend points'], ['earn', 'How you earn'], ['profile', 'Edit profile'], ['settings', 'Settings']],
+      })[s.tab].map((n) => ({
+        label: n[1], br: 'rgba(233,233,237,.16)', bg: 'transparent', fg: '#b2b6ca',
+        on: () => this.go(n[0]),
+      })),
+      screenEyebrow: s.tab === 'today' ? 'Your day' : s.tab === 'train' ? 'Classes and 1-on-1' : 'Membership and points',
+      barItems: [['today', 'Today', 'house'], ['train', 'Train', 'barbell'], ['you', 'You', 'user']].map((b) => ({
+        label: b[1], icon: (s.tab === b[0] && root ? 'ph-fill ph-' : 'ph ph-') + b[2],
+        fg: s.tab === b[0] && root ? AC : '#9397ab', mark: s.tab === b[0] && root ? AC : 'transparent',
+        on: () => this.setTab(b[0]),
+      })).concat([{ label: 'More', icon: 'ph ph-dots-nine', fg: '#9397ab', mark: 'transparent', on: () => this.setState({ menu: true }) }]),
+      openMenu: () => this.setState({ menu: true }),
+      updatesLabel: s.unread ? s.unread + ' update' + (s.unread === 1 ? '' : 's') : 'No updates',
+      checkedLabel: s.checkedIn ? 'Checked in at 9:41' : 'Not checked in yet',
+      checkedSub: s.checkedIn ? 'Twenty points added. Have a good session.' : 'The floor is open until 9 PM. Nothing booked today.',
+      checkedCta: s.checkedIn ? 'Show my code again' : 'Show my code',
+      challengeNudge: 'Two more sessions would finish September\u2019s twelve.',
+      checkinChip: s.checkedIn ? 'Checked in' : 'Check in',
+      openCheckin: () => this.setState({ checkin: true }),
+
+      trainTabs: [['classes', 'Group classes'], ['pt', '1-on-1'], ['events', 'Events']].map((p) => ({
+        label: p[1], fg: s.trainTab === p[0] ? TXT : DIM,
+        bb: s.trainTab === p[0] ? '2px solid ' + AC : '2px solid transparent',
+        on: () => this.setState({ trainTab: p[0] }),
+      })),
+      dayHeads: DAYS.map((d, i) => ({ d: d.d, fg: i === s.day ? AC_L : OFF, on: () => this.setState({ day: i }) })),
+      rowAM: DAYS.map((d, i) => cell(d.am, i)),
+      rowMid: DAYS.map((d, i) => cell(d.mid, i)),
+      rowPM: DAYS.map((d, i) => cell(d.pm, i)),
+      dayTitle: DAYS[s.day].title,
+      daySub: daySessions.length + (s.trainTab === 'events' ? ' events' : ' sessions'),
+      daySessions,
+
+      points: s.points, ledger,
+      nextRewardLine: nextReward ? nextReward.name + ' · ' + nextReward.cost + ' · ' + (nextReward.cost - s.points) + ' to go' : 'Everything is within reach',
+
+      goUpdates: () => this.go('updates'), goBookings: () => this.go('bookings'), goEvents: () => { this.setState({ tab: 'train', trainTab: 'events', route: null }); },
+      goTracker: () => this.go('tracker'), goAssistant: () => this.go('assistant'), goBody: () => this.go('body'),
+      goWorkouts: () => this.go('workouts'), goPlan: () => this.go('plan'), goTrainers: () => this.go('trainers'),
+      goChallenges: () => this.go('challenges'), goAchievements: () => this.go('achievements'),
+      goRewards: () => this.go('rewards'), goPayments: () => this.go('payments'), goAttendance: () => this.go('attendance'),
+      goIncludes: () => this.go('includes'), goAnn: () => this.go('announcements'), goHistory: () => this.go('history'), goEarn: () => this.go('earn'), goRenew: () => this.go('renew'), goSettings: () => this.go('settings'),
+      goEditProfile: () => this.go('profile'),
+
+      overlay: this.overlay({ at, m, mLabel, bodyPaths, rewards, challenges }),
+    };
+  }
+
+  /* Pushed screens and the check-in sheet. Kept in one place so the template
+     stays the three tab roots — each returns plain elements, not layout. */
+  overlay(ctx) {
+    const s = this.state;
+    const h = React.createElement;
+    const { at } = ctx;
+    const scrim = { position: 'absolute', inset: 0, background: '#161826', display: 'flex', flexDirection: 'column' };
+
+    const header = (title, sub) => h('div', { style: { flex: 'none', padding: '8px 20px 0' } }, [
+      h('div', { key: 'b', onClick: this.back, style: { display: 'flex', alignItems: 'center', gap: 7, color: AC, fontSize: 13, cursor: 'pointer', paddingBottom: 14 } },
+        [h('i', { key: 'i', className: 'ph ph-arrow-left', style: { fontSize: 15 } }), 'Back']),
+      h('div', { key: 't', style: { fontSize: 26, fontWeight: 500, letterSpacing: '-.02em', color: TXT } }, title),
+      sub ? h('div', { key: 's', style: { fontSize: 12.5, color: MUT, marginTop: 3, lineHeight: 1.45 } }, sub) : null,
+    ]);
+
+    const body = (children) => h('div', { className: 'scr', style: { gap: 0, paddingTop: 16 } }, children);
+    const row = (a, b, c, onClick) => h('div', { style: { cursor: onClick ? 'pointer' : 'default' } }, [
+      h('div', { key: 'r', onClick, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0' } }, [
+        h('span', { key: 1, style: { flex: 1, minWidth: 0 } }, [
+          h('span', { key: 'a', style: { display: 'block', fontSize: 14.5, color: TXT } }, a),
+          b ? h('span', { key: 'b', style: { display: 'block', fontSize: 12, color: DIM, marginTop: 2 } }, b) : null,
+        ]),
+        c ? h('span', { key: 2, style: { fontSize: 13, color: AC, flex: 'none' } }, c) : null,
+      ]),
+      h('div', { key: 'h', className: 'hair' }),
+    ]);
+
+    const rail = (cur) => h('div', { style: { flex: 'none', display: 'flex', gap: 18, fontSize: 12.5, padding: '14px 0 2px' } },
+      [['body', 'Body'], ['plog', 'Workouts'], ['goals', 'Goals'], ['charts', 'Charts'], ['coach', 'Coach']].map((t) =>
+        h('span', { key: t[0], onClick: () => this.go(t[0]), style: { color: cur === t[0] ? TXT : DIM, fontWeight: cur === t[0] ? 500 : 400, paddingBottom: 5, borderBottom: '2px solid ' + (cur === t[0] ? AC : 'transparent'), cursor: 'pointer' } }, t[1])));
+
+    const bar = (frac, tone) => h('div', { style: { marginTop: 9, height: 4, borderRadius: 2, background: '#292b31', overflow: 'hidden' } },
+      h('div', { style: { width: Math.max(2, Math.min(100, frac * 100)) + '%', height: '100%', background: tone || AC, boxShadow: '0 0 10px ' + (tone || AC) } }));
+
+    let page = null;
+
+    if (at('updates')) page = h('div', { style: scrim }, [
+      header('Updates', NOTES.length + ' total · ' + (s.unread || 'no') + ' unread'),
+      body([
+        h('div', { key: 'm', onClick: () => this.setState({ unread: 0 }), style: { flex: 'none', height: 42, borderRadius: 8, border: '1px solid rgba(233,233,237,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, color: s.unread ? AC : DIM, cursor: 'pointer', marginBottom: 18 } },
+          [h('i', { key: 'i', className: 'ph ph-checks', style: { fontSize: 16 } }), s.unread ? 'Mark all as read' : 'All read']),
+        ...NOTES.map((n, i) => h('div', { key: n.id, style: { flex: 'none' } }, [
+          h('div', { key: 'w', style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, margin: i === 0 || NOTES[i - 1].when !== n.when ? '6px 0 8px' : 0 } }, i === 0 || NOTES[i - 1].when !== n.when ? n.when : ''),
+          h('div', { key: 'r', style: { display: 'flex', gap: 10, padding: '12px 0' } }, [
+            h('span', { key: 'd', style: { width: 7, height: 7, borderRadius: '50%', background: s.unread && i < s.unread ? AC : 'transparent', marginTop: 6, flex: 'none' } }),
+            h('span', { key: 'b', style: { flex: 1 } }, [
+              h('span', { key: 1, style: { display: 'block', fontSize: 14.5, color: TXT } }, n.title),
+              h('span', { key: 2, style: { display: 'block', fontSize: 12.5, color: MUT, marginTop: 3, lineHeight: 1.45 } }, n.body),
+              h('span', { key: 3, style: { display: 'block', fontSize: 12, color: OFF, marginTop: 5 } }, n.ago),
+            ]),
+          ]),
+          h('div', { key: 'h', className: 'hair' }),
+        ])),
+      ]),
+    ]);
+
+    if (at('bookings')) page = h('div', { style: scrim }, [
+      header('My bookings', 'Requested, approved and past'),
+      body([
+        h('div', { key: 'u', style: { flex: 'none', fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, margin: '6px 0 4px' } }, 'Upcoming'),
+        row('Personal Training · Thu 17, 4:00 PM', 'Kenji Ramos · awaiting approval', 'Cancel', () => { this.setState({ cancelFor: 'Personal Training · Thu 17, 4:00 PM' }); this.go('cancel'); }),
+        ...s.booked.map((id) => {
+          const it = [].concat(SESSIONS.classes, SESSIONS.pt, SESSIONS.events).filter((x) => x.id === id)[0];
+          return h('div', { key: id }, row(it.name, DAYS[s.day].title + ' · ' + it.time, 'Cancel', () => this.setState({ booked: s.booked.filter((x) => x !== id) })));
+        }),
+        h('div', { key: 'p', style: { flex: 'none', fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, margin: '22px 0 4px' } }, 'Past'),
+        row('Boxing circuit', 'Sep 12 · attended', 'Rate', () => { this.setState({ ratingFor: 'Dan Ocampo', rating: 0 }); this.go('rate'); }),
+        row('Core & mobility', 'Sep 9 · attended', 'Rate', () => { this.setState({ ratingFor: 'Mara Villa', rating: 0 }); this.go('rate'); }),
+        row('Morning HIIT', 'Sep 5 · attended', null),
+      ]),
+    ]);
+
+    if (at('body')) page = h('div', { style: scrim }, [
+      header('Progress', null),
+      body([
+        rail('body'),
+        h('div', { key: 'v', style: { flex: 'none', display: 'flex', gap: 14, justifyContent: 'flex-end', fontSize: 12.5, marginTop: 14 } },
+          ['front', 'back'].map((v) => h('span', { key: v, onClick: () => this.setState({ view: v }), style: { color: s.view === v ? AC_L : DIM, cursor: 'pointer', textTransform: 'capitalize' } }, v))),
+        h('div', { key: 'g', style: { flex: 'none', display: 'flex', gap: 14, marginTop: 10 } }, [
+          h('svg', { key: 'svg', viewBox: '0 0 512 935', style: { width: 132, flex: 'none', isolation: 'isolate' } }, [
+            h('image', { key: 'f', href: s.view === 'front' ? 'assets/body-front.webp' : 'assets/body-back.webp', x: 0, y: 0, width: 512, height: 935 }),
+            ...ctx.bodyPaths.map((p) => h('path', { key: p.key, d: p.d, fill: p.fill, fillOpacity: p.op, stroke: p.stroke, strokeWidth: p.sw, strokeDasharray: p.dash, strokeLinejoin: 'round', onClick: p.on, style: { mixBlendMode: p.dash ? 'normal' : 'screen', cursor: 'pointer' } })),
+          ]),
+          h('div', { key: 'l', style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }, [
+            ...Object.keys(MUSCLES).map((k) => {
+              const mm = MUSCLES[k]; const on = s.muscle === k;
+              return h('div', { key: k, onClick: () => this.setState({ muscle: k }), style: { padding: '9px 0', cursor: 'pointer', borderBottom: '1px solid rgba(233,233,237,.08)' } }, [
+                h('div', { key: 1, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' } }, [
+                  h('span', { key: 'a', style: { fontSize: 13.5, color: on ? TXT : MUT } }, s.view === 'front' ? mm.label : mm.back),
+                  h('span', { key: 'b', style: { fontSize: 13.5, color: on ? TXT : MUT } }, mm.cm + ' cm'),
+                ]),
+                h('div', { key: 2, style: { fontSize: 12, color: on ? AC_L : DIM, marginTop: 2 } }, (mm.delta > 0 ? '+' : '') + mm.delta),
+              ]);
+            }),
+            h('div', { key: 'nm', style: { padding: '9px 0' } }, [
+              h('div', { key: 1, style: { fontSize: 13.5, color: OFF } }, 'Neck, shoulders, forearms, hips, calves'),
+              h('div', { key: 2, style: { fontSize: 12, color: OFF, marginTop: 2 } }, 'Not measured — tap one on the figure'),
+            ]),
+          ]),
+        ]),
+        h('div', { key: 'r1', className: 'rule', style: { margin: '16px 0' } }),
+        h('div', { key: 'd', style: { flex: 'none' } }, [
+          h('div', { key: 1, style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: AC } }, 'Showing · ' + ctx.mLabel),
+          ctx.m.verdict ? h('div', { key: 2, style: { fontSize: 15, color: TXT, marginTop: 8, lineHeight: 1.5 } }, ctx.m.verdict) : null,
+          h('div', { key: 3, style: { fontSize: 12.5, color: DIM, marginTop: 6, lineHeight: 1.5 } }, ctx.m.note),
+        ]),
+        h('div', { key: 's', style: { flex: 'none', marginTop: 20 } }, [
+          h('div', { key: 1, style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, marginBottom: 6 } }, 'Sessions that trained it'),
+          row('Boxing circuit', 'Sep 12', '45 min'),
+          row('Core & mobility', 'Sep 9', '30 min'),
+          row('Morning HIIT', 'Sep 5', '45 min'),
+        ]),
+        h('div', { key: 'a', style: { flex: 'none', display: 'flex', gap: 9, marginTop: 18 } }, [
+          h('div', { key: 1, onClick: () => this.go('measure'), style: { flex: 1, height: 46, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontSize: 14, fontWeight: 500, cursor: 'pointer' } }, [h('i', { key: 'i', className: 'ph ph-plus', style: { fontSize: 15 } }), 'New reading']),
+          h('div', { key: 2, onClick: () => this.go('charts'), style: { flex: 1, height: 46, borderRadius: 8, border: '1px solid rgba(233,233,237,.16)', color: '#b2b6ca', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontSize: 14, fontWeight: 500, cursor: 'pointer' } }, [h('i', { key: 'i', className: 'ph ph-chart-line', style: { fontSize: 15 } }), 'Chart']),
+        ]),
+      ]),
+    ]);
+
+    if (at('charts')) {
+      const ser = SERIES[s.metric];
+      const top = Math.max.apply(null, ser.vals);
+      page = h('div', { style: scrim }, [
+        header('Progress', null),
+        body([
+          rail('charts'),
+          h('div', { key: 'p', style: { flex: 'none', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 } },
+            Object.keys(SERIES).map((k) => h('div', { key: k, onClick: () => this.setState({ metric: k }), style: { padding: '8px 13px', borderRadius: 99, border: '1px solid ' + (s.metric === k ? AC : 'rgba(233,233,237,.16)'), background: s.metric === k ? 'color-mix(in srgb,#9184d9 14%,transparent)' : 'transparent', color: s.metric === k ? AC_L : '#b2b6ca', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' } }, SERIES[k].label))),
+          h('div', { key: 'c', style: { flex: 'none', display: 'flex', alignItems: 'flex-end', gap: 10, marginTop: 22 } },
+            ser.vals.map((v, i) => h('div', { key: i, style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 } }, [
+              h('div', { key: 1, style: { fontSize: 12, color: i === ser.vals.length - 1 ? AC_L : DIM } }, v),
+              h('div', { key: 2, style: { width: '100%', height: 30 + ((v - ser.floor) / (top - ser.floor)) * 140, background: i === ser.vals.length - 1 ? AC : '#292b31', borderRadius: 4, boxShadow: i === ser.vals.length - 1 ? '0 0 14px -4px ' + AC : 'none' } }),
+              h('div', { key: 3, style: { fontSize: 12, color: OFF } }, ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Now'][i]),
+            ]))),
+          h('div', { key: 'n', style: { flex: 'none', fontSize: 13, color: MUT, marginTop: 20, lineHeight: 1.55 } }, ser.note),
+          h('div', { key: 'u', style: { flex: 'none', fontSize: 12, color: OFF, marginTop: 8 } }, ser.unit ? 'Figures in ' + ser.unit + ', one reading a month.' : 'Counted from check-ins.'),
+        ]),
+      ]);
+    }
+
+    if (at('plog')) page = h('div', { style: scrim }, [
+      header('Progress', null),
+      body([
+        rail('plog'),
+        h('div', { key: 's', style: { flex: 'none', display: 'flex', gap: 22, padding: '20px 0 4px' } },
+          [['4', 'logged this month'], ['18', 'all time'], ['13,950', 'kg lifted in Sep']].map((x, i) => h('div', { key: i }, [
+            h('div', { key: 1, style: { fontSize: 24, fontWeight: 500, color: TXT, lineHeight: 1 } }, x[0]),
+            h('div', { key: 2, style: { fontSize: 12, color: MUT, marginTop: 5 } }, x[1]),
+          ]))),
+        h('div', { key: 'r', className: 'rule', style: { margin: '16px 0 4px' } }),
+        ...LOGGED.map((l) => h('div', { key: l.id }, row(l.name, l.date + ' · ' + l.meta, 'Open', () => { this.setState({ workout: l }); this.go('wdetail'); }))),
+        h('div', { key: 'b', onClick: () => this.go('tracker'), style: { flex: 'none', height: 46, marginTop: 18, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontSize: 14, fontWeight: 500, cursor: 'pointer' } }, [h('i', { key: 'i', className: 'ph ph-plus', style: { fontSize: 15 } }), 'Log a workout']),
+      ]),
+    ]);
+
+    if (at('wdetail') && s.workout) page = h('div', { style: scrim }, [
+      header(s.workout.name, s.workout.date + ' · ' + s.workout.meta),
+      body(WDETAIL.map((e, i) => h('div', { key: i }, row(e.name, e.meta, null)))),
+    ]);
+
+    if (at('goals')) page = h('div', { style: scrim }, [
+      header('Progress', null),
+      body([
+        rail('goals'),
+        h('div', { key: 'sp', style: { height: 16, flex: 'none' } }),
+        ...s.goals.map((id) => {
+          const g = GOALS[id];
+          const frac = Math.abs(g.have - g.start) / Math.abs(g.goal - g.start);
+          return h('div', { key: id, style: { flex: 'none', marginBottom: 18 } }, [
+            h('div', { key: 1, style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' } }, [
+              h('span', { key: 'a', style: { fontSize: 15, color: TXT } }, g.name),
+              h('span', { key: 'b', style: { fontSize: 13.5, color: AC_L } }, g.have + (g.unit ? ' ' + g.unit : '')),
+            ]),
+            bar(frac),
+            h('div', { key: 3, style: { display: 'flex', justifyContent: 'space-between', marginTop: 7 } }, [
+              h('span', { key: 'a', style: { fontSize: 12, color: DIM } }, g.note),
+              h('span', { key: 'b', onClick: () => this.setState({ goals: s.goals.filter((x) => x !== id) }), style: { fontSize: 12, color: DIM, cursor: 'pointer' } }, 'Remove'),
+            ]),
+          ]);
+        }),
+        s.goals.length === 0 ? h('div', { key: 'e', style: { flex: 'none', fontSize: 13, color: MUT, lineHeight: 1.6, marginBottom: 18 } }, 'No goal set. A goal is the only thing that turns a reading into a fraction — without one the app shows you numbers and nothing else.') : null,
+        h('div', { key: 'p', style: { flex: 'none', paddingTop: 4 } }, [
+          h('div', { key: 1, style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, marginBottom: 10 } }, 'Add a goal'),
+          h('div', { key: 2, style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
+            Object.keys(GOALS).filter((k) => s.goals.indexOf(k) < 0).map((k) => h('div', { key: k, onClick: () => { this.setState({ goals: s.goals.concat([k]) }); this.flash(GOALS[k].name + ' added'); }, style: { padding: '9px 13px', borderRadius: 99, border: '1px solid rgba(233,233,237,.16)', fontSize: 12.5, color: '#b2b6ca', cursor: 'pointer', whiteSpace: 'nowrap' } }, GOALS[k].name))),
+        ]),
+      ]),
+    ]);
+
+    if (at('coach')) page = h('div', { style: scrim }, [
+      header('Progress', null),
+      body([
+        rail('coach'),
+        h('div', { key: 'sp', style: { height: 18, flex: 'none' } }),
+        ...COACH_NOTES.map((n, i) => h('div', { key: i, style: { flex: 'none', marginBottom: 14, borderRadius: 12, background: i === 0 ? '#232532' : 'transparent', boxShadow: '0 0 0 1px #3f424d', padding: 15 } }, [
+          h('div', { key: 1, style: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUT } }, [h('span', { key: 'a', style: { color: i === 0 ? AC : MUT } }, n.from), h('span', { key: 'b' }, n.date)]),
+          h('div', { key: 2, style: { fontSize: 14, color: TXT, marginTop: 8, lineHeight: 1.55 } }, n.text),
+        ])),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: DIM, lineHeight: 1.55 } }, 'Notes are written after a session. Reply at the desk or in your next one — this is not a chat.'),
+      ]),
+    ]);
+
+    if (at('announcements')) page = h('div', { style: scrim }, [
+      header('Announcements', 'From the gym, to everyone'),
+      body(ANN.map((a) => h('div', { key: a.id, style: { flex: 'none', padding: '15px 0', borderBottom: '1px solid rgba(233,233,237,.08)' } }, [
+        h('div', { key: 1, style: { fontSize: 12, color: MUT } }, a.date),
+        h('div', { key: 2, style: { fontSize: 15, color: TXT, marginTop: 5 } }, a.title),
+        h('div', { key: 3, style: { fontSize: 13, color: '#b2b6ca', marginTop: 5, lineHeight: 1.55 } }, a.body),
+      ]))),
+    ]);
+
+    if (at('history')) page = h('div', { style: scrim }, [
+      header('Membership history', 'Every term, freeze and renewal'),
+      body(TERMS_HISTORY.map((t, i) => h('div', { key: i }, row(t.title, t.date + ' · ' + t.sub, null)))),
+    ]);
+
+    if (at('earn')) page = h('div', { style: scrim }, [
+      header('How you earn', 'One way, and it is the honest one'),
+      body([
+        h('div', { key: 'm', style: { flex: 'none', borderRadius: 12, boxShadow: '0 0 0 1px #3f424d', padding: 16 } }, [
+          h('div', { key: 1, style: { fontSize: 15, color: TXT } }, 'Twenty points a check-in'),
+          h('div', { key: 2, style: { fontSize: 12.5, color: MUT, marginTop: 5, lineHeight: 1.55 } }, 'Recorded when the desk scans your code. One check-in a day counts.'),
+        ]),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 13, color: MUT, marginTop: 18, lineHeight: 1.6 } }, 'Challenges pay a bonus on completion, and the gym occasionally runs an event that does. Nothing else earns points — no streak multipliers, no logging bonuses.'),
+        h('div', { key: 'b', className: 'rule', style: { margin: '20px 0 6px' } }),
+        row('Earned all time', '17 check-ins, 2 challenges', '640'),
+        row('Spent', 'One towel, one shaker', '−300'),
+        row('Balance', 'Available now', String(s.points)),
+      ]),
+    ]);
+
+    if (at('builder')) {
+      const step = QS[s.builderStep];
+      const done = s.builderStep >= QS.length;
+      page = h('div', { style: scrim }, [
+        h('div', { style: { flex: 'none', padding: '8px 20px 0' } }, [
+          h('div', { key: 'b', onClick: () => (s.builderStep === 0 ? this.back() : this.setState({ builderStep: s.builderStep - 1 })), style: { display: 'flex', alignItems: 'center', gap: 7, color: AC, fontSize: 13, cursor: 'pointer', paddingBottom: 16 } },
+            [h('i', { key: 'i', className: 'ph ph-arrow-left', style: { fontSize: 15 } }), s.builderStep === 0 ? 'Back' : 'Previous question']),
+          h('div', { key: 'p', style: { display: 'flex', gap: 5 } }, QS.map((_, i) => h('div', { key: i, style: { flex: 1, height: 3, borderRadius: 2, background: i <= s.builderStep ? AC : '#292b31' } }))),
+        ]),
+        body(done ? [
+          h('div', { key: 1, style: { flex: 'none', fontSize: 26, fontWeight: 500, color: TXT, letterSpacing: '-.02em', marginTop: 20 } }, 'Three days a week'),
+          h('div', { key: 2, style: { flex: 'none', fontSize: 13.5, color: MUT, marginTop: 8, lineHeight: 1.6 } }, 'Monday push, Wednesday pull, Friday legs and core. Forty-five minutes each, evenings, working around nothing.'),
+          h('div', { key: 3, onClick: () => { this.setState({ builderStep: 0, route: 'plan' }); this.flash('Plan saved'); }, style: { flex: 'none', height: 48, marginTop: 24, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'grid', placeItems: 'center', fontSize: 14.5, fontWeight: 500, cursor: 'pointer', boxShadow: '0 0 26px -8px ' + AC } }, 'Save this plan'),
+        ] : [
+          h('div', { key: 'c', style: { flex: 'none', fontSize: 12, color: MUT, marginTop: 24 } }, 'Question ' + (s.builderStep + 1) + ' of ' + QS.length),
+          h('div', { key: 'q', style: { flex: 'none', fontSize: 26, fontWeight: 500, color: TXT, letterSpacing: '-.02em', lineHeight: 1.2, marginTop: 8 } }, step.q),
+          h('div', { key: 'a', style: { flex: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 } },
+            step.a.map((a) => h('div', { key: a, onClick: () => this.setState({ builderAns: Object.assign({}, s.builderAns, { [s.builderStep]: a }), builderStep: s.builderStep + 1 }), style: { height: 52, borderRadius: 8, border: '1px solid ' + (s.builderAns[s.builderStep] === a ? AC : 'rgba(233,233,237,.16)'), background: s.builderAns[s.builderStep] === a ? 'color-mix(in srgb,#9184d9 12%,transparent)' : 'transparent', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 15, color: TXT, cursor: 'pointer' } }, a))),
+          h('div', { key: 's', onClick: () => this.setState({ builderStep: s.builderStep + 1 }), style: { flex: 'none', marginTop: 20, fontSize: 13, color: step.optional ? AC : DIM, cursor: 'pointer' } }, step.optional ? 'Skip' : ''),
+        ]),
+      ]);
+    }
+
+    if (at('measure')) page = h('div', { style: scrim }, [
+      header('Log a reading', ctx.mLabel + ' · last was ' + ctx.m.cm + ' cm'),
+      body([
+        h('div', { key: 'v', style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 12, marginTop: 24 } }, [
+          h('div', { key: 'm', onClick: () => this.setState({ measureVal: Math.round((s.measureVal - 0.5) * 10) / 10 }), style: { width: 52, height: 52, borderRadius: 8, border: '1px solid rgba(233,233,237,.16)', display: 'grid', placeItems: 'center', color: '#b2b6ca', fontSize: 19, cursor: 'pointer' } }, h('i', { className: 'ph ph-minus' })),
+          h('div', { key: 'v', style: { flex: 1, textAlign: 'center' } }, [
+            h('span', { key: 1, style: { fontSize: 46, fontWeight: 500, color: TXT, letterSpacing: '-.03em' } }, s.measureVal),
+            h('span', { key: 2, style: { fontSize: 15, color: MUT } }, ' cm'),
+          ]),
+          h('div', { key: 'p', onClick: () => this.setState({ measureVal: Math.round((s.measureVal + 0.5) * 10) / 10 }), style: { width: 52, height: 52, borderRadius: 8, border: '1px solid ' + AC, display: 'grid', placeItems: 'center', color: AC, fontSize: 19, cursor: 'pointer' } }, h('i', { className: 'ph ph-plus' })),
+        ]),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, textAlign: 'center', marginTop: 16, lineHeight: 1.55 } }, 'Seeded from your own last reading. Half a centimetre a tap. Nothing is saved until you press Save.'),
+        h('div', { key: 's', onClick: () => { this.flash('Reading saved'); this.go('body'); }, style: { flex: 'none', height: 48, marginTop: 26, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'grid', placeItems: 'center', fontSize: 14.5, fontWeight: 500, cursor: 'pointer', boxShadow: '0 0 26px -8px ' + AC } }, 'Save reading'),
+        h('div', { key: 'w', style: { flex: 'none', fontSize: 12.5, color: DIM, marginTop: 20, lineHeight: 1.55 } }, ctx.m.note),
+      ]),
+    ]);
+
+    if (at('rate') && s.ratingFor) page = h('div', { style: scrim }, [
+      header('Rate ' + s.ratingFor, 'Anonymous — the coach sees an average'),
+      body([
+        h('div', { key: 'st', style: { flex: 'none', display: 'flex', gap: 10, marginTop: 24 } },
+          [1, 2, 3, 4, 5].map((n) => h('i', { key: n, onClick: () => this.setState({ rating: n }), className: (s.rating >= n ? 'ph-fill' : 'ph') + ' ph-star', style: { fontSize: 34, color: s.rating >= n ? AC : OFF, cursor: 'pointer' } }))),
+        h('div', { key: 'c', style: { flex: 'none', marginTop: 24 } }, [
+          h('div', { key: 1, style: { fontSize: 12, color: MUT, marginBottom: 6 } }, 'Anything to add?'),
+          h('div', { key: 2, style: { minHeight: 90, borderRadius: 8, background: '#232532', border: '1px solid rgba(233,233,237,.16)', padding: 12, fontSize: 14, color: DIM } }, 'Optional'),
+        ]),
+        h('div', { key: 's', onClick: () => { this.flash('Thanks — sent anonymously'); this.back(); }, style: { flex: 'none', height: 48, marginTop: 20, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'grid', placeItems: 'center', fontSize: 14.5, fontWeight: 500, cursor: 'pointer' } }, 'Send rating'),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: DIM, marginTop: 18, lineHeight: 1.55 } }, 'You can rate a coach for two weeks after a session you attended.'),
+      ]),
+    ]);
+
+    if (at('cancel') && s.cancelFor) page = h('div', { style: scrim }, [
+      header('Cancel booking', s.cancelFor),
+      body([
+        h('div', { key: 'r', style: { flex: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 } },
+          ['Something came up', 'I am unwell', 'Wrong time booked', 'I would rather train alone'].map((r) => h('div', { key: r, onClick: () => { this.setState({ booked: [], cancelFor: null }); this.flash('Cancelled — the coach has been told'); this.back(); }, style: { height: 50, borderRadius: 8, border: '1px solid rgba(233,233,237,.16)', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 14.5, color: TXT, cursor: 'pointer' } }, r))),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, marginTop: 18, lineHeight: 1.6 } }, 'A reason is required — the gym reads these to spot a timetable that is not working. Cancelling more than two hours ahead does not count against you.'),
+      ]),
+    ]);
+
+    if (at('tracker')) page = h('div', { style: scrim }, [
+      header('Bench press', 'Set ' + (s.sets.length + 1) + ' · today'),
+      body([
+        h('div', { key: 'p', style: { flex: 'none', background: '#232532', borderRadius: 14, boxShadow: '0 0 0 1px #3f424d', padding: 18 } }, [
+          ...[['Weight', 'w', 2.5, ' kg'], ['Reps', 'r', 1, '']].map((f, idx) => h('div', { key: f[1], style: { marginTop: idx ? 16 : 0 } }, [
+            h('div', { key: 1, style: { fontSize: 12, color: MUT, marginBottom: 8 } }, f[0]),
+            h('div', { key: 2, style: { display: 'flex', alignItems: 'center', gap: 10 } }, [
+              h('div', { key: 'm', onClick: () => this.setState({ [f[1]]: Math.max(0, s[f[1]] - f[2]) }), style: { width: 46, height: 46, borderRadius: 8, border: '1px solid rgba(233,233,237,.16)', display: 'grid', placeItems: 'center', color: '#b2b6ca', fontSize: 17, cursor: 'pointer' } }, h('i', { className: 'ph ph-minus' })),
+              h('div', { key: 'v', style: { flex: 1, textAlign: 'center', fontSize: 30, fontWeight: 500, color: TXT } }, s[f[1]] + f[3]),
+              h('div', { key: 'p', onClick: () => this.setState({ [f[1]]: s[f[1]] + f[2] }), style: { width: 46, height: 46, borderRadius: 8, border: '1px solid ' + AC, display: 'grid', placeItems: 'center', color: AC, fontSize: 17, cursor: 'pointer' } }, h('i', { className: 'ph ph-plus' })),
+            ]),
+          ])),
+          h('div', { key: 'save', onClick: () => { this.setState({ sets: s.sets.concat([{ w: s.w, r: s.r }]) }); this.flash('Set saved'); }, style: { height: 48, marginTop: 18, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 14.5, fontWeight: 500, cursor: 'pointer', boxShadow: '0 0 26px -8px ' + AC } }, [h('i', { key: 'i', className: 'ph ph-check', style: { fontSize: 16 } }), 'Save set']),
+          h('div', { key: 'n', style: { fontSize: 12, color: MUT, textAlign: 'center', marginTop: 11, lineHeight: 1.5 } }, 'Every set saves as you enter it. Nothing is lost if you lock your phone.'),
+        ]),
+        h('div', { key: 'l', style: { flex: 'none', marginTop: 18 } }, [
+          h('div', { key: 1, style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, marginBottom: 6 } }, 'This session'),
+          ...s.sets.map((x, i) => h('div', { key: i }, row('Set ' + (i + 1), x.w + ' kg × ' + x.r, '✓'))),
+        ]),
+      ]),
+    ]);
+
+    if (at('workouts')) page = h('div', { style: scrim }, [
+      header('Free workouts', 'Written by the coaches here'),
+      body(WORKOUTS.map((w) => h('div', { key: w.id }, row(w.name, w.meta, 'Start', () => { this.setState({ route: 'tracker' }); this.flash(w.name + ' loaded'); })))),
+    ]);
+
+    if (at('plan')) page = h('div', { style: scrim }, [
+      header('Training plan', 'Three days a week, set in July'),
+      body([
+        h('div', { key: 'd', style: { flex: 'none', display: 'flex', gap: 6, marginBottom: 20 } },
+          ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => h('div', { key: i, style: { flex: 1, textAlign: 'center' } }, [
+            h('div', { key: 1, style: { height: 44, borderRadius: 8, border: '1px solid ' + ([0, 2, 4].indexOf(i) >= 0 ? AC : 'rgba(233,233,237,.16)'), background: [0, 2, 4].indexOf(i) >= 0 ? 'color-mix(in srgb,#9184d9 16%,transparent)' : 'transparent' } }),
+            h('div', { key: 2, style: { fontSize: 12, color: [0, 2, 4].indexOf(i) >= 0 ? AC_L : OFF, marginTop: 6 } }, d),
+          ]))),
+        row('Monday', 'Push · 50 min', 'Change'),
+        row('Wednesday', 'Pull · 50 min', 'Change'),
+        row('Friday', 'Legs and core · 45 min', 'Change'),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, marginTop: 18, lineHeight: 1.55 } }, 'You get a reminder the evening before each one. Six questions rebuild the plan if your week changes.'),
+        h('div', { key: 'b', onClick: () => this.setState({ builderStep: 0, route: 'builder' }), style: { flex: 'none', height: 46, marginTop: 18, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 500, cursor: 'pointer' } }, 'Rebuild my plan'),
+      ]),
+    ]);
+
+    if (at('trainers')) page = h('div', { style: scrim }, [
+      header('Coaches', 'Three at Mamburao'),
+      body(TRAINERS.map((t) => h('div', { key: t.id, onClick: () => this.setState({ trainer: t, route: 'trainer' }), style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: '1px solid rgba(233,233,237,.08)', cursor: 'pointer' } }, [
+        h('div', { key: 'a', style: { width: 42, height: 42, borderRadius: '50%', border: '1px solid ' + AC, background: 'color-mix(in srgb,#9184d9 14%,transparent)', color: AC_L, display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 500, flex: 'none' } }, t.init),
+        h('div', { key: 'b', style: { flex: 1 } }, [
+          h('div', { key: 1, style: { fontSize: 14.5, color: TXT } }, t.name),
+          h('div', { key: 2, style: { fontSize: 12, color: DIM, marginTop: 2 } }, t.meta),
+        ]),
+        h('i', { key: 'c', className: 'ph ph-caret-right', style: { fontSize: 15, color: DIM } }),
+      ]))),
+    ]);
+
+    if (at('trainer') && s.trainer) page = h('div', { style: scrim }, [
+      header(s.trainer.name, s.trainer.meta),
+      body([
+        h('div', { key: 'c', style: { flex: 'none', fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, marginBottom: 6 } }, 'Credentials'),
+        row('NASM Certified Personal Trainer', 'Verified by the gym, Mar 2026', null),
+        row('First aid and CPR', 'Verified by the gym, Jan 2026', null),
+        h('div', { key: 'r', style: { flex: 'none', fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: MUT, margin: '22px 0 6px' } }, 'Availability this week'),
+        row('Tuesday', '7:00 AM · 4:00 PM · 6:00 PM', 'Book', () => { this.setState({ tab: 'train', trainTab: 'pt', route: null }); }),
+        row('Thursday', '7:00 AM · 4:00 PM', 'Book', () => { this.setState({ tab: 'train', trainTab: 'pt', route: null }); }),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, marginTop: 18, lineHeight: 1.55 } }, 'Ratings you give are anonymous, and a coach only ever sees the average.'),
+      ]),
+    ]);
+
+    if (at('challenges')) page = h('div', { style: scrim }, [
+      header('Challenges', 'Counted from your real check-ins — nothing to tick off'),
+      body(ctx.challenges.map((c, i) => h('div', { key: i, style: { flex: 'none', marginBottom: 14, borderRadius: 14, boxShadow: '0 0 0 1px #3f424d', padding: 16, background: c.cta === 'Leave' ? '#232532' : 'transparent' } }, [
+        h('div', { key: 0, style: { fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: c.cta === 'Leave' ? AC : MUT, marginBottom: 8 } }, c.state),
+        h('div', { key: 1, style: { fontSize: 16, fontWeight: 500, color: TXT } }, c.name),
+        h('div', { key: 2, style: { fontSize: 12.5, color: MUT, marginTop: 4 } }, c.sub),
+        h('div', { key: 3, style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 14 } }, [
+          h('span', { key: 'a', style: { fontSize: 12, color: MUT } }, c.days),
+          h('span', { key: 'b', style: { fontSize: 15, color: TXT } }, c.count),
+        ]),
+        h('div', { key: 4, style: { marginTop: 9, height: 4, borderRadius: 2, background: '#292b31', overflow: 'hidden' } }, h('div', { style: { width: c.pct, height: '100%', background: AC, boxShadow: '0 0 10px ' + AC } })),
+        h('div', { key: 5, style: { display: 'flex', justifyContent: 'flex-end', marginTop: 14 } },
+          h('div', { onClick: c.on, style: { height: 36, padding: '0 15px', borderRadius: 8, border: c.br, color: c.fg, display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 500, cursor: 'pointer' } }, c.cta)),
+      ]))),
+    ]);
+
+    if (at('achievements')) page = h('div', { style: scrim }, [
+      header('Achievements', 'Level 3 · 340 points earned in all'),
+      body([
+        h('div', { key: 'p', style: { flex: 'none', marginBottom: 20 } }, [
+          h('div', { key: 1, style: { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: MUT } }, [h('span', { key: 'a' }, 'Level 3'), h('span', { key: 'b' }, '160 to level 4')]),
+          h('div', { key: 2, style: { marginTop: 9, height: 4, borderRadius: 2, background: '#292b31', overflow: 'hidden' } }, h('div', { style: { width: '68%', height: '100%', background: AC, boxShadow: '0 0 10px ' + AC } })),
+        ]),
+        ...[['First check-in', 'May 19, 2026', true], ['Ten sessions', 'Jul 2, 2026', true], ['Early bird · five 6 AM classes', 'Aug 14, 2026', true], ['Twelve in a month', 'Five to go', false], ['Hundred sessions', '62 to go', false]]
+          .map((a, i) => h('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: '1px solid rgba(233,233,237,.08)' } }, [
+            h('i', { key: 'i', className: a[2] ? 'ph-fill ph-seal-check' : 'ph ph-circle-dashed', style: { fontSize: 20, color: a[2] ? AC : OFF } }),
+            h('span', { key: 'b', style: { flex: 1 } }, [
+              h('span', { key: 1, style: { display: 'block', fontSize: 14.5, color: a[2] ? TXT : DIM } }, a[0]),
+              h('span', { key: 2, style: { display: 'block', fontSize: 12, color: OFF, marginTop: 2 } }, a[1]),
+            ]),
+          ])),
+      ]),
+    ]);
+
+    if (at('rewards')) page = h('div', { style: scrim }, [
+      header('Spend points', s.points + ' available · earn 20 a check-in'),
+      body(ctx.rewards.map((r, i) => h('div', { key: i, style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '15px 0', borderBottom: '1px solid rgba(233,233,237,.08)' } }, [
+        h('div', { key: 'a', style: { flex: 1, minWidth: 0 } }, [
+          h('div', { key: 1, style: { fontSize: 14.5, color: TXT } }, r.name),
+          h('div', { key: 2, style: { fontSize: 12, color: DIM, marginTop: 3 } }, r.sub),
+          h('div', { key: 3, style: { fontSize: 12.5, color: AC_L, marginTop: 6 } }, r.cost),
+          r.gap ? h('div', { key: 4, style: { fontSize: 12, color: OFF, marginTop: 4 } }, r.gap) : null,
+        ]),
+        h('div', { key: 'b', onClick: r.on, style: { height: 40, padding: '0 16px', borderRadius: 8, border: r.br, color: r.fg, display: 'grid', placeItems: 'center', fontSize: 13.5, fontWeight: 500, flex: 'none', cursor: 'pointer' } }, r.cta),
+      ]))),
+    ]);
+
+    if (at('payments')) page = h('div', { style: scrim }, [
+      header('Payments', 'Recorded at the desk'),
+      body([
+        row('₱1,500', 'Sep 4, 2026 · cash · Premium, one month', null),
+        row('₱1,500', 'Aug 4, 2026 · cash · Premium, one month', null),
+        row('₱1,500', 'Jul 3, 2026 · GCash · Premium, one month', null),
+        row('₱1,500', 'Jun 2, 2026 · cash · Premium, one month', null),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, marginTop: 18, lineHeight: 1.55 } }, 'Refunds follow the gym\u2019s policy: within seven days of payment and before your first check-in of the term.'),
+      ]),
+    ]);
+
+    if (at('attendance')) page = h('div', { style: scrim }, [
+      header('Attendance', '7 visits this month · 41 in all'),
+      body([
+        h('div', { key: 'g', style: { flex: 'none', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 20 } },
+          Array.from({ length: 28 }).map((_, i) => h('div', { key: i, style: { height: 30, borderRadius: 5, background: [1, 3, 6, 8, 11, 13, 15].indexOf(i) >= 0 ? AC : '#232532', opacity: i > 15 ? 0.35 : 1 } }))),
+        row('Sep 14', 'Morning HIIT · 6:02 AM', '+20'),
+        row('Sep 12', 'Boxing circuit · 5:04 PM', '+20'),
+        row('Sep 9', 'Core & mobility · 12:10 PM', '+20'),
+        row('Sep 5', 'Morning HIIT · 6:00 AM', '+20'),
+        row('Sep 2', 'Gym floor · 7:22 PM', '+20'),
+      ]),
+    ]);
+
+    if (at('includes')) page = h('div', { style: scrim }, [
+      header('Premium includes', 'And what it does not'),
+      body([
+        ...['Gym floor & lockers', 'All group classes', 'Personal training', 'Workout tracker', 'Training plan builder', 'Fitness assistant', 'Earn CORE Points', 'Spend CORE Points', 'Gym challenges']
+          .map((t, i) => h('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 0', borderBottom: '1px solid rgba(233,233,237,.08)' } }, [
+            h('i', { key: 'i', className: 'ph ph-check', style: { fontSize: 15, color: AC } }),
+            h('span', { key: 't', style: { fontSize: 14, color: TXT } }, t),
+          ])),
+        h('div', { key: 'x', style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 0' } }, [
+          h('i', { key: 'i', className: 'ph ph-minus', style: { fontSize: 15, color: OFF } }),
+          h('span', { key: 't', style: { fontSize: 14, color: OFF } }, 'Guest passes — Premium Plus only'),
+        ]),
+      ]),
+    ]);
+
+    if (at('renew')) page = h('div', { style: scrim }, [
+      header('Renew', 'Your 18 days carry over'),
+      body([
+        ...[['Premium', '₱1,500 · one month', true], ['Premium · three months', '₱4,200 · saves ₱300', false], ['Premium Plus', '₱2,100 · adds guest passes', false]]
+          .map((p, i) => h('div', { key: i, onClick: () => this.flash('Take this to the desk to pay'), style: { flex: 'none', borderRadius: 12, border: '1px solid ' + (p[2] ? AC : 'rgba(233,233,237,.16)'), background: p[2] ? 'color-mix(in srgb,#9184d9 10%,transparent)' : 'transparent', padding: 16, marginBottom: 10, cursor: 'pointer' } }, [
+            h('div', { key: 1, style: { fontSize: 15, color: TXT } }, p[0]),
+            h('div', { key: 2, style: { fontSize: 12.5, color: MUT, marginTop: 4 } }, p[1]),
+          ])),
+        h('div', { key: 'n', style: { flex: 'none', fontSize: 12.5, color: MUT, marginTop: 10, lineHeight: 1.55 } }, 'Payment is taken at the desk in cash or GCash. The app records it the moment the gym does.'),
+      ]),
+    ]);
+
+    if (at('settings')) page = h('div', { style: scrim }, [
+      header('Settings', 'Notifications, security and about'),
+      body([
+        ...[['push', 'Push notifications', 'Session approvals and reminders'], ['email', 'Email me too', 'The same messages, by email'], ['sound', 'Sound', 'A short tone on arrival']]
+          .map((p) => h('div', { key: p[0], onClick: () => this.setState({ prefs: Object.assign({}, s.prefs, { [p[0]]: !s.prefs[p[0]] }) }), style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: '1px solid rgba(233,233,237,.08)', cursor: 'pointer' } }, [
+            h('span', { key: 'a', style: { flex: 1 } }, [
+              h('span', { key: 1, style: { display: 'block', fontSize: 14.5, color: TXT } }, p[1]),
+              h('span', { key: 2, style: { display: 'block', fontSize: 12, color: DIM, marginTop: 2 } }, p[2]),
+            ]),
+            h('span', { key: 'b', style: { width: 44, height: 26, borderRadius: 13, border: '1px solid ' + (s.prefs[p[0]] ? AC : 'rgba(233,233,237,.16)'), background: s.prefs[p[0]] ? 'color-mix(in srgb,#9184d9 22%,transparent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: s.prefs[p[0]] ? 'flex-end' : 'flex-start', padding: 3, flex: 'none' } },
+              h('span', { style: { width: 18, height: 18, borderRadius: '50%', background: s.prefs[p[0]] ? AC : '#9397ab' } })),
+          ])),
+        h('div', { key: 'sp', style: { height: 12, flex: 'none' } }),
+        row('Change password', null, 'Open', () => this.flash('Opens the secure form')),
+        row('Change email', 'lea@corefitness-test.com', 'Open', () => this.flash('Opens the secure form')),
+        row('Privacy', 'What the gym can see', 'Read'),
+        row('Terms', 'Version of Aug 2026', 'Read'),
+        h('div', { key: 'v', style: { flex: 'none', fontSize: 12, color: OFF, marginTop: 18 } }, 'Core Fitness Mamburao · build 1.0'),
+      ]),
+    ]);
+
+    if (at('profile')) page = h('div', { style: scrim }, [
+      header('Edit profile', 'The desk sees these details'),
+      body([
+        ...[['Full name', 'Lea Lorenzana'], ['Email', 'lea@corefitness-test.com'], ['Phone', '+63 917 111 2222'], ['Date of birth', '19 March 1998'], ['Emergency contact', 'Ana Lorenzana · +63 917 222 3333']]
+          .map((f, i) => h('div', { key: i, style: { flex: 'none', marginBottom: 14 } }, [
+            h('div', { key: 1, style: { fontSize: 12, color: MUT, marginBottom: 6 } }, f[0]),
+            h('div', { key: 2, style: { height: 46, borderRadius: 8, background: '#232532', border: '1px solid rgba(233,233,237,.16)', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 15, color: TXT } }, f[1]),
+          ])),
+        h('div', { key: 'b', onClick: () => { this.flash('Saved'); this.back(); }, style: { flex: 'none', height: 48, borderRadius: 8, border: '1px solid ' + AC, color: AC, display: 'grid', placeItems: 'center', fontSize: 14.5, fontWeight: 500, cursor: 'pointer', marginTop: 6 } }, 'Save changes'),
+      ]),
+    ]);
+
+    if (at('assistant')) page = h('div', { style: scrim }, [
+      header('Ask the coach', 'Answers use your own data'),
+      h('div', { className: 'scr', style: { gap: 12, paddingTop: 18 } }, [
+        ...s.chat.map((c, i) => h('div', { key: i, style: { flex: 'none', alignSelf: c.who === 'me' ? 'flex-end' : 'flex-start', maxWidth: '82%', padding: '11px 14px', borderRadius: 12, fontSize: 14, lineHeight: 1.5, color: c.who === 'me' ? AC_L : TXT, background: c.who === 'me' ? 'color-mix(in srgb,#9184d9 16%,transparent)' : '#232532', border: c.who === 'me' ? '1px solid ' + AC : '1px solid #3f424d' } }, c.text)),
+        s.chat.length === 0 ? h('div', { key: 'e', style: { flex: 'none', fontSize: 13, color: MUT, lineHeight: 1.6 } }, 'It can see your check-ins, your plan and your readings. It cannot book for you.') : null,
+        h('div', { key: 'q', style: { flex: 'none', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 } },
+          Object.keys(ANSWERS).map((q) => h('div', { key: q, onClick: () => this.setState({ chat: s.chat.concat([{ who: 'me', text: q }, { who: 'bot', text: ANSWERS[q] }]) }), style: { alignSelf: 'flex-start', padding: '9px 13px', borderRadius: 99, border: '1px solid rgba(233,233,237,.16)', fontSize: 13, color: '#b2b6ca', cursor: 'pointer' } }, q))),
+      ]),
+    ]);
+
+    const sheet = s.checkin ? h('div', { key: 'sheet' }, [
+      h('div', { key: 'bg', onClick: () => this.setState({ checkin: false }), style: { position: 'absolute', inset: 0, background: 'rgba(14,15,24,.74)' } }),
+      h('div', { key: 'cd', style: { position: 'absolute', left: 0, right: 0, bottom: 0, background: '#232532', borderRadius: '20px 20px 38px 38px', boxShadow: '0 -1px 0 #9397ab,0 -18px 44px rgba(0,0,0,.6)', padding: '12px 20px 34px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 } }, [
+        h('div', { key: 1, style: { width: 42, height: 4, borderRadius: 2, background: 'rgba(233,233,237,.25)' } }),
+        h('div', { key: 2, style: { textAlign: 'center' } }, [
+          h('div', { key: 'a', style: { fontSize: 20, fontWeight: 500, color: TXT } }, s.checkedIn ? 'Checked in' : 'Check in'),
+          h('div', { key: 'b', style: { fontSize: 12.5, color: '#b2b6ca', marginTop: 3 } }, s.checkedIn ? 'Scanned at 9:41. Twenty points added.' : 'Show this at the desk. It refreshes every 60 seconds.'),
+        ]),
+        h('div', { key: 3, style: { width: 224, height: 224, borderRadius: 14, background: s.checkedIn ? '#292b31' : '#e9e9ed', display: 'grid', placeItems: 'center', boxShadow: s.checkedIn ? 'none' : '0 0 40px -10px ' + AC } },
+          h('i', { className: s.checkedIn ? 'ph ph-check-circle' : 'ph ph-qr-code', style: { fontSize: s.checkedIn ? 90 : 176, color: s.checkedIn ? AC : '#161826' } })),
+        h('div', { key: 4, style: { fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 19, letterSpacing: '.34em', color: AC_L } }, 'CF 4B7K'),
+        h('div', { key: 5, style: { fontSize: 12, color: MUT } }, 'Premium · valid to Oct 4'),
+        h('div', { key: 6, onClick: () => this.setState({ checkin: false, checkedIn: true, points: s.checkedIn ? s.points : s.points + 20 }), style: { width: '100%', height: 48, borderRadius: 8, border: '1px solid ' + (s.checkedIn ? 'rgba(233,233,237,.16)' : AC), color: s.checkedIn ? '#b2b6ca' : AC, display: 'grid', placeItems: 'center', fontSize: 14.5, fontWeight: 500, cursor: 'pointer' } }, s.checkedIn ? 'Close' : 'Simulate the desk scan'),
+      ]),
+    ]) : null;
+
+    const GROUPS = [
+      ['Today', [['updates', 'Updates'], ['announcements', 'Announcements'], ['assistant', 'Ask the coach']]],
+      ['Train', [['bookings', 'My bookings'], ['plan', 'Training plan'], ['builder', 'Rebuild my plan'], ['workouts', 'Free workouts'], ['tracker', 'Track a lift'], ['trainers', 'Coaches'], ['challenges', 'Challenges']]],
+      ['Progress', [['body', 'Body'], ['plog', 'Logged workouts'], ['goals', 'Goals'], ['charts', 'Charts'], ['coach', 'Coach notes'], ['achievements', 'Achievements & level'], ['measure', 'Log a reading']]],
+      ['Account', [['history', 'Membership history'], ['includes', 'What Premium includes'], ['renew', 'Renew'], ['payments', 'Payments'], ['attendance', 'Attendance'], ['rewards', 'Spend points'], ['earn', 'How you earn'], ['profile', 'Edit profile'], ['settings', 'Settings']]],
+    ];
+
+    const menu = s.menu ? h('div', { key: 'menu', style: { position: 'absolute', inset: 0, background: '#161826', display: 'flex', flexDirection: 'column' } }, [
+      h('div', { key: 'h', style: { flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 6px' } }, [
+        h('div', { key: 1, style: { fontSize: 31, fontWeight: 500, letterSpacing: '-.028em', color: TXT } }, 'Everything'),
+        h('div', { key: 2, onClick: () => this.setState({ menu: false }), style: { width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233,233,237,.14)', display: 'grid', placeItems: 'center', color: '#b2b6ca', fontSize: 16, cursor: 'pointer' } }, h('i', { className: 'ph ph-x' })),
+      ]),
+      h('div', { key: 'b', className: 'scr', style: { gap: 0 } }, GROUPS.map((g) => h('div', { key: g[0], style: { flex: 'none', marginBottom: 24 } }, [
+        h('div', { key: 'e', style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 } }, [
+          h('span', { key: 1, style: { width: 14, height: 2, background: AC, borderRadius: 1 } }),
+          h('span', { key: 2, style: { fontSize: 11.5, letterSpacing: '.14em', textTransform: 'uppercase', color: MUT } }, g[0]),
+        ]),
+        ...g[1].map((it) => h('div', { key: it[0], onClick: () => this.setState({ menu: false, route: it[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderBottom: '1px solid rgba(233,233,237,.08)', cursor: 'pointer' } }, [
+          h('span', { key: 1, style: { fontSize: 15, color: TXT } }, it[1]),
+          h('i', { key: 2, className: 'ph ph-arrow-up-right', style: { fontSize: 15, color: DIM } }),
+        ])),
+      ]))),
+    ]) : null;
+
+    const toast = s.toast ? h('div', { key: 'toast', style: { position: 'absolute', left: 20, right: 20, bottom: 104, padding: '12px 14px', borderRadius: 10, background: '#232532', boxShadow: '0 0 0 1px #9397ab,0 10px 30px rgba(0,0,0,.6)', fontSize: 13, color: TXT } }, s.toast) : null;
+
+    return h(React.Fragment, null, [page, menu, sheet, toast]);
+  }
+}
+
+</script>
+</body>
+</html>

@@ -107,7 +107,8 @@ async (page) => {
   check('R2 the screen SAYS why, rather than rendering nothing',
     /Evaluations open after your first session/i.test(body), body.slice(0, 120));
   check('R3 it offers the thing that would make them eligible',
-    (await page.getByRole('button', { name: /^Book a session$/ }).count()) === 1);
+    // Nocturne: the one booking button sits above the lock and names the coach.
+    (await page.getByRole('button', { name: /^Book (a session|with )/ }).count()) === 1);
 
   // ── Eligible: stars, and a submit that actually posts ─────────────────────
   mayRate = true;
@@ -128,7 +129,7 @@ async (page) => {
   const picked = await page.locator('[role="radio"][aria-checked="true"]').count();
   check('R6 the chosen star is marked selected', picked === 1, `${picked} checked`);
 
-  await page.getByRole('button', { name: /Submit evaluation|Save changes/i }).first().click().catch(() => {});
+  await page.getByRole('button', { name: /(Submit|Send) evaluation|Save changes/i }).first().click().catch(() => {});
   await page.waitForTimeout(1200);
   check('R7 submitting posts the rating', posted != null && /"stars":4/.test(posted), posted ?? 'NOTHING SENT');
   check('R8 the month is sent, so it lands in the right period',

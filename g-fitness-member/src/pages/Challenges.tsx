@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flag, AlertTriangle, Check, Sparkles, ChevronDown } from 'lucide-react';
-import { panelStyle } from '../components/ui/Card';
+import { Check, WarningCircle } from '@phosphor-icons/react';
+import { Page, PageTitle } from '../components/ui/page';
+import { Eyebrow, NocButton, Panel, ProgressBar, StatusPill } from '../components/ui/noc';
+import { SkeletonList } from '../components/ui/Skeleton';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listChallenges, joinChallenge, leaveChallenge, type Challenge } from '../lib/api/challenges';
 import { errorMessage } from '../utils/errorMessage';
 
 /**
- * Gym challenges (migration 0052).
+ * Gym challenges (migration 0052, Nocturne redesign).
  *
  * ## The progress bar is the whole feature
  *
@@ -31,7 +32,6 @@ function daysLeft(endsOn: string): number {
 }
 
 export default function Challenges() {
-  const navigate = useNavigate();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,9 @@ export default function Challenges() {
   }, [load]);
 
   const toggle = async (c: Challenge) => {
-    if (!memberId) return;
+    // `busy` guards a double tap: the join card is a whole-panel target with
+    // no `disabled` of its own, and two taps would send two joins.
+    if (!memberId || busy) return;
     setBusy(c.id);
     setError(null);
     try {
@@ -90,216 +92,134 @@ export default function Challenges() {
     { key: 'done',      label: 'Completed',      rows: items.filter((c) => c.completedOn != null),              collapsed: true  },
   ];
 
-  const Header = (
-    <div className="flex items-center gap-3 mb-4">
-      <button onClick={() => navigate(-1)}
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-        <ArrowLeft size={18} />
-      </button>
-      <div className="min-w-0">
-        <h1 className="display text-xl text-white leading-none">Challenges</h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Counted from your real check-ins — nothing to tick off
-        </p>
-      </div>
-    </div>
+  const title = (
+    <PageTitle back title="Challenges" subtitle="Counted from your real check-ins — nothing to tick off" />
   );
 
-  if (loading) {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        <p className="text-xs px-1" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
-      </div>
-    );
-  }
+  if (loading) return <Page>{title}<SkeletonList count={3} /></Page>;
 
   return (
-    <FeatureLock
-      feature="challenges"
-      context={<div className="flex-1 min-h-0 flex flex-col">{Header}</div>}
-    >
-      <div className="flex-1 min-h-0 flex flex-col">
-        {Header}
-        {/* The dock floats over this scroller, so the scroll has to end above
-            it — the same clearance `<Page>` applies, from the same token. */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3"
-          style={{ paddingBottom: 'var(--dock-clear)' }}>
+    <Page>
+      {title}
+      {/* One scroller, the page's own. This used to scroll inside an inner
+          `overflow-y-auto` that owed the floating dock its own clearance — one
+          of the two screens CLAUDE.md names for exactly that. */}
+      <FeatureLock feature="challenges" context={null}>
+        <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
           {error && (
-            <div className="px-3 py-2.5 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
-                 style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
+            <p className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+              <WarningCircle size={15} className="flex-none" style={{ marginTop: 1 }} /> {error}
+            </p>
           )}
 
           {items.length === 0 ? (
-            <div className="p-5 rounded-2xl text-center" style={panelStyle}>
-              <Flag size={20} className="mx-auto mb-2" style={{ color: 'var(--color-text-muted)' }} />
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                No challenges running right now. The gym adds these from time to time.
-              </p>
-            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+              No challenges running right now. The gym adds these from time to time.
+            </p>
           ) : (
-            /*
-              Three groups, not one list.
-
-              A challenge you finished in March sat between one you are halfway
-              through and one you have not joined — the same mixing that made
-              Goals unreadable. What you are *doing* comes first, what you could
-              join comes next, and what is finished goes behind a button: it is
-              a record, and there is nothing left to do on it.
-            */
+            /* Three groups, not one list: what you are doing, what you could
+               join, and — behind a control — what is finished, which is a record
+               with nothing left to do on it. */
             renderGroups.map(({ key, label, rows, collapsed }) => rows.length === 0 ? null : (
-              <div key={key} className="space-y-2">
+              <section key={key} className="flex flex-col" style={{ gap: 12 }}>
                 {collapsed ? (
-                  <button
-                    onClick={() => setShowDone((v) => !v)}
-                    className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
-                    style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-                  >
-                    <Check size={13} style={{ color: 'var(--color-primary)' }} />
+                  <NocButton variant="ghost" icon={<Check size={15} />} onClick={() => setShowDone((v) => !v)}>
                     {showDone ? 'Hide completed' : `Show ${rows.length} completed`}
-                    <ChevronDown size={13} style={{
-                      transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 150ms',
-                    }} />
-                  </button>
+                  </NocButton>
                 ) : (
-                  <p className="text-[12px] font-bold uppercase tracking-wider px-1"
-                    style={{ color: 'var(--color-text-muted)' }}>{label}</p>
+                  <Eyebrow mark={key === 'active'}>{label}</Eyebrow>
                 )}
                 {(!collapsed || showDone) && rows.map((c) => {
-              const pct = c.progress == null ? 0
-                : Math.min(100, Math.round((c.progress / c.target) * 100));
-              const done = c.completedOn != null;
-              const left = daysLeft(c.endsOn);
+                  const done = c.completedOn != null;
+                  const left = daysLeft(c.endsOn);
 
-              /*
-                The whole card joins; only leaving needs aiming at.
+                  /*
+                    The whole card joins; only leaving needs aiming at.
 
-                Every one of these cards looked like a control and only a 60px
-                pill in the corner was one — you could tap the title, the
-                description, the points, the days left, and nothing happened.
-                On a phone that reads as a broken screen rather than as a card
-                with a button on it.
+                    Every card looked like a control and only a 60px pill was one,
+                    so tapping the title did nothing — a broken screen, to a
+                    member. An unjoined challenge *is* the button. The asymmetry is
+                    deliberate: joining is undone by one tap, leaving gives up a
+                    place you may be seven sessions into, so the safe direction
+                    gets the big target. Never a <button> inside a <button>: when
+                    the card is the control, the "Join" word is a <span>.
+                  */
+                  const cardJoins = !c.joined && !done;
 
-                So an unjoined challenge *is* the button, and the pill stays as
-                the visible affordance rather than as the only target. The
-                asymmetry is deliberate: joining is additive and undone by one
-                tap, while leaving gives up a place in something you may be
-                seven sessions into. The safe direction gets the big target;
-                the undoing direction stays deliberate.
-
-                Never a <button> inside a <button> — invalid, and the inner one
-                swallows the outer's clicks in exactly the corner a member aims
-                for. When the card is the control the pill renders as a <span>.
-              */
-              const cardJoins = !c.joined && !done;
-
-              const body = (
-                <>
-                  {/* Only when the gym attached one. */}
-                  {c.imageUrl && (
-                    <img
-                      src={c.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      className="w-full rounded-xl object-cover mb-3"
-                      style={{ aspectRatio: '16 / 9', background: 'var(--color-surface-high)' }}
-                    />
-                  )}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-white">{c.title}</p>
-                      {c.description && (
-                        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                          {c.description}
-                        </p>
+                  const body = (
+                    <>
+                      {c.imageUrl && (
+                        <img src={c.imageUrl} alt="" loading="lazy" className="w-full object-cover"
+                          style={{ aspectRatio: '16 / 9', marginBottom: 12, borderRadius: 10, background: 'var(--color-surface-high)' }} />
                       )}
-                    </div>
-                    {done && (
-                      <span className="text-[12px] px-2 py-1 rounded-full font-bold flex items-center gap-1 flex-shrink-0"
-                            style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                        <Check size={10} /> Done
-                      </span>
-                    )}
-                  </div>
-
-                  {c.joined && (
-                    <div className="mt-3">
-                      <div className="flex items-baseline justify-between mb-1.5">
-                        <span className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
-                          {c.metricLabel}
-                        </span>
-                        <span className="text-[12px] font-bold text-white">
-                          {c.progress == null ? '—' : c.progress} / {c.target}
-                        </span>
+                      <div className="flex items-start justify-between" style={{ gap: 12 }}>
+                        <div className="min-w-0">
+                          <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary)' }}>{c.title}</p>
+                          {c.description && (
+                            <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>{c.description}</p>
+                          )}
+                        </div>
+                        {done && <StatusPill label="Done" tone="structure" />}
                       </div>
-                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-bg)' }}>
-                        <div className="h-full rounded-full transition-all"
-                             style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
-                      </div>
-                      {c.progress == null && (
-                        <p className="text-[12px] mt-1.5" style={{ color: 'var(--color-secondary)' }}>
-                          Your progress couldn&apos;t be counted just now — this isn&apos;t zero,
-                          it&apos;s unknown.
+
+                      {c.joined && (
+                        <div style={{ marginTop: 14 }}>
+                          <div className="flex items-baseline justify-between" style={{ fontSize: 12 }}>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{c.metricLabel}</span>
+                            <span style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+                              {c.progress == null ? '—' : c.progress} / {c.target}
+                            </span>
+                          </div>
+                          {/* No bar for an unknown count — "you have done nothing"
+                              is a claim, and a wrong one would discourage for no
+                              reason. The sentence says it is unknown, not zero. */}
+                          <ProgressBar style={{ marginTop: 9 }}
+                            fraction={c.progress == null || c.target <= 0 ? null : c.progress / c.target} />
+                          {c.progress == null && (
+                            <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-secondary)' }}>
+                              Your progress could not be counted just now — this is unknown, not zero.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between" style={{ gap: 12, marginTop: 14 }}>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                          {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
+                          {c.rewardPoints > 0 && (
+                            <span style={{ color: 'var(--color-primary-300)' }}> · {c.rewardPoints} points</span>
+                          )}
                         </p>
-                      )}
-                    </div>
-                  )}
+                        {cardJoins ? (
+                          <span className="flex-none grid place-items-center" style={{
+                            height: 36, padding: '0 15px', borderRadius: 'var(--radius-btn)', fontSize: 13, fontWeight: 500,
+                            color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
+                            opacity: busy === c.id ? 0.5 : 1,
+                          }}>
+                            {busy === c.id ? '…' : 'Join'}
+                          </span>
+                        ) : !done ? (
+                          <button onClick={() => toggle(c)} disabled={busy === c.id} className="flex-none disabled:opacity-50"
+                            style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                            {busy === c.id ? '…' : 'Leave'}
+                          </button>
+                        ) : null}
+                      </div>
+                    </>
+                  );
 
-                  <div className="flex items-center justify-between gap-3 mt-3">
-                    <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
-                      {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
-                      {c.rewardPoints > 0 && (
-                        <span style={{ color: 'var(--color-primary)' }}>
-                          {' · '}<Sparkles size={9} className="inline" /> {c.rewardPoints} points
-                        </span>
-                      )}
-                    </p>
-
-                    {/* Same pill either way. A <span> when the card around it
-                        is the button, a real <button> when leaving. */}
-                    {cardJoins ? (
-                      <span className="px-3.5 h-9 rounded-full text-[12px] font-bold flex items-center flex-shrink-0"
-                        style={{ background: 'var(--color-secondary)', color: '#1A1200',
-                                 opacity: busy === c.id ? 0.5 : 1 }}>
-                        {busy === c.id ? '…' : 'Join'}
-                      </span>
-                    ) : !done ? (
-                      <button onClick={() => toggle(c)} disabled={busy === c.id}
-                        className="px-3.5 h-9 rounded-full text-[12px] font-bold disabled:opacity-50 flex-shrink-0"
-                        style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
-                        {busy === c.id ? '…' : 'Leave'}
-                      </button>
-                    ) : null}
-                  </div>
-                </>
-              );
-
-              return cardJoins ? (
-                <button
-                  key={c.id}
-                  onClick={() => toggle(c)}
-                  disabled={busy === c.id}
-                  aria-label={`Join ${c.title}`}
-                  className="w-full p-4 rounded-2xl text-left transition-transform active:scale-[0.99] disabled:cursor-not-allowed"
-                  style={panelStyle}
-                >
-                  {body}
-                </button>
-              ) : (
-                <div key={c.id} className="p-4 rounded-2xl" style={panelStyle}>
-                  {body}
-                </div>
-              );
-            })}
-              </div>
+                  return cardJoins ? (
+                    <Panel key={c.id} onClick={() => toggle(c)} ariaLabel={`Join ${c.title}`}>{body}</Panel>
+                  ) : (
+                    // Joined is filled: the one you are in reads first.
+                    <Panel key={c.id} filled={c.joined && !done}>{body}</Panel>
+                  );
+                })}
+              </section>
             ))
           )}
         </div>
-      </div>
-    </FeatureLock>
+      </FeatureLock>
+    </Page>
   );
 }

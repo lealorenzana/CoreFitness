@@ -1,14 +1,20 @@
 import * as React from 'react';
-import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { CheckCircle, WarningCircle, Info, X } from '@phosphor-icons/react';
 
 /**
- * Standardized toast system for the member app.
- * Renders inside the phone frame so toasts stay constrained to the mobile viewport.
+ * The toast (Nocturne redesign).
  *
- * Usage:
- *   import { toast } from '@/components/ui/Toast';
- *   toast.success('Saved!');
- *   toast.error('Something went wrong');
+ *   import { toast } from '../components/ui/Toast';
+ *   toast.success('Saved');
+ *
+ * **Above the bar, not under the status bar.** A toast reports the result of
+ * something the member just did with their thumb, so it appears near the thumb
+ * — and never over the header, where it used to cover the title of the screen it
+ * was reporting on.
+ *
+ * Colour by role, never by traffic light: a good result is violet (a state you
+ * now have), a refusal or warning is amber (something to act on). Info had a
+ * light-blue edge — a third accent this palette does not have — and is violet.
  */
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -25,9 +31,11 @@ let _setToasts: React.Dispatch<React.SetStateAction<ToastItem[]>> | null = null;
 const push = (message: string, type: ToastType) => {
   const id = ++_counter;
   _setToasts?.((prev) => [...prev, { id, message, type }]);
+  // Refusals stay a little longer: they are usually a sentence to read, and a
+  // confirmation is usually a word to glance at.
   setTimeout(() => {
     _setToasts?.((prev) => prev.filter((t) => t.id !== id));
-  }, 3000);
+  }, type === 'error' || type === 'warning' ? 4000 : 2600);
 };
 
 export const toast = {
@@ -37,11 +45,11 @@ export const toast = {
   warning: (m: string) => push(m, 'warning'),
 };
 
-const ICONS: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle  size={16} style={{ color: 'var(--color-primary)' }} />,
-  error:   <XCircle      size={16} style={{ color: 'var(--color-secondary)' }} />,
-  info:    <Info         size={16} style={{ color: 'var(--color-primary)' }} />,
-  warning: <AlertTriangle size={16} style={{ color: 'var(--color-secondary)' }} />,
+const ROLE: Record<ToastType, string> = {
+  success: 'var(--color-primary-400)',
+  info: 'var(--color-primary-400)',
+  error: 'var(--color-secondary)',
+  warning: 'var(--color-secondary)',
 };
 
 export function Toaster() {
@@ -53,32 +61,41 @@ export function Toaster() {
   }, []);
 
   return (
-    <div className="absolute top-12 left-3 right-3 z-[300] flex flex-col gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className="phone-toast pointer-events-auto flex items-center gap-2 px-3 py-2.5 rounded-xl shadow-lg text-xs font-semibold"
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: `1px solid ${
-              t.type === 'success' ? 'rgba(124,58,237,0.40)' :
-              t.type === 'error'   ? 'rgba(245,158,11,0.40)' :
-              t.type === 'warning' ? 'rgba(245,158,11,0.40)' :
-                                     'rgba(96,165,250,0.4)'
-            }`,
-            color: '#fff',
-          }}
-        >
-          {ICONS[t.type]}
-          <span className="flex-1 leading-snug">{t.message}</span>
-          <button
-            onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-            style={{ color: 'var(--color-text-muted)' }}
+    <div
+      role="status"
+      aria-live="polite"
+      className="absolute z-[300] flex flex-col pointer-events-none"
+      style={{
+        left: 'var(--gutter)', right: 'var(--gutter)', gap: 8,
+        bottom: 'calc(var(--bar-height) + env(safe-area-inset-bottom) + 12px)',
+      }}
+    >
+      {toasts.map((t) => {
+        const Icon = t.type === 'success' ? CheckCircle : t.type === 'info' ? Info : WarningCircle;
+        return (
+          <div
+            key={t.id}
+            className="phone-toast pointer-events-auto flex items-center"
+            style={{
+              gap: 10, padding: '12px 14px', borderRadius: 10,
+              background: 'var(--color-surface)',
+              boxShadow: '0 0 0 1px rgba(233, 233, 237, 0.18), 0 10px 30px rgba(0, 0, 0, 0.6)',
+              fontSize: 13, color: 'var(--color-text-primary)',
+            }}
           >
-            <X size={12} />
-          </button>
-        </div>
-      ))}
+            <Icon size={17} weight="fill" className="flex-shrink-0" style={{ color: ROLE[t.type] }} />
+            <span className="flex-1 leading-snug">{t.message}</span>
+            <button
+              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              aria-label="Dismiss"
+              className="grid place-items-center flex-shrink-0"
+              style={{ width: 28, height: 28, margin: -6, color: 'var(--color-text-muted)' }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

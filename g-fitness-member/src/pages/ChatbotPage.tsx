@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Sparkles, History, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
+import { PaperPlaneRight, Trash } from '@phosphor-icons/react';
 import RichText from '../components/ui/RichText';
-import { panelStyle } from '../components/ui/Card';
+import { PageTitle } from '../components/ui/page';
+import { Chip } from '../components/ui/noc';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberHome } from '../services/memberHomeService';
 import { listPlans } from '../lib/api/membershipPlans';
@@ -67,9 +67,9 @@ const GREETING_ID = 'greeting';
 
 /**
  * The assistant is an entitlement (`ai_model`, 0049), so the route locks and
- * explains rather than disappearing. The floating chathead is hidden for plans
- * without it (see Layout) — but anything already linking here, and anyone who
- * kept the URL, lands on the reason instead of a blank screen.
+ * explains rather than disappearing: Today's "Ask the assistant" and the More sheet
+ * link here, and a member without it lands on the reason instead of a blank
+ * screen. (The floating chathead that used to open this is gone — Nocturne.)
  */
 export default function ChatbotPage() {
   return (
@@ -80,7 +80,6 @@ export default function ChatbotPage() {
 }
 
 function Assistant() {
-  const navigate = useNavigate();
   const [ctx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -225,12 +224,12 @@ function Assistant() {
       // one. It only ever sees a question the table could not answer.
       let answer = answerFor(trimmed, ctx);
 
-      // The escalation is a paid feature (0049) — the rules are not. Everyone
-      // keeps the assistant and the ~98% it answers; only the model call is
-      // withheld, so a free member is never locked out of asking a question,
-      // they just get the free answer. Skipping the call here saves a round
-      // trip; the Edge Function checks the same entitlement itself, because
-      // this check is an optimisation and not the boundary.
+      // Since 0059 the whole assistant is the paid feature, so this screen is
+      // already behind `FeatureLock` and `mayUseModel` is true whenever it
+      // renders. The check stays as a guard for the model call itself; the Edge
+      // Function checks the same entitlement, because this is an optimisation
+      // and not the boundary. (0049 had gated only the model — the comment that
+      // said so outlived it.)
       if (isRuleFallback(answer) && mayUseModel) {
         // The last few turns, so "and for legs?" still makes sense. The typing
         // indicator deliberately stays up across this: the member is waiting on
@@ -254,7 +253,7 @@ function Assistant() {
       } catch (err) {
         setSaveError(errorMessage(err, 'This conversation is not being saved.'));
       }
-    }, 400 + Math.random() * 400);
+    }, 600);
   };
 
   const startNew = () => {
@@ -296,144 +295,83 @@ function Assistant() {
     // flex-1 against Layout's page column; min-h-0 is what lets the transcript
     // scroll rather than stretching the page and stranding the composer.
     <div className="flex-1 min-h-0 flex flex-col relative">
-      <div className="flex items-center gap-3 flex-shrink-0 pb-3">
-        <button
-          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="display text-xl text-white leading-none">Assistant</h1>
-          {/* Rule-based, and says so. It answers from a fixed set of topics
-              plus your own membership data — calling that "AI" oversells it. */}
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            Answers about your account and the gym
-          </p>
+      <div className="flex-shrink-0" style={{ paddingBottom: 10 }}>
+        {/* Rule-based first, and says so: it answers from a fixed set of topics
+            plus your own membership data — calling that "AI" oversells it. */}
+        <PageTitle back title="Assistant" subtitle="Answers about your account and the gym" />
+        <div className="flex items-center" style={{ gap: 18, marginTop: 10, fontSize: 13 }}>
+          <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}>New chat</button>
+          <button onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
+            style={{ height: 32, color: 'var(--color-primary-300)' }}>
+            Saved chats{conversations.length > 0 ? ` · ${conversations.length}` : ''}
+          </button>
         </div>
-        <button
-          onClick={startNew}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          aria-label="Start a new chat"
-        >
-          <Plus size={18} />
-        </button>
-        <button
-          onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 relative"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          aria-label="Saved conversations"
-        >
-          <History size={18} />
-          {conversations.length > 0 && (
-            <span
-              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[12px] font-bold flex items-center justify-center"
-              style={{ background: 'var(--color-primary)', color: '#fff' }}
-            >
-              {conversations.length}
-            </span>
-          )}
-        </button>
+        <div className="rule" style={{ marginTop: 8 }} />
       </div>
 
       {saveError && (
-        <div
-          className="flex-shrink-0 mb-2 px-3 py-2 rounded-xl flex items-start gap-2 text-[12px] leading-relaxed"
-          style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}
-        >
-          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-          {/* Named, not hidden. The chat still works from memory — the member
-              just needs to know it will not be here when they come back. */}
-          <span>{saveError}</span>
-        </div>
+        // Named, not hidden. The chat still works from memory — the member just
+        // needs to know it will not be here when they come back.
+        <p role="alert" className="flex-shrink-0" style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 8, color: 'var(--color-secondary)' }}>
+          {saveError}
+        </p>
       )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3 py-1">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col" style={{ gap: 12, padding: '4px 0' }}>
         <AnimatePresence initial={false}>
           {messages.map((m) => (
             <motion.div
               key={m.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-2 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {m.sender === 'bot' && (
-                <span
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: 'var(--color-primary-light)' }}
-                >
-                  <Sparkles size={15} style={{ color: 'var(--color-primary)' }} />
-                </span>
+              {m.sender === 'bot' ? (
+                // The assistant's side is text on the page with a violet rule —
+                // a reply to read, not a second card.
+                <div className="max-w-[88%]" style={{
+                  paddingLeft: 12, fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)',
+                  borderLeft: '2px solid var(--color-primary)',
+                }}>
+                  <RichText text={m.text} />
+                </div>
+              ) : (
+                <div className="max-w-[80%]" style={{
+                  padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-primary)',
+                  background: 'color-mix(in srgb, var(--color-primary) 16%, var(--color-surface))',
+                  border: '1px solid var(--color-primary-800)',
+                  borderRadius: '14px 14px 4px 14px',
+                }}>
+                  {m.text}
+                </div>
               )}
-              <div
-                className="max-w-[80%] px-3.5 py-2.5 text-xs leading-relaxed space-y-0.5"
-                style={{
-                  background:
-                    m.sender === 'user' ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                  color: m.sender === 'user' ? '#fff' : 'var(--color-text-secondary)',
-                  border: m.sender === 'bot' ? '1px solid var(--color-border)' : 'none',
-                  borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                }}
-              >
-                {m.sender === 'bot' ? <RichText text={m.text} /> : m.text}
-              </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
         {(isTyping || loadingThread) && (
-          <div className="flex gap-2">
-            <span
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--color-primary-light)' }}
-            >
-              <Sparkles size={15} style={{ color: 'var(--color-primary)' }} />
-            </span>
-            <div
-              className="px-3.5 py-3 rounded-2xl"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-            >
-              <div className="flex gap-1">
-                {[0, 150, 300].map((d) => (
-                  <span
-                    key={d}
-                    className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ background: 'var(--color-text-muted)', animationDelay: `${d}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="flex" aria-label="Answering" style={{ gap: 5, padding: '6px 0 6px 14px', borderLeft: '2px solid var(--color-primary)' }}>
+            {[0, 150, 300].map((d) => (
+              <span key={d} className="rounded-full animate-bounce"
+                style={{ width: 6, height: 6, background: 'var(--color-text-muted)', animationDelay: `${d}ms` }} />
+            ))}
           </div>
         )}
         <div ref={endRef} />
       </div>
 
-      <div className="flex-shrink-0 pt-2">
+      <div className="flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 12 }}>
         {showSuggestions && (
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2">
-            {/* Personal suggestions only appear when the data behind them
-                loaded — never a chip that leads to "I couldn't load that". */}
+          // Personal suggestions only appear when the data behind them loaded —
+          // never a chip that leads to "I couldn't load that".
+          <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, paddingBottom: 10 }}>
             {suggestionsFor(ctx).map((q) => (
-              <button
-                key={q}
-                onClick={() => send(q)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold active:scale-95 transition-transform"
-                style={{
-                  background: 'var(--color-primary-light)',
-                  color: 'var(--color-primary)',
-                  border: '1px solid rgba(124,58,237,0.25)',
-                }}
-              >
-                {q}
-              </button>
+              <Chip key={q} label={q} onClick={() => send(q)} />
             ))}
           </div>
         )}
 
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center" style={{ gap: 8 }}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -443,28 +381,31 @@ function Assistant() {
                 send(input);
               }
             }}
+            aria-label="Your question"
             placeholder="Ask about your membership, booking…"
-            className="field-input flex-1 h-11 px-4 rounded-full text-xs text-white"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+            className="field-input flex-1"
           />
+          {/* Amber: sending is the next thing to do. */}
           <button
             onClick={() => send(input)}
             disabled={!input.trim()}
             aria-label="Send"
-            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 active:scale-95 transition-transform"
-            style={{ background: 'var(--color-primary)' }}
+            className="grid place-items-center flex-none disabled:opacity-40"
+            style={{
+              width: 46, height: 46, borderRadius: 'var(--radius-btn)',
+              color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
+              background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
+            }}
           >
-            <Send size={16} className="text-white" />
+            <PaperPlaneRight size={18} />
           </button>
         </div>
       </div>
 
       {/* ── Saved conversations ──────────────────────────────────────────────
-          Rendered inside this page's own flex column with `absolute inset-0`,
-          which is safe here because the panel is a sibling of the scrolling
-          transcript rather than a child of it — the overlay rule this project
-          keeps breaking is about `absolute inset-0` inside a scrolled <main>,
-          where it resolves to the top of the content instead of the viewport.
+          Inside this page's own flex column with `absolute inset-0`, which is
+          safe here because the panel is a sibling of the scrolling transcript
+          rather than a child of it.
 
           The wrapper is always mounted and owns the only pointer-events
           declaration: an AnimatePresence child that is exiting keeps its LAST
@@ -481,7 +422,8 @@ function Assistant() {
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => setHistoryOpen(false)}
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                className="absolute inset-0"
+                style={{ background: 'rgba(8, 8, 14, 0.78)' }}
               />
               <motion.div
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
@@ -489,90 +431,72 @@ function Assistant() {
                 role="dialog" aria-modal="true" aria-label="Saved conversations"
                 className="absolute left-0 right-0 bottom-0 max-h-[75%] flex flex-col"
                 style={{
-                  background: 'var(--color-surface-raised)',
-                  borderTop: '1px solid var(--color-border)',
-                  borderRadius: '20px 20px 0 0',
+                  background: 'var(--color-surface)',
+                  borderTop: '1px solid var(--color-hairline)',
+                  borderRadius: '16px 16px 0 0',
+                  margin: '0 calc(var(--gutter) * -1)',
                 }}
               >
-                <div className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0">
-                  <h2 className="display text-base text-white flex-1">Saved chats</h2>
-                  <button
-                    onClick={startNew}
-                    className="px-3 h-9 rounded-full text-xs font-semibold flex items-center gap-1.5"
-                    style={{ background: 'var(--color-primary)', color: '#fff' }}
-                  >
-                    <Plus size={14} /> New
-                  </button>
-                  <button
-                    onClick={() => setHistoryOpen(false)}
-                    aria-label="Close"
-                    className="w-9 h-9 rounded-full flex items-center justify-center"
-                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                  >
-                    <X size={16} />
+                <div className="flex items-center flex-shrink-0" style={{ gap: 16, padding: '16px var(--gutter) 10px' }}>
+                  <h2 className="flex-1" style={{ fontSize: 'var(--text-title)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                    Saved chats
+                  </h2>
+                  <button onClick={startNew} style={{ fontSize: 13, height: 36, color: 'var(--color-secondary)' }}>New chat</button>
+                  <button onClick={() => setHistoryOpen(false)} style={{ fontSize: 13, height: 36, color: 'var(--color-text-secondary)' }}>
+                    Close
                   </button>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-4 pb-6 space-y-2">
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ padding: '0 var(--gutter) 24px' }}>
                   {conversations.length === 0 && (
-                    <p className="text-xs py-6 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                    <p className="text-center" style={{ fontSize: 13, padding: '24px 0', color: 'var(--color-text-muted)' }}>
                       Nothing saved yet. Ask something and it will be kept here.
                     </p>
                   )}
-                  {conversations.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                      style={{
-                        background: c.id === conversationId
-                          ? 'var(--color-primary-light)' : 'var(--color-surface-high)',
-                        border: `1px solid ${c.id === conversationId
-                          ? 'rgba(124,58,237,0.35)' : 'var(--color-border)'}`,
-                      }}
-                    >
-                      <button onClick={() => openThread(c.id)} className="flex-1 min-w-0 text-left">
-                        <p className="text-xs font-semibold text-white truncate">
-                          {c.title || 'New chat'}
-                        </p>
-                        <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                          {new Date(c.updatedAt).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-                          })}
-                        </p>
-                      </button>
+                  {conversations.map((c, i) => {
+                    const current = c.id === conversationId;
+                    return (
+                      <div key={c.id}>
+                        <div className="flex items-center" style={{ gap: 10, padding: '10px 0' }}>
+                          <button onClick={() => openThread(c.id)} className="flex-1 min-w-0 text-left">
+                            <span className="block truncate" style={{ fontSize: 14.5, color: current ? 'var(--color-primary-300)' : 'var(--color-text-primary)' }}>
+                              {c.title || 'New chat'}
+                            </span>
+                            <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                              {current ? 'Open now · ' : ''}
+                              {new Date(c.updatedAt).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                              })}
+                            </span>
+                          </button>
 
-                      {/* Two taps to delete. One tap on a row in a list is far
-                          too easy to hit by accident, and this is the one
-                          control here that destroys something. */}
-                      {confirmDelete === c.id ? (
-                        <div className="flex gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => removeThread(c.id)}
-                            className="px-2.5 h-8 rounded-lg text-[12px] font-bold"
-                            style={{ background: 'var(--color-secondary)', color: '#000' }}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(null)}
-                            className="px-2.5 h-8 rounded-lg text-[12px] font-semibold"
-                            style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)' }}
-                          >
-                            Keep
-                          </button>
+                          {/* Two taps to delete. One tap on a row in a list is far
+                              too easy to hit by accident, and this is the one
+                              control here that destroys something. */}
+                          {confirmDelete === c.id ? (
+                            <div className="flex flex-shrink-0" style={{ gap: 14, fontSize: 13 }}>
+                              <button onClick={() => removeThread(c.id)} style={{ height: 36, color: 'var(--color-secondary)' }}>
+                                Delete
+                              </button>
+                              <button onClick={() => setConfirmDelete(null)} style={{ height: 36, color: 'var(--color-text-secondary)' }}>
+                                Keep
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(c.id)}
+                              aria-label={`Delete ${c.title || 'this chat'}`}
+                              className="grid place-items-center flex-shrink-0"
+                              style={{ width: 40, height: 40, color: 'var(--color-text-muted)' }}
+                            >
+                              <Trash size={16} />
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDelete(c.id)}
-                          aria-label={`Delete ${c.title || 'this chat'}`}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ color: 'var(--color-text-muted)' }}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        {i < conversations.length - 1 && <div className="hair" />}
+                      </div>
+                    );
+                  })}
                 </div>
               </motion.div>
             </>

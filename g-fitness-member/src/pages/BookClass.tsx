@@ -1,16 +1,9 @@
-import { SkeletonList } from '../components/ui/Skeleton';
-import { panelStyle } from '../components/ui/Card';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { CSSProperties } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Calendar, Clock, Users, ArrowLeft, Sparkles, Dumbbell, Lock, X, Trophy, ArrowRight,
-  Activity, CalendarCheck, ClipboardList, BookOpen, Flag,
-} from 'lucide-react';
+import { ArrowLeft, Sparkle } from '@phosphor-icons/react';
+import { SkeletonList } from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
 import { useLiveData } from '../hooks/useLiveData';
-import DateRail, { buildRail } from '../components/ui/DateRail';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
@@ -28,25 +21,21 @@ import {
   type Entitlement,
 } from '../services/bookingService';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
-import { listEvents } from '../lib/api/events';
+import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
-
+import { weekRangeLabel } from '../utils/dates';
+import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import type { ClassLevel } from '../types/db';
-import { Page, Bento, BentoCell, RingStat, NavTile } from '../components/ui/page';
-import { CLAMP_2 } from '../components/ui/styles';
+import { Page } from '../components/ui/page';
+import { Chip, LineRow, NocButton, Panel, ProgressBar, SectionHead, TextTabs } from '../components/ui/noc';
 
 /**
  * Everything the first paint of this screen needs, cached as one object.
  *
  * Four queries fan out on mount and all four have to land before the page is
  * worth looking at, so they are remembered together — a half-restored screen
- * showing classes but no entitlement would render the booking buttons in the
- * wrong state.
- *
- * Only `load()` writes it. `chooseLevel` deliberately does not: it changes the
- * class list in place, which leaves this snapshot one level behind until the
- * next visit's background refresh corrects it, and that is the whole contract
- * of the cache — stale for exactly one round trip, never authoritative.
+ * showing classes but no entitlement would render the booking actions in the
+ * wrong state. Only `load()` writes it.
  */
 interface BookClassSnapshot {
   memberId: string | null;
@@ -57,18 +46,6 @@ interface BookClassSnapshot {
 }
 
 const CACHE_KEY = 'member:book-class';
-
-/**
- * Booking, against real data.
- *
- * Both halves of the booking model live here because they are one question for
- * the member — "when am I training next" — even though they are two tables:
- * a group class has a roster and a capacity, a PT session is one member and one
- * trainer in one slot.
- *
- * Neither creates a confirmed booking. Both start pending, and the front desk
- * approves them — see the admin Bookings queue.
- */
 
 const LEVELS: { id: ExperienceLevel; label: string; desc: string }[] = [
   { id: 'beginner', label: 'Beginner', desc: 'New to fitness, or back after a break' },
@@ -83,348 +60,239 @@ const LEVEL_LABEL: Record<ClassLevel, string> = {
   all_levels: 'All levels',
 };
 
+type Filter = 'classes' | 'pt' | 'events';
+type Band = 'am' | 'mid' | 'pm';
+
+const BANDS: { id: Band; label: string }[] = [
+  { id: 'am', label: 'AM' },
+  { id: 'mid', label: 'Mid' },
+  { id: 'pm', label: 'PM' },
+];
+
+/**
+ * The matrix's three rows. Before 11:00 is a morning session, 11:00–15:59 the
+ * lunch and early-afternoon block, 16:00 on the after-work block — the three
+ * times a member in Mamburao actually chooses between.
+ */
+function bandOf(iso: string): Band {
+  const h = new Date(iso).getHours();
+  return h < 11 ? 'am' : h < 16 ? 'mid' : 'pm';
+}
+
 /** Local calendar day key — never toISOString(), which shifts a Manila evening into tomorrow. */
-function dayKeyOfDate(d: Date): string {
+function dayKeyOf(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function dayKey(iso: string): string {
-  return dayKeyOfDate(new Date(iso));
-}
-
-function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  if (dayKey(iso) === dayKey(today.toISOString())) return 'Today';
-  if (dayKey(iso) === dayKey(tomorrow.toISOString())) return 'Tomorrow';
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
 function timeLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function groupByDay<T>(rows: T[], iso: (row: T) => string): [string, T[]][] {
-  const map = new Map<string, T[]>();
-  for (const row of rows) {
-    const key = dayKey(iso(row));
-    const bucket = map.get(key);
-    if (bucket) bucket.push(row);
-    else map.set(key, [row]);
-  }
-  return [...map.entries()];
+function dayTitle(d: Date): string {
+  const today = new Date();
+  const key = dayKeyOf(d);
+  if (key === dayKeyOf(today)) return `Today, ${d.getDate()}`;
+  return `${d.toLocaleDateString('en-US', { weekday: 'long' })} ${d.getDate()}`;
 }
+
+interface Cell { count: number; mine: boolean }
 
 /**
- * What the Book button says, and whether it can be pressed.
+ * Seven days from `start`, each with its three bands counted.
  *
- * Lifted out of the row because the timetable now draws a class two ways — one
- * wide feature at the head of each day, square tiles beneath it — and the two
- * must never disagree about whether a class is bookable. One function, two
- * layouts.
- *
- * A clash is not the same refusal as "full" or "your plan does not allow it",
- * so it keeps its own label. The member can act on this one — by cancelling the
- * other thing — which is why the tile goes on to name it.
+ * Built over fixed calendar days rather than only the days with something on
+ * them — the empty cells are the point: they are how a member sees Thursday is
+ * free without tapping anything.
  */
-function classAction(c: BookableClass, blocked: boolean) {
-  const full = c.spotsLeft === 0;
-  const booked = c.myStatus != null;
-  const clash = !booked && c.conflict !== null;
-  return {
-    full,
-    booked,
-    clash,
-    tight: !full && c.spotsLeft <= 3,
-    disabled: booked || full || blocked || clash,
-    label: booked
-      ? (c.myStatus === 'approved' ? 'Confirmed' : 'Pending')
-      : full ? 'Full'
-      : blocked ? 'Locked'
-      : clash ? 'Busy'
-      : 'Book',
-    skin: (booked
-      ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
-      : full || blocked || clash
-        ? { background: 'var(--color-bg)', color: 'var(--color-text-muted)' }
-        : { background: 'var(--color-secondary)', color: '#000' }) as CSSProperties,
+function buildWeek<T>(start: Date, rows: T[], iso: (r: T) => string, mine: (r: T) => boolean) {
+  const days = Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+  const keys = days.map(dayKeyOf);
+  const grid: Record<Band, Cell[]> = {
+    am: days.map(() => ({ count: 0, mine: false })),
+    mid: days.map(() => ({ count: 0, mine: false })),
+    pm: days.map(() => ({ count: 0, mine: false })),
   };
+  for (const r of rows) {
+    const idx = keys.indexOf(dayKeyOf(new Date(iso(r))));
+    if (idx < 0) continue;
+    const cell = grid[bandOf(iso(r))][idx];
+    cell.count += 1;
+    if (mine(r)) cell.mine = true;
+  }
+  return { days, keys, grid };
 }
 
 /**
- * Everything after the name, in one line.
+ * The week matrix: weekday initials over AM / Mid / PM, a count per cell.
  *
- * Filtered so a class with no type and no location does not render " ·  · ".
- * Always rendered clamped to two lines rather than truncated: `truncate` cut
- * this at "Beginner · Cardio · Tere Bautista · …" and silently ate the room,
- * which is the one fact a member needs before they set off to the wrong studio.
+ * Replaces the day rail and the bento timetable. The bento existed to stop a
+ * day of classes reading as a spreadsheet; the matrix does that better by
+ * showing the *shape* of the week before any single class. Selection is
+ * structure, so the selected day is violet; a cell holding the member's own
+ * booking carries a violet dot.
  */
-function classDetail(c: BookableClass): string {
-  return [LEVEL_LABEL[c.level], c.classType, c.trainerName, c.location]
-    .filter(Boolean).join(' · ');
-}
-
-/** How many seats are left, and of how many. Module level so both tiles agree. */
-function capacityLine(c: BookableClass, long: boolean): string {
-  if (c.spotsLeft === 0) return `Full · ${c.booked}/${c.capacity}`;
-  return long
-    ? `${c.booked}/${c.capacity} booked · ${c.spotsLeft} left`
-    : `${c.spotsLeft} of ${c.capacity} left`;
-}
-
-/**
- * "For you" and "You picked this".
- *
- * The onboarding interests step used to write to a localStorage blob nothing
- * read. The second badge is what makes answering it worth the member's time.
- *
- * Module level, not declared in a render body — a component defined during
- * render remounts its whole subtree on every pass of the page above it.
- */
-function ClassBadges({ c, className }: { c: BookableClass; className?: string }) {
-  if (!c.recommended && !c.matchesInterest) return null;
+function WeekMatrix({
+  week,
+  selected,
+  onSelect,
+}: {
+  week: ReturnType<typeof buildWeek>;
+  selected: number;
+  onSelect: (i: number) => void;
+}) {
+  const initials = week.days.map((d) => d.toLocaleDateString('en-US', { weekday: 'narrow' }));
   return (
-    <div className={`flex items-center gap-1 flex-wrap ${className ?? ''}`}>
-      {c.recommended && (
-        <span className="px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5"
-          style={{ fontSize: 'var(--text-meta)', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-          <Sparkles size={9} /> For you
-        </span>
-      )}
-      {c.matchesInterest && (
-        <span className="px-1.5 py-0.5 rounded-full font-bold"
-          style={{ fontSize: 'var(--text-meta)', background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-          You picked this
-        </span>
-      )}
+    <div role="grid" aria-label="Sessions this week"
+      className="grid items-center" style={{ gridTemplateColumns: '40px repeat(7, minmax(0, 1fr))', gap: 5 }}>
+      <span />
+      {week.days.map((d, i) => (
+        <button key={week.keys[i]} onClick={() => onSelect(i)}
+          aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          aria-pressed={i === selected}
+          className="text-center" style={{ fontSize: 12, height: 20,
+            color: i === selected ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
+          {initials[i]}
+        </button>
+      ))}
+      {BANDS.map((b) => (
+        <FragmentRow key={b.id} label={b.label} cells={week.grid[b.id]} selected={selected} onSelect={onSelect} />
+      ))}
     </div>
   );
 }
 
-/** The Book / Full / Busy / Locked control. One button, two tile widths. */
-function BookButton({
-  c, action, onBook, full,
+function FragmentRow({
+  label, cells, selected, onSelect,
 }: {
-  c: BookableClass;
-  action: ReturnType<typeof classAction>;
-  onBook: (c: BookableClass) => void;
-  /** Stretch to the cell — the square tile pins it to its own bottom edge. */
-  full: boolean;
+  label: string;
+  cells: Cell[];
+  selected: number;
+  onSelect: (i: number) => void;
 }) {
   return (
-    <button
-      disabled={action.disabled}
-      onClick={() => onBook(c)}
-      className={`h-9 rounded-full font-bold transition-all active:scale-[0.97] disabled:cursor-not-allowed whitespace-nowrap ${full ? 'w-full' : 'px-5'}`}
-      style={{ fontSize: 'var(--text-meta)', ...action.skin }}
-    >
-      {action.label}
-    </button>
-  );
-}
-
-/**
- * The first class of a day, as the wide cell of the bento.
- *
- * Every day has a next thing on it, and that is a real hierarchy rather than an
- * invented one — so it gets the full width, the larger name and a rule above
- * its action row. The square tiles under it carry exactly the same facts in the
- * same order; only the room differs.
- */
-function ClassFeature({
-  c, blocked, onBook,
-}: {
-  c: BookableClass;
-  blocked: boolean;
-  onBook: (c: BookableClass) => void;
-}) {
-  const a = classAction(c, blocked);
-  return (
-    <BentoCell wide>
-      <div className="flex items-start gap-3">
-        {/* A mark for the kind of session, then the time above the name — the
-            arrangement from the reference the gym chose. The time keeps its
-            tabular figures: proportional digits make a column of times jitter
-            left and right as you scan down it. */}
-        <span className="flex-shrink-0 w-11 h-11 rounded-xl grid place-items-center"
-          style={{ background: 'var(--color-primary-light)' }} aria-hidden>
-          <Dumbbell size={19} style={{ color: 'var(--color-primary)' }} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="tabular-nums leading-none"
-            style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-            {timeLabel(c.scheduledAt)} · {c.durationMinutes}m
-          </p>
-          <p className="mt-1 font-bold text-white leading-snug" style={{ fontSize: 'var(--text-title)' }}>
-            {c.name}
-          </p>
-          <p className="mt-1" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)', ...CLAMP_2 }}>
-            {classDetail(c)}
-          </p>
-          <ClassBadges c={c} className="mt-1.5" />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <div className="min-w-0 flex-1">
-          {/* "18 left" alone never said *of what*, so a class of 20 and a class
-              of 200 read identically. Amber only when it is nearly gone — a
-              count that is always highlighted highlights nothing. */}
-          <p className="font-semibold" style={{
-            fontSize: 'var(--text-meta)',
-            color: a.full ? 'var(--color-text-muted)'
-              : a.tight ? 'var(--color-secondary)'
-              : 'var(--color-text-secondary)',
-          }}>
-            {capacityLine(c, true)}
-          </p>
-          {/* Named, not "unavailable": a slot that reads as the gym's problem
-              sends the member looking for another class, when what they need to
-              do is cancel the thing they forgot they booked. */}
-          {a.clash && (
-            <p className="font-semibold mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-              {c.conflict}
-            </p>
-          )}
-        </div>
-        <BookButton c={c} action={a} onBook={onBook} full={false} />
-      </div>
-    </BentoCell>
-  );
-}
-
-/**
- * Every other class of the day, as a square cell.
- *
- * The time leads because that is what a member scans a timetable for. The
- * action is pushed to the bottom with `mt-auto`, so a row of two tiles has one
- * line of buttons across it however unevenly the names wrap above them.
- */
-function ClassTile({
-  c, blocked, wide, onBook,
-}: {
-  c: BookableClass;
-  blocked: boolean;
-  /** Set on the last tile of an odd count, so the grid never ends half empty. */
-  wide: boolean;
-  onBook: (c: BookableClass) => void;
-}) {
-  const a = classAction(c, blocked);
-  return (
-    <BentoCell wide={wide}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="flex-shrink-0 w-9 h-9 rounded-xl grid place-items-center"
-          style={{ background: 'var(--color-primary-light)' }} aria-hidden>
-          <Dumbbell size={16} style={{ color: 'var(--color-primary)' }} />
-        </span>
-        <span className="text-right leading-none">
-          <span className="block tabular-nums font-bold text-white" style={{ fontSize: 'var(--text-body)' }}>
-            {timeLabel(c.scheduledAt)}
-          </span>
-          <span className="block mt-1 tabular-nums" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-            {c.durationMinutes}m
-          </span>
-        </span>
-      </div>
-
-      <p className="mt-3 font-bold text-white leading-snug" style={{ fontSize: 'var(--text-body)', ...CLAMP_2 }}>
-        {c.name}
-      </p>
-      <p className="mt-1" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)', ...CLAMP_2 }}>
-        {classDetail(c)}
-      </p>
-      <ClassBadges c={c} className="mt-1.5" />
-      <p className="mt-1.5 font-semibold" style={{
-        fontSize: 'var(--text-meta)',
-        color: a.full ? 'var(--color-text-muted)'
-          : a.tight ? 'var(--color-secondary)'
-          : 'var(--color-text-secondary)',
-      }}>
-        {capacityLine(c, false)}
-      </p>
-      {a.clash && (
-        <p className="font-semibold mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-          {c.conflict}
-        </p>
-      )}
-
-      <div className="mt-auto pt-3">
-        <BookButton c={c} action={a} onBook={onBook} full />
-      </div>
-    </BentoCell>
-  );
-}
-
-/**
- * Why the member cannot book, as the amber cell of the bento.
- *
- * Renders only when there is something to refuse. A cell saying "you may book"
- * on every visit is noise, and the timetable below already implies it.
- */
-function BlockCell({ block, onSeePlans }: { block: string; onSeePlans: () => void }) {
-  return (
-    <BentoCell wide tone="secondary">
-      <div className="flex items-start gap-2.5">
-        <Lock size={14} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
-        <p className="flex-1 leading-relaxed" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-secondary)' }}>
-          {block}{' '}
-          <button onClick={onSeePlans} className="font-bold underline whitespace-nowrap"
-            style={{ color: 'var(--color-secondary)' }}>
-            See plans
+    <>
+      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{label}</span>
+      {cells.map((c, i) => {
+        const on = i === selected;
+        return (
+          <button
+            key={i}
+            onClick={() => onSelect(i)}
+            aria-label={`${label}: ${c.count} ${c.count === 1 ? 'session' : 'sessions'}${c.mine ? ', one is yours' : ''}`}
+            className="relative grid place-items-center"
+            style={{
+              height: 38, borderRadius: 6, fontSize: 12,
+              // "Something on" must read at a glance against "nothing on" —
+              // that contrast IS the matrix. Two near-identical surfaces
+              // (#161522 vs #12121C) made the week's shape invisible.
+              background: on && c.count
+                ? 'color-mix(in srgb, var(--color-primary) 22%, transparent)'
+                : c.count ? 'var(--color-surface-high)' : 'transparent',
+              border: `1px solid ${on ? 'var(--color-primary)' : c.count ? 'transparent' : 'rgba(233, 233, 237, 0.06)'}`,
+              color: on ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
+            }}
+          >
+            {c.count || ''}
+            {c.mine && (
+              <span aria-hidden className="absolute rounded-full" style={{
+                top: 5, right: 5, width: 5, height: 5,
+                background: 'var(--color-primary-400)', boxShadow: '0 0 6px var(--color-primary)',
+              }} />
+            )}
           </button>
-        </p>
-      </div>
-    </BentoCell>
+        );
+      })}
+    </>
+  );
+}
+
+function Legend() {
+  const swatch = (bg: string, edge = 'transparent') => (
+    <span aria-hidden style={{ width: 12, height: 12, borderRadius: 3, background: bg, border: `1px solid ${edge}` }} />
+  );
+  return (
+    <div className="flex items-center flex-wrap" style={{ gap: 14, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+      <span className="flex items-center" style={{ gap: 6 }}>{swatch('var(--color-surface-high)')}Sessions on</span>
+      <span className="flex items-center" style={{ gap: 6 }}>{swatch('transparent', 'rgba(233, 233, 237, 0.18)')}Nothing on</span>
+      <span className="flex items-center" style={{ gap: 6 }}>
+        <span aria-hidden className="rounded-full" style={{ width: 5, height: 5, background: 'var(--color-primary-400)' }} />
+        Yours
+      </span>
+    </div>
   );
 }
 
 /**
- * The weekly allowance, as a ring rather than a progress bar.
+ * What a class row's trailing word says, and whether tapping the row books it.
  *
- * This was a hairline bar with a sentence beside it, sitting alone above the
- * timetable. Same two numbers — they come from `getEntitlement`, which counts
- * the same week `date_trunc('week')` counts in 0017 — in a cell that belongs to
- * a grid instead of floating between sections.
+ * A clash is not the same refusal as "full" or "your plan does not allow it",
+ * so it keeps its own word — the member can act on this one, by cancelling the
+ * other thing, which is why the row goes on to name it.
  *
- * The ring is drawn only when the plan has a ceiling. On an uncapped plan the
- * number still means something ("you have booked two classes this week") and a
- * ring drawn full would be decoration pretending to be a measurement.
+ * "Full", not the prototype's "Wait": there is no waitlist, and a word that
+ * implies one is a control that does nothing.
  */
-function WeekCell({ entitlement }: { entitlement: Entitlement }) {
-  const used = entitlement.classesUsedThisWeek;
-  const cap = entitlement.classesPerWeek;
+function classAction(c: BookableClass, blocked: boolean) {
+  if (c.myStatus != null) {
+    return { word: c.myStatus === 'approved' ? 'Confirmed' : 'Pending', tone: 'structure' as const, bookable: false, mine: true };
+  }
+  if (c.spotsLeft === 0) return { word: 'Full', tone: 'muted' as const, bookable: false, mine: false };
+  if (blocked) return { word: 'Locked', tone: 'muted' as const, bookable: false, mine: false };
+  if (c.conflict !== null) return { word: 'Busy', tone: 'muted' as const, bookable: false, mine: false };
+  return { word: 'Book', tone: 'action' as const, bookable: true, mine: false };
+}
+
+function classMeta(c: BookableClass) {
+  const seats = c.spotsLeft === 0 ? `Full · ${c.booked}/${c.capacity}` : `${c.spotsLeft} of ${c.capacity} left`;
+  const facts = [LEVEL_LABEL[c.level], c.trainerName, c.location, seats].filter(Boolean).join(' · ');
   return (
-    <RingStat
-      icon={<CalendarCheck size={16} />}
-      value={cap == null ? used : `${used}/${cap}`}
-      label={cap == null ? 'classes booked this week' : 'classes this week'}
-      fraction={cap == null || cap === 0 ? undefined : used / cap}
-      tone="secondary"
-    />
+    <>
+      {(c.recommended || c.matchesInterest) && (
+        <span style={{ color: 'var(--color-primary-300)' }}>
+          {c.recommended ? 'For your level' : 'You picked this'}{' · '}
+        </span>
+      )}
+      {c.conflict !== null && c.myStatus == null ? `Clashes with ${c.conflict}` : facts}
+    </>
   );
 }
 
+/**
+ * Train — the week at a glance, then the chosen day (Nocturne redesign).
+ *
+ * Both halves of booking live here because they are one question for the
+ * member — "when am I training next" — even though they are two tables: a group
+ * class has a roster and a capacity, a PT session is one member and one coach in
+ * one slot. Neither creates a confirmed booking; both start pending, and the
+ * coach decides (0071).
+ *
+ * **Kept from the old screen, though the prototype drops them:** matching to
+ * the member's experience level and the "For my level" filter; the weekly class
+ * allowance and the plain-words reason a plan refuses a booking; clash
+ * detection naming the other commitment; the coach → slot flow for 1-on-1 (the
+ * prototype books PT in one tap, which is not how PT works here); a trainer
+ * profile deep-linking straight into that coach's hours; and the second week,
+ * which the old fourteen-day rail covered and a seven-column matrix alone
+ * would have silently dropped.
+ */
 export default function BookClass() {
   const navigate = useNavigate();
-  // A trainer profile can deep-link straight into that coach's open slots.
   const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
-  const [tab, setTab] = useState<'classes' | 'pt'>(deepLinkTrainerId ? 'pt' : 'classes');
-  /** Calendar filter. Null = the whole fortnight. */
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>(deepLinkTrainerId ? 'pt' : 'classes');
+  const [weekOffset, setWeekOffset] = useState<0 | 7>(0);
+  const [selected, setSelected] = useState<number | null>(null);
+
   const cached = readCache<BookClassSnapshot>(CACHE_KEY);
   const [memberId, setMemberId] = useState<string | null>(cached?.memberId ?? null);
   const [loading, setLoading] = useState(cached === undefined);
   const [busy, setBusy] = useState(false);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(cached?.entitlement ?? null);
 
-  // Group classes
   const [classes, setClasses] = useState<BookableClass[]>(cached?.classes ?? []);
   const [level, setLevel] = useState<ExperienceLevel | null>(cached?.level ?? null);
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [confirmClass, setConfirmClass] = useState<BookableClass | null>(null);
 
-  // Personal training
   const [trainers, setTrainers] = useState<PublicTrainer[]>(cached?.trainers ?? []);
   const [selectedTrainer, setSelectedTrainer] = useState<PublicTrainer | null>(null);
   const [slots, setSlots] = useState<BookableSlot[]>([]);
@@ -432,14 +300,9 @@ export default function BookClass() {
   const [confirmSlot, setConfirmSlot] = useState<BookableSlot | null>(null);
   const [notes, setNotes] = useState('');
 
-  /**
-   * `quiet` is what makes the background refresh usable.
-   *
-   * A silent re-poll must not flip the screen back to skeletons, and must not
-   * raise a toast if the phone happened to be on a dead spot of wifi — the
-   * member did not ask for this fetch, so it has no business interrupting them.
-   * Only the first load, and an explicit action, are allowed to do either.
-   */
+  const [events, setEvents] = useState<EventRow[] | null>(null);
+
+  /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
@@ -449,16 +312,18 @@ export default function BookClass() {
         if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
-      const [bookable, lvl, coaches, ent] = await Promise.all([
+      const [bookable, lvl, coaches, ent, evs] = await Promise.all([
         listBookableClasses(id),
         getExperienceLevel(id),
         listPublicTrainers().catch(() => [] as PublicTrainer[]),
         getEntitlement(id),
+        listEvents().catch(() => null),
       ]);
       setClasses(bookable);
       setLevel(lvl);
       setTrainers(coaches);
       setEntitlement(ent);
+      setEvents(evs);
       writeCache<BookClassSnapshot>(CACHE_KEY, {
         memberId: id, classes: bookable, level: lvl, trainers: coaches, entitlement: ent,
       });
@@ -469,14 +334,11 @@ export default function BookClass() {
     }
   }, []);
 
-  // Quiet when the cache already put a schedule on screen — see Home.tsx.
   const revisit = useRef(cached !== undefined);
-  useEffect(() => { load(revisit.current); }, [load]);
+  useEffect(() => { void load(revisit.current); }, [load]);
 
-  // Approval happens on the front desk's screen, not this one, so the member
-  // would otherwise sit looking at a stale "Pending" until they navigated away
-  // and back. Pull-to-refresh used to be the workaround; it reloaded the entire
-  // app and is now disabled.
+  // Approval happens on the coach's screen, not this one — without a refresh
+  // the member would sit looking at a stale "Pending".
   useLiveData(() => load(true), { enabled: !confirmClass && !confirmSlot });
 
   const chooseLevel = async (chosen: ExperienceLevel) => {
@@ -494,11 +356,11 @@ export default function BookClass() {
     }
   };
 
-  const openTrainer = async (trainer: PublicTrainer) => {
+  const openTrainer = useCallback(async (trainer: PublicTrainer) => {
     setSelectedTrainer(trainer);
-    // Each coach has their own hours, so a date picked against the last one
+    // Each coach has their own hours, so a day picked against the last one
     // would filter this one's list against a day they may not even work.
-    setSelectedDay(null);
+    setSelected(null);
     setSlots([]);
     setSlotsLoading(true);
     try {
@@ -508,16 +370,21 @@ export default function BookClass() {
     } finally {
       setSlotsLoading(false);
     }
-  };
+  }, [memberId]);
 
-  // Deep link from a trainer profile: open their slots as soon as the roster
-  // arrives. Guarded on `selectedTrainer` so backing out doesn't re-open it.
+  // Deep link from a trainer profile: open their hours as soon as the roster
+  // arrives — once. The ref, not `selectedTrainer`, is the guard: guarding on
+  // the selection re-opened the coach the moment the member backed out of them.
+  // The IIFE is what the set-state-in-effect rule needs: it follows a directly
+  // called function into its setState, and this one is asynchronous work.
+  const deepLinkDone = useRef(false);
   useEffect(() => {
-    if (!deepLinkTrainerId || selectedTrainer || trainers.length === 0) return;
+    if (deepLinkDone.current || !deepLinkTrainerId || trainers.length === 0) return;
     const match = trainers.find((t) => t.id === deepLinkTrainerId);
-    if (match) openTrainer(match);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deepLinkTrainerId, trainers, selectedTrainer]);
+    if (!match) return;
+    deepLinkDone.current = true;
+    void (async () => { await openTrainer(match); })();
+  }, [deepLinkTrainerId, trainers, openTrainer]);
 
   const submitClassBooking = async () => {
     if (!memberId || !confirmClass) return;
@@ -525,13 +392,10 @@ export default function BookClass() {
     try {
       await bookClass(memberId, confirmClass.id);
       setConfirmClass(null);
-      toast.success('Requested — the front desk will confirm it');
-      // Refresh the quota alongside the list — a weekly allowance that still
-      // reads "0 of 1 booked" after booking is worse than showing no quota.
-      const [refreshed, ent] = await Promise.all([
-        listBookableClasses(memberId),
-        getEntitlement(memberId),
-      ]);
+      toast.success('Requested — you will be told when it is confirmed');
+      // Refresh the allowance alongside the list — "0 of 1 booked" still
+      // showing after booking is worse than showing no allowance.
+      const [refreshed, ent] = await Promise.all([listBookableClasses(memberId), getEntitlement(memberId)]);
       setClasses(refreshed);
       setEntitlement(ent);
     } catch (err) {
@@ -554,8 +418,8 @@ export default function BookClass() {
       });
       setConfirmSlot(null);
       setNotes('');
-      toast.success('Requested — the front desk will confirm it');
-      // Re-derive: the slot just taken must disappear for everyone, including us.
+      toast.success('Requested — you will be told when it is confirmed');
+      // The slot just taken must disappear for everyone, including us.
       setSlots(await listOpenPtSlots(selectedTrainer.id, 14, memberId ?? undefined));
     } catch (err) {
       toast.error(errorMessage(err, 'Could not request that session'));
@@ -564,30 +428,56 @@ export default function BookClass() {
     }
   };
 
+  // ── The week on screen ──
+  const start = useMemo(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate() + weekOffset);
+  }, [weekOffset]);
+
   const visibleClasses = useMemo(
     () => (recommendedOnly ? classes.filter((c) => c.recommended) : classes),
-    [classes, recommendedOnly]
+    [classes, recommendedOnly],
   );
-  const allClassDays = useMemo(() => groupByDay(visibleClasses, (c) => c.scheduledAt), [visibleClasses]);
-  const allSlotDays = useMemo(() => groupByDay(slots, (s) => s.startsAt), [slots]);
 
-  // The calendar rail. Built over a fixed fortnight rather than only the days
-  // that happen to have something on them — the empty days are the point: they
-  // are how a member sees that Thursday is free without tapping anything.
-  const rail = useMemo(() => {
-    const source = tab === 'pt' ? allSlotDays : allClassDays;
-    const counts = new Map(source.map(([key, rows]) => [key, rows.length]));
-    return buildRail(14, dayKeyOfDate, (key) => counts.get(key) ?? 0);
-  }, [tab, allClassDays, allSlotDays]);
+  const week = useMemo(
+    () => (filter === 'pt'
+      ? buildWeek(start, slots, (s) => s.startsAt, () => false)
+      : buildWeek(start, visibleClasses, (c) => c.scheduledAt, (c) => c.myStatus != null)),
+    [filter, start, slots, visibleClasses],
+  );
 
-  const classDays = selectedDay ? allClassDays.filter(([key]) => key === selectedDay) : allClassDays;
-  const slotDays = selectedDay ? allSlotDays.filter(([key]) => key === selectedDay) : allSlotDays;
+  // Default to the first day that has something, so the list under the matrix
+  // is never an empty "Nothing on today" when Friday is full.
+  const firstBusy = (['am', 'mid', 'pm'] as Band[])
+    .map((b) => week.grid[b].findIndex((c) => c.count > 0))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b)[0] ?? 0;
+  const day = selected ?? firstBusy;
+  const dayKey = week.keys[day];
 
-  // Why the member can't book, in the order they'd hit it. Mirrors the trigger
-  // in 0017 — that is what actually enforces this; these are the words for it.
+  const dayClasses = visibleClasses
+    .filter((c) => dayKeyOf(new Date(c.scheduledAt)) === dayKey)
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  const daySlots = slots
+    .filter((s) => dayKeyOf(new Date(s.startsAt)) === dayKey)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+  // What next week holds, so the member knows it is worth looking.
+  const nextWeekCount = useMemo(() => {
+    const n = new Date();
+    const from = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 7).getTime();
+    const to = from + 7 * 86_400_000;
+    const src = filter === 'pt' ? slots.map((s) => s.startsAt) : visibleClasses.map((c) => c.scheduledAt);
+    return src.filter((iso) => { const t = new Date(iso).getTime(); return t >= from && t < to; }).length;
+  }, [filter, slots, visibleClasses]);
+
+  useSetTabHeader('train',
+    weekOffset === 7 ? 'Next week' : undefined,
+    weekOffset === 7 ? weekRangeLabel(start) : undefined);
+
+  // ── Why the member can't book, in the order they'd hit it (0017) ──
   const quotaReached =
     entitlement?.classesPerWeek != null && entitlement.classesUsedThisWeek >= entitlement.classesPerWeek;
-
   const classBlock: string | null =
     entitlement == null ? null
       : entitlement.blockedReason ? entitlement.blockedReason
@@ -596,483 +486,282 @@ export default function BookClass() {
       : quotaReached
         ? `${entitlement.planName} includes ${entitlement.classesPerWeek} class${entitlement.classesPerWeek === 1 ? '' : 'es'} a week, and you've booked this week's. You can book next week.`
         : null;
-
   const ptBlock: string | null =
     entitlement == null ? null
       : entitlement.blockedReason ? entitlement.blockedReason
       : !entitlement.canBookPt
         ? `${entitlement.planName ?? 'Your plan'} doesn't include personal training. Ask the front desk about upgrading.`
         : null;
+  const activeBlock = filter === 'pt' ? ptBlock : filter === 'classes' ? classBlock : null;
 
-  const activeBlock = tab === 'pt' || selectedTrainer ? ptBlock : classBlock;
+  const upcomingEvents = (events ?? [])
+    .filter((e) => eventStatus(e) === 'Upcoming')
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 
-  // The gym's next announcement. This used to sit on Home, which had grown to
-  // ten stacked sections; it belongs on the screen where members plan what they
-  // are going to do. Renders nothing when there is no upcoming event - never a
-  // placeholder card promising activity that does not exist.
-  const [nextEvent, setNextEvent] = useState<{ title: string; startsAt: string; location: string | null } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await listEvents();
-        const now = Date.now();
-        const soonest = rows
-          .filter((e) => e.starts_at && new Date(e.starts_at).getTime() > now)
-          .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())[0];
-        if (!cancelled && soonest) {
-          setNextEvent({ title: soonest.title, startsAt: soonest.starts_at!, location: soonest.location ?? null });
-        }
-      } catch {
-        // A banner is a nudge, not a section. If it cannot load, the Events
-        // page is still one tap away from Profile - no error is warranted.
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const changeFilter = (f: Filter) => {
+    setFilter(f);
+    setSelected(null);
+    setWeekOffset(0);
+  };
 
-  /**
-   * What the bento above the timetable has to show.
-   *
-   * Gated per cell rather than as a block: the weekly allowance needs an
-   * entitlement that may still be in flight, the coaches cell does not, and a
-   * failed entitlement read should not take the roster down with it. The grid
-   * itself renders only if at least one cell will — an empty grid is still a
-   * `--stack` of dead space between the tabs and the first class.
-   */
-  const showWeek = !loading && !selectedTrainer && tab === 'classes' && entitlement !== null;
-  // Classes tab only. On Personal training the roster is the screen — a cell
-  // above it counting the same coaches is the sort of duplication this app has
-  // already had to take back out once.
-  const showCoaches = !loading && !selectedTrainer && tab === 'classes' && trainers.length > 0;
-  const showEvent = !loading && !selectedTrainer && nextEvent !== null;
-  const showBento = showWeek || showCoaches || showEvent || (!loading && activeBlock !== null);
+  const showMatrix = filter === 'classes' || (filter === 'pt' && selectedTrainer !== null && !slotsLoading);
 
   return (
     <Page>
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => (selectedTrainer ? setSelectedTrainer(null) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          {/* A coach's name stays in the body face — `.display` is condensed
-              uppercase and mangles a person's name. */}
-          <h1 className={selectedTrainer ? 'text-lg font-bold text-white truncate' : 'display text-xl text-white'}>
-            {selectedTrainer ? trainerName(selectedTrainer) : 'Book a Session'}
-          </h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {selectedTrainer ? 'Pick an open time' : 'Group classes and 1-on-1 training'}
-          </p>
-        </div>
+      <TextTabs<Filter>
+        label="What to book"
+        tabs={[{ id: 'classes', label: 'Group classes' }, { id: 'pt', label: '1-on-1' }, { id: 'events', label: 'Events' }]}
+        active={filter}
+        onChange={changeFilter}
+      />
 
-      </motion.div>
-
-      {/* The rest of Training, one tap away.
-
-          This screen IS the Training tab — the tab opens the thing a member
-          came to do rather than a grid in front of it. These are the six other
-          training destinations.
-
-          They were a scrolling rail of chips, and a rail was the wrong shape
-          for a fixed set of six: two of them sat off the right edge with the
-          second one sliced down the middle, which reads as a screen that has
-          not finished loading rather than as something you can swipe. Six is a
-          number you can just show. Three across, two rows, nothing hidden and
-          nothing cut.
-
-          Violet, not amber: these are structure. Amber on this screen belongs
-          to Book, and six amber tiles above it would outshout the one control
-          that actually does something.
-
-          Hidden while a coach is selected — that view is a single task, and a
-          shortcut out of it mid-booking is an invitation to lose your place. */}
-      {!selectedTrainer && (
-        <Bento cols={3}>
-          {([
-            ['Progress', <Activity size={18} />, '/member/progress'],
-            ['My bookings', <CalendarCheck size={18} />, '/member/booking-history'],
-            ['Training plan', <ClipboardList size={18} />, '/member/plan'],
-            ['Free workouts', <BookOpen size={18} />, '/member/workouts'],
-            ['Challenges', <Flag size={18} />, '/member/challenges'],
-            ['Events', <Trophy size={18} />, '/member/events'],
-          ] as const).map(([label, icon, to]) => (
-            <NavTile key={label} label={label} icon={icon} onClick={() => navigate(to)} />
-          ))}
-        </Bento>
-      )}
-
-      {/* Tabs — hidden while picking a slot, that flow has its own back button.
-          Switching clears the date filter: the rail's counts are per tab, so
-          Thursday having a class says nothing about Thursday having a free PT
-          slot. */}
-      {!selectedTrainer && (
-        <div className="grid grid-cols-2 gap-1 p-1"
-          style={{ ...panelStyle, borderRadius: 'var(--radius-btn)' }} role="tablist">
-          {([['classes', 'Group classes'], ['pt', 'Personal training']] as const).map(([id, label]) => (
-            <button key={id} onClick={() => { setTab(id); setSelectedDay(null); }} role="tab" aria-selected={tab === id}
-              className="py-2 rounded-full font-semibold text-xs transition-colors"
-              style={{
-                background: tab === id ? 'var(--color-primary)' : 'transparent',
-                color: tab === id ? '#fff' : 'var(--color-text-muted)',
-              }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* The state of play, as a bento: what your plan allows, who is coaching,
-          and what the gym has coming. Three things that used to be a hairline
-          progress bar, a pill in the header and a full-width amber banner —
-          each floating on its own between sections, none of them related to
-          each other on screen even though they answer the same question:
-          *what can I book right now.* */}
-      {showBento && (
-        <Bento>
-          {showWeek && entitlement && <WeekCell entitlement={entitlement} />}
-
-          {/* The trainers directory has no bottom-nav tab of its own — the
-              centre check-in button took that slot — so this is one of its two
-              entry points. It was a 9px pill in the header; here it says how
-              many coaches there are, which is the fact that decides whether
-              tapping it is worth it. Takes the full width when the allowance
-              cell is not there to sit beside. */}
-          {showCoaches && (
-            /* Same gauge frame as the allowance beside it, with the ring left
-               as a bare track: a roster has no ceiling to be a fraction of, and
-               a ring drawn full here would be decoration pretending to be a
-               measurement. That is RingStat's existing contract — omit
-               `fraction` and the ring stops claiming anything. */
-            <RingStat
-              wide={!showWeek}
-              icon={<Users size={16} />}
-              value={trainers.length}
-              label={trainers.length === 1 ? 'coach · see profiles' : 'coaches · see profiles'}
-              onClick={() => navigate('/member/trainers')}
-            />
-          )}
-
-          {!loading && activeBlock && (
-            <BlockCell block={activeBlock} onSeePlans={() => navigate('/member/renew-membership')} />
-          )}
-
-          {/* The gym's next announcement. Renders nothing when there is no
-              upcoming event, never a placeholder promising activity that does
-              not exist. */}
-          {showEvent && nextEvent && (
-            <BentoCell wide tone="flat" onClick={() => navigate('/member/events')}>
-              <div className="flex items-center gap-2">
-                <Trophy size={14} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-                <span className="font-bold flex-shrink-0" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-                  {new Date(nextEvent.startsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-                <span className="font-semibold text-white truncate flex-1" style={{ fontSize: 'var(--text-meta)' }}>
-                  {nextEvent.title}
-                </span>
-                <ArrowRight size={14} className="flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-              </div>
-            </BentoCell>
-          )}
-        </Bento>
-      )}
-
-      {loading ? (
-        <SkeletonList />
-      ) : tab === 'classes' && !selectedTrainer ? (
+      {loading ? <SkeletonList /> : (
         <>
-          {/* Experience level — asked here rather than guessed, because nothing
-              can be recommended without it. */}
-          {level === null ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-4 space-y-3" style={panelStyle}>
-              <div className="flex items-center gap-2">
-                <Sparkles size={16} style={{ color: 'var(--color-secondary)' }} />
-                <p className="text-sm font-bold text-white">What's your experience level?</p>
+          {/* The allowance, when the plan has one. A bar only with a ceiling —
+              on an uncapped plan the count still means something, a full bar
+              would not. */}
+          {filter === 'classes' && entitlement && !classBlock && (
+            <div>
+              <div className="flex justify-between" style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                <span>
+                  {entitlement.classesPerWeek == null
+                    ? `${entitlement.classesUsedThisWeek} ${entitlement.classesUsedThisWeek === 1 ? 'class' : 'classes'} booked this week`
+                    : `${entitlement.classesUsedThisWeek} of ${entitlement.classesPerWeek} classes this week`}
+                </span>
+                {entitlement.planName && <span style={{ color: 'var(--color-text-muted)' }}>{entitlement.planName}</span>}
               </div>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                We'll flag the classes pitched at your level. You can still book any class you like.
+              {entitlement.classesPerWeek != null && entitlement.classesPerWeek > 0 && (
+                <ProgressBar tone="action" style={{ marginTop: 8 }}
+                  fraction={entitlement.classesUsedThisWeek / entitlement.classesPerWeek} />
+              )}
+            </div>
+          )}
+
+          {activeBlock && (
+            <Panel glow="action">
+              <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>{activeBlock}</p>
+              <button onClick={() => navigate('/member/renew-membership')}
+                style={{ marginTop: 10, fontSize: 13, color: 'var(--color-secondary)' }}>
+                See plans
+              </button>
+            </Panel>
+          )}
+
+          {/* ── Experience level: asked, never guessed ── */}
+          {filter === 'classes' && level === null && (
+            <Panel glow="structure">
+              <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                <Sparkle size={16} style={{ color: 'var(--color-primary-400)' }} /> What is your experience level?
               </p>
-              {/* Three choices, so the last one takes the width the other two
-                  share. A list of three full-width rows made the middle option
-                  look like the recommended one purely by being in the middle. */}
-              <Bento>
-                {LEVELS.map((l, i) => (
-                  <BentoCell key={l.id} tone="flat" disabled={busy} wide={i === LEVELS.length - 1}
-                    onClick={() => chooseLevel(l.id)} className="disabled:opacity-50">
-                    <p className="font-semibold text-white" style={{ fontSize: 'var(--text-body)' }}>{l.label}</p>
-                    <p className="mt-1 leading-snug" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                      {l.desc}
-                    </p>
-                  </BentoCell>
+              <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                Classes pitched at your level are marked. You can still book any class you like.
+              </p>
+              <div className="flex flex-col" style={{ gap: 8, marginTop: 14 }}>
+                {LEVELS.map((l) => (
+                  <button key={l.id} disabled={busy} onClick={() => chooseLevel(l.id)}
+                    className="text-left disabled:opacity-50"
+                    style={{ minHeight: 52, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--color-hairline)' }}>
+                    <span className="block" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{l.label}</span>
+                    <span className="block" style={{ fontSize: 12, marginTop: 1, color: 'var(--color-text-muted)' }}>{l.desc}</span>
+                  </button>
                 ))}
-              </Bento>
-            </motion.div>
-          ) : null}
+              </div>
+            </Panel>
+          )}
 
-          {allClassDays.length > 0 && (
-            <>
-              <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
-
-              {/* One row for both filters, directly under the calendar they
-                  narrow. The level used to be a sentence with an underlined
-                  "change" inside it — a text link the size of two words, on a
-                  phone, as the only way to correct a choice that reshapes the
-                  whole list. Both are chips now, both the same size, and both
-                  say what they currently are rather than what they would do. */}
-              {level !== null && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setRecommendedOnly((v) => !v)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0"
-                    style={{
-                      background: recommendedOnly ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                      color: recommendedOnly ? '#fff' : 'var(--color-text-muted)',
-                      border: `1px solid ${recommendedOnly ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    }}>
-                    <Sparkles size={11} /> For my level
-                  </button>
-
-                  {/* "You chose", not "your level". Progress shows a *different*
-                      level — the one earned from check-ins here — and labelling
-                      both the same made the two screens look like they
-                      disagreed. */}
-                  {/* `capitalize` sits on the level alone. On the whole button
-                      it title-cased the sentence into "You Chose Beginner". */}
-                  <button onClick={() => setLevel(null)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 flex items-center gap-1"
-                    style={{
-                      background: 'var(--color-surface-raised)',
-                      border: '1px solid var(--color-border)',
-                      color: 'var(--color-text-muted)',
-                    }}>
-                    You chose <span className="capitalize text-white">{level}</span>
-                    <X size={11} />
-                  </button>
-
-                  {selectedDay && (
-                    <button
-                      onClick={() => setSelectedDay(null)}
-                      className="ml-auto flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full flex-shrink-0"
-                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                    >
-                      <X size={11} /> All days
-                    </button>
-                  )}
+          {/* ── 1-on-1, step one: pick a coach ── */}
+          {filter === 'pt' && !selectedTrainer && (
+            <section>
+              <SectionHead title="Pick a coach" meta={`${trainers.length} at the gym`} />
+              {trainers.length === 0 ? (
+                <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  Personal training opens once the gym adds its coaching team.
+                </p>
+              ) : (
+                <div style={{ marginTop: 4 }}>
+                  {trainers.map((t, i) => (
+                    <LineRow
+                      key={t.id}
+                      gutterWidth={46}
+                      gutter={
+                        <span className="grid place-items-center rounded-full" style={{
+                          width: 36, height: 36, fontSize: 13, fontWeight: 500,
+                          border: '1px solid var(--color-primary)', color: 'var(--color-primary-300)',
+                          background: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
+                        }}>
+                          {`${t.first_name[0] ?? ''}${t.last_name[0] ?? ''}`.toUpperCase()}
+                        </span>
+                      }
+                      title={trainerName(t)}
+                      meta={t.specialization ?? 'General training'}
+                      action="Open times"
+                      onClick={() => openTrainer(t)}
+                      last={i === trainers.length - 1}
+                    />
+                  ))}
                 </div>
               )}
-            </>
+            </section>
           )}
 
-          {classDays.length === 0 ? (
-            <div className="rounded-2xl p-8 text-center" style={panelStyle}>
-              <Calendar size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-              <p className="font-medium text-white text-sm">
-                {selectedDay
-                  ? 'Nothing on this day'
-                  : classes.length === 0
-                    ? 'No classes scheduled yet'
-                    : 'Nothing at your level right now'}
+          {/* ── 1-on-1, step two: the chosen coach ── */}
+          {filter === 'pt' && selectedTrainer && (
+            <div>
+              <button onClick={() => { setSelectedTrainer(null); setSelected(null); setWeekOffset(0); }}
+                className="flex items-center" style={{ gap: 7, fontSize: 13, color: 'var(--color-primary-300)' }}>
+                <ArrowLeft size={15} /> All coaches
+              </button>
+              <p style={{ marginTop: 10, fontSize: 17, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                {trainerName(selectedTrainer)}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                {classes.length === 0
-                  ? 'The gym publishes the weekly timetable — check back soon.'
-                  : 'Turn off the filter to see every class on the timetable.'}
+              <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                {selectedTrainer.specialization ?? 'General training'} · pick an open time
               </p>
             </div>
-          ) : (
-            classDays.map(([key, dayClasses]) => {
-              /* The day's first class leads the bento at full width; the rest
-                 are squares under it. That hierarchy is real rather than
-                 decorative — the next thing happening is the thing a member
-                 opening this screen is most likely to be looking for — which is
-                 why it is not the *recommended* class that gets the width. A
-                 filter can empty "recommended"; a day always has a first. */
-              const [first, ...rest] = dayClasses;
-              return (
-                <div key={key} className="flex flex-col" style={{ gap: 'var(--stack-tight)' }}>
-                  {/* Sticky, so the day you are looking at stays named while you
-                      scroll a fortnight of classes. `top-0` inside `<main>`,
-                      which is the scroll container — the page body does not
-                      scroll on this shell. */}
-                  <h2 className="text-xs font-bold uppercase tracking-wide sticky top-0 py-1 z-10"
-                    style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
-                    {dayLabel(first.scheduledAt)}
-                    <span className="ml-1.5 font-semibold" style={{ opacity: 0.7 }}>
-                      · {dayClasses.length}
-                    </span>
-                  </h2>
-                  <Bento>
-                    <ClassFeature c={first} blocked={classBlock !== null} onBook={setConfirmClass} />
-                    {rest.map((c, i) => (
-                      <ClassTile
-                        key={c.id}
-                        c={c}
-                        blocked={classBlock !== null}
-                        /* An odd tail would leave a half-width hole at the
-                           bottom of the day, which reads as a missing class
-                           rather than as a layout. */
-                        wide={rest.length % 2 === 1 && i === rest.length - 1}
-                        onBook={setConfirmClass}
-                      />
-                    ))}
-                  </Bento>
-                </div>
-              );
-            })
           )}
-        </>
-      ) : !selectedTrainer ? (
-        /* ─── Personal Training: pick a coach ─── */
-        trainers.length === 0 ? (
-          <div className="rounded-2xl p-8 text-center" style={panelStyle}>
-            <Dumbbell size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-            <p className="font-medium text-white text-sm">No trainers available yet</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              Personal training opens once the gym adds its coaching team.
-            </p>
-          </div>
-        ) : (
-          /* Two to a row rather than a stack of full-width rows. A coach is
-             picked by looking at the set of them — the old list showed three on
-             a phone and made choosing a scroll — and the odd one out takes the
-             width so the grid never ends ragged. */
-          <Bento>
-            {trainers.map((t, i) => (
-              <BentoCell
-                key={t.id}
-                onClick={() => openTrainer(t)}
-                wide={trainers.length % 2 === 1 && i === trainers.length - 1}
-              >
-                <span className="w-11 h-11 rounded-full flex items-center justify-center text-black font-bold flex-shrink-0"
-                  style={{ background: 'var(--color-secondary)', fontSize: 'var(--text-body)' }}>
-                  {`${t.first_name[0] ?? ''}${t.last_name[0] ?? ''}`.toUpperCase()}
-                </span>
-                <p className="mt-3 text-white font-semibold leading-snug" style={{ fontSize: 'var(--text-body)', ...CLAMP_2 }}>
-                  {trainerName(t)}
-                </p>
-                <p className="mt-1 leading-snug"
-                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)', ...CLAMP_2 }}>
-                  {t.specialization ?? 'General training'}
-                </p>
-                <p className="mt-auto pt-3 flex items-center gap-1 font-semibold"
-                  style={{ fontSize: 'var(--text-meta)', color: 'var(--color-secondary)' }}>
-                  See open times <ArrowRight size={11} className="flex-shrink-0" />
-                </p>
-              </BentoCell>
-            ))}
-          </Bento>
-        )
-      ) : slotsLoading ? (
-        <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>Finding open times…</p>
-      ) : (
-        <>
-          {/* Who you are booking, kept on screen. The coach's name is in the
-              page header too, but that scrolls away and the grid of bare times
-              below gives no clue whose hours they are. */}
-          <div className="flex items-center gap-3 rounded-2xl p-3" style={panelStyle}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-xs flex-shrink-0"
-              style={{ background: 'var(--color-secondary)' }}>
-              {`${selectedTrainer.first_name[0] ?? ''}${selectedTrainer.last_name[0] ?? ''}`.toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white truncate">{trainerName(selectedTrainer)}</p>
-              <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
-                {selectedTrainer.specialization ?? 'General training'}
-              </p>
-            </div>
-            <button onClick={() => setSelectedTrainer(null)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0"
-              style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-              Change
-            </button>
-          </div>
+          {filter === 'pt' && selectedTrainer && slotsLoading && <SkeletonList count={2} />}
 
-          {allSlotDays.length > 0 && (
-            <>
-              <DateRail days={rail} selected={selectedDay} onSelect={setSelectedDay} />
-              {selectedDay && (
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full"
-                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-                  >
-                    <X size={11} /> All days
+          {/* ── The matrix ── */}
+          {showMatrix && (
+            <div className="flex flex-col" style={{ gap: 12 }}>
+              <WeekMatrix week={week} selected={day} onSelect={setSelected} />
+              <div className="flex items-center justify-between flex-wrap" style={{ gap: 10 }}>
+                <Legend />
+                {weekOffset === 0 && nextWeekCount > 0 && (
+                  <button onClick={() => { setWeekOffset(7); setSelected(null); }}
+                    style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+                    Next week · {nextWeekCount}
                   </button>
+                )}
+                {weekOffset === 7 && (
+                  <button onClick={() => { setWeekOffset(0); setSelected(null); }}
+                    style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+                    Back to this week
+                  </button>
+                )}
+              </div>
+
+              {filter === 'classes' && level !== null && (
+                <div className="flex flex-wrap" style={{ gap: 8 }}>
+                  <Chip label="For my level" on={recommendedOnly} onClick={() => { setRecommendedOnly((v) => !v); setSelected(null); }} />
+                  {/* "You chose", not "your level": Achievements shows a
+                      different, *earned* level, and naming both "level" made
+                      the two screens look like they disagreed. */}
+                  <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} onClick={() => setLevel(null)} />
                 </div>
               )}
-            </>
+            </div>
           )}
 
-          {slotDays.length === 0 ? (
-            <div className="rounded-2xl p-8 text-center" style={panelStyle}>
-              <Clock size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-              <p className="font-medium text-white text-sm">
-                {selectedDay ? 'Nothing on this day' : 'No open times'}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                {selectedDay
-                  ? 'Pick another date, or show all.'
-                  : `${trainerName(selectedTrainer)} has no bookable hours in the next two weeks. Try another coach.`}
-              </p>
-            </div>
-          ) : (
-            slotDays.map(([key, daySlots]) => (
-          <div key={key} className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide sticky top-0 py-1 z-10"
-              style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
-              {dayLabel(daySlots[0].startsAt)}
-              <span className="ml-1.5 font-semibold" style={{ opacity: 0.7 }}>· {daySlots.length}</span>
-            </h2>
-            {/* Three columns here, not the bento's two: a slot carries a time
-                and a length and nothing else, so it needs a third of the width
-                rather than half, and a fortnight of a coach's hours is a lot of
-                tiles to scroll. Same radius and padding as the bento cells
-                above so the two grids read as one family. */}
-            <div className="grid grid-cols-3" style={{ gap: 'var(--stack-tight)' }}>
-              {daySlots.map((s) => {
-                /* A clashing slot is shown and disabled, never hidden. Removing
-                   it would read as "this coach has no 10am", which is a
-                   different and wrong statement — the coach is free, the
-                   member is not. */
-                const off = ptBlock !== null || s.conflict !== null;
-                return (
-                  <button key={s.startsAt} onClick={() => setConfirmSlot(s)} disabled={off}
-                    className="rounded-2xl py-3.5 text-center transition-all active:scale-[0.96] disabled:cursor-not-allowed"
-                    style={{
-                      background: off ? 'var(--color-surface)' : 'var(--color-surface-raised)',
-                      border: `1px solid ${off ? 'var(--color-border)' : 'rgba(245,158,11,0.30)'}`,
-                      opacity: off ? 0.45 : 1,
-                    }}>
-                    <span className="block tabular-nums font-bold text-white leading-none"
-                      style={{ fontSize: 'var(--text-body)' }}>
-                      {timeLabel(s.startsAt)}
-                    </span>
-                    <span className="block mt-1.5 leading-none"
-                      style={{ fontSize: 'var(--text-meta)', color: s.conflict !== null ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
-                      {s.conflict !== null ? 'Busy' : `${s.durationMinutes} min`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* ── The chosen day ── */}
+          {showMatrix && (
+            <section className="flex flex-col" style={{ gap: 4 }}>
+              <div className="rule" style={{ marginBottom: 12 }} />
+              <SectionHead
+                title={dayTitle(week.days[day])}
+                meta={filter === 'pt'
+                  ? `${daySlots.length} open ${daySlots.length === 1 ? 'time' : 'times'}`
+                  : `${dayClasses.length} ${dayClasses.length === 1 ? 'class' : 'classes'}`}
+              />
 
-            {/* The detail lives here rather than on each tile. A three-column
-                grid has no room for a sentence, and this app has no hover — a
-                `data-tip` or a `title=` would be a flag nothing reads on a
-                phone. One line per day, listing only the times that clash, is
-                the version a member can actually act on. */}
-            {daySlots.some((s) => s.conflict !== null) && (
-              <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>
-                {daySlots.filter((s) => s.conflict !== null)
-                  .map((s) => `${timeLabel(s.startsAt)} — ${s.conflict}`)
-                  .join(' · ')}
-              </p>
-            )}
-          </div>
-            ))
+              {filter === 'classes' && (
+                dayClasses.length === 0 ? (
+                  <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                    {classes.length === 0
+                      ? 'No classes on the timetable yet — the gym publishes it weekly.'
+                      : recommendedOnly
+                        ? 'Nothing at your level on this day. Turn off "For my level" to see every class.'
+                        : 'Nothing on this day. Pick another in the week above.'}
+                  </p>
+                ) : (
+                  <div>
+                    {dayClasses.map((c, i) => {
+                      const a = classAction(c, classBlock !== null);
+                      return (
+                        <LineRow
+                          key={c.id}
+                          gutter={timeLabel(c.scheduledAt)}
+                          title={c.name}
+                          dim={c.spotsLeft === 0 && !a.mine}
+                          meta={classMeta(c)}
+                          action={a.word}
+                          actionTone={a.tone}
+                          onClick={a.mine
+                            ? () => navigate('/member/booking-history')
+                            : a.bookable ? () => setConfirmClass(c) : undefined}
+                          last={i === dayClasses.length - 1}
+                        />
+                      );
+                    })}
+                  </div>
+                )
+              )}
+
+              {filter === 'pt' && selectedTrainer && (
+                daySlots.length === 0 ? (
+                  <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                    {slots.length === 0
+                      ? `${trainerName(selectedTrainer)} has no bookable hours in the next two weeks. Try another coach.`
+                      : 'No open times on this day. Pick another in the week above.'}
+                  </p>
+                ) : (
+                  <div>
+                    {daySlots.map((s, i) => {
+                      // A clashing slot is shown and refused, never hidden —
+                      // hiding it would say "this coach has no 10am", which is a
+                      // different and wrong statement.
+                      const off = ptBlock !== null || s.conflict !== null;
+                      return (
+                        <LineRow
+                          key={s.startsAt}
+                          gutter={timeLabel(s.startsAt)}
+                          title={`${s.durationMinutes} min with ${selectedTrainer.first_name}`}
+                          dim={off}
+                          meta={s.conflict !== null ? `Clashes with ${s.conflict}` : undefined}
+                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : 'Request'}
+                          actionTone={off ? 'muted' : 'action'}
+                          onClick={off ? undefined : () => setConfirmSlot(s)}
+                          last={i === daySlots.length - 1}
+                        />
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </section>
+          )}
+
+          {/* ── Events ── */}
+          {filter === 'events' && (
+            <section>
+              <SectionHead title="Coming up" meta={events == null ? undefined : `${upcomingEvents.length} ${upcomingEvents.length === 1 ? 'event' : 'events'}`} />
+              {events == null ? (
+                <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  Events could not be loaded. They are on the Events screen too.
+                </p>
+              ) : upcomingEvents.length === 0 ? (
+                <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  Nothing announced yet.
+                </p>
+              ) : (
+                <div style={{ marginTop: 4 }}>
+                  {upcomingEvents.map((e, i) => (
+                    <LineRow
+                      key={e.id}
+                      gutter={new Date(e.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      title={e.title}
+                      meta={[timeLabel(e.starts_at), e.location, e.who_is_it_for].filter(Boolean).join(' · ')}
+                      action="Open"
+                      onClick={() => navigate('/member/events')}
+                      last={i === upcomingEvents.length - 1}
+                    />
+                  ))}
+                </div>
+              )}
+              <NocButton variant="ghost" className="w-full" style={{ marginTop: 16 }} onClick={() => navigate('/member/events')}>
+                Events and announcements
+              </NocButton>
+            </section>
           )}
         </>
       )}
@@ -1082,27 +771,27 @@ export default function BookClass() {
         isOpen={confirmClass !== null}
         onClose={() => !busy && setConfirmClass(null)}
         title="Confirm your booking"
-        subtitle="The front desk approves bookings"
+        subtitle="Requested now, confirmed before your seat is held"
         confirmLabel={busy ? 'Sending…' : 'Request booking'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitClassBooking}>
         {confirmClass && (
-          <div className="space-y-2 text-sm">
+          <div>
             {[
               { label: 'Class', value: confirmClass.name },
-              { label: 'When', value: `${dayLabel(confirmClass.scheduledAt)}, ${timeLabel(confirmClass.scheduledAt)}` },
-              { label: 'Trainer', value: confirmClass.trainerName },
+              { label: 'When', value: `${dayTitle(new Date(confirmClass.scheduledAt))}, ${timeLabel(confirmClass.scheduledAt)}` },
+              { label: 'Coach', value: confirmClass.trainerName },
               { label: 'Location', value: confirmClass.location ?? 'Core Fitness' },
             ].map((row) => (
-              <div key={row.label} className="flex items-center justify-between py-2"
-                style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <div key={row.label} className="flex items-center justify-between"
+                style={{ padding: '10px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14 }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
-                <span className="font-semibold text-white text-right">{row.value}</span>
+                <span className="text-right" style={{ color: 'var(--color-text-primary)' }}>{row.value}</span>
               </div>
             ))}
-            <p className="text-xs mt-3 text-center" style={{ color: 'var(--color-text-muted)' }}>
-              Your seat is held once the front desk confirms it.
+            <p className="text-center" style={{ fontSize: 12.5, marginTop: 12, color: 'var(--color-text-muted)' }}>
+              Your seat is held once the booking is confirmed.
             </p>
           </div>
         )}
@@ -1113,31 +802,31 @@ export default function BookClass() {
         isOpen={confirmSlot !== null}
         onClose={() => !busy && setConfirmSlot(null)}
         title="Request this session"
-        subtitle="The front desk approves personal training"
+        subtitle="Requested now, confirmed before it is booked"
         confirmLabel={busy ? 'Sending…' : 'Request session'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitPtRequest}>
         {confirmSlot && selectedTrainer && (
-          <div className="space-y-2 text-sm">
+          <div>
             {[
-              { label: 'Trainer', value: trainerName(selectedTrainer) },
-              { label: 'When', value: `${dayLabel(confirmSlot.startsAt)}, ${timeLabel(confirmSlot.startsAt)}` },
+              { label: 'Coach', value: trainerName(selectedTrainer) },
+              { label: 'When', value: `${dayTitle(new Date(confirmSlot.startsAt))}, ${timeLabel(confirmSlot.startsAt)}` },
               { label: 'Length', value: `${confirmSlot.durationMinutes} min` },
             ].map((row) => (
-              <div key={row.label} className="flex items-center justify-between py-2"
-                style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <div key={row.label} className="flex items-center justify-between"
+                style={{ padding: '10px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14 }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
-                <span className="font-semibold text-white text-right">{row.value}</span>
+                <span className="text-right" style={{ color: 'var(--color-text-primary)' }}>{row.value}</span>
               </div>
             ))}
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Anything your trainer should know? (optional)"
-              className="w-full mt-2 rounded-xl p-3 text-xs text-white resize-none"
-              style={{ background: 'var(--color-surface-high)' }}
+              placeholder="Anything your coach should know? (optional)"
+              className="field-input w-full resize-none"
+              style={{ marginTop: 12 }}
             />
           </div>
         )}

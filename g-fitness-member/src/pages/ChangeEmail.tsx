@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Mail, MailCheck, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { panelStyle } from '../components/ui/Card';
 import { Field, TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { Eyebrow, NocButton, Panel } from '../components/ui/noc';
 
 /**
- * Change the email you sign in with.
+ * Change the email you sign in with (Nocturne redesign).
  *
  * Until now this was the one account detail nobody could change. The member
  * Edit Profile screen rendered the field disabled under "Ask the front desk to
@@ -95,86 +93,35 @@ export default function ChangeEmail() {
 
   if (sentTo) {
     return (
-      <div className="flex items-center justify-center h-full px-6">
-        <motion.div
-          initial={{ scale: 0.94, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 320, damping: 24 }}
-          className="text-center"
-        >
-          <div
-            className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
-            style={{ background: 'var(--color-primary-light)', border: '2px solid var(--color-primary)' }}
-          >
-            <MailCheck size={36} style={{ color: 'var(--color-primary)' }} />
-          </div>
-          <h2 className="display text-xl text-white">Check your new inbox</h2>
-          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            We sent a confirmation link to <span className="text-white font-semibold">{sentTo}</span>.
+      <Page>
+        <PageTitle title="Check your new inbox" subtitle="A confirmation link is on its way" />
+        <Panel glow="structure" filled>
+          <Eyebrow>Link sent to</Eyebrow>
+          <p className="break-all" style={{ fontSize: 17, marginTop: 6, color: 'var(--color-text-primary)' }}>{sentTo}</p>
+          <div className="rule" style={{ margin: '14px 0' }} />
+          {/* The one thing that must not be misread: nothing has moved yet. */}
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
+            Nothing has changed yet. Keep signing in with{' '}
+            <span className="break-all" style={{ color: 'var(--color-text-primary)' }}>{current}</span> until you tap that link.
           </p>
-
-          <div className="mt-5 p-4 text-left" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-            <div className="flex items-start gap-2.5">
-              <AlertCircle size={16} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                Nothing has changed yet. Keep signing in with{' '}
-                <span className="text-white font-semibold">{current}</span> until you tap that link.
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => navigate(backTo)}
-            className="w-full h-12 rounded-full font-semibold text-sm text-white mt-5"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            Done
-          </button>
-        </motion.div>
-      </div>
+        </Panel>
+        <NocButton variant="action" onClick={() => navigate(backTo)} className="w-full">Done</NocButton>
+      </Page>
     );
   }
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(backTo)}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Change email</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>The address you sign in with</p>
-        </div>
-      </motion.div>
+      <PageTitle back fallback={backTo} title="Change email" subtitle="The address you sign in with" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="p-4 flex items-center gap-3"
-        style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
-      >
-        <span
-          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-primary-light)' }}
-        >
-          <Mail size={19} style={{ color: 'var(--color-primary)' }} />
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Signing in as</p>
-          <p className="text-sm font-semibold text-white truncate">{current || '—'}</p>
-        </div>
-      </motion.div>
+      <section>
+        <Eyebrow>Signing in as</Eyebrow>
+        <p className="truncate" style={{ fontSize: 15, marginTop: 6, color: 'var(--color-text-primary)' }}>{current || '—'}</p>
+      </section>
 
-      <motion.form
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        onSubmit={submit}
-        className="p-4 space-y-4"
-        style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
-      >
+      <div className="rule" />
+
+      <form onSubmit={submit} className="flex flex-col" style={{ gap: 18 }}>
         <Field label="New email" hint="We send a confirmation link here before anything changes.">
           <TextInput
             type="email"
@@ -196,17 +143,12 @@ export default function ChangeEmail() {
           />
         </Field>
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full h-12 rounded-full font-semibold text-sm text-white disabled:opacity-50 active:scale-[0.99] transition-transform"
-          style={{ background: 'var(--color-primary)' }}
-        >
+        <NocButton type="submit" variant="action" disabled={busy} className="w-full">
           {busy ? 'Sending…' : 'Send confirmation link'}
-        </button>
-      </motion.form>
+        </NocButton>
+      </form>
 
-      <p className="text-xs px-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+      <p style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
         Your gym records update automatically once you confirm, so the front desk always sees the
         address you actually use.
       </p>

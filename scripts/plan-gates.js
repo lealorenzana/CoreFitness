@@ -208,8 +208,10 @@ async (page) => {
 
   await page.setViewportSize({ width: 402, height: 880 });
 
-  const LOCK_LINE = "isn't part of your current membership";
-  const FAIL_LINE = "Couldn't check your membership";
+  // Matched loosely on purpose: the Nocturne redesign (2026-09-17) reworded
+  // "isn't" to "is not", and a lock that still locks is not a failure.
+  const LOCK_LINE = /(isn't|is not) part of your current membership/;
+  const FAIL_LINE = /(Couldn't|Could not) check your membership/;
   const BUSY_LINE = 'Checking your membership';
 
   // 5s, not 2s. `ProtectedRoute` resolves a session, then a profile, then the
@@ -241,8 +243,8 @@ async (page) => {
     for (const [key, path] of CHECKS) {
       const { url, text } = await visit(path);
       const expected = DEFAULTS[key][plan.idx];
-      const locked = text.includes(LOCK_LINE);
-      const failed = text.includes(FAIL_LINE);
+      const locked = LOCK_LINE.test(text);
+      const failed = FAIL_LINE.test(text);
       const busy = text.includes(BUSY_LINE);
       // A route that redirected is a screen that HID rather than locked, which
       // is the one outcome this whole design exists to prevent.
@@ -264,7 +266,7 @@ async (page) => {
       const { text } = await visit('/member/rewards');
       const expected = DEFAULTS.points_redeem[plan.idx];
       const earns = DEFAULTS.points_earn[plan.idx];
-      const told = text.includes('does not include redeeming them yet');
+      const told = /does not include (redeeming|spending) them yet/.test(text);
       const state = !earns ? 'n/a — page locked on points_earn'
         : told ? 'locked, and says so' : 'open';
       rows.push({
@@ -276,27 +278,29 @@ async (page) => {
       });
     }
 
-    // ── The chathead lives in the shell, not on a route ─────────────────────
+    // ── The way into the assistant ─────────────────────────────────────────
+    //    The floating chathead was removed in the Nocturne redesign. Today's
+    //    "Ask the assistant" button replaces it and is shown on EVERY plan:
+    //    gates lock and explain, never hide, so a plan without `ai_model` taps
+    //    through to the lock screen checked above rather than finding no door.
     {
-      await visit('/member/home');
-      // Counted in the DOM, never by visibility. `FloatingChathead` starts at
-      // `opacity: 0` and is animated in, and on a non-compositing page no
-      // animation runs — an `isVisible()` check would report every plan as
-      // locked, including Premium.
-      const chathead = await page.locator('.cursor-grab').count();
-      const expected = DEFAULTS.ai_model[plan.idx];
+      const { text } = await visit('/member/home');
+      const present = text.includes('Ask the assistant');
+      // Each Today button to a feature the plan lacks carries a lock mark, so
+      // the door is marked locked rather than being bait (0059).
+      const marks = await page.locator('[aria-label="Not on your plan"]').count();
+      const wantMarks = [DEFAULTS.workout_tracker[plan.idx], DEFAULTS.ai_model[plan.idx]].filter((on) => !on).length;
       rows.push({
-        key: 'ai_model (chathead)', path: '/member/home',
-        expected: expected ? 'present' : 'absent',
-        got: chathead > 0 ? 'present' : 'absent',
-        pass: (chathead > 0) === expected, wordsFromDb: null,
+        key: 'ai_model (Today button)', path: '/member/home',
+        expected: `present, ${wantMarks} lock mark(s)`, got: `${present ? 'present' : 'absent'}, ${marks} lock mark(s)`,
+        pass: present && marks === wantMarks, wordsFromDb: null,
       });
     }
 
     // ── The free library is never gated (0019) ─────────────────────────────
     {
       const { url, text } = await visit('/member/workouts');
-      const reachable = url.startsWith('/member/workouts') && !text.includes(LOCK_LINE);
+      const reachable = url.startsWith('/member/workouts') && !LOCK_LINE.test(text);
       const hasContent = text.includes('Bodyweight basics') || text.includes('Warm-up routine');
       rows.push({
         key: 'free library (never gated)', path: '/member/workouts',

@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from '@phosphor-icons/react';
+import { NocButton } from './noc';
 
 /**
  * Standard modal for the member app.
@@ -76,7 +77,8 @@ export default function Modal({
           {/* Backdrop — constrained to phone screen */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0"
+            style={{ background: 'rgba(8, 8, 14, 0.78)' }}
             onClick={onClose}
           />
 
@@ -86,58 +88,52 @@ export default function Modal({
             animate={{ opacity: 1, y: 0,  scale: 1 }}
             exit={{    opacity: 0, y: 16, scale: 0.96 }}
             transition={{ duration: 0.2 }}
-            className="absolute left-3 right-3 top-1/2 -translate-y-1/2 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="absolute left-3 right-3 top-1/2 -translate-y-1/2 flex flex-col overflow-hidden"
             style={{
+              // Nocturne: on a dark ground elevation is an edge, not a shadow
+              // — the hairline carries it, the drop shadow only lifts it off
+              // the scrim.
               background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-card)',
+              boxShadow: '0 0 0 1px rgba(233, 233, 237, 0.16), 0 16px 40px rgba(0, 0, 0, 0.65)',
               maxHeight: 'calc(100% - 6rem)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-4 py-3 flex items-start justify-between flex-shrink-0"
-              style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div className="flex items-start justify-between flex-shrink-0" style={{ gap: 12, padding: '16px 16px 12px' }}>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold text-white truncate">{title}</h2>
-                {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</p>}
+                <h2 style={{ fontSize: 17, fontWeight: 500, color: 'var(--color-text-primary)' }}>{title}</h2>
+                {subtitle && (
+                  <p style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>{subtitle}</p>
+                )}
               </div>
               <button
                 onClick={onClose}
-                className="p-1 -m-1 rounded-md flex-shrink-0"
-                style={{ color: 'var(--color-text-muted)' }}
+                className="grid place-items-center flex-shrink-0"
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}
                 aria-label="Close"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
+            <div className="rule" style={{ margin: '0 16px' }} />
 
             {/* Body */}
-            <div className="px-4 py-3 overflow-y-auto flex-1 scrollbar-hide">
+            <div className="overflow-y-auto flex-1 scrollbar-hide" style={{ padding: '12px 16px' }}>
               {children}
             </div>
 
             {/* Footer */}
             {!hideFooter && (
-              <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
-                style={{ borderTop: '1px solid var(--color-border)' }}>
+              <div className="flex items-center flex-shrink-0" style={{ gap: 9, padding: '12px 16px 16px' }}>
                 {footer ?? (
                   <>
-                    <button
-                      onClick={onClose}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                      style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-                    >
-                      {cancelLabel}
-                    </button>
+                    <NocButton variant="ghost" className="flex-1" onClick={onClose}>{cancelLabel}</NocButton>
                     {onConfirm && (
-                      <button
-                        onClick={onConfirm}
-                        disabled={confirmDisabled}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-black disabled:opacity-50"
-                        style={{ background: 'var(--color-secondary)' }}
-                      >
+                      <NocButton variant="action" className="flex-1" onClick={onConfirm} disabled={confirmDisabled}>
                         {confirmLabel}
-                      </button>
+                      </NocButton>
                     )}
                   </>
                 )}

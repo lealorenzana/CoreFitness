@@ -1,22 +1,16 @@
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  Mail, Phone, MapPin, Calendar, LogOut, Edit, ArrowLeft, ChevronRight,
-  Settings as SettingsIcon,
-} from 'lucide-react';
 import { logout } from '../utils/auth';
 import Avatar from '../components/ui/Avatar';
 import { SkeletonList } from '../components/ui/Skeleton';
-import { panelStyle } from '../components/ui/Card';
-import SectionHeader from '../components/ui/SectionHeader';
-import { Pill } from '../components/ui/StatCard';
+import Modal from '../components/ui/Modal';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMemberProfile } from '../lib/api/members';
 import { getCurrentMembership } from '../lib/api/memberships';
+import { getGymSettings } from '../lib/api/settings';
 import { readCache, writeCache } from '../lib/pageCache';
-import { Page } from '../components/ui/page';
+import { Page, PageTitle } from '../components/ui/page';
+import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
 import { formatPhone } from '../utils/phone';
 
 /** The flattened identity + plan this screen renders. */
@@ -25,6 +19,7 @@ interface MemberSummary {
   email: string;
   phone: string;
   photoUrl: string | null;
+  /** From `gym_settings`, or empty — never a typed-in name. */
   gym: string;
   joinDate: string;
   planName: string;
@@ -34,7 +29,7 @@ interface MemberSummary {
 const CACHE_KEY = 'member:profile';
 
 /**
- * The member's own profile.
+ * The member's own profile (Nocturne redesign).
  *
  * Four things were wrong here, and all four were invisible to the build:
  *
@@ -51,18 +46,20 @@ const CACHE_KEY = 'member:profile';
  *     key. The Progress Hub stores the same things in Postgres, per member.
  *
  * What's left is identity, membership, and links to the pages that hold the
- * real data.
+ * real data. The home gym was typed in as "Core Fitness Mamburao"; it now comes
+ * from `gym_settings`, like every other contact detail, and a missing row shows
+ * no line rather than a guess. Log out uses the shared `Modal` (the hand-rolled
+ * portal here was a second, differently-worded copy of You's).
  */
 export default function Profile() {
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  // Identity and plan barely move, and this is a bottom-nav tab, so the
-  // skeleton-on-every-visit was pure cost. See lib/pageCache.ts.
+  // Identity and plan barely move, so the skeleton-on-every-visit was pure
+  // cost. See lib/pageCache.ts.
   const cached = readCache<MemberSummary>(CACHE_KEY);
   const [loading, setLoading] = useState(cached === undefined);
   const [member, setMember] = useState<MemberSummary>(cached ?? {
-    name: '', email: '', phone: '', photoUrl: null,
-    gym: 'Core Fitness Mamburao',
+    name: '', email: '', phone: '', photoUrl: null, gym: '',
     joinDate: '', planName: '', status: '',
   });
 
@@ -72,9 +69,10 @@ export default function Profile() {
       try {
         const id = await getCurrentMemberId().catch(() => null);
         if (!id || cancelled) return;
-        const [profile, membership] = await Promise.all([
+        const [profile, membership, gym] = await Promise.all([
           getMemberProfile(id).catch(() => null),
           getCurrentMembership(id).catch(() => null),
+          getGymSettings().catch(() => null),
         ]);
         if (cancelled || !profile) return;
         setMember(writeCache<MemberSummary>(CACHE_KEY, {
@@ -82,7 +80,7 @@ export default function Profile() {
           email: profile.profile.email,
           phone: profile.profile.phone ?? '',
           photoUrl: profile.profile.photo_url ?? null,
-          gym: 'Core Fitness Mamburao',
+          gym: gym?.gym_name ?? '',
           joinDate: new Date(profile.profile.created_at).toLocaleDateString('en-US', {
             year: 'numeric', month: 'long', day: 'numeric',
           }),
@@ -96,189 +94,88 @@ export default function Profile() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    ['isLoggedIn', 'trainerMode', 'memberId', 'selectedGym', 'memberEmail', 'memberName']
-      .forEach((k) => localStorage.removeItem(k));
-    navigate('/');
-  };
-
   // `status` is a lowercase enum in Postgres. This used to compare against
   // 'Active' with a capital A, so an active membership always rendered in the
-  // amber "something is wrong" styling.
+  // "something is wrong" styling.
   const isActive = member.status === 'active';
 
   const contactRows = [
-    { icon: Mail, label: 'Email', value: member.email },
-    { icon: Phone, label: 'Phone', value: formatPhone(member.phone) },
-    { icon: MapPin, label: 'Home gym', value: member.gym },
-    { icon: Calendar, label: 'Member since', value: member.joinDate },
+    { label: 'Email', value: member.email },
+    { label: 'Phone', value: formatPhone(member.phone) },
+    { label: 'Home gym', value: member.gym },
+    { label: 'Member since', value: member.joinDate },
   ].filter((r) => r.value);
 
   return (
     <Page>
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/member/home')}
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="display text-xl text-white">Profile</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Manage your account</p>
-        </div>
-      </motion.div>
+      <PageTitle back fallback="/member/membership" title="Profile" subtitle="Who you are to the gym" />
 
       {loading ? (
         <SkeletonList />
       ) : (
         <>
-          {/* Identity */}
-          <motion.section
-            initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
-            className="p-5 flex items-center gap-4"
-            style={{ ...panelStyle, borderRadius: 'var(--radius-panel)', boxShadow: 'var(--shadow-panel)' }}
-          >
-            <div className="relative flex-shrink-0">
-              <Avatar name={member.name} photoUrl={member.photoUrl} size={72} />
-              <button
-                onClick={() => navigate('/member/profile/edit')}
-                aria-label="Edit profile"
-                className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-black"
-                style={{ background: 'var(--color-secondary)', border: '2px solid var(--color-surface-raised)' }}
-              >
-                <Edit size={14} />
-              </button>
-            </div>
-
-            <div className="min-w-0">
-              <h2 className="display text-lg text-white truncate">{member.name}</h2>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {member.planName && <Pill label={member.planName} tone="primary" />}
+          {/* Identity — the whole row opens Edit. */}
+          <button onClick={() => navigate('/member/profile/edit')} className="w-full flex items-center text-left" style={{ gap: 14 }}>
+            <Avatar name={member.name} photoUrl={member.photoUrl} size={64} />
+            <span className="flex-1 min-w-0">
+              <span className="block truncate" style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                {member.name}
+              </span>
+              <span className="flex flex-wrap" style={{ gap: 6, marginTop: 7 }}>
+                {member.planName && <StatusPill label={member.planName} tone="structure" />}
                 {member.status && (
-                  <Pill label={isActive ? 'Active' : member.status} tone={isActive ? 'primary' : 'secondary'} />
+                  <StatusPill label={isActive ? 'Active' : member.status} tone={isActive ? 'structure' : 'action'} />
                 )}
-              </div>
-            </div>
-          </motion.section>
-
-          {/* Contact */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <SectionHeader
-              title="Details"
-              action={
-                <button
-                  onClick={() => navigate('/member/profile/edit')}
-                  className="text-xs font-semibold"
-                  style={{ color: 'var(--color-secondary)' }}
-                >
-                  Edit
-                </button>
-              }
-            />
-            <div
-              className="p-4 space-y-3"
-              style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}
-            >
-              {contactRows.map((row) => {
-                const Icon = row.icon;
-                return (
-                  <div key={row.label} className="flex items-center gap-3">
-                    <Icon size={16} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{row.label}</p>
-                      <p className="text-sm text-white truncate">{row.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.section>
-
-          {/* Settings stays here, and only here.
-
-              It is the account's own screen — password, privacy, notifications
-              — so it belongs beside the identity rather than in the Menu grid
-              with the training pages. It was listed in both for a day; one of
-              them had to go. */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}>
-            <button
-              onClick={() => navigate('/member/settings')}
-              className="w-full flex items-center gap-3 rounded-2xl text-left"
-              style={{ ...panelStyle, padding: 'var(--card-pad)' }}
-            >
-              <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
-                <SettingsIcon size={20} />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold text-white" style={{ fontSize: 'var(--text-body)' }}>
-                  Settings
-                </span>
-                <span className="block mt-0.5" style={{ fontSize: 'var(--text-meta)', color: 'var(--color-text-muted)' }}>
-                  Password, privacy, notifications and about
-                </span>
-              </span>
-              <ChevronRight size={18} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
-            </button>
-          </motion.section>
-
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-full p-4 flex items-center justify-center gap-2 font-semibold text-sm"
-            style={{
-              background: 'var(--color-secondary-light)',
-              border: '1px solid rgba(245,158,11,0.30)',
-              color: 'var(--color-secondary)',
-              borderRadius: 'var(--radius-btn)',
-            }}
-          >
-            <LogOut size={17} /> Log out
+            </span>
+            <span className="flex-none" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Edit</span>
           </button>
+
+          <div className="rule" />
+
+          <section>
+            <SectionHead title="Details" />
+            <div style={{ marginTop: 4 }}>
+              {contactRows.map((row, i) => (
+                <LineRow key={row.label} gutter={row.label} gutterWidth={104} title={row.value}
+                  last={i === contactRows.length - 1} />
+              ))}
+            </div>
+          </section>
+
+          {/* Settings stays here, and only here: it is the account's own screen
+              — password, privacy, notifications — so it belongs beside the
+              identity rather than among the training pages. */}
+          <section>
+            <SectionHead title="Account" />
+            <div style={{ marginTop: 4 }}>
+              <LineRow title="Settings" meta="Password, privacy, notifications and about"
+                action="Open" actionTone="structure" onClick={() => navigate('/member/settings')} last />
+            </div>
+          </section>
+
+          <NocButton variant="ghost" onClick={() => setShowLogoutConfirm(true)} className="w-full">
+            Log out
+          </NocButton>
         </>
       )}
 
-      {showLogoutConfirm && createPortal(
-        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setShowLogoutConfirm(false)} />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="relative p-6 max-w-[300px] w-full z-10"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-panel)',
-              boxShadow: 'var(--shadow-panel)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="display text-lg text-white mb-1">Log out?</h3>
-            <p className="text-xs mb-5" style={{ color: 'var(--color-text-muted)' }}>
-              You'll need your email and password to get back in.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 h-11 rounded-full font-semibold text-sm"
-                style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 h-11 rounded-full font-semibold text-sm text-black"
-                style={{ background: 'var(--color-secondary)' }}
-              >
-                Log out
-              </button>
-            </div>
-          </motion.div>
-        </div>,
-        document.getElementById('modal-root')!
-      )}
+      <Modal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        title="Log out"
+        subtitle="You will need your email and password to get back in."
+        confirmLabel="Log out"
+        cancelLabel="Stay signed in"
+        onConfirm={async () => {
+          // `logout()` clears push, the session, every per-user key and both
+          // caches — the one sign-out path.
+          await logout();
+          navigate('/');
+        }}
+      >
+        <span />
+      </Modal>
     </Page>
   );
 }

@@ -1,12 +1,11 @@
-import { panelStyle } from '../../../components/ui/Card';
 import { Field, TextInput, TextArea } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Plus, ChevronDown, ChevronRight, History } from 'lucide-react';
+import { Barbell, Plus, ClockCounterClockwise } from '@phosphor-icons/react';
+import { InlineStat, LineRow, NocButton } from '../../../components/ui/noc';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import EmptyState from '../../../components/ui/EmptyState';
 import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
 import { progressService, type WorkoutLog } from '../../../services/progressService';
@@ -80,7 +79,11 @@ function WorkoutProgress() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
+  // Refetches when the member id resolves; `load` is rebuilt each render and is
+  // deliberately not a dependency. The IIFE is what the set-state-in-effect rule
+  // needs — it follows a directly called function into its setState.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void (async () => { await load(); })(); }, [memberId]);
 
   const save = async () => {
     if (!form.type.trim()) return toast.error('Pick what you did');
@@ -164,47 +167,19 @@ function WorkoutProgress() {
   // Real totals over real rows. Nothing estimated.
   //
   // `monthKey`, not `toISOString()`. Manila is UTC+8, so on the 1st of a month
-  // the UTC month is still last month until 8am. This was fixed inline here
-  // first; it now uses the shared helper so the next screen that needs a month
-  // does not have to rediscover it.
+  // the UTC month is still last month until 8am.
   const thisMonth = monthKey();
   const monthLogs = logs.filter((l) => l.date.startsWith(thisMonth));
   const monthMinutes = monthLogs.reduce((sum, l) => sum + (l.duration ?? 0), 0);
 
-  const lastLog = logs[0] ?? null;
+  // The five most recent sessions are the list; anything older sits behind a
+  // control. This list grows for the life of the membership, and a tab that
+  // opens onto forty rows is a tab nobody reads.
+  const RECENT = 5;
+  const shown = showHistory ? logs : logs.slice(0, RECENT);
 
   return (
-    <div className="space-y-4">
-      {/*
-        ONE way in, not two.
-
-        This used to be "Quick log" and "Track sets" side by side, equal weight,
-        neither explaining itself — and the difference between them is not a
-        difference in the *thing* being recorded. It is **when** you are
-        recording it: afterwards, from memory, or live between sets. Two buttons
-        made that look like two features and the member had to guess which one
-        their workout was.
-
-        So the button is the ordinary case, and the live tracker is a line under
-        it that says what it is for. Both still reach the same history.
-      */}
-      <button
-        onClick={() => setShowForm(true)}
-        className="w-full py-3.5 rounded-2xl text-sm font-bold text-black flex items-center justify-center gap-2"
-        style={{ background: 'var(--color-secondary)' }}
-      >
-        <Plus size={17} /> Log a workout
-      </button>
-
-      <button
-        onClick={() => navigate('/member/track')}
-        className="w-full -mt-1 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold"
-        style={{ color: 'var(--color-primary)' }}
-      >
-        <Dumbbell size={13} /> Training right now? Track sets as you go
-        <ChevronRight size={13} />
-      </button>
-
+    <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
       <StepFlow
         open={showForm}
         title="Log a workout"
@@ -215,99 +190,59 @@ function WorkoutProgress() {
         onSubmit={save}
       />
 
-      {logs.length === 0 ? (
-        <EmptyState icon={Dumbbell} title="No workouts logged"
-          message="Log what you do and it builds a history you can look back on." />
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-2xl p-4" style={panelStyle}>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>This month</p>
-              <p className="text-2xl font-bold text-white">{monthLogs.length}</p>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                workout{monthLogs.length === 1 ? '' : 's'}
-              </p>
-            </div>
-            <div className="rounded-2xl p-4" style={panelStyle}>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Time trained</p>
-              <p className="text-2xl font-bold text-white">
-                {monthMinutes >= 60 ? `${Math.floor(monthMinutes / 60)}h` : `${monthMinutes}m`}
-              </p>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {monthMinutes >= 60 ? `${monthMinutes % 60}m more` : 'this month'}
-              </p>
-            </div>
-          </div>
-
-          {/* The most recent session only. Everything before it is history and
-              sits behind the button below — a tab that opens onto forty cards
-              is a tab nobody reads, and the one fact worth seeing on arrival is
-              when you last trained. */}
-          {lastLog && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2"
-                style={{ color: 'var(--color-text-muted)' }}>
-                Last session
-              </p>
-              <LogCard log={lastLog} />
-            </div>
-          )}
-
-          {logs.length > 1 && (
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowHistory((v) => !v)}
-                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
-                style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}
-              >
-                <History size={14} />
-                {showHistory
-                  ? 'Hide earlier workouts'
-                  : `Show ${logs.length - 1} earlier workout${logs.length - 1 === 1 ? '' : 's'}`}
-                <ChevronDown
-                  size={14}
-                  style={{
-                    transform: showHistory ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 150ms',
-                  }}
-                />
-              </button>
-
-              {/* Rendered only when open. `hidden` would keep forty cards in the
-                  tree, and this list grows for the life of the membership. */}
-              {showHistory && (
-                <div className="space-y-2">
-                  {logs.slice(1).map((l) => <LogCard key={l.id} log={l} />)}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-/** One row of the log. Module level — see the note in ResourceThumb about why. */
-function LogCard({ log: l }: { log: WorkoutLog }) {
-  return (
-    <div className="rounded-2xl p-4" style={panelStyle}>
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">{l.type}</p>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            {l.duration != null && ` · ${l.duration} min`}
-          </p>
+      {logs.length > 0 && (
+        <div className="flex flex-wrap" style={{ gap: 24 }}>
+          <InlineStat value={monthLogs.length} label={`logged this month`} />
+          <InlineStat
+            value={monthMinutes >= 60 ? `${Math.floor(monthMinutes / 60)}h ${monthMinutes % 60}m` : `${monthMinutes}m`}
+            label="trained this month"
+          />
+          <InlineStat value={logs.length} label="all time" />
         </div>
-        <Dumbbell size={16} style={{ color: 'var(--color-secondary)' }} />
-      </div>
-      {l.notes && (
-        <p className="text-xs mt-2 px-2 py-1 rounded-lg"
-          style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-          {l.notes}
-        </p>
       )}
+
+      <section>
+        {logs.length === 0 ? (
+          <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+            No workouts logged yet. Log what you do and it builds a history you can look back on.
+          </p>
+        ) : (
+          <>
+            <div className="rule" style={{ marginBottom: 4 }} />
+            {shown.map((l, i) => (
+              <LineRow
+                key={l.id}
+                gutterWidth={56}
+                gutter={new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                title={l.type}
+                meta={[l.duration != null ? `${l.duration} min` : null, l.notes].filter(Boolean).join(' · ') || undefined}
+                last={i === shown.length - 1}
+              />
+            ))}
+            {logs.length > RECENT && (
+              <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }}
+                icon={<ClockCounterClockwise size={15} />}
+                onClick={() => setShowHistory((v) => !v)}>
+                {showHistory ? 'Show recent only' : `Show ${logs.length - RECENT} earlier`}
+              </NocButton>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* ONE way in. "Quick log" and "Track sets" were once two equal buttons,
+          and the difference is not the thing recorded but *when*: afterwards
+          from memory, or live between sets. The button is the ordinary case; the
+          live tracker is the line under it that says what it is for. */}
+      <div className="flex flex-col" style={{ gap: 10 }}>
+        <NocButton variant="action" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>
+          Log a workout
+        </NocButton>
+        <button onClick={() => navigate('/member/track')} className="self-center flex items-center"
+          style={{ gap: 6, fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+          <Barbell size={14} /> Training right now? Track sets as you go
+        </button>
+      </div>
     </div>
   );
 }

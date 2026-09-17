@@ -1,27 +1,25 @@
-import { panelStyle } from '../components/ui/Card';
-import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Wallet, ArrowLeft, MapPin, Check, X, Lock, ArrowUpRight, RefreshCw, ArrowDownRight,
-  Infinity as InfinityIcon,
-} from 'lucide-react';
-import { Pill } from '../components/ui/StatCard';
+import { Check, Lock, X } from '@phosphor-icons/react';
 import { toast } from '../components/ui/Toast';
+import { SkeletonList } from '../components/ui/Skeleton';
 import { errorMessage } from '../utils/errorMessage';
 import { membershipTerm } from '../utils/membershipTerm';
 import { planAccess } from '../utils/planAccess';
 import { getPlanFeatureMatrix } from '../lib/api/planFeatures';
+import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listPlans } from '../lib/api/membershipPlans';
 import {
   getCurrentMembership, hasUsedFreemiumTrial, type MembershipWithPlan,
 } from '../lib/api/memberships';
 import type { MembershipPlanRow, PlanTier } from '../types/db';
+import { Page, PageTitle } from '../components/ui/page';
+import { Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 
 /**
  * The membership screen: where a member sees what they have, what else exists,
- * and what it would take to move.
+ * and what it would take to move (Nocturne redesign).
  *
  * ## Why this is not just "Renew"
  *
@@ -42,7 +40,7 @@ import type { MembershipPlanRow, PlanTier } from '../types/db';
  *     extend.
  *
  * So the screen now names the move it is actually offering — renew, upgrade, or
- * switch down — and every plan card states its access before its price.
+ * switch down — and every plan states its access before its price.
  *
  * ## Still nothing is written here, and that is deliberate
  *
@@ -54,20 +52,15 @@ import type { MembershipPlanRow, PlanTier } from '../types/db';
  * cash can assert it.
  *
  * The confirmation step is therefore worded as an instruction, not a receipt.
- * It used to say "Ready to renew" under a large tick in a circle, which is the
- * visual language of a completed transaction for something that had not started
- * one.
  *
- * Prices and rules come from `membership_plans`, the table the admin edits.
- * They were once hardcoded here — the fourth place in the codebase to define
- * plans, with its own prices matching none of the others.
+ * Prices and rules come from `membership_plans`, the table the admin edits; the
+ * gym's name and address come from `gym_settings` (both were typed in here).
+ * The plans shown are exactly the active rows — the prototype's extra tiers and
+ * guest passes do not exist, so they are not drawn.
  */
 
-/** Cheapest commitment first, so the column reads as a ladder. */
-// Pro sits above Premium, so the comparison screen reads cheapest-first.
-// Typed as a full Record on purpose: adding a tier to the enum without
-// deciding where it ranks is now a compile error rather than a plan that
-// silently sorts to position zero.
+/** Cheapest commitment first, so the list reads as a ladder. Typed as a full
+ *  Record on purpose: a new tier without a rank is a compile error. */
 const TIER_ORDER: Record<PlanTier, number> = { free: 0, freemium: 1, premium: 2, pro: 3 };
 
 /** What moving from the current plan to this one actually is. */
@@ -82,6 +75,30 @@ function describeTerm(plan: MembershipPlanRow): string {
   return `${plan.duration_days} days`;
 }
 
+const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
+
+/** Included in violet with a tick; excluded muted, struck through, with a cross. */
+function AccessList({ included, excluded }: { included: string[]; excluded: string[] }) {
+  return (
+    <ul className="flex flex-col" style={{ gap: 6 }}>
+      {included.map((item) => (
+        <li key={item} className="flex items-start" style={{ gap: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+          <Check size={13} weight="bold" className="flex-none" style={{ marginTop: 3, color: 'var(--color-primary-300)' }} />
+          {item}
+        </li>
+      ))}
+      {/* Struck through, not merely dimmed: skimmed as plain text, an excluded
+          item under a small cross reads exactly like an included one. */}
+      {excluded.map((item) => (
+        <li key={item} className="flex items-start" style={{ gap: 8, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+          <X size={13} className="flex-none" style={{ marginTop: 3 }} />
+          <span className="line-through">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function RenewMembership() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
@@ -90,6 +107,7 @@ export default function RenewMembership() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
+  const [gym, setGym] = useState<GymSettingsRow | null>(null);
   // What each plan unlocks (0049), for every plan rather than just this
   // member's. Empty on failure, which degrades to the pre-0049 wording instead
   // of claiming a tier includes nothing.
@@ -100,23 +118,24 @@ export default function RenewMembership() {
     (async () => {
       try {
         const id = await getCurrentMemberId();
-        const [available, membership, usedTrial, features] = await Promise.all([
+        const [available, membership, usedTrial, features, settings] = await Promise.all([
           listPlans(),
           id ? getCurrentMembership(id).catch(() => null) : Promise.resolve(null),
           id ? hasUsedFreemiumTrial(id) : Promise.resolve(false),
           getPlanFeatureMatrix().catch(() => ({})),
+          getGymSettings().catch(() => null),
         ]);
         if (cancelled) return;
         setMatrix(features);
-        const active = available
+        setGym(settings);
+        setPlans(available
           .filter((p) => p.is_active)
-          .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier]);
-        setPlans(active);
+          .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier]));
         setCurrent(membership);
         setTrialUsed(usedTrial);
         // Nothing is pre-selected. The old screen defaulted to the plan the
-        // member was already on, which meant the primary button read "Renew
-        // Free Access — ₱0" before they had touched anything.
+        // member was already on, so the button read "Renew Free Access — ₱0"
+        // before they had touched anything.
       } catch (err) {
         if (!cancelled) toast.error(errorMessage(err, 'Could not load the plans'));
       } finally {
@@ -130,11 +149,9 @@ export default function RenewMembership() {
   const selected = plans.find((p) => p.id === selectedId) ?? null;
 
   /**
-   * A plan the member cannot choose, and the reason why.
-   *
-   * Only the Freemium trial locks, and only once it has been spent. The rule
-   * itself lives in the trigger from 0041 — this is the explanation, so the
-   * member reads it here rather than discovering it at the desk.
+   * A plan the member cannot choose, and the reason why. Only the Freemium trial
+   * locks, and only once spent — the rule lives in 0041's trigger; this is the
+   * explanation, so it is read here rather than discovered at the desk.
    */
   const lockedReason = useMemo(
     () => (plan: MembershipPlanRow): string | null => {
@@ -158,13 +175,11 @@ export default function RenewMembership() {
 
   /**
    * The primary button's wording, and whether pressing it means anything.
-   *
-   * Renewing a plan that never expires is the case worth guarding: there is no
-   * term to extend and no payment to take, so the button would be asking for
-   * cash in exchange for nothing.
+   * Renewing a plan that never expires is guarded: there is no term to extend,
+   * so the button would be asking for cash in exchange for nothing.
    */
-  const action = (() => {
-    if (!selected) return { label: 'Choose a plan', enabled: false };
+  const action: { label: string; enabled: boolean; note?: string } = (() => {
+    if (!selected) return { label: 'Choose a plan above', enabled: false };
     if (move === 'current') {
       if (selected.duration_days == null) {
         return {
@@ -175,205 +190,146 @@ export default function RenewMembership() {
       }
       return { label: `Renew ${selected.name}`, enabled: true };
     }
-    if (Number(selected.price) === 0) {
-      return { label: `Switch to ${selected.name}`, enabled: true };
-    }
+    if (Number(selected.price) === 0) return { label: `Switch to ${selected.name}`, enabled: true };
     return {
-      label: `${move === 'downgrade' ? 'Switch to' : 'Upgrade to'} ${selected.name} — ₱${Number(selected.price).toLocaleString()}`,
+      label: `${move === 'downgrade' ? 'Switch to' : 'Upgrade to'} ${selected.name} — ${peso(Number(selected.price))}`,
       enabled: true,
     };
   })();
 
   if (confirmed && selected) {
     const free = Number(selected.price) === 0;
+    const steps = [
+      `Visit the front desk${gym?.gym_name ? ` at ${gym.gym_name}` : ''}.`,
+      free ? `Ask to be moved to ${selected.name}.` : `Hand over ${peso(Number(selected.price))} in cash for ${selected.name}.`,
+      'Staff record it on the spot — that is what activates the change.',
+      // Named because it is the most common reason a member waits until the
+      // last day, which is exactly when a lapse happens. recordPayment() carries
+      // unused days forward.
+      'Your access updates immediately, and any days already paid for carry over.',
+    ];
     return (
-      <div className="space-y-5 pb-4">
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3">
-          <button onClick={() => setConfirmed(false)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">At the front desk</h1>
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Nothing is charged in the app
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Deliberately not a tick in a circle. Nothing has been paid, nothing
-            has been recorded, and the member's membership is exactly as it was
-            a second ago — dressing this as a completed transaction is the one
-            thing this screen must not do. */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
-            What to ask for
-          </p>
-          <p className="display text-2xl text-white mt-1">{selected.name}</p>
-          <p className="text-lg font-bold mt-0.5" style={{ color: 'var(--color-secondary)' }}>
-            {free ? 'No payment' : `₱${Number(selected.price).toLocaleString()} in cash`}
-            <span className="text-xs font-semibold ml-2" style={{ color: 'var(--color-text-muted)' }}>
-              {describeTerm(selected)}
-            </span>
-          </p>
-        </motion.div>
-
-        <div className="rounded-2xl p-4" style={panelStyle}>
-          <p className="text-white font-semibold text-sm mb-2">How this works</p>
-          <ol className="text-xs space-y-2" style={{ color: 'var(--color-text-secondary)' }}>
-            <li><span className="text-white font-semibold">1.</span> Visit the front desk at Core Fitness Mamburao.</li>
-            <li>
-              <span className="text-white font-semibold">2.</span>{' '}
-              {free
-                ? `Ask to be moved to ${selected.name}.`
-                : `Hand over ₱${Number(selected.price).toLocaleString()} in cash for ${selected.name}.`}
-            </li>
-            <li><span className="text-white font-semibold">3.</span> Staff record it on the spot — that is what activates the change.</li>
-            <li>
-              <span className="text-white font-semibold">4.</span>{' '}
-              {/* Named because it is the single most common reason a member
-                  waits until the last day, which is exactly when a lapse
-                  happens. recordPayment() carries unused days forward. */}
-              Your access updates immediately, and any days already paid for carry over.
-            </li>
-          </ol>
-        </div>
-
-        <p className="text-xs flex items-center justify-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-          <MapPin size={12} /> Mamburao, Occidental Mindoro
-        </p>
-
-        <button onClick={() => navigate('/member/payments')}
-          className="w-full h-12 rounded-full font-semibold text-sm text-black"
-          style={{ background: 'var(--color-secondary)' }}>
-          View payment history
+      <Page>
+        {/* Back returns to the plan list, not to the previous screen: this is a
+            step of this screen, not a page of its own. */}
+        <button onClick={() => setConfirmed(false)} className="self-start"
+          style={{ fontSize: 13, height: 44, marginBottom: -12, color: 'var(--color-primary-300)' }}>
+          ← Plans
         </button>
-      </div>
+        <PageTitle title="At the front desk" subtitle="Nothing is charged in the app" />
+
+        {/* Deliberately not a tick in a circle. Nothing has been paid or
+            recorded, and the membership is exactly as it was a second ago. */}
+        <Panel glow="action" filled>
+          <Eyebrow>What to ask for</Eyebrow>
+          <p style={{ fontSize: 'var(--text-display)', fontWeight: 500, marginTop: 6, color: 'var(--color-text-primary)' }}>
+            {selected.name}
+          </p>
+          <p style={{ fontSize: 15, marginTop: 4, color: 'var(--color-secondary)' }}>
+            {free ? 'No payment' : `${peso(Number(selected.price))} in cash`}
+            <span style={{ fontSize: 12.5, marginLeft: 8, color: 'var(--color-text-muted)' }}>{describeTerm(selected)}</span>
+          </p>
+        </Panel>
+
+        <section>
+          <SectionHead title="How this works" />
+          <ol className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
+            {steps.map((s, i) => (
+              <li key={i} className="flex" style={{ gap: 12, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                <span className="flex-none" style={{ width: 18, color: 'var(--color-primary-300)' }}>{i + 1}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          {gym?.address && (
+            <p style={{ fontSize: 12.5, marginTop: 14, color: 'var(--color-text-muted)' }}>{gym.address}</p>
+          )}
+        </section>
+
+        <NocButton variant="ghost" onClick={() => navigate('/member/payments')} className="w-full">
+          See payment history
+        </NocButton>
+      </Page>
     );
   }
 
   return (
-    <div className="space-y-5 pb-4">
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <button onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/member/home'))}
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ ...panelStyle, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Membership</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            Renew, upgrade or change your plan
-          </p>
-        </div>
-      </motion.div>
+    <Page>
+      <PageTitle back fallback="/member/membership" title="Plans" subtitle="Renew, upgrade or change your plan" />
 
       {loading ? (
-        <p className="text-sm text-center py-10" style={{ color: 'var(--color-text-muted)' }}>Loading plans…</p>
+        <SkeletonList count={3} />
       ) : plans.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center" style={panelStyle}>
-          <Wallet size={40} className="mx-auto mb-3" style={{ color: 'var(--color-border)' }} />
-          <p className="font-medium text-white text-sm">No plans available</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            Ask at the front desk about current membership options.
-          </p>
-        </div>
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+          No plans are available right now. Ask at the front desk about current membership options.
+        </p>
       ) : (
         <>
-          {/* ============ WHAT YOU HAVE ============ */}
+          {/* ── What you have ── */}
           {current && currentPlan && (() => {
             const today = new Date();
             const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const daysLeft = current.expiry_date
-              ? Math.round(
-                  (new Date(`${current.expiry_date}T00:00:00`).getTime() - midnight.getTime()) / 86_400_000
-                )
+              ? Math.round((new Date(`${current.expiry_date}T00:00:00`).getTime() - midnight.getTime()) / 86_400_000)
               : null;
-            const usable = current.status === 'active'
-              && (current.never_expires || (daysLeft ?? -1) >= 0);
+            const usable = current.status === 'active' && (current.never_expires || (daysLeft ?? -1) >= 0);
             const term = membershipTerm(daysLeft, current.never_expires);
             const access = planAccess(currentPlan, matrix[currentPlan.id]);
 
             return (
-              <div className="p-4" style={{ ...panelStyle, borderRadius: 'var(--radius-panel)' }}>
-                <div className="flex items-start justify-between gap-3">
+              <Panel glow="structure" filled>
+                <div className="flex items-start justify-between" style={{ gap: 12 }}>
                   <div className="min-w-0">
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Your plan today</p>
-                    <p className="display text-lg text-white mt-0.5">{currentPlan.name}</p>
+                    <Eyebrow>Your plan today</Eyebrow>
+                    <p style={{ fontSize: 20, fontWeight: 500, marginTop: 6, color: 'var(--color-text-primary)' }}>{currentPlan.name}</p>
                   </div>
-                  <Pill label={usable ? 'Active' : current.status} tone={usable ? 'primary' : 'secondary'} />
+                  <StatusPill label={usable ? 'Active' : current.status} tone={usable ? 'structure' : 'action'} />
                 </div>
 
+                <div className="rule" style={{ margin: '14px 0' }} />
+
                 {term.kind === 'unlimited' ? (
-                  <div className="flex items-center gap-2 mt-3 pt-3"
-                    style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <InfinityIcon size={16} style={{ color: 'var(--color-primary)' }} className="flex-shrink-0" />
-                    <p className="text-sm font-bold text-white">{term.caption}</p>
-                  </div>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{term.caption}</p>
                 ) : current.expiry_date ? (
-                  <div className="flex items-end justify-between gap-3 mt-3 pt-3"
-                    style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <div className="flex items-end justify-between" style={{ gap: 12 }}>
                     <div>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Valid until</p>
-                      <p className="text-sm font-bold text-white mt-0.5">
+                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Valid until</p>
+                      <p style={{ fontSize: 14, marginTop: 3, color: 'var(--color-text-primary)' }}>
                         {new Date(`${current.expiry_date}T00:00:00`).toLocaleDateString('en-US', {
                           month: 'short', day: 'numeric', year: 'numeric',
                         })}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="flex items-baseline gap-1 justify-end">
-                        <span className="display text-2xl text-white">{term.value}</span>
-                        {term.unit && (
-                          <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                            {term.unit}
-                          </span>
-                        )}
+                      <p className="flex items-baseline justify-end" style={{ gap: 5 }}>
+                        <span style={{ fontSize: 26, fontWeight: 500, lineHeight: 1, color: 'var(--color-text-primary)' }}>{term.value}</span>
+                        {term.unit && <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>{term.unit}</span>}
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{term.caption}</p>
+                      <p style={{ fontSize: 12, marginTop: 3, color: 'var(--color-text-muted)' }}>{term.caption}</p>
                     </div>
                   </div>
                 ) : (
-                  // No date and not a lifetime plan: the registration was never
-                  // activated. Saying nothing here is how that state used to
-                  // render as a blank card with no explanation.
-                  <p className="text-xs mt-3 pt-3" style={{
-                    borderTop: '1px solid var(--color-border)', color: 'var(--color-text-muted)',
-                  }}>
+                  // No date and not a lifetime plan: never activated. Saying
+                  // nothing is how this used to render as a blank card.
+                  <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
                     Not activated yet — the front desk starts it when you first pay.
                   </p>
                 )}
 
                 {access && (
-                  <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    {access.included.map((item) => (
-                      <p key={item} className="text-xs flex items-center gap-1.5"
-                        style={{ color: 'var(--color-text-secondary)' }}>
-                        <Check size={12} className="flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-                        {item}
-                      </p>
-                    ))}
-                    {access.excluded.map((item) => (
-                      <p key={item} className="text-xs flex items-center gap-1.5"
-                        style={{ color: 'var(--color-text-muted)' }}>
-                        <X size={12} className="flex-shrink-0" />
-                        {item} — not on this plan
-                      </p>
-                    ))}
+                  <div style={{ marginTop: 14 }}>
+                    <AccessList included={access.included} excluded={access.excluded} />
                   </div>
                 )}
-              </div>
+              </Panel>
             );
           })()}
 
-          {/* ============ WHAT ELSE EXISTS ============ */}
-          <div>
-            <h2 className="display text-lg text-white mb-3">All plans</h2>
-            <div className="space-y-3">
-              {plans.map((plan, i) => {
+          {/* ── What else exists ── */}
+          <section>
+            <SectionHead title="All plans" meta={`${plans.length} offered`} />
+            <div role="radiogroup" aria-label="Plans" className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
+              {plans.map((plan) => {
                 const isSelected = plan.id === selectedId;
                 const isCurrent = plan.id === currentPlan?.id;
                 const locked = lockedReason(plan);
@@ -381,122 +337,77 @@ export default function RenewMembership() {
                 const kind = moveFor(plan);
 
                 return (
-                  <motion.button key={plan.id}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(i * 0.06, 0.3) }}
+                  <button
+                    key={plan.id}
+                    role="radio"
+                    aria-checked={isSelected}
                     disabled={locked != null}
                     onClick={() => setSelectedId(plan.id)}
-                    className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98] disabled:active:scale-100"
+                    className="w-full text-left"
                     style={{
-                      background: 'var(--color-surface-raised)',
-                      border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      opacity: locked ? 0.55 : 1,
-                    }}>
-                    <div className="flex items-start justify-between gap-3">
+                      padding: 'var(--card-pad)',
+                      borderRadius: 'var(--radius-card)',
+                      background: isSelected ? 'color-mix(in srgb, var(--color-primary) 10%, var(--color-surface))' : 'transparent',
+                      border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
+                      boxShadow: isSelected ? '0 0 22px -12px var(--color-primary)' : 'none',
+                      opacity: locked ? 0.6 : 1,
+                    }}
+                  >
+                    <div className="flex items-start justify-between" style={{ gap: 12 }}>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-white font-bold">{plan.name}</p>
-                          {isCurrent && <Pill label="Current" tone="primary" />}
-                          {/* The move is named on the card rather than only on
-                              the button, so the ladder is legible while
-                              scanning and not just after committing. */}
-                          {!isCurrent && kind === 'upgrade' && (
-                            <span className="text-xs font-semibold flex items-center gap-0.5"
-                              style={{ color: 'var(--color-secondary)' }}>
-                              <ArrowUpRight size={12} /> Upgrade
-                            </span>
-                          )}
-                          {!isCurrent && kind === 'downgrade' && (
-                            <span className="text-xs font-semibold flex items-center gap-0.5"
-                              style={{ color: 'var(--color-text-muted)' }}>
-                              <ArrowDownRight size={12} /> Costs less
-                            </span>
-                          )}
+                        <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
+                          <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary)' }}>{plan.name}</span>
+                          {isCurrent && <StatusPill label="Current" tone="structure" />}
+                          {/* The move is named on the plan, not only on the
+                              button, so the ladder reads while scanning. */}
+                          {!isCurrent && kind === 'upgrade' && <StatusPill label="Upgrade" tone="action" />}
+                          {!isCurrent && kind === 'downgrade' && <StatusPill label="Costs less" tone="muted" />}
                         </div>
-
-                        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                        <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>
                           {describeTerm(plan)}
                           {plan.tier === 'freemium' && ' · one per member'}
                         </p>
-
-                        {/* Access before description. The admin's free-text
-                            `description` is a sales line; these two lists are
-                            the columns the booking triggers actually enforce,
-                            so they are what the member needs to compare. */}
-                        {access && (
-                          <ul className="mt-2 space-y-1">
-                            {access.included.map((item) => (
-                              <li key={item} className="text-xs flex items-start gap-1.5"
-                                style={{ color: 'var(--color-text-secondary)' }}>
-                                <Check size={12} className="flex-shrink-0 mt-0.5"
-                                  style={{ color: 'var(--color-primary)' }} />
-                                {item}
-                              </li>
-                            ))}
-                            {/* Struck through, not merely dimmed. Read as plain
-                                text — which is how a list is skimmed — "Personal
-                                training" under a ✗ is indistinguishable from
-                                "Personal training" under a ✓, and the icon is
-                                12px. The line removes the ambiguity at a glance
-                                and survives being read aloud badly. */}
-                            {access.excluded.map((item) => (
-                              <li key={item} className="text-xs flex items-start gap-1.5"
-                                style={{ color: 'var(--color-text-muted)' }}>
-                                <X size={12} className="flex-shrink-0 mt-0.5" />
-                                <span className="line-through">{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {locked && (
-                          <p className="text-xs mt-2 flex items-center gap-1.5"
-                            style={{ color: 'var(--color-secondary)' }}>
-                            <Lock size={12} className="flex-shrink-0" /> {locked}
-                          </p>
-                        )}
                       </div>
-
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-bold" style={{ color: 'var(--color-secondary)' }}>
-                          {Number(plan.price) === 0 ? 'Free' : `₱${Number(plan.price).toLocaleString()}`}
-                        </p>
-                        {isSelected && (
-                          <Check size={16} className="ml-auto mt-1" style={{ color: 'var(--color-primary)' }} />
-                        )}
-                      </div>
+                      <span className="flex-none" style={{ fontSize: 18, fontWeight: 500, color: 'var(--color-secondary)' }}>
+                        {Number(plan.price) === 0 ? 'Free' : peso(Number(plan.price))}
+                      </span>
                     </div>
-                  </motion.button>
+
+                    {/* Access before description: the admin's free-text
+                        description is a sales line; these are the columns the
+                        booking triggers actually enforce. */}
+                    {access && (
+                      <div style={{ marginTop: 12 }}>
+                        <AccessList included={access.included} excluded={access.excluded} />
+                      </div>
+                    )}
+
+                    {locked && (
+                      <p className="flex items-center" style={{ gap: 6, marginTop: 10, fontSize: 12.5, color: 'var(--color-secondary)' }}>
+                        <Lock size={13} className="flex-none" /> {locked}
+                      </p>
+                    )}
+                  </button>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={panelStyle}>
-            <Wallet size={18} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0 mt-0.5" />
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              Core Fitness takes <span className="text-white font-semibold">cash at the front desk</span>. Your plan
-              changes the moment staff record it — nothing is charged through the app, and choosing here does not
-              reserve or commit anything.
-            </p>
-          </div>
+          <p style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+            {gym?.gym_name ?? 'The gym'} takes <span style={{ color: 'var(--color-text-primary)' }}>cash at the front desk</span>.
+            Your plan changes the moment staff record it — nothing is charged through the app, and choosing here does
+            not reserve or commit anything.
+          </p>
 
           {action.note && (
-            <p className="text-xs text-center px-4" style={{ color: 'var(--color-text-muted)' }}>
-              {action.note}
-            </p>
+            <p className="text-center" style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{action.note}</p>
           )}
 
-          <button
-            disabled={!action.enabled}
-            onClick={() => setConfirmed(true)}
-            className="w-full h-12 rounded-full font-semibold text-black disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: 'var(--color-secondary)' }}>
-            {move === 'current' && action.enabled && <RefreshCw size={16} />}
+          <NocButton variant="action" disabled={!action.enabled} onClick={() => setConfirmed(true)} className="w-full">
             {action.label}
-          </button>
+          </NocButton>
         </>
       )}
-    </div>
+    </Page>
   );
 }
