@@ -141,28 +141,27 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         margin: '0 calc(var(--gutter) * -1)',
         padding: '12px var(--gutter) 12px',
       }}>
-        {/* The AI bubble's language: a dark glass core inside the violet →
-            lavender → amber gradient ring, the destination's icon glowing
-            lavender before its name. */}
+        {/* The AI bubble's shape in the app's yellow (member's request): a warm
+            dark glass core inside an amber → gold ring, the destination's icon
+            glowing amber before its name. */}
         {RAILS[tab.id].map((d) => {
           const RailIcon = d.icon;
           return (
             <button
               key={d.path}
               onClick={() => navigate(d.path)}
-              className="flex-none whitespace-nowrap noc-press orb-cell orb-cell--ring inline-flex items-center"
+              className="flex-none whitespace-nowrap noc-press orb-pill-amber inline-flex items-center"
               style={{
                 gap: 7,
                 padding: '8px 14px 8px 11px',
                 borderRadius: 'var(--radius-pill)',
-                color: 'var(--color-text-primary)',
                 fontSize: 12.5,
                 fontWeight: 600,
               }}
             >
               {RailIcon && (
                 <RailIcon aria-hidden size={15} weight="duotone"
-                  style={{ color: '#c4b5fd', filter: 'drop-shadow(0 0 4px rgba(167, 139, 250, 0.7))' }} />
+                  style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.75))' }} />
               )}
               {d.label}
             </button>
