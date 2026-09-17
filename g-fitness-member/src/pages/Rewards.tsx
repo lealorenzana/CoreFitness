@@ -136,7 +136,7 @@ export default function Rewards() {
               and the amber belongs on Redeem. */}
           <section style={{ padding: '14px 0', borderTop: '1px solid rgba(233, 233, 237, 0.12)', borderBottom: '1px solid rgba(233, 233, 237, 0.12)' }}>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>CORE points</p>
-            <p style={{ fontSize: 38, fontWeight: 500, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+            <p style={{ fontSize: 38, fontWeight: 600, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
               {balance == null ? '—' : balance.toLocaleString()}
             </p>
             {!mayRedeem && (
@@ -185,7 +185,7 @@ export default function Rewards() {
                           disabled={disabled}
                           className="flex-none disabled:cursor-not-allowed"
                           style={{
-                            height: 40, padding: '0 16px', borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 500,
+                            height: 40, padding: '0 16px', borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 600,
                             color: disabled ? 'var(--color-text-muted)' : 'var(--color-secondary)',
                             border: `1px solid ${disabled ? 'var(--color-hairline)' : 'var(--color-secondary)'}`,
                           }}

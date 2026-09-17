@@ -278,22 +278,27 @@ async (page) => {
       });
     }
 
-    // ── The way into the assistant ─────────────────────────────────────────
-    //    The floating chathead was removed in the Nocturne redesign. Today's
-    //    "Ask the assistant" button replaces it and is shown on EVERY plan:
-    //    gates lock and explain, never hide, so a plan without `ai_model` taps
-    //    through to the lock screen checked above rather than finding no door.
+    // ── The assistant's chat bubble lives in the shell, not on a route ──────
+    //    Restored 2026-09-17. Shown only for plans with `ai_model` (0059); the
+    //    route still locks and explains for the rest. Counted in the DOM, never
+    //    by visibility — the bubble springs in, and on a non-compositing page no
+    //    animation runs. Today's one remaining gated button (Track a lift)
+    //    carries a lock mark on a plan without the tracker.
     {
-      const { text } = await visit('/member/home');
-      const present = text.includes('Ask the assistant');
-      // Each Today button to a feature the plan lacks carries a lock mark, so
-      // the door is marked locked rather than being bait (0059).
-      const marks = await page.locator('[aria-label="Not on your plan"]').count();
-      const wantMarks = [DEFAULTS.workout_tracker[plan.idx], DEFAULTS.ai_model[plan.idx]].filter((on) => !on).length;
+      await visit('/member/home');
+      const bubble = await page.locator('.cursor-grab').count();
+      const expected = DEFAULTS.ai_model[plan.idx];
       rows.push({
-        key: 'ai_model (Today button)', path: '/member/home',
-        expected: `present, ${wantMarks} lock mark(s)`, got: `${present ? 'present' : 'absent'}, ${marks} lock mark(s)`,
-        pass: present && marks === wantMarks, wordsFromDb: null,
+        key: 'ai_model (chat bubble)', path: '/member/home',
+        expected: expected ? 'present' : 'absent', got: bubble > 0 ? 'present' : 'absent',
+        pass: (bubble > 0) === expected, wordsFromDb: null,
+      });
+      const marks = await page.locator('[aria-label="Not on your plan"]').count();
+      const wantMarks = DEFAULTS.workout_tracker[plan.idx] ? 0 : 1;
+      rows.push({
+        key: 'workout_tracker (Today lock mark)', path: '/member/home',
+        expected: `${wantMarks} lock mark(s)`, got: `${marks} lock mark(s)`,
+        pass: marks === wantMarks, wordsFromDb: null,
       });
     }
 

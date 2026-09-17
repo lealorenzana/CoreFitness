@@ -10,6 +10,7 @@ import { getCurrentMemberId } from '../../services/bookingService';
 import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
 import { errorMessage } from '../../utils/errorMessage';
 import { toast } from './Toast';
+import { GLASS, SCRIM } from './glass';
 
 /**
  * The check-in QR, as a bottom sheet the bar's check-in block opens anywhere
@@ -154,7 +155,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0"
-            style={{ background: 'rgba(8, 8, 14, 0.8)' }}
+            style={SCRIM}
           />
           <motion.div
             initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
@@ -162,9 +163,9 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             role="dialog" aria-modal="true" aria-label="Check-in QR code"
             className="absolute inset-x-0 bottom-0 flex flex-col items-center"
             style={{
-              background: 'var(--color-surface)',
+              ...GLASS,
+              borderBottom: 'none',
               borderRadius: '20px 20px 0 0',
-              boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.2), 0 -18px 44px rgba(0, 0, 0, 0.6)',
               padding: '12px var(--gutter) calc(20px + env(safe-area-inset-bottom))',
               gap: 14,
             }}
@@ -173,13 +174,13 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
 
             {loading || !home ? (
               <>
-                <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Check in</p>
+                <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Check in</p>
                 <div className="animate-pulse" style={{ width: 224, height: 224, borderRadius: 14, background: 'var(--color-surface-high)' }} />
               </>
             ) : home.expired ? (
               <>
                 <div className="text-center">
-                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                  <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     {home.expiryDate ? 'Membership expired' : 'No active membership'}
                   </p>
                   <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
@@ -196,7 +197,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             ) : home.checkedInToday ? (
               <>
                 <div className="text-center">
-                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                  <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     {justScanned ? 'Scanned — you are in' : 'Checked in'}
                   </p>
                   <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
@@ -212,7 +213,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             ) : (
               <>
                 <div className="text-center">
-                  <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Check in</p>
+                  <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Check in</p>
                   {/* The countdown is gone; the expiry is not. A code that never
                       expires can be screenshotted and used by someone else, so
                       it still carries a timestamp — but it regenerates itself a

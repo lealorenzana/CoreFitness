@@ -78,7 +78,7 @@ export default function Avatar({
           onError={() => setFailed(true)}
         />
       ) : (
-        <span className="leading-none" style={{ fontSize: Math.round(size * 0.34), fontWeight: 500 }}>
+        <span className="leading-none" style={{ fontSize: Math.round(size * 0.34), fontWeight: 600 }}>
           {initials}
         </span>
       )}

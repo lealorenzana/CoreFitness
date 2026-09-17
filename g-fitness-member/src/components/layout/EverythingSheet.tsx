@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, X } from '@phosphor-icons/react';
 import { EVERYTHING } from './memberNav';
+import { GLASS } from '../ui/glass';
 
 /**
  * Everything — every member screen, grouped, one tap each.
@@ -39,7 +40,9 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
       aria-label="Everything"
       className="absolute inset-0 flex flex-col pointer-events-auto noc-sheet"
       style={{
-        background: 'var(--color-bg)',
+        // Full-screen glass: the screen you came from stays, blurred, behind it.
+        ...GLASS,
+        border: 'none',
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}

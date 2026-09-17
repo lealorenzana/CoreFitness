@@ -110,7 +110,7 @@ export default function Workouts() {
       <Panel glow="action" filled onClick={() => navigate('/member/plan')} ariaLabel="Build your training week">
         <div className="flex items-center" style={{ gap: 12 }}>
           <div className="flex-1 min-w-0">
-            <p style={{ fontSize: 15.5, fontWeight: 500, color: 'var(--color-text-primary)' }}>Build your training week</p>
+            <p style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>Build your training week</p>
             <p style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
               Six short questions, then a plan built around your days and your goal
             </p>

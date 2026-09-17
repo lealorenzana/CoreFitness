@@ -4,6 +4,7 @@ import { X, ArrowRight } from '@phosphor-icons/react';
 import type { Notification } from '../../services/notificationService';
 import { fullTimestamp } from '../../utils/notificationDisplay';
 import { NocButton } from './noc';
+import { GLASS, SCRIM } from './glass';
 
 /**
  * The whole message, as a bottom sheet (Nocturne redesign).
@@ -44,15 +45,15 @@ export default function NotificationDetail({
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
           >
-            <div className="absolute inset-0" style={{ background: 'rgba(8, 8, 14, 0.78)' }} />
+            <div className="absolute inset-0" style={SCRIM} />
 
             <motion.div
               className="relative w-full flex flex-col"
               style={{
                 maxHeight: '85%',
-                background: 'var(--color-surface)',
+                ...GLASS,
+                borderBottom: 'none',
                 borderRadius: '20px 20px 0 0',
-                boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.2), 0 -18px 44px rgba(0, 0, 0, 0.6)',
               }}
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 320 }}
@@ -62,7 +63,7 @@ export default function NotificationDetail({
               <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 12, background: 'rgba(233, 233, 237, 0.25)' }} />
               <div className="flex items-start shrink-0" style={{ gap: 12, padding: '14px var(--gutter) 12px' }}>
                 <div className="flex-1 min-w-0">
-                  <h2 style={{ fontSize: 18, fontWeight: 500, lineHeight: 1.3, color: 'var(--color-text-primary)' }}>{notification.title}</h2>
+                  <h2 style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.3, color: 'var(--color-text-primary)' }}>{notification.title}</h2>
                   <p style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-muted)' }}>{fullTimestamp(notification.timestamp)}</p>
                 </div>
                 <button

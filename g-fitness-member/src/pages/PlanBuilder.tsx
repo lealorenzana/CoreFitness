@@ -313,7 +313,7 @@ export default function PlanBuilder() {
             Built {new Date(saved.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             {' · '}{FOCUS_LABEL[saved.spec.inputs.focus]}
           </Eyebrow>
-          <p style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.3, marginTop: 8, color: 'var(--color-text-primary)' }}>
+          <p style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, marginTop: 8, color: 'var(--color-text-primary)' }}>
             {view.headline}
           </p>
           <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>{view.intro}</p>
@@ -393,7 +393,7 @@ export default function PlanBuilder() {
       {title}
       {Err}
       <Panel glow="structure" filled>
-        <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Build a training week</p>
+        <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Build a training week</p>
         <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>
           Six short questions, the last one optional, then a week of sessions you can start on. It sticks to a
           barbell, dumbbells, a bench and a pull-up bar, and it is built from a fixed set of rules — not a chatbot

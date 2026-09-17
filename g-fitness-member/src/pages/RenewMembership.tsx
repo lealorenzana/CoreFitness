@@ -222,7 +222,7 @@ export default function RenewMembership() {
             recorded, and the membership is exactly as it was a second ago. */}
         <Panel glow="action" filled>
           <Eyebrow>What to ask for</Eyebrow>
-          <p style={{ fontSize: 'var(--text-display)', fontWeight: 500, marginTop: 6, color: 'var(--color-text-primary)' }}>
+          <p style={{ fontSize: 'var(--text-display)', fontWeight: 600, marginTop: 6, color: 'var(--color-text-primary)' }}>
             {selected.name}
           </p>
           <p style={{ fontSize: 15, marginTop: 4, color: 'var(--color-secondary)' }}>
@@ -281,7 +281,7 @@ export default function RenewMembership() {
                 <div className="flex items-start justify-between" style={{ gap: 12 }}>
                   <div className="min-w-0">
                     <Eyebrow>Your plan today</Eyebrow>
-                    <p style={{ fontSize: 20, fontWeight: 500, marginTop: 6, color: 'var(--color-text-primary)' }}>{currentPlan.name}</p>
+                    <p style={{ fontSize: 20, fontWeight: 600, marginTop: 6, color: 'var(--color-text-primary)' }}>{currentPlan.name}</p>
                   </div>
                   <StatusPill label={usable ? 'Active' : current.status} tone={usable ? 'structure' : 'action'} />
                 </div>
@@ -302,7 +302,7 @@ export default function RenewMembership() {
                     </div>
                     <div className="text-right">
                       <p className="flex items-baseline justify-end" style={{ gap: 5 }}>
-                        <span style={{ fontSize: 26, fontWeight: 500, lineHeight: 1, color: 'var(--color-text-primary)' }}>{term.value}</span>
+                        <span style={{ fontSize: 26, fontWeight: 600, lineHeight: 1, color: 'var(--color-text-primary)' }}>{term.value}</span>
                         {term.unit && <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>{term.unit}</span>}
                       </p>
                       <p style={{ fontSize: 12, marginTop: 3, color: 'var(--color-text-muted)' }}>{term.caption}</p>
@@ -356,7 +356,7 @@ export default function RenewMembership() {
                     <div className="flex items-start justify-between" style={{ gap: 12 }}>
                       <div className="min-w-0">
                         <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
-                          <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary)' }}>{plan.name}</span>
+                          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>{plan.name}</span>
                           {isCurrent && <StatusPill label="Current" tone="structure" />}
                           {/* The move is named on the plan, not only on the
                               button, so the ladder reads while scanning. */}
@@ -368,7 +368,7 @@ export default function RenewMembership() {
                           {plan.tier === 'freemium' && ' · one per member'}
                         </p>
                       </div>
-                      <span className="flex-none" style={{ fontSize: 18, fontWeight: 500, color: 'var(--color-secondary)' }}>
+                      <span className="flex-none" style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-secondary)' }}>
                         {Number(plan.price) === 0 ? 'Free' : peso(Number(plan.price))}
                       </span>
                     </div>

@@ -440,7 +440,7 @@ export default function BodyMap({
                       onClick={() => onLogRegion(active.key)}
                       className="flex-1"
                       style={{
-                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 500,
+                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 600,
                         color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
                         background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
                         boxShadow: '0 0 26px -10px var(--color-secondary)',
@@ -454,7 +454,7 @@ export default function BodyMap({
                       onClick={() => onTrainRegion(active.key)}
                       className="flex-1"
                       style={{
-                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 500,
+                        height: 46, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 600,
                         color: 'var(--color-text-secondary)', border: '1px solid var(--color-hairline)',
                       }}
                     >

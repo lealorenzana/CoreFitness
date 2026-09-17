@@ -4,6 +4,9 @@ import TabBar from './TabBar';
 import TabHeader from './TabHeader';
 import { tabRootFor } from './memberNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
+import FloatingChathead from '../ui/FloatingChathead';
+import { useFeatures } from '../../hooks/useFeatures';
+import { isEnabled } from '../../lib/api/planFeatures';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
@@ -20,11 +23,26 @@ import { useScrollMemory } from '../../hooks/useScrollMemory';
  * the last row of most long screens (measured on Home: the chat head sat 40×48px
  * over the Next session button).
  *
- * **The chat head is gone; the assistant is not.** It is at `/member/chatbot`,
- * reached from the Today rail, Today's "Ask the assistant" button and Everything —
- * three places a member will look, instead of one bubble following them over
- * every screen. `ChatbotPage` still gates it by plan (0049) and explains itself.
+ * **The chat head is back** (2026-09-17), because without it nobody found the
+ * assistant. It floats over the scroller but stops at the bar, and it is gated by
+ * plan exactly as before (see `ChatheadGate`).
  */
+/**
+ * The assistant chathead, shown only for plans that include it (`ai_model`,
+ * 0049/0059), and not on the full assistant screen it would open.
+ *
+ * A failed check deliberately falls through to *showing* it: a lock that appears
+ * because the network dropped is the same lie as an empty list reading "nothing
+ * here", and `FeatureLock` treats a failed check the same way. The route itself
+ * still locks and explains for a plan without it.
+ */
+function ChatheadGate({ pathname }: { pathname: string }) {
+  const { features, loading, error } = useFeatures();
+  if (pathname.startsWith('/member/chatbot')) return null;
+  if (!error && (loading || !isEnabled(features, 'ai_model'))) return null;
+  return <FloatingChathead />;
+}
+
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
@@ -74,6 +92,8 @@ export default function Layout() {
       </main>
 
       <TabBar />
+
+      <ChatheadGate pathname={location.pathname} />
 
       {/* Sits at shell level so an unlock earned on any screen can surface
           there, rather than only on the page that happened to load it. */}

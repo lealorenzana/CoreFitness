@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GearSix, Lock, Sparkle } from '@phosphor-icons/react';
+import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
 import { RAILS, type Tab } from './memberNav';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
 import { weekRangeLabel } from '../../utils/dates';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
-import { useFeatures } from '../../hooks/useFeatures';
-import { isEnabled } from '../../lib/api/planFeatures';
 
 /**
  * The two title lines for a tab root.
@@ -72,21 +70,13 @@ function IconButton({
 /**
  * A tab root's header.
  *
- *   top row   — your photo and a greeting on the left (to Profile); the
- *               assistant, the bell and Settings on the right
- *   title     — the big two lines
- *   eyebrow, a fading rule, and the rail of that tab's own screens
+ *   Today     — a top row: your photo, a greeting and first name (to Profile) on
+ *               the left, the bell and Settings on the right; then the title
+ *   Train/You — the title with the bell and Settings beside it
+ *   then the eyebrow, a fading rule, and the rail of that tab's own screens
  *
- * The top row brings back what the Nocturne pass took away and members missed:
- * **who is signed in**, at a glance, and a **visible way to the assistant** — the
- * floating chat head went, and three quieter links in its place were not enough
- * for anyone to find it. Settings sits beside the bell because that is where
- * people look for it; it was two taps deep under Profile.
- *
- * The assistant button shows on every plan (gates lock and explain, never hide)
- * and carries a lock mark on a plan without it, as Today's buttons do.
- *
- * Top padding is real room under the status bar. The title used to start 6px
+ * The assistant is not here: it is the floating chat bubble again (Layout).
+ * Top padding is real room under the status bar; the title used to start 6px
  * below the safe area and read as jammed against the top edge.
  *
  * Rendered by the shell above `<main>`, so it stays put while the page scrolls.
@@ -97,56 +87,51 @@ export default function TabHeader({ tab }: { tab: Tab }) {
   const override = useTabHeaderOverride(tab.id);
   const now = new Date();
   const [line1, line2] = titleFor(tab, now, override);
+  // Who is signed in belongs on Today, the landing screen — on Train and You it
+  // was a second greeting pushing the content down (member's request, 2026-09-17).
+  const isToday = tab.id === 'today';
   const me = useMyIdentity();
-  const { features } = useFeatures();
-  // Unknown while loading is drawn as open, rather than flashing a lock.
-  const assistantLocked = features != null && !isEnabled(features, 'ai_model');
+
+  const actions = (
+    <div className="flex items-center flex-none" style={{ gap: 12 }}>
+      <Notifications />
+      <IconButton label="Settings" onClick={() => navigate('/member/settings')}>
+        <GearSix size={17} />
+      </IconButton>
+    </div>
+  );
 
   return (
-    <header className="flex-none" style={{ padding: '20px var(--gutter) 0' }}>
-      <div className="flex items-center justify-between" style={{ gap: 12 }}>
-        <button onClick={() => navigate('/member/profile')} className="flex items-center min-w-0 text-left noc-press"
-          aria-label="Your profile" style={{ gap: 11 }}>
-          <Avatar name={me?.fullName} photoUrl={me?.photoUrl} size={40} />
-          <span className="min-w-0">
-            <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{greetingFor(now)}</span>
-            <span className="block truncate" style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>
-              {me?.firstName ?? ' '}
-            </span>
-          </span>
-        </button>
-
-        <div className="flex items-center flex-none" style={{ gap: 12 }}>
-          <IconButton
-            label={assistantLocked ? 'AI assistant — not on your plan' : 'AI assistant'}
-            onClick={() => navigate('/member/chatbot')}
-            badge={assistantLocked ? (
-              <span aria-hidden className="absolute grid place-items-center rounded-full" style={{
-                right: -5, bottom: -5, width: 15, height: 15,
-                background: 'var(--color-bg)', color: 'var(--color-text-muted)',
-                boxShadow: 'inset 0 0 0 1px rgba(233, 233, 237, 0.14)',
-              }}>
-                <Lock size={9} weight="bold" />
+    <header className="flex-none" style={{ padding: `${isToday ? 20 : 18}px var(--gutter) 0` }}>
+      {isToday && (
+        <div className="flex items-center justify-between" style={{ gap: 12, marginBottom: 16 }}>
+          <button onClick={() => navigate('/member/profile')} className="flex items-center min-w-0 text-left noc-press"
+            aria-label="Your profile" style={{ gap: 11 }}>
+            <Avatar name={me?.fullName} photoUrl={me?.photoUrl} size={40} />
+            <span className="min-w-0">
+              <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{greetingFor(now)}</span>
+              <span className="block truncate" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {me?.firstName ?? ' '}
               </span>
-            ) : undefined}
-          >
-            <Sparkle size={17} weight="fill" style={{ color: assistantLocked ? undefined : 'var(--color-primary-300)' }} />
-          </IconButton>
-          <Notifications />
-          <IconButton label="Settings" onClick={() => navigate('/member/settings')}>
-            <GearSix size={17} />
-          </IconButton>
+            </span>
+          </button>
+          {actions}
         </div>
-      </div>
+      )}
 
-      <h1 key={tab.id} className="noc-rise" style={{ marginTop: 16 }}>
-        <span className="screen-title block">{line1}</span>
-        {/* A non-breaking space holds the line's height while You's plan name
-            loads, so the rail does not jump up and then down. */}
-        <span className="screen-title block" style={{ color: 'var(--color-text-muted)' }}>
-          {line2 || ' '}
-        </span>
-      </h1>
+      {/* Off Today, the bell and Settings sit beside the title instead, so the
+          header is one block rather than an empty row above it. */}
+      <div className="flex items-start justify-between" style={{ gap: 12 }}>
+        <h1 key={tab.id} className="noc-rise min-w-0">
+          <span className="screen-title block">{line1}</span>
+          {/* A non-breaking space holds the line's height while You's plan name
+              loads, so the rail does not jump up and then down. */}
+          <span className="screen-title block" style={{ color: 'var(--color-text-muted)' }}>
+            {line2 || ' '}
+          </span>
+        </h1>
+        {!isToday && <div style={{ paddingTop: 4 }}>{actions}</div>}
+      </div>
 
       <p className="eyebrow" style={{ marginTop: 12 }}>{tab.eyebrow}</p>
 

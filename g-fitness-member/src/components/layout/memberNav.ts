@@ -101,7 +101,6 @@ export const RAILS: Record<TabId, Destination[]> = {
   today: [
     { label: 'Updates', path: '/member/notifications' },
     { label: 'Announcements', path: '/member/events' },
-    { label: 'Ask the assistant', path: '/member/chatbot' },
     { label: 'Log a reading', path: '/member/progress?tab=body' },
     { label: 'Track a lift', path: '/member/track' },
   ],

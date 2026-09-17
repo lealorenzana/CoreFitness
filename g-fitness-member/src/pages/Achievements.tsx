@@ -17,6 +17,7 @@ import {
 import { getCurrentMemberId } from '../services/bookingService';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, ProgressBar, SectionHead } from '../components/ui/noc';
+import { GLASS, SCRIM } from '../components/ui/glass';
 
 /**
  * The achievement gallery, shared by both roles.
@@ -92,7 +93,7 @@ export default function Achievements() {
         <>
           <section>
             <div className="flex items-baseline justify-between">
-              <span style={{ fontSize: 'var(--text-hero)', fontWeight: 500, lineHeight: 1, letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1, letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)' }}>
                 {pct}%
               </span>
               <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{earnedCount} of {catalog.length}</span>
@@ -165,13 +166,13 @@ export default function Achievements() {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => setDetail(null)}
               >
-                <div className="absolute inset-0" style={{ background: 'rgba(8, 8, 14, 0.78)' }} />
+                <div className="absolute inset-0" style={SCRIM} />
                 <motion.div
                   className="relative w-full flex flex-col items-center text-center"
                   style={{
-                    background: 'var(--color-surface)',
+                    ...GLASS,
+                    borderBottom: 'none',
                     borderRadius: '20px 20px 0 0',
-                    boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.2), 0 -18px 44px rgba(0, 0, 0, 0.6)',
                     padding: '12px var(--gutter) calc(28px + env(safe-area-inset-bottom))',
                   }}
                   initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
@@ -198,7 +199,7 @@ export default function Achievements() {
                           <detail.icon size={34} style={{ color: have ? ring : 'var(--color-text-muted)', opacity: have ? 1 : 0.5 }} />
                         </span>
                         <p className="eyebrow" style={{ marginTop: 14, color: ring }}>{tierStyle(detail.tier).label}</p>
-                        <h2 style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: 'var(--color-text-primary)' }}>{detail.title}</h2>
+                        <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 4, color: 'var(--color-text-primary)' }}>{detail.title}</h2>
                         {have ? (
                           <>
                             <p style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>{detail.description}</p>

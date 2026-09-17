@@ -193,7 +193,7 @@ export default function MembershipHub() {
       }}>
         <div>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>CORE points</p>
-          <p style={{ fontSize: 38, fontWeight: 500, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+          <p style={{ fontSize: 38, fontWeight: 600, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
             {balance ?? '—'}
           </p>
           {balance == null && (

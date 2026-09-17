@@ -183,7 +183,7 @@ export default function StepFlow({
                 transition={{ duration: 0.18 }}
               >
                 <h2 style={{
-                  fontSize: 26, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.2,
+                  fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.2,
                   marginTop: 8, color: 'var(--color-text-primary)',
                 }}>
                   {step.title}
@@ -299,7 +299,7 @@ export function BigNumberInput({
           className="bignum bg-transparent border-none text-center min-w-0"
           style={{
             fontSize: 46,
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: '-0.03em',
             lineHeight: 1.1,
             color: 'var(--color-text-primary)',

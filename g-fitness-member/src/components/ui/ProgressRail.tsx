@@ -73,7 +73,7 @@ export default function ProgressRail() {
         <p className="eyebrow">Workout streak</p>
         <p className="flex items-baseline" style={{ gap: 8, marginTop: 8 }}>
           <span style={{
-            fontSize: 'var(--text-hero)', fontWeight: 500, lineHeight: 1, letterSpacing: 'var(--tracking-hero)',
+            fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1, letterSpacing: 'var(--tracking-hero)',
             color: live ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
           }}>
             {current}

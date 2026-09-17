@@ -23,6 +23,7 @@ import { askFitnessAssistant } from '../lib/api/fitnessAssistant';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
+import { GLASS, SCRIM } from '../components/ui/glass';
 
 /**
  * The member assistant.
@@ -423,7 +424,7 @@ function Assistant() {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => setHistoryOpen(false)}
                 className="absolute inset-0"
-                style={{ background: 'rgba(8, 8, 14, 0.78)' }}
+                style={SCRIM}
               />
               <motion.div
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
@@ -431,14 +432,14 @@ function Assistant() {
                 role="dialog" aria-modal="true" aria-label="Saved conversations"
                 className="absolute left-0 right-0 bottom-0 max-h-[75%] flex flex-col"
                 style={{
-                  background: 'var(--color-surface)',
-                  borderTop: '1px solid var(--color-hairline)',
+                  ...GLASS,
+                  borderBottom: 'none',
                   borderRadius: '16px 16px 0 0',
                   margin: '0 calc(var(--gutter) * -1)',
                 }}
               >
                 <div className="flex items-center flex-shrink-0" style={{ gap: 16, padding: '16px var(--gutter) 10px' }}>
-                  <h2 className="flex-1" style={{ fontSize: 'var(--text-title)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                  <h2 className="flex-1" style={{ fontSize: 'var(--text-title)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     Saved chats
                   </h2>
                   <button onClick={startNew} style={{ fontSize: 13, height: 36, color: 'var(--color-secondary)' }}>New chat</button>

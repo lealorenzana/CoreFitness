@@ -551,7 +551,7 @@ export default function BookClass() {
           {/* ── Experience level: asked, never guessed ── */}
           {filter === 'classes' && level === null && (
             <Panel glow="structure">
-              <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+              <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 <Sparkle size={16} style={{ color: 'var(--color-primary-400)' }} /> What is your experience level?
               </p>
               <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
@@ -605,7 +605,7 @@ export default function BookClass() {
                 className="flex items-center" style={{ gap: 7, fontSize: 13, color: 'var(--color-primary-300)' }}>
                 <ArrowLeft size={15} /> All coaches
               </button>
-              <p style={{ marginTop: 10, fontSize: 17, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+              <p style={{ marginTop: 10, fontSize: 17, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 {trainerName(selectedTrainer)}
               </p>
               <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }}>

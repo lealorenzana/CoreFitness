@@ -26,7 +26,7 @@ export default function SectionHeader({
     <div className="flex items-start justify-between" style={{ gap: 12, marginBottom: 12 }}>
       <div className="min-w-0">
         {title && (
-          <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 500, color: 'var(--color-text-primary)' }}>{title}</h2>
+          <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 600, color: 'var(--color-text-primary)' }}>{title}</h2>
         )}
         {hint && (
           <p style={{ fontSize: 12.5, marginTop: title ? 3 : 0, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>

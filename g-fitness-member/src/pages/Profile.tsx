@@ -118,7 +118,7 @@ export default function Profile() {
           <button onClick={() => navigate('/member/profile/edit')} className="w-full flex items-center text-left" style={{ gap: 14 }}>
             <Avatar name={member.name} photoUrl={member.photoUrl} size={64} />
             <span className="flex-1 min-w-0">
-              <span className="block truncate" style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+              <span className="block truncate" style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 {member.name}
               </span>
               <span className="flex flex-wrap" style={{ gap: 6, marginTop: 7 }}>

@@ -154,7 +154,7 @@ export default function Challenges() {
                       )}
                       <div className="flex items-start justify-between" style={{ gap: 12 }}>
                         <div className="min-w-0">
-                          <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary)' }}>{c.title}</p>
+                          <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.title}</p>
                           {c.description && (
                             <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>{c.description}</p>
                           )}
@@ -192,7 +192,7 @@ export default function Challenges() {
                         </p>
                         {cardJoins ? (
                           <span className="flex-none grid place-items-center" style={{
-                            height: 36, padding: '0 15px', borderRadius: 'var(--radius-btn)', fontSize: 13, fontWeight: 500,
+                            height: 36, padding: '0 15px', borderRadius: 'var(--radius-btn)', fontSize: 13, fontWeight: 600,
                             color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
                             opacity: busy === c.id ? 0.5 : 1,
                           }}>

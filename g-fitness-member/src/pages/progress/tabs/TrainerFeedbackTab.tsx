@@ -8,6 +8,7 @@ import Avatar from '../../../components/ui/Avatar';
 import { NocButton, StatusPill } from '../../../components/ui/noc';
 import { progressService, type TrainerFeedback } from '../../../services/progressService';
 import { notificationService } from '../../../services/notificationService';
+import { GLASS, SCRIM } from '../../../components/ui/glass';
 
 /**
  * Notes a trainer has sent this member (Nocturne redesign).
@@ -112,14 +113,14 @@ export default function TrainerFeedbackTab() {
 
       {modalRoot && open && createPortal(
         <div className="absolute inset-0 pointer-events-auto">
-          <div onClick={() => setOpen(null)} className="absolute inset-0" style={{ background: 'rgba(8, 8, 14, 0.78)' }} />
+          <div onClick={() => setOpen(null)} className="absolute inset-0" style={SCRIM} />
           <div
             role="dialog" aria-modal="true" aria-label="Note from your coach"
             className="absolute inset-x-0 bottom-0"
             style={{
-              background: 'var(--color-surface)',
+              ...GLASS,
+              borderBottom: 'none',
               borderRadius: '20px 20px 0 0',
-              boxShadow: '0 -1px 0 rgba(233, 233, 237, 0.18), 0 -18px 44px rgba(0, 0, 0, 0.6)',
               padding: '12px var(--gutter) calc(28px + env(safe-area-inset-bottom))',
             }}
           >

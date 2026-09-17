@@ -108,7 +108,7 @@ export default function GymPlan() {
                     aria-label={`${DAY_FULL[d]}${isToday ? ', today' : ''}`}
                     className="flex flex-col items-center justify-center"
                     style={{
-                      height: 56, gap: 3, borderRadius: 8, fontSize: 12.5, fontWeight: 500,
+                      height: 56, gap: 3, borderRadius: 8, fontSize: 12.5, fontWeight: 600,
                       background: on ? 'var(--color-primary)' : 'transparent',
                       boxShadow: on ? '0 0 12px -4px var(--color-primary)' : 'none',
                       // Today gets an amber edge whether or not it is chosen, so

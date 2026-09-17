@@ -182,7 +182,7 @@ export default function Events() {
                     <StatusPill label={status} tone={status === 'Ongoing' ? 'structure' : 'muted'} />
                   )}
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 500, marginTop: 8, color: 'var(--color-text-primary)' }}>{event.title}</p>
+                <p style={{ fontSize: 16, fontWeight: 600, marginTop: 8, color: 'var(--color-text-primary)' }}>{event.title}</p>
                 {event.description && (
                   <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>{event.description}</p>
                 )}

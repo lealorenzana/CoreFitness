@@ -103,7 +103,7 @@ export function PageTitle({
       <div className="flex items-start" style={{ gap: 12 }}>
         <div className="min-w-0 flex-1">
           <h1 style={{
-            fontSize: 'var(--text-display)', fontWeight: 500, letterSpacing: '-0.02em',
+            fontSize: 'var(--text-display)', fontWeight: 700, letterSpacing: '-0.02em',
             lineHeight: 1.12, color: 'var(--color-text-primary)',
           }}>
             {title}

@@ -1,12 +1,9 @@
-/* Inter only. Anton is gone (Nocturne redesign, 2026-09-16): headings are Inter
-   500, and hierarchy comes from size and space rather than from a heavy
-   condensed face shouting in capitals.
-
-   600 and 700 stay loaded although Nocturne tops out at 500 for headings: ~500
-   `font-semibold`/`font-bold` call sites remain on screens not yet rebuilt, and
-   an unloaded weight is synthesised — a smeared faux-bold, which is worse than
-   the weight it replaces. Drop them when nothing asks for them. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Inter only, set the way the admin app sets it (member's request, 2026-09-17):
+   headings bold (700), emphasis semibold (600), body regular, near-normal
+   tracking — and the same weights loaded, 300 to 800. The Nocturne pass had
+   headings at 500 with tight tracking, which read as a different typeface next
+   to the admin dashboard although both were Inter. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @import "tailwindcss";
 
@@ -104,14 +101,14 @@
     /* Type scale (Nocturne). 12px is the floor and is not a suggestion: this is
        read at arm's length, in a gym, often mid-set. Headings are weight 500 —
        size and space carry hierarchy, never weight past that. */
-    --text-screen:           31px;   /* a tab root's two-line title */
-    --text-display:          26px;   /* a pushed screen's title */
+    --text-screen:           28px;   /* a tab root's two-line title */
+    --text-display:          24px;   /* a pushed screen's title */
     --text-hero:             40px;   /* the one numeral a screen leads with */
     --text-title:            17px;   /* section heading */
     --text-body:             14px;
     --text-meta:             12px;
-    --tracking-screen:       -0.028em;
-    --tracking-hero:         -0.035em;
+    --tracking-screen:       -0.02em;
+    --tracking-hero:         -0.02em;
     --tracking-eyebrow:      0.12em;
 
     /* One radius for a card, 8px for a control; pills are for filter chips. */
@@ -191,7 +188,7 @@
    *before* utilities, so a caller passing `className="py-3"` still wins. In the
    utilities layer this class would silently beat it. */
 @layer components {
-  /* Display headings — Inter 500, sentence case, tight tracking.
+  /* Display headings — Inter 700, sentence case, like the admin app's `font-bold`.
 
      This was Anton, uppercase. The class name survives on purpose: 80 call
      sites, most on screens not yet rebuilt, and every one of them should get the
@@ -200,7 +197,7 @@
      transform restores what the author wrote. */
   .display {
     font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.1;
   }
@@ -208,7 +205,7 @@
   /* A tab root's title: two lines at one size, the second muted. */
   .screen-title {
     font-size: var(--text-screen);
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: var(--tracking-screen);
     line-height: 1.04;
     color: var(--color-text-primary);

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Plus, Trash } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
-import { Field, Select, TextInput } from '../components/ui/Field';
+import { Field, TextInput } from '../components/ui/Field';
+import ExercisePicker from '../components/ui/ExercisePicker';
 import { Page, PageTitle } from '../components/ui/page';
 import { NocButton, Panel, SectionHead } from '../components/ui/noc';
 import FeatureLock from '../components/ui/FeatureLock';
@@ -191,7 +192,7 @@ export default function WorkoutTracker() {
         {!logId ? (
           <>
             <Panel glow="structure" filled>
-              <p style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Start a session</p>
+              <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Start a session</p>
               <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: 'var(--color-text-secondary)' }}>
                 Add each set as you finish it. Nothing is lost if you lock your phone — every set saves as you
                 enter it, and coming back here picks the session up where you left it.
@@ -208,13 +209,10 @@ export default function WorkoutTracker() {
               <SectionHead title="Add a set"
                 meta={chosen ? `Set ${nextSetNumber(chosen.id)} of ${chosen.name}` : undefined} />
 
-              <Field label="Exercise">
-                <Select value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
-                  <option value="">Choose an exercise…</option>
-                  {exercises.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </Select>
+              {/* A searchable glass sheet, not a native <select> — the open list of
+                  a native select is browser chrome and rendered white-on-blue. */}
+              <Field label="Exercise" as="div">
+                <ExercisePicker exercises={exercises} value={exerciseId} onChange={setExerciseId} />
               </Field>
 
               {chosen && (chosen.isTimed ? (

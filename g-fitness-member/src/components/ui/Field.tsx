@@ -33,7 +33,7 @@ export function Field({ label, hint, children, className, as = 'label' }: FieldP
   const Tag = as;
   return (
     <Tag className={cn('block', className)}>
-      <span className="block" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+      <span className="block" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
         {label}
       </span>
       {hint && (

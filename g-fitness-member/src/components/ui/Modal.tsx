@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from '@phosphor-icons/react';
 import { NocButton } from './noc';
+import { GLASS, SCRIM } from './glass';
 
 /**
  * Standard modal for the member app.
@@ -78,7 +79,7 @@ export default function Modal({
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0"
-            style={{ background: 'rgba(8, 8, 14, 0.78)' }}
+            style={SCRIM}
             onClick={onClose}
           />
 
@@ -93,9 +94,8 @@ export default function Modal({
               // Nocturne: on a dark ground elevation is an edge, not a shadow
               // — the hairline carries it, the drop shadow only lifts it off
               // the scrim.
-              background: 'var(--color-surface)',
+              ...GLASS,
               borderRadius: 'var(--radius-card)',
-              boxShadow: '0 0 0 1px rgba(233, 233, 237, 0.16), 0 16px 40px rgba(0, 0, 0, 0.65)',
               maxHeight: 'calc(100% - 6rem)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -103,7 +103,7 @@ export default function Modal({
             {/* Header */}
             <div className="flex items-start justify-between flex-shrink-0" style={{ gap: 12, padding: '16px 16px 12px' }}>
               <div className="flex-1 min-w-0">
-                <h2 style={{ fontSize: 17, fontWeight: 500, color: 'var(--color-text-primary)' }}>{title}</h2>
+                <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-text-primary)' }}>{title}</h2>
                 {subtitle && (
                   <p style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>{subtitle}</p>
                 )}

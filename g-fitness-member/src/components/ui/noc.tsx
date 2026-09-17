@@ -58,7 +58,7 @@ export function Eyebrow({
 export function SectionHead({ title, meta }: { title: ReactNode; meta?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
-      <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+      <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
         {title}
       </h2>
       {meta != null && (
@@ -112,7 +112,7 @@ export function LineRow({
       )}
       <span className="flex-1 min-w-0 block">
         <span className="block truncate" style={{
-          fontSize: 14.5, color: dim ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+          fontSize: 14.5, fontWeight: 600, color: dim ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
         }}>
           {title}
         </span>
@@ -186,7 +186,7 @@ export function NocButton({
       onClick={onClick}
       disabled={disabled}
       className={cn('flex items-center justify-center noc-press disabled:opacity-50 disabled:cursor-not-allowed', className)}
-      style={{ height: 46, borderRadius: 'var(--radius-btn)', gap: 7, fontSize: 14, fontWeight: 500, ...skin, ...style }}
+      style={{ height: 46, borderRadius: 'var(--radius-btn)', gap: 7, fontSize: 14, fontWeight: 600, ...skin, ...style }}
     >
       {icon}
       {children}
@@ -309,7 +309,7 @@ export function Chip({ label, on, onClick }: { label: string; on?: boolean; onCl
 export function InlineStat({ value, label }: { value: ReactNode; label: ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 24, fontWeight: 500, lineHeight: 1, color: 'var(--color-text-primary)' }}>{value}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: 'var(--color-text-primary)' }}>{value}</div>
       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 5 }}>{label}</div>
     </div>
   );

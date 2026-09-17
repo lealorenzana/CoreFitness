@@ -11,6 +11,7 @@ import { bucketize } from '../utils/notificationDisplay';
 import NotificationListItem from './ui/NotificationListItem';
 import NotificationDetail from './ui/NotificationDetail';
 import SwipeRow from './ui/SwipeRow';
+import { GLASS, SCRIM } from './ui/glass';
 
 /**
  * The notification bell — a worktray, not the archive.
@@ -163,7 +164,8 @@ export default function Notifications() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={close}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm z-[10] pointer-events-auto"
+            className="absolute inset-0 z-[10] pointer-events-auto"
+            style={SCRIM}
           />
           <motion.div
             initial={{ opacity: 0, y: -16, scale: 0.97 }}
@@ -172,12 +174,7 @@ export default function Notifications() {
             transition={{ type: 'spring', damping: 26, stiffness: 320 }}
             role="dialog" aria-modal="true" aria-label="Notifications"
             className="absolute top-14 left-3 right-3 z-[20] overflow-hidden pointer-events-auto max-h-[72%] flex flex-col"
-            style={{
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-panel)',
-              boxShadow: 'var(--shadow-panel)',
-            }}
+            style={{ ...GLASS, borderRadius: 'var(--radius-panel)' }}
           >
             <div className="p-4 flex items-center justify-between gap-3 shrink-0"
               style={{ borderBottom: '1px solid var(--color-border)' }}>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, ChatTeardropDots, Lock } from '@phosphor-icons/react';
+import { Barbell, Lock } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page } from '../components/ui/page';
 import { Eyebrow, NocButton, Panel, ProgressBar, StatusPill } from '../components/ui/noc';
@@ -91,7 +91,7 @@ export default function Home() {
   // bait (the objection 0059 raised against the old chat head). Unknown while
   // loading, and unknown is drawn as open rather than flashing a lock.
   const { features } = useFeatures();
-  const lockedOut = (key: 'workout_tracker' | 'ai_model') => features != null && !isEnabled(features, key);
+  const lockedOut = (key: 'workout_tracker') => features != null && !isEnabled(features, key);
 
   const cached = readCache<MemberHome>(CACHE_KEY);
   const [home, setHome] = useState<MemberHome | null>(cached ?? null);
@@ -262,7 +262,7 @@ export default function Home() {
               <Eyebrow>{now.toLocaleDateString('en-US', { month: 'long' })}</Eyebrow>
               <p className="flex items-baseline" style={{ gap: 6, marginTop: 6 }}>
                 <span style={{
-                  fontSize: 'var(--text-hero)', fontWeight: 500, lineHeight: 1,
+                  fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1,
                   letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)',
                 }}>
                   {home.checkInsThisMonth}
@@ -352,7 +352,7 @@ export default function Home() {
           const content = (
             <>
               <span className="block" style={{
-                fontSize: 15, fontWeight: 500,
+                fontSize: 15, fontWeight: 600,
                 color: e.titleMuted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
               }}>
                 {e.title}
@@ -401,11 +401,6 @@ export default function Home() {
             icon={lockedOut('workout_tracker') ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}
             onClick={() => navigate('/member/track')}>
             Track a lift
-          </NocButton>
-          <NocButton variant="ghost" className="flex-1"
-            icon={lockedOut('ai_model') ? <Lock size={15} aria-label="Not on your plan" /> : <ChatTeardropDots size={15} />}
-            onClick={() => navigate('/member/chatbot')}>
-            Ask the assistant
           </NocButton>
         </div>
       </div>
