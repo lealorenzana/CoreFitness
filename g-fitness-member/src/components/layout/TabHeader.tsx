@@ -141,22 +141,33 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         margin: '0 calc(var(--gutter) * -1)',
         padding: '12px var(--gutter) 12px',
       }}>
-        {RAILS[tab.id].map((d) => (
-          <button
-            key={d.path}
-            onClick={() => navigate(d.path)}
-            className="flex-none whitespace-nowrap noc-press"
-            style={{
-              padding: '8px 13px',
-              borderRadius: 'var(--radius-pill)',
-              border: '1px solid var(--color-hairline)',
-              color: 'var(--color-text-secondary)',
-              fontSize: 12.5,
-            }}
-          >
-            {d.label}
-          </button>
-        ))}
+        {/* The AI bubble's language: a dark glass core inside the violet →
+            lavender → amber gradient ring, the destination's icon glowing
+            lavender before its name. */}
+        {RAILS[tab.id].map((d) => {
+          const RailIcon = d.icon;
+          return (
+            <button
+              key={d.path}
+              onClick={() => navigate(d.path)}
+              className="flex-none whitespace-nowrap noc-press orb-cell orb-cell--ring inline-flex items-center"
+              style={{
+                gap: 7,
+                padding: '8px 14px 8px 11px',
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--color-text-primary)',
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              {RailIcon && (
+                <RailIcon aria-hidden size={15} weight="duotone"
+                  style={{ color: '#c4b5fd', filter: 'drop-shadow(0 0 4px rgba(167, 139, 250, 0.7))' }} />
+              )}
+              {d.label}
+            </button>
+          );
+        })}
       </nav>
     </header>
   );

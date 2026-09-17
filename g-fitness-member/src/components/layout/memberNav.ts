@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
-import { House, Barbell, User } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChartBar, ChartLineUp, ChatCircleText, ClipboardText, GearSix, Gift, House, ListChecks, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -89,6 +89,8 @@ export function tabRootFor(pathname: string): Tab | null {
 export interface Destination {
   label: string;
   path: string;
+  /** Drawn in the rail pill before the label. */
+  icon?: Icon;
 }
 
 /**
@@ -99,31 +101,31 @@ export interface Destination {
  */
 export const RAILS: Record<TabId, Destination[]> = {
   today: [
-    { label: 'Updates', path: '/member/notifications' },
-    { label: 'Announcements', path: '/member/events' },
-    { label: 'Log a reading', path: '/member/progress?tab=body' },
-    { label: 'Track a lift', path: '/member/track' },
+    { label: 'Updates', path: '/member/notifications', icon: Bell },
+    { label: 'Announcements', path: '/member/events', icon: Megaphone },
+    { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales },
+    { label: 'Track a lift', path: '/member/track', icon: Barbell },
   ],
   train: [
-    { label: 'Progress', path: '/member/progress' },
-    { label: 'My bookings', path: '/member/booking-history' },
-    { label: 'Training plan', path: '/member/gym-plan' },
-    { label: 'Free workouts', path: '/member/workouts' },
-    { label: 'Coaches', path: '/member/trainers' },
-    { label: 'Challenges', path: '/member/challenges' },
-    { label: 'Achievements', path: '/member/achievements' },
-    { label: 'Logged workouts', path: '/member/progress?tab=workouts' },
-    { label: 'Goals', path: '/member/progress?tab=goals' },
-    { label: 'Charts', path: '/member/progress?tab=dashboard' },
-    { label: 'Coach notes', path: '/member/progress?tab=feedback' },
+    { label: 'Progress', path: '/member/progress', icon: ChartLineUp },
+    { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck },
+    { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText },
+    { label: 'Free workouts', path: '/member/workouts', icon: BookOpen },
+    { label: 'Coaches', path: '/member/trainers', icon: Users },
+    { label: 'Challenges', path: '/member/challenges', icon: Trophy },
+    { label: 'Achievements', path: '/member/achievements', icon: Medal },
+    { label: 'Logged workouts', path: '/member/progress?tab=workouts', icon: ListChecks },
+    { label: 'Goals', path: '/member/progress?tab=goals', icon: Target },
+    { label: 'Charts', path: '/member/progress?tab=dashboard', icon: ChartBar },
+    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText },
   ],
   you: [
-    { label: 'Renew', path: '/member/renew' },
-    { label: 'Payments', path: '/member/payments' },
-    { label: 'Attendance', path: '/member/attendance-history' },
-    { label: 'Spend points', path: '/member/rewards' },
-    { label: 'Edit profile', path: '/member/profile/edit' },
-    { label: 'Settings', path: '/member/settings' },
+    { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise },
+    { label: 'Payments', path: '/member/payments', icon: Receipt },
+    { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots },
+    { label: 'Spend points', path: '/member/rewards', icon: Gift },
+    { label: 'Edit profile', path: '/member/profile/edit', icon: UserCircle },
+    { label: 'Settings', path: '/member/settings', icon: GearSix },
   ],
 };
 

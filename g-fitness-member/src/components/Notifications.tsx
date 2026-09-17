@@ -252,7 +252,7 @@ export default function Notifications() {
                                 color: 'var(--color-primary)',
                               }}
                             >
-                              <div style={{ background: 'var(--color-surface-raised)' }}>
+                              <div style={{ background: '#0c0a14' }}>
                                 <NotificationListItem
                                   notification={n}
                                   onClick={() => openDetail(n)}

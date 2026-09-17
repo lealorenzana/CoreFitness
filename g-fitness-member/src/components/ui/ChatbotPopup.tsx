@@ -187,7 +187,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 <div className="min-w-0">
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>AI Assistant</p>
                   <p className="flex items-center gap-1.5 whitespace-nowrap" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: 'linear-gradient(135deg, #a78bfa, #f59e0b)' }} />
+                    <span className="inline-block rounded-full flex-shrink-0" style={{ width: 6, height: 6, background: 'linear-gradient(135deg, #a78bfa, #f59e0b)' }} />
                     From the gym's own info
                   </p>
                 </div>
