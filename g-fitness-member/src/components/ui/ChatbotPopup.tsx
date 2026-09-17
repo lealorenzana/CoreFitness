@@ -11,7 +11,7 @@ import { getCurrentMembership } from '../../lib/api/memberships';
 import RichText from './RichText';
 import { GLASS, SCRIM } from './glass';
 import { answerFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
-import { X, Send, Bot, History } from 'lucide-react';
+import { ClockCounterClockwise, PaperPlaneRight, Sparkle, X } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -25,6 +25,22 @@ import { useNavigate } from 'react-router-dom';
  * `answerFor` degrades honestly on an empty context — personal questions say
  * they can't see your details and point at the full assistant.
  */
+
+/**
+ * The chat bubble's orb, small: the same turning violet → amber ring and frosted
+ * core (`.ai-orb` in index.css), so the window and the bubble that opened it are
+ * visibly one thing. Module scope, never declared inside the render body.
+ */
+function MiniOrb({ size }: { size: number }) {
+  return (
+    <span aria-hidden className="ai-orb relative grid place-items-center rounded-full flex-shrink-0" style={{ width: size, height: size }}>
+      <span className="ai-orb__ring absolute inset-0 rounded-full" />
+      <span className="ai-orb__core absolute rounded-full" style={{ inset: Math.max(1.5, size / 27) }} />
+      <Sparkle size={Math.round(size * 0.42)} weight="fill" className="relative"
+        style={{ color: '#e9e3ff', filter: 'drop-shadow(0 0 5px rgba(196, 181, 253, 0.85))' }} />
+    </span>
+  );
+}
 
 interface Message {
   id: string;
@@ -161,56 +177,49 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
               transformOrigin: 'bottom right',
             }}
           >
-            {/* Header */}
-            <div
-              className="px-4 py-3 flex items-center justify-between flex-shrink-0"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.15)' }}>
-                  <Bot size={18} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">AI Assistant</p>
-                  <p className="text-white/60 text-xs flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--color-secondary)' }} />
-                    Online
+            {/* Header — glass, like the orb that opened it, with the orb's
+                violet → amber gradient drawn as a hairline underneath. The flat
+                violet slab it replaced did not belong to the bubble at all. */}
+            <div className="relative px-4 py-3 flex items-center justify-between flex-shrink-0"
+              style={{ paddingTop: 'calc(12px + env(safe-area-inset-top))', background: 'rgba(8, 8, 14, 0.35)' }}>
+              <div className="flex items-center gap-3 min-w-0">
+                <MiniOrb size={38} />
+                <div className="min-w-0">
+                  <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>AI Assistant</p>
+                  <p className="flex items-center gap-1.5 whitespace-nowrap" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: 'linear-gradient(135deg, #a78bfa, #f59e0b)' }} />
+                    From the gym's own info
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-              {/* Saved conversations and model answers live on the full screen;
-                  the bubble is the quick way in, not a second, lesser copy. */}
-              <button
-                onClick={() => { onClose(); navigate('/member/chatbot'); }}
-                className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold"
-                style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.9)' }}
-              >
-                <History size={14} /> Saved chats
-              </button>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.9)' }}
-                aria-label="Close"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Saved conversations and model answers live on the full screen;
+                    the bubble is the quick way in, not a second, lesser copy. */}
+                <button
+                  onClick={() => { onClose(); navigate('/member/chatbot'); }}
+                  className="h-9 px-3 rounded-full flex items-center gap-1.5 noc-press"
+                  style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', border: '1px solid rgba(196, 181, 253, 0.28)', background: 'rgba(124, 58, 237, 0.12)' }}
+                >
+                  <ClockCounterClockwise size={15} /> Saved chats
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-9 h-9 rounded-full grid place-items-center noc-press"
+                  style={{ color: 'var(--color-text-secondary)', border: '1px solid rgba(233, 233, 237, 0.14)' }}
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
               </div>
+              <span aria-hidden className="absolute left-0 right-0 bottom-0" style={{
+                height: 1, background: 'linear-gradient(90deg, transparent, #7c3aed 25%, #c4b5fd 55%, #f59e0b 85%, transparent)', opacity: 0.7,
+              }} />
             </div>
 
-            {/* Messages.
-                Laid out like a real messenger thread rather than a form log:
-                a centred time separator above the first message, the bot's
-                avatar tucked beside its bubble, and no avatar at all on your
-                own side — which is what makes a thread read as a conversation
-                with someone rather than two columns of boxes. */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-              <p
-                className="text-center text-xs uppercase tracking-wider py-1"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
+            {/* Messages — a messenger thread: a time separator, the assistant's
+                orb beside its bubbles, nothing beside your own. */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-hide">
+              <p className="text-center py-1" style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                 {messages[0]?.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                 {' · '}
                 {messages[0]?.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
@@ -218,29 +227,21 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
 
               {messages.map(msg => (
                 <div key={msg.id} className={`flex gap-2 items-end ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {/* Only the bot gets a face. Messenger doesn't show yours
-                      next to your own messages, and neither should this. */}
-                  {msg.sender === 'bot' ? (
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--color-primary-light)' }}
-                    >
-                      <Bot size={13} style={{ color: 'var(--color-primary)' }} />
-                    </div>
-                  ) : (
-                    <span className="w-1 flex-shrink-0" />
-                  )}
+                  {msg.sender === 'bot' ? <MiniOrb size={26} /> : <span className="w-1 flex-shrink-0" />}
                   <div
-                    className="max-w-[78%] px-3 py-2.5 text-xs leading-relaxed space-y-0.5"
-                    style={{
-                      // Violet for your own messages, the way Messenger uses
-                      // its brand blue — amber stays the app's action colour.
-                      background: msg.sender === 'user' ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                      color: msg.sender === 'user' ? '#fff' : 'var(--color-text-secondary)',
-                      border: msg.sender === 'bot' ? '1px solid var(--color-border)' : 'none',
-                      // Messenger's shape: fully round except the one corner
-                      // nearest its sender, which acts as the tail.
-                      borderRadius: msg.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    className="max-w-[78%] px-3.5 py-2.5 space-y-0.5"
+                    style={msg.sender === 'user' ? {
+                      fontSize: 13.5, lineHeight: 1.55, color: '#fff',
+                      // Your own messages carry the orb's violet, deepening
+                      // toward its core — amber stays the app's action colour.
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                      boxShadow: '0 6px 18px -8px rgba(124, 58, 237, 0.8)',
+                      borderRadius: '18px 18px 4px 18px',
+                    } : {
+                      fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(196, 181, 253, 0.16)',
+                      borderRadius: '18px 18px 18px 4px',
                     }}
                   >
                     {msg.sender === 'bot' ? <RichText text={msg.text} /> : msg.text}
@@ -248,17 +249,13 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 </div>
               ))}
               {isTyping && (
-                <div className="flex gap-2">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: 'var(--color-primary-light)' }}>
-                    <Bot size={13} style={{ color: 'var(--color-primary)' }} />
-                  </div>
-                  <div className="px-3 py-2.5 rounded-2xl"
-                    style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+                <div className="flex gap-2 items-end">
+                  <MiniOrb size={26} />
+                  <div className="px-3.5 py-3" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(196, 181, 253, 0.16)', borderRadius: '18px 18px 18px 4px' }}>
                     <div className="flex gap-1">
                       {[0, 150, 300].map(d => (
                         <div key={d} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                          style={{ background: 'var(--color-text-muted)', animationDelay: `${d}ms` }} />
+                          style={{ background: '#c4b5fd', animationDelay: `${d}ms` }} />
                       ))}
                     </div>
                   </div>
@@ -272,8 +269,8 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
               <div className="px-3 pb-2 flex gap-1.5 flex-wrap">
                 {['Hours', 'Pricing', 'Trainers', 'Book a class'].map(q => (
                   <button key={q} onClick={() => { setInput(q); }}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-                    style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid rgba(124,58,237,0.25)' }}>
+                    className="px-3 py-1.5 rounded-full noc-press"
+                    style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', background: 'rgba(124, 58, 237, 0.12)', border: '1px solid rgba(196, 181, 253, 0.26)' }}>
                     {q}
                   </button>
                 ))}
@@ -281,24 +278,32 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
             )}
 
             {/* Input */}
-            <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--color-border)' }}>
-              <div className="flex gap-2">
+            <div className="p-3 flex-shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(8, 8, 14, 0.35)' }}>
+              <div className="flex gap-2 items-center">
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   placeholder="Ask me anything…"
-                  className="field-input flex-1 px-4 py-2.5 rounded-full text-xs text-white placeholder-gray-500"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+                  aria-label="Your question"
+                  className="field-input flex-1"
+                  style={{ borderRadius: 999, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(196, 181, 253, 0.2)' }}
                 />
+                {/* The orb's ring, as the send button: the one control here that
+                    does something, in the gradient that means "assistant". */}
                 <button
                   onClick={handleSend}
                   disabled={!input.trim()}
-                  className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40 transition-colors"
-                  style={{ background: 'var(--color-secondary)' }}
+                  className="grid place-items-center rounded-full flex-shrink-0 disabled:opacity-40 noc-press"
+                  style={{
+                    width: 46, height: 46,
+                    background: 'conic-gradient(from 210deg, #7c3aed, #c4b5fd, #f59e0b, #7c3aed)',
+                    boxShadow: '0 6px 18px -6px rgba(124, 58, 237, 0.75)',
+                    color: '#fff',
+                  }}
                   aria-label="Send"
                 >
-                  <Send size={15} className="text-black" />
+                  <PaperPlaneRight size={18} weight="fill" />
                 </button>
               </div>
             </div>

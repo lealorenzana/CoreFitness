@@ -845,3 +845,32 @@ html, body {
     .noc-press:hover:not(:disabled) { filter: brightness(1.12); }
   }
 }
+
+/* ── The AI chat bubble: a glass orb (2026-09-17) ───────────────────────────
+   Ring: a conic violet → amber → violet gradient, masked to a 2px band.
+   Core: the same glass as the sheets, darker so the sparkle carries.
+   Halo: a soft violet ring that breathes out now and then while idle. */
+.ai-orb {
+  filter: drop-shadow(0 8px 22px rgba(124, 58, 237, 0.45));
+}
+.ai-orb__ring {
+  background: conic-gradient(from 0deg, #7c3aed, #c4b5fd, #f59e0b, #7c3aed);
+}
+.ai-orb__core {
+  background: radial-gradient(120% 120% at 30% 20%, rgba(124, 58, 237, 0.55) 0%, rgba(22, 20, 38, 0.92) 62%);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.35);
+}
+.ai-orb__halo { inset: -4px; border: 1.5px solid rgba(167, 139, 250, 0.55); opacity: 0; }
+
+@keyframes ai-orb-spin { to { transform: rotate(360deg); } }
+@keyframes ai-orb-halo {
+  0%, 70% { transform: scale(1); opacity: 0; }
+  75%     { opacity: 0.8; }
+  100%    { transform: scale(1.45); opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ai-orb__ring { animation: ai-orb-spin 6s linear infinite; }
+  .ai-orb__halo { animation: ai-orb-halo 4.5s ease-out infinite; }
+}

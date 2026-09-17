@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { Sparkle } from '@phosphor-icons/react';
 import ChatbotPopup from './ChatbotPopup';
 
 /**
@@ -28,7 +28,7 @@ export default function FloatingChathead() {
 
   // Container dimensions for snapping
   const [containerWidth, setContainerWidth] = useState(375);
-  const bubbleSize = 48;
+  const bubbleSize = 54;
   /** Must match the `right`/`bottom` inset the bubble is parked at. */
   const EDGE_GAP = 12;
 
@@ -114,38 +114,28 @@ export default function FloatingChathead() {
           animate={{ scale: chatOpen ? 0 : 1, opacity: chatOpen ? 0 : 1 }}
           transition={{ type: 'spring', damping: 22, stiffness: 320, delay: chatOpen ? 0 : 0.12 }}
         >
-          {/* The bubble */}
-          <div
-            className="relative flex items-center justify-center rounded-full shadow-lg"
-            style={{
-              width: bubbleSize,
-              height: bubbleSize,
-              background: 'var(--color-primary)',
-              boxShadow: '0 4px 20px rgba(124, 58, 237, 0.4)',
-            }}
-          >
-            <MessageSquare size={20} className="text-white" />
-            {/* Sparkle badge */}
-            <span
-              className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center"
-              style={{ background: 'var(--color-secondary)', boxShadow: '0 2px 6px rgba(245,158,11,0.4)' }}
-            >
-              <Sparkles size={9} className="text-black" />
-            </span>
-          </div>
+          {/* The bubble — a glass orb (redesigned 2026-09-17).
 
-          {/* Pulse ring animation when idle */}
-          <AnimatePresence>
-            {!chatOpen && !isDragging && (
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ border: '2px solid var(--color-primary)' }}
-                initial={{ scale: 1, opacity: 0.6 }}
-                animate={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
-              />
-            )}
-          </AnimatePresence>
+              A slowly turning violet-to-amber ring around a frosted core, with
+              the assistant's sparkle in the middle: the app's two colours and
+              the same glass as its sheets, instead of a flat violet disc with a
+              message glyph and an amber badge that read as a notification
+              count. The ring's spin and the idle halo are CSS, inside
+              prefers-reduced-motion: no-preference (see .ai-orb in index.css). */}
+          <div
+            role="button"
+            aria-label="Open the AI assistant"
+            className="ai-orb relative grid place-items-center rounded-full"
+            style={{ width: bubbleSize, height: bubbleSize }}
+          >
+            <span aria-hidden className="ai-orb__ring absolute inset-0 rounded-full" />
+            <span aria-hidden className="ai-orb__core absolute rounded-full" style={{ inset: 2 }} />
+            <Sparkle aria-hidden size={22} weight="fill" className="relative" style={{
+              color: '#e9e3ff',
+              filter: 'drop-shadow(0 0 6px rgba(196, 181, 253, 0.85))',
+            }} />
+            {!chatOpen && !isDragging && <span aria-hidden className="ai-orb__halo absolute rounded-full" />}
+          </div>
         </motion.div>
       </div>
 
