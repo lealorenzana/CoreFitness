@@ -933,17 +933,3 @@ html, body {
   .orb-spin { animation: orb-turn 6s linear infinite; }
   button.orb-cell:active { transform: scale(0.94); }
 }
-
-/* ── Amber orb pill (2026-09-17) ───────────────────────────────────────────────
-   The tab rails' buttons, in the app's yellow at the member's request: the same
-   glass-core-in-a-gradient-ring shape as the AI bubble, but the ring runs
-   amber → gold → orange and the core is a warm dark glass. Violet stays on the
-   AI surfaces and the week grid. */
-.orb-pill-amber {
-  border: 1.5px solid transparent;
-  background:
-    radial-gradient(130% 120% at 30% 10%, #3a2a0c 0%, #140f06 72%) padding-box,
-    conic-gradient(from var(--orb-a), #f59e0b, #fde68a, #fbbf24, #d97706, #f59e0b) border-box;
-  box-shadow: 0 6px 18px -12px rgba(245, 158, 11, 0.9), inset 0 1px 0 rgba(255, 236, 179, 0.12);
-  color: #fef3c7;
-}

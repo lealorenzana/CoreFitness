@@ -141,27 +141,27 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         margin: '0 calc(var(--gutter) * -1)',
         padding: '12px var(--gutter) 12px',
       }}>
-        {/* The AI bubble's shape in the app's yellow (member's request): a warm
-            dark glass core inside an amber → gold ring, the destination's icon
-            glowing amber before its name. */}
+        {/* Plain pills with an icon (member's request, 2026-09-17): no colour
+            treatment — the gradient ring, then amber, were both tried and
+            removed. The icon is the only addition over the original. */}
         {RAILS[tab.id].map((d) => {
           const RailIcon = d.icon;
           return (
             <button
               key={d.path}
               onClick={() => navigate(d.path)}
-              className="flex-none whitespace-nowrap noc-press orb-pill-amber inline-flex items-center"
+              className="flex-none whitespace-nowrap noc-press inline-flex items-center"
               style={{
                 gap: 7,
-                padding: '8px 14px 8px 11px',
+                padding: '8px 13px 8px 11px',
                 borderRadius: 'var(--radius-pill)',
+                border: '1px solid var(--color-hairline)',
+                color: 'var(--color-text-secondary)',
                 fontSize: 12.5,
-                fontWeight: 600,
               }}
             >
               {RailIcon && (
-                <RailIcon aria-hidden size={15} weight="duotone"
-                  style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.75))' }} />
+                <RailIcon aria-hidden size={15} style={{ color: 'var(--color-text-secondary)' }} />
               )}
               {d.label}
             </button>
