@@ -874,3 +874,62 @@ html, body {
   .ai-orb__ring { animation: ai-orb-spin 6s linear infinite; }
   .ai-orb__halo { animation: ai-orb-halo 4.5s ease-out infinite; }
 }
+
+/* ── Orb surfaces (2026-09-17) ─────────────────────────────────────────────────
+   The AI bubble's look, carried into the Today week and the Train matrix: frosted
+   glass cells, a violet → lavender → amber gradient edge, and a glowing violet
+   core for what is yours. The gradient edge is the padding-box / border-box
+   technique, so it follows the radius exactly with no extra element.
+
+     .orb-cell           a frosted empty cell
+     .orb-cell--busy     something is on: a brighter lavender glass
+     .orb-cell--on       yours / chosen: violet core inside the gradient ring
+     .orb-cell--ring     today or a chosen empty cell: just the ring
+     .orb-cell--planned  a planned day: a dashed lavender edge
+     .orb-spin           the ring turns slowly (today only)
+     .orb-dot            a tiny glowing orb marking your own booking      */
+@property --orb-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 200deg;
+}
+.orb-cell {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: radial-gradient(130% 120% at 30% 10%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: box-shadow 0.25s ease, transform 0.16s var(--ease-out-soft, ease);
+}
+.orb-cell--busy {
+  border-color: rgba(196, 181, 253, 0.2);
+  background: radial-gradient(130% 120% at 30% 10%, rgba(196, 181, 253, 0.2) 0%, rgba(124, 58, 237, 0.08) 65%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.orb-cell--on {
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(120% 120% at 30% 12%, #a78bfa 0%, #6d28d9 48%, #2e1065 100%) padding-box,
+    conic-gradient(from var(--orb-a), #7c3aed, #c4b5fd, #f59e0b, #7c3aed) border-box;
+  box-shadow: 0 8px 20px -10px rgba(124, 58, 237, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.orb-cell--ring {
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(130% 120% at 30% 10%, #2a1c52 0%, #0e0c18 70%) padding-box,
+    conic-gradient(from var(--orb-a), #7c3aed, #c4b5fd, #f59e0b, #7c3aed) border-box;
+  box-shadow: 0 6px 18px -12px rgba(124, 58, 237, 0.9);
+}
+.orb-cell--planned {
+  border: 1px dashed rgba(196, 181, 253, 0.42);
+}
+.orb-dot {
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff 0%, #c4b5fd 35%, #7c3aed 100%);
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.95);
+}
+@keyframes orb-turn { to { --orb-a: 560deg; } }
+@media (prefers-reduced-motion: no-preference) {
+  .orb-spin { animation: orb-turn 6s linear infinite; }
+  button.orb-cell:active { transform: scale(0.94); }
+}

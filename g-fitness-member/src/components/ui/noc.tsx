@@ -248,7 +248,8 @@ export function TextTabs<T extends string>({
   label,
   gap = 22,
 }: {
-  tabs: { id: T; label: string }[];
+  /** An optional icon sits before the label (Train's tabs). */
+  tabs: { id: T; label: string; icon?: ReactNode }[];
   active: T;
   onChange: (id: T) => void;
   label: string;
@@ -271,12 +272,17 @@ export function TextTabs<T extends string>({
               fontWeight: on ? 500 : 400,
             }}
           >
-            {t.label}
+            <span className="inline-flex items-center" style={{ gap: 6 }}>
+              {t.icon && <span aria-hidden className="inline-flex" style={{ color: on ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>{t.icon}</span>}
+              {t.label}
+            </span>
             {/* The underline scales in from the left rather than appearing, so
                 switching tabs reads as the selection moving. */}
             <span aria-hidden className="noc-underline absolute left-0 right-0 bottom-0" style={{
-              height: 2, borderRadius: 1, background: 'var(--color-primary)',
-              boxShadow: on ? '0 0 8px var(--color-primary)' : 'none',
+              height: 2, borderRadius: 1,
+              // The orb's gradient, so the selection mark belongs to the same family.
+              background: 'linear-gradient(90deg, #7c3aed, #c4b5fd 60%, #f59e0b)',
+              boxShadow: on ? '0 0 10px rgba(124, 58, 237, 0.8)' : 'none',
               transform: on ? 'scaleX(1)' : 'scaleX(0)', opacity: on ? 1 : 0,
             }} />
           </button>
@@ -287,20 +293,25 @@ export function TextTabs<T extends string>({
 }
 
 /** A filter chip. Selected is structure: violet tint, violet edge, violet text. */
-export function Chip({ label, on, onClick }: { label: string; on?: boolean; onClick: () => void }) {
+export function Chip({ label, on, onClick, icon }: { label: string; on?: boolean; onClick: () => void; icon?: ReactNode }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={on}
-      className="flex-none whitespace-nowrap noc-press"
+      // Glass when idle, the orb (core in a gradient ring) when chosen.
+      className={`flex-none whitespace-nowrap noc-press orb-cell ${on ? 'orb-cell--on' : ''}`}
       style={{
         padding: '8px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
-        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
-        background: on ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'transparent',
-        color: on ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
+        fontWeight: on ? 600 : 500,
+        color: on ? '#fff' : 'var(--color-text-secondary)',
       }}
     >
-      {label}
+      {icon ? (
+        <span className="inline-flex items-center" style={{ gap: 6 }}>
+          <span aria-hidden className="inline-flex" style={{ color: on ? '#fff' : 'var(--color-primary-300)' }}>{icon}</span>
+          {label}
+        </span>
+      ) : label}
     </button>
   );
 }

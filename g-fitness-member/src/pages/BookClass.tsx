@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, CalendarStar, Moon, SlidersHorizontal, Sparkle, Sun, SunHorizon, Target, User, UsersThree } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
 import Avatar from '../components/ui/Avatar';
@@ -144,13 +144,13 @@ function WeekMatrix({
   const initials = week.days.map((d) => d.toLocaleDateString('en-US', { weekday: 'narrow' }));
   return (
     <div role="grid" aria-label="Sessions this week"
-      className="grid items-center" style={{ gridTemplateColumns: '40px repeat(7, minmax(0, 1fr))', gap: 5 }}>
+      className="grid items-center" style={{ gridTemplateColumns: '38px repeat(7, minmax(0, 1fr))', gap: 5 }}>
       <span />
       {week.days.map((d, i) => (
         <button key={week.keys[i]} onClick={() => onSelect(i)}
           aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           aria-pressed={i === selected}
-          className="text-center" style={{ fontSize: 12, height: 20,
+          className="text-center" style={{ fontSize: 12, height: 20, fontWeight: i === selected ? 700 : 400,
             color: i === selected ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
           {initials[i]}
         </button>
@@ -172,7 +172,13 @@ function FragmentRow({
 }) {
   return (
     <>
-      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{label}</span>
+      {/* Morning, midday, evening at a glance — the band's icon above its name. */}
+      <span className="flex flex-col items-center" style={{ gap: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
+        <span aria-hidden className="inline-flex" style={{ color: 'var(--color-primary-300)' }}>
+          {label === 'AM' ? <SunHorizon size={15} weight="duotone" /> : label === 'Mid' ? <Sun size={15} weight="duotone" /> : <Moon size={14} weight="duotone" />}
+        </span>
+        {label}
+      </span>
       {cells.map((c, i) => {
         const on = i === selected;
         return (
@@ -180,25 +186,21 @@ function FragmentRow({
             key={i}
             onClick={() => onSelect(i)}
             aria-label={`${label}: ${c.count} ${c.count === 1 ? 'session' : 'sessions'}${c.mine ? ', one is yours' : ''}`}
-            className="relative grid place-items-center"
+            // The AI bubble's orb language. "Something on" must still read at a
+            // glance against "nothing on" — that contrast IS the matrix — so
+            // sessions are lavender glass and empty slots faint glass; the
+            // chosen day is the orb (core + ring) where it has sessions and the
+            // ring alone where it has none.
+            className={`relative grid place-items-center orb-cell ${
+              on ? (c.count ? 'orb-cell--on' : 'orb-cell--ring') : c.count ? 'orb-cell--busy' : ''}`}
             style={{
-              height: 38, borderRadius: 6, fontSize: 12,
-              // "Something on" must read at a glance against "nothing on" —
-              // that contrast IS the matrix. Two near-identical surfaces
-              // (#161522 vs #12121C) made the week's shape invisible.
-              background: on && c.count
-                ? 'color-mix(in srgb, var(--color-primary) 22%, transparent)'
-                : c.count ? 'var(--color-surface-high)' : 'transparent',
-              border: `1px solid ${on ? 'var(--color-primary)' : c.count ? 'transparent' : 'rgba(233, 233, 237, 0.06)'}`,
-              color: on ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
+              height: 40, fontSize: 13, fontWeight: 600,
+              color: on && c.count ? '#fff' : c.count ? 'var(--color-primary-300)' : 'var(--color-text-muted)',
             }}
           >
             {c.count || ''}
             {c.mine && (
-              <span aria-hidden className="absolute rounded-full" style={{
-                top: 5, right: 5, width: 5, height: 5,
-                background: 'var(--color-primary-400)', boxShadow: '0 0 6px var(--color-primary)',
-              }} />
+              <span aria-hidden className="absolute orb-dot" style={{ top: 5, right: 5, width: 6, height: 6 }} />
             )}
           </button>
         );
@@ -208,15 +210,16 @@ function FragmentRow({
 }
 
 function Legend() {
-  const swatch = (bg: string, edge = 'transparent') => (
-    <span aria-hidden style={{ width: 12, height: 12, borderRadius: 3, background: bg, border: `1px solid ${edge}` }} />
+  // Swatches are the same orb surfaces the matrix draws, so the key cannot drift.
+  const swatch = (cls: string) => (
+    <span aria-hidden className={`orb-cell ${cls}`} style={{ width: 14, height: 14, borderRadius: 4 }} />
   );
   return (
     <div className="flex items-center flex-wrap" style={{ gap: 14, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-      <span className="flex items-center" style={{ gap: 6 }}>{swatch('var(--color-surface-high)')}Sessions on</span>
-      <span className="flex items-center" style={{ gap: 6 }}>{swatch('transparent', 'rgba(233, 233, 237, 0.18)')}Nothing on</span>
+      <span className="flex items-center" style={{ gap: 6 }}>{swatch('orb-cell--busy')}Sessions on</span>
+      <span className="flex items-center" style={{ gap: 6 }}>{swatch('')}Nothing on</span>
       <span className="flex items-center" style={{ gap: 6 }}>
-        <span aria-hidden className="rounded-full" style={{ width: 5, height: 5, background: 'var(--color-primary-400)' }} />
+        <span aria-hidden className="orb-dot" style={{ width: 6, height: 6 }} />
         Yours
       </span>
     </div>
@@ -511,7 +514,11 @@ export default function BookClass() {
     <Page>
       <TextTabs<Filter>
         label="What to book"
-        tabs={[{ id: 'classes', label: 'Group classes' }, { id: 'pt', label: '1-on-1' }, { id: 'events', label: 'Events' }]}
+        tabs={[
+          { id: 'classes', label: 'Group classes', icon: <UsersThree size={15} weight="bold" /> },
+          { id: 'pt', label: '1-on-1', icon: <User size={15} weight="bold" /> },
+          { id: 'events', label: 'Events', icon: <CalendarStar size={15} weight="bold" /> },
+        ]}
         active={filter}
         onChange={changeFilter}
       />
@@ -637,11 +644,11 @@ export default function BookClass() {
 
               {filter === 'classes' && level !== null && (
                 <div className="flex flex-wrap" style={{ gap: 8 }}>
-                  <Chip label="For my level" on={recommendedOnly} onClick={() => { setRecommendedOnly((v) => !v); setSelected(null); }} />
+                  <Chip label="For my level" icon={<Target size={14} weight="bold" />} on={recommendedOnly} onClick={() => { setRecommendedOnly((v) => !v); setSelected(null); }} />
                   {/* "You chose", not "your level": Achievements shows a
                       different, *earned* level, and naming both "level" made
                       the two screens look like they disagreed. */}
-                  <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} onClick={() => setLevel(null)} />
+                  <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} icon={<SlidersHorizontal size={14} weight="bold" />} onClick={() => setLevel(null)} />
                 </div>
               )}
             </div>
