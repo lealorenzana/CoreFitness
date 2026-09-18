@@ -65,6 +65,8 @@ export default function GuidedWorkout() {
   const [idx, setIdx] = useState(0);
   const [started, setStarted] = useState<Set<number>>(new Set());
   const [finished, setFinished] = useState<Set<number>>(new Set());
+  /** Moved past with no set ticked — out of the way, but not counted as done. */
+  const [skipped, setSkipped] = useState<Set<number>>(new Set());
   const [extra, setExtra] = useState<Record<number, number>>({});
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busy, setBusy] = useState(false);
@@ -145,7 +147,7 @@ export default function GuidedWorkout() {
   const lastSets = ex?.exerciseId ? last.get(ex.exerciseId) ?? [] : [];
   const rows = ex ? Math.max(ex.targetSets + (extra[idx] ?? 0), exSets.length) : 0;
   const total = routine?.exercises.length ?? 0;
-  const doneCount = finished.size;
+  const doneCount = [...finished].filter((i) => !skipped.has(i)).length;
   const allDone = total > 0 && doneCount === total;
   const elapsed = session ? (now - new Date(session.startedAt).getTime()) / 1000 : 0;
 
@@ -184,13 +186,16 @@ export default function GuidedWorkout() {
       });
       await refresh(logId);
       const doneNow = exSets.length + 1;
-      if (doneNow >= ex.targetSets) {
+      const exerciseDone = doneNow >= ex.targetSets;
+      if (exerciseDone) {
         setFinished((f) => new Set(f).add(idx));
-      } else if (ex.restSeconds > 0) {
-        setRestTotal(ex.restSeconds);
-        // The screen clock, not Date.now(): it is at most a quarter-second behind.
-        setRest(now + ex.restSeconds * 1000);
+        setSkipped((k) => { const n = new Set(k); n.delete(idx); return n; });
       }
+      // Rest after every set — the last set of an exercise included, as the
+      // break before the next one — except the very last set of the workout.
+      const lastOfWorkout = exerciseDone
+        && (routine?.exercises.every((_, i) => i === idx || finished.has(i)) ?? true);
+      if (!lastOfWorkout) startRest(ex.restSeconds);
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save that set'));
     } finally {
@@ -212,11 +217,20 @@ export default function GuidedWorkout() {
     }
   };
 
-  const go = (to: number) => { setRest(null); setIdx(to); };
+  /** Starts the countdown. The screen clock, not Date.now(): at most a quarter-second behind. */
+  const startRest = (seconds: number) => {
+    if (seconds <= 0) return;
+    setRestTotal(seconds);
+    setRest(now + seconds * 1000);
+  };
 
+  const go = (to: number) => setIdx(to);
+
+  /** Moves on. With no set ticked it is a skip, and a skip is not "done". */
   const finishExercise = () => {
+    if (exSets.length === 0) setSkipped((k) => new Set(k).add(idx));
     setFinished((f) => new Set(f).add(idx));
-    setRest(null);
+    // A rest already running carries on into the next exercise.
     const next = routine?.exercises.findIndex((_, i) => i > idx && !finished.has(i)) ?? -1;
     if (next !== -1) setIdx(next);
     else {
@@ -308,7 +322,7 @@ export default function GuidedWorkout() {
               <div className="flex" style={{ gap: 5, marginTop: 12 }} role="list" aria-label="Exercises">
                 {routine.exercises.map((e, i) => (
                   <button key={keyOf(e) + i} role="listitem" onClick={() => go(i)} aria-label={`${e.name}${finished.has(i) ? ', done' : ''}`}
-                    className={`flex-1 orb-cell ${finished.has(i) ? 'orb-cell--on' : i === idx ? 'orb-cell--ring orb-spin' : ''}`}
+                    className={`flex-1 orb-cell ${finished.has(i) && !skipped.has(i) ? 'orb-cell--on' : i === idx ? 'orb-cell--ring orb-spin' : ''}`}
                     style={{ height: 8, borderRadius: 4, padding: 0 }} />
                 ))}
               </div>
@@ -320,7 +334,7 @@ export default function GuidedWorkout() {
             {/* ── The exercise ── */}
             <Panel glow={finished.has(idx) ? 'structure' : 'action'} key={idx} className="noc-pop">
               <Eyebrow tone={finished.has(idx) ? undefined : 'action'}>
-                {finished.has(idx) ? 'Done' : started.has(idx) ? 'In progress' : 'Up next'}
+                {skipped.has(idx) ? 'Skipped' : finished.has(idx) ? 'Done' : started.has(idx) ? 'In progress' : 'Up next'}
               </Eyebrow>
               <p style={{ fontSize: 22, fontWeight: 700, marginTop: 6, color: 'var(--color-text-primary)' }}>{ex.name}</p>
               <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>
@@ -362,6 +376,18 @@ export default function GuidedWorkout() {
               </NocButton>
             ) : (
               <section>
+                {/* Said once, until the first tick: the ✓ is what saves a set and
+                    what starts the rest. Without it, "Finish exercise" looked
+                    like the way through and the timer never appeared. */}
+                {exSets.length === 0 && (
+                  <p className="flex items-center" style={{
+                    gap: 8, marginBottom: 12, padding: '9px 12px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.45,
+                    color: 'var(--color-text-secondary)', border: '1px dashed rgba(196, 181, 253, 0.35)',
+                  }}>
+                    <Check size={14} weight="bold" style={{ color: 'var(--color-primary-300)', flex: 'none' }} />
+                    Tap ✓ after each set to save it{ex.restSeconds > 0 ? ` — a ${clock(ex.restSeconds)} rest timer starts` : ''}.
+                  </p>
+                )}
                 <div className="grid" style={{
                   gridTemplateColumns: ex.isTimed ? '34px minmax(0,1fr) minmax(0,1.2fr) 46px' : '34px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 46px',
                   gap: 8, fontSize: 11.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
@@ -414,10 +440,18 @@ export default function GuidedWorkout() {
                     );
                   })}
                 </div>
-                <button onClick={() => setExtra((x) => ({ ...x, [idx]: (x[idx] ?? 0) + 1 }))}
-                  className="inline-flex items-center noc-press" style={{ gap: 6, marginTop: 12, fontSize: 13, color: 'var(--color-primary-300)' }}>
-                  <Plus size={14} /> Add a set
-                </button>
+                <div className="flex items-center justify-between" style={{ gap: 12, marginTop: 12 }}>
+                  <button onClick={() => setExtra((x) => ({ ...x, [idx]: (x[idx] ?? 0) + 1 }))}
+                    className="inline-flex items-center noc-press" style={{ gap: 6, fontSize: 13, color: 'var(--color-primary-300)' }}>
+                    <Plus size={14} /> Add a set
+                  </button>
+                  {restEnd == null && (
+                    <button onClick={() => startRest(ex.restSeconds > 0 ? ex.restSeconds : 60)}
+                      className="inline-flex items-center noc-press" style={{ gap: 6, fontSize: 13, color: 'var(--color-secondary)' }}>
+                      <Timer size={14} /> Rest {clock(ex.restSeconds > 0 ? ex.restSeconds : 60)}
+                    </button>
+                  )}
+                </div>
               </section>
             )}
 
@@ -431,9 +465,13 @@ export default function GuidedWorkout() {
                 <NocButton variant="fill" className="w-full" icon={<ArrowRight size={16} weight="bold" />} onClick={finishExercise}>
                   Next exercise
                 </NocButton>
-              ) : started.has(idx) || exSets.length > 0 ? (
+              ) : exSets.length > 0 ? (
                 <NocButton variant="action" className="w-full" icon={<Check size={16} weight="bold" />} onClick={finishExercise}>
                   Finish exercise
+                </NocButton>
+              ) : started.has(idx) ? (
+                <NocButton variant="ghost" className="w-full" icon={<ArrowRight size={16} />} onClick={finishExercise}>
+                  Skip exercise
                 </NocButton>
               ) : null}
               {!allDone && sets.length > 0 && (
