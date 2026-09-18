@@ -2,8 +2,9 @@ import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../componen
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
-import { Plus, ClockCounterClockwise } from '@phosphor-icons/react';
-import { Chip, Eyebrow, InlineStat, LineRow, NocButton, SectionHead } from '../../../components/ui/noc';
+import { ClockCounterClockwise, Info, Plus, Ruler } from '@phosphor-icons/react';
+import { Chip, Eyebrow, InlineStat, LineRow, NocButton, Panel } from '../../../components/ui/noc';
+import Disclosure from '../../../components/ui/Disclosure';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { toast } from '../../../components/ui/Toast';
@@ -16,8 +17,6 @@ import {
   FOCUS_LABEL, FOCUS_BLURB, type TrainingFocus,
 } from '../../../utils/trainingFocus';
 import { readCache, writeCache } from '../../../lib/pageCache';
-import { listExercises, type Exercise } from '../../../lib/api/workoutSets';
-import { REGION_MUSCLE_GROUPS, REGION_TRAINING_NOTE } from '../../../utils/regionMuscles';
 
 /**
  * Body measurements, from `body_measurements` (migration 0020).
@@ -112,17 +111,6 @@ export default function BodyProgressTab() {
   const [saving, setSaving] = useState(false);
   /** Bulk / cut / maintain (0044). Null until the member says. */
   const [focus, setFocus] = useState<TrainingFocus | null>(null);
-  /**
-   * The gym's exercise catalogue, for the "trains this" list on the body map.
-   *
-   * Fetched alongside the measurements rather than on tap: the list is small
-   * and unchanging, and a request fired when a muscle is tapped would show an
-   * empty panel first and fill it in a beat later. A failure leaves it empty,
-   * which the panel renders as "nothing catalogued" — wrong but harmless, and
-   * the alternative is a body map that will not open.
-   */
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const blankForm = (): Record<FieldKey, string> =>
     Object.fromEntries(FIELDS.map((f) => [f.key, ''])) as Record<FieldKey, string>;
   const [form, setForm] = useState<Record<FieldKey, string>>(blankForm);
@@ -132,9 +120,7 @@ export default function BodyProgressTab() {
     try {
       // Independent of the measurements: a focus that fails to load must not
       // blank the readings, and readings that fail must not lose the focus.
-      // The catalogue is the same deal — the map still draws without it.
       getTrainingFocus(memberId).then(setFocus).catch(() => undefined);
-      listExercises().then(setExercises).catch(() => undefined);
       setEntries(writeCache(CACHE_KEY, await progressService.getBodyProgress(memberId)));
     } catch (err) {
       if (!quiet) toast.error(errorMessage(err, 'Could not load your measurements'));
@@ -268,15 +254,34 @@ export default function BodyProgressTab() {
     },
   ];
 
-  if (loading) return <div className="space-y-3"><Skeleton className="h-32" /><Skeleton className="h-40" /></div>;
+  if (loading) return <div className="space-y-3"><Skeleton className="h-40" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div>;
 
   const latest = last;
-  const previous = entries.length > 1 ? entries[entries.length - 2] : null;
   const latestBmi = latest ? calcBmi(latest.weight, latest.height) : null;
 
-  // The four circumferences the map can draw. Weight, height and body fat have
-  // no place on a body — they are whole-body numbers, and the cards below
-  // already carry them.
+  // The whole-body numbers walk back over blanks, like the tape sites: a
+  // reading with only a chest measurement must not hide last week's weight.
+  const lastOf = (key: 'weight' | 'height' | 'bodyFatPct') => {
+    const seen: { value: number; date: string }[] = [];
+    for (let i = entries.length - 1; i >= 0 && seen.length < 2; i--) {
+      const v = entries[i][key];
+      if (v != null) seen.push({ value: v, date: entries[i].date });
+    }
+    return { latest: seen[0] ?? null, previous: seen[1] ?? null };
+  };
+  const weight = lastOf('weight');
+  const height = lastOf('height');
+  const fat = lastOf('bodyFatPct');
+  const weightChange = weight.latest && weight.previous
+    ? delta(weight.latest.value, weight.previous.value) : null;
+  const bmi = weight.latest && height.latest ? calcBmi(weight.latest.value, height.latest.value) : latestBmi;
+
+  const daysSince = latest
+    ? Math.max(0, Math.round((new Date().setHours(0, 0, 0, 0) - new Date(`${latest.date}T00:00:00`).getTime()) / 86_400_000))
+    : null;
+
+  // The figure's sites. Weight, height and body fat have no place on a body —
+  // they are whole-body numbers, and the summary above carries them.
   const mapData: BodyMapData = {
     neck: lastTwo(entries, 'neck'),
     shoulders: lastTwo(entries, 'shoulders'),
@@ -288,30 +293,12 @@ export default function BodyProgressTab() {
     thighs: lastTwo(entries, 'legs'),
     calves: lastTwo(entries, 'calves'),
   };
+  const measuredSites = Object.values(mapData).filter((v) => v.latest != null).length;
+
+  const openLog = (step?: string) => { setStartStep(step); setShowForm(true); };
 
   return (
     <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-      {/* The body first: it is what this tab is opened to look at. The map is
-          drawn whether or not anything has been logged — an outlined figure
-          saying "tap a muscle" is a better empty state than a generic icon, and
-          it shows what the reward for logging looks like. */}
-      <BodyMap
-        data={mapData}
-        focus={focus}
-        onLogRegion={(region) => {
-          setStartStep(REGION_STEP[region]);
-          setShowForm(true);
-        }}
-        // The catalogue is loaded once for the whole tab and filtered per
-        // region here — see utils/regionMuscles.ts for why the two
-        // vocabularies do not line up.
-        exercisesFor={(region) => {
-          const groups = REGION_MUSCLE_GROUPS[region];
-          return exercises.filter((e) => groups.includes(e.muscleGroup)).slice(0, 8);
-        }}
-        trainingNoteFor={(region) => REGION_TRAINING_NOTE[region]}
-      />
-
       <StepFlow
         open={showForm}
         title="Log a reading"
@@ -323,14 +310,80 @@ export default function BodyProgressTab() {
         onSubmit={save}
       />
 
-      {/* What the member is training for. Here rather than in Settings because
-          this is the screen whose numbers it reinterprets — the map reads it to
-          say whether a change is the one being trained for. Tapping the current
-          choice clears it: "not stated" has to stay reachable, or a mis-tap is
-          permanent. */}
+      {/* ── The summary: the whole-body numbers, and the one thing to do ──
+          The old tab showed these twice (a "latest reading" list repeated
+          every site the figure already draws). One panel now carries weight,
+          BMI, body fat and height; the figure carries the tape sites. */}
+      <Panel glow="structure">
+        <Eyebrow>
+          {latest
+            ? `Latest · ${new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : 'No readings yet'}
+        </Eyebrow>
+
+        {weight.latest ? (
+          <div className="flex items-end justify-between flex-wrap" style={{ gap: 10, marginTop: 8 }}>
+            <p className="flex items-baseline" style={{ gap: 6 }}>
+              <span style={{
+                fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1, letterSpacing: 'var(--tracking-hero)',
+                color: 'var(--color-text-primary)',
+              }}>{weight.latest.value}</span>
+              <span style={{ fontSize: 15, color: 'var(--color-text-secondary)' }}>kg</span>
+              {/* A weight older than the latest reading says when it is from,
+                  rather than borrowing the newer reading's date. */}
+              {latest && weight.latest.date !== latest.date && (
+                <span style={{ fontSize: 12.5, marginLeft: 4, color: 'var(--color-text-muted)' }}>
+                  on {new Date(`${weight.latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+            </p>
+            {weightChange != null && (
+              <span style={{
+                fontSize: 12.5, padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                color: weightChange === 0 ? 'var(--color-text-secondary)' : 'var(--color-primary-300)',
+                border: '1px solid var(--color-primary-800)',
+              }}>
+                {weightChange === 0 ? 'No change' : `${weightChange > 0 ? '+' : '−'}${Math.abs(weightChange)} kg since last`}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+            Log your weight and a few measurements to start seeing how your body changes.
+          </p>
+        )}
+
+        {(bmi != null || fat.latest || height.latest) && (
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 16 }}>
+            <div>
+              <InlineStat value={bmi ?? '—'} label="BMI" />
+              {bmi != null && <p style={{ fontSize: 12, marginTop: 3, color: bmiColor(bmi) }}>{bmiLabel(bmi)}</p>}
+            </div>
+            <InlineStat value={fat.latest ? `${fat.latest.value}%` : '—'} label="body fat" />
+            <InlineStat value={height.latest ? height.latest.value : '—'} label="height, cm" />
+          </div>
+        )}
+
+        {daysSince != null && (
+          <p style={{ fontSize: 12, marginTop: 14, color: 'var(--color-text-muted)' }}>
+            {daysSince === 0 ? 'Measured today.' : `Last measured ${daysSince} ${daysSince === 1 ? 'day' : 'days'} ago.`}
+            {daysSince >= 14 ? ' Every two weeks is enough to see real change.' : ''}
+          </p>
+        )}
+
+        <NocButton variant="fill" className="w-full" icon={<Plus size={16} weight="bold" />} style={{ marginTop: 16 }}
+          onClick={() => openLog(undefined)}>
+          Log a reading
+        </NocButton>
+      </Panel>
+
+      {/* ── What the member is training for ──
+          It reinterprets the figure's changes ("up 2 cm — the direction you are
+          training for"), so it sits right above it. Tapping the current choice
+          clears it: "not stated" has to stay reachable. */}
       <section>
-        <Eyebrow>Right now I'm</Eyebrow>
-        <div className="flex flex-wrap" style={{ gap: 8, marginTop: 10 }}>
+        <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Training for</p>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
           {(['bulking', 'cutting', 'maintaining'] as TrainingFocus[]).map((f) => (
             <Chip
               key={f}
@@ -351,83 +404,62 @@ export default function BodyProgressTab() {
           ))}
         </div>
         <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-          {focus
-            ? FOCUS_BLURB[focus]
-            : 'Tell us and the map will say whether a change is the one you are training for.'}
+          {focus ? FOCUS_BLURB[focus] : 'Pick one and each measurement will say whether it moved the way you want.'}
         </p>
       </section>
 
-      <NocButton variant="action" icon={<Plus size={15} />}
-        onClick={() => { setStartStep(undefined); setShowForm(true); }}>
-        Log a full reading
-      </NocButton>
+      {/* ── The tape sites, on the figure ── */}
+      <Disclosure
+        title="Measurements"
+        meta={`${measuredSites} of 9 measured`}
+        icon={<Ruler size={17} weight="duotone" />}
+        defaultOpen
+      >
+        <BodyMap
+          data={mapData}
+          focus={focus}
+          onLogRegion={(region) => openLog(REGION_STEP[region])}
+        />
+      </Disclosure>
 
-      {!latest ? (
-        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
-          No measurements yet. Tap a body part above to log it. Nothing is shared with a trainer unless you allow it.
-        </p>
-      ) : (
-        <section>
-          <div className="rule" style={{ marginBottom: 14 }} />
-          <SectionHead
-            title="Latest reading"
-            meta={new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          />
-
-          {latestBmi != null && (
-            <div className="flex items-end justify-between" style={{ gap: 12, marginTop: 12 }}>
-              <InlineStat value={latestBmi} label="BMI" />
-              <span style={{ fontSize: 12.5, color: bmiColor(latestBmi) }}>{bmiLabel(latestBmi)}</span>
-            </div>
-          )}
-          {latestBmi != null && (
-            <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
-              A general indicator only — it does not tell muscle from fat.
-            </p>
-          )}
-
-          <div style={{ marginTop: 8 }}>
-            {FIELDS.filter((f) => latest[f.key] != null).map((f, i, shown) => {
-              const change = delta(latest[f.key], previous ? previous[f.key] : null);
-              return (
-                <LineRow
-                  key={f.key}
-                  title={f.label}
-                  meta={change == null ? undefined : change === 0 ? 'No change' : `${change > 0 ? '+' : ''}${change} ${f.unit} since the last reading`}
-                  action={<span style={{ color: 'var(--color-text-primary)', fontSize: 14 }}>{latest[f.key]} {f.unit}</span>}
-                  last={i === shown.length - 1}
-                />
-              );
-            })}
-          </div>
-
-          {/* Every reading ever taken, behind a control. The rows above answer
-              the question this tab is opened for; the full list only grows. */}
-          {entries.length > 1 && (
-            <>
-              <NocButton variant="ghost" className="w-full" style={{ marginTop: 16 }}
-                icon={<ClockCounterClockwise size={15} />}
-                onClick={() => setShowHistory((v) => !v)}>
-                {showHistory ? 'Hide history' : `Show all ${entries.length} readings`}
-              </NocButton>
-              {showHistory && (
-                <div style={{ marginTop: 8 }}>
-                  {[...entries].reverse().map((e, i, all) => (
-                    <LineRow
-                      key={e.id}
-                      gutterWidth={60}
-                      gutter={new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      title={e.weight != null ? `${e.weight} kg` : 'No weight logged'}
-                      meta={e.bodyFatPct != null ? `${e.bodyFatPct}% body fat` : undefined}
-                      last={i === all.length - 1}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
+      {/* ── Every reading, newest first ── */}
+      {entries.length > 0 && (
+        <Disclosure
+          title="History"
+          meta={`${entries.length} ${entries.length === 1 ? 'reading' : 'readings'}`}
+          icon={<ClockCounterClockwise size={17} weight="duotone" />}
+        >
+          {[...entries].reverse().map((e, i, all) => {
+            const values = FIELDS.filter((f) => f.key !== 'weight' && e[f.key] != null)
+              .map((f) => `${f.label} ${e[f.key]}${f.unit === '%' ? '%' : ` ${f.unit}`}`);
+            return (
+              <LineRow
+                key={e.id}
+                gutterWidth={58}
+                gutter={new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                title={e.weight != null ? `${e.weight} kg` : 'No weight'}
+                meta={values.length ? values.join(' · ') : undefined}
+                last={i === all.length - 1}
+              />
+            );
+          })}
+        </Disclosure>
       )}
+
+      {/* ── How to measure, for a reading that can be compared next time ── */}
+      <Disclosure title="How to measure" icon={<Info size={17} weight="duotone" />}>
+        <ul className="flex flex-col" style={{ gap: 10, fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          <li><strong style={{ color: 'var(--color-text-primary)' }}>Same time, same way.</strong> Morning, before eating, is easiest to repeat.</li>
+          <li><strong style={{ color: 'var(--color-text-primary)' }}>Tape snug, not tight,</strong> and level all the way round.</li>
+          <li><strong style={{ color: 'var(--color-text-primary)' }}>Chest</strong> at the nipple line · <strong style={{ color: 'var(--color-text-primary)' }}>waist</strong> at the navel · <strong style={{ color: 'var(--color-text-primary)' }}>hips</strong> at their widest.</li>
+          <li><strong style={{ color: 'var(--color-text-primary)' }}>Arms, thighs and calves</strong> at their widest, relaxed.</li>
+          <li>Skip anything you did not measure — a blank is saved as "not measured", never as zero.</li>
+        </ul>
+      </Disclosure>
+
+      <p style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+        Your measurements stay private. A trainer sees them only if you allow it in Settings.
+      </p>
     </div>
   );
 }
