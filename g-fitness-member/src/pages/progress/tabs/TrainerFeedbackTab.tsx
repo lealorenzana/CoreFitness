@@ -1,173 +1,285 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from '@phosphor-icons/react';
+import { ArrowRight, CaretRight, ChatCircleText, Check, CheckCircle, Circle, ListChecks, Star } from '@phosphor-icons/react';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import Avatar from '../../../components/ui/Avatar';
-import { NocButton, StatusPill } from '../../../components/ui/noc';
-import { progressService, type TrainerFeedback } from '../../../services/progressService';
-import { notificationService } from '../../../services/notificationService';
-import { GLASS, SCRIM } from '../../../components/ui/glass';
+import GlassSheet from '../../../components/ui/GlassSheet';
+import Disclosure from '../../../components/ui/Disclosure';
+import { Chip, Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../../../components/ui/noc';
+import { toast } from '../../../components/ui/Toast';
+import { errorMessage } from '../../../utils/errorMessage';
+import {
+  loadCoachFeed, markNoteSeen, setStepDone, type CoachFeed, type CoachNote,
+} from '../../../services/coachService';
 
 /**
- * Notes a trainer has sent this member (Nocturne redesign).
+ * Coach — what your coaches have told you, and what to do about it
+ * (reworked 2026-09-18, with migration 0088).
  *
- * These are real `notifications` rows — when a trainer sends a recommendation
- * from their app it inserts one, and this reads them back. There is no separate
- * feedback table on purpose: two tables holding the same message would
- * eventually disagree with the bell.
+ *   Your coaches   who has written to you; each opens their profile, and asks
+ *                  for this month's evaluation when it is yours to give
+ *   Next steps     every recommendation not yet done, as a list you tick — the
+ *                  coach sees the tick (0088), so advice becomes a step
+ *   Notes          newest first, grouped by month, filterable by coach; a note
+ *                  opens in full with the coach's profile and a booking
  *
- * Tapping a note opens it in full, names the coach, marks it read, and offers
- * their profile and a booking.
- *
- * **The sheet renders only while open.** It used to sit in an always-mounted
- * `AnimatePresence` inside the portal with a `pointer-events-auto` backdrop —
- * the exact shape CLAUDE.md records leaving invisible descendants over the whole
- * screen, because an exiting child that never unmounts keeps eating taps.
- * Animation is decoration here; nothing waits for it.
- *
- * The prototype's closing line said notes are "written after a session". That is
- * not a rule this app has — a coach can send one at any time — so it is not said.
+ * Notes are read from `trainer_feedback`, the record — see coachService for
+ * why the old notifications-only read missed every note the current trainer
+ * app writes. This is still not a chat: replies happen at the desk or in the
+ * next session, and the screen says so.
  */
+
+const monthOf = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
 export default function TrainerFeedbackTab() {
   const memberId = useMemberId();
   const navigate = useNavigate();
-  const [items, setItems] = useState<TrainerFeedback[]>([]);
+  const [feed, setFeed] = useState<CoachFeed | null>(null);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState<TrainerFeedback | null>(null);
+  const [coachFilter, setCoachFilter] = useState<string | null>(null);
+  const [open, setOpen] = useState<CoachNote | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await progressService.getTrainerFeedback(memberId);
-        if (!cancelled) setItems(rows);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const load = useCallback(async () => {
+    if (!memberId) return;
+    try {
+      setFeed(await loadCoachFeed(memberId));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not load your coach notes'));
+    } finally {
+      setLoading(false);
+    }
   }, [memberId]);
 
-  const openNote = (note: TrainerFeedback) => {
-    setOpen(note);
-    // Reading it here counts everywhere — the same row backs the bell.
-    if (!note.read) {
-      setItems((list) => list.map((n) => (n.id === note.id ? { ...n, read: true } : n)));
-      void notificationService.markAsRead(memberId, note.id).catch(() => {});
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
+
+  const patch = (id: string, p: Partial<CoachNote>) =>
+    setFeed((f) => (f ? { ...f, notes: f.notes.map((n) => (n.id === id ? { ...n, ...p } : n)) } : f));
+
+  const openNote = (n: CoachNote) => {
+    setOpen(n);
+    if (!n.seen && memberId) {
+      patch(n.id, { seen: true });
+      void markNoteSeen(memberId, n).catch(() => { /* the next load shows the truth */ });
     }
   };
 
-  if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
+  const toggleDone = async (n: CoachNote) => {
+    if (busy) return;
+    setBusy(n.id);
+    const next = !n.done;
+    patch(n.id, { done: next, seen: true });
+    if (open?.id === n.id) setOpen({ ...n, done: next, seen: true });
+    try {
+      await setStepDone(n, next);
+      if (next) toast.success(`Done — ${n.coachName.split(' ')[0]} will see it.`);
+    } catch (err) {
+      patch(n.id, { done: !next });
+      if (open?.id === n.id) setOpen({ ...n, done: !next });
+      toast.error(errorMessage(err, 'Could not save that'));
+    } finally {
+      setBusy(null);
+    }
+  };
 
-  if (items.length === 0) {
+  const shown = useMemo(
+    () => (feed?.notes ?? []).filter((n) => !coachFilter || n.trainerId === coachFilter),
+    [feed, coachFilter],
+  );
+
+  if (loading || !feed) return <div className="space-y-3"><Skeleton className="h-28" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
+
+  if (feed.notes.length === 0) {
     return (
-      <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
-        No notes from a coach yet. When one sends you a recommendation, it appears here and in your updates.
-      </p>
+      <Panel glow="structure">
+        <Eyebrow>From your coaches</Eyebrow>
+        <p style={{ fontSize: 17, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>No notes yet</p>
+        <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          After a session, a coach can leave you a note and a next step. They land here — the steps as a checklist you
+          tick off, which your coach can see.
+        </p>
+        <NocButton variant="action" className="w-full" style={{ marginTop: 14 }} icon={<ArrowRight size={15} />}
+          onClick={() => navigate('/member/book-class')}>
+          Book a session with a coach
+        </NocButton>
+      </Panel>
     );
   }
 
-  const modalRoot = document.getElementById('modal-root');
-  const dated = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const steps = feed.notes.filter((n) => n.recommendation);
+  const openSteps = steps.filter((n) => !n.done);
+  const doneSteps = steps.filter((n) => n.done);
+  const unread = feed.notes.filter((n) => !n.seen).length;
+
+  // Month groups, in order.
+  const groups: [string, CoachNote[]][] = [];
+  for (const n of shown) {
+    const label = monthOf(n.sentAt);
+    const last = groups[groups.length - 1];
+    if (last && last[0] === label) last[1].push(n);
+    else groups.push([label, [n]]);
+  }
 
   return (
-    <>
-      <div className="flex flex-col" style={{ gap: 14 }}>
-        {items.map((f, i) => {
-          // The newest note is filled, older ones sit on the page — the one
-          // most likely to matter reads first without a label saying so.
-          const newest = i === 0;
-          return (
-            <button
-              key={f.id}
-              onClick={() => openNote(f)}
-              className="w-full text-left"
-              style={{
-                padding: 15,
-                borderRadius: 12,
-                background: newest ? 'var(--color-surface)' : 'transparent',
-                boxShadow: newest ? 'var(--shadow-panel)' : '0 0 0 1px rgba(233, 233, 237, 0.08)',
-              }}
-            >
-              <span className="flex items-center justify-between" style={{ gap: 10, fontSize: 12 }}>
-                <span className="flex items-center min-w-0" style={{ gap: 8 }}>
-                  <span className="truncate" style={{ color: newest || !f.read ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
-                    {f.trainerName ?? 'Your coach'}
+    <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
+      {/* ── Your coaches ── */}
+      <section>
+        <SectionHead title="Your coaches" meta={unread > 0 ? `${unread} unread` : undefined} />
+        <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 10, marginTop: 12, margin: '12px calc(var(--gutter) * -1) 0', padding: '2px var(--gutter)' }}>
+          {feed.coaches.map((c) => (
+            <button key={c.id} onClick={() => navigate(`/member/trainer/${c.id}`)}
+              className="flex-none orb-cell noc-press text-left" style={{ width: 176, borderRadius: 16, padding: 12 }}>
+              <span className="flex items-center" style={{ gap: 10 }}>
+                <Avatar name={c.name} photoUrl={c.photoUrl} size={38} />
+                <span className="min-w-0">
+                  <span className="block truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.name}</span>
+                  <span className="block truncate" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    {c.noteCount} {c.noteCount === 1 ? 'note' : 'notes'}{c.lastNoteAt ? ` · ${shortDay(c.lastNoteAt)}` : ''}
                   </span>
-                  {!f.read && <StatusPill label="New" tone="action" />}
                 </span>
-                <span className="flex-none" style={{ color: 'var(--color-text-muted)' }}>{dated(f.sentAt)}</span>
               </span>
-              <span className="block line-clamp-3" style={{ fontSize: 14, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-primary)' }}>
-                {f.content}
-              </span>
-            </button>
-          );
-        })}
-        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-          Notes come from your coaches. Reply at the desk or in your next session — this is not a chat.
-        </p>
-      </div>
-
-      {modalRoot && open && createPortal(
-        <div className="absolute inset-0 pointer-events-auto">
-          <div onClick={() => setOpen(null)} className="absolute inset-0" style={SCRIM} />
-          <div
-            role="dialog" aria-modal="true" aria-label="Note from your coach"
-            className="absolute inset-x-0 bottom-0"
-            style={{
-              ...GLASS,
-              borderBottom: 'none',
-              borderRadius: '20px 20px 0 0',
-              padding: '12px var(--gutter) calc(28px + env(safe-area-inset-bottom))',
-            }}
-          >
-            <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
-            <div className="flex items-start justify-between" style={{ gap: 12, marginTop: 14 }}>
-              <div className="flex items-center min-w-0" style={{ gap: 12 }}>
-                <Avatar name={open.trainerName ?? 'Coach'} photoUrl={null} size={42} />
-                <div className="min-w-0">
-                  <p className="truncate" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{open.trainerName ?? 'Your coach'}</p>
-                  <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
-                    {new Date(open.sentAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                    {' · '}
-                    {new Date(open.sentAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setOpen(null)} aria-label="Close" className="grid place-items-center flex-none"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* The whole note, wrapped — no clamp; this is the point of opening
-                it. `pre-wrap` keeps the coach's own line breaks. */}
-            <p className="whitespace-pre-wrap" style={{ fontSize: 14.5, marginTop: 18, lineHeight: 1.6, color: 'var(--color-text-primary)' }}>
-              {open.content}
-            </p>
-
-            <div className="flex" style={{ gap: 9, marginTop: 22 }}>
-              {open.trainerId && (
-                <NocButton variant="ghost" className="flex-1"
-                  onClick={() => { setOpen(null); navigate(`/member/trainer/${open.trainerId}`); }}>
-                  Profile
-                </NocButton>
+              {c.evaluatePrompt ? (
+                <span className="flex items-center" style={{ gap: 5, marginTop: 10, fontSize: 12, color: 'var(--color-secondary)' }}>
+                  <Star size={13} weight="fill" /> {c.evaluatePrompt}
+                </span>
+              ) : (
+                <span className="flex items-center" style={{ gap: 5, marginTop: 10, fontSize: 12, color: 'var(--color-primary-300)' }}>
+                  View profile <CaretRight size={11} />
+                </span>
               )}
-              <NocButton variant="action" className="flex-1"
-                onClick={() => {
-                  setOpen(null);
-                  navigate('/member/book-class', open.trainerId ? { state: { trainerId: open.trainerId } } : undefined);
-                }}>
-                Book a session
-              </NocButton>
-            </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Next steps ── */}
+      {steps.length > 0 && (
+        <Panel glow={openSteps.length > 0 ? 'action' : 'structure'}>
+          <div className="flex items-center justify-between" style={{ gap: 12 }}>
+            <Eyebrow tone={openSteps.length > 0 ? 'action' : undefined}>Next steps</Eyebrow>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{doneSteps.length} of {steps.length} done</span>
           </div>
-        </div>,
-        modalRoot,
+          {openSteps.length === 0 ? (
+            <p className="flex items-center" style={{ gap: 8, fontSize: 14, marginTop: 10, color: 'var(--color-text-primary)' }}>
+              <CheckCircle size={18} weight="fill" style={{ color: 'var(--color-primary-300)' }} /> All caught up — every step done.
+            </p>
+          ) : (
+            <div className="flex flex-col" style={{ gap: 4, marginTop: 8 }}>
+              {openSteps.map((n) => (
+                <div key={n.id} className="flex items-start" style={{ gap: 12, padding: '8px 0' }}>
+                  <button onClick={() => toggleDone(n)} disabled={busy === n.id} aria-label={`Mark done: ${n.recommendation}`}
+                    className="flex-none grid place-items-center noc-press disabled:opacity-50"
+                    style={{ width: 28, height: 28, marginTop: 1, color: 'var(--color-secondary)' }}>
+                    <Circle size={22} />
+                  </button>
+                  <button onClick={() => openNote(n)} className="flex-1 min-w-0 text-left">
+                    <span className="block" style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-primary)' }}>{n.recommendation}</span>
+                    <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                      {n.coachName} · {shortDay(n.sentAt)}
+                    </span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {doneSteps.length > 0 && openSteps.length > 0 && (
+            <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
+              Done steps are ticked in the notes below.
+            </p>
+          )}
+        </Panel>
       )}
-    </>
+
+      {/* ── Notes ── */}
+      <section className="flex flex-col" style={{ gap: 12 }}>
+        <SectionHead title="Notes" meta={`${shown.length}`} />
+        {feed.coaches.length > 1 && (
+          <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, margin: '0 calc(var(--gutter) * -1)', padding: '2px var(--gutter)' }}>
+            <Chip label="All coaches" on={coachFilter === null} onClick={() => setCoachFilter(null)} />
+            {feed.coaches.map((c) => (
+              <Chip key={c.id} label={c.name.split(' ')[0]} on={coachFilter === c.id} onClick={() => setCoachFilter(c.id)} />
+            ))}
+          </div>
+        )}
+
+        {groups.map(([label, list], gi) => (
+          <Disclosure key={label} title={label} meta={`${list.length}`} icon={<ChatCircleText size={17} weight="duotone" />} defaultOpen={gi === 0}>
+            <div className="flex flex-col">
+              {list.map((n, i) => (
+                <div key={n.id}>
+                  <button onClick={() => openNote(n)} className="w-full flex items-start text-left noc-row" style={{ gap: 12, padding: '12px 0' }}>
+                    <Avatar name={n.coachName} photoUrl={n.photoUrl} size={34} />
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center" style={{ gap: 8 }}>
+                        <span className="truncate" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{n.coachName}</span>
+                        {!n.seen && <StatusPill label="New" tone="action" />}
+                        <span className="flex-none ml-auto" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{shortDay(n.sentAt)}</span>
+                      </span>
+                      <span className="block line-clamp-2" style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>{n.note}</span>
+                      {n.recommendation && (
+                        <span className="flex items-start" style={{ gap: 6, marginTop: 6, fontSize: 12.5, lineHeight: 1.45,
+                          color: n.done ? 'var(--color-text-muted)' : 'var(--color-secondary)' }}>
+                          {n.done ? <Check size={13} weight="bold" style={{ marginTop: 2, flex: 'none' }} /> : <ListChecks size={13} style={{ marginTop: 2, flex: 'none' }} />}
+                          <span className="line-clamp-2" style={{ textDecoration: n.done ? 'line-through' : 'none' }}>{n.recommendation}</span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  {i < list.length - 1 && <div className="hair" />}
+                </div>
+              ))}
+            </div>
+          </Disclosure>
+        ))}
+
+        <p style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+          This is not a chat — reply to your coach at the desk or in your next session.
+        </p>
+      </section>
+
+      {/* ── A note, in full ── */}
+      <GlassSheet
+        open={open !== null}
+        onClose={() => setOpen(null)}
+        leading={open && <Avatar name={open.coachName} photoUrl={open.photoUrl} size={42} />}
+        title={open?.coachName ?? ''}
+        subtitle={open ? `${new Date(open.sentAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · ${new Date(open.sentAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : undefined}
+        footer={open && (
+          <div className="flex" style={{ gap: 9 }}>
+            {open.trainerId && (
+              <NocButton variant="ghost" className="flex-1" onClick={() => { const id = open.trainerId; setOpen(null); navigate(`/member/trainer/${id}`); }}>
+                Profile
+              </NocButton>
+            )}
+            <NocButton variant="action" className="flex-1" onClick={() => {
+              const id = open.trainerId; setOpen(null);
+              navigate('/member/book-class', id ? { state: { trainerId: id } } : undefined);
+            }}>
+              Book a session
+            </NocButton>
+          </div>
+        )}
+      >
+        {open && (
+          <div className="flex flex-col" style={{ gap: 16 }}>
+            {/* The whole note — `pre-wrap` keeps the coach's own line breaks. */}
+            <p className="whitespace-pre-wrap" style={{ fontSize: 14.5, lineHeight: 1.6, color: 'var(--color-text-primary)' }}>{open.note}</p>
+            {open.recommendation && (
+              <div className="orb-cell" style={{ borderRadius: 14, padding: 14 }}>
+                <p className="eyebrow" style={{ color: 'var(--color-secondary)' }}>Next step</p>
+                <p className="whitespace-pre-wrap" style={{ fontSize: 14.5, marginTop: 6, lineHeight: 1.55, color: 'var(--color-text-primary)' }}>{open.recommendation}</p>
+                <NocButton variant={open.done ? 'ghost' : 'fill'} className="w-full" style={{ marginTop: 12 }}
+                  icon={open.done ? undefined : <Check size={15} weight="bold" />}
+                  disabled={busy === open.id} onClick={() => toggleDone(open)}>
+                  {open.done ? 'Done — tap to undo' : 'Mark done'}
+                </NocButton>
+              </div>
+            )}
+          </div>
+        )}
+      </GlassSheet>
+    </div>
   );
 }

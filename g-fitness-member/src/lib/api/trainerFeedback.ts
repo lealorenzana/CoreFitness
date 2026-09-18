@@ -98,6 +98,9 @@ export interface TrainerFeedbackRow {
   pt_session_id: string | null;
   created_at: string;
   updated_at: string;
+  /** 0088: when the member first opened it, and when they ticked the recommendation done. */
+  seen_at?: string | null;
+  done_at?: string | null;
 }
 
 /**
@@ -176,4 +179,16 @@ export async function updateFeedback(
   if (!data || data.length === 0) {
     throw new Error('That note could not be updated — it may not be yours to edit.');
   }
+}
+
+/**
+ * The member marks a note seen, and optionally its recommendation done or not
+ * done (0088). An RPC rather than an update: RLS chooses rows, never columns,
+ * and the note itself is the coach's words.
+ */
+export async function markFeedback(id: string, done?: boolean): Promise<void> {
+  const { error } = await supabase.rpc('mark_feedback', {
+    p_id: id, p_seen: true, p_done: done === undefined ? null : done,
+  });
+  if (error) throw error;
 }

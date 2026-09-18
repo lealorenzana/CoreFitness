@@ -122,6 +122,8 @@ CHECKS = [
     ('0086', 'rpc migration_0086_applied',     lambda: rpc('migration_0086_applied')),
     ('0087', 'rpc settle_my_goals',            lambda: rpc('settle_my_goals')),
     ('0087', 'rpc migration_0087_applied',     lambda: rpc('migration_0087_applied')),
+    ('0088', 'trainer_feedback.done_at',       lambda: table('trainer_feedback', 'done_at')),
+    ('0088', 'rpc migration_0088_applied',     lambda: rpc('migration_0088_applied')),
 ]
 
 print('project: %s' % URL)

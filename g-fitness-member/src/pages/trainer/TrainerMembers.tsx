@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { leaveFeedback } from '../../lib/api/trainerFeedback';
+import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
 import { Barbell, ChatCircleText, EyeSlash, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -93,6 +93,8 @@ export default function TrainerMembers() {
   const [selectedMember, setSelectedMember] = useState<RosterMember | null>(null);
   const [detail, setDetail] = useState<MemberDetailForTrainer | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  /** Notes this coach has sent the open member, with whether they were seen / done (0088). */
+  const [sentNotes, setSentNotes] = useState<TrainerFeedbackRow[] | null>(null);
 
   /**
    * Opens the sheet and fetches what this member allows a trainer to see.
@@ -105,6 +107,19 @@ export default function TrainerMembers() {
     setSelectedMember(member);
     setDetail(null);
     setDetailLoading(true);
+    setSentNotes(null);
+    // The coach's own notes to this member — the other half of the loop the
+    // member's Coach tab closes by marking them seen and done.
+    void (async () => {
+      try {
+        const me = await getCurrentTrainerId();
+        if (!me) return;
+        const rows = await listFeedbackByTrainer(me);
+        setSentNotes(rows.filter((r) => r.member_id === member.id).slice(0, 5));
+      } catch {
+        setSentNotes([]);
+      }
+    })();
     try {
       setDetail(await getMemberDetailForTrainer(member.id));
     } catch {
@@ -333,6 +348,31 @@ export default function TrainerMembers() {
               <InlineStat value={<span style={{ fontSize: 17 }}>{detail?.progression ? levelLabel(detail.progression.level) : '—'}</span>} label="Earned" />
               <InlineStat value={<span style={{ fontSize: 17 }}>{selectedMember.visitsLast30}</span>} label="Visits (30d)" />
             </div>
+
+            {/* Notes already sent, newest first, with the member's side of it. */}
+            {sentNotes && sentNotes.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>Your notes to them</p>
+                <div className="flex flex-col" style={{ marginTop: 6 }}>
+                  {sentNotes.map((n) => (
+                    <div key={n.id} className="flex items-start" style={{ gap: 10, padding: '8px 0', borderBottom: '1px solid var(--color-separator)' }}>
+                      <span className="flex-1 min-w-0">
+                        <span className="block line-clamp-2" style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--color-text-primary)' }}>
+                          {n.recommendation ?? n.note}
+                        </span>
+                        <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                          {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </span>
+                      <StatusPill
+                        label={n.done_at ? 'Done' : n.seen_at ? 'Seen' : 'Not opened'}
+                        tone={n.done_at ? 'structure' : n.seen_at ? 'muted' : 'action'}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* What the member has chosen to share (0032). A category switched
                 off shows "Not shared" — never an empty block, which would say
