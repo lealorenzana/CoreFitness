@@ -72,6 +72,8 @@ function SharedBlock({
 interface RosterMember {
   id: string;
   name: string;
+  /** `profiles.photo_url` through the roster view, or null — Avatar falls back to initials. */
+  photoUrl: string | null;
   planName: string;
   membershipStatus: string;
   experienceLevel: string | null;
@@ -151,6 +153,7 @@ export default function TrainerMembers() {
           return {
             id: r.member_id,
             name: r.name,
+            photoUrl: r.photo_url ?? null,
             planName: ms?.membership_plans?.name ?? 'No plan',
             membershipStatus: ms?.status ?? 'none',
             experienceLevel: r.experience_level,
@@ -300,7 +303,7 @@ export default function TrainerMembers() {
           {members.map((member, i) => (
             <LineRow
               key={member.id}
-              gutter={<Avatar name={member.name} photoUrl={null} size={38} />}
+              gutter={<Avatar name={member.name} photoUrl={member.photoUrl ?? null} size={38} />}
               gutterWidth={38}
               title={member.name}
               meta={`${member.planName}${member.experienceLevel ? ` · ${member.experienceLevel}` : ' · no level set'} · ${member.visitsLast30} ${member.visitsLast30 === 1 ? 'visit' : 'visits'} in 30 days`}
@@ -315,7 +318,7 @@ export default function TrainerMembers() {
       <GlassSheet
         open={selectedMember !== null}
         onClose={closeMember}
-        leading={selectedMember && <Avatar name={selectedMember.name} photoUrl={null} size={42} />}
+        leading={selectedMember && <Avatar name={selectedMember.name} photoUrl={selectedMember.photoUrl ?? null} size={42} />}
         title={selectedMember?.name ?? ''}
         subtitle={selectedMember ? `${selectedMember.planName} · ${selectedMember.membershipStatus}` : undefined}
       >

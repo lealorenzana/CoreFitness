@@ -96,7 +96,7 @@ async (page) => {
     // 0082: the roster reads this narrowed view, not the three unfiltered
     // tables it used to join on the phone.
     my_trainer_members: [M1, M2].map((m, i) => ({
-      member_id: m.id, name: `${m.first_name} ${m.last_name}`, photo_url: null,
+      member_id: m.id, name: `${m.first_name} ${m.last_name}`, photo_url: i === 0 ? '/pwa-192x192.png' : null,
       experience_level: 'intermediate', last_visit: iso(-(i + 1), 7, 0),
       visits_last_30: [6, 3][i], upcoming_with_me: [1, 0][i],
     })),
