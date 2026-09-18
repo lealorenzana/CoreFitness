@@ -328,11 +328,20 @@ export default function Home() {
 
       {/* ── Week marks ── */}
       <section aria-label="This week">
-        <WeekMarks days={home.weekCheckIns} dayNumbers={home.weekDayNumbers} todayIndex={today} planned={planned} />
+        {/* The strip opens the full calendar — Attendance pages back through
+            every month with a visit. Only the strip is the button: the line
+            under it holds its own links, and a button cannot hold buttons. */}
+        <button onClick={() => navigate('/member/attendance-history')}
+          aria-label="This week's visits. Open the full attendance calendar"
+          className="w-full block text-left noc-press-soft">
+          <WeekMarks days={home.weekCheckIns} dayNumbers={home.weekDayNumbers} todayIndex={today} planned={planned} />
+        </button>
         <div className="flex items-center justify-between" style={{ marginTop: 10, fontSize: 12, gap: 12 }}>
-          <span style={{ color: 'var(--color-text-muted)' }}>
+          <button onClick={() => navigate('/member/attendance-history')} className="text-left"
+            style={{ color: 'var(--color-text-muted)' }}>
             {home.weekCheckIns.filter(Boolean).length} of 7 days this week
-          </span>
+            <span style={{ color: 'var(--color-primary-300)' }}> · See calendar</span>
+          </button>
           {planned && planned.length === 0 ? (
             <button onClick={() => navigate('/member/gym-plan')} style={{ color: 'var(--color-secondary)' }}>
               Set a training plan

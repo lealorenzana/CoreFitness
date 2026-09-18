@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, Check, Lightning } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentUser } from '../utils/auth';
 import { listMemberAttendance } from '../lib/api/attendance';
@@ -158,7 +158,12 @@ export default function AttendanceHistory() {
               </button>
             </div>
 
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginTop: 14 }}>
+            {/* Keyed on the month, so paging replays the ripple. The cells are the
+                week strip's orb language: a visited day is the violet orb with a
+                tick, today (not yet visited) the turning ring with a bolt, the
+                rest frosted glass. */}
+            <div key={`${cursor.getFullYear()}-${cursor.getMonth()}`} className="grid"
+              style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginTop: 14 }}>
               {DAY_HEADERS.map((d, i) => (
                 <div key={i} className="text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{d}</div>
               ))}
@@ -168,19 +173,35 @@ export default function AttendanceHistory() {
                 const attended = visited.has(dateKey(day));
                 const isToday = dateKey(day) === dateKey(now);
                 const future = day.getTime() > now.getTime();
+                const cls = [
+                  'orb-cell cal-cell relative flex flex-col items-center justify-center',
+                  attended ? 'orb-cell--on cal-cell--visited' : isToday ? 'orb-cell--ring orb-spin' : '',
+                ].join(' ');
                 return (
                   <div key={i}
-                    aria-label={`${day.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${attended ? ', visited' : ''}`}
-                    className="grid place-items-center"
+                    aria-label={`${day.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${attended ? ', visited' : isToday ? ', today' : ''}`}
+                    className={cls}
                     style={{
-                      height: 34, borderRadius: 6, fontSize: 12,
-                      background: attended ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                      border: `1px solid ${isToday ? 'var(--color-secondary)' : 'transparent'}`,
-                      boxShadow: attended ? '0 0 10px -4px var(--color-primary)' : 'none',
+                      height: 42, borderRadius: 10, gap: 1,
+                      // A diagonal ripple: row plus column, so the month fills in
+                      // from its top-left corner.
+                      animationDelay: `${(Math.floor((i + firstDay) / 7) + ((i + firstDay) % 7)) * 28}ms`,
                       color: attended ? '#fff' : isToday ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                      opacity: future ? 0.35 : 1,
+                      opacity: future ? 0.32 : 1,
                     }}>
-                    {i + 1}
+                    {attended ? (
+                      <Check aria-hidden size={13} weight="bold"
+                        style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.7))' }} />
+                    ) : isToday ? (
+                      <Lightning aria-hidden size={12} weight="fill"
+                        style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.7))' }} />
+                    ) : null}
+                    <span style={{
+                      fontSize: attended || isToday ? 11 : 12.5, lineHeight: 1,
+                      fontWeight: attended || isToday ? 700 : 500,
+                    }}>
+                      {i + 1}
+                    </span>
                   </div>
                 );
               })}
