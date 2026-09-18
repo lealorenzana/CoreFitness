@@ -61,7 +61,7 @@ flipping `status` alone left them signed in with **no** membership (and `pending
 ### The data-access layer
 `src/lib/api/*.ts`, one module per table, typed against `src/types/db.ts`; per-app **services** above them assemble
 whole screens — put multi-table assembly in a service, not a component. Most modules exist twice, once per app: **diff
-before you copy**, `notify.ts` differs on purpose. **[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that
+before you copy**, `notify.ts` differs on purpose; `lib/coachGoals.ts` must stay identical. **A member feature is not done until admin and trainer can see, manage or be warned by it** (the drawer, the trainer's member sheet, the page that owns the data). **[docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) lists every trap that
 has cost time here** — `OLD` is unassigned in an INSERT trigger; a comma inside `.or()` is filter syntax (400); a
 NULL-unsafe `<>` skips a role guard, so use `IS DISTINCT FROM`. `activity_log` (0037) is written **only** by SECURITY
 DEFINER triggers (**no INSERT policy**), read through `activity_feed`, which stays **`security_invoker`**.

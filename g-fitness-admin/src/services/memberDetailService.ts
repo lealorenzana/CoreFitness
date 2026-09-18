@@ -15,6 +15,10 @@ import {
 import { listNotifications } from '../lib/api/notifications';
 import { getMemberProgression, type MemberProgression } from '../lib/api/progression';
 import type { AttendanceRow, PaymentRow } from '../types/db';
+import {
+  getMemberPlan, listMemberRoutines, listCoachNotes, getGoalValues,
+  type MemberPlan, type MemberRoutine, type CoachNoteRecord,
+} from '../lib/api/memberTraining';
 
 /**
  * Everything the front desk can see about one member, assembled from the ten
@@ -46,6 +50,14 @@ export interface MemberDetail {
   goals: FitnessGoalRow[];
   workouts: WorkoutLogRow[];
   notes: TrainerNote[];
+  /** Coach notes as records (0072) — null for staff, whom 0072 does not let
+   *  read them; the Notes tab then falls back to `notes`. */
+  coachNotes: CoachNoteRecord[] | null;
+  /** Their training plan and routines from the phone app (0030/0086/0089). */
+  plan: MemberPlan | null;
+  routines: MemberRoutine[] | null;
+  /** goal id → current value (0087), as the member's Goals tab shows it. */
+  goalValues: Record<string, number | null>;
   /** null when migration 0028 isn't live — the drawer hides the section. */
   progression: MemberProgression | null;
   stats: MemberStats;
@@ -176,6 +188,9 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     workouts,
     notifications,
     progression,
+    plan,
+    routines,
+    coachNotes,
   ] = await Promise.all([
     listMemberMemberships(memberId).catch(() => []),
     listMemberPayments(memberId).catch(() => []),
@@ -187,7 +202,11 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     listWorkoutLogs(memberId).catch(() => []),
     listNotifications(memberId).catch(() => []),
     getMemberProgression(memberId),
+    getMemberPlan(memberId),
+    listMemberRoutines(memberId),
+    listCoachNotes(memberId),
   ]);
+  const goalValues = await getGoalValues(goals.filter((g) => !g.achieved_on).map((g) => g.id)).catch(() => ({}));
 
   const notes: TrainerNote[] = notifications
     .filter((n) => n.type === 'trainer_recommendation' || n.type === 'trainer_feedback')
@@ -209,6 +228,10 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     goals,
     workouts,
     notes,
+    coachNotes,
+    plan,
+    routines,
+    goalValues,
     progression,
     stats: computeStats(identity, payments, attendance, bookings, ptSessions),
   };

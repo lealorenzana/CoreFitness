@@ -209,6 +209,8 @@ export default function Workouts() {
     return [...m.entries()];
   }, [resources]);
 
+  // Only resources the gym still shows: one the admin hid keeps its save (it
+  // comes back if they un-hide it) but is not listed or counted meanwhile.
   const savedRows = (saved ?? [])
     .map((s) => ({ s, r: resources.find((x) => x.id === s.resourceId) }))
     .filter((x): x is { s: SavedResource; r: WorkoutResourceRow } => !!x.r);
@@ -249,7 +251,7 @@ export default function Workouts() {
         tabs={[
           { id: 'library', label: `Library · ${resources.length}`, icon: <Books size={15} /> },
           { id: 'exercises', label: 'Exercises', icon: <Barbell size={15} /> },
-          ...(saved ? [{ id: 'saved' as const, label: `Saved · ${saved.length}`, icon: <BookmarkSimple size={15} /> }] : []),
+          ...(saved ? [{ id: 'saved' as const, label: `Saved · ${savedRows.length}`, icon: <BookmarkSimple size={15} /> }] : []),
         ]}
         active={tab}
         onChange={setTab}

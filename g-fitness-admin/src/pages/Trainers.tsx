@@ -27,6 +27,7 @@ import {
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { updateProfile } from '../lib/api/profiles';
 import type { ProfileStatus } from '../types/db';
+import { goalsFor } from '../lib/coachGoals';
 
 interface TrainerDisplay {
   id: string;
@@ -171,9 +172,7 @@ export default function Trainers() {
     }
   }, [showArchived]);
 
-  useEffect(() => {
-    loadTrainers();
-  }, [loadTrainers]);
+  useEffect(() => { void (async () => { await loadTrainers(); })(); }, [loadTrainers]);
 
   const visible = trainers.filter((t) => {
     const q = search.trim().toLowerCase();
@@ -416,6 +415,17 @@ export default function Trainers() {
                     {trainer.specialization}
                   </p>
                   <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
+                  {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
+                  {(() => {
+                    const found = goalsFor({ specialization: trainer.specialization, bio: trainer.bio,
+                      achievements: trainer.achievements, focus_areas: trainer.focusAreas, certifications: trainer.certifications });
+                    return (
+                      <p className="text-[10px] truncate mt-0.5" style={{ color: found.length ? 'var(--color-text-secondary)' : 'var(--color-secondary)' }}
+                        data-tip="Goals members can pick under Coaches → Find your coach">
+                        {found.length ? `Found under: ${found.map((f) => f.goal.label).join(', ')}` : 'Not matched to any member goal yet'}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <OpenChevron />
               </div>
@@ -795,6 +805,32 @@ export default function Trainers() {
                       rows={2}
                       className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
                   </FormField>
+
+                  {/* Live: where members will find this coach under Coaches →
+                      Find your coach, from exactly the fields above. */}
+                  {(() => {
+                    const found = goalsFor({
+                      specialization: editForm.specialty || null, bio: editForm.bio || null,
+                      achievements: editForm.achievements || null,
+                      focus_areas: editForm.focusAreas.split(',').map((x) => x.trim()).filter(Boolean),
+                      certifications: editForm.certifications.split(',').map((x) => x.trim()).filter(Boolean),
+                    });
+                    return (
+                      <div className="rounded-xl p-3 text-[11px]"
+                        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-border)' }}>
+                        <p className="font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>How members find this coach</p>
+                        {found.length === 0 ? (
+                          <p style={{ color: 'var(--color-text-secondary)' }}>
+                            No member goal matches yet. Members pick a goal under Coaches → Find your coach; say what they train in Specialty or Trains for.
+                          </p>
+                        ) : found.map(({ goal, words }) => (
+                          <p key={goal.id} className="text-white">
+                            {goal.label}<span style={{ color: 'var(--color-text-muted)' }}> — from “{words.join('”, “')}”</span>
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   <FieldDivider />
                   <SectionLabel>Availability</SectionLabel>

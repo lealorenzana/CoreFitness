@@ -8,6 +8,8 @@ import {
 } from '../lib/api/progress';
 import { getSharePrefs, SHARE_ALL, type SharePrefs } from '../lib/api/sharePrefs';
 import { getProgression, type Progression } from '../lib/api/achievements';
+import { listMyPlan } from '../lib/api/gymPlans';
+import { listRoutines } from '../lib/api/routines';
 import type { BookingStatus, ClassRow } from '../types/db';
 
 /**
@@ -71,6 +73,14 @@ export interface MemberDetailForTrainer {
   goals: FitnessGoalRow[];
   latestMeasurement: BodyMeasurementRow | null;
   recentWorkouts: WorkoutLogRow[];
+  /** Their training plan (0030/0089): days, reminder time, routine per day.
+   *  Null when it could not be read; days empty when they have none. */
+  plan: { days: number[]; remindAt: string | null; routineByDay: Record<number, string | null> } | null;
+  /** Saved routines (0086) — under "workouts" sharing, like the logs they produce. */
+  routines: { id: string; name: string; exerciseCount: number }[];
+  /** Goal id → current value from `goal_current_value` (0087), the number the
+   *  member's own Goals tab shows. Null where the database gives none. */
+  goalValues: Record<string, number | null>;
 }
 
 export async function getMemberDetailForTrainer(memberId: string): Promise<MemberDetailForTrainer> {
@@ -78,18 +88,36 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
 
   // Each read is independent and allowed to fail on its own. A trainer looking
   // at a member must not get a blank screen because one optional panel errored.
-  const [progression, goals, measurements, workouts] = await Promise.all([
+  const [progression, goals, measurements, workouts, planRows, routines] = await Promise.all([
     getProgression(memberId).catch(() => null),
     shared.shareGoals ? listGoals(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareMeasurements ? listMeasurements(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareWorkouts ? listWorkoutLogs(memberId).catch(() => []) : Promise.resolve([]),
+    // The plan is readable by the gym's staff and coaches (0030's policy) —
+    // a coach who cannot see when a client means to train cannot coach around it.
+    listMyPlan(memberId).catch(() => null),
+    shared.shareWorkouts ? listRoutines(memberId).catch(() => []) : Promise.resolve([]),
   ]);
+
+  const openGoals = goals.filter((g) => g.achieved_on == null).slice(0, 4);
+  const values = await Promise.all(openGoals.map(async (g) => {
+    const { data, error } = await supabase.rpc('goal_current_value', { p_goal: g.id });
+    return [g.id, error || data == null ? null : Number(data)] as const;
+  }));
+  const active = planRows?.filter((r) => r.active) ?? [];
 
   return {
     progression,
     shared,
     // Newest first, and only what a coach can act on in a modal.
-    goals: goals.filter((g) => g.achieved_on == null).slice(0, 4),
+    goals: openGoals,
+    goalValues: Object.fromEntries(values),
+    plan: planRows == null ? null : {
+      days: active.map((r) => r.day_of_week).sort((a, b) => a - b),
+      remindAt: active[0]?.remind_at ?? null,
+      routineByDay: Object.fromEntries(active.map((r) => [r.day_of_week, r.routine_id ?? null])),
+    },
+    routines: routines.map((r) => ({ id: r.id, name: r.name, exerciseCount: r.exercises.length })),
     // listMeasurements is oldest-first so the charts read left to right.
     latestMeasurement: measurements.length ? measurements[measurements.length - 1] : null,
     recentWorkouts: workouts.slice(0, 5),

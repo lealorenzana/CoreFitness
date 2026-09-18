@@ -12,6 +12,7 @@ import { uploadMyAvatar, removeMyAvatar } from '../../lib/api/avatars';
 import { getCurrentTrainerId } from '../../services/trainerService';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
+import { goalsFor } from '../../lib/coachGoals';
 
 /**
  * Trainer self-service profile editing.
@@ -268,6 +269,36 @@ export default function TrainerEditProfile() {
           <TextArea rows={4} value={form.achievements}
             onChange={(e) => setForm({ ...form, achievements: e.target.value })} />
         </Field>
+
+        {/* The member app's "Find your coach" reads exactly these fields
+            (lib/coachGoals.ts), so show the coach, live, where their own words
+            put them — the only way they can know why they are or are not listed. */}
+        {(() => {
+          const found = goalsFor({
+            specialization: form.specialization, bio: form.bio, achievements: form.achievements,
+            focus_areas: toList(form.focusAreas), certifications: toList(form.certifications),
+          });
+          return (
+            <div style={{ padding: 14, borderRadius: 14, background: 'rgba(124, 58, 237, 0.08)', border: '1px solid var(--color-hairline)' }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>How members find you</p>
+              <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                {found.length === 0
+                  ? 'Members pick a goal under Coaches → Find your coach. Nothing you have written matches one yet — say what you train in Specialization or Trains for.'
+                  : 'Members who pick one of these goals under Coaches → Find your coach will see you:'}
+              </p>
+              {found.length > 0 && (
+                <ul className="flex flex-col" style={{ gap: 4, marginTop: 8 }}>
+                  {found.map(({ goal, words }) => (
+                    <li key={goal.id} style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+                      {goal.label}
+                      <span style={{ color: 'var(--color-text-muted)' }}> — from “{words.join('”, “')}”</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
       </section>
 
       <section className="flex flex-col" style={{ gap: 14 }}>

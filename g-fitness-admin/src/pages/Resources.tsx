@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
-  Plus, X, ExternalLink, Trash2, Eye, EyeOff, BookOpen, Search, ImageOff,
+  Plus, X, ExternalLink, Trash2, Eye, EyeOff, BookOpen, Search, ImageOff, Bookmark,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
@@ -16,6 +16,7 @@ import {
   deleteWorkoutResource,
   linkHost,
   hasPreview,
+  getResourceSaveCounts,
   type WorkoutResourceRow,
 } from '../lib/api/workoutResources';
 import type { ClassLevel } from '../types/db';
@@ -109,12 +110,16 @@ export default function Resources() {
   const [form, setForm] = useState(emptyForm);
   const [toDelete, setToDelete] = useState<WorkoutResourceRow | null>(null);
   const [search, setSearch] = useState('');
+  /** Members' saves per resource (0090); null until live or if unreadable. */
+  const [saves, setSaves] = useState<Map<string, { saved: number; done: number }> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       // false — the admin needs to see hidden ones in order to bring them back.
-      setRows(await listWorkoutResources(false));
+      const [list, counts] = await Promise.all([listWorkoutResources(false), getResourceSaveCounts()]);
+      setRows(list);
+      setSaves(counts);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load resources', 'error');
     } finally {
@@ -122,7 +127,7 @@ export default function Resources() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // Title, provider, category and host — the four things someone actually has
   // in mind when they come looking. The host matters because "the YouTube ones"
@@ -308,6 +313,15 @@ export default function Resources() {
                   </p>
                 )}
 
+                {/* What members do with it (0090) — the member app's bookmark and done tick. */}
+                {saves && (
+                  <p className="text-[10px] inline-flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                    <Bookmark size={10} />
+                    {(saves.get(r.id)?.saved ?? 0) === 0 ? 'Not saved by any member yet'
+                      : `Saved by ${saves.get(r.id)!.saved} · done by ${saves.get(r.id)!.done}`}
+                  </p>
+                )}
+
                 {/* mt-auto pins the link and the buttons to the bottom, so cards
                     in the same row line up however long their descriptions are. */}
                 <div className="mt-auto pt-2 flex items-center justify-between gap-2">
@@ -423,7 +437,9 @@ export default function Resources() {
         onClose={() => setToDelete(null)}
         onConfirm={handleDelete}
         title="Remove Resource"
-        message={`Remove "${toDelete?.title}" from the library? If you only want it out of the member app for now, Hide keeps the description and brings it back with one click.`}
+        message={`Remove "${toDelete?.title}" from the library?${toDelete && saves?.get(toDelete.id)?.saved
+          ? ` ${saves.get(toDelete.id)!.saved} member${saves.get(toDelete.id)!.saved === 1 ? ' has' : 's have'} it saved — it disappears from their Saved list too.`
+          : ''} If you only want it out of the member app for now, Hide keeps it — and members' saves — and brings it back with one click.`}
         confirmText="Remove"
         type="danger"
       />

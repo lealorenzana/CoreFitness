@@ -5,6 +5,7 @@ import { listClasses } from '../lib/api/classes';
 import { listAllAvailability, computeOpenSlots } from '../lib/api/trainerAvailability';
 import { listMemberPtSessions } from '../lib/api/ptSessions';
 import { listMemberBookings } from '../lib/api/bookings';
+export { GOALS, goalMatches, goalScore, type Goal } from '../lib/coachGoals';
 
 /**
  * The Coaches screen, assembled (reworked 2026-09-19).
@@ -32,40 +33,6 @@ export interface CoachCard {
   yours: boolean;
   /** Last date you trained with them, for "Last session Sep 3". */
   lastWithYou: string | null;
-}
-
-export interface Goal {
-  id: string;
-  label: string;
-  words: string[];
-}
-
-/** Checked against the seeded coaches' real wording — each goal finds someone. */
-export const GOALS: Goal[] = [
-  { id: 'fat', label: 'Lose fat', words: ['fat loss', 'weight loss', 'hiit', 'cardio', 'dance', 'zumba', 'conditioning'] },
-  { id: 'muscle', label: 'Build muscle', words: ['hypertrophy', 'muscle', 'bodybuilding', 'calisthenics', 'strength'] },
-  { id: 'strong', label: 'Get stronger', words: ['strength', 'powerlifting', 'squat', 'deadlift', 'technique'] },
-  { id: 'move', label: 'Move better', words: ['yoga', 'mobility', 'flexibility', 'pilates', 'posture', 'functional'] },
-  { id: 'sport', label: 'Sport & fight', words: ['boxing', 'muay thai', 'athlete', 'speed', 'agility', 'sports', 'self-defense'] },
-  { id: 'pain', label: 'Pain or injury', words: ['rehab', 'injury', 'back pain', 'physical therapist', 'corrective', 'low impact'] },
-  { id: 'start', label: 'Just starting', words: ['beginner', 'no experience', 'every level', 'daily life', 'seniors', 'low impact'] },
-];
-
-/**
- * How well a coach fits a goal: each matched word counts once, and a match in
- * their specialization — what they say they do — counts three times over one
- * that turns up in a bio or a certificate name.
- */
-export function goalScore(t: PublicTrainer, goal: Goal): number {
-  const spec = (t.specialization ?? '').toLowerCase();
-  return goalMatches(t, goal).reduce((n, w) => n + (spec.includes(w) ? 3 : 1), 0);
-}
-
-/** The goal words this coach's own text contains, in the goal's order. */
-export function goalMatches(t: PublicTrainer, goal: Goal): string[] {
-  const text = [t.specialization, t.bio, t.achievements, ...(t.focus_areas ?? []), ...(t.certifications ?? [])]
-    .filter(Boolean).join(' · ').toLowerCase();
-  return goal.words.filter((w) => text.includes(w));
 }
 
 async function listAllBusy(): Promise<BusySlot[]> {

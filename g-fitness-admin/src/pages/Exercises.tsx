@@ -47,6 +47,8 @@ export default function Exercises() {
   const [form, setForm] = useState(emptyForm);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** exercise → routines using it (0090). Null before 0090, so no count is shown. */
+  const [usage, setUsage] = useState<Map<string, { routines: number; members: number }> | null>(null);
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
    *  call again from a button without flashing the whole screen away. */
@@ -62,6 +64,10 @@ export default function Exercises() {
       setRows((data ?? []) as ExerciseRow[]);
       setFailed(false);
     }
+    // Members' routines (0086) that include each exercise — counts only.
+    const counts = await supabase.rpc('exercise_routine_counts');
+    setUsage(counts.error ? null : new Map(((counts.data ?? []) as { exercise_id: string; routines: number; members: number }[])
+      .map((r) => [r.exercise_id, { routines: r.routines, members: r.members }])));
   };
 
   useEffect(() => {
@@ -110,12 +116,21 @@ export default function Exercises() {
   };
 
   const toggleActive = async (row: ExerciseRow) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('exercises')
       .update({ is_active: !row.is_active })
-      .eq('id', row.id);
+      .eq('id', row.id)
+      .select('id');
     if (error) { showToast(error.message, 'error'); return; }
+    // A zero-row update reports success (CLAUDE.md) — staff cannot edit this list.
+    if (!data || data.length === 0) { showToast('Only an admin can change the exercise list', 'error'); return; }
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)));
+    // Hiding takes it out of the picker; routines that already have it keep
+    // running it. Say so, so "hidden" is not mistaken for "removed".
+    const used = usage?.get(row.id);
+    if (row.is_active && used && used.routines > 0) {
+      showToast(`Hidden from the picker. ${used.routines} saved routine${used.routines === 1 ? '' : 's'} (${used.members} member${used.members === 1 ? '' : 's'}) still include it and keep working.`, 'info');
+    }
   };
 
   if (loading) {
@@ -205,7 +220,9 @@ export default function Exercises() {
       <Card className="!p-4">
         <p className="text-[10px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           An exercise members have already logged cannot be deleted — that would rewrite
-          their training history. Hide it instead and every past set stays intact.
+          their training history. Hide it instead and every past set stays intact. Hiding
+          removes it from the member app's picker and exercise list; routines members already
+          built with it keep it.
         </p>
         <div className="space-y-4">
           {byGroup.map(({ group, items }) => (
@@ -222,6 +239,7 @@ export default function Exercises() {
                       <p className="text-xs text-white truncate">{r.name}</p>
                       <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
                         {r.equipment}{r.is_timed ? ' · timed' : ''}
+                        {usage && (usage.get(r.id)?.routines ?? 0) > 0 && ` · in ${usage.get(r.id)!.routines} routine${usage.get(r.id)!.routines === 1 ? '' : 's'}`}
                       </p>
                     </div>
                     <button onClick={() => toggleActive(r)}

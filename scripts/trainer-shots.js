@@ -111,6 +111,15 @@ async (page) => {
       logo_url: null, short_name: 'CF', tagline: null, activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
     notification_prefs: [{ member_id: 't1', bookings: true, payments: true, announcements: true }],
     push_subscriptions: [], events: [], workout_resources: [], class_templates: [],
+    // 0030/0089: Lea trains Mon/Wed/Fri at 6 PM, Monday is her leg day (0086).
+    gym_plans: [1, 3, 5].map((d) => ({ id: `gp${d}`, member_id: 'm1', day_of_week: d, remind_at: '18:00:00',
+      active: true, last_reminded_on: null, routine_id: d === 1 ? 'r1' : null, created_at: iso(-9, 9, 0) })),
+    workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-2, 9, 0),
+      workout_routine_exercises: [
+        { id: 'x1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 4, target_reps: 8, target_weight_kg: 60,
+          target_seconds: null, rest_seconds: 120, exercises: { name: 'Back Squat', is_timed: false } },
+        { id: 'x2', position: 1, exercise_id: 'e2', custom_name: null, target_sets: 3, target_reps: 12, target_weight_kg: null,
+          target_seconds: null, rest_seconds: 90, exercises: { name: 'Leg Press', is_timed: false } }] }],
   };
   const RPC = {
     my_trainer_ratings: [], trainer_schedule_conflicts: [], sweep_stale_requests: 0,
@@ -171,6 +180,7 @@ async (page) => {
   await page.locator('main button', { hasText: 'Lea Lorenzana' }).first().click();
   await page.waitForTimeout(900);
   await page.screenshot({ path: 'shots/trainer-09-member-sheet.png' });
+  out.push('sheet: ' + (await page.getByRole('dialog').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 900));
   await page.getByRole('button', { name: 'Send a recommendation' }).click();
   await page.waitForTimeout(300);
   const formShown = await page.getByPlaceholder('What they should do next…').isVisible();

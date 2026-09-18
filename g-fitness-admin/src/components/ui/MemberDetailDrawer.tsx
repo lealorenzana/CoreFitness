@@ -93,11 +93,16 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Pro
     }
   }, [memberId]);
 
-  useEffect(() => {
+  // A different member resets the drawer — decided during render (compare
+  // with the member last shown), not in an effect, so there is no extra pass.
+  const [shownFor, setShownFor] = useState(memberId);
+  if (shownFor !== memberId) {
+    setShownFor(memberId);
     setTab('overview');
     setDetail(null);
-    load();
-  }, [load]);
+  }
+
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // Escape closes. A full-height panel over a table is easy to open by accident
   // from a mis-click on a row, so it needs the cheapest possible way out.
@@ -784,8 +789,15 @@ function AttendanceTab({ detail }: { detail: MemberDetail }) {
 
 /* ─────────────────────────── Progress ─────────────────────────── */
 
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** 'HH:MM[:SS]' → '6:00 PM'. */
+function clock(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
 function ProgressTab({ detail }: { detail: MemberDetail }) {
-  const { measurements, goals, workouts, progression } = detail;
+  const { measurements, goals, workouts, progression, plan, routines, goalValues } = detail;
   // listMeasurements is oldest-first, so the latest is the last element.
   const latest = measurements.length > 0 ? measurements[measurements.length - 1] : null;
   const latestBmi = latest ? bmi(latest.weight_kg, latest.height_cm) : null;
@@ -835,7 +847,9 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
               // Only weight goals have a current reading to measure against; for
               // anything else the honest answer is that we cannot say, and a bar
               // that invents a position is worse than no bar.
-              const currentValue = g.metric === 'weight_kg' ? latest?.weight_kg ?? null : null;
+              // 0087's value where the database has one — the number the
+              // member's own Goals tab shows; the latest weight otherwise.
+              const currentValue = goalValues[g.id] ?? (g.metric === 'weight_kg' ? latest?.weight_kg ?? null : null);
               const p = goalProgress(g, currentValue);
               return (
                 <div key={g.id}>
@@ -861,6 +875,38 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
                 </div>
               );
             })}
+          </div>
+        )}
+      </Section>
+
+      {/* Set up by the member in the phone app (0030/0089); read-only here. */}
+      <Section title="Training plan">
+        {plan == null ? (
+          <Empty text="The training plan could not be read just now." />
+        ) : plan.days.length === 0 ? (
+          <Empty text="No training days set. Members pick their days under Train → Training plan." />
+        ) : (
+          <div className="space-y-1.5">
+            <Row title={plan.days.map((d) => DAY_SHORT[d]).join(' · ')}
+              subtitle={`${plan.days.length} day${plan.days.length === 1 ? '' : 's'} a week${plan.remindAt ? ` · reminder ${clock(plan.remindAt)}` : ''}`} />
+            {plan.days.filter((d) => plan.routineByDay[d]).map((d) => (
+              <Row key={d} title={`${DAY_SHORT[d]} — ${plan.routineByDay[d]}`} subtitle="Planned routine" />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title={`Saved routines${routines ? ` (${routines.length})` : ''}`}>
+        {routines == null ? (
+          <Empty text="Routines could not be read just now." />
+        ) : routines.length === 0 ? (
+          <Empty text="No routines saved. Members build them under Train → My routines." />
+        ) : (
+          <div className="space-y-1.5">
+            {routines.map((r) => (
+              <Row key={r.id} title={r.name}
+                subtitle={`${r.exerciseCount} exercise${r.exerciseCount === 1 ? '' : 's'} · updated ${formatDate(r.updatedAt)}`} />
+            ))}
           </div>
         )}
       </Section>
@@ -940,6 +986,39 @@ function BookingsTab({ detail }: { detail: MemberDetail }) {
 /* ─────────────────────────── Notes ─────────────────────────── */
 
 function NotesTab({ detail }: { detail: MemberDetail }) {
+  // The records (0072) when this account may read them — admin — with the
+  // coach's name and the member's side (0088). Staff fall back to the
+  // notifications, which is all 0072 lets the front desk see.
+  const records = detail.coachNotes;
+  if (records && records.length > 0) {
+    return (
+      <div className="space-y-2">
+        {records.map((n) => (
+          <div key={n.id} className="rounded-xl p-3"
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>{n.coach}</p>
+              <span className="flex items-center gap-2 flex-shrink-0">
+                {n.seenAt !== undefined && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                    style={n.doneAt
+                      ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
+                      : { background: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' }}>
+                    {n.doneAt ? 'Done' : n.seenAt ? 'Seen' : 'Not opened'}
+                  </span>
+                )}
+                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{formatDate(n.createdAt)}</span>
+              </span>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{n.note}</p>
+            {n.recommendation && (
+              <p className="text-xs mt-1.5 text-white"><span style={{ color: 'var(--color-text-muted)' }}>Next step: </span>{n.recommendation}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
   if (detail.notes.length === 0) {
     return <Empty text="No trainer notes for this member yet." />;
   }

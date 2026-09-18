@@ -107,3 +107,15 @@ export function linkHost(url: string): string {
 export function hasPreview(resource: Pick<WorkoutResourceRow, 'image_url'>): boolean {
   return typeof resource.image_url === 'string' && resource.image_url.length > 0;
 }
+
+/**
+ * How many members saved each resource, and how many marked it done (0090).
+ * Counts only — a saved list is the member's own. Null before 0090 is live, and
+ * the page then shows no counts rather than zeros that were never counted.
+ */
+export async function getResourceSaveCounts(): Promise<Map<string, { saved: number; done: number }> | null> {
+  const { data, error } = await supabase.rpc('resource_save_counts');
+  if (error) return null;
+  return new Map(((data ?? []) as { resource_id: string; saved: number; done: number }[])
+    .map((r) => [r.resource_id, { saved: r.saved, done: r.done }]));
+}

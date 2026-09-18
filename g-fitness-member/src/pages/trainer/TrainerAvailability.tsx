@@ -16,6 +16,8 @@ import {
   type TrainerAvailabilityRow,
 } from '../../lib/api/trainerAvailability';
 import { Page, PageTitle } from '../../components/ui/page';
+import { listOpenPtSlots } from '../../services/bookingService';
+import { slotLabel } from '../../services/coachDirectoryService';
 
 /**
  * The trainer's bookable working hours — the rows a member's booking screen
@@ -84,6 +86,21 @@ export default function TrainerAvailability() {
   const [confirmDelete, setConfirmDelete] = useState<TrainerAvailabilityRow | null>(null);
 
   const [form, setForm] = useState({ day: '1', start: '08:00', end: '12:00', slot: '60' });
+  /** What members see on Coaches: your first open slot. Undefined while unknown. */
+  const [nextFree, setNextFree] = useState<string | null | undefined>(undefined);
+
+  // The same computation the member's Coaches list and booking screen run —
+  // your hours, minus your 1-on-1s and the classes you teach — redone
+  // whenever the hours change, so the trainer sees what members see.
+  useEffect(() => {
+    if (!trainerId) return;
+    let alive = true;
+    void (async () => {
+      const slots = await listOpenPtSlots(trainerId, 14).catch(() => null);
+      if (alive) setNextFree(slots ? slots.map((x) => x.startsAt).sort()[0] ?? null : undefined);
+    })();
+    return () => { alive = false; };
+  }, [trainerId, rows]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,7 +131,7 @@ export default function TrainerAvailability() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const handleAdd = async () => {
     if (saving) return;
@@ -213,6 +230,14 @@ export default function TrainerAvailability() {
                 ? 'Members cannot book a session with you until you add hours here.'
                 : 'A slot disappears from the member’s booking screen once it is taken or clashes with a class you teach.'}
             </p>
+            {nextFree !== undefined && totalSlots > 0 && (
+              <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                Members see on Coaches:{' '}
+                <span style={{ fontWeight: 600, color: 'var(--color-primary-300)' }}>
+                  {nextFree ? `Next free 1-on-1 · ${slotLabel(nextFree)}` : 'No open 1-on-1 in the next 2 weeks'}
+                </span>
+              </p>
+            )}
           </Panel>
 
           {rows.length === 0 ? (

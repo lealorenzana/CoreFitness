@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
-import { Barbell, ChatCircleText, EyeSlash, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, ListChecks, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
+import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import GlassSheet from '../../components/ui/GlassSheet';
@@ -392,7 +393,12 @@ export default function TrainerMembers() {
                     {detail?.goals.map((g) => (
                       <p key={g.id} className="truncate" style={line}>
                         {g.title}
-                        {g.target_value != null && <span style={muted}> — target {g.target_value}</span>}
+                        {/* The same current value the member's Goals tab shows (0087). */}
+                        {g.target_value != null && (
+                          <span style={muted}>
+                            {' '}— {detail.goalValues[g.id] != null ? `${detail.goalValues[g.id]} of ` : 'target '}{g.target_value}
+                          </span>
+                        )}
                       </p>
                     ))}
                   </SharedBlock>
@@ -417,6 +423,48 @@ export default function TrainerMembers() {
                         </span>
                       </p>
                     )}
+                  </SharedBlock>
+
+                  {/* Their training plan (0030/0089) — not behind a sharing switch:
+                      the gym's coaches may read it, and knowing which days a
+                      client means to come in is the point of coaching them. */}
+                  <SharedBlock
+                    icon={CalendarCheck}
+                    label="Training plan"
+                    shared
+                    empty={!detail?.plan || detail.plan.days.length === 0}
+                    emptyText={detail?.plan ? 'No training days set.' : 'Could not be read just now.'}
+                  >
+                    {detail?.plan && (
+                      <>
+                        <p style={line}>
+                          {detail.plan.days.map((d) => DAY_LABELS[d]).join(' · ')}
+                          {detail.plan.remindAt && <span style={muted}> — reminder {formatRemindAt(detail.plan.remindAt)}</span>}
+                        </p>
+                        {detail.plan.days.filter((d) => detail.plan!.routineByDay[d]).map((d) => {
+                          const r = detail.routines.find((x) => x.id === detail.plan!.routineByDay[d]);
+                          return (
+                            <p key={d} className="truncate" style={muted}>
+                              {DAY_LABELS[d]}: {r ? r.name : 'a routine (workouts not shared)'}
+                            </p>
+                          );
+                        })}
+                      </>
+                    )}
+                  </SharedBlock>
+
+                  <SharedBlock
+                    icon={ListChecks}
+                    label="Saved routines"
+                    shared={detail?.shared.shareWorkouts ?? true}
+                    empty={(detail?.routines.length ?? 0) === 0}
+                    emptyText="No routines saved."
+                  >
+                    {detail?.routines.map((r) => (
+                      <p key={r.id} className="truncate" style={line}>
+                        {r.name}<span style={muted}> — {r.exerciseCount} {r.exerciseCount === 1 ? 'exercise' : 'exercises'}</span>
+                      </p>
+                    ))}
                   </SharedBlock>
 
                   <SharedBlock
