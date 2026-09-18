@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Star, UsersThree, X,
+  ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Plus, Star, UsersThree, X,
 } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
@@ -267,7 +267,29 @@ export default function BookingHistory() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/book-class" title="My bookings" subtitle="Classes and 1-on-1 — what's coming, what happened" />
+      {/* Booking sits in the header, not under the list — a long history must
+          never push the one thing you came to do off the bottom. */}
+      <PageTitle
+        back
+        fallback="/member/book-class"
+        title="My bookings"
+        subtitle="Classes and 1-on-1 — what's coming, what happened"
+        action={
+          <button
+            onClick={() => navigate('/member/book-class')}
+            className="inline-flex items-center"
+            style={{
+              gap: 5, height: 36, padding: '0 14px', borderRadius: 999,
+              fontSize: 13, fontWeight: 600,
+              color: 'var(--color-secondary)',
+              background: 'color-mix(in srgb, var(--color-secondary) 14%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-secondary) 35%, transparent)',
+            }}
+          >
+            <Plus size={14} weight="bold" /> Book
+          </button>
+        }
+      />
 
       {loading ? <SkeletonList /> : (
         <>
@@ -371,10 +393,6 @@ export default function BookingHistory() {
               {visible.map((r, i) => renderRow(r, i === visible.length - 1))}
             </section>
           )}
-
-          <NocButton variant="action" className="w-full" onClick={() => navigate('/member/book-class')}>
-            Book a session
-          </NocButton>
         </>
       )}
 
