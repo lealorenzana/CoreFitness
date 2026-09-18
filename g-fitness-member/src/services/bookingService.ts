@@ -113,6 +113,13 @@ export interface MyBooking {
    * a debt.
    */
   payment: 'paid' | 'included' | 'unknown';
+  /** The coach, for the avatar and a rebook. Null for a class with no coach set. */
+  trainerId: string | null;
+  trainerPhoto: string | null;
+  /** 0081: who cancelled and why, when it was cancelled. */
+  cancelledByRole: 'member' | 'trainer' | 'staff' | 'admin' | 'system' | null;
+  cancellationReason: string | null;
+  cancellationNote: string | null;
 }
 
 /**
@@ -479,12 +486,26 @@ export async function requestPt(input: {
 
 /** Both kinds of booking, newest commitment first, for the member's own list. */
 export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
-  const [classBookings, ptSessions, trainers, membership] = await Promise.all([
+  const [classBookings, ptSessions, trainers, membership, reasonRows] = await Promise.all([
     listMemberBookings(memberId).catch(() => []),
     listMemberPtSessions(memberId).catch(() => []),
     listPublicTrainers().catch(() => [] as PublicTrainer[]),
     getCurrentMembership(memberId).catch(() => null),
+    // Every reason's words, retired ones included — a booking cancelled for a
+    // reason the gym later retired still says what it was.
+    supabase.from('cancellation_reasons').select('key, label')
+      .then(({ data }) => (data ?? []) as { key: string; label: string }[], () => []),
   ]);
+  const reasonLabel = new Map(reasonRows.map((r) => [r.key, r.label]));
+  const photoById = new Map(trainers.map((t) => [t.id, t.photo_url ?? null]));
+  // 0081's columns, read loosely: before that migration they are simply absent.
+  const cancelInfo = (r: Record<string, unknown>) => ({
+    cancelledByRole: (r.cancelled_by_role as MyBooking['cancelledByRole']) ?? null,
+    cancellationReason: r.cancellation_reason
+      ? reasonLabel.get(r.cancellation_reason as string) ?? String(r.cancellation_reason).replace(/_/g, ' ')
+      : null,
+    cancellationNote: (r.cancellation_note as string | null) ?? null,
+  });
 
   // A plan with a personal-training allowance means the session is covered, so
   // there is nothing to settle. Unknown when the membership will not load —
@@ -509,6 +530,9 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
       location: b.classes?.location ?? null,
       status: b.status,
       cancellable: b.status === 'pending' || b.status === 'approved',
+      trainerId: b.classes?.trainer_id ?? null,
+      trainerPhoto: b.classes?.trainer_id ? photoById.get(b.classes.trainer_id) ?? null : null,
+      ...cancelInfo(b as unknown as Record<string, unknown>),
     })),
     ...ptSessions.map((s): MyBooking => ({
       kind: 'pt',
@@ -528,10 +552,14 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
         : ptIncluded
           ? 'included'
           : 'unknown',
-      // A PT request is withdrawn (deleted) rather than cancelled, and only
-      // while it's still pending — once the desk has approved it, the slot is
-      // committed and cancelling is a conversation, not a button.
-      cancellable: s.status === 'pending',
+      // Pending or confirmed, like a class. This used to allow pending only
+      // ("once approved, cancelling is a conversation"), but 0081's
+      // `cancel_booking()` lets a member cancel a confirmed session before it
+      // starts, with a reason — the button was hiding a right they had.
+      cancellable: s.status === 'pending' || s.status === 'approved',
+      trainerId: s.trainer_id,
+      trainerPhoto: photoById.get(s.trainer_id) ?? null,
+      ...cancelInfo(s as unknown as Record<string, unknown>),
     })),
   ];
 
