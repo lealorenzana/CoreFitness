@@ -2,7 +2,6 @@ import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../componen
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Plus, ClockCounterClockwise } from '@phosphor-icons/react';
 import { Chip, Eyebrow, InlineStat, LineRow, NocButton, SectionHead } from '../../../components/ui/noc';
 import { useMemberId } from '../hooks/useMemberId';
@@ -113,7 +112,6 @@ export default function BodyProgressTab() {
   const [saving, setSaving] = useState(false);
   /** Bulk / cut / maintain (0044). Null until the member says. */
   const [focus, setFocus] = useState<TrainingFocus | null>(null);
-  const navigate = useNavigate();
   /**
    * The gym's exercise catalogue, for the "trains this" list on the body map.
    *
@@ -312,7 +310,6 @@ export default function BodyProgressTab() {
           return exercises.filter((e) => groups.includes(e.muscleGroup)).slice(0, 8);
         }}
         trainingNoteFor={(region) => REGION_TRAINING_NOTE[region]}
-        onTrainRegion={() => navigate('/member/track')}
       />
 
       <StepFlow

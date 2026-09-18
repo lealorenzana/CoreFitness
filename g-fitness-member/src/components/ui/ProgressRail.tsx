@@ -90,8 +90,10 @@ export default function ProgressRail() {
         </p>
       </Panel>
 
-      <div className="flex flex-wrap" style={{ gap: 24 }}>
-        <InlineStat value={prog.trainingDays} label={`training days · ${prog.verifiedDays} checked in`} />
+      {/* Three even columns, so the figures line up instead of the third
+          wrapping under the first. */}
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+        <InlineStat value={prog.trainingDays} label={`training days, ${prog.verifiedDays} checked in`} />
         <InlineStat value={prog.consistentWeeks} label="weeks with two or more" />
         <InlineStat value={daysSince(prog.memberSince)} label="days as a member" />
       </div>

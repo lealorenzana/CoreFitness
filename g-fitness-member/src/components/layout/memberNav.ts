@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChartBar, ChartLineUp, ChatCircleText, ClipboardText, GearSix, Gift, House, ListChecks, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChartLineUp, ChatCircleText, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -114,9 +114,7 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Coaches', path: '/member/trainers', icon: Users },
     { label: 'Challenges', path: '/member/challenges', icon: Trophy },
     { label: 'Achievements', path: '/member/achievements', icon: Medal },
-    { label: 'Logged workouts', path: '/member/progress?tab=workouts', icon: ListChecks },
     { label: 'Goals', path: '/member/progress?tab=goals', icon: Target },
-    { label: 'Charts', path: '/member/progress?tab=dashboard', icon: ChartBar },
     { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText },
   ],
   you: [
@@ -163,9 +161,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     group: 'Progress',
     items: [
       { label: 'Body', path: '/member/progress?tab=body' },
-      { label: 'Logged workouts', path: '/member/progress?tab=workouts' },
       { label: 'Goals', path: '/member/progress?tab=goals' },
-      { label: 'Charts', path: '/member/progress?tab=dashboard' },
       { label: 'Coach notes', path: '/member/progress?tab=feedback' },
       { label: 'Achievements and level', path: '/member/achievements' },
     ],

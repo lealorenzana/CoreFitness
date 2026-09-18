@@ -3,8 +3,7 @@ import { progressService, type WorkoutLog, type BodyProgressEntry, type Attendan
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import ErrorState from '../../../components/ui/ErrorState';
-import ProgressRail from '../../../components/ui/ProgressRail';
-import { Chip } from '../../../components/ui/noc';
+import { Chip, SectionHead } from '../../../components/ui/noc';
 
 type Metric = 'weight' | 'workouts' | 'visits' | 'minutes';
 
@@ -170,10 +169,9 @@ export default function VisualDashboardTab() {
 
   return (
     <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-      <ProgressRail />
-
       <section>
-        <div className="flex flex-wrap" style={{ gap: 8 }}>
+        <SectionHead title="Trends" meta="last six" />
+        <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, margin: '12px calc(var(--gutter) * -1) 0', padding: '2px var(--gutter)' }}>
           {METRICS.map((m) => (
             <Chip key={m.id} label={m.label} on={metric === m.id} onClick={() => setMetric(m.id)} />
           ))}

@@ -151,7 +151,7 @@ export default function WorkoutTracker() {
     setBusy(true);
     try {
       await completeSession(logId, null);
-      navigate('/member/progress?tab=workouts');
+      navigate('/member/progress?tab=overview');
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -164,7 +164,7 @@ export default function WorkoutTracker() {
     .map((e) => ({ exercise: e, rows: sets.filter((s) => s.exerciseId === e.id) }));
 
   const title = (
-    <PageTitle back fallback="/member/progress?tab=workouts" title="Track a workout"
+    <PageTitle back fallback="/member/track" title="Track a workout"
       subtitle={logId
         ? `${grouped.length} exercise${grouped.length === 1 ? '' : 's'} · ${sets.length} set${sets.length === 1 ? '' : 's'} so far`
         : 'Record what you lift, set by set'} />

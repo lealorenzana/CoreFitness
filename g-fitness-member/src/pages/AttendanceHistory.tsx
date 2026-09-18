@@ -8,8 +8,8 @@ import { dateKey, localDateKey } from '../utils/dates';
 import { Page, PageTitle } from '../components/ui/page';
 import WeekMarks from '../components/ui/WeekMarks';
 import { Eyebrow, InlineStat, LineRow, SectionHead } from '../components/ui/noc';
-import GlassSheet from '../components/ui/GlassSheet';
-import { listDayWorkouts, listWorkoutDays, type DayWorkout } from '../lib/api/routines';
+import DayWorkoutsSheet from '../components/ui/DayWorkoutsSheet';
+import { listWorkoutDays } from '../lib/api/routines';
 
 const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 const DAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -80,9 +80,8 @@ export default function AttendanceHistory() {
 
   /** Days in the shown month with a finished workout (0086), for the barbell mark. */
   const [workoutDays, setWorkoutDays] = useState<Set<string>>(new Set());
-  /** The day tapped open, its workouts, and whether they are still loading. */
+  /** The day tapped open in the calendar. */
   const [openDay, setOpenDay] = useState<string | null>(null);
-  const [dayWorkouts, setDayWorkouts] = useState<DayWorkout[] | null>(null);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -96,15 +95,7 @@ export default function AttendanceHistory() {
     return () => { alive = false; };
   }, [cursor]);
 
-  const openDaySheet = (key: string) => {
-    const user = getCurrentUser();
-    if (!user) return;
-    setOpenDay(key);
-    setDayWorkouts(null);
-    listDayWorkouts(user.id, key)
-      .then(setDayWorkouts)
-      .catch(() => setDayWorkouts([]));
-  };
+  const openDaySheet = (key: string) => setOpenDay(key);
 
   // `localDateKey`, not `.slice(0, 10)`: the column is UTC, so a 7am visit was
   // filed to the previous day while the grid plotted it on the right one.
@@ -276,69 +267,19 @@ export default function AttendanceHistory() {
           </section>
         </>
       )}
-      {/* ── A day, opened ── */}
-      <GlassSheet
-        open={openDay !== null}
+      {/* ── A day, opened: its check-ins, then what was done ── */}
+      <DayWorkoutsSheet
+        memberId={getCurrentUser()?.id ?? null}
+        day={openDay}
         onClose={() => setOpenDay(null)}
-        title={openDay ? localDay(openDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
         subtitle={openDay ? (visited.has(openDay) ? 'You were at the gym' : 'No check-in this day') : undefined}
-      >
-        {openDay && (
-          <div className="flex flex-col" style={{ gap: 18 }}>
-            {records.filter((r) => localDateKey(r.check_in_time) === openDay).map((r) => (
-              <p key={r.id} className="flex items-center" style={{ gap: 8, fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
-                <Check size={15} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
-                Checked in at {new Date(r.check_in_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-              </p>
-            ))}
-
-            {dayWorkouts === null ? (
-              <SkeletonList count={2} />
-            ) : dayWorkouts.length === 0 ? (
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
-                No workout recorded this day. Workouts you finish from My routines show up here, set by set.
-              </p>
-            ) : dayWorkouts.map((w) => (
-              <section key={w.logId}>
-                <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
-                  <h3 className="flex items-center" style={{ gap: 8, fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    <Barbell size={17} weight="duotone" style={{ color: 'var(--color-primary-300)' }} />
-                    {w.activity ?? 'Workout'}
-                  </h3>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    {w.durationMinutes != null ? `${w.durationMinutes} min · ` : ''}
-                    finished {new Date(w.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </span>
-                </div>
-                {w.exercises.length === 0 ? (
-                  <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-text-muted)' }}>Logged without sets.</p>
-                ) : (
-                  <div style={{ marginTop: 6 }}>
-                    {w.exercises.map((e, i) => (
-                      <div key={e.name}>
-                        <div className="flex items-start" style={{ gap: 10, padding: '10px 0' }}>
-                          <span className="flex-none grid place-items-center orb-cell orb-cell--on" style={{ width: 22, height: 22, borderRadius: 7 }}>
-                            <Check size={12} weight="bold" />
-                          </span>
-                          <div className="min-w-0">
-                            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{e.name}</p>
-                            <p style={{ fontSize: 12.5, marginTop: 2, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
-                              {e.sets.map((st) => st.durationSeconds != null
-                                ? `${st.durationSeconds} s`
-                                : st.weightKg != null ? `${st.weightKg} kg × ${st.reps ?? 0}` : `${st.reps ?? 0} reps`).join('  ·  ')}
-                            </p>
-                          </div>
-                        </div>
-                        {i < w.exercises.length - 1 && <div className="hair" />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            ))}
-          </div>
-        )}
-      </GlassSheet>
+        before={openDay ? records.filter((r) => localDateKey(r.check_in_time) === openDay).map((r) => (
+          <p key={r.id} className="flex items-center" style={{ gap: 8, fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+            <Check size={15} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
+            Checked in at {new Date(r.check_in_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+          </p>
+        )) : null}
+      />
     </Page>
   );
 }
