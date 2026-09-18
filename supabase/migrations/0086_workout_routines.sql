@@ -44,9 +44,20 @@ create table if not exists workout_routines (
 create index if not exists idx_workout_routines_member
   on workout_routines (member_id, position, created_at);
 
+-- Its own trigger function rather than 0001's `set_updated_at()`: the live
+-- project does not have that one (the first paste of this file failed on it),
+-- and a migration should not depend on a helper nothing else here uses.
+create or replace function workout_routines_touch() returns trigger
+language plpgsql as $fn$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$fn$;
+
 drop trigger if exists workout_routines_updated_at on workout_routines;
 create trigger workout_routines_updated_at before update on workout_routines
-  for each row execute function set_updated_at();
+  for each row execute function workout_routines_touch();
 
 create table if not exists workout_routine_exercises (
   id               uuid primary key default gen_random_uuid(),
