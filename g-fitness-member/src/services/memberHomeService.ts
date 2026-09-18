@@ -7,6 +7,7 @@ import { planAccess, type PlanAccess } from '../utils/planAccess';
 import { getMyFeatures, isEnabled } from '../lib/api/planFeatures';
 import { progressService } from './progressService';
 import { listMyPlan } from '../lib/api/gymPlans';
+import { getRoutine } from '../lib/api/routines';
 import { getGymSettings } from '../lib/api/settings';
 import { listRules } from '../lib/api/points';
 import { getUnreadCount } from '../lib/api/notifications';
@@ -252,6 +253,8 @@ export interface TodayExtras {
    * not drawn.
    */
   challenge: { id: string; title: string; progress: number; target: number; endsOn: string } | null;
+  /** 0089: the routine planned for today, if the plan names one. */
+  todayRoutine: { id: string; name: string } | null;
 }
 
 export async function getTodayExtras(memberId: string): Promise<TodayExtras> {
@@ -273,7 +276,12 @@ export async function getTodayExtras(memberId: string): Promise<TodayExtras> {
     .filter((c) => c.joined && !c.completedOn && c.progress != null && c.target > 0)
     .sort((a, b) => a.endsOn.localeCompare(b.endsOn))[0];
 
+  // Today's routine, by the same local weekday the plan uses.
+  const routineId = plan?.find((r) => r.active && r.day_of_week === new Date().getDay())?.routine_id ?? null;
+  const routine = routineId ? await getRoutine(routineId).catch(() => null) : null;
+
   return {
+    todayRoutine: routine ? { id: routine.id, name: routine.name } : null,
     plannedDays: plan == null ? null : plan.filter((r) => r.active).map((r) => r.day_of_week),
     remindAt: plan?.[0]?.remind_at ?? null,
     closingTime: settings?.closing_time ?? null,

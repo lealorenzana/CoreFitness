@@ -42,7 +42,9 @@ export async function listMyPlan(memberId: string): Promise<GymPlanRow[]> {
 export async function saveMyPlan(
   memberId: string,
   days: number[],
-  remindAt: string
+  remindAt: string,
+  /** 0089: day → routine id. Days missing from it are "any workout". */
+  routines: Record<number, string | null> = {},
 ): Promise<void> {
   const { error: delError } = await supabase
     .from('gym_plans')
@@ -52,16 +54,26 @@ export async function saveMyPlan(
 
   if (days.length === 0) return;
 
+  // The column is only named when a day actually has a routine, so a plan with
+  // none still saves on a database without 0089.
+  const withRoutines = days.some((d) => routines[d]);
   const rows = days.map((day_of_week) => ({
     member_id: memberId,
     day_of_week,
     // Postgres `time` accepts 'HH:MM'; the column stores 'HH:MM:SS'.
     remind_at: remindAt,
     active: true,
+    ...(withRoutines ? { routine_id: routines[day_of_week] ?? null } : {}),
   }));
 
   const { error } = await supabase.from('gym_plans').insert(rows);
   if (error) throw error;
+}
+
+/** Whether the database has 0089's `gym_plans.routine_id`. Reads no rows. */
+export async function planRoutinesSupported(): Promise<boolean> {
+  const { error } = await supabase.from('gym_plans').select('routine_id').limit(0);
+  return !error;
 }
 
 /** Local weekday index, 0 = Sunday — the same basis the SQL uses. */

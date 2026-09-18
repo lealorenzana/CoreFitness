@@ -17,6 +17,7 @@ import {
   getMemberHome, getTodayExtras, type MemberHome, type TodayExtras,
 } from '../services/memberHomeService';
 import { DAY_LABELS } from '../lib/api/gymPlans';
+import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/api/routines';
 import { readCache, writeCache } from '../lib/pageCache';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
@@ -118,6 +119,22 @@ export default function Home() {
     }
   }, []);
 
+  /** Today's planned routine: resume the open workout if there is one, else start it. */
+  const startPlanned = async (routineId: string) => {
+    if (lockedOut('workout_tracker')) { navigate('/member/track'); return; }
+    try {
+      const id = await getCurrentMemberId();
+      if (!id) return;
+      const open = await getOpenRoutineSession(id);
+      if (open) { navigate(`/member/track/session/${open.logId}`); return; }
+      const routine = await getRoutine(routineId);
+      if (!routine) { toast.error('That routine is gone — pick another in your plan.'); navigate('/member/gym-plan'); return; }
+      navigate(`/member/track/session/${await startRoutineSession(id, routine)}`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not start that workout'));
+    }
+  };
+
   const revisit = useRef(cached !== undefined);
   useEffect(() => { void load(revisit.current); }, [load]);
   useLiveData(() => load(true));
@@ -190,12 +207,19 @@ export default function Home() {
     });
   }
 
-  if (planned?.includes(today) && !home.checkedInToday && !home.frozen && !home.expired) {
+  const todayRoutine = extras?.todayRoutine ?? null;
+  if (planned?.includes(today) && !home.frozen && !home.expired && (todayRoutine || !home.checkedInToday)) {
+    // A routine planned for today stays offered after the check-in — standing
+    // in the gym is exactly when you would start it (0089).
     entries.push({
       key: 'plan', gutter: 'Today',
-      title: 'Training day',
-      meta: extras?.remindAt ? `You planned to train at ${hourLabel(extras.remindAt)}` : 'You planned to train today',
-      onClick: () => navigate('/member/gym-plan'),
+      title: todayRoutine ? todayRoutine.name : 'Training day',
+      meta: todayRoutine
+        ? (home.checkedInToday ? 'Planned for today' : extras?.remindAt ? `Planned for ${hourLabel(extras.remindAt)}` : 'Planned for today')
+        : extras?.remindAt ? `You planned to train at ${hourLabel(extras.remindAt)}` : 'You planned to train today',
+      ...(todayRoutine
+        ? { action: lockedOut('workout_tracker') ? 'See plan' : 'Start', onClick: () => void startPlanned(todayRoutine.id) }
+        : { onClick: () => navigate('/member/gym-plan') }),
     });
   }
 

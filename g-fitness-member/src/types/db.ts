@@ -86,6 +86,8 @@ export interface GymPlanRow {
   active: boolean;
   /** Set by `send_due_gym_reminders()`; makes the nudge once-a-day. */
   last_reminded_on: string | null;
+  /** 0089: the routine planned for this day, if any. Absent before 0089. */
+  routine_id?: string | null;
   created_at: string;
 }
 
