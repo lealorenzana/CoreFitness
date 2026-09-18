@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Trash } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page, PageTitle } from '../components/ui/page';
@@ -56,6 +56,8 @@ function Stepper({
 export default function RoutineEditor() {
   const navigate = useNavigate();
   const { routineId } = useParams();
+  // "Add to a routine" from the exercise library hands its exercise over here.
+  const addExerciseId = (useLocation().state as { addExerciseId?: string } | null)?.addExerciseId ?? null;
   const isNew = !routineId || routineId === 'new';
   const [memberId, setMemberId] = useState<string | null>(null);
   const [catalogue, setCatalogue] = useState<Exercise[]>([]);
@@ -79,11 +81,19 @@ export default function RoutineEditor() {
         if (!alive) return;
         setMemberId(id);
         setCatalogue(ex);
+        const handed = addExerciseId ? ex.find((e) => e.id === addExerciseId) : undefined;
+        const extra: RoutineExercise[] = handed ? [{
+          exerciseId: handed.id, customName: null, name: handed.name, isTimed: handed.isTimed,
+          targetSets: 3, targetReps: handed.isTimed ? null : 10, targetWeightKg: null,
+          targetSeconds: handed.isTimed ? 30 : null, restSeconds: 90,
+        }] : [];
         if (existing) {
           setName(existing.name);
-          setItems(existing.exercises);
+          setItems([...existing.exercises, ...extra]);
         } else if (!isNew) {
           setError('That routine could not be found.');
+        } else {
+          setItems(extra);
         }
       } catch (err) {
         if (alive) setError(errorMessage(err, 'Could not load the routine'));
@@ -92,7 +102,7 @@ export default function RoutineEditor() {
       }
     })();
     return () => { alive = false; };
-  }, [isNew, routineId]);
+  }, [isNew, routineId, addExerciseId]);
 
   const add = (exerciseId: string) => {
     const ex = catalogue.find((e) => e.id === exerciseId);

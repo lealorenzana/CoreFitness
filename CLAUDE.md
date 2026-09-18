@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0087 are live; 0088 (coach notes seen/done) and 0089 (a routine per plan day) await pasting.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0087 are live; 0088 (coach notes seen/done), 0089 (a routine per plan day) and 0090 (saved free workouts) await pasting.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
