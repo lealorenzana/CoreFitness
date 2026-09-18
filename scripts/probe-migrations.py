@@ -114,6 +114,10 @@ CHECKS = [
     ('0083', 'pt_sessions.reassigned_at',      lambda: table('pt_sessions', 'reassigned_at')),
     ('0083', 'view bookings_needing_attention', lambda: table('bookings_needing_attention', 'urgency')),
     ('0083', 'rpc migration_0083_applied',     lambda: rpc('migration_0083_applied')),
+    # 0084 changes one function body and inserts rows only an authenticated
+    # caller can see, so the marker is the proof.
+    ('0084', 'rpc migration_0084_applied',     lambda: rpc('migration_0084_applied')),
+    ('0085', 'rpc migration_0085_applied',     lambda: rpc('migration_0085_applied')),
 ]
 
 print('project: %s' % URL)

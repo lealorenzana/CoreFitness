@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClockCountdown, MapPin, PencilSimple, Users, X } from '@phosphor-icons/react';
+import { ClockCountdown, MapPin, PencilSimple, Plus, Users, X } from '@phosphor-icons/react';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import DateRail, { buildRail } from '../../components/ui/DateRail';
-import { listTrainerClasses, setClassCapacity } from '../../lib/api/classes';
+import GlassSheet from '../../components/ui/GlassSheet';
+import Modal from '../../components/ui/Modal';
+import { Field, Select, TextInput } from '../../components/ui/Field';
+import { addDays, dateKey, todayKey } from '../../utils/dates';
+import { createClass, deleteClass, listTrainerClasses, updateClass } from '../../lib/api/classes';
 import { toast } from '../../components/ui/Toast';
 import { listTrainerBookings } from '../../lib/api/bookings';
 import { listTrainerAvailability, type TrainerAvailabilityRow } from '../../lib/api/trainerAvailability';
@@ -12,7 +16,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { ClassRow } from '../../types/db';
 import { Page } from '../../components/ui/page';
-import { Eyebrow, Panel, ProgressBar, StatusPill, TextTabs } from '../../components/ui/noc';
+import { Chip, Eyebrow, NocButton, Panel, ProgressBar, StatusPill, TextTabs } from '../../components/ui/noc';
 
 /**
  * The trainer's real class schedule, from `classes.trainer_id`.
@@ -73,49 +77,23 @@ function ClassLine({
   booked,
   isNext,
   last,
-  onCapacityChanged,
+  editable,
+  onEdit,
 }: {
   cls: ClassRow;
   booked: number | null;
   isNext: boolean;
   last: boolean;
-  onCapacityChanged: (id: string, capacity: number) => void;
+  /** Upcoming only — a past class is history, not something to edit. */
+  editable: boolean;
+  onEdit: (cls: ClassRow) => void;
 }) {
-  /**
-   * Editing the class size, which migration 0071 made a trainer's own decision.
-   * Only this one number is editable, and the database enforces that rather
-   * than trusting this screen.
-   */
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(cls.capacity));
-  const [saving, setSaving] = useState(false);
   const start = new Date(cls.scheduled_at as string);
   const end = new Date(start.getTime() + cls.duration_minutes * 60_000);
   const from = timeParts(start);
   const to = timeParts(end);
-
   const full = booked != null && booked >= cls.capacity;
-  // Never below the people already booked in. The trigger refuses it too — this
-  // just means the trainer finds out while typing rather than after saving.
-  const floor = booked ?? 1;
-  const parsed = Number(draft);
-  const valid = Number.isInteger(parsed) && parsed >= Math.max(1, floor);
-
-  const save = async () => {
-    if (!valid || saving) return;
-    setSaving(true);
-    try {
-      await setClassCapacity(cls.id, parsed);
-      onCapacityChanged(cls.id, parsed);
-      toast.success(`${cls.name} now takes ${parsed}.`);
-      setEditing(false);
-    } catch (err) {
-      // The database's sentence is the useful one here.
-      toast.error(errorMessage(err, 'Could not change the class size'));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const left = booked == null ? null : Math.max(0, cls.capacity - booked);
 
   const meta = [durationLabel(cls.duration_minutes), LEVEL_LABEL[cls.level] ?? cls.level].filter(Boolean);
 
@@ -150,77 +128,237 @@ function ClassLine({
                 <MapPin size={12} /> {cls.location}
               </span>
             )}
+            {!cls.template_id && <span style={{ color: 'var(--color-primary-300)' }}>· Your class</span>}
           </p>
 
-          {/* How full it is: a bar, with the exact numbers beside it. */}
+          {/* How full it is: a bar, then the count in words — "1 booked · 11
+              left", the same way the member reads it. */}
           <div className="flex items-center" style={{ gap: 10, marginTop: 9 }}>
             <div className="flex-1 min-w-0">
               {booked != null
                 ? <ProgressBar fraction={booked / Math.max(1, cls.capacity)} tone={full ? 'action' : 'structure'} />
                 : <div style={{ height: 4, borderRadius: 2, background: 'var(--color-surface-high)' }} />}
             </div>
-            {editing ? (
-              <span className="flex items-center flex-none" style={{ gap: 6 }}>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={draft}
-                  min={Math.max(1, floor)}
-                  autoFocus
-                  aria-label="Class size"
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void save();
-                    if (e.key === 'Escape') { setDraft(String(cls.capacity)); setEditing(false); }
-                  }}
-                  className="text-center"
-                  style={{
-                    width: 56, height: 32, borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    color: 'var(--color-text-primary)', background: 'var(--color-surface)',
-                    border: `1px solid ${valid ? 'var(--color-hairline)' : 'var(--color-secondary)'}`,
-                  }}
-                />
-                <button onClick={() => void save()} disabled={!valid || saving}
-                  className="noc-press disabled:opacity-40"
-                  style={{
-                    height: 32, padding: '0 11px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
-                    color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
-                    background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
-                  }}>
-                  {saving ? '…' : 'Save'}
-                </button>
-              </span>
-            ) : (
-              /* Tappable, and it says so by looking like a control rather than a
-                 label. Trainers were shown this number for a year and could not
-                 change it. */
-              <button
-                onClick={() => { setDraft(String(cls.capacity)); setEditing(true); }}
-                className="flex-none inline-flex items-center noc-press"
-                aria-label={`Change class size, now ${cls.capacity}`}
-                style={{
-                  gap: 5, padding: '5px 9px', borderRadius: 'var(--radius-pill)', fontSize: 12.5,
-                  color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
-                  border: '1px solid var(--color-hairline)',
-                }}
-              >
-                <Users size={13} />
-                {booked == null ? `${cls.capacity} places` : `${booked}/${cls.capacity}`}
-                <PencilSimple size={11} style={{ color: 'var(--color-text-muted)' }} />
-              </button>
-            )}
+            <span className="flex-none inline-flex items-center" style={{
+              gap: 5, fontSize: 12.5, color: full ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+            }}>
+              <Users size={13} />
+              {booked == null ? `${cls.capacity} places` : full ? `Full · ${booked} of ${cls.capacity}` : `${booked} booked · ${left} of ${cls.capacity} left`}
+            </span>
           </div>
-          {editing && (
-            <p className="text-right" style={{ fontSize: 12, marginTop: 5, color: 'var(--color-text-muted)' }}>
-              {booked != null && booked > 0
-                ? `At least ${booked} — that many are already booked in.`
-                : 'How many people fit in the room.'}
-            </p>
+
+          {/* The class's details are the trainer's to keep right (0085). */}
+          {editable && (
+            <button onClick={() => onEdit(cls)} className="inline-flex items-center noc-press"
+              style={{ gap: 5, marginTop: 9, fontSize: 12.5, color: 'var(--color-primary-300)' }}>
+              <PencilSimple size={13} /> Edit class
+            </button>
           )}
         </div>
       </div>
       {!last && <div className="hair" />}
     </div>
+  );
+}
+
+const LEVEL_OPTIONS: { id: ClassRow['level']; label: string }[] = [
+  { id: 'beginner', label: 'Beginner' },
+  { id: 'intermediate', label: 'Intermediate' },
+  { id: 'advanced', label: 'Advanced' },
+  { id: 'all_levels', label: 'All levels' },
+];
+
+/** '05:00' … '22:00' in half hours — a free-text time on a phone invites '25:00'. */
+const START_OPTIONS = Array.from({ length: 35 }, (_, i) => {
+  const mins = 5 * 60 + i * 30;
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+});
+
+function hhmmLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
+ * New class, or edit one the trainer teaches (0085).
+ *
+ * What the database allows is what this form offers: every detail of a class
+ * the trainer created; name, level, size and room of a class from the gym's
+ * weekly timetable, whose time stays the gym's. The guard trigger enforces
+ * the same rules, and its sentence is shown when it refuses.
+ */
+function ClassEditor({
+  open,
+  cls,
+  trainerId,
+  booked,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  /** Null for a new class. */
+  cls: ClassRow | null;
+  trainerId: string | null;
+  booked: number;
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const fromTimetable = !!cls?.template_id;
+  const initialStart = cls?.scheduled_at ? new Date(cls.scheduled_at) : null;
+  const [name, setName] = useState(cls?.name ?? '');
+  const [level, setLevel] = useState<ClassRow['level']>(cls?.level ?? 'all_levels');
+  const [capacity, setCapacity] = useState(String(cls?.capacity ?? 10));
+  const [location, setLocation] = useState(cls?.location ?? '');
+  const [day, setDay] = useState(initialStart ? dateKey(initialStart) : addDays(todayKey(), 1));
+  const [time, setTime] = useState(initialStart
+    ? `${String(initialStart.getHours()).padStart(2, '0')}:${String(initialStart.getMinutes()).padStart(2, '0')}`
+    : '18:00');
+  const [duration, setDuration] = useState(String(cls?.duration_minutes ?? 60));
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const size = Number(capacity);
+  const sizeOk = Number.isInteger(size) && size >= Math.max(1, booked);
+  const valid = name.trim().length > 0 && sizeOk && day >= todayKey();
+
+  const save = async () => {
+    if (!valid || saving || !trainerId) return;
+    setSaving(true);
+    try {
+      const scheduledAt = new Date(`${day}T${time}:00`).toISOString();
+      const details = {
+        name: name.trim(),
+        level,
+        capacity: size,
+        location: location.trim() || null,
+      };
+      if (cls) {
+        await updateClass(cls.id, fromTimetable
+          ? details
+          : { ...details, scheduled_at: scheduledAt, duration_minutes: Number(duration) });
+        onSaved(`${details.name} updated.`);
+      } else {
+        await createClass({
+          ...details,
+          trainer_id: trainerId,
+          class_type: 'group',
+          scheduled_at: scheduledAt,
+          duration_minutes: Number(duration),
+        });
+        onSaved(`${details.name} is on the timetable. Members can book it now.`);
+      }
+    } catch (err) {
+      // The guard's sentence is the useful one ("already booked for …").
+      toast.error(errorMessage(err, 'Could not save that class'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!cls) return;
+    setSaving(true);
+    try {
+      await deleteClass(cls.id);
+      onSaved(`${cls.name} removed.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not remove that class'));
+    } finally {
+      setSaving(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  return (
+    <>
+      <GlassSheet
+        open={open}
+        onClose={onClose}
+        title={cls ? 'Edit class' : 'New class'}
+        subtitle={cls ? (fromTimetable ? 'From the gym’s weekly timetable' : 'A class you run') : 'You teach it; members book it'}
+        footer={
+          <div className="flex flex-col" style={{ gap: 8 }}>
+            <NocButton variant="fill" className="w-full" onClick={save} disabled={!valid || saving}>
+              {saving ? 'Saving…' : cls ? 'Save changes' : 'Add to timetable'}
+            </NocButton>
+            {cls && !fromTimetable && booked === 0 && (
+              <NocButton variant="ghost" className="w-full" onClick={() => setConfirmDelete(true)} disabled={saving}>
+                Remove class
+              </NocButton>
+            )}
+          </div>
+        }
+      >
+        <div className="flex flex-col" style={{ gap: 16 }}>
+          <Field label="Title">
+            <TextInput value={name} maxLength={60} placeholder="e.g. Beginner Kettlebells"
+              onChange={(e) => setName(e.target.value)} />
+          </Field>
+
+          <Field label="Level" as="div">
+            <div className="flex flex-wrap" style={{ gap: 7, marginTop: 6 }}>
+              {LEVEL_OPTIONS.map((l) => (
+                <Chip key={l.id} label={l.label} on={level === l.id} onClick={() => setLevel(l.id)} />
+              ))}
+            </div>
+          </Field>
+
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+            <Field label="Places" hint={booked > 0 ? `At least ${booked} — already booked` : 'How many fit'}>
+              <TextInput type="number" inputMode="numeric" min={Math.max(1, booked)} value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                style={sizeOk ? undefined : { borderColor: 'var(--color-secondary)' }} />
+            </Field>
+            <Field label="Room">
+              <TextInput value={location} maxLength={40} placeholder="e.g. Studio A"
+                onChange={(e) => setLocation(e.target.value)} />
+            </Field>
+          </div>
+
+          {fromTimetable ? (
+            <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+              The day and time come from the gym’s weekly timetable, so the front desk changes those.
+            </p>
+          ) : (
+            <>
+              <Field label="Day">
+                <TextInput type="date" value={day} min={todayKey()} onChange={(e) => setDay(e.target.value)} />
+              </Field>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                <Field label="Starts">
+                  <Select value={time} onChange={(e) => setTime(e.target.value)}>
+                    {START_OPTIONS.map((t) => <option key={t} value={t}>{hhmmLabel(t)}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Length">
+                  <Select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="90">1 hour 30 minutes</option>
+                    <option value="120">2 hours</option>
+                  </Select>
+                </Field>
+              </div>
+            </>
+          )}
+        </div>
+      </GlassSheet>
+
+      <Modal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Remove this class"
+        subtitle="Nobody is booked into it yet, so no member is affected."
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        onConfirm={() => void remove()}
+      >
+        <span />
+      </Modal>
+    </>
   );
 }
 
@@ -244,12 +382,11 @@ export default function TrainerSchedule() {
   const cached = readCache<ScheduleSnapshot>(CACHE_KEY);
   const [classes, setClasses] = useState<ClassRow[]>(cached?.classes ?? []);
 
-  /**
-   * Reflects a saved class size without refetching the whole screen — the write
-   * already succeeded, and re-reading three tables would flash the agenda.
-   */
-  const applyCapacity = (id: string, capacity: number) =>
-    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, capacity } : c)));
+  /** The class being edited, 'new' for a new one, null when the sheet is shut. */
+  const [editing, setEditing] = useState<ClassRow | 'new' | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  /** Bumped after a save, so the effect below reads the schedule again. */
+  const [reloadKey, setReloadKey] = useState(0);
   const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>(cached?.availability ?? []);
   /** classId → live bookings. Null means the query failed, which is not zero. */
   const [bookedByClass, setBookedByClass] = useState<Map<string, number> | null>(cached?.bookedByClass ?? null);
@@ -264,6 +401,7 @@ export default function TrainerSchedule() {
       try {
         const id = await getCurrentTrainerId();
         if (!id) throw new Error('Not signed in');
+        if (!cancelled) setTrainerId(id);
         // `null` on failure, deliberately distinct from an empty map: a class
         // with no bookings and a class whose bookings couldn't be read must not
         // render the same number.
@@ -302,7 +440,7 @@ export default function TrainerSchedule() {
     // `cached` is the mount-time snapshot; re-running on it would refetch on
     // every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return <SkeletonList count={4} />;
 
@@ -392,6 +530,13 @@ export default function TrainerSchedule() {
         </div>
       </Panel>
 
+      {/* A trainer runs their own classes too (0085): title, level, places,
+          room and time — the gym's weekly timetable still comes from the desk. */}
+      <NocButton variant="action" className="w-full" icon={<Plus size={16} weight="bold" />}
+        onClick={() => setEditing('new')}>
+        New class
+      </NocButton>
+
       {/* Upcoming vs past. A trainer opening this wants "what am I teaching
           next", not a wall of history. */}
       {classes.length > 0 && (
@@ -471,7 +616,8 @@ export default function TrainerSchedule() {
                     booked={bookedByClass ? bookedByClass.get(cls.id) ?? 0 : null}
                     isNext={tab === 'upcoming' && cls.id === upcoming[0]?.id}
                     last={i === items.length - 1}
-                    onCapacityChanged={applyCapacity}
+                    editable={tab === 'upcoming'}
+                    onEdit={setEditing}
                   />
                 ))}
               </div>
@@ -492,6 +638,21 @@ export default function TrainerSchedule() {
           </p>
         </Panel>
       )}
+
+      {/* Keyed on the class, so each open starts from that class's values. */}
+      <ClassEditor
+        key={editing === 'new' ? 'new' : editing?.id ?? 'closed'}
+        open={editing !== null}
+        cls={editing === 'new' ? null : editing}
+        trainerId={trainerId}
+        booked={editing && editing !== 'new' && bookedByClass ? bookedByClass.get(editing.id) ?? 0 : 0}
+        onClose={() => setEditing(null)}
+        onSaved={(message) => {
+          setEditing(null);
+          toast.success(message);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </Page>
   );
 }

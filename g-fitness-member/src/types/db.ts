@@ -173,6 +173,8 @@ export interface ClassRow {
   class_type: string | null;
   scheduled_at: string | null;
   duration_minutes: number;
+  /** Set when the gym's weekly timetable generated this class (0015); null for a one-off. */
+  template_id?: string | null;
   created_at: string;
 }
 

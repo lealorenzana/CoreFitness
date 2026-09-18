@@ -22,6 +22,7 @@ import {
   type Entitlement,
 } from '../services/bookingService';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
 import { weekRangeLabel } from '../utils/dates';
@@ -279,6 +280,19 @@ function classMeta(c: BookableClass) {
  * which the old fourteen-day rail covered and a seven-column matrix alone
  * would have silently dropped.
  */
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "Strength · Mon, Tue, Thu", or says plainly that the coach has no hours yet. */
+function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): string {
+  const spec = t.specialization ?? 'General training';
+  if (!workDays) return spec;
+  const days = workDays.get(t.id);
+  if (!days || days.length === 0) return `${spec} · no bookable hours yet`;
+  // Monday first — a working week does not start on Sunday.
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  return `${spec} · ${order.filter((d) => days.includes(d)).map((d) => WEEKDAY_SHORT[d]).join(', ')}`;
+}
+
 export default function BookClass() {
   const navigate = useNavigate();
   const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
@@ -297,6 +311,8 @@ export default function BookClass() {
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [confirmClass, setConfirmClass] = useState<BookableClass | null>(null);
 
+  /** trainerId → the weekdays they keep bookable hours, for the coach list. Null until read. */
+  const [workDays, setWorkDays] = useState<Map<string, number[]> | null>(null);
   const [trainers, setTrainers] = useState<PublicTrainer[]>(cached?.trainers ?? []);
   const [selectedTrainer, setSelectedTrainer] = useState<PublicTrainer | null>(null);
   const [slots, setSlots] = useState<BookableSlot[]>([]);
@@ -323,6 +339,17 @@ export default function BookClass() {
         getEntitlement(id),
         listEvents().catch(() => null),
       ]);
+      // Which days each coach works, so the list says it before a tap — a coach
+      // with no hours used to look identical to one with a full week.
+      void listAllAvailability().then((rows) => {
+        const m = new Map<string, number[]>();
+        for (const r of rows) {
+          const days = m.get(r.trainer_id) ?? [];
+          if (!days.includes(r.day_of_week)) days.push(r.day_of_week);
+          m.set(r.trainer_id, days);
+        }
+        setWorkDays(m);
+      }).catch(() => { /* the list still works without the days */ });
       setClasses(bookable);
       setLevel(lvl);
       setTrainers(coaches);
@@ -594,7 +621,7 @@ export default function BookClass() {
                       // The coach's photo when they have one — this was initials only.
                       gutter={<Avatar name={trainerName(t)} photoUrl={t.photo_url} size={36} />}
                       title={trainerName(t)}
-                      meta={t.specialization ?? 'General training'}
+                      meta={coachMeta(t, workDays)}
                       action="Open times"
                       onClick={() => openTrainer(t)}
                       last={i === trainers.length - 1}

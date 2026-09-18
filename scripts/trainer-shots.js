@@ -47,9 +47,9 @@ async (page) => {
 
   const CLASSES = [
     { id: 'c1', name: 'Morning Strength', trainer_id: 't1', level: 'all_levels', capacity: 12,
-      location: 'Main floor', class_type: 'strength', scheduled_at: iso(0, 7, 0), duration_minutes: 60, created_at: iso(-9, 9, 0) },
+      location: 'Main floor', class_type: 'strength', scheduled_at: iso(0, 7, 0), duration_minutes: 60, template_id: 'tpl1', created_at: iso(-9, 9, 0) },
     { id: 'c2', name: 'HIIT Express', trainer_id: 't1', level: 'intermediate', capacity: 16,
-      location: 'Studio', class_type: 'cardio', scheduled_at: iso(1, 18, 0), duration_minutes: 45, created_at: iso(-9, 9, 0) },
+      location: 'Studio', class_type: 'cardio', scheduled_at: iso(1, 18, 0), duration_minutes: 45, template_id: null, created_at: iso(-9, 9, 0) },
   ];
 
   const TABLES = {
@@ -178,5 +178,20 @@ async (page) => {
   await page.waitForTimeout(300);
   const closed = await page.getByRole('dialog').count() === 0;
   out.push(`member sheet: form opens=${formShown} closes=${closed}`);
+
+  // 0085: a trainer's own class editor — new, and editing one they created.
+  await page.goto('http://localhost:5173/trainer/schedule', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: 'shots/trainer-10-schedule.png' });
+  await page.getByRole('button', { name: 'New class' }).click();
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: 'shots/trainer-11-new-class.png' });
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Edit class' }).last().click();
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: 'shots/trainer-12-edit-class.png' });
+  out.push('editor: title=' + (await page.getByRole('dialog').innerText()).replace(/\s+/g, ' ').slice(0, 90));
   return out.join('\n');
 }

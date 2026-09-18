@@ -70,7 +70,7 @@ DEFINER triggers (**no INSERT policy**), read through `activity_feed`, which sta
 Classes (`bookings` → `classes`) and 1-on-1 (`pt_sessions`) are separate tables (0015); 0017 counts
 quota, 0068 adds clashes — **half-open intervals with `overlaps`, never `starts_at = starts_at`**, no
 override. Availability is **per trainer**; class generation **reports** conflicts rather than raising.
-**Trainers decide their own bookings** (0071, final, admin can reverse). **Cancelling is
+**Trainers decide their own bookings** (0071, final, admin can reverse) and **run their own classes** (0085: create one-offs; edit name/level/size/room; a timetable class keeps the gym's time). **Cancelling is
 `cancel_booking()` (0081) and nothing else** — a trigger refuses a bare `status='cancelled'`, and a
 trainer may cancel only through it. **A trainer sees only their own trainees** (0082). Detail, and
 0083's attention queue: [DATA_ACCESS](docs/DATA_ACCESS.md), MIGRATION_STATUS → *Booking rules*.
@@ -165,13 +165,13 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0083 are all live.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0083 are live; 0084 (demo shown to everyone) and 0085 await pasting.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
 [OBJECTIVES_TRACE](docs/OBJECTIVES_TRACE.md) maps objectives → code → demo; the panel's list is in
 [the hardening plan](docs/superpowers/plans/2026-09-07-panel-hardening.md). Outstanding:
-- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, payments, classes, coaches, events and rewards (ids `5eed____-0000-4000-8000-`); part 2 goes in as `part2/` one file at a time and one paste removes both — **dashboard figures include it until removed**. 0080 hides it from *members* via `is_demo_row()`/`sees_demo_data()`; admin and the desk still see it, so no figure moves.
+- **Demo data may be live**: `scripts/demo-data/` seeds 150 members, payments, classes, coaches, events and rewards (ids `5eed____-0000-4000-8000-`); part 2 goes in as `part2/` one file at a time and one paste removes both — **dashboard figures include it until removed**. 0080 hid it from members via `sees_demo_data()`; **0084 shows it to everyone** (that one function body), gives the 12 demo coaches hours and un-retires the demo timetable.
 - **Staff approve registrations through 0078's `set_account_status()`**, one transition only.
   **`fitness-assistant` is undeployed**, secrets unset — the rules answer 98%; the AI question is
   answered in [AI_INTEGRATION](docs/AI_INTEGRATION.md).
