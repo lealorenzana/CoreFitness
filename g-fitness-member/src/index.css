@@ -760,6 +760,9 @@ html, body {
 
 /* The Attendance month: each day rises in along a diagonal ripple (the delay is
    set per cell), and a visited day lands with a small overshoot and a glow. */
+/* A goal ring fills from empty to its value on arrival. The final offset is set
+   inline, so without motion the ring simply shows its value. */
+@keyframes goal-ring-in { from { stroke-dashoffset: var(--ring-len); } }
 @keyframes cal-cell-in {
   from { opacity: 0; transform: translateY(6px) scale(0.9); }
   to   { opacity: 1; transform: none; }
@@ -771,6 +774,7 @@ html, body {
 }
 @media (prefers-reduced-motion: no-preference) {
   .orb-spin { animation: orb-turn 6s linear infinite; }
+  .goal-ring-arc { animation: goal-ring-in 0.9s var(--ease-out-soft, ease-out) both; }
   .cal-cell { animation: cal-cell-in 0.36s var(--ease-out-soft, ease-out) backwards; }
   .cal-cell--visited { animation: cal-visited-in 0.55s var(--ease-spring, ease-out) backwards; }
   /* Today keeps its turning ring once it has risen in. */

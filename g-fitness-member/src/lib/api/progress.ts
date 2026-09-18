@@ -42,6 +42,10 @@ export interface FitnessGoalRow {
   target_date: string | null;
   achieved_on: string | null;
   created_at: string;
+  /** A preset goal's definition (0055); null for a number goal. */
+  template_key?: string | null;
+  /** For metric `lift_kg` (0087): the exercise whose heaviest set is the value. */
+  exercise_id?: string | null;
 }
 
 export interface WorkoutLogRow {

@@ -1,9 +1,8 @@
 import {
   listMeasurements, saveMeasurement,
-  listGoals, createGoal, updateGoal, deleteGoal as apiDeleteGoal,
   listWorkoutLogs, createWorkoutLog,
   bmi as calcBmiValue, bmiBand, todayDate,
-  type BodyMeasurementRow, type FitnessGoalRow, type WorkoutLogRow,
+  type BodyMeasurementRow, type WorkoutLogRow,
 } from '../lib/api/progress';
 import { listMemberAttendance } from '../lib/api/attendance';
 import { listNotifications } from '../lib/api/notifications';
@@ -59,22 +58,6 @@ export interface WorkoutLog {
   type: string;
   duration: number | null;
   notes?: string;
-}
-
-export type GoalStatus = 'active' | 'achieved' | 'overdue';
-
-export interface Goal {
-  id: string;
-  memberId: string;
-  title: string;
-  metric: string;
-  targetValue: number | null;
-  startValue: number | null;
-  currentValue: number | null;
-  deadline: string | null;
-  status: GoalStatus;
-  createdAt: string;
-  achievedAt?: string | null;
 }
 
 export interface AttendanceRecord {
@@ -134,35 +117,6 @@ function toLog(r: WorkoutLogRow): WorkoutLog {
   };
 }
 
-/**
- * A goal's live reading comes from the latest measurement, not a stored copy —
- * a `currentValue` column would drift the moment a member logged a new weight
- * and forgot to update the goal.
- */
-function toGoal(r: FitnessGoalRow, latest: BodyMeasurementRow | null): Goal {
-  const current =
-    r.metric === 'weight_kg' ? latest?.weight_kg ?? null
-    : r.metric === 'body_fat_pct' ? latest?.body_fat_pct ?? null
-    : r.metric === 'waist_cm' ? latest?.waist_cm ?? null
-    : null;
-
-  const overdue =
-    r.achieved_on == null && r.target_date != null && r.target_date < todayDate();
-
-  return {
-    id: r.id,
-    memberId: r.member_id,
-    title: r.title,
-    metric: r.metric,
-    targetValue: r.target_value,
-    startValue: r.start_value,
-    currentValue: current,
-    deadline: r.target_date,
-    status: r.achieved_on ? 'achieved' : overdue ? 'overdue' : 'active',
-    createdAt: r.created_at,
-    achievedAt: r.achieved_on,
-  };
-}
 
 /**
  * The member's current bulk/cut/maintain phase (0044).
@@ -238,40 +192,6 @@ export const progressService = {
     return toLog(saved);
   },
 
-  // ── Goals ──────────────────────────────────────────────────────────────────
-  async getGoals(memberId: string): Promise<Goal[]> {
-    if (!memberId) return [];
-    const [goals, measurements] = await Promise.all([
-      listGoals(memberId),
-      listMeasurements(memberId).catch(() => [] as BodyMeasurementRow[]),
-    ]);
-    const latest = measurements.length ? measurements[measurements.length - 1] : null;
-    return goals.map((g) => toGoal(g, latest));
-  },
-
-  async addGoal(
-    memberId: string,
-    goal: { title: string; metric?: string; startValue?: number | null; targetValue?: number | null; deadline?: string | null }
-  ): Promise<Goal> {
-    const created = await createGoal({
-      member_id: memberId,
-      title: goal.title,
-      metric: goal.metric ?? 'custom',
-      start_value: goal.startValue ?? null,
-      target_value: goal.targetValue ?? null,
-      target_date: goal.deadline ?? null,
-    });
-    return toGoal(created, null);
-  },
-
-  /** Marking a goal achieved is a one-way door — see the column comment in 0020. */
-  async markGoalAchieved(goalId: string): Promise<void> {
-    await updateGoal(goalId, { achieved_on: todayDate() });
-  },
-
-  async deleteGoal(goalId: string): Promise<void> {
-    await apiDeleteGoal(goalId);
-  },
 
   // ── Attendance ─────────────────────────────────────────────────────────────
   // Real check-ins from the `attendance` table — the same rows the front desk
@@ -339,18 +259,3 @@ export function bmiColor(value: number): string {
   return bmiBand(value).color;
 }
 
-/**
- * Percentage complete, or null when it can't be known.
- *
- * A goal needs a start, a target and a current reading. Missing any of them,
- * the honest answer is "no idea" — a bar that invents a position is worse than
- * no bar, because it looks like a measurement.
- */
-export function goalProgressPct(goal: Goal): number | null {
-  if (goal.status === 'achieved') return 100;
-  if (goal.startValue == null || goal.targetValue == null || goal.currentValue == null) return null;
-  const span = goal.targetValue - goal.startValue;
-  if (span === 0) return goal.currentValue === goal.targetValue ? 100 : 0;
-  const pct = ((goal.currentValue - goal.startValue) / span) * 100;
-  return Math.max(0, Math.min(100, Math.round(pct)));
-}

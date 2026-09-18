@@ -88,7 +88,7 @@ columns are untouched and stay that way.** Gating *app areas* is `plan_features`
 by `plan_allows()` — **the same function RLS calls**, so screen and database cannot drift. **Gates
 lock and explain, never hide**; **never gate the free workout library (0019)**, which exists *for*
 members who cannot pay. **0050 extends `workout_logs`, never a second table** — 0086 routines run *as* `workout_logs` + `workout_sets` (`routine_id`), so points and badges just count them; the points ledger
-and `challenge_participants` have **no INSERT policy for any role**, and challenge progress is
+and `challenge_participants` have **no INSERT policy for any role**; **goals with a number are marked reached only by `settle_my_goals()`** (0087 — a hand-ticked custom goal earns no points), and challenge progress is
 **computed, never stored**. **The gym sells three** — Free Trial (30 days), Free Plan, Premium;
 **deleting one is `retire_plan()`, never a `delete`**. Freeze and cancel need a **reason** (0057),
 and **a refund is `max(pro-rata for the unused term, the gym's tier) − a documented fee`** (0073) —
@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0086 are all live.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0086 are live; 0087 (goals settle themselves) awaits pasting.** Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
