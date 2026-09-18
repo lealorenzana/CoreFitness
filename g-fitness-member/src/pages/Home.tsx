@@ -409,7 +409,7 @@ export default function Home() {
           <NocButton variant="ghost" className="flex-1"
             icon={lockedOut('workout_tracker') ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}
             onClick={() => navigate('/member/track')}>
-            Track a lift
+            Start a workout
           </NocButton>
         </div>
       </div>

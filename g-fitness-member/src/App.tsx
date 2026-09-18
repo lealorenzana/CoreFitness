@@ -13,6 +13,9 @@ import Home from './pages/Home';
 import Workouts from './pages/Workouts';
 import PlanBuilder from './pages/PlanBuilder';
 import WorkoutTracker from './pages/WorkoutTracker';
+import Routines from './pages/Routines';
+import RoutineEditor from './pages/RoutineEditor';
+import GuidedWorkout from './pages/GuidedWorkout';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import ProgressHub from './pages/progress/ProgressHub';
@@ -211,7 +214,12 @@ function App() {
               still land somewhere sensible. */}
           <Route path="workouts" element={<Workouts />} />
           <Route path="plan" element={<PlanBuilder />} />
-          <Route path="track" element={<WorkoutTracker />} />
+          {/* Routines (0086): the list, the editor, and a routine run set by set.
+              The free-form log stays at /track/log for a session with no routine. */}
+          <Route path="track" element={<Routines />} />
+          <Route path="track/log" element={<WorkoutTracker />} />
+          <Route path="track/routine/:routineId" element={<RoutineEditor />} />
+          <Route path="track/session/:logId" element={<GuidedWorkout />} />
           <Route path="rewards" element={<Rewards />} />
           <Route path="challenges" element={<Challenges />} />
           <Route path="progress" element={<ProgressHub />} />

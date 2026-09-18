@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CaretLeft, CaretRight, Check, Lightning } from '@phosphor-icons/react';
+import { Barbell, CaretLeft, CaretRight, Check, Lightning } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentUser } from '../utils/auth';
 import { listMemberAttendance } from '../lib/api/attendance';
@@ -8,6 +8,8 @@ import { dateKey, localDateKey } from '../utils/dates';
 import { Page, PageTitle } from '../components/ui/page';
 import WeekMarks from '../components/ui/WeekMarks';
 import { Eyebrow, InlineStat, LineRow, SectionHead } from '../components/ui/noc';
+import GlassSheet from '../components/ui/GlassSheet';
+import { listDayWorkouts, listWorkoutDays, type DayWorkout } from '../lib/api/routines';
 
 const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 const DAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -75,6 +77,34 @@ export default function AttendanceHistory() {
       .catch(() => setRecords([]))
       .finally(() => setLoading(false));
   }, []);
+
+  /** Days in the shown month with a finished workout (0086), for the barbell mark. */
+  const [workoutDays, setWorkoutDays] = useState<Set<string>>(new Set());
+  /** The day tapped open, its workouts, and whether they are still loading. */
+  const [openDay, setOpenDay] = useState<string | null>(null);
+  const [dayWorkouts, setDayWorkouts] = useState<DayWorkout[] | null>(null);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) return;
+    const from = dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
+    const to = dateKey(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0));
+    let alive = true;
+    listWorkoutDays(user.id, from, to)
+      .then((days) => { if (alive) setWorkoutDays(days); })
+      .catch(() => { /* the calendar still works without the marks */ });
+    return () => { alive = false; };
+  }, [cursor]);
+
+  const openDaySheet = (key: string) => {
+    const user = getCurrentUser();
+    if (!user) return;
+    setOpenDay(key);
+    setDayWorkouts(null);
+    listDayWorkouts(user.id, key)
+      .then(setDayWorkouts)
+      .catch(() => setDayWorkouts([]));
+  };
 
   // `localDateKey`, not `.slice(0, 10)`: the column is UTC, so a 7am visit was
   // filed to the previous day while the grid plotted it on the right one.
@@ -177,9 +207,11 @@ export default function AttendanceHistory() {
                   'orb-cell cal-cell relative flex flex-col items-center justify-center',
                   attended ? 'orb-cell--on cal-cell--visited' : isToday ? 'orb-cell--ring orb-spin' : '',
                 ].join(' ');
+                const trained = workoutDays.has(dateKey(day));
                 return (
-                  <div key={i}
-                    aria-label={`${day.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${attended ? ', visited' : isToday ? ', today' : ''}`}
+                  <button key={i} type="button" disabled={future}
+                    onClick={() => openDaySheet(dateKey(day))}
+                    aria-label={`${day.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${attended ? ', visited' : isToday ? ', today' : ''}${trained ? ', workout done' : ''}. Show the day`}
                     className={cls}
                     style={{
                       height: 42, borderRadius: 10, gap: 1,
@@ -202,11 +234,20 @@ export default function AttendanceHistory() {
                     }}>
                       {i + 1}
                     </span>
-                  </div>
+                    {/* A finished workout that day: a small barbell in the corner. */}
+                    {trained && (
+                      <Barbell aria-hidden size={10} weight="fill" className="absolute"
+                        style={{ top: 3, right: 4, color: attended ? '#fde68a' : 'var(--color-secondary)' }} />
+                    )}
+                  </button>
                 );
               })}
             </div>
           </section>
+
+          <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
+            Tap a day to see your check-in and the workout you finished.
+          </p>
 
           {/* ── Visits ── */}
           <section>
@@ -235,6 +276,69 @@ export default function AttendanceHistory() {
           </section>
         </>
       )}
+      {/* ── A day, opened ── */}
+      <GlassSheet
+        open={openDay !== null}
+        onClose={() => setOpenDay(null)}
+        title={openDay ? localDay(openDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
+        subtitle={openDay ? (visited.has(openDay) ? 'You were at the gym' : 'No check-in this day') : undefined}
+      >
+        {openDay && (
+          <div className="flex flex-col" style={{ gap: 18 }}>
+            {records.filter((r) => localDateKey(r.check_in_time) === openDay).map((r) => (
+              <p key={r.id} className="flex items-center" style={{ gap: 8, fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+                <Check size={15} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
+                Checked in at {new Date(r.check_in_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </p>
+            ))}
+
+            {dayWorkouts === null ? (
+              <SkeletonList count={2} />
+            ) : dayWorkouts.length === 0 ? (
+              <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+                No workout recorded this day. Workouts you finish from My routines show up here, set by set.
+              </p>
+            ) : dayWorkouts.map((w) => (
+              <section key={w.logId}>
+                <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
+                  <h3 className="flex items-center" style={{ gap: 8, fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    <Barbell size={17} weight="duotone" style={{ color: 'var(--color-primary-300)' }} />
+                    {w.activity ?? 'Workout'}
+                  </h3>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    {w.durationMinutes != null ? `${w.durationMinutes} min · ` : ''}
+                    finished {new Date(w.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                </div>
+                {w.exercises.length === 0 ? (
+                  <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-text-muted)' }}>Logged without sets.</p>
+                ) : (
+                  <div style={{ marginTop: 6 }}>
+                    {w.exercises.map((e, i) => (
+                      <div key={e.name}>
+                        <div className="flex items-start" style={{ gap: 10, padding: '10px 0' }}>
+                          <span className="flex-none grid place-items-center orb-cell orb-cell--on" style={{ width: 22, height: 22, borderRadius: 7 }}>
+                            <Check size={12} weight="bold" />
+                          </span>
+                          <div className="min-w-0">
+                            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{e.name}</p>
+                            <p style={{ fontSize: 12.5, marginTop: 2, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                              {e.sets.map((st) => st.durationSeconds != null
+                                ? `${st.durationSeconds} s`
+                                : st.weightKg != null ? `${st.weightKg} kg × ${st.reps ?? 0}` : `${st.reps ?? 0} reps`).join('  ·  ')}
+                            </p>
+                          </div>
+                        </div>
+                        {i < w.exercises.length - 1 && <div className="hair" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </GlassSheet>
     </Page>
   );
 }

@@ -118,6 +118,8 @@ CHECKS = [
     # caller can see, so the marker is the proof.
     ('0084', 'rpc migration_0084_applied',     lambda: rpc('migration_0084_applied')),
     ('0085', 'rpc migration_0085_applied',     lambda: rpc('migration_0085_applied')),
+    ('0086', 'table workout_routines',         lambda: table('workout_routines', 'id')),
+    ('0086', 'rpc migration_0086_applied',     lambda: rpc('migration_0086_applied')),
 ]
 
 print('project: %s' % URL)

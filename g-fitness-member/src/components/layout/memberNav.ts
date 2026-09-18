@@ -104,7 +104,7 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Updates', path: '/member/notifications', icon: Bell },
     { label: 'Announcements', path: '/member/events', icon: Megaphone },
     { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales },
-    { label: 'Track a lift', path: '/member/track', icon: Barbell },
+    { label: 'My routines', path: '/member/track', icon: Barbell },
   ],
   train: [
     { label: 'Progress', path: '/member/progress', icon: ChartLineUp },
@@ -154,7 +154,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Training plan', path: '/member/gym-plan' },
       { label: 'Rebuild my plan', path: '/member/plan' },
       { label: 'Free workouts', path: '/member/workouts' },
-      { label: 'Track a lift', path: '/member/track' },
+      { label: 'My routines', path: '/member/track' },
       { label: 'Coaches', path: '/member/trainers' },
       { label: 'Challenges', path: '/member/challenges' },
     ],
