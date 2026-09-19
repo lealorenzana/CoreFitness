@@ -21,7 +21,7 @@ import { showSuccessToast, showErrorToast } from '../utils/toast';
 import {
   listAchievements, listMetrics, createAchievement, updateAchievement,
   deleteAchievement, setAchievementActive, awardAchievement, revokeAchievement,
-  listHolders, listAwardCandidates, ruleSummary,
+  listHolders, listAwardCandidates, ruleSummary, achievementRarity, type Rarity,
   type AchievementRow, type AchievementMetric, type AchievementAudience,
   type AchievementTier, type AchievementRuleKind, type AchievementHolder,
 } from '../lib/api/achievements';
@@ -132,6 +132,9 @@ export default function Achievements() {
 
   const [confirmDelete, setConfirmDelete] = useState<AchievementRow | null>(null);
   const [awarding, setAwarding] = useState<AchievementRow | null>(null);
+  /** Who holds what (0093) — null until it is pasted, and the tiles then say nothing. */
+  const [rarity, setRarity] = useState<Map<string, Rarity> | null>(null);
+  const [sort, setSort] = useState<'catalogue' | 'rarest' | 'most'>('catalogue');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +143,7 @@ export default function Achievements() {
       setRows(a);
       setMetrics(m);
       setUnavailable(false);
+      setRarity(await achievementRarity().catch(() => null));
     } catch (err) {
       setRows([]);
       setUnavailable(true);
@@ -160,8 +164,14 @@ export default function Achievements() {
     const q = search.trim().toLowerCase();
     return rows
       .filter((r) => r.audience === audience)
-      .filter((r) => !q || r.title.toLowerCase().includes(q) || r.key.includes(q) || r.category.toLowerCase().includes(q));
-  }, [rows, audience, search]);
+      .filter((r) => !q || r.title.toLowerCase().includes(q) || r.key.includes(q) || r.category.toLowerCase().includes(q))
+      .sort((a, b) => {
+        if (sort === 'catalogue' || !rarity) return 0;
+        const ha = rarity.get(a.key)?.holders ?? 0;
+        const hb = rarity.get(b.key)?.holders ?? 0;
+        return sort === 'rarest' ? ha - hb : hb - ha;
+      });
+  }, [rows, audience, search, sort, rarity]);
 
   const paged = usePaged(visible, 12);
 
@@ -295,6 +305,9 @@ export default function Achievements() {
           { label: 'Live', value: rows.filter((r) => r.active).length, icon: Trophy },
           { label: 'Awarded by hand', value: rows.filter((r) => r.rule_kind === 'manual').length, icon: GiftIcon, tone: 'secondary' },
           { label: 'Fixed rules', value: rows.filter((r) => r.rule_kind === 'builtin').length, icon: Lock },
+          // A live badge nobody has ever earned is usually a rule set too high —
+          // worth a look. Only once 0093 can count holders.
+          ...(rarity ? [{ label: 'Never earned yet', value: rows.filter((r) => r.active && (rarity.get(r.key)?.holders ?? 0) === 0).length, icon: Trophy }] : []),
         ]} />
       )}
 
@@ -320,6 +333,17 @@ export default function Achievements() {
               <Toolbar>
                 <SearchBox value={search} onChange={setSearch}
                   placeholder="Title, key or category…" width={220} />
+                {rarity && (
+                  <Chips
+                    value={sort}
+                    onChange={(v) => setSort(v as typeof sort)}
+                    options={[
+                      { value: 'catalogue', label: 'Catalogue order' },
+                      { value: 'most', label: 'Most earned' },
+                      { value: 'rarest', label: 'Rarest' },
+                    ]}
+                  />
+                )}
                 <Chips
                   value={audience}
                   onChange={(v) => setAudience(v as AchievementAudience)}
@@ -382,6 +406,22 @@ export default function Achievements() {
                         <p className="text-xs mt-1.5" style={{ color: TEXT_MUTED }}>
                           {a.category} · {ruleSummary(a, metrics)}
                         </p>
+                        {rarity?.get(a.key) && (() => {
+                          const r = rarity.get(a.key)!;
+                          const pct = r.audience ? Math.round((r.holders / r.audience) * 100) : 0;
+                          return (
+                            <div className="mt-2">
+                              <div className="h-1 rounded-full overflow-hidden" style={{ background: SURFACE_RAISED }}>
+                                <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: TIER_RING[a.tier] }} />
+                              </div>
+                              <p className="text-[11px] mt-1" style={{ color: TEXT_SECOND }}>
+                                {r.holders === 0
+                                  ? `Nobody has earned it yet`
+                                  : `${r.holders} of ${r.audience} active ${a.audience === 'member' ? 'members' : 'trainers'} · ${pct}%`}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                     </div>

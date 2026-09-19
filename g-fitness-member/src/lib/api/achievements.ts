@@ -190,6 +190,9 @@ function toDef(row: AchievementRow): AchievementDef & { audience: AchievementRol
     tier: row.tier,
     category: row.category,
     audience: row.audience,
+    metric: row.metric,
+    metric2: row.metric2,
+    ruleKind: row.rule_kind,
   };
 }
 
@@ -253,4 +256,67 @@ export function categoriesFor(role: AchievementRole): string[] {
   const seen: string[] = [];
   for (const a of catalogFor(role)) if (!seen.includes(a.category)) seen.push(a.category);
   return seen;
+}
+
+// ─── Progress and rarity (migration 0093) ────────────────────────────────────
+
+export interface AchievementProgress {
+  value: number;
+  threshold: number;
+  value2: number | null;
+  threshold2: number | null;
+}
+
+/** PostgREST's "no such function" — the migration has not been pasted yet. */
+const missingFn = (e: { code?: string } | null) => e?.code === 'PGRST202' || e?.code === '42883';
+
+/**
+ * How far along each automatic achievement is, for yourself (no `uid`) or —
+ * for a trainer — a member you have trained. Null before 0093 exists, so the
+ * gallery falls back to the rule text alone rather than failing.
+ */
+export async function getAchievementProgress(uid?: string): Promise<Map<string, AchievementProgress> | null> {
+  const { data, error } = await supabase.rpc('achievement_progress', uid ? { p_user: uid } : {});
+  if (missingFn(error)) return null;
+  if (error) throw error;
+  return new Map(((data ?? []) as {
+    achievement_key: string; value: number | string; threshold: number | string;
+    value2: number | string | null; threshold2: number | string | null;
+  }[]).map((r) => [r.achievement_key, {
+    value: Number(r.value),
+    threshold: Number(r.threshold),
+    value2: r.value2 == null ? null : Number(r.value2),
+    threshold2: r.threshold2 == null ? null : Number(r.threshold2),
+  }]));
+}
+
+/**
+ * The share of a threshold reached, 0–1. A two-part rule is as far along as its
+ * weaker half — 20 of 20 days but 2 of 6 weeks is a third of the way, not most
+ * of it. Null when there is nothing to measure against.
+ */
+export function progressFraction(p: AchievementProgress | undefined): number | null {
+  if (!p || !(p.threshold > 0)) return null;
+  const a = Math.min(1, p.value / p.threshold);
+  if (p.threshold2 == null || !(p.threshold2 > 0)) return a;
+  return Math.min(a, Math.min(1, (p.value2 ?? 0) / p.threshold2));
+}
+
+export interface Rarity { holders: number; audience: number }
+
+/** How many active people of the audience hold each one. Null before 0093. */
+export async function getAchievementRarity(): Promise<Map<string, Rarity> | null> {
+  const { data, error } = await supabase.rpc('achievement_rarity');
+  if (missingFn(error)) return null;
+  if (error) throw error;
+  return new Map(((data ?? []) as { achievement_key: string; holders: number; audience_size: number }[])
+    .map((r) => [r.achievement_key, { holders: r.holders, audience: r.audience_size }]));
+}
+
+/** Unit words per metric ("days", "classes") from the catalogue's vocabulary (0038). */
+export async function getMetricUnits(): Promise<Map<string, { label: string; unit: string | null; isBoolean: boolean }>> {
+  const { data, error } = await supabase.from('achievement_metrics').select('key, label, unit, is_boolean');
+  if (error) return new Map();
+  return new Map(((data ?? []) as { key: string; label: string; unit: string | null; is_boolean: boolean }[])
+    .map((m) => [m.key, { label: m.label, unit: m.unit, isBoolean: m.is_boolean }]));
 }

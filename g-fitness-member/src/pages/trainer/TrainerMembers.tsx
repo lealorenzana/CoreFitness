@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
-import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import GlassSheet from '../../components/ui/GlassSheet';
 import { TextArea, TextInput } from '../../components/ui/Field';
-import { InlineStat, LineRow, NocButton, StatusPill } from '../../components/ui/noc';
+import { InlineStat, LineRow, NocButton, ProgressBar, StatusPill } from '../../components/ui/noc';
 import { supabase } from '../../lib/supabaseClient';
 import { listMemberships } from '../../lib/api/memberships';
 import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
@@ -423,6 +423,29 @@ export default function TrainerMembers() {
                         </span>
                       </p>
                     )}
+                  </SharedBlock>
+
+                  {/* Badges (0028/0093) — not a sharing category: the gym's coaches
+                      have always been able to see them, and "two more classes for
+                      Class Regular" is something to coach towards. */}
+                  <SharedBlock icon={Trophy} label={detail?.achievements ? `Achievements · ${detail.achievements.earned} of ${detail.achievements.total}` : 'Achievements'} shared
+                    empty={!detail?.achievements || (detail.achievements.earned === 0 && detail.achievements.closest.length === 0)}
+                    emptyText={detail?.achievements ? 'None earned yet.' : 'Could not be loaded.'}>
+                    {detail?.achievements?.latest.map((a) => (
+                      <p key={a.title} style={line}>
+                        {a.title}
+                        <span style={muted}> · {new Date(`${a.on}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      </p>
+                    ))}
+                    {detail?.achievements?.closest.map((a) => (
+                      <div key={a.title} style={{ marginTop: 4 }}>
+                        <p className="flex items-center justify-between" style={{ ...line, gap: 8 }}>
+                          <span className="truncate">Next: {a.title}</span>
+                          <span style={muted}>{a.line}</span>
+                        </p>
+                        <ProgressBar fraction={a.fraction} tone="action" style={{ marginTop: 4 }} />
+                      </div>
+                    ))}
                   </SharedBlock>
 
                   {/* Who to call if something happens mid-session — kept current by

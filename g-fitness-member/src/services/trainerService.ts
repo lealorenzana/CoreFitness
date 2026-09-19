@@ -7,7 +7,9 @@ import {
   type FitnessGoalRow, type BodyMeasurementRow, type WorkoutLogRow,
 } from '../lib/api/progress';
 import { getSharePrefs, SHARE_ALL, type SharePrefs } from '../lib/api/sharePrefs';
-import { getProgression, type Progression } from '../lib/api/achievements';
+import {
+  catalogFor, getAchievementProgress, getProgression, loadCatalogue, progressFraction, type Progression,
+} from '../lib/api/achievements';
 import { listMyPlan } from '../lib/api/gymPlans';
 import { listRoutines } from '../lib/api/routines';
 import type { BookingStatus, ClassRow } from '../types/db';
@@ -84,6 +86,56 @@ export interface MemberDetailForTrainer {
   /** Who to call if something happens in a session — the member keeps it
    *  current in Edit profile. Null when none on file or unreadable. */
   emergency: { name: string; phone: string | null; relationship: string | null } | null;
+  /** Badges earned and the two they are closest to (0093) — something to
+   *  congratulate, and something to aim a session at. Null when unreadable. */
+  achievements: {
+    earned: number;
+    total: number;
+    latest: { title: string; on: string }[];
+    closest: { title: string; line: string; fraction: number }[];
+  } | null;
+}
+
+async function achievementsFor(memberId: string): Promise<MemberDetailForTrainer['achievements']> {
+  try {
+    await loadCatalogue();
+    const catalog = catalogFor('member');
+    const [{ data, error }, progress] = await Promise.all([
+      // Trainers may read unlocks (0028's select_staff policy).
+      supabase.from('achievement_unlocks').select('achievement_key, unlocked_on')
+        .eq('user_id', memberId).order('unlocked_on', { ascending: false }),
+      // Allowed for a member this trainer has trained (is_my_trainee, 0093).
+      getAchievementProgress(memberId).catch(() => null),
+    ]);
+    if (error) return null;
+    const earned = new Map((data ?? []).map((r) => [r.achievement_key as string, r.unlocked_on as string]));
+    const inCatalog = catalog.filter((a) => earned.has(a.key));
+    return {
+      earned: inCatalog.length,
+      total: catalog.length,
+      latest: inCatalog
+        .sort((a, b) => (earned.get(b.key) ?? '').localeCompare(earned.get(a.key) ?? ''))
+        .slice(0, 2)
+        .map((a) => ({ title: a.title, on: earned.get(a.key)! })),
+      closest: progress
+        ? catalog
+            .filter((a) => !earned.has(a.key) && (progressFraction(progress.get(a.key)) ?? 0) > 0)
+            .map((a) => {
+              const p = progress.get(a.key)!;
+              return {
+                title: a.title,
+                fraction: progressFraction(p) ?? 0,
+                line: `${Math.min(p.value, p.threshold)} of ${p.threshold}`
+                  + (p.threshold2 != null ? ` · ${Math.min(p.value2 ?? 0, p.threshold2)} of ${p.threshold2}` : ''),
+              };
+            })
+            .sort((a, b) => b.fraction - a.fraction)
+            .slice(0, 2)
+        : [],
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getMemberDetailForTrainer(memberId: string): Promise<MemberDetailForTrainer> {
@@ -91,7 +143,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
 
   // Each read is independent and allowed to fail on its own. A trainer looking
   // at a member must not get a blank screen because one optional panel errored.
-  const [progression, goals, measurements, workouts, planRows, routines] = await Promise.all([
+  const [progression, goals, measurements, workouts, planRows, routines, achievements] = await Promise.all([
     getProgression(memberId).catch(() => null),
     shared.shareGoals ? listGoals(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareMeasurements ? listMeasurements(memberId).catch(() => []) : Promise.resolve([]),
@@ -100,6 +152,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
     // a coach who cannot see when a client means to train cannot coach around it.
     listMyPlan(memberId).catch(() => null),
     shared.shareWorkouts ? listRoutines(memberId).catch(() => []) : Promise.resolve([]),
+    achievementsFor(memberId),
   ]);
 
   const openGoals = goals.filter((g) => g.achieved_on == null).slice(0, 4);
@@ -115,6 +168,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
 
   return {
     progression,
+    achievements,
     shared,
     // Newest first, and only what a coach can act on in a modal.
     goals: openGoals,

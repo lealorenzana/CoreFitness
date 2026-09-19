@@ -11,6 +11,10 @@ import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { listAccountStatusEvents, type AccountStatusEvent } from '../../lib/api/accountEvents';
 import { getBalance, listLedger, ledgerLabel, type LedgerEntry } from '../../lib/api/points';
+import {
+  listAchievements, achievementProgress, progressFraction,
+  type AchievementRow, type AchievementProgress,
+} from '../../lib/api/achievements';
 import { recordPayment } from '../../lib/api/payments';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
@@ -407,6 +411,8 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
       </Section>
 
       <PointsSection memberId={profile.id} />
+
+      <AchievementsSection memberId={profile.id} />
 
       <AccountHistorySection profileId={profile.id} />
 
@@ -1305,6 +1311,98 @@ function PointsSection({ memberId }: { memberId: string }) {
               </span>
             </div>
           ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * What they have earned and what they are closest to — the same numbers the
+ * member sees on their Achievements screen (0093's achievement_progress), so
+ * the desk can congratulate someone or tell them what is next. Staff may read
+ * unlocks (0028's select_staff policy) and anyone's progress (checked in SQL).
+ */
+function AchievementsSection({ memberId }: { memberId: string }) {
+  const [catalog, setCatalog] = useState<AchievementRow[] | null>(null);
+  const [earned, setEarned] = useState<Map<string, string>>(new Map());
+  const [progress, setProgress] = useState<Map<string, AchievementProgress> | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const [cat, un, prog] = await Promise.all([
+          listAchievements(false),
+          supabase.from('achievement_unlocks').select('achievement_key, unlocked_on').eq('user_id', memberId)
+            .order('unlocked_on', { ascending: false }),
+          achievementProgress(memberId).catch(() => null),
+        ]);
+        if (un.error) throw un.error;
+        if (!alive) return;
+        setCatalog(cat.filter((a) => a.audience === 'member'));
+        setEarned(new Map((un.data ?? []).map((r) => [r.achievement_key as string, r.unlocked_on as string])));
+        setProgress(prog);
+      } catch {
+        if (alive) setFailed(true);
+      }
+    })();
+    return () => { alive = false; };
+  }, [memberId]);
+
+  if (failed) {
+    return (
+      <Section title="Achievements">
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Achievements could not be loaded.</p>
+      </Section>
+    );
+  }
+  if (!catalog) return null;
+
+  const got = catalog.filter((a) => earned.has(a.key));
+  const latest = [...got].sort((a, b) => (earned.get(b.key) ?? '').localeCompare(earned.get(a.key) ?? '')).slice(0, 3);
+  const closest = progress
+    ? catalog.filter((a) => !earned.has(a.key) && (progressFraction(progress.get(a.key)) ?? 0) > 0)
+        .sort((a, b) => (progressFraction(progress.get(b.key)) ?? 0) - (progressFraction(progress.get(a.key)) ?? 0))
+        .slice(0, 2)
+    : [];
+  const day = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  return (
+    <Section title={`Achievements · ${got.length} of ${catalog.length}`}>
+      {got.length === 0 ? (
+        <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>None earned yet.</p>
+      ) : (
+        <div className="space-y-1 mb-2">
+          {latest.map((a) => (
+            <div key={a.key} className="flex items-center justify-between gap-2 text-xs py-1" style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <span className="text-white truncate">{a.title} <span style={{ color: 'var(--color-text-muted)' }}>· {a.tier}</span></span>
+              <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>{day(earned.get(a.key)!)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {closest.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Closest to unlocking</p>
+          {closest.map((a) => {
+            const p = progress!.get(a.key)!;
+            const f = progressFraction(p) ?? 0;
+            return (
+              <div key={a.key}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white truncate">{a.title}</span>
+                  <span className="tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                    {Math.min(p.value, p.threshold)} / {p.threshold}{p.threshold2 != null ? ` · ${Math.min(p.value2 ?? 0, p.threshold2)} / ${p.threshold2}` : ''}
+                  </span>
+                </div>
+                <div className="h-1 mt-1 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-raised)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.round(f * 100)}%`, background: 'var(--color-secondary)' }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </Section>

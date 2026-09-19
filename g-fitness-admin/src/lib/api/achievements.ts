@@ -215,3 +215,47 @@ export function ruleSummary(a: AchievementRow, metrics: AchievementMetric[]): st
   const first = describe(a.metric, a.threshold);
   return a.metric2 ? `${first} and ${describe(a.metric2, a.threshold2)}` : first;
 }
+
+// ─── Progress and rarity (migration 0093) ────────────────────────────────────
+
+const missingFn = (e: { code?: string } | null) => e?.code === 'PGRST202' || e?.code === '42883';
+
+export interface Rarity { holders: number; audience: number }
+
+/** Active holders per achievement and the audience size. Null before 0093 is pasted. */
+export async function achievementRarity(): Promise<Map<string, Rarity> | null> {
+  const { data, error } = await supabase.rpc('achievement_rarity');
+  if (missingFn(error)) return null;
+  if (error) throw error;
+  return new Map(((data ?? []) as { achievement_key: string; holders: number; audience_size: number }[])
+    .map((r) => [r.achievement_key, { holders: r.holders, audience: r.audience_size }]));
+}
+
+export interface AchievementProgress { value: number; threshold: number; value2: number | null; threshold2: number | null }
+
+/**
+ * One person's progress towards every automatic achievement — the same numbers
+ * the member sees under a locked badge. Admin and front desk may read anyone's
+ * (checked in SQL). Null before 0093.
+ */
+export async function achievementProgress(userId: string): Promise<Map<string, AchievementProgress> | null> {
+  const { data, error } = await supabase.rpc('achievement_progress', { p_user: userId });
+  if (missingFn(error)) return null;
+  if (error) throw error;
+  return new Map(((data ?? []) as {
+    achievement_key: string; value: number | string; threshold: number | string;
+    value2: number | string | null; threshold2: number | string | null;
+  }[]).map((r) => [r.achievement_key, {
+    value: Number(r.value), threshold: Number(r.threshold),
+    value2: r.value2 == null ? null : Number(r.value2),
+    threshold2: r.threshold2 == null ? null : Number(r.threshold2),
+  }]));
+}
+
+/** 0–1; a two-part rule is as far along as its weaker half. Same rule as the member app. */
+export function progressFraction(p: AchievementProgress | undefined): number | null {
+  if (!p || !(p.threshold > 0)) return null;
+  const a = Math.min(1, p.value / p.threshold);
+  if (p.threshold2 == null || !(p.threshold2 > 0)) return a;
+  return Math.min(a, Math.min(1, (p.value2 ?? 0) / p.threshold2));
+}

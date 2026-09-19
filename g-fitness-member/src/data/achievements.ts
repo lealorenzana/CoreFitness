@@ -37,6 +37,11 @@ export interface AchievementDef {
   icon: LucideIcon;
   tier: AchievementTier;
   category: string;
+  /** The stat an automatic achievement counts (0038); absent on manual and level ones. */
+  metric?: string | null;
+  metric2?: string | null;
+  /** 'manual' ones are handed out by the gym and have no number to chase. */
+  ruleKind?: 'metric' | 'builtin' | 'manual';
 }
 
 type TierStyle = { ring: string; glow: string; label: string };
