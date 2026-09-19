@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { currentGymId } from '../gymContext';
 
 /**
  * Coach evaluations (0042, made monthly by 0066).
@@ -153,14 +154,15 @@ export async function saveMyRating(
   comment: string | null,
   period: string = currentPeriod()
 ): Promise<void> {
+  const gymId = await currentGymId();
   const { error } = await supabase
     .from('trainer_ratings')
     .upsert(
-      { member_id: memberId, trainer_id: trainerId, stars, comment, period },
+      { ...(gymId ? { gym_id: gymId } : {}), member_id: memberId, trainer_id: trainerId, stars, comment, period },
       // The key gained `period` in 0066. Without naming it here the upsert
       // would target the old two-column key, which no longer exists, and
       // PostgREST would report a conflict-target error rather than saving.
-      { onConflict: 'member_id,trainer_id,period' }
+      { onConflict: gymId ? 'gym_id,member_id,trainer_id,period' : 'member_id,trainer_id,period' }
     );
   if (error) throw error;
 }

@@ -223,7 +223,7 @@ export default function TrainerMembers() {
       //   • the row exists but role isn't 'trainer'
       // Both are account problems the gym can fix; neither is a policy problem.
       const { data: me, error: meErr } = await supabase
-        .from('profiles')
+        .from('gym_people')
         .select('role, status, first_name, last_name')
         .eq('id', trainerId)
         .maybeSingle();

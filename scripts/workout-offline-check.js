@@ -148,7 +148,7 @@ async (page) => {
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
     if (!path.startsWith('/rest/v1/')) return json([]);
-    const t = path.split('/rest/v1/')[1];
+    const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
     const method = req.method();
     if (globalThis.__offline && t === 'workout_sets' && method === 'POST') return route.abort('internetdisconnected');

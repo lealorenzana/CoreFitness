@@ -116,7 +116,9 @@ export async function broadcastNotification(input: {
   if (input.audience === 'specific') {
     recipientIds = input.userIds ?? [];
   } else {
-    let query = supabase.from('profiles').select('id').eq('status', 'active');
+    // gym_people is profiles with this gym's role and status (0104): a
+    // broadcast reaches this gym's members, not a namesake at another.
+    let query = supabase.from('gym_people').select('id').eq('status', 'active');
     if (input.audience === 'all_members') query = query.eq('role', 'member');
     else if (input.audience === 'all_trainers') query = query.eq('role', 'trainer');
     else query = query.in('role', ['member', 'trainer']);

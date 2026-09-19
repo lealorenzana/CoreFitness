@@ -105,7 +105,7 @@ async (page) => {
       return json(fn in RPC ? RPC[fn] : []);
     }
     if (pathname.startsWith('/rest/v1/')) {
-      const t = pathname.split('/rest/v1/')[1];
+      const t = pathname.split('/rest/v1/')[1].replace('gym_people', 'profiles');
       let rows = TABLES[t] ?? [];
       for (const [k, v] of params) {
         if (['select', 'order', 'limit', 'offset'].includes(k)) continue;

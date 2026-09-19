@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { currentGymId } from '../gymContext';
 
 /**
  * What a member lets their trainer see (migration 0032).
@@ -60,16 +61,20 @@ export async function getSharePrefs(memberId: string): Promise<SharePrefs> {
  * is not the `INSERT … RETURNING` trap.
  */
 export async function saveSharePrefs(memberId: string, prefs: SharePrefs): Promise<void> {
+  // What a member shares is a decision per gym: their coach at one gym cannot
+  // be handed what they shared with another.
+  const gymId = await currentGymId();
   const { error } = await supabase
     .from('member_share_prefs')
     .upsert(
       {
+        ...(gymId ? { gym_id: gymId } : {}),
         member_id: memberId,
         share_measurements: prefs.shareMeasurements,
         share_goals: prefs.shareGoals,
         share_workouts: prefs.shareWorkouts,
       },
-      { onConflict: 'member_id' }
+      { onConflict: gymId ? 'gym_id,member_id' : 'member_id' }
     );
   if (error) throw error;
 }

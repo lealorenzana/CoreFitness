@@ -1,5 +1,6 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { currentGymId } from '../gymContext';
 
 /**
  * The Progress Hub's data layer (migration 0020).
@@ -12,6 +13,8 @@ import { supabase } from '../supabaseClient';
 export interface BodyMeasurementRow {
   id: string;
   member_id: string;
+  /** The gym this reading belongs to (0098). Filled by the database when absent. */
+  gym_id?: string;
   /** The day it was measured, not the day it was typed in. */
   measured_on: string;
   weight_kg: number | null;
@@ -81,9 +84,13 @@ export async function listMeasurements(memberId: string): Promise<BodyMeasuremen
 export async function saveMeasurement(
   input: Omit<BodyMeasurementRow, 'id' | 'created_at'>
 ): Promise<BodyMeasurementRow> {
+  // One reading per day per gym (0098 widened the key). Before 0104 there is
+  // one gym and the old key is the right target.
+  const gymId = await currentGymId();
   const { data, error } = await supabase
     .from('body_measurements')
-    .upsert(input, { onConflict: 'member_id,measured_on' })
+    .upsert(gymId ? { ...input, gym_id: gymId } : input,
+      { onConflict: gymId ? 'gym_id,member_id,measured_on' : 'member_id,measured_on' })
     .select()
     .single();
   if (error) throw error;

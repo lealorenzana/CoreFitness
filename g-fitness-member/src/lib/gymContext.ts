@@ -79,6 +79,14 @@ async function load(): Promise<GymContext | null> {
   };
 }
 
+/**
+ * The gym to file a row under, or null before 0104. Writing it explicitly lets
+ * an upsert name the per-gym key (0098) instead of the old per-person one.
+ */
+export async function currentGymId(): Promise<string | null> {
+  return (await getGymContext())?.gymId ?? null;
+}
+
 /** The current gym context, read once per launch (or after a switch). */
 export function getGymContext(force = false): Promise<GymContext | null> {
   if (force || !cached) cached = load().catch(() => null);

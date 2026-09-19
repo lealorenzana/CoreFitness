@@ -191,7 +191,7 @@ async (page) => {
       return json(fn in R ? R[fn] : null);
     }
     if (pathname.startsWith('/rest/v1/')) {
-      const table = pathname.split('/rest/v1/')[1];
+      const table = pathname.split('/rest/v1/')[1].replace('gym_people', 'profiles');
       let rows = tables()[table] ?? [];
       for (const [k, v] of params) {
         if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
