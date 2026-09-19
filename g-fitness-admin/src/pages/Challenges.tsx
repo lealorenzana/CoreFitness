@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Flag, AlertTriangle, Users, Clock, Trophy } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import { ChallengeStandingsModal, GoalTemplatesSection } from '../components/ui/EngagementRules';
 import ImageField from '../components/ui/ImageField';
 import { PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard } from '../components/ui/kit';
 import { showToast } from '../utils/toast';
@@ -58,6 +59,8 @@ export default function Challenges() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [adding, setAdding] = useState(false);
+  /** The challenge whose standings are open (0094). */
+  const [standing, setStanding] = useState<{ id: string; title: string; target: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', metric_key: 'training_days',
@@ -212,6 +215,11 @@ export default function Challenges() {
               </span>
               <span className="text-[10px] tabular-nums flex-shrink-0"
                 style={{ color: 'var(--color-primary)' }}>{n.done} done</span>
+              <button onClick={() => setStanding({ id: c.id, title: c.title, target: c.target })}
+                className="text-[10px] font-semibold flex-shrink-0 px-2 py-1 rounded"
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-primary)' }}>
+                Standings
+              </button>
             </>
           ) : (
             <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>nobody joined yet</span>
@@ -259,6 +267,11 @@ export default function Challenges() {
             </Section>
           ))
       )}
+
+      {/* The goals members pick in the app (0055) — tuned here, not in SQL. */}
+      <GoalTemplatesSection />
+
+      <ChallengeStandingsModal challenge={standing} onClose={() => setStanding(null)} />
 
       {/* Creating one floats. It used to unfold between the header and the
           list, so the challenges you were comparing against jumped down the

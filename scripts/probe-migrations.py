@@ -133,6 +133,7 @@ CHECKS = [
     ('0092', 'reward_redemptions.fulfilled_at', lambda: table('reward_redemptions', 'fulfilled_at')),
     ('0092', 'rpc migration_0092_applied',     lambda: rpc('migration_0092_applied')),
     ('0093', 'rpc migration_0093_applied',     lambda: rpc('migration_0093_applied')),
+    ('0094', 'rpc migration_0094_applied',     lambda: rpc('migration_0094_applied')),
 ]
 
 print('project: %s' % URL)

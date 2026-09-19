@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { PointRulesSection } from '../components/ui/EngagementRules';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
   SearchBox, Chips, Toolbar, PageSummary,
@@ -399,6 +400,10 @@ export default function Rewards() {
           </CardGrid>
         )}
       </Section>
+
+      {/* ── How points are earned (0051's point_rules) — the other half of the
+          economy this page spends. Admin-only by RLS, like the route. ── */}
+      <PointRulesSection />
 
       {/* ── History, behind a button ──────────────────────────────────────────
           It was a fourth always-open panel listing 20 rows. Decisions already

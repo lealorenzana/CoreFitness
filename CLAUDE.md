@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0091 are live; 0092 (reward decide/hand-over, saving-for) and 0093 (achievement progress + rarity) await pasting.** `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0091 are live; 0092 (reward decide/hand-over, saving-for) 0093 (achievement progress + rarity) and 0094 (challenge standings, NULL-safe progress guard) await pasting.** `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
