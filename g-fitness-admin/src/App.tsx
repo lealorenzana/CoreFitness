@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GymProvider } from './hooks/useGymContext';
+import ChooseGym from './pages/ChooseGym';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLogin from './pages/AdminLogin';
@@ -32,11 +32,12 @@ import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
-    <GymProvider>
       <BrowserRouter>
         <Toaster />
         <Routes>
           <Route path="/admin/login" element={<AdminLogin />} />
+          {/* Which gym this desk is. Outside the shell: the shell belongs to a gym. */}
+          <Route path="/admin/choose-gym" element={<ChooseGym />} />
 
           <Route
             path="/"
@@ -103,7 +104,6 @@ function App() {
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       </BrowserRouter>
-    </GymProvider>
   );
 }
 

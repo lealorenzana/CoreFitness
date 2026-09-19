@@ -154,6 +154,15 @@ async (page) => {
 
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
     if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
+      // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
+      // own profiles, so the sign-in gates see the role they always did.
+      if (fn === 'my_gym_context') {
+        const rows = (typeof DB !== 'undefined' ? DB.profiles : TABLES.profiles) || [];
+        const me = rows.find((p) => p.id === (route.request().headers()['x-fixture-user'] || session.user.id));
+        return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
+          role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
+          accent: 'violet', gym_count: 1 }] : []);
+      }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
     if (!path.startsWith('/rest/v1/')) return json([]);

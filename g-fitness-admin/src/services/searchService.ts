@@ -123,7 +123,7 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
       section('member', async () => {
         const [byProfile, byDetail] = await Promise.all([
           supabase
-            .from('profiles')
+            .from('gym_people')
             .select('id, first_name, last_name, email, phone, photo_url, status, role')
             .eq('role', 'member')
             .or(anyColumn(['first_name', 'last_name', 'email', 'phone'], term))
@@ -150,7 +150,7 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
       section('trainer', async () => {
         const [byProfile, byDetail] = await Promise.all([
           supabase
-            .from('profiles')
+            .from('gym_people')
             .select('id, first_name, last_name, email, phone, photo_url, status, role')
             .eq('role', 'trainer')
             .or(anyColumn(['first_name', 'last_name', 'email', 'phone'], term))
@@ -174,7 +174,7 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
       // "who has desk access" is a different question from "who coaches".
       section('staff', async () =>
         unwrap<ProfileRow>(await supabase
-          .from('profiles')
+          .from('gym_people')
           .select('id, first_name, last_name, email, phone, photo_url, status, role')
           .in('role', ['admin', 'staff'])
           .or(anyColumn(['first_name', 'last_name', 'email', 'phone'], term))

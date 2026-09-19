@@ -187,6 +187,15 @@ async (page) => {
     }
     if (pathname.startsWith('/rest/v1/rpc/')) {
       const fn = pathname.split('/rest/v1/rpc/')[1];
+      // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
+      // own profiles, so the sign-in gates see the role they always did.
+      if (fn === 'my_gym_context') {
+        const rows = (typeof DB !== 'undefined' ? DB.profiles : TABLES.profiles) || [];
+        const me = rows.find((p) => p.id === (route.request().headers()['x-fixture-user'] || session.user.id));
+        return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
+          role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
+          accent: 'violet', gym_count: 1 }] : []);
+      }
       const R = rpcs();
       return json(fn in R ? R[fn] : null);
     }

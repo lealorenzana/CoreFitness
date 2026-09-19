@@ -56,7 +56,7 @@ export async function updateMyProfile(
  */
 export async function memberNameMap(): Promise<Record<string, string>> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('gym_people')
     .select('id, first_name, last_name')
     .eq('role', 'member');
   if (error) throw error;

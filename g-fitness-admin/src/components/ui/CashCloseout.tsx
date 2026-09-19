@@ -44,7 +44,7 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const { data } = await supabase.from('gym_people').select('role').eq('id', user.id).single();
       if (alive) setIsAdmin(data?.role === 'admin');
     })();
     return () => { alive = false; };

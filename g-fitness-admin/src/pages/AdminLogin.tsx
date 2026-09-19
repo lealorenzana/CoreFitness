@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
 import { supabase } from '../lib/supabaseClient';
+import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
 
 // Floating particles
@@ -86,13 +87,19 @@ export default function AdminLogin() {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-    if (profileError || profile?.role !== 'admin') {
+    // Which gym, and what they are in it (0104). Someone who owns or works at
+    // more than one picks; the front desk and owners of one land straight in.
+    const ctx = await getGymContext(true);
+    const gyms = usableGyms(await myGyms()).filter((g) => g.role === 'admin' || g.role === 'staff');
+    if (gyms.length > 1 || (gyms.length === 1 && ctx?.gymId && gyms[0].gym_id !== ctx.gymId)) {
+      showToast('Login successful!', 'success');
+      navigate('/admin/choose-gym');
+      setIsLoading(false);
+      return;
+    }
+    if (ctx?.role !== 'admin' || ctx.status !== 'active') {
       await supabase.auth.signOut();
+      clearGymContext();
       showToast('This account does not have admin access', 'error');
       setIsLoading(false);
       return;

@@ -71,7 +71,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** Staff/admin accounts, for the Settings account list. */
 export async function listStaffAccounts(): Promise<ProfileRow[]> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('gym_people')
     .select('*')
     .in('role', ['admin', 'staff'])
     .order('created_at', { ascending: true });

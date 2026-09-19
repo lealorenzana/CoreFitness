@@ -138,7 +138,7 @@ export default function Notifications() {
     try {
       const [broadcasts, { data: profiles }, members, trainers, everyone] = await Promise.all([
         listRecentBroadcasts(),
-        supabase.from('profiles').select('id, first_name, last_name, role')
+        supabase.from('gym_people').select('id, first_name, last_name, role')
           .in('role', ['member', 'trainer']).eq('status', 'active').order('first_name'),
         countAudience('all_members').catch(() => 0),
         countAudience('all_trainers').catch(() => 0),

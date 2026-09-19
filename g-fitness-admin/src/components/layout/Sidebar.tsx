@@ -1,4 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { getGymContext } from '../../lib/gymContext';
 import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
@@ -174,10 +175,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   useEffect(() => {
     let active = true;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (active) setIsAdmin(data?.role === 'admin');
+      const ctx = await getGymContext();
+      if (active) setIsAdmin(ctx?.role === 'admin');
     })();
     return () => { active = false; };
   }, []);

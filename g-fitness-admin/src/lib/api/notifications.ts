@@ -116,7 +116,7 @@ export async function broadcastNotification(input: {
   if (input.audience === 'specific') {
     recipientIds = input.userIds ?? [];
   } else {
-    let query = supabase.from('profiles').select('id').eq('status', 'active');
+    let query = supabase.from('gym_people').select('id').eq('status', 'active');
     if (input.audience === 'all_members') query = query.eq('role', 'member');
     else if (input.audience === 'all_trainers') query = query.eq('role', 'trainer');
     else query = query.in('role', ['member', 'trainer']);
@@ -215,7 +215,7 @@ export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary
  */
 export async function countAudience(audience: BroadcastAudience): Promise<number> {
   if (audience === 'specific') return 0;
-  let query = supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'active');
+  let query = supabase.from('gym_people').select('id', { count: 'exact', head: true }).eq('status', 'active');
   if (audience === 'all_members') query = query.eq('role', 'member');
   else if (audience === 'all_trainers') query = query.eq('role', 'trainer');
   else query = query.in('role', ['member', 'trainer']);

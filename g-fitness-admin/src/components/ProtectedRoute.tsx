@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { getGymContext } from '../lib/gymContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -34,11 +35,9 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         if (active) setStatus('unauthorized');
         return;
       }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, status')
-        .eq('id', session.user.id)
-        .single();
+      // The role is the one in *this gym* (lib/gymContext, 0104): the same
+      // person can own one gym and be a member of another.
+      const profile = await getGymContext();
 
       if (!active) return;
 
@@ -50,7 +49,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       // Signed in and allowed in the dashboard, but not for this page. Sending
       // them to the login screen here would look like a session failure and
       // invite a pointless re-login, so it's a distinct state.
-      setStatus(adminOnly && profile.role !== 'admin' ? 'forbidden' : 'authorized');
+      setStatus(adminOnly && profile!.role !== 'admin' ? 'forbidden' : 'authorized');
     }
 
     checkAccess();

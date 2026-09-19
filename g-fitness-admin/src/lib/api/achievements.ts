@@ -182,7 +182,7 @@ export async function listAwardCandidates(
   audience: AchievementAudience
 ): Promise<Array<{ id: string; name: string }>> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('gym_people')
     .select('id, first_name, last_name')
     .eq('role', audience)
     .eq('status', 'active')

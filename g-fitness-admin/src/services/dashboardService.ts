@@ -274,7 +274,7 @@ export const dashboardService = {
     since.setDate(since.getDate() - WINDOW_DAYS);
 
     const [membersRes, attendanceRes, membershipsRes] = await Promise.all([
-      supabase.from('profiles').select('id, first_name, last_name').eq('role', 'member').eq('status', 'active'),
+      supabase.from('gym_people').select('id, first_name, last_name').eq('role', 'member').eq('status', 'active'),
       supabase.from('attendance').select('member_id, check_in_time').gte('check_in_time', since.toISOString()),
       supabase.from('memberships').select('member_id, plan_id, status, created_at').eq('status', 'active'),
     ]);
@@ -333,7 +333,7 @@ export const dashboardService = {
     since.setDate(since.getDate() - 30);
 
     const [activeRes, attendanceRes, atRisk] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'member').eq('status', 'active'),
+      supabase.from('gym_people').select('id', { count: 'exact', head: true }).eq('role', 'member').eq('status', 'active'),
       supabase.from('attendance').select('member_id').gte('check_in_time', since.toISOString()),
       this.getAtRiskMembers(),
     ]);
@@ -360,7 +360,7 @@ export const dashboardService = {
     const { start, end } = yearBounds(year);
     const [attendanceRes, membersRes] = await Promise.all([
       supabase.from('attendance').select('member_id, check_in_time').gte('check_in_time', start).lt('check_in_time', end),
-      supabase.from('profiles').select('id, created_at').eq('role', 'member').lt('created_at', end),
+      supabase.from('gym_people').select('id, created_at').eq('role', 'member').lt('created_at', end),
     ]);
     if (attendanceRes.error) throw attendanceRes.error;
     if (membersRes.error) throw membersRes.error;
@@ -421,7 +421,7 @@ export const dashboardService = {
     const { start, end } = yearBounds(year);
     const [paymentsRes, membersRes] = await Promise.all([
       supabase.from('payments').select('amount, status, paid_on').gte('paid_on', start).lt('paid_on', end),
-      supabase.from('profiles').select('created_at').eq('role', 'member').gte('created_at', start).lt('created_at', end),
+      supabase.from('gym_people').select('created_at').eq('role', 'member').gte('created_at', start).lt('created_at', end),
     ]);
     if (paymentsRes.error) throw paymentsRes.error;
     if (membersRes.error) throw membersRes.error;
@@ -504,7 +504,7 @@ export const dashboardService = {
     startOfToday.setHours(0, 0, 0, 0);
 
     const [membersRes, activeRes, pendingRes, paymentsRes, attendanceRes] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true })
+      supabase.from('gym_people').select('id', { count: 'exact', head: true })
         .eq('role', 'member').neq('status', 'archived'),
       supabase.from('memberships').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('pending_registrations').select('id', { count: 'exact', head: true }),
@@ -553,7 +553,7 @@ export const dashboardService = {
   async getNewMembersByYear(year: string): Promise<MembersPoint[]> {
     const { start, end } = yearBounds(year);
     const { data, error } = await supabase
-      .from('profiles')
+      .from('gym_people')
       .select('created_at, role')
       .eq('role', 'member')
       .lt('created_at', end);
