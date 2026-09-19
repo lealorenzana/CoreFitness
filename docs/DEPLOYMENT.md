@@ -27,6 +27,15 @@ launch full-screen with the right icon.
 | **Member/trainer app (canonical)** | **`https://corefitness-gym.vercel.app`** |
 | Auto-generated fallback | `https://core-fitness-zatanaels-projects.vercel.app` |
 | Vercel project | `zatanaels-projects/core-fitness` |
+| **Admin app (gym owners and front desk)** | **`https://corefitness-admin.vercel.app`** |
+| Vercel project | `zatanaels-projects/corefitness-admin` |
+
+The admin app went online on 2026-09-20 (SaaS Part B): a gym owner is not in Mamburao, so a
+dashboard that only ran from one desktop icon could not be a service. It deploys exactly like the
+member app — from `g-fitness-admin/`, `npx vercel deploy --prod --yes`. Its two environment
+variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) are set on the project for Production and
+Preview; **Vite inlines them at build time**, so a new one must exist before the deploy that needs
+it. The desktop icon still works and still serves `dist/` — `npm run build` keeps it current.
 
 `corefitness-gym.vercel.app` is the address baked into the APK — **use it everywhere**. Changing
 it later means regenerating the APK and re-hosting `assetlinks.json`.

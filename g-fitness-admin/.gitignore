@@ -30,3 +30,6 @@ desktop/core-fitness-admin.ico
 # absolute path so a copy on the Desktop can still find serve.mjs.
 desktop/CoreFitnessAdmin.exe
 desktop/Installed.generated.cs
+
+.vercel
+.env*
