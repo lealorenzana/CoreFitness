@@ -62,6 +62,15 @@ export default function Login() {
       return;
     }
 
+    // More than one gym to sign in to (or this one is closed to them but
+    // another is open): they choose. The picker routes by the role in the gym
+    // they pick, so the Member/Coach toggle does not apply.
+    if (result.chooseGym) {
+      setIsLoading(false);
+      navigate('/choose-gym');
+      return;
+    }
+
     if (result.status === 'pending_approval') {
       await logout();
       setPendingApproval(true);

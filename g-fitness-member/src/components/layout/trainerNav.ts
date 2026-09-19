@@ -1,5 +1,6 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
+  Buildings,
   Bell, CalendarBlank, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
 import type { Destination } from './memberNav';
@@ -84,5 +85,7 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
     { label: 'Settings', path: '/trainer/settings', icon: GearSix },
+    // Coaches work at more than one gym; this is how they switch.
+    { label: 'Gyms', path: '/choose-gym', icon: Buildings },
   ],
 };

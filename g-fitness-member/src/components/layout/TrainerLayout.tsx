@@ -9,6 +9,8 @@ import AchievementWatcher from '../ui/AchievementWatcher';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
+import { useGymBrand } from '../../hooks/useGymBrand';
+import GymLockBanner from '../ui/GymLockBanner';
 
 /**
  * The trainer shell — the member shell's structure (Nocturne), top to bottom:
@@ -32,11 +34,15 @@ export default function TrainerLayout() {
 
   useScrollMemory(mainRef, location.pathname);
 
+  // The gym's colour and name, and whether it is read-only (0104).
+  const gym = useGymBrand();
+
   return (
     <PhoneChassis>
       <Toaster />
 
       {root && <TrainerTabHeader tab={root} />}
+      <GymLockBanner ctx={gym} />
 
       <main
         ref={mainRef}

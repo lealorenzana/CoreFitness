@@ -114,6 +114,22 @@ $$;
 revoke all on function set_gym_role(uuid, user_role) from public, anon;
 grant execute on function set_gym_role(uuid, user_role) to authenticated;
 
+-- The plans a gym offers, for someone who has no account yet: sign-up asks
+-- which plan they are coming for, and `membership_plans` has been readable only
+-- to signed-in people since 0006 — so that step had nothing to show. Active
+-- plans of an active gym, price and name only.
+create or replace function public_plans(p_gym uuid)
+returns table (id uuid, name text, tier plan_tier, price numeric, duration_days int, description text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.name, p.tier, p.price, p.duration_days, p.description
+    from membership_plans p
+    join gyms g on g.id = p.gym_id and g.status = 'active'
+   where p.gym_id = p_gym and p.is_active
+   order by p.price, p.name;
+$$;
+revoke all on function public_plans(uuid) from public;
+grant execute on function public_plans(uuid) to anon, authenticated;
+
 create or replace function migration_0104_applied() returns boolean
 language sql immutable as $fn$ select true $fn$;
 revoke all on function migration_0104_applied() from public, anon;

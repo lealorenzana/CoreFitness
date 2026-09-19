@@ -11,6 +11,16 @@ export async function listPlans(): Promise<MembershipPlanRow[]> {
   return data ?? [];
 }
 
+/**
+ * The plans a gym offers, for sign-up — before there is an account to read
+ * `membership_plans` with (0104's public_plans). Active plans of an active gym.
+ */
+export async function publicPlans(gymId: string): Promise<MembershipPlanRow[]> {
+  const { data, error } = await supabase.rpc('public_plans', { p_gym: gymId });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as MembershipPlanRow[];
+}
+
 export async function createPlan(
   plan: Omit<MembershipPlanRow, 'id' | 'created_at'>
 ): Promise<MembershipPlanRow> {

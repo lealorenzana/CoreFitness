@@ -114,6 +114,8 @@ export async function registerMember(input: {
    *  Only the answer travels: the *time* is stamped by Postgres in 0079's
    *  trigger, because a browser clock is not evidence of anything. */
   termsAccepted?: boolean;
+  /** The gym being joined (lib/api/gyms). Omitted when the platform has one gym. */
+  gymId?: string;
   /**
    * True when the new account is already signed in.
    *
@@ -130,6 +132,10 @@ export async function registerMember(input: {
     options: {
       data: {
         signup_source: 'member_self_registration',
+        // Which gym this account joins. handle_new_member_signup() (0100)
+        // refuses a gym that is not taking sign-ups, and files the member,
+        // their member row and the desk's to-do under it. Absent = Gym #1.
+        gym_id: input.gymId ?? '',
         first_name: input.firstName,
         last_name: input.lastName,
         phone: input.phone ?? null,

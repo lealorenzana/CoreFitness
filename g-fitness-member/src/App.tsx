@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import { syncUserCache } from './utils/auth';
+import { getGymContext, homeFor, myGyms, usableGyms } from './lib/gymContext';
 import { lazyPage } from './lib/lazyPage';
 import { Suspense } from 'react';
 import Layout from './components/layout/Layout';
@@ -52,6 +53,8 @@ const Achievements = lazyPage(() => import('./pages/Achievements'));
 const NotificationsAll = lazyPage(() => import('./pages/NotificationsAll'));
 const GymPlan = lazyPage(() => import('./pages/GymPlan'));
 const MembershipHub = lazyPage(() => import('./pages/MembershipHub'));
+const ChooseGym = lazyPage(() => import('./pages/ChooseGym'));
+const JoinGym = lazyPage(() => import('./pages/JoinGym'));
 
 
 type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
@@ -79,13 +82,11 @@ function RoleProtectedRoute({
         if (active) setStatus('unauthorized');
         return;
       }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, status')
-        .eq('id', session.user.id)
-        .single();
+      // The role is the one in *this gym* (lib/gymContext, 0104) — the same
+      // person can be a member at one gym and a coach at another.
+      const ctx = await getGymContext();
       if (active) {
-        setStatus(profile?.role === role && profile?.status === 'active' ? 'authorized' : 'unauthorized');
+        setStatus(ctx?.role === role && ctx.status === 'active' ? 'authorized' : 'unauthorized');
       }
       // The session survives app restarts, so `login()` — the only writer of the
       // legacy `localStorage['user']` cache — may not have run this launch.
@@ -109,7 +110,7 @@ function RoleProtectedRoute({
 }
 
 function LoginRoute() {
-  const [dest, setDest] = useState<'member' | 'trainer' | null>(null);
+  const [dest, setDest] = useState<'member' | 'trainer' | 'choose' | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -119,14 +120,15 @@ function LoginRoute() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, status')
-        .eq('id', session.user.id)
-        .single();
-      if (active && profile?.status === 'active') {
-        setDest(profile.role === 'trainer' ? 'trainer' : 'member');
+      const ctx = await getGymContext();
+      if (!active) return;
+      if (ctx?.status === 'active' && homeFor(ctx.role)) {
+        setDest(ctx.role === 'trainer' ? 'trainer' : 'member');
+        return;
       }
+      // Signed in, but not into a gym they can use: if another gym is open to
+      // them, that is a choice to make, not a sign-in to repeat.
+      if (usableGyms(await myGyms()).length > 0 && active) setDest('choose');
     }
 
     checkSession();
@@ -137,6 +139,7 @@ function LoginRoute() {
 
   if (dest === 'trainer') return <Navigate to="/trainer/home" replace />;
   if (dest === 'member') return <Navigate to="/member/home" replace />;
+  if (dest === 'choose') return <Navigate to="/choose-gym" replace />;
 
   return <Login />;
 }
@@ -161,6 +164,11 @@ function App() {
         <Route path="/gyms" element={<Navigate to="/" replace />} />
         <Route path="/gym/:gymId" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginRoute />} />
+        {/* Which gym am I using, and joining another. Outside both shells: a
+            person here has not picked a gym yet, so no tab bar applies. */}
+        <Route path="/choose-gym" element={<ChooseGym />} />
+        <Route path="/join" element={<JoinGym />} />
+        <Route path="/join/:slug" element={<JoinGym />} />
         <Route path="/register" element={<Register />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />

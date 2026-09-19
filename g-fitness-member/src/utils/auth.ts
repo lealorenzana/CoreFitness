@@ -14,6 +14,7 @@ import { clearPushOnSignOut } from '../lib/api/push';
 import { clearPageCache } from '../lib/pageCache';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
 import { clearFeatureCache } from '../hooks/useFeatures';
+import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 
 interface User {
   id: string;
@@ -28,8 +29,14 @@ interface User {
 export interface LoginResult {
   success: boolean;
   user?: User;
-  role?: 'admin' | 'trainer' | 'member';
+  /** Role and status in the current gym (lib/gymContext), not the legacy profile columns. */
+  role?: 'admin' | 'staff' | 'trainer' | 'member';
   status?: 'active' | 'pending_approval' | 'suspended' | 'archived';
+  /**
+   * The person can sign in to more than one gym, or their current gym is not
+   * usable but another is: the gym picker decides where they land.
+   */
+  chooseGym?: boolean;
   error?: string;
 }
 
@@ -62,7 +69,16 @@ export const login = async (email: string, password: string): Promise<LoginResul
   localStorage.setItem('user', JSON.stringify(userData));
   localStorage.setItem('isAuthenticated', 'true');
 
-  return { success: true, user: userData, role: profile.role, status: profile.status };
+  // Role and status are per gym (0097). The picker is only for someone who has
+  // a real choice; one gym is exactly the flow it always was.
+  const ctx = await getGymContext(true);
+  const usable = ctx && !ctx.legacy ? usableGyms(await myGyms()) : [];
+  const chooseGym = usable.length >= 2 || (usable.length === 1 && ctx?.status !== 'active');
+
+  return {
+    success: true, user: userData,
+    role: ctx?.role ?? undefined, status: ctx?.status ?? undefined, chooseGym,
+  };
 };
 
 /**
@@ -106,6 +122,8 @@ export const logout = async (): Promise<void> => {
   // Entitlements are per-member and the cache is not keyed by one. Two people
   // on one phone would otherwise inherit the last member's plan.
   clearFeatureCache();
+  // Which gym, and its brand, belong to the person who just left.
+  clearGymContext();
   // The language is the member's (0095); the next person starts in English
   // until their own choice loads.
   setLanguage('en');

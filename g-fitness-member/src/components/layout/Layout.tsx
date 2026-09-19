@@ -13,6 +13,8 @@ import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { loadLanguagePreference } from '../../lib/i18n';
+import { useGymBrand } from '../../hooks/useGymBrand';
+import GymLockBanner from '../ui/GymLockBanner';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { useEffect } from 'react';
 
@@ -66,6 +68,9 @@ export default function Layout() {
   // seen for the first time still starts at the top.
   useScrollMemory(mainRef, location.pathname);
 
+  // The gym's colour and name, and whether it is read-only (0104).
+  const gym = useGymBrand();
+
   // The member's language (0095), once per shell mount. Missing column or a
   // failed read leaves English, which is what every screen falls back to.
   useEffect(() => {
@@ -80,6 +85,7 @@ export default function Layout() {
       <Toaster />
 
       {root && <TabHeader tab={root} />}
+      {!immersive && <GymLockBanner ctx={gym} />}
 
       {/* The gutter lives here and nowhere else, so every screen starts at the
           same left edge.

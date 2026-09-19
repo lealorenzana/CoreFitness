@@ -10,7 +10,8 @@ import MobileFrame from '../components/layout/MobileFrame';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { showErrorToast } from '../utils/errorHandler';
 import { registerMember, isEmailTaken, isPhoneTaken } from '../lib/api/members';
-import { listPlans } from '../lib/api/membershipPlans';
+import { listGyms, type PublicGym } from '../lib/api/gyms';
+import { listPlans, publicPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 import BirthDateField from '../components/ui/BirthDateField';
 import { ageFrom, birthDateProblem, PHONE_RE } from '../utils/profileRules';
@@ -118,6 +119,7 @@ export default function Register() {
     selectedPlanId: '', termsAccepted: false,
   });
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  const [gym, setGym] = useState<PublicGym | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   /** A uniqueness lookup is in flight — the step gate is async now. */
   const [checking, setChecking] = useState(false);
@@ -135,13 +137,32 @@ export default function Register() {
   // `pending_registrations.requested_plan_id` and is what the front desk bills
   // against at approval, so defaulting to whichever plan sorted first would put
   // a price on someone who never picked one.
+  // Which gym this sign-up joins. `?gym=` carries it from the gym list or a
+  // `/join/<slug>` link; with only one gym on the platform there is nothing to
+  // choose and the question is never asked.
   useEffect(() => {
     let cancelled = false;
-    listPlans()
-      .then((rows) => { if (!cancelled) setPlans(rows.filter((p) => p.is_active)); })
-      .catch(() => {});
+    void (async () => {
+      const wanted = new URLSearchParams(window.location.search).get('gym');
+      let chosen: PublicGym | null = null;
+      try {
+        const all = await listGyms();
+        chosen = wanted ? all.find((g) => g.id === wanted) ?? null : all.length === 1 ? all[0] : null;
+        if (!cancelled && !chosen && all.length > 1) { navigate('/join', { replace: true }); return; }
+      } catch {
+        /* pre-0097: one gym, and the plans below load the old way */
+      }
+      if (cancelled) return;
+      setGym(chosen);
+      try {
+        const rows = chosen ? await publicPlans(chosen.id) : await listPlans();
+        if (!cancelled) setPlans(rows.filter((p) => p.is_active !== false));
+      } catch {
+        /* the step says so rather than offering a price the gym never set */
+      }
+    })();
     return () => { cancelled = true; };
-  }, []);
+  }, [navigate]);
 
   const update = (key: string, val: any) => setFormData((p) => ({ ...p, [key]: val }));
 
@@ -226,6 +247,9 @@ export default function Register() {
     setIsLoading(true);
     try {
       const { signedIn } = await registerMember({
+        // The gym this account joins (0100). Left out on a one-gym platform,
+        // where the sign-up trigger files it under the only gym there is.
+        gymId: gym?.id,
         // Supabase stores addresses lowercased; normalising here means the
         // "already registered" check compares like with like.
         email: formData.email.trim().toLowerCase(),

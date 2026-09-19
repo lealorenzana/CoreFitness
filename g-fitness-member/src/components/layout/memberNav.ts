@@ -178,6 +178,9 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Profile', path: '/member/profile' },
       { label: 'Edit profile', path: '/member/profile/edit' },
       { label: 'Settings', path: '/member/settings' },
+      // Which gym this app is showing. One gym: the screen is where you join
+      // another. Several: it is how you switch (docs/TENANCY.md).
+      { label: 'Gyms', path: '/choose-gym' },
       { label: 'Change password', path: '/member/change-password' },
       { label: 'Change email', path: '/member/change-email' },
     ],
