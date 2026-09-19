@@ -32,9 +32,11 @@ interface RecordPaymentModalProps {
   onSubmit: (payment: RecordPaymentInput) => void;
   /** memberId -> their current plan. Missing entry = no membership to bill against. */
   planByMember: Record<string, MemberPlanInfo>;
+  /** Opened from a renewal request (0091): the member and the amount filled in. */
+  preset?: { memberId: string; memberName: string; amount: number; key: string } | null;
 }
 
-export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember }: RecordPaymentModalProps) {
+export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset }: RecordPaymentModalProps) {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
 
   useEffect(() => {
@@ -55,6 +57,17 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
   const [isLoading, setIsLoading] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+
+  // A preset is applied once per request opened — decided during render, not
+  // in an effect, so the form paints already filled.
+  const [appliedPreset, setAppliedPreset] = useState<string | null>(null);
+  if (isOpen && preset && appliedPreset !== preset.key) {
+    setAppliedPreset(preset.key);
+    setFormData((f) => ({ ...f, memberId: preset.memberId, amount: String(preset.amount) }));
+    setMemberSearch(preset.memberName);
+    setShowMemberDropdown(false);
+  }
+  if (!isOpen && appliedPreset !== null) setAppliedPreset(null);
 
   const paymentMethods = ['Cash'];
 

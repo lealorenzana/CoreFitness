@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, EnvelopeSimple, Gear, Gift, Key,
-  ListChecks, Minus, SignOut, UserCircle, Warning,
+  ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning,
 } from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
 import { Chip, Eyebrow, InlineStat, NocButton, Panel, ProgressBar, SeeAll, SectionHead, StatusPill } from '../components/ui/noc';
@@ -192,6 +192,15 @@ export default function MembershipHub() {
             {home.expired ? 'Renew at the front desk — payment is in cash.'
               : `Only ${home.daysLeft} ${home.daysLeft === 1 ? 'day' : 'days'} left. Renew at the front desk before it ends — payment is in cash.`}
           </p>
+        )}
+
+        {hub.renewalRequest && (
+          <button onClick={() => navigate('/member/renew-membership')} className="w-full flex items-center text-left"
+            style={{ gap: 8, marginTop: 12, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+            <PaperPlaneTilt size={15} weight="fill" className="flex-none" aria-hidden />
+            <span className="flex-1">Renewal requested · {hub.renewalRequest.planName} — the desk knows you are coming</span>
+            <CaretRight size={13} aria-hidden />
+          </button>
         )}
 
         {!home.frozen && home.planName && (

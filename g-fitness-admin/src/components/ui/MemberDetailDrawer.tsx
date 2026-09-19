@@ -435,6 +435,22 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
 
   return (
     <div className="space-y-4">
+      {/* Asked for in the phone app (0091). Recording the payment closes it. */}
+      {detail.renewalRequest && (
+        <div className="rounded-xl p-3 text-xs" style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.35)' }}>
+          <p className="font-semibold" style={{ color: 'var(--color-secondary)' }}>
+            Coming to renew — {detail.renewalRequest.planName}
+            {detail.renewalRequest.planPrice > 0 ? ` · ₱${detail.renewalRequest.planPrice.toLocaleString('en-PH')}` : ''}
+          </p>
+          <p className="mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+            Asked {formatDate(detail.renewalRequest.createdAt)}{detail.renewalRequest.note ? ` · ${detail.renewalRequest.note}` : ''}.
+            {current?.membership_plans?.name && current.membership_plans.name !== detail.renewalRequest.planName
+              ? ` Change their plan to ${detail.renewalRequest.planName} first, then record the payment — that closes the request.`
+              : ' Recording their payment closes the request.'}
+          </p>
+        </div>
+      )}
+
       <Section title="Current membership">
         {current ? (
           <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>

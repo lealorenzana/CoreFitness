@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Barbell, CaretLeft, CaretRight, Check, Lightning } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentUser } from '../utils/auth';
@@ -7,7 +8,8 @@ import type { AttendanceRow } from '../types/db';
 import { dateKey, localDateKey } from '../utils/dates';
 import { Page, PageTitle } from '../components/ui/page';
 import WeekMarks from '../components/ui/WeekMarks';
-import { Eyebrow, InlineStat, LineRow, SectionHead } from '../components/ui/noc';
+import { Eyebrow, InlineStat, LineRow, SectionHead, SeeAll } from '../components/ui/noc';
+import GymTrafficCard from '../components/ui/GymTrafficCard';
 import DayWorkoutsSheet from '../components/ui/DayWorkoutsSheet';
 import { listWorkoutDays } from '../lib/api/routines';
 
@@ -60,9 +62,20 @@ function computeStreaks(dateStrings: string[]): { current: number; longest: numb
  *
  * The month grid now pages back through any month with a check-in, rather than a
  * select that only offered the current year.
+ *
+ * Reworked 2026-09-19: the month says how it compares with the one before;
+ * "Your habits" states the usual time and weekday from real check-ins; "When the
+ * gym is busy" reads `gym_traffic()` (0091), the function the admin Dashboard's
+ * heatmap now uses too; and Recent visits is a preview of five with "See all"
+ * to its own page — a list never grows in place.
  */
+const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export default function AttendanceHistory() {
+  const navigate = useNavigate();
   const now = new Date();
+  // Read once — Date.now() inside a memo is impure (react-hooks/purity).
+  const [openedAt] = useState(() => Date.now());
   const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   // Lazy, so a signed-out render starts not-loading instead of flipping state
@@ -124,9 +137,29 @@ export default function AttendanceHistory() {
   }, [visited]);
 
   const recent = useMemo(
-    () => [...records].sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)).slice(0, 10),
+    () => [...records].sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)).slice(0, 5),
     [records],
   );
+
+  /** The usual time (median of the last 60 days) and the most-visited weekday. */
+  const habits = useMemo(() => {
+    const since = openedAt - 60 * 86_400_000;
+    const lately = records.filter((r) => new Date(r.check_in_time).getTime() >= since);
+    if (lately.length < 4) return null;
+    const mins = lately.map((r) => { const d = new Date(r.check_in_time); return d.getHours() * 60 + d.getMinutes(); })
+      .sort((a, b) => a - b);
+    const mid = mins[Math.floor(mins.length / 2)];
+    const at = new Date(2000, 0, 1, Math.floor(mid / 60), mid % 60);
+    const perDay = new Array(7).fill(0);
+    for (const k of new Set(lately.map((r) => localDateKey(r.check_in_time)))) perDay[localDay(k).getDay()] += 1;
+    const top = perDay.indexOf(Math.max(...perDay));
+    return {
+      time: at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      weekday: WEEKDAY[top],
+      weekdayCount: perDay[top],
+      visits: lately.length,
+    };
+  }, [records, openedAt]);
 
   const earliest = checkInDates.length ? localDay([...checkInDates].sort()[0]) : now;
   const canGoBack = cursor.getTime() > new Date(earliest.getFullYear(), earliest.getMonth(), 1).getTime();
@@ -135,10 +168,15 @@ export default function AttendanceHistory() {
 
   const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
   const firstDay = cursor.getDay();
-  const monthVisits = checkInDates.filter((d) => {
+  // Visit *days*, as the calendar draws them — two check-ins on one day are one orb.
+  const daysIn = (y: number, m: number) => [...visited].filter((d) => {
     const x = localDay(d);
-    return x.getFullYear() === cursor.getFullYear() && x.getMonth() === cursor.getMonth();
+    return x.getFullYear() === y && x.getMonth() === m;
   }).length;
+  const monthVisits = daysIn(cursor.getFullYear(), cursor.getMonth());
+  const prevMonth = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+  const prevVisits = daysIn(prevMonth.getFullYear(), prevMonth.getMonth());
+  const delta = monthVisits - prevVisits;
 
   return (
     <Page>
@@ -170,7 +208,15 @@ export default function AttendanceHistory() {
               </button>
               <div className="text-center">
                 <p style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{MONTH_FMT.format(cursor)}</p>
-                <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>{monthVisits} {monthVisits === 1 ? 'visit' : 'visits'}</p>
+                <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                  {monthVisits} visit {monthVisits === 1 ? 'day' : 'days'}
+                  {(monthVisits > 0 || prevVisits > 0) && (
+                    <span style={{ color: delta > 0 ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
+                      {' · '}{delta === 0 ? 'same as' : delta > 0 ? `${delta} more than` : `${-delta} fewer than`}{' '}
+                      {prevMonth.toLocaleDateString('en-US', { month: 'short' })}
+                    </span>
+                  )}
+                </p>
               </div>
               <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
                 disabled={!canGoForward} aria-label="Next month" className="grid place-items-center disabled:opacity-30"
@@ -240,9 +286,23 @@ export default function AttendanceHistory() {
             Tap a day to see your check-in and the workout you finished.
           </p>
 
+          {/* ── Your habits ── */}
+          {habits && (
+            <section>
+              <SectionHead title="Your habits" meta="last 60 days" />
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
+                <InlineStat value={habits.time} label="your usual check-in time" />
+                <InlineStat value={habits.weekday.slice(0, 3)} label={`your most regular day · ${habits.weekdayCount} ${habits.weekdayCount === 1 ? 'visit' : 'visits'}`} />
+              </div>
+            </section>
+          )}
+
+          {/* ── The gym, not just you (0091) ── */}
+          <GymTrafficCard />
+
           {/* ── Visits ── */}
           <section>
-            <SectionHead title="Recent visits" meta={records.length > recent.length ? `latest ${recent.length}` : undefined} />
+            <SectionHead title="Recent visits" />
             {recent.length === 0 ? (
               <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>No check-ins yet.</p>
             ) : (
@@ -263,6 +323,9 @@ export default function AttendanceHistory() {
                   );
                 })}
               </div>
+            )}
+            {records.length > recent.length && (
+              <SeeAll label="See all visits" count={records.length} onClick={() => navigate('/member/visits')} />
             )}
           </section>
         </>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Lock, X } from '@phosphor-icons/react';
+import { Check, Clock, HandCoins, Lock, PaperPlaneTilt, X } from '@phosphor-icons/react';
 import { toast } from '../components/ui/Toast';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { errorMessage } from '../utils/errorMessage';
@@ -15,7 +15,13 @@ import {
 } from '../lib/api/memberships';
 import type { MembershipPlanRow, PlanTier } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
-import { Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
+import { Chip, Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
+import Disclosure from '../components/ui/Disclosure';
+import GlassSheet from '../components/ui/GlassSheet';
+import {
+  listMyRenewalRequests, requestRenewal, withdrawRenewalRequest, type RenewalRequest,
+} from '../lib/api/renewalRequests';
+import { basisLine, formatPeso, getRefundQuote, type RefundQuote } from '../lib/api/refunds';
 
 /**
  * The membership screen: where a member sees what they have, what else exists,
@@ -52,6 +58,15 @@ import { Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../component
  * cash can assert it.
  *
  * The confirmation step is therefore worded as an instruction, not a receipt.
+ *
+ * ## …but the desk now knows you are coming (0091, 2026-09-19)
+ *
+ * "Tell the desk I'm coming" files a renewal request: intent, not money. The
+ * desk sees it in a queue (admin → Payments) and is notified; it closes itself
+ * when staff record the payment for that plan. The request panel sits at the
+ * top of this screen and on You, with Withdraw. A plan also shows its price per
+ * month, and the current plan what cancelling today would refund — the same
+ * `refund_quote()` the desk's cancel dialog prints.
  *
  * Prices and rules come from `membership_plans`, the table the admin edits; the
  * gym's name and address come from `gym_settings` (both were typed in here).
@@ -112,20 +127,38 @@ export default function RenewMembership() {
   // member's. Empty on failure, which degrades to the pre-0049 wording instead
   // of claiming a tier includes nothing.
   const [matrix, setMatrix] = useState<Record<string, { key: string; label: string; enabled: boolean }[]>>({});
+  const [memberId, setMemberId] = useState<string | null>(null);
+  /** Null before 0091 — the request flow then falls back to instructions only. */
+  const [requests, setRequests] = useState<RenewalRequest[] | null>(null);
+  const [quote, setQuote] = useState<RefundQuote | null>(null);
+  const [sheet, setSheet] = useState(false);
+  const [when, setWhen] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const id = await getCurrentMemberId();
-        const [available, membership, usedTrial, features, settings] = await Promise.all([
+        const [available, membership, usedTrial, features, settings, reqs] = await Promise.all([
           listPlans(),
           id ? getCurrentMembership(id).catch(() => null) : Promise.resolve(null),
           id ? hasUsedFreemiumTrial(id) : Promise.resolve(false),
           getPlanFeatureMatrix().catch(() => ({})),
           getGymSettings().catch(() => null),
+          id ? listMyRenewalRequests(id) : Promise.resolve(null),
         ]);
         if (cancelled) return;
+        setMemberId(id);
+        setRequests(reqs);
+        // What cancelling today would pay back — only for a paid, dated term;
+        // a quote on a free or lifetime plan answers a question nobody asked.
+        if (membership && !membership.never_expires && membership.expiry_date
+            && Number(membership.membership_plans?.price ?? 0) > 0) {
+          const q = await getRefundQuote(membership.id).catch(() => null);
+          if (!cancelled) setQuote(q);
+        }
         setMatrix(features);
         setGym(settings);
         setPlans(available
@@ -197,6 +230,50 @@ export default function RenewMembership() {
     };
   })();
 
+  const openRequest = requests?.find((r) => r.status === 'open') ?? null;
+  // A decision the member has not acted on: declined (with the reason) or
+  // fulfilled, in the last fortnight.
+  const lastClosed = requests?.find((r) => (r.status === 'declined' || r.status === 'fulfilled')
+    && r.closedAt != null && now - new Date(r.closedAt).getTime() < 14 * 86_400_000) ?? null;
+
+  const reload = async () => {
+    if (!memberId) return;
+    setRequests(await listMyRenewalRequests(memberId));
+  };
+
+  const send = async () => {
+    if (!selected) return;
+    setSending(true);
+    try {
+      await requestRenewal(selected.id, when ? `Coming ${when.toLowerCase()}` : undefined);
+      await reload();
+      setSheet(false);
+      setSelectedId(null);
+      toast.success('Sent — the front desk knows you are coming');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not send the request'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const withdraw = async () => {
+    try {
+      await withdrawRenewalRequest();
+      await reload();
+      toast.success('Request withdrawn');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not withdraw it'));
+    }
+  };
+
+  /** Longer terms, stated per month so they compare against the monthly plan. */
+  const perMonth = (plan: MembershipPlanRow): string | null => {
+    const price = Number(plan.price);
+    if (price === 0 || plan.duration_days == null || plan.duration_days < 60) return null;
+    return `${peso(Math.round(price / (plan.duration_days / 30)))} a month`;
+  };
+
   if (confirmed && selected) {
     const free = Number(selected.price) === 0;
     const steps = [
@@ -265,6 +342,45 @@ export default function RenewMembership() {
         </p>
       ) : (
         <>
+          {/* ── A request on its way to the desk (0091) ── */}
+          {openRequest ? (
+            <Panel glow="action">
+              <div className="flex items-center justify-between" style={{ gap: 10 }}>
+                <Eyebrow tone="action">
+                  <span className="inline-flex items-center" style={{ gap: 6 }}>
+                    <PaperPlaneTilt size={13} weight="fill" /> The desk knows you are coming
+                  </span>
+                </Eyebrow>
+                <StatusPill label="Requested" tone="action" />
+              </div>
+              <p style={{ fontSize: 19, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>
+                {openRequest.planName ?? 'Your plan'}
+              </p>
+              <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>
+                {openRequest.planPrice ? `Bring ${peso(openRequest.planPrice)} in cash` : 'No payment needed'}
+                {' · '}sent {new Date(openRequest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {openRequest.note ? ` · ${openRequest.note}` : ''}
+              </p>
+              <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                It closes by itself once staff record your payment — your plan changes then, not before.
+              </p>
+              <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} onClick={() => void withdraw()}>
+                Withdraw request
+              </NocButton>
+            </Panel>
+          ) : lastClosed ? (
+            <Panel glow={lastClosed.status === 'declined' ? 'action' : 'structure'}>
+              <Eyebrow tone={lastClosed.status === 'declined' ? 'action' : undefined}>
+                {lastClosed.status === 'fulfilled' ? 'Renewal recorded' : 'Request closed by the desk'}
+              </Eyebrow>
+              <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                {lastClosed.status === 'fulfilled'
+                  ? `${lastClosed.planName ?? 'Your plan'} — the desk recorded your payment on ${new Date(lastClosed.closedAt as string).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
+                  : `${lastClosed.planName ?? 'Your request'}: ${lastClosed.closeNote ?? 'closed'}`}
+              </p>
+            </Panel>
+          ) : null}
+
           {/* ── What you have ── */}
           {current && currentPlan && (() => {
             const today = new Date();
@@ -325,6 +441,26 @@ export default function RenewMembership() {
             );
           })()}
 
+          {/* What cancelling today would pay back — the desk's own figure. */}
+          {quote && (
+            <Disclosure title="If you cancelled today" icon={<HandCoins size={17} />}
+              meta={quote.amount != null ? formatPeso(quote.amount) : 'Ask the desk'}>
+              <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-primary)' }}>{quote.rule_label}</p>
+              {basisLine(quote) && (
+                <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-text-secondary)' }}>{basisLine(quote)}</p>
+              )}
+              {quote.fee_deducted > 0 && (
+                <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
+                  Less a {formatPeso(quote.fee_deducted)} processing fee.
+                </p>
+              )}
+              <p style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                The same calculation the front desk uses. Cancelling is done at the desk, with a reason.{' '}
+                <button onClick={() => navigate('/terms')} style={{ color: 'var(--color-primary-300)' }}>How refunds work</button>
+              </p>
+            </Disclosure>
+          )}
+
           {/* ── What else exists ── */}
           <section>
             <SectionHead title="All plans" meta={`${plans.length} offered`} />
@@ -365,6 +501,7 @@ export default function RenewMembership() {
                         </div>
                         <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>
                           {describeTerm(plan)}
+                          {perMonth(plan) ? ` · ${perMonth(plan)}` : ''}
                           {plan.tier === 'freemium' && ' · one per member'}
                         </p>
                       </div>
@@ -403,9 +540,72 @@ export default function RenewMembership() {
             <p className="text-center" style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{action.note}</p>
           )}
 
-          <NocButton variant="action" disabled={!action.enabled} onClick={() => setConfirmed(true)} className="w-full">
-            {action.label}
-          </NocButton>
+          {/* The choice stays in reach however long the list — it sticks to the
+              bottom once a plan is picked, clear of the assistant's bubble. */}
+          {selected && action.enabled && (
+            <div style={{
+              position: 'sticky', bottom: 12, zIndex: 5, marginRight: 66,
+              display: 'flex', alignItems: 'center', gap: 10, padding: 8, paddingLeft: 14,
+              borderRadius: 20, background: 'var(--color-surface-raised)', border: '1px solid var(--color-hairline)',
+              boxShadow: '0 12px 32px -12px rgba(0,0,0,0.75)',
+            }}>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{selected.name}</span>
+                <span className="block" style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+                  {Number(selected.price) === 0 ? 'Free' : peso(Number(selected.price))}
+                </span>
+              </span>
+              <NocButton variant="fill" className="flex-none" onClick={() => (requests ? setSheet(true) : setConfirmed(true))}>
+                Continue
+              </NocButton>
+            </div>
+          )}
+
+          <GlassSheet
+            open={sheet && selected != null}
+            onClose={() => setSheet(false)}
+            title={action.label}
+            subtitle="Nothing is charged in the app — the desk takes cash"
+            footer={
+              <div className="flex flex-col" style={{ gap: 8 }}>
+                <NocButton variant="fill" className="w-full" disabled={sending} icon={<PaperPlaneTilt size={16} weight="fill" />}
+                  onClick={() => void send()}>
+                  {sending ? 'Sending…' : openRequest ? 'Replace my request' : 'Tell the desk I am coming'}
+                </NocButton>
+                <NocButton variant="ghost" className="w-full" onClick={() => { setSheet(false); setConfirmed(true); }}>
+                  Just show me what to do
+                </NocButton>
+              </div>
+            }
+          >
+            {selected && (
+              <div className="flex flex-col" style={{ gap: 14 }}>
+                <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+                  The front desk gets a heads-up that you want{' '}
+                  <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{selected.name}</span>
+                  {Number(selected.price) > 0 && (
+                    <> and will expect <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>{peso(Number(selected.price))}</span> in cash</>
+                  )}
+                  . Your plan changes when they record it.
+                </p>
+                <div>
+                  <p className="inline-flex items-center" style={{ gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+                    <Clock size={13} /> When will you come? (optional)
+                  </p>
+                  <div className="flex flex-wrap" style={{ gap: 8, marginTop: 8 }}>
+                    {['Today', 'Tomorrow', 'This week'].map((w) => (
+                      <Chip key={w} label={w} on={when === w} onClick={() => setWhen(when === w ? null : w)} />
+                    ))}
+                  </div>
+                </div>
+                {openRequest && (
+                  <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>
+                    This replaces your open request for {openRequest.planName}.
+                  </p>
+                )}
+              </div>
+            )}
+          </GlassSheet>
         </>
       )}
     </Page>

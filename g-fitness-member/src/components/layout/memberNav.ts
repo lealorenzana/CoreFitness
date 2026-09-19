@@ -59,7 +59,7 @@ const TAB_PATHS: string[][] = [
   ['/member/membership', '/member/renew', '/member/renew-membership',
    '/member/payments', '/member/attendance-history', '/member/rewards',
    '/member/profile', '/member/settings', '/member/change-password',
-   '/member/change-email', '/member/activity'],
+   '/member/change-email', '/member/activity', '/member/visits'],
 ];
 
 /** The tab a path belongs to, or null for a path that belongs to none. */

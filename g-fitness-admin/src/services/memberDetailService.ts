@@ -19,6 +19,7 @@ import {
   getMemberPlan, listMemberRoutines, listCoachNotes, getGoalValues,
   type MemberPlan, type MemberRoutine, type CoachNoteRecord,
 } from '../lib/api/memberTraining';
+import { getOpenRenewalRequest, type OpenRenewalRequest } from '../lib/api/renewalRequests';
 
 /**
  * Everything the front desk can see about one member, assembled from the ten
@@ -63,6 +64,8 @@ export interface MemberDetail {
   stats: MemberStats;
   /** The current term, used — null with no started membership. */
   termUse: TermUse | null;
+  /** "I'm coming to renew" from the phone app (0091), if open. */
+  renewalRequest: OpenRenewalRequest | null;
 }
 
 /**
@@ -229,6 +232,7 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     plan,
     routines,
     coachNotes,
+    renewalRequest,
   ] = await Promise.all([
     listMemberMemberships(memberId).catch(() => []),
     listMemberPayments(memberId).catch(() => []),
@@ -243,6 +247,7 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     getMemberPlan(memberId),
     listMemberRoutines(memberId),
     listCoachNotes(memberId),
+    getOpenRenewalRequest(memberId).catch(() => null),
   ]);
   const goalValues = await getGoalValues(goals.filter((g) => !g.achieved_on).map((g) => g.id)).catch(() => ({}));
 
@@ -272,6 +277,7 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     goalValues,
     progression,
     stats: computeStats(identity, payments, attendance, bookings, ptSessions),
+    renewalRequest,
     termUse: computeTermUse(memberships[0]?.start_date ?? null, attendance, bookings, ptSessions, workouts),
   };
 }

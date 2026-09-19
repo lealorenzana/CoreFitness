@@ -21,6 +21,7 @@ import Challenges from './pages/Challenges';
 import AccountActivity from './pages/AccountActivity';
 import MyEvaluations from './pages/MyEvaluations';
 import WorkoutHistory from './pages/WorkoutHistory';
+import VisitHistory from './pages/VisitHistory';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -256,6 +257,7 @@ function App() {
           <Route path="book" element={<Navigate to="/member/book-class" replace />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
+          <Route path="visits" element={<VisitHistory />} />
           {/* An unknown path under /member rendered the shell with an empty
               page in it — no error, no way to tell it apart from a screen that
               failed to load. A notification written before a route was renamed

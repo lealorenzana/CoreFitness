@@ -11,18 +11,24 @@ import {
   Chips, PageSummary,
 } from '../components/ui/kit';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { Banknote, CheckCircle, XCircle, Clock, Download, Plus } from 'lucide-react';
+import { Banknote, CheckCircle, XCircle, Clock, Download, Plus, Send } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
 import { listMembers } from '../lib/api/members';
 import { listMemberships } from '../lib/api/memberships';
 import { notifyUser } from '../lib/api/notify';
+import {
+  listOpenRenewalRequests, declineRenewalRequest, type OpenRenewalRequest,
+} from '../lib/api/renewalRequests';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 interface Payment {
   id: string; memberName: string; memberId: string; membershipId: string | null;
   amount: number; plan: string; method: string;
   status: 'completed' | 'pending' | 'failed';
-  date: string; dueDate: string; invoiceNumber: string;
+  /** `due_date` when one was set — never the paid date standing in for it.
+   *  recordPayment does not set it, so most rows have none and say nothing. */
+  date: string; dueDate: string | null; invoiceNumber: string;
 }
 
 /** The member's current plan, shown in the Record Payment form so staff aren't
@@ -64,15 +70,21 @@ export default function Payments() {
   // memberId -> the member's current plan, for the Record Payment form
   const [memberMembership, setMemberMembership] = useState<Record<string, MemberPlanInfo>>({});
   const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
+  /** "I'm coming to renew" from the phone app (0091). Null before it is live. */
+  const [requests, setRequests] = useState<OpenRenewalRequest[] | null>(null);
+  const [preset, setPreset] = useState<{ memberId: string; memberName: string; amount: number; key: string } | null>(null);
+  const [toDecline, setToDecline] = useState<OpenRenewalRequest | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [paymentRows, members, memberships] = await Promise.all([
+      const [paymentRows, members, memberships, open] = await Promise.all([
         listPayments(),
         listMembers(),
         listMemberships(),
+        listOpenRenewalRequests(),
       ]);
+      setRequests(open);
 
       const nameById: Record<string, string> = {};
       const photoById: Record<string, string | null> = {};
@@ -111,12 +123,14 @@ export default function Payments() {
           membershipId: p.membership_id,
           memberName: nameById[p.member_id] ?? 'Unknown member',
           amount: p.amount,
-          plan: p.membership_id ? planByMembershipId[p.membership_id] ?? 'Unknown plan' : 'Unknown plan',
+          // The plan it bought (0091 snapshot); older rows name today's plan and say so.
+          plan: p.plan_name
+            ?? (p.membership_id && planByMembershipId[p.membership_id] ? `${planByMembershipId[p.membership_id]} (current plan)` : 'Unknown plan'),
           method: p.method.toLowerCase(),
           status: p.status,
           // The day the cash was received, not the day it was keyed in.
           date: p.paid_on ?? p.created_at.slice(0, 10),
-          dueDate: p.due_date ?? p.paid_on ?? p.created_at.slice(0, 10),
+          dueDate: p.due_date,
           // No `?? INV-${id.slice(0,8)}` fallback. That invented an invoice
           // number at render time which was never stored, so the receipt modal
           // and this table could show different identifiers for one payment.
@@ -131,9 +145,7 @@ export default function Payments() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { void (async () => { await loadData(); })(); }, []);
 
   // Group payments by member
   const memberGroups: MemberGroup[] = Object.values(
@@ -156,7 +168,6 @@ export default function Payments() {
   const page = Math.min(currentPage, Math.max(1, Math.ceil(memberGroups.length / perPage)));
   const paginatedGroups = memberGroups.slice((page - 1) * perPage, page * perPage);
 
-  useEffect(() => { setCurrentPage(1); }, [filterStatus]);
 
   const handleRecordPayment = async (data: RecordPaymentInput) => {
     const membership = memberMembership[data.memberId];
@@ -211,6 +222,24 @@ export default function Payments() {
    * the payment *is* settled, and a member who misses the alert still has the
    * row — the same asymmetry notify.ts describes between record and alert.
    */
+  /** Record the payment a request asked for — the modal opens filled in. */
+  const recordForRequest = (r: OpenRenewalRequest) => {
+    setPreset({ memberId: r.memberId, memberName: r.memberName, amount: r.planPrice, key: r.id });
+    setIsModalOpen(true);
+  };
+
+  const decline = async (reason: string) => {
+    if (!toDecline) return;
+    try {
+      await declineRenewalRequest(toDecline.id, reason);
+      showToast('Request declined — the member has been told why', 'success');
+      setToDecline(null);
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not decline it', 'error');
+    }
+  };
+
   const confirmPayment = async (id: string) => {
     try {
       const updated = await updatePaymentStatus(id, 'completed');
@@ -277,6 +306,56 @@ export default function Payments() {
         }
       />
 
+      {/* ── Coming to renew (0091) ── a member tapped "Tell the desk I'm coming".
+          Recording the payment closes the request by itself; the only desk
+          action of its own is Decline. */}
+      {requests && requests.length > 0 && (
+        <Section title="Coming to renew" icon={Send} count={requests.length}
+          hint="closes itself when you record their payment">
+          <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+            {requests.map((r) => {
+              const current = memberMembership[r.memberId];
+              const planChange = current && current.planName !== r.planName;
+              const hours = Math.max(0, Math.round((Date.parse(new Date().toISOString()) - Date.parse(r.createdAt)) / 3_600_000));
+              return (
+                <div key={r.id} className="rounded-xl p-3 flex flex-col gap-2"
+                  style={{ background: 'var(--color-surface-raised)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={r.memberName} photoUrl={r.photoUrl} size={34} tone="secondary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] text-white font-semibold truncate">{r.memberName}</p>
+                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        {hours < 1 ? 'just now' : hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`}
+                        {r.note ? ` · ${r.note}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--color-secondary)' }}>
+                      {r.planPrice > 0 ? `₱${r.planPrice.toLocaleString()}` : 'Free'}
+                    </span>
+                  </div>
+                  <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                    Wants <span className="text-white font-semibold">{r.planName}</span>
+                    {current ? <> · on {current.planName} now</> : ' · no membership yet'}
+                  </p>
+                  {planChange && (
+                    <p className="text-[10px]" style={{ color: 'var(--color-secondary)' }}>
+                      A plan change: switch them to {r.planName} in Members → Membership first, then record the payment.
+                    </p>
+                  )}
+                  <div className="flex gap-1.5">
+                    <Button variant="secondary" size="sm" disabled={!!planChange || !current}
+                      onClick={() => recordForRequest(r)}>
+                      <Banknote size={13} /> Record payment
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setToDecline(r)}>Decline</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
       <StatTiles items={stats.map((s) => ({
         label: s.label,
         value: s.value,
@@ -298,7 +377,8 @@ export default function Payments() {
         actions={
           <Chips
             value={filterStatus}
-            onChange={setFilterStatus}
+            // Back to page one with the filter — in the handler, not an effect.
+            onChange={(v) => { setFilterStatus(v); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All' },
               { value: 'completed', label: 'Completed', count: payments.filter((p) => p.status === 'completed').length },
@@ -401,7 +481,9 @@ export default function Payments() {
                 <SheetRow label="Method">{methodIcon[p.method] || '💰'} {p.method}</SheetRow>
                 {/* paid_on, not created_at — the day the cash changed hands. */}
                 <SheetRow label="Paid on">{new Date(p.date).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
-                <SheetRow label="Covers until">{new Date(p.dueDate).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
+                {p.dueDate && (
+                  <SheetRow label="Covers until">{new Date(`${p.dueDate}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
+                )}
               </div>
 
               <div className="flex gap-1.5 mt-2.5">
@@ -422,11 +504,32 @@ export default function Payments() {
 
       <RecordPaymentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setPreset(null); }}
         onSubmit={handleRecordPayment}
         planByMember={memberMembership}
+        preset={preset}
       />
+      <DeclineDialog request={toDecline} onClose={() => setToDecline(null)} onDecline={decline} />
       <ViewReceiptModal isOpen={isReceiptModalOpen} onClose={() => { setIsReceiptModalOpen(false); setSelectedPayment(null); }} payment={selectedPayment} />
     </div>
+  );
+}
+
+/** Decline needs a reason the member reads — ConfirmDialog's reason field. */
+function DeclineDialog({ request, onClose, onDecline }: {
+  request: OpenRenewalRequest | null; onClose: () => void; onDecline: (reason: string) => void;
+}) {
+  return (
+    <ConfirmDialog
+      isOpen={!!request}
+      onClose={onClose}
+      onConfirm={(reason) => onDecline((reason ?? '').trim())}
+      title="Decline renewal request"
+      message={request ? `${request.memberName} asked for ${request.planName}.` : ''}
+      confirmText="Decline"
+      type="danger"
+      reason={{ label: 'Why', placeholder: 'e.g. Renewed in person already — nothing more to do.', required: true,
+        hint: 'The member reads this in their notifications and on their Plans screen.' }}
+    />
   );
 }

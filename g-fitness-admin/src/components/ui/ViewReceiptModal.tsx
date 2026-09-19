@@ -13,7 +13,8 @@ interface Payment {
   method: string;
   status: string;
   date: string;
-  dueDate: string;
+  /** Only when the payment recorded one — a receipt never invents a term. */
+  dueDate: string | null;
   invoiceNumber: string;
 }
 
@@ -75,10 +76,9 @@ Amount: ₱${payment.amount.toLocaleString()}
 Payment Method: ${payment.method}
 Status: ${payment.status}
 
-MEMBERSHIP PERIOD
-Start Date: ${new Date(payment.date).toLocaleDateString()}
-Expiry Date: ${new Date(payment.dueDate).toLocaleDateString()}
-
+${payment.dueDate ? `MEMBERSHIP PERIOD
+Covers until: ${new Date(`${payment.dueDate}T00:00:00`).toLocaleDateString()}
+` : ''}
 =====================================
 Thank you for your payment!
 ${gymName}
@@ -230,7 +230,10 @@ ${gymName}
                   </div>
                 </div>
 
-                {/* Membership Period */}
+                {/* Membership Period — only when the payment recorded one. It
+                    used to print the paid date as both start and expiry, and a
+                    0-day duration, for every payment recordPayment() made. */}
+                {payment.dueDate && (
                 <div className="bg-dark rounded-xl p-6">
                   <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
                     <Calendar size={20} className="text-primary-start" />
@@ -244,16 +247,17 @@ ${gymName}
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm mb-1">Expiry Date</p>
-                      <p className="text-white font-medium">{new Date(payment.dueDate).toLocaleDateString()}</p>
+                      <p className="text-white font-medium">{new Date(`${payment.dueDate}T00:00:00`).toLocaleDateString()}</p>
                     </div>
                   </div>
 
                   <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                     <p className="text-violet text-sm">
-                      <strong>Duration:</strong> {Math.ceil((new Date(payment.dueDate).getTime() - new Date(payment.date).getTime()) / (1000 * 60 * 60 * 24))} days
+                      <strong>Duration:</strong> {Math.ceil((new Date(`${payment.dueDate}T00:00:00`).getTime() - new Date(payment.date).getTime()) / (1000 * 60 * 60 * 24))} days
                     </p>
                   </div>
                 </div>
+                )}
 
                 {/* Footer Note */}
                 <div className="bg-dark-border/30 rounded-xl p-4 text-center">

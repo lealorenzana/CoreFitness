@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 /**
  * What a membership would be refunded, and why (migrations 0070, 0073).
  *
- * **Copied from g-fitness-member/src/lib/api/refunds.ts and kept identical** —
+ * **Copied from g-fitness-admin/src/lib/api/refunds.ts and kept identical** —
  * the member's Plans screen and the desk's cancel dialog quote the same
  * function, so they print the same figure and the same sentence.
  *

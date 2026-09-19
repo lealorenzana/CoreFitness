@@ -161,6 +161,10 @@ export interface PaymentRow {
   paid_on: string;
   /** Audit timestamp: when the row was written. Never the same question as paid_on. */
   created_at: string;
+  /** 0091: the plan this payment bought, copied when it was recorded. NULL on
+   *  older rows — the screens then say "current plan" rather than guess. */
+  plan_id?: string | null;
+  plan_name?: string | null;
 }
 
 export interface ClassRow {

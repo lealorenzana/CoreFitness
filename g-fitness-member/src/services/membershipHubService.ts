@@ -9,6 +9,7 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import { listWorkoutLogs } from '../lib/api/progress';
 import { listMyBookings } from './bookingService';
 import { dateKey, localDateKey } from '../utils/dates';
+import { listMyRenewalRequests, type RenewalRequest } from '../lib/api/renewalRequests';
 
 /**
  * Everything the Membership tab states, assembled in one place.
@@ -64,6 +65,8 @@ export interface MembershipHub {
   /** What this term has been used for so far; null with no dated term, or
    *  when the reads failed — never a row of zeros that were never counted. */
   term: TermUse | null;
+  /** An open renewal request (0091) — the desk knows they are coming. */
+  renewalRequest: RenewalRequest | null;
 }
 
 /**
@@ -91,7 +94,7 @@ export type ActivityRow =
   | { kind: 'membership'; at: string; title: string; note: string | null };
 
 export async function getMembershipHub(memberId: string): Promise<MembershipHub> {
-  const [home, points, payments, events, rewards, ledger, redemptions, attendance, bookings, logs] = await Promise.all([
+  const [home, points, payments, events, rewards, ledger, redemptions, attendance, bookings, logs, requests] = await Promise.all([
     getMemberHome(memberId),
     getBalance(memberId).then(
       (n) => ({ ok: true as const, n }),
@@ -110,6 +113,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     listMemberAttendance(memberId).catch(() => null),
     listMyBookings(memberId).catch(() => null),
     listWorkoutLogs(memberId).catch(() => null),
+    listMyRenewalRequests(memberId),
   ]);
 
   // ── This term so far ──
@@ -154,6 +158,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
   return {
     home,
     term,
+    renewalRequest: requests?.find((r) => r.status === 'open') ?? null,
     rewards,
     activity,
     activityGaps,

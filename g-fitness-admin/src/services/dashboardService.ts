@@ -608,8 +608,25 @@ export const dashboardService = {
     return MONTHS.map((day, i) => ({ day, count: perMonth[i] }));
   },
 
-  /** Busiest hours, from real check-in timestamps over the last 30 days. */
+  /**
+   * Busiest hours, from real check-in timestamps over the last 30 days.
+   *
+   * Reads `gym_traffic()` (0091) — the same function the member app's "When
+   * the gym is busy" card reads, so the desk and members see one picture with
+   * the same bands. The in-browser bucketing below stays only as the fallback
+   * for a database without 0091, and uses the identical edges.
+   */
   async getAttendanceHeatmap(): Promise<HeatmapCell[]> {
+    const shared = await supabase.rpc('gym_traffic', { p_days: 30 });
+    if (!shared.error) {
+      const rows = (shared.data ?? []) as { dow: number; band: string; visits: number }[];
+      if (rows.length === 0) return [];
+      const bands = ['6am', '9am', '12pm', '3pm', '6pm', '9pm'];
+      return WEEK_ORDER.flatMap((day) => bands.map((hour) => ({
+        day, hour,
+        visits: rows.find((r) => DAYS[r.dow] === day && r.band === hour)?.visits ?? 0,
+      })));
+    }
     const since = new Date();
     since.setDate(since.getDate() - 30);
     const { data, error } = await supabase
