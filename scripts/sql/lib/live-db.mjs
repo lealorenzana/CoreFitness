@@ -127,6 +127,17 @@ export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
     try { await db.exec(readFileSync(`${repo}/scripts/demo-data/${seed}`, 'utf8')); log(`SEED OK: ${seed}`); }
     catch (e) { throw new Error(`SEED FAILED: ${seed}\n   ${describe(e)}`); }
   }
-  if (tenancy) await db.exec(`select set_config('request.jwt.claim.sub', '', false);`);
+  if (tenancy) {
+    // The demo seed turns user triggers off while it inserts, so the 0097 role
+    // mirror never sees its accounts. Live, they existed before 0097 and its
+    // backfill filed them under Gym #1; this is that backfill, run after them.
+    await db.exec(`
+      insert into gym_roles (gym_id, user_id, role, status)
+      select gym_one(), p.id, p.role,
+             case when p.status in ('active','pending_approval','suspended','archived') then p.status else 'active' end
+      from profiles p on conflict (gym_id, user_id) do nothing;
+      update profiles set active_gym_id = gym_one() where active_gym_id is null;
+      select set_config('request.jwt.claim.sub', '', false);`);
+  }
   return db;
 }
