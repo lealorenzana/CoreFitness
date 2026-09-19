@@ -545,4 +545,54 @@ check('no transition key is left but the three the apps still upsert on',
   (await one(`select count(*)::int as n from pg_constraint where conname like '%\\_transition' escape '\\'`)).n === 3
   && (await one(`select count(*)::int as n from pg_indexes where indexname like '%\\_transition'`)).n === 3);
 
+// ---- 0104: what the apps read to be gym-aware ---------------------------------
+await as(P.adminB);
+const ctxB = await one(`select * from my_gym_context()`);
+check("my_gym_context: Gym B's admin is an active admin of Gym B, with its branding",
+  ctxB?.gym_id === GYM_B && ctxB.role === 'admin' && ctxB.status === 'active' && ctxB.accent === 'violet'
+  && ctxB.gym_count === 1 && ctxB.lock_reason === null, JSON.stringify(ctxB));
+await as(P.both);
+check('my_gym_context counts both gyms for a two-gym member', (await one(`select gym_count from my_gym_context()`)).gym_count === 2);
+await as(P.outsider);
+check('my_gym_context is empty for someone with no gym', (await db.query(`select * from my_gym_context()`)).rows.length === 0);
+// gym_people: role and status are this gym's.
+await asOwner();
+await db.exec(`update gym_roles set role = 'trainer' where user_id = '${P.both}' and gym_id = '${GYM_B}'`);
+await as(P.adminB);
+const bothB = await one(`select role::text, status from gym_people where id = '${P.both}'`);
+check("gym_people shows a person's role in this gym (a coach here, a member elsewhere)", bothB?.role === 'trainer', JSON.stringify(bothB));
+check('gym_people lists only this gym', !(await db.query(`select id from gym_people`)).rows.some((r) => r.id === P.memberA));
+await as(P.adminA);
+check("…and in Gym A the same person is a member", (await one(`select role::text as r from gym_people where id = '${P.both}'`))?.r === 'member');
+await asOwner();
+await db.exec(`update gym_roles set role = 'member' where user_id = '${P.both}' and gym_id = '${GYM_B}'`);
+// add_person_to_gym: the admin's gym only; the desk only members. The account is
+// created the way the Edge Functions create it (Task 8): profile first, in the admin's gym.
+await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('7a000000-0000-4000-8000-000000000001', 'newcoach@corefitness-test.com', '{}');
+  insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)
+  values ('7a000000-0000-4000-8000-000000000001', 'New', 'Coach', 'newcoach@corefitness-test.com', 'active', 'trainer', '${GYM_B}');
+  delete from gym_roles where user_id = '7a000000-0000-4000-8000-000000000001';`);
+await as(P.staffB);
+check('the front desk cannot add a coach', !!(await fails(`select add_person_to_gym('7a000000-0000-4000-8000-000000000001', 'trainer')`)));
+await as(P.memberB);
+check('a member cannot add anyone', !!(await fails(`select add_person_to_gym('7a000000-0000-4000-8000-000000000001', 'member')`)));
+await as(P.adminB);
+await db.exec(`select add_person_to_gym('7a000000-0000-4000-8000-000000000001', 'trainer')`);
+await asOwner();
+const added = await db.query(`select gym_id::text as g, role::text as r from gym_roles where user_id = '7a000000-0000-4000-8000-000000000001'`);
+check("Gym B's admin adds a coach to Gym B only, with a coach profile there",
+  added.rows.length === 1 && added.rows[0].g === GYM_B && added.rows[0].r === 'trainer'
+  && (await one(`select count(*)::int as n from trainer_profiles where profile_id = '7a000000-0000-4000-8000-000000000001' and gym_id = '${GYM_B}'`)).n === 1,
+  JSON.stringify(added.rows));
+// set_gym_role: this gym only, never yourself.
+await as(P.adminA);
+check("Gym A's admin cannot change a role in Gym B", !!(await fails(`select set_gym_role('${P.memberB}', 'trainer')`)));
+check('an admin cannot change their own role', !!(await fails(`select set_gym_role('${P.adminA}', 'member')`)));
+await db.exec(`select set_gym_role('${P.staffA}', 'trainer')`);
+await asOwner();
+check('set_gym_role makes a coach, with a coach profile',
+  (await one(`select role::text as r from gym_roles where user_id = '${P.staffA}' and gym_id = '${GYM_A}'`)).r === 'trainer'
+  && (await one(`select count(*)::int as n from trainer_profiles where profile_id = '${P.staffA}' and gym_id = '${GYM_A}'`)).n === 1);
+await db.exec(`update gym_roles set role = 'staff' where user_id = '${P.staffA}' and gym_id = '${GYM_A}'`);
+
 finish();
