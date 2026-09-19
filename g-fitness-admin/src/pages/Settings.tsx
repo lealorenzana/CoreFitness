@@ -163,7 +163,7 @@ export default function Settings() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const handleSaveProfile = async () => {
     if (!me) return;
@@ -352,6 +352,11 @@ export default function Settings() {
             );
           })}
         </nav>
+        {/* Migrations, crash reports, backups — its own page, paired by tabs. */}
+        <Link to="/system" className="mt-4 mx-2 px-3 py-2.5 rounded-xl text-xs font-semibold block"
+          style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
+          System health →
+        </Link>
 
         {/* Plans used to be edited here too, against localStorage. One editor only. */}
         <Link to="/membership-plans"

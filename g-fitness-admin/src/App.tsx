@@ -27,6 +27,7 @@ import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
+import SystemHealth from './pages/SystemHealth';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -90,6 +91,7 @@ function App() {
                 matches so the two cannot disagree. */}
             <Route path="credentials" element={<ProtectedRoute adminOnly><Credentials /></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
+            <Route path="system" element={<ProtectedRoute adminOnly><SystemHealth /></ProtectedRoute>} />
           </Route>
 
           {/* Self-service check-in by the door (2026-09-19): full screen, outside

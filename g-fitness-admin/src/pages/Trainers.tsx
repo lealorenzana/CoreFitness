@@ -6,13 +6,14 @@ import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Pagination from '../components/ui/Pagination';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
+import TrainerMonthTotals from '../components/ui/TrainerMonthTotals';
 import {
   PageHeader, StatTiles, EmptyState, CardGrid, TileCard, OpenChevron,
   SearchBox, PageSummary,
 } from '../components/ui/kit';
 import { usePaged } from '../hooks/usePaged';
 import { useFillGrid } from '../hooks/useFillGrid';
-import { UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Archive, UserX, UserCheck, Clock, Star, Users } from 'lucide-react';
+import { CalendarRange, UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Archive, UserX, UserCheck, Clock, Star, Users } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
@@ -88,6 +89,8 @@ const CREDENTIAL_STYLE = {
 };
 
 export default function Trainers() {
+  /** Sessions and classes each coach delivered in a month (0095). */
+  const [showTotals, setShowTotals] = useState(false);
   const [trainers, setTrainers] = useState<TrainerDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
@@ -329,6 +332,7 @@ export default function Trainers() {
   // sits at the bottom edge instead of wherever the last card happened to end.
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
+      <TrainerMonthTotals isOpen={showTotals} onClose={() => setShowTotals(false)} />
       <PageHeader
         title="Trainers"
         subtitle={showArchived ? 'Archived trainers — classes and sessions retained' : 'Who coaches here, and who members can actually book'}
@@ -337,6 +341,9 @@ export default function Trainers() {
             <SearchBox value={search} onChange={setSearch} placeholder="Search name or specialty…" width={210} />
             <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
               <Archive size={14} /> {showArchived ? 'Active roster' : 'Archived'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowTotals(true)}>
+              <CalendarRange size={14} /> Monthly totals
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
               <UserPlus size={14} /> Add trainer

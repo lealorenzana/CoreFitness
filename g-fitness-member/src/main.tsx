@@ -4,15 +4,21 @@ import './index.css';
 import App from './App.tsx';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { keepAppUpdated } from './lib/appUpdate';
+import { installErrorReporter } from './lib/errorReporter';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Registers the service worker and reloads onto a new deploy — see appUpdate.ts.
 keepAppUpdated();
+// Crashes are filed in client_errors (0095) — see errorReporter.ts.
+installErrorReporter('member');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );
 

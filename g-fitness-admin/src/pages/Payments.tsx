@@ -21,6 +21,7 @@ import {
   listOpenRenewalRequests, declineRenewalRequest, type OpenRenewalRequest,
 } from '../lib/api/renewalRequests';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import CashCloseout from '../components/ui/CashCloseout';
 
 interface Payment {
   id: string; memberName: string; memberId: string; membershipId: string | null;
@@ -362,6 +363,10 @@ export default function Payments() {
         icon: s.icon,
         tone: s.color === 'var(--color-secondary)' ? 'secondary' : 'primary',
       }))} />
+
+      {/* The drawer at closing time (0095). Re-reads whenever payments change,
+          so a payment recorded just now is in "should be in the drawer". */}
+      <CashCloseout refreshKey={payments} />
 
       {/* The member list.
 

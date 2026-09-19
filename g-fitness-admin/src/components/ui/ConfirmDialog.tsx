@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
@@ -107,6 +108,8 @@ export default function ConfirmDialog({
     const id = window.setTimeout(() => fieldRef.current?.focus(), 60);
     return () => window.clearTimeout(id);
   }, [isOpen]);
+
+  useEscapeToClose(isOpen, onClose);
 
   const blocked = reason?.required === true && text.trim() === '';
 

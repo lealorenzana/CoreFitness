@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Button from './Button';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 /**
  * Standard admin modal:
@@ -36,6 +37,7 @@ export default function Modal({
   footer, onConfirm, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
   confirmDisabled, hideFooter, size = 'md',
 }: ModalProps) {
+  useEscapeToClose(isOpen, onClose);
   return createPortal(
     <AnimatePresence>
       {isOpen && (

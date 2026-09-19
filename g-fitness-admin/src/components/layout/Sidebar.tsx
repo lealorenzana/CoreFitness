@@ -139,7 +139,7 @@ const NAV: Entry[] = [
     ],
   },
 
-  { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true },
+  { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true, alsoMatches: ['/system'] },
 ];
 
 /** The group a path lives in, or null for a top-level page. */
