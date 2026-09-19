@@ -37,6 +37,11 @@ node <path-to>/scripts/sql/booking-conflicts.mjs "<path-to-repo>"
 | `booking-conflicts.mjs` | 0068 | 18 |
 | `trainer-decisions.mjs` | 0071 + 0074 | 24 |
 | `reasons-and-limits.mjs` | 0057, 0069 + 0074 | 24 |
+| `tenancy-isolation.mjs` | 0097–0103, on **every** real migration + both demo seeds | two gyms, every role, every table, every definer function: nothing crosses |
+
+`lib/live-db.mjs` builds the real schema (every migration, Supabase's stubs and grants) and is
+shared by `replay-migrations.mjs` and `tenancy-isolation.mjs`. `definer-inventory.py` lists every
+function at its **last** definition and the tables it touches — start any function rewrite there.
 
 Each exits non-zero if anything fails, so they can be chained.
 
