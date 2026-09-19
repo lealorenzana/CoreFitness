@@ -43,10 +43,17 @@ function ChatheadGate({ pathname }: { pathname: string }) {
   return <FloatingChathead />;
 }
 
+/** Screens that draw their own full-screen chrome. */
+const IMMERSIVE = /^\/member\/track\/session\//;
+
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
   const root = tabRootFor(location.pathname);
+  // A routine being run takes the whole screen (2026-09-19): no bar, no chat
+  // head, no gutter — the page draws its own chrome, and its way out is its own
+  // close button (the session stays open and Today offers to resume it).
+  const immersive = IMMERSIVE.test(location.pathname);
 
   // Was `mainRef.current.scrollTo(0, 0)` on every pathname change — a deliberate
   // reset that sent the member back to the top of Home every time they came
@@ -68,13 +75,13 @@ export default function Layout() {
           assistant's composer) opt out of it. */}
       <main
         ref={mainRef}
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative"
+        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive ? 'overflow-hidden' : 'overflow-y-auto'}`}
         style={{
           backgroundColor: 'var(--color-bg)',
-          paddingLeft: 'var(--gutter)',
-          paddingRight: 'var(--gutter)',
+          paddingLeft: immersive ? 0 : 'var(--gutter)',
+          paddingRight: immersive ? 0 : 'var(--gutter)',
           // A root's header already ends in the rail's own padding.
-          paddingTop: root ? 4 : 'var(--gutter)',
+          paddingTop: immersive ? 0 : root ? 4 : 'var(--gutter)',
         }}
       >
         {/* `min-h-full flex flex-col` so a page can ask to fill the screen with
@@ -91,9 +98,9 @@ export default function Layout() {
         </div>
       </main>
 
-      <TabBar />
+      {!immersive && <TabBar />}
 
-      <ChatheadGate pathname={location.pathname} />
+      {!immersive && <ChatheadGate pathname={location.pathname} />}
 
       {/* Sits at shell level so an unlock earned on any screen can surface
           there, rather than only on the page that happened to load it. */}

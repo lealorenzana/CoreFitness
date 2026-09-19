@@ -107,7 +107,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
   `<main>` ends where the bar begins (`--bar-height`), so nothing scrolls under it and `--dock-clear` is
   breathing room only. `memberNav.ts` owns tabs, rails and the More sheet; `TAB_PATHS` needs **one row
   per tab** or the wrong tab lights. **The trainer shell mirrors it** (2026-09-18): `trainerNav.ts`,
-  `TrainerTabHeader`, an in-flow five-tab bar; the `.dock*` CSS is deleted. Sheets use `GlassSheet`.
+  `TrainerTabHeader`, an in-flow five-tab bar; the `.dock*` CSS is deleted. Sheets use `GlassSheet`. **A routine run (`/member/track/session/*`) is full screen**: Layout's `IMMERSIVE` drops the bar and chat head.
 - **Pages portal into roots that are `pointer-events: none`**: the always-mounted wrapper owns
   `pointerEvents: open ? 'auto' : 'none'` — **never** on an `AnimatePresence` child, which keeps its last
   props while exiting and eats every tap (shipped 4×). Overlays portal, never `absolute` inside `<main>`.

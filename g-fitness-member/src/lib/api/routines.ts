@@ -23,6 +23,9 @@ export interface RoutineExercise {
   targetWeightKg: number | null;
   targetSeconds: number | null;
   restSeconds: number;
+  /** From the catalogue, for display only (the run screen's backdrop). Absent on custom rows. */
+  muscleGroup?: string | null;
+  equipment?: string | null;
 }
 
 export interface Routine {
@@ -40,13 +43,13 @@ interface RoutineRow {
     id: string; position: number; exercise_id: string | null; custom_name: string | null;
     target_sets: number; target_reps: number | null; target_weight_kg: string | number | null;
     target_seconds: number | null; rest_seconds: number;
-    exercises: { name: string; is_timed: boolean } | null;
+    exercises: { name: string; is_timed: boolean; muscle_group?: string | null; equipment?: string | null } | null;
   }[];
 }
 
 const SELECT = `id, name, notes, position, updated_at,
   workout_routine_exercises (id, position, exercise_id, custom_name, target_sets, target_reps,
-    target_weight_kg, target_seconds, rest_seconds, exercises (name, is_timed))`;
+    target_weight_kg, target_seconds, rest_seconds, exercises (name, is_timed, muscle_group, equipment))`;
 
 function toRoutine(r: RoutineRow): Routine {
   return {
@@ -68,6 +71,8 @@ function toRoutine(r: RoutineRow): Routine {
         targetWeightKg: e.target_weight_kg == null ? null : Number(e.target_weight_kg),
         targetSeconds: e.target_seconds,
         restSeconds: e.rest_seconds,
+        muscleGroup: e.exercises?.muscle_group ?? null,
+        equipment: e.exercises?.equipment ?? null,
       })),
   };
 }
