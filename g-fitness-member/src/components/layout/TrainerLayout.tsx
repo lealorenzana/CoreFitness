@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
 import TrainerBottomNav from './TrainerBottomNav';
@@ -49,7 +51,11 @@ export default function TrainerLayout() {
         {/* CSS entrance, keyed on the path — never framer's rAF-driven
             `initial`, which stays at zero on a page that is not compositing. */}
         <div key={location.pathname} className="min-h-full flex flex-col noc-screen">
-          <Outlet />
+          {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
+              stays and the page area shows the usual skeleton meanwhile. */}
+          <Suspense fallback={<SkeletonList count={4} />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 

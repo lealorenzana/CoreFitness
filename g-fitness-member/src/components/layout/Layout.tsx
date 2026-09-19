@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
 import TabBar from './TabBar';
@@ -10,6 +12,9 @@ import { isEnabled } from '../../lib/api/planFeatures';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
+import { loadLanguagePreference } from '../../lib/i18n';
+import { getCurrentMemberId } from '../../services/bookingService';
+import { useEffect } from 'react';
 
 /**
  * The member shell (Nocturne redesign, 2026-09-16), top to bottom:
@@ -61,6 +66,15 @@ export default function Layout() {
   // seen for the first time still starts at the top.
   useScrollMemory(mainRef, location.pathname);
 
+  // The member's language (0095), once per shell mount. Missing column or a
+  // failed read leaves English, which is what every screen falls back to.
+  useEffect(() => {
+    void (async () => {
+      const id = await getCurrentMemberId().catch(() => null);
+      if (id) await loadLanguagePreference(id).catch(() => undefined);
+    })();
+  }, []);
+
   return (
     <PhoneChassis>
       <Toaster />
@@ -94,7 +108,11 @@ export default function Layout() {
             is driven by rAF, and on a page that is not compositing it stays at
             zero — the trap CLAUDE.md names. */}
         <div key={location.pathname} className="min-h-full flex flex-col noc-screen">
-          <Outlet />
+          {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
+              stays and the page area shows the usual skeleton meanwhile. */}
+          <Suspense fallback={<SkeletonList count={4} />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 

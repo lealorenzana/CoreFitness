@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, X } from '@phosphor-icons/react';
 import { EVERYTHING } from './memberNav';
 import { GLASS } from '../ui/glass';
+import { useT } from '../../lib/i18n';
 
 /**
  * Everything — every member screen, grouped, one tap each.
@@ -18,6 +19,7 @@ import { GLASS } from '../ui/glass';
  * `createPortal` runs only while open, so nothing sits over the app at rest.
  */
 export default function EverythingSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,7 +50,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
       }}
     >
       <div className="flex-none flex items-center justify-between" style={{ padding: '18px var(--gutter) 6px' }}>
-        <h2 className="screen-title">Everything</h2>
+        <h2 className="screen-title">{t('Everything')}</h2>
         <button
           onClick={onClose}
           aria-label="Close"
@@ -71,7 +73,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
                 width: 14, height: 2, borderRadius: 1,
                 background: 'var(--color-primary)', boxShadow: '0 0 6px var(--color-primary)',
               }} />
-              <span className="eyebrow" style={{ letterSpacing: '0.14em' }}>{group}</span>
+              <span className="eyebrow" style={{ letterSpacing: '0.14em' }}>{t(group)}</span>
             </h3>
             {items.map((item) => {
               const current = item.path === here;
@@ -88,7 +90,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
                     color: current ? 'var(--color-primary-300)' : 'var(--color-text-primary)',
                   }}
                 >
-                  {item.label}
+                  {t(item.label)}
                   <ArrowUpRight size={15} style={{ color: 'var(--color-text-secondary)' }} />
                 </button>
               );

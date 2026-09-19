@@ -7,6 +7,7 @@ import { RAILS, type Tab } from './memberNav';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
 import { weekRangeLabel } from '../../utils/dates';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
+import { dateLocale, tr, useLanguage, useT, type Lang } from '../../lib/i18n';
 
 /**
  * The two title lines for a tab root.
@@ -14,23 +15,23 @@ import { useMyIdentity } from '../../hooks/useMyIdentity';
  * Local dates throughout — built from the device's own calendar day, never from
  * `toISOString()`, which is yesterday in Manila until 8 AM.
  */
-function titleFor(tab: Tab, now: Date, o: HeaderOverride | undefined): [string, string] {
+function titleFor(tab: Tab, now: Date, o: HeaderOverride | undefined, lang: Lang): [string, string] {
   switch (tab.id) {
     case 'today':
       return [
-        now.toLocaleDateString('en-US', { weekday: 'long' }),
-        now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }),
+        now.toLocaleDateString(dateLocale(lang), { weekday: 'long' }),
+        now.toLocaleDateString(lang === 'fil' ? 'fil-PH' : 'en-GB', { day: 'numeric', month: 'long' }),
       ];
     case 'train':
       // The Train matrix starts today and runs seven days, so the title names
       // exactly the days the matrix shows.
       // The page overrides both lines when the matrix moves to next week.
-      return [o?.title ?? 'This week', o?.sub ?? weekRangeLabel(now)];
+      return [o?.title ?? tr('This week', lang), o?.sub ?? weekRangeLabel(now)];
     case 'you':
       // The plan name arrives from the page. Until it does the line is empty
       // rather than a placeholder — a missed lookup renders nothing, never a
       // plausible default.
-      return [o?.title ?? 'Your account', o?.sub ?? ''];
+      return [o?.title ?? tr('Your account', lang), o?.sub ?? ''];
   }
 }
 
@@ -86,7 +87,9 @@ export default function TabHeader({ tab }: { tab: Tab }) {
   const navigate = useNavigate();
   const override = useTabHeaderOverride(tab.id);
   const now = new Date();
-  const [line1, line2] = titleFor(tab, now, override);
+  const t = useT();
+  const lang = useLanguage();
+  const [line1, line2] = titleFor(tab, now, override, lang);
   // Who is signed in belongs on Today, the landing screen — on Train and You it
   // was a second greeting pushing the content down (member's request, 2026-09-17).
   const isToday = tab.id === 'today';
@@ -109,7 +112,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
             aria-label="Your profile" style={{ gap: 11 }}>
             <Avatar name={me?.fullName} photoUrl={me?.photoUrl} size={40} />
             <span className="min-w-0">
-              <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{greetingFor(now)}</span>
+              <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t(greetingFor(now))}</span>
               <span className="block truncate" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
                 {me?.firstName ?? ' '}
               </span>
@@ -133,7 +136,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         {!isToday && <div style={{ paddingTop: 4 }}>{actions}</div>}
       </div>
 
-      <p className="eyebrow" style={{ marginTop: 12 }}>{tab.eyebrow}</p>
+      <p className="eyebrow" style={{ marginTop: 12 }}>{t(tab.eyebrow)}</p>
 
       <div className="rule" style={{ marginTop: 12 }} />
 
@@ -163,7 +166,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
               {RailIcon && (
                 <RailIcon aria-hidden size={15} style={{ color: 'var(--color-text-secondary)' }} />
               )}
-              {d.label}
+              {t(d.label)}
             </button>
           );
         })}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowRight, CaretDown, CaretLeft, CaretRight, Check, CheckCircle, Flag, ListBullets, Pause, Play, Plus,
+  ArrowRight, CaretDown, CaretLeft, CaretRight, Check, CheckCircle, CloudSlash, Flag, ListBullets, Pause, Play, Plus,
   SpeakerHigh, SpeakerSlash, SunDim, Timer, TrendUp, Trophy,
 } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -21,6 +21,16 @@ import {
   type LastSet, type Routine, type RoutineExercise, type SessionHeader,
 } from '../lib/api/routines';
 import { errorMessage } from '../utils/errorMessage';
+import { getCurrentMemberId } from '../services/bookingService';
+import {
+  dropQueued, flushOutbox, isNetworkError, newSetId, pendingFor, queueSet, type QueuedSet,
+} from '../lib/offlineSets';
+
+/** A set still on the phone, drawn like one the server has. */
+const fromQueued = (q: QueuedSet): WorkoutSet => ({
+  id: q.id, exerciseId: q.set.exerciseId ?? null, customName: q.set.customName ?? null, setNumber: q.set.setNumber,
+  reps: q.set.reps ?? null, weightKg: q.set.weightKg ?? null, durationSeconds: q.set.durationSeconds ?? null, distanceM: null,
+});
 
 /** The values being typed into one not-yet-logged set. */
 interface Draft { reps: string; kg: string; secs: string }
@@ -135,6 +145,10 @@ function WorkoutRun() {
   const [now, setNow] = useState(() => Date.now());
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [done, setDone] = useState<Finished | null>(null);
+  /** Who is signed in — the offline outbox only ever sends this member's sets. */
+  const [memberId, setMemberId] = useState<string | null>(null);
+  /** Ids of sets saved on the phone and not yet on the server (lib/offlineSets.ts). */
+  const [queued, setQueued] = useState<Set<string>>(new Set());
 
   // What the clock below needs without re-subscribing: the rest end, whether
   // sound is on, which countdown second already beeped, and the hold.
@@ -188,7 +202,29 @@ function WorkoutRun() {
 
   const awake = useWakeLock(!loading && !error && !done && routine != null);
 
-  const refresh = useCallback(async (id: string) => setSets(await listSets(id)), []);
+  /** The server's sets plus any still waiting on this phone. */
+  const refresh = useCallback(async (id: string, member: string | null) => {
+    const server = await listSets(id);
+    const waiting = member ? pendingFor(id, member).filter((q) => !server.some((s) => s.id === q.id)) : [];
+    setSets([...server, ...waiting.map(fromQueued)]);
+    setQueued(new Set(waiting.map((q) => q.id)));
+  }, []);
+
+  // Send what is waiting whenever the connection comes back, and every 15 s
+  // while anything is waiting (the "online" event is not reliable on Android).
+  useEffect(() => {
+    if (!logId || !memberId || queued.size === 0) return;
+    const push = async () => {
+      const { sent } = await flushOutbox(memberId);
+      if (sent > 0) {
+        await refresh(logId, memberId).catch(() => undefined);
+        toast.success(sent === 1 ? 'Back online — your set is saved' : `Back online — ${sent} sets saved`);
+      }
+    };
+    window.addEventListener('online', push);
+    const t = window.setInterval(() => { void push(); }, 15_000);
+    return () => { window.removeEventListener('online', push); window.clearInterval(t); };
+  }, [logId, memberId, queued.size, refresh]);
 
   useEffect(() => {
     let alive = true;
@@ -198,7 +234,10 @@ function WorkoutRun() {
         const s = await getSession(logId);
         if (!s) throw new Error('That workout could not be found.');
         if (!s.routineId) { navigate('/member/track/log', { replace: true }); return; }
-        const [r, recorded] = await Promise.all([getRoutine(s.routineId), listSets(logId)]);
+        const [r, serverSets, me] = await Promise.all([getRoutine(s.routineId), listSets(logId), getCurrentMemberId()]);
+        // Anything logged offline last time is shown straight away and sent below.
+        const waiting = me ? pendingFor(logId, me).filter((q) => !serverSets.some((x) => x.id === q.id)) : [];
+        const recorded = [...serverSets, ...waiting.map(fromQueued)];
         if (!r) throw new Error('The routine for this workout was deleted. Finish or discard it from My routines.');
         const lastMap = await lastSetsFor(r.exercises.map((e) => e.exerciseId).filter(Boolean) as string[])
           .catch(() => new Map<string, LastSet[]>());
@@ -206,6 +245,8 @@ function WorkoutRun() {
         setSession(s);
         setRoutine(r);
         setSets(recorded);
+        setMemberId(me);
+        setQueued(new Set(waiting.map((q) => q.id)));
         setLast(lastMap);
         // Resume: every exercise with its target reached is done; start at the
         // first that is not. Ones with sets already are "started".
@@ -280,15 +321,27 @@ function WorkoutRun() {
     const weightKg = ex.isTimed || d.kg.trim() === '' ? null : Number(d.kg);
     setBusy(true);
     try {
-      await addSet(logId, {
+      const payload = {
         exerciseId: ex.exerciseId,
         customName: ex.exerciseId ? null : ex.customName,
         setNumber,
         reps,
         weightKg,
         durationSeconds: secs,
-      });
-      await refresh(logId);
+      };
+      const id = newSetId();
+      try {
+        await addSet(logId, payload, id);
+        await refresh(logId, memberId);
+      } catch (err) {
+        // No signal: keep it on the phone and carry on as if it had saved —
+        // the rest timer and the next set must not wait for the network.
+        if (!memberId || !isNetworkError(err)) throw err;
+        queueSet({ id, logId, memberId, set: payload, queuedAt: now });   // the screen clock, as startRest uses
+        setSets((xs) => [...xs, fromQueued({ id, logId, memberId, set: payload, queuedAt: 0 })]);
+        setQueued((q) => new Set(q).add(id));
+        toast.info('No signal — saved on this phone. It uploads by itself when you are back online.');
+      }
       setStarted((s) => new Set(s).add(idx));
       setFocusSet(null);
       setFlash(setNumber);
@@ -317,8 +370,15 @@ function WorkoutRun() {
     if (!logId || busy) return;
     setBusy(true);
     try {
-      await deleteSet(s.id);
-      await refresh(logId);
+      if (queued.has(s.id)) {
+        // Never reached the server — take it off the phone's list instead.
+        dropQueued(s.id);
+        setSets((xs) => xs.filter((x) => x.id !== s.id));
+        setQueued((q) => { const n = new Set(q); n.delete(s.id); return n; });
+      } else {
+        await deleteSet(s.id);
+        await refresh(logId, memberId);
+      }
       setFinished((f) => { const n = new Set(f); n.delete(idx); return n; });
       setFocusSet(s.setNumber);
     } catch (err) {
@@ -368,6 +428,15 @@ function WorkoutRun() {
   const finishWorkout = async () => {
     if (!logId || busy || !routine) return;
     if (sets.length === 0) { toast.error('Log at least one set first, or discard the workout.'); return; }
+    // Finishing is what awards the points, so every set must be on the server first.
+    if (queued.size > 0 && memberId) {
+      const { left } = await flushOutbox(memberId);
+      if (left > 0) {
+        toast.error(`${left} ${left === 1 ? 'set is' : 'sets are'} still waiting for signal. Finish when you are back online — nothing is lost.`);
+        return;
+      }
+      await refresh(logId, memberId).catch(() => undefined);
+    }
     setBusy(true);
     try {
       const minutes = Math.max(1, Math.round(elapsed / 60));
@@ -454,6 +523,12 @@ function WorkoutRun() {
           </p>
           <p className="inline-flex items-center justify-center tabular-nums" style={{ gap: 6, fontSize: 18, fontWeight: 700, marginTop: 1, color: 'var(--color-text-primary)' }}>
             {clock(elapsed)}
+            {queued.size > 0 && (
+              <span title="Saved on this phone, waiting for signal" aria-label={`${queued.size} waiting for signal`}
+                className="inline-flex items-center" style={{ gap: 3, fontSize: 11.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                <CloudSlash size={14} weight="bold" /> {queued.size}
+              </span>
+            )}
             {awake && (
               <span title="Your screen stays on during the workout" aria-label="Screen stays on" className="inline-flex">
                 <SunDim size={14} weight="fill" style={{ color: 'var(--color-primary-300)' }} />
@@ -627,7 +702,7 @@ function WorkoutRun() {
               {setNumbers.map((n) => {
                 const logged = loggedAt(n);
                 return (
-                  <SetRow key={n} n={n} logged={logged} planned={describeDraft(draftFor(n), ex.isTimed)}
+                  <SetRow key={n} n={n} logged={logged} queued={!!logged && queued.has(logged.id)} planned={describeDraft(draftFor(n), ex.isTimed)}
                     prev={prevFor(n)} focused={isStarted && focus === n} flashing={flash === n} busy={busy}
                     beat={logged ? beatLast(logged, prevFor(n)) : false}
                     onFocus={() => { setFocusSet(n); setStarted((s) => new Set(s).add(idx)); }}
@@ -788,10 +863,12 @@ function MiniStat({ value, label }: { value: ReactNode; label: string }) {
 }
 
 function SetRow({
-  n, logged, planned, prev, focused, flashing, beat, busy, onFocus, onTick, onUndo,
+  n, logged, queued, planned, prev, focused, flashing, beat, busy, onFocus, onTick, onUndo,
 }: {
   n: number;
   logged: WorkoutSet | null;
+  /** Saved on the phone, not on the server yet. */
+  queued: boolean;
   planned: string;
   prev: LastSet | undefined;
   focused: boolean;
@@ -829,7 +906,7 @@ function SetRow({
             )}
           </span>
           <span className="block truncate" style={{ fontSize: 12, marginTop: 1, color: 'var(--color-text-muted)' }}>
-            {logged ? 'Saved' : focused ? 'In focus' : 'Planned'}{prev ? ` · last ${describeSet(prev)}` : ''}
+            {logged ? (queued ? 'On this phone · uploads when online' : 'Saved') : focused ? 'In focus' : 'Planned'}{prev ? ` · last ${describeSet(prev)}` : ''}
           </span>
         </span>
       </button>

@@ -4,6 +4,7 @@ import { DotsNine, QrCode } from '@phosphor-icons/react';
 import CheckInSheet from '../ui/CheckInSheet';
 import EverythingSheet from './EverythingSheet';
 import { TABS, tabForPath } from './memberNav';
+import { useT } from '../../lib/i18n';
 import { useLiveData } from '../../hooks/useLiveData';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { checkedInSince } from '../../lib/api/attendance';
@@ -64,6 +65,7 @@ function useCheckedInToday(): [boolean, () => void] {
  * tab, so three of four destinations were a guess from a glyph.
  */
 export default function TabBar() {
+  const t = useT();
   const location = useLocation();
   const navigate = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -123,7 +125,7 @@ export default function TabBar() {
               <span key={isActive ? 'on' : 'off'} className={isActive ? 'noc-pop flex' : 'flex'}>
                 <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
               </span>
-              <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{tab.label}</span>
+              <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{t(tab.label)}</span>
             </button>
           );
         })}
@@ -137,7 +139,7 @@ export default function TabBar() {
         >
           <span aria-hidden style={{ width: 16, height: 2 }} />
           <DotsNine size={20} />
-          <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>More</span>
+          <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{t('More')}</span>
         </button>
 
         <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgba(233, 233, 237, 0.12)' }} />
@@ -161,7 +163,7 @@ export default function TabBar() {
           <span key={checkedIn ? 'done' : 'todo'} className="noc-pop flex">
             <QrCode size={21} weight={checkedIn ? 'regular' : 'bold'} />
           </span>
-          <span style={{ fontSize: 12 }}>{checkedIn ? 'Checked in' : 'Check in'}</span>
+          <span style={{ fontSize: 12 }}>{t(checkedIn ? 'Checked in' : 'Check in')}</span>
         </button>
       </nav>
 

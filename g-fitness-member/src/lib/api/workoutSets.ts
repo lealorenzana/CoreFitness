@@ -140,11 +140,15 @@ export interface NewSet {
  * The database refuses a set that measures nothing (`workout_sets_measured`),
  * so this does not need to re-check it — but the form should, because a
  * constraint violation is a worse message than a disabled button.
+ *
+ * `id`, when given, is the row's primary key chosen on the phone — what makes
+ * an offline retry safe (lib/offlineSets.ts): a second attempt hits 23505.
  */
-export async function addSet(logId: string, set: NewSet): Promise<string> {
+export async function addSet(logId: string, set: NewSet, id?: string): Promise<string> {
   const { data, error } = await supabase
     .from('workout_sets')
     .insert({
+      ...(id ? { id } : {}),
       log_id: logId,
       exercise_id: set.exerciseId ?? null,
       custom_name: set.customName ?? null,

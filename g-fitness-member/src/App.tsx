@@ -2,54 +2,56 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import { syncUserCache } from './utils/auth';
+import { lazyPage } from './lib/lazyPage';
+import { Suspense } from 'react';
 import Layout from './components/layout/Layout';
 import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
-import Register from './pages/Register';
-import Onboarding from './pages/Onboarding';
-import Terms from './pages/Terms';
-import Privacy from './pages/Privacy';
+const Register = lazyPage(() => import('./pages/Register'));
+const Onboarding = lazyPage(() => import('./pages/Onboarding'));
+const Terms = lazyPage(() => import('./pages/Terms'));
+const Privacy = lazyPage(() => import('./pages/Privacy'));
 import Home from './pages/Home';
-import Workouts from './pages/Workouts';
-import PlanBuilder from './pages/PlanBuilder';
-import WorkoutTracker from './pages/WorkoutTracker';
-import Routines from './pages/Routines';
-import RoutineEditor from './pages/RoutineEditor';
-import GuidedWorkout from './pages/GuidedWorkout';
-import Rewards from './pages/Rewards';
-import Challenges from './pages/Challenges';
-import AccountActivity from './pages/AccountActivity';
-import MyEvaluations from './pages/MyEvaluations';
-import WorkoutHistory from './pages/WorkoutHistory';
-import VisitHistory from './pages/VisitHistory';
-import RewardRequests from './pages/RewardRequests';
-import ProgressHub from './pages/progress/ProgressHub';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
-import ChangePassword from './pages/ChangePassword';
-import ChangeEmail from './pages/ChangeEmail';
-import ChatbotPage from './pages/ChatbotPage';
-import Events from './pages/Events';
-import PaymentHistory from './pages/PaymentHistory';
-import RenewMembership from './pages/RenewMembership';
-import EditProfile from './pages/EditProfile';
-import AttendanceHistory from './pages/AttendanceHistory';
-import BookClass from './pages/BookClass';
-import BookingHistory from './pages/BookingHistory';
-import TrainerProfilePage from './pages/TrainerProfile';
-import Trainers from './pages/Trainers';
+const Workouts = lazyPage(() => import('./pages/Workouts'));
+const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
+const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
+const Routines = lazyPage(() => import('./pages/Routines'));
+const RoutineEditor = lazyPage(() => import('./pages/RoutineEditor'));
+const GuidedWorkout = lazyPage(() => import('./pages/GuidedWorkout'));
+const Rewards = lazyPage(() => import('./pages/Rewards'));
+const Challenges = lazyPage(() => import('./pages/Challenges'));
+const AccountActivity = lazyPage(() => import('./pages/AccountActivity'));
+const MyEvaluations = lazyPage(() => import('./pages/MyEvaluations'));
+const WorkoutHistory = lazyPage(() => import('./pages/WorkoutHistory'));
+const VisitHistory = lazyPage(() => import('./pages/VisitHistory'));
+const RewardRequests = lazyPage(() => import('./pages/RewardRequests'));
+const ProgressHub = lazyPage(() => import('./pages/progress/ProgressHub'));
+const Profile = lazyPage(() => import('./pages/Profile'));
+const Settings = lazyPage(() => import('./pages/Settings'));
+const ChangePassword = lazyPage(() => import('./pages/ChangePassword'));
+const ChangeEmail = lazyPage(() => import('./pages/ChangeEmail'));
+const ChatbotPage = lazyPage(() => import('./pages/ChatbotPage'));
+const Events = lazyPage(() => import('./pages/Events'));
+const PaymentHistory = lazyPage(() => import('./pages/PaymentHistory'));
+const RenewMembership = lazyPage(() => import('./pages/RenewMembership'));
+const EditProfile = lazyPage(() => import('./pages/EditProfile'));
+const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
+const BookClass = lazyPage(() => import('./pages/BookClass'));
+const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
+const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
+const Trainers = lazyPage(() => import('./pages/Trainers'));
 import TrainerHome from './pages/trainer/TrainerHome';
-import TrainerMembers from './pages/trainer/TrainerMembers';
-import TrainerSchedule from './pages/trainer/TrainerSchedule';
-import TrainerAvailability from './pages/trainer/TrainerAvailability';
-import TrainerSettings from './pages/trainer/TrainerSettings';
-import TrainerBookings from './pages/trainer/TrainerBookings';
-import TrainerProfile from './pages/trainer/TrainerProfile';
-import TrainerEditProfile from './pages/trainer/TrainerEditProfile';
-import Achievements from './pages/Achievements';
-import NotificationsAll from './pages/NotificationsAll';
-import GymPlan from './pages/GymPlan';
-import MembershipHub from './pages/MembershipHub';
+const TrainerMembers = lazyPage(() => import('./pages/trainer/TrainerMembers'));
+const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
+const TrainerAvailability = lazyPage(() => import('./pages/trainer/TrainerAvailability'));
+const TrainerSettings = lazyPage(() => import('./pages/trainer/TrainerSettings'));
+const TrainerBookings = lazyPage(() => import('./pages/trainer/TrainerBookings'));
+const TrainerProfile = lazyPage(() => import('./pages/trainer/TrainerProfile'));
+const TrainerEditProfile = lazyPage(() => import('./pages/trainer/TrainerEditProfile'));
+const Achievements = lazyPage(() => import('./pages/Achievements'));
+const NotificationsAll = lazyPage(() => import('./pages/NotificationsAll'));
+const GymPlan = lazyPage(() => import('./pages/GymPlan'));
+const MembershipHub = lazyPage(() => import('./pages/MembershipHub'));
 
 
 type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
@@ -142,6 +144,10 @@ function LoginRoute() {
 function App() {
   return (
     <BrowserRouter>
+      {/* Screens load when opened (lib/lazyPage.ts). The shells have their own
+          boundary around <Outlet/>, so the tab bar stays put; this one covers
+          the few screens outside a shell (sign-up, terms). */}
+      <Suspense fallback={<div style={{ minHeight: '100dvh', background: 'var(--color-bg)' }} />}>
       <Routes>
         {/* `/` is the PWA `start_url`, so this is where the installed app opens
             and where signing out lands. It used to show a full-screen marketing
@@ -272,6 +278,7 @@ function App() {
             in — a blank page was the old answer and it looked like a crash. */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

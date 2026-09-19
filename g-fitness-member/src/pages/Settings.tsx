@@ -13,13 +13,14 @@ import {
 import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import { getCurrentMemberId } from '../services/bookingService';
 import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, SectionHead } from '../components/ui/noc';
+import { Chip, LineRow, NocButton, SectionHead } from '../components/ui/noc';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
 import { BellRinging, DownloadSimple, Phone, EnvelopeSimple, SignOut } from '@phosphor-icons/react';
 import { exportMemberData, downloadExport } from '../lib/memberDataExport';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
+import { saveLanguagePreference, useLanguage, useT, type Lang } from '../lib/i18n';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; label: string; description: string }[] = [
@@ -144,6 +145,18 @@ function Footnote({ children }: { children: React.ReactNode }) {
 }
 
 export default function Settings() {
+  const t = useT();
+  const lang = useLanguage();
+  const chooseLanguage = async (next: Lang) => {
+    const id = await getCurrentMemberId();
+    if (!id) return;
+    try {
+      await saveLanguagePreference(id, next);
+      toast.success(next === 'fil' ? 'Naka-Filipino na ang app' : 'The app is in English');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not change the language'));
+    }
+  };
   const navigate = useNavigate();
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
@@ -317,11 +330,11 @@ export default function Settings() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/profile" title="Settings" subtitle="Alerts, privacy and your account" />
+      <PageTitle back fallback="/member/profile" title={t('Settings')} subtitle={t('Alerts, privacy and your account')} />
 
       {/* Notifications — every switch here does something observable. */}
       <section>
-        <SectionHead title="Notifications" />
+        <SectionHead title={t('Notifications')} />
         <div style={{ marginTop: 2 }}>
           <SwitchRow
             label="Push notifications"
@@ -371,7 +384,7 @@ export default function Settings() {
           a switch implying otherwise would be the same lie as the six dead ones
           this page used to carry. */}
       <section>
-        <SectionHead title="What your trainer sees" />
+        <SectionHead title={t('What your trainer sees')} />
         <div style={{ marginTop: 2 }}>
           {SHARE_ROWS.map((row, i) => (
             <SwitchRow
@@ -413,7 +426,7 @@ export default function Settings() {
 
       {/* ── Your data (RA 10173) ── */}
       <section>
-        <SectionHead title="Your data" />
+        <SectionHead title={t('Your data')} />
         <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
           Download a copy of everything the gym holds about you — membership, payments, visits, bookings,
           workouts, goals, points and notes — as one file. The front desk can give you the same file.
@@ -428,7 +441,23 @@ export default function Settings() {
       </section>
 
       <section>
-        <SectionHead title="Account & app" />
+        <SectionHead title={t('Language')} />
+        {/* English or Filipino for the main screens (lib/i18n.ts, 0095). Saved
+            to the member's row, so it follows them to a new phone. */}
+        <div className="flex" style={{ gap: 8, marginTop: 10 }}>
+          {([['en', 'English'], ['fil', 'Filipino']] as [Lang, string][]).map(([code, name]) => (
+            <Chip key={code} label={name} on={lang === code} onClick={() => void chooseLanguage(code)} />
+          ))}
+        </div>
+        <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          {lang === 'fil'
+            ? 'Naka-Filipino ang mga pangunahing screen. Nasa English pa ang ibang bahagi.'
+            : 'Filipino covers the main screens — navigation, check-in and Settings. The rest stays in English for now.'}
+        </p>
+      </section>
+
+      <section>
+        <SectionHead title={t('Account & app')} />
         <div style={{ marginTop: 2 }}>
           {links.map((l) => (
             <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
@@ -436,13 +465,13 @@ export default function Settings() {
           ))}
           <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
             style={{ gap: 10, padding: '13px 0', fontSize: 14.5, color: 'var(--color-text-secondary)' }}>
-            <SignOut size={17} aria-hidden /> Log out
+            <SignOut size={17} aria-hidden /> {t('Log out')}
           </button>
         </div>
       </section>
 
       <section>
-        <SectionHead title="About" meta="Core Fitness member app" />
+        <SectionHead title={t('About')} meta="Core Fitness member app" />
         <div style={{ marginTop: 2 }}>
           {about.map(([k, v]) => (
             <LineRow key={k} gutter={k} gutterWidth={72} title={v} />

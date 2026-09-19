@@ -8,6 +8,7 @@
 // left blank here since that data now lives in a separate memberships table —
 // those fields will populate once each consuming page migrates.
 
+import { setLanguage } from '../lib/i18n';
 import { supabase } from '../lib/supabaseClient';
 import { clearPushOnSignOut } from '../lib/api/push';
 import { clearPageCache } from '../lib/pageCache';
@@ -105,6 +106,9 @@ export const logout = async (): Promise<void> => {
   // Entitlements are per-member and the cache is not keyed by one. Two people
   // on one phone would otherwise inherit the last member's plan.
   clearFeatureCache();
+  // The language is the member's (0095); the next person starts in English
+  // until their own choice loads.
+  setLanguage('en');
 };
 
 /**

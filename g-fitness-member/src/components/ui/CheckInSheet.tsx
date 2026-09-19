@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowClockwise, CheckCircle, Prohibit } from '@phosphor-icons/react';
 import { NocButton } from './noc';
+import { useT } from '../../lib/i18n';
 import { generateSecureQR, getQRTimeRemaining } from '../../utils/qrCode';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { getCurrentMemberId } from '../../services/bookingService';
@@ -25,6 +26,7 @@ import { GLASS, SCRIM } from './glass';
  * would scan it and get a rejection, which reads as the app being broken.
  */
 export default function CheckInSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const [home, setHome] = useState<MemberHome | null>(null);
   const [loading, setLoading] = useState(false);
   const [qr, setQr] = useState('');
@@ -174,14 +176,14 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
 
             {loading || !home ? (
               <>
-                <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Check in</p>
+                <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('Check in')}</p>
                 <div className="animate-pulse" style={{ width: 224, height: 224, borderRadius: 14, background: 'var(--color-surface-high)' }} />
               </>
             ) : home.expired ? (
               <>
                 <div className="text-center">
                   <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {home.expiryDate ? 'Membership expired' : 'No active membership'}
+                    {t(home.expiryDate ? 'Membership expired' : 'No active membership')}
                   </p>
                   <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
                     No code is shown — the desk would refuse it.
@@ -198,7 +200,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
               <>
                 <div className="text-center">
                   <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {justScanned ? 'Scanned — you are in' : 'Checked in'}
+                    {t(justScanned ? 'Scanned — you are in' : 'Checked in')}
                   </p>
                   <p style={{ fontSize: 12.5, marginTop: 3, color: 'var(--color-text-secondary)' }}>
                     {justScanned
@@ -213,7 +215,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             ) : (
               <>
                 <div className="text-center">
-                  <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>Check in</p>
+                  <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('Check in')}</p>
                   {/* The countdown is gone; the expiry is not. A code that never
                       expires can be screenshotted and used by someone else, so
                       it still carries a timestamp — but it regenerates itself a
@@ -249,7 +251,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                   {formatCheckInCode(home.memberId)}
                 </p>
                 <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
-                  {home.planName ?? 'Membership'}{validTo ? ` · valid to ${validTo}` : ''} · read the code out if the camera fails
+                  {home.planName ?? t('Membership')}{validTo ? ` · ${t('valid to')} ${validTo}` : ''} · {t('read the code out if the camera fails')}
                 </p>
 
                 {/* The manual refresh survives for the case the timer cannot
