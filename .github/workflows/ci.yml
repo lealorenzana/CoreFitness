@@ -79,6 +79,10 @@ jobs:
     name: Fixture checks (the real screens)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The gym's clock. The fixtures build "today" from the machine's clock and
+    # the app counts days in Manila time; a UTC runner disagreed about both.
+    env:
+      TZ: Asia/Manila
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

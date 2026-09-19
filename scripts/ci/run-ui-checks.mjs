@@ -49,7 +49,9 @@ let failed = 0;
 for (const check of checks) {
   const code = readFileSync(join(repo, 'scripts', check.file), 'utf-8');
   const started = Date.now();
-  const context = await browser.newContext();
+  // The gym's clock, whatever the machine's: the app and the fixtures both
+  // reason in Manila days, and a UTC runner put "today" on the wrong date.
+  const context = await browser.newContext({ timezoneId: 'Asia/Manila', locale: 'en-US' });
   const page = await context.newPage();
   page.setDefaultTimeout(20_000);
   let verdict = 'pass';
@@ -74,7 +76,14 @@ for (const check of checks) {
   } finally {
     await context.close();
   }
-  if (verdict === 'FAIL') failed += 1;
+  if (verdict === 'FAIL') {
+    failed += 1;
+    // On GitHub, an annotation — readable on the run page without log access.
+    if (process.env.GITHUB_ACTIONS) {
+      const line = detail.split('\n').filter((l) => FAILURE.test(l) || /Error|timed out/.test(l)).slice(0, 4).join(' | ') || detail.slice(0, 300);
+      console.log(`::error title=${check.file}::${line.replace(/\r?\n/g, ' ').slice(0, 900)}`);
+    }
+  }
   const secs = ((Date.now() - started) / 1000).toFixed(0);
   console.log(`\n${verdict === 'pass' ? 'PASS' : 'FAIL'}  ${check.file}  (${secs} s)`);
   console.log('  ' + detail.split('\n').join('\n  '));
