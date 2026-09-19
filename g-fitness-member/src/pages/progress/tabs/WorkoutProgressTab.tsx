@@ -2,8 +2,9 @@ import { Field, TextInput, TextArea } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, CaretRight, Plus, ClockCounterClockwise } from '@phosphor-icons/react';
-import { NocButton, SectionHead } from '../../../components/ui/noc';
+import { Barbell, Plus } from '@phosphor-icons/react';
+import { NocButton, SectionHead, SeeAll } from '../../../components/ui/noc';
+import WorkoutLogRow from '../../../components/ui/WorkoutLogRow';
 import DayWorkoutsSheet from '../../../components/ui/DayWorkoutsSheet';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -59,7 +60,6 @@ function WorkoutProgress() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ type: '', duration: '', notes: '' });
-  const [showHistory, setShowHistory] = useState(false);
   const [openDay, setOpenDay] = useState<string | null>(null);
 
   const load = async () => {
@@ -165,11 +165,10 @@ function WorkoutProgress() {
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>;
 
-  // The five most recent sessions are the list; anything older sits behind a
-  // control. This list grows for the life of the membership, and a section
-  // that opens onto forty rows is a section nobody reads.
+  // The five most recent are a preview; the rest are on Workout history — a
+  // list never expands in place (the user's rule, 2026-09-19).
   const RECENT = 5;
-  const shown = showHistory ? logs : logs.slice(0, RECENT);
+  const shown = logs.slice(0, RECENT);
 
   return (
     <section className="flex flex-col" style={{ gap: 14 }}>
@@ -192,39 +191,13 @@ function WorkoutProgress() {
       ) : (
         <div className="noc-rows">
           {shown.map((l, i) => (
-            <div key={l.id}>
-              {/* The whole row opens that day's workout, set by set. */}
-              <button onClick={() => setOpenDay(l.date)} className="w-full flex items-center text-left noc-row"
-                style={{ gap: 12, padding: '12px 0' }}>
-                <span className="flex-none flex flex-col items-center justify-center orb-cell orb-cell--busy"
-                  style={{ width: 46, height: 46, borderRadius: 12 }}>
-                  <span style={{ fontSize: 11, lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-primary-300)' }}>
-                    {new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short' })}
-                  </span>
-                  <span style={{ fontSize: 17, lineHeight: 1.1, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {new Date(`${l.date}T00:00:00`).getDate()}
-                  </span>
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block truncate" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{l.type}</span>
-                  <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
-                    {[l.duration != null ? `${l.duration} min` : null, l.notes].filter(Boolean).join(' · ') || 'Tap to see what you did'}
-                  </span>
-                </span>
-                <CaretRight size={15} className="flex-none" style={{ color: 'var(--color-text-muted)' }} />
-              </button>
-              {i < shown.length - 1 && <div className="hair" />}
-            </div>
+            <WorkoutLogRow key={l.id} l={l} last={i === shown.length - 1} onOpen={() => setOpenDay(l.date)} />
           ))}
         </div>
       )}
 
       {logs.length > RECENT && (
-        <button onClick={() => setShowHistory((v) => !v)} className="self-start inline-flex items-center noc-press"
-          style={{ gap: 6, fontSize: 13, color: 'var(--color-primary-300)' }}>
-          <ClockCounterClockwise size={14} />
-          {showHistory ? 'Show recent only' : `Show ${logs.length - RECENT} earlier`}
-        </button>
+        <SeeAll label="See all workouts" count={logs.length} onClick={() => navigate('/member/workout-history')} />
       )}
 
       {/* ONE way in: the guided workout. The quick after-the-fact log stays,

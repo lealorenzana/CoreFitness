@@ -6,27 +6,22 @@ import {
   ListChecks, Minus, SignOut, UserCircle, Warning,
 } from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
-import { Chip, Eyebrow, InlineStat, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
+import { Chip, Eyebrow, InlineStat, NocButton, Panel, ProgressBar, SeeAll, SectionHead, StatusPill } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import Modal from '../components/ui/Modal';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
-import {
-  getMembershipHub, type ActivityRow, type MembershipHub as Hub,
-} from '../services/membershipHubService';
+import { getMembershipHub, type MembershipHub as Hub } from '../services/membershipHubService';
+import { matchesFilter, toLines, type Filter } from '../utils/activityLines';
+import ActivityLineRow from '../components/ui/ActivityLineRow';
 import { membershipTerm } from '../utils/membershipTerm';
 import { errorMessage } from '../utils/errorMessage';
-import { localDateKey } from '../utils/dates';
 import { useLiveData } from '../hooks/useLiveData';
 import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import { readCache, writeCache } from '../lib/pageCache';
 import { logout } from '../utils/auth';
 
 const CACHE_KEY = 'member:membership';
-
-function peso(n: number): string {
-  return `₱${n.toLocaleString('en-PH')}`;
-}
 
 /** 'YYYY-MM-DD' parsed as local parts — `new Date('YYYY-MM-DD')` is read as UTC. */
 function localDate(key: string): Date {
@@ -35,53 +30,6 @@ function localDate(key: string): Date {
 }
 
 const shortDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-type Filter = 'all' | 'points' | 'payments';
-
-/**
- * One line of the statement. Identical entries on the same day fold into one —
- * five "Logged a workout +15" rows said less than "Logged a workout ×5 · +75".
- */
-interface Line {
-  key: string;
-  at: string;
-  title: string;
-  sub: string | null;
-  amount: string;
-  tone: string;
-  kind: ActivityRow['kind'];
-}
-
-function toLines(rows: ActivityRow[]): Line[] {
-  const out: (Line & { base: string; count: number; points: number })[] = [];
-  for (const a of rows) {
-    const day = localDateKey(a.at);
-    if (a.kind === 'earned') {
-      const prev = out[out.length - 1];
-      if (prev && prev.kind === 'earned' && localDateKey(prev.at) === day && prev.base === a.title) {
-        prev.count += 1;
-        prev.points += a.points;
-        prev.title = `${a.title} ×${prev.count}`;
-        prev.amount = `+${prev.points}`;
-        continue;
-      }
-      out.push({ key: `e:${a.at}`, at: a.at, kind: a.kind, title: a.title, base: a.title, sub: 'Points earned',
-        amount: `+${a.points}`, tone: 'var(--color-primary-300)', count: 1, points: a.points });
-    } else if (a.kind === 'spent') {
-      out.push({ key: `s:${a.at}`, at: a.at, kind: a.kind, title: `Redeemed ${a.title.toLowerCase()}`,
-        sub: a.status === 'pending' ? 'Requested — waiting for the desk'
-          : a.status === 'fulfilled' ? 'Collected at the desk' : 'Approved — collect at the desk',
-        amount: `−${a.points}`, tone: 'var(--color-text-muted)', base: '', count: 1, points: 0 });
-    } else if (a.kind === 'paid') {
-      out.push({ key: `p:${a.at}`, at: a.at, kind: a.kind, title: `Payment · ${a.method}`, sub: 'Recorded at the desk',
-        amount: peso(a.amount), tone: 'var(--color-text-primary)', base: '', count: 1, points: 0 });
-    } else {
-      out.push({ key: `m:${a.at}`, at: a.at, kind: a.kind, title: a.title, sub: a.note, amount: '',
-        tone: 'var(--color-text-muted)', base: '', count: 1, points: 0 });
-    }
-  }
-  return out;
-}
 
 /**
  * You — the account, as one statement (Nocturne redesign 2026-09-16; reworked
@@ -109,7 +57,6 @@ export default function MembershipHub() {
   const [error, setError] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
-  const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -167,11 +114,10 @@ export default function MembershipHub() {
   const canGet = balance == null ? 0 : rewards.filter((r) => r.costPoints <= balance).length;
 
   // ── Activity ──
-  const lines = toLines(hub.activity.filter((a) =>
-    filter === 'all' ? true
-      : filter === 'points' ? a.kind === 'earned' || a.kind === 'spent'
-      : a.kind === 'paid'));
-  const shown = showAll ? lines.slice(0, 40) : lines.slice(0, 6);
+  // A preview: six lines, then the statement's own page (never an in-place
+  // "show more" — the user's rule, 2026-09-19).
+  const lines = toLines(hub.activity.filter((a) => matchesFilter(a, filter)));
+  const shown = lines.slice(0, 6);
 
   const t = hub.term;
   const rate = t && t.elapsedDays > 0 ? t.visitDays / t.elapsedDays : null;
@@ -318,9 +264,9 @@ export default function MembershipHub() {
       <section>
         <SectionHead title="Activity" />
         <div className="flex" style={{ gap: 8, marginTop: 10 }}>
-          <Chip label="All" on={filter === 'all'} onClick={() => { setFilter('all'); setShowAll(false); }} />
-          <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); setShowAll(false); }} />
-          <Chip label="Payments" on={filter === 'payments'} onClick={() => { setFilter('payments'); setShowAll(false); }} />
+          <Chip label="All" on={filter === 'all'} onClick={() => setFilter('all')} />
+          <Chip label="Points" on={filter === 'points'} onClick={() => setFilter('points')} />
+          <Chip label="Payments" on={filter === 'payments'} onClick={() => setFilter('payments')} />
         </div>
         {lines.length === 0 ? (
           <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
@@ -329,26 +275,11 @@ export default function MembershipHub() {
           </p>
         ) : (
           <div className="noc-rows" style={{ marginTop: 4 }}>
-            {shown.map((l, i) => (
-              <div key={`${l.key}:${i}`} className="flex items-center" style={{
-                gap: 12, padding: '12px 0', borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--color-separator)',
-              }}>
-                <span className="flex-none" style={{ width: 44, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                  {shortDate(new Date(l.at))}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{l.title}</span>
-                  {l.sub && <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>{l.sub}</span>}
-                </span>
-                {l.amount && <span className="flex-none" style={{ fontSize: 14, fontWeight: 600, color: l.tone }}>{l.amount}</span>}
-              </div>
-            ))}
+            {shown.map((l, i) => <ActivityLineRow key={`${l.key}:${i}`} l={l} last={i === shown.length - 1} />)}
           </div>
         )}
-        {lines.length > 6 && (
-          <button onClick={() => setShowAll((v) => !v)} style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--color-primary-300)' }}>
-            {showAll ? 'Show less' : `Show ${Math.min(lines.length, 40) - 6} more`}
-          </button>
+        {lines.length > 0 && (
+          <SeeAll label="See all activity" onClick={() => navigate(`/member/activity${filter === 'all' ? '' : `?filter=${filter}`}`)} />
         )}
         {hub.activityGaps.length > 0 && (
           <p style={{ marginTop: 8, fontSize: 12, color: 'var(--color-secondary)' }}>

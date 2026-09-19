@@ -124,7 +124,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
   `--color-primary-300`**. No reds or greens — errors are amber. **Type floor 12px**, Inter only (Anton is gone).
 - **Build screens from `components/ui/noc.tsx`** (`PageTitle`, `LineRow`, `NocButton`, `Panel`,
   `StatusPill`, `TextTabs`, `Chip`, `ProgressBar`, `InlineStat`) and `Field`/`TextInput`/`Select`. A list is
-  rows on the page, **not a card per row**; `ProgressBar` renders **nothing without a real fraction**.
+  rows on the page, **not a card per row**; a long list is a preview plus `SeeAll` to **its own page — never an in-place "show more"**; `ProgressBar` renders **nothing without a real fraction**.
 - **Admin** (unchanged): tokens never `brand-*`/`dark-*`; primitives `FormField`, `DatePicker`,
   `TimePicker`, `Popover`, `kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`, `SectionTabs`.
 - **Layout traps:** `cn()` drops a bare `flex` beside `flex-col`; **`minmax(0, 1fr)`, never bare `1fr`**;

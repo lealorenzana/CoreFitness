@@ -52,13 +52,14 @@ const TAB_PATHS: string[][] = [
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
    '/member/booking-history', '/member/progress', '/member/achievements',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts',
-   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges'],
+   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges',
+   '/member/workout-history'],
   // You: the money-and-access half, and the account itself. Profile lost its
   // tab in this redesign; its screens live here now.
   ['/member/membership', '/member/renew', '/member/renew-membership',
    '/member/payments', '/member/attendance-history', '/member/rewards',
    '/member/profile', '/member/settings', '/member/change-password',
-   '/member/change-email'],
+   '/member/change-email', '/member/activity'],
 ];
 
 /** The tab a path belongs to, or null for a path that belongs to none. */

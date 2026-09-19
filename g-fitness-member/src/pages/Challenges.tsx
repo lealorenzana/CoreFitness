@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Check, WarningCircle } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
+import { WarningCircle } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
-import { Eyebrow, NocButton, Panel, ProgressBar, StatusPill } from '../components/ui/noc';
+import { Eyebrow, Panel, ProgressBar, SeeAll, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import FeatureLock from '../components/ui/FeatureLock';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -31,12 +32,17 @@ function daysLeft(endsOn: string): number {
   return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
 }
 
-export default function Challenges() {
+/**
+ * `completedOnly` is the Completed challenges page (/member/challenges/completed):
+ * the finished ones used to open in place under a "Show N completed" button,
+ * stretching the screen; they are a record now, on their own page.
+ */
+export default function Challenges({ completedOnly = false }: { completedOnly?: boolean }) {
+  const navigate = useNavigate();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDone, setShowDone] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async (id: string) => {
@@ -86,14 +92,20 @@ export default function Challenges() {
    * gym decides what is featured, and re-sorting here would quietly override
    * that.
    */
-  const renderGroups = [
-    { key: 'active',    label: 'In progress',    rows: items.filter((c) => c.joined && c.completedOn == null),  collapsed: false },
-    { key: 'available', label: 'Open to join',   rows: items.filter((c) => !c.joined && c.completedOn == null), collapsed: false },
-    { key: 'done',      label: 'Completed',      rows: items.filter((c) => c.completedOn != null),              collapsed: true  },
-  ];
+  const done = items.filter((c) => c.completedOn != null);
+  const renderGroups = completedOnly
+    ? [{ key: 'done', label: 'Completed', rows: done, collapsed: false }]
+    : [
+      { key: 'active',    label: 'In progress',  rows: items.filter((c) => c.joined && c.completedOn == null),  collapsed: false },
+      { key: 'available', label: 'Open to join', rows: items.filter((c) => !c.joined && c.completedOn == null), collapsed: false },
+      // Finished ones are a record, on their own page — a row here opens it.
+      { key: 'done',      label: 'Completed',    rows: done,                                                     collapsed: true },
+    ];
 
   const title = (
-    <PageTitle back title="Challenges" subtitle="Counted from your real check-ins — nothing to tick off" />
+    completedOnly
+      ? <PageTitle back fallback="/member/challenges" title="Completed challenges" subtitle="The ones you finished — kept as a record" />
+      : <PageTitle back title="Challenges" subtitle="Counted from your real check-ins — nothing to tick off" />
   );
 
   if (loading) return <Page>{title}<SkeletonList count={3} /></Page>;
@@ -112,7 +124,11 @@ export default function Challenges() {
             </p>
           )}
 
-          {items.length === 0 ? (
+          {completedOnly && done.length === 0 ? (
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+              None finished yet. A challenge you complete moves here and stays as a record.
+            </p>
+          ) : items.length === 0 ? (
             <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
               No challenges running right now. The gym adds these from time to time.
             </p>
@@ -123,13 +139,11 @@ export default function Challenges() {
             renderGroups.map(({ key, label, rows, collapsed }) => rows.length === 0 ? null : (
               <section key={key} className="flex flex-col" style={{ gap: 12 }}>
                 {collapsed ? (
-                  <NocButton variant="ghost" icon={<Check size={15} />} onClick={() => setShowDone((v) => !v)}>
-                    {showDone ? 'Hide completed' : `Show ${rows.length} completed`}
-                  </NocButton>
+                  <SeeAll label="Completed challenges" count={rows.length} onClick={() => navigate('/member/challenges/completed')} />
                 ) : (
                   <Eyebrow mark={key === 'active'}>{label}</Eyebrow>
                 )}
-                {(!collapsed || showDone) && rows.map((c) => {
+                {!collapsed && rows.map((c) => {
                   const done = c.completedOn != null;
                   const left = daysLeft(c.endsOn);
 

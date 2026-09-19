@@ -18,6 +18,9 @@ import RoutineEditor from './pages/RoutineEditor';
 import GuidedWorkout from './pages/GuidedWorkout';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
+import AccountActivity from './pages/AccountActivity';
+import MyEvaluations from './pages/MyEvaluations';
+import WorkoutHistory from './pages/WorkoutHistory';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -206,6 +209,7 @@ function App() {
           <Route path="book-class" element={<BookClass />} />
           <Route path="booking-history" element={<BookingHistory />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />
+          <Route path="trainer/:trainerId/evaluations" element={<MyEvaluations />} />
           {/* There is one membership screen, not two. `/member/membership` was a
               fully hardcoded page — "Premium · Dec 31 2024 · 15 days" and plans
               at ₱800/₱1,500 that exist nowhere in the database — and it
@@ -222,6 +226,9 @@ function App() {
           <Route path="track/session/:logId" element={<GuidedWorkout />} />
           <Route path="rewards" element={<Rewards />} />
           <Route path="challenges" element={<Challenges />} />
+          <Route path="challenges/completed" element={<Challenges completedOnly />} />
+          <Route path="activity" element={<AccountActivity />} />
+          <Route path="workout-history" element={<WorkoutHistory />} />
           <Route path="progress" element={<ProgressHub />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="notifications" element={<NotificationsAll />} />

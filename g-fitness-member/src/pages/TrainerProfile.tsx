@@ -17,7 +17,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { Stars, StarInput } from '../components/ui/StarRating';
 import type { ClassRow } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
-import { Eyebrow, LineRow, NocButton, Panel } from '../components/ui/noc';
+import { Eyebrow, LineRow, NocButton, Panel, SeeAll } from '../components/ui/noc';
 
 /**
  * A coach's profile, as a member sees it (Nocturne redesign).
@@ -45,6 +45,8 @@ import { Eyebrow, LineRow, NocButton, Panel } from '../components/ui/noc';
 export default function TrainerProfile() {
   const navigate = useNavigate();
   const { trainerId } = useParams();
+  // Read once — Date.now() during render is impure (react-hooks/purity).
+  const [now] = useState(() => Date.now());
   const [trainer, setTrainer] = useState<PublicTrainer | null>(null);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,6 @@ export default function TrainerProfile() {
   const [saving, setSaving] = useState(false);
   /** Every month this member has evaluated this coach, newest first. */
   const [history, setHistory] = useState<MyRatingHistoryEntry[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   /**
    * The month being evaluated. Read once per mount rather than per render:
    * recomputing it would make `period` a new value on every pass and, at
@@ -177,7 +178,7 @@ export default function TrainerProfile() {
   };
 
   const upcoming = classes
-    .filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > Date.now())
+    .filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > now)
     .slice(0, 5);
 
   const bookWith = () => trainer && navigate('/member/book-class', { state: { trainerId: trainer.id } });
@@ -329,40 +330,10 @@ export default function TrainerProfile() {
             </Panel>
           )}
 
-          {/* Past months, behind a control. Only this member's own: 0066 narrowed
-              reads so one member cannot read another's written reasons. */}
+          {/* Past months, on their own page — only this member's own (0066). */}
           {history.length > (mine ? 1 : 0) && (
-            <section>
-              <button onClick={() => setShowHistory((v) => !v)} className="w-full flex items-center justify-between"
-                style={{ fontSize: 13.5 }}>
-                <span style={{ color: 'var(--color-text-primary)' }}>Your past evaluations</span>
-                <span style={{ color: 'var(--color-primary-300)' }}>{showHistory ? 'Hide' : `Show ${history.length}`}</span>
-              </button>
-              {showHistory && (
-                <div style={{ marginTop: 6 }}>
-                  {history.map((h, i) => (
-                    <div key={h.period}>
-                      <div style={{ padding: '12px 0' }}>
-                        <div className="flex items-center justify-between" style={{ gap: 8 }}>
-                          <span style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>
-                            {periodLabel(h.period)}
-                            {h.period === period && <span style={{ color: 'var(--color-text-muted)' }}> · this month</span>}
-                          </span>
-                          <span className="flex items-center flex-none" style={{ gap: 6 }}>
-                            <Stars value={h.stars} size={12} />
-                            <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>{h.stars}.0</span>
-                          </span>
-                        </div>
-                        <p className="whitespace-pre-line" style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.5, color: h.comment ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
-                          {h.comment ?? 'No reason written.'}
-                        </p>
-                      </div>
-                      {i < history.length - 1 && <div className="hair" />}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            <SeeAll label="Your past evaluations" count={history.length}
+              onClick={() => navigate(`/member/trainer/${trainer.id}/evaluations`)} />
           )}
 
           {/* What they coach best — chips, because a member scanning coaches for

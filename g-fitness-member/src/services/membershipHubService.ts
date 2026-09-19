@@ -143,23 +143,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
   const summarise = (p: (typeof paid)[number]): PaymentSummary =>
     ({ amount: Number(p.amount), paidOn: p.paid_on, method: p.method });
 
-  const activity: ActivityRow[] = [
-    ...(ledger ?? []).map((l): ActivityRow => ({ kind: 'earned', at: l.createdAt, title: l.label, points: l.points })),
-    // A rejected request never took the points, so it is not an entry in a
-    // statement of what moved.
-    ...(redemptions ?? []).filter((r) => r.status !== 'rejected')
-      .map((r): ActivityRow => ({ kind: 'spent', at: r.requestedAt, title: r.rewardName, points: r.costPoints, status: r.status })),
-    // `paid_on` is a calendar date; noon keeps it on its own day when sorted
-    // against timestamps in UTC+8.
-    ...paid.slice(0, 10).map((p): ActivityRow => ({
-      kind: 'paid', at: `${p.paid_on}T12:00:00`, title: 'Payment', amount: Number(p.amount), method: p.method,
-    })),
-    ...events.map((e): ActivityRow => ({
-      kind: 'membership', at: e.created_at,
-      title: e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled',
-      note: e.reason,
-    })),
-  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  const activity = buildActivity(ledger, redemptions, paid.slice(0, 10), events);
 
   const activityGaps = [
     ledger == null ? 'points earned' : null,
@@ -183,5 +167,50 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
       ? { amount: Number(latest.amount), paidOn: latest.paid_on, method: latest.method }
       : null,
     paymentsFailed: !payments.ok,
+  };
+}
+
+type PaidRow = { paid_on: string; amount: number | string; method: string };
+
+/** One statement from its four sources, newest first. Shared by the You tab's
+ *  preview and the Account activity page, so the two cannot disagree. */
+function buildActivity(
+  ledger: LedgerEntry[] | null, redemptions: Redemption[] | null, paid: PaidRow[], events: MyMembershipEvent[],
+): ActivityRow[] {
+  return [
+    ...(ledger ?? []).map((l): ActivityRow => ({ kind: 'earned', at: l.createdAt, title: l.label, points: l.points })),
+    // A rejected request never took the points, so it is not an entry in a
+    // statement of what moved.
+    ...(redemptions ?? []).filter((r) => r.status !== 'rejected')
+      .map((r): ActivityRow => ({ kind: 'spent', at: r.requestedAt, title: r.rewardName, points: r.costPoints, status: r.status })),
+    // `paid_on` is a calendar date; noon keeps it on its own day when sorted
+    // against timestamps in UTC+8.
+    ...paid.map((p): ActivityRow => ({
+      kind: 'paid', at: `${p.paid_on}T12:00:00`, title: 'Payment', amount: Number(p.amount), method: p.method,
+    })),
+    ...events.map((e): ActivityRow => ({
+      kind: 'membership', at: e.created_at,
+      title: e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled',
+      note: e.reason,
+    })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+/** The whole statement, for its own page — far more history than the You tab's preview reads. */
+export async function getAccountActivity(memberId: string): Promise<{ activity: ActivityRow[]; gaps: string[] }> {
+  const [ledger, redemptions, payments, events] = await Promise.all([
+    listLedger(memberId, 500).catch(() => null as LedgerEntry[] | null),
+    listMyRedemptions(memberId).catch(() => null as Redemption[] | null),
+    listMemberPayments(memberId).catch(() => null),
+    listMyMembershipEvents(memberId).catch(() => [] as MyMembershipEvent[]),
+  ]);
+  const paid = (payments ?? []).filter((p) => p.status === 'completed' && p.paid_on != null);
+  return {
+    activity: buildActivity(ledger, redemptions, paid, events),
+    gaps: [
+      ledger == null ? 'points earned' : null,
+      redemptions == null ? 'rewards' : null,
+      payments == null ? 'payments' : null,
+    ].filter((x): x is string => x != null),
   };
 }

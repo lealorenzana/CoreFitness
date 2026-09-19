@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '../../lib/utils';
+import { CaretRight } from '@phosphor-icons/react';
 
 /**
  * The Nocturne kit: the pieces every rebuilt member screen is made of.
@@ -67,6 +68,22 @@ export function SectionHead({ title, meta }: { title: ReactNode; meta?: ReactNod
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * The end of a preview list: "See all 12" and a caret, opening the list's own
+ * page (2026-09-19, the user's rule). **A list never expands in place** — a
+ * "Show 6 more" that stretched the screen pushed everything under it out of
+ * reach; the full list gets a page with a title and Back.
+ */
+export function SeeAll({ label = 'See all', count, onClick }: { label?: string; count?: number; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="w-full flex items-center justify-between noc-press-soft"
+      style={{ minHeight: 44, marginTop: 4, padding: '10px 0', fontSize: 13.5, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+      <span>{label}{count != null ? ` · ${count}` : ''}</span>
+      <CaretRight size={15} aria-hidden />
+    </button>
   );
 }
 
