@@ -24,6 +24,7 @@ import { updateProfile } from '../lib/api/profiles';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
 import ImageField from '../components/ui/ImageField';
 import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
+import { ACCENTS } from '../lib/accents';
 import {
   getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
 } from '../lib/api/settings';
@@ -106,7 +107,7 @@ export default function Settings() {
     gym_name: '', address: '', phone: '', email: '', opening_time: '', closing_time: '',
     // Branding (0067). Blank means "not chosen", which renders the bundled
     // default — never a blank space where a logo should be.
-    short_name: '', tagline: '', logo_url: '',
+    short_name: '', tagline: '', logo_url: '', accent: 'violet',
   });
 
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -148,6 +149,7 @@ export default function Settings() {
           email: gym.email ?? '',
           opening_time: gym.opening_time ?? '',
           closing_time: gym.closing_time ?? '',
+          accent: gym.accent ?? 'violet',
           short_name: gym.short_name ?? '',
           tagline: gym.tagline ?? '',
           logo_url: gym.logo_url ?? '',
@@ -205,6 +207,7 @@ export default function Settings() {
         short_name: gymForm.short_name.trim() || null,
         tagline: gymForm.tagline.trim() || null,
         logo_url: gymForm.logo_url.trim() || null,
+        accent: gymForm.accent,
         activity_options: activityOptions,
       });
       // Repaint the sidebar and header now rather than on the next full reload.
@@ -456,6 +459,34 @@ export default function Settings() {
                         placeholder={DEFAULT_BRANDING.tagline ?? ''}
                         hint="The small line under the name. Blank hides it."
                       />
+                    </div>
+
+                    {/* The gym's colour in the phone app. It replaces violet
+                        only — amber still means "what you can do next"
+                        everywhere, because that is meaning, not branding
+                        (g-fitness-member/src/lib/gymTheme.ts). */}
+                    <div className="mt-3">
+                      <span className="block text-xs mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                        Colour in the member app
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {ACCENTS.map((a) => (
+                          <button
+                            key={a.key}
+                            type="button"
+                            onClick={() => setGymForm({ ...gymForm, accent: a.key })}
+                            aria-pressed={gymForm.accent === a.key}
+                            className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+                            style={{
+                              borderColor: gymForm.accent === a.key ? a.swatch : 'var(--color-border)',
+                              color: 'var(--color-text-primary)',
+                            }}
+                          >
+                            <span className="h-3.5 w-3.5 rounded-full" style={{ background: a.swatch }} />
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="mt-3" style={{ maxWidth: 260 }}>

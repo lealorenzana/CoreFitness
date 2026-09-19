@@ -18,6 +18,8 @@ export interface GymSettingsRow {
   logo_url: string | null;
   short_name: string | null;
   tagline: string | null;
+  /** The gym's colour in the phone app (0098). One of eight; violet is Core Fitness's. */
+  accent: string | null;
   updated_at: string;
   updated_by: string | null;
 }

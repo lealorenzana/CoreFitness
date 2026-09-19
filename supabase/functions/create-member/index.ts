@@ -50,14 +50,15 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) return json({ error: "Invalid session" }, 401);
 
     // Confirm the caller is an admin through that same RLS-bound client.
-    const { data: callerProfile, error: profileError } = await callerClient
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (profileError || callerProfile?.role !== "admin") {
+    // The caller's role in *their current gym* (0104), never the legacy global
+    // profiles.role: one person can own this gym and be a member of another.
+    // The new account joins that same gym.
+    const { data: ctxRows, error: ctxError } = await callerClient.rpc("my_gym_context");
+    const ctx = Array.isArray(ctxRows) ? ctxRows[0] : null;
+    if (ctxError || ctx?.role !== "admin" || ctx?.status !== "active") {
       return json({ error: "Forbidden — admin only" }, 403);
     }
+    const gymId = ctx.gym_id as string;
 
     const {
       email,
@@ -101,6 +102,7 @@ Deno.serve(async (req: Request) => {
 
     const { error: profileInsertError } = await adminClient.from("profiles").insert({
       id: newId,
+      active_gym_id: gymId,
       role: "member",
       first_name: firstName,
       last_name: lastName,
@@ -110,7 +112,15 @@ Deno.serve(async (req: Request) => {
     });
     if (profileInsertError) return await rollback(profileInsertError.message);
 
-    const { error: memberInsertError } = await adminClient.from("member_profiles").insert({
+    // The role in this gym, and the member row under it — as the admin, so the
+    // rules decide (0104's add_person_to_gym), not the service key.
+    const { error: roleError } = await callerClient.rpc("add_person_to_gym", {
+      p_user: newId, p_role: "member", p_status: "active",
+    });
+    if (roleError) return await rollback(roleError.message);
+
+    const { error: memberInsertError } = await adminClient.from("member_profiles").upsert({
+      gym_id: gymId,
       profile_id: newId,
       qr_code: newId, // same convention as the approval flow
       address: address ?? null,
@@ -122,13 +132,14 @@ Deno.serve(async (req: Request) => {
       emergency_contact_phone: emergencyContactPhone ?? null,
       emergency_contact_relationship: emergencyContactRelationship ?? null,
       experience_level: experienceLevel ?? null,
-    });
+    }, { onConflict: "gym_id,profile_id" });
     if (memberInsertError) return await rollback(memberInsertError.message);
 
     // Membership starts 'pending' — it only becomes active once the desk records
     // the cash payment, which is what payments.recordPayment() does.
     if (planId) {
       const { error: membershipError } = await adminClient.from("memberships").insert({
+        gym_id: gymId,
         member_id: newId,
         plan_id: planId,
         status: "pending",

@@ -55,14 +55,15 @@ Deno.serve(async (req: Request) => {
 
     // Admin only — deliberately NOT is_front_desk(). Staff must not be able to
     // create more staff; that would make the role self-propagating.
-    const { data: callerProfile, error: profileError } = await callerClient
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (profileError || callerProfile?.role !== "admin") {
+    // The caller's role in *their current gym* (0104), never the legacy global
+    // profiles.role: one person can own this gym and be a member of another.
+    // The new account joins that same gym.
+    const { data: ctxRows, error: ctxError } = await callerClient.rpc("my_gym_context");
+    const ctx = Array.isArray(ctxRows) ? ctxRows[0] : null;
+    if (ctxError || ctx?.role !== "admin" || ctx?.status !== "active") {
       return json({ error: "Forbidden — admin only" }, 403);
     }
+    const gymId = ctx.gym_id as string;
 
     const { email, password, firstName, lastName, phone } = await req.json();
 
@@ -88,6 +89,7 @@ Deno.serve(async (req: Request) => {
     const newId = created.user.id;
 
     const { error: insertError } = await adminClient.from("profiles").insert({
+      active_gym_id: gymId,
       id: newId,
       role: "staff",
       first_name: firstName,
@@ -101,6 +103,15 @@ Deno.serve(async (req: Request) => {
       // login that resolves to no profile.
       await adminClient.auth.admin.deleteUser(newId);
       return json({ error: insertError.message }, 400);
+    }
+
+    // Front desk *of this gym* (0104's add_person_to_gym, as the admin).
+    const { error: roleError } = await callerClient.rpc("add_person_to_gym", {
+      p_user: newId, p_role: "staff", p_status: "active",
+    });
+    if (roleError) {
+      await adminClient.auth.admin.deleteUser(newId);
+      return json({ error: roleError.message }, 400);
     }
 
     return json({ id: newId, email }, 200);

@@ -49,15 +49,15 @@ Deno.serve(async (req: Request) => {
 
     // Confirm the caller is an admin via the SAME anon-key client, so this read is
     // itself subject to RLS (profiles_select_self) rather than a service-role bypass.
-    const { data: callerProfile, error: profileError } = await callerClient
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || callerProfile?.role !== "admin") {
+    // The caller's role in *their current gym* (0104), never the legacy global
+    // profiles.role: one person can own this gym and be a member of another.
+    // The new account joins that same gym.
+    const { data: ctxRows, error: ctxError } = await callerClient.rpc("my_gym_context");
+    const ctx = Array.isArray(ctxRows) ? ctxRows[0] : null;
+    if (ctxError || ctx?.role !== "admin" || ctx?.status !== "active") {
       return json({ error: "Forbidden — admin only" }, 403);
     }
+    const gymId = ctx.gym_id as string;
 
     const { email, password, firstName, lastName, phone, specialization, bio, availability } =
       await req.json();
@@ -81,6 +81,7 @@ Deno.serve(async (req: Request) => {
     const newId = created.user.id;
 
     const { error: profileInsertError } = await adminClient.from("profiles").insert({
+      active_gym_id: gymId,
       id: newId,
       role: "trainer",
       first_name: firstName,
@@ -95,12 +96,23 @@ Deno.serve(async (req: Request) => {
       return json({ error: profileInsertError.message }, 400);
     }
 
-    const { error: trainerInsertError } = await adminClient.from("trainer_profiles").insert({
+    // The coach's role in this gym, and their coach row under it — as the
+    // admin, so the rules decide (0104's add_person_to_gym).
+    const { error: roleError } = await callerClient.rpc("add_person_to_gym", {
+      p_user: newId, p_role: "trainer", p_status: "active",
+    });
+    if (roleError) {
+      await adminClient.auth.admin.deleteUser(newId);
+      return json({ error: roleError.message }, 400);
+    }
+
+    const { error: trainerInsertError } = await adminClient.from("trainer_profiles").upsert({
+      gym_id: gymId,
       profile_id: newId,
       specialization: specialization ?? null,
       bio: bio ?? null,
       availability: availability ?? null,
-    });
+    }, { onConflict: "gym_id,profile_id" });
     if (trainerInsertError) {
       await adminClient.auth.admin.deleteUser(newId);
       return json({ error: trainerInsertError.message }, 400);
