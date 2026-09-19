@@ -337,7 +337,7 @@ insert into profiles (id, role, first_name, last_name, email, status) values
 on conflict (id) do nothing;
 insert into trainer_profiles (profile_id, focus_areas) values
   ('${TC}', array['Strength']), ('${TD}', array['Strength'])
-on conflict (profile_id) do update set focus_areas = excluded.focus_areas;
+on conflict (gym_id, profile_id) do update set focus_areas = excluded.focus_areas;
 
 -- The member asked four days ago for a session three days out at 10:00.
 insert into pt_sessions (id, member_id, trainer_id, starts_at, duration_minutes, status, requested_at)

@@ -128,4 +128,81 @@ check('the transition mirror copies a profiles.role change into the current gym'
 await as(P.adminA);
 await db.exec(`update profiles set role = 'member' where id = '${P.memberA}'`);
 
+// ---- 0098: every gym table carries gym_id; keys and references are per gym --
+await asOwner();
+const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).rows.map((r) => r.t);
+// Every public table is either one gym's, or deliberately global.
+const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
+  'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications'];
+const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
+  and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
+check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
+  unclassified.rows.map((r) => r.tablename).join(', '));
+const untagged = await db.query(`select t from unnest(tenancy_gym_tables()) t
+  where not exists (select 1 from information_schema.columns c where c.table_schema = 'public'
+    and c.table_name = t and c.column_name = 'gym_id' and c.is_nullable = 'NO')`);
+check('every gym table has gym_id not null', untagged.rows.length === 0, untagged.rows.map((r) => r.t).join(', '));
+const notGym1 = [];
+for (const t of gymTables) {
+  const n = (await one(`select count(*)::int as n from ${t} where gym_id is distinct from '${GYM_A}'`)).n;
+  if (n) notGym1.push(`${t}=${n}`);
+}
+check('every existing row is Gym #1', notGym1.length === 0, notGym1.join(', '));
+const narrow = await db.query(`select c.conrelid::regclass::text as src, pg_get_constraintdef(c.oid) as def
+  from pg_constraint c where c.contype = 'f'
+    and c.conrelid::regclass::text = any(tenancy_gym_tables())
+    and c.confrelid::regclass::text = any(tenancy_gym_tables())
+    and pg_get_constraintdef(c.oid) not like 'FOREIGN KEY (gym_id,%'`);
+check('every gym-to-gym foreign key includes gym_id', narrow.rows.length === 0,
+  narrow.rows.map((r) => r.src + ' ' + r.def).join(' | '));
+// An owner insert that names no gym and sets no acting gym fails loudly.
+check('an insert with no gym and no caller fails', !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
+
+// Gym B gets Gym #1's rules, then the rows later checks read.
+await db.exec(`select seed_gym_defaults('${GYM_B}')`);
+for (const t of ['point_rules', 'cancellation_reasons', 'goal_templates', 'achievements', 'refund_rules', 'membership_plans']) {
+  const [a, b] = [(await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_A}'${t === 'membership_plans' ? ' and is_active' : ''}`)).n,
+    (await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_B}'`)).n];
+  check(`Gym B starts with Gym #1's ${t} (${b} of ${a})`, a > 0 && a === b, `${b} of ${a}`);
+}
+check('Gym B has its own settings row, named after the gym',
+  (await one(`select gym_name from gym_settings where gym_id = '${GYM_B}'`))?.gym_name === 'Gym B');
+const pfDiff = await one(`select count(*)::int as n from plan_features f join membership_plans p on p.id = f.plan_id
+  where p.gym_id = '${GYM_B}' and f.gym_id <> '${GYM_B}'`);
+check("Gym B's plan features are filed under Gym B", pfDiff.n === 0);
+check('seeding twice adds nothing', !(await fails(`select seed_gym_defaults('${GYM_B}')`)) &&
+  (await one(`select count(*)::int as n from membership_plans where gym_id = '${GYM_B}'`)).n ===
+  (await one(`select count(*)::int as n from membership_plans where gym_id = '${GYM_A}' and is_active`)).n);
+// Fixture rows are system writes: they name their gym, as system code must once
+// two gyms exist (a trigger's side rows then land there too).
+await db.exec(`
+  select act_as_gym('${GYM_A}');
+  insert into member_profiles (gym_id, profile_id, qr_code) values
+    ('${GYM_A}', '${P.memberA}', '${P.memberA}'), ('${GYM_B}', '${P.memberB}', '${P.memberB}'),
+    ('${GYM_A}', '${P.both}', '${P.both}')
+    on conflict do nothing;
+  insert into trainer_profiles (gym_id, profile_id) values ('${GYM_A}', '${P.trainerA}'), ('${GYM_B}', '${P.trainerB}')
+    on conflict do nothing;
+  insert into attendance (gym_id, member_id) values ('${GYM_A}', '${P.memberA}');
+  select act_as_gym('${GYM_B}');
+  insert into attendance (gym_id, member_id) values ('${GYM_B}', '${P.memberB}');
+  insert into notifications (gym_id, user_id, type, title, message) values
+    ('${GYM_B}', '${P.memberB}', 'system', 'B only', 'B only');
+  insert into events (gym_id, title, starts_at) values ('${GYM_B}', 'Gym B open day', now() + interval '3 days');
+  insert into rewards (gym_id, name, cost_points) values ('${GYM_B}', 'Gym B towel', 100);`);
+const bPlan = await one(`select id from membership_plans where gym_id = '${GYM_B}' limit 1`);
+await db.exec(`select act_as_gym('${GYM_B}');
+  insert into memberships (gym_id, member_id, plan_id) values ('${GYM_B}', '${P.memberB}', '${bPlan.id}');
+  insert into payments (gym_id, member_id, amount, method, invoice_number) values ('${GYM_B}', '${P.memberB}', 999, 'cash', 'B-0001');
+  insert into classes (gym_id, name, trainer_id, scheduled_at) values ('${GYM_B}', 'Gym B Spin', '${P.trainerB}', now() + interval '2 days');`);
+const aClass = await one(`select id from classes where gym_id = '${GYM_A}' limit 1`);
+check('the database refuses a Gym B booking of a Gym A class',
+  !!(await fails(`insert into bookings (gym_id, member_id, class_id) values ('${GYM_B}', '${P.memberB}', '${aClass.id}')`)));
+check('the database refuses a Gym B membership on a Gym A plan',
+  !!(await fails(`insert into memberships (gym_id, member_id, plan_id) values ('${GYM_B}', '${P.memberB}',
+    (select id from membership_plans where gym_id = '${GYM_A}' limit 1))`)));
+check('the database refuses a Gym A class run by a Gym B trainer',
+  !!(await fails(`insert into classes (gym_id, name, trainer_id) values ('${GYM_A}', 'x', '${P.trainerB}')`)));
+check('list_gyms shows branding', (await one(`select accent from list_gyms('gym b')`))?.accent === 'violet');
+
 finish();

@@ -91,53 +91,47 @@ insert into profiles (id, role, first_name, last_name, email, status)
 // use of pg_cron and pg_net behind existence checks.
 const prep = (sql) => sql.replace(/create\s+extension[^;]*;/gi, 'select 1;');
 
-/** Every migration, Supabase's grants, the real admin, then the named seeds. Throws on the first failure. */
+// The demo seeds were written for, and pasted live on, the schema before
+// tenancy (0097). They run at that point here too, so the tenancy backfills
+// meet the demo rows exactly as they do live.
+const SEEDS_BEFORE = '0097';
+
+const GRANTS = `
+  grant usage on schema public to anon, authenticated;
+  grant all on all tables in schema public to anon, authenticated;
+  grant all on all sequences in schema public to anon, authenticated;
+  grant execute on all functions in schema public to authenticated;`;
+
+/** Every migration, Supabase's grants, the real admin and the named seeds. Throws on the first failure. */
 export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
   const MIG = `${repo}/supabase/migrations`;
   const db = await PGlite.create();
   await db.exec(STUBS);
   const files = readdirSync(MIG).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+  let seeded = false;
+  const seed = async () => {
+    // Supabase grants these by default; pglite does not, and without them a
+    // test role can reach nothing, so every check passes for the wrong reason.
+    // Execute goes to authenticated only: a blanket grant to anon would undo
+    // each migration's `revoke ... from anon`; what anon may call, its
+    // migration grants.
+    await db.exec(GRANTS);
+    await db.exec(ADMIN_FIXTURE).catch((e) => log('admin fixture: ' + describe(e)));
+    for (const s of seeds) {
+      try { await db.exec(readFileSync(`${repo}/scripts/demo-data/${s}`, 'utf8')); log(`SEED OK: ${s}`); }
+      catch (e) { throw new Error(`SEED FAILED: ${s}
+   ${describe(e)}`); }
+    }
+    seeded = true;
+  };
   for (const f of files) {
+    if (!seeded && f >= SEEDS_BEFORE) await seed();
     try { await db.exec(prep(readFileSync(`${MIG}/${f}`, 'utf8'))); }
-    catch (e) { throw new Error(`MIGRATION FAILED: ${f}\n   ${describe(e)}`); }
+    catch (e) { throw new Error(`MIGRATION FAILED: ${f}
+   ${describe(e)}`); }
   }
+  if (!seeded) await seed();
+  await db.exec(GRANTS);   // again, for everything created after the seeds
   log(`applied ${files.length}/${files.length} migrations`);
-
-  // Supabase grants these by default; pglite does not, and without them a test
-  // role can reach nothing, so every check passes for the wrong reason. Execute
-  // goes to authenticated only: a blanket grant to anon would undo each
-  // migration's `revoke ... from anon`; what anon may call, its migration grants.
-  await db.exec(`
-    grant usage on schema public to anon, authenticated;
-    grant all on all tables in schema public to anon, authenticated;
-    grant all on all sequences in schema public to anon, authenticated;
-    grant execute on all functions in schema public to authenticated;`);
-
-  await db.exec(ADMIN_FIXTURE).catch((e) => log('admin fixture: ' + describe(e)));
-
-  // After tenancy (0097+), an insert that names no gym lands in the caller's
-  // current gym. Live, the seeds ran before that; here they run after every
-  // migration, so they run with the real admin as the caller, filed under Gym #1.
-  const tenancy = (await db.query(`select to_regprocedure('public.gym_one()') is not null as t`)).rows[0].t;
-  if (tenancy) {
-    await db.exec(`update profiles set active_gym_id = gym_one() where id = '${ADMIN}';
-      select set_config('request.jwt.claim.sub', '${ADMIN}', false);`);
-  }
-  for (const seed of seeds) {
-    try { await db.exec(readFileSync(`${repo}/scripts/demo-data/${seed}`, 'utf8')); log(`SEED OK: ${seed}`); }
-    catch (e) { throw new Error(`SEED FAILED: ${seed}\n   ${describe(e)}`); }
-  }
-  if (tenancy) {
-    // The demo seed turns user triggers off while it inserts, so the 0097 role
-    // mirror never sees its accounts. Live, they existed before 0097 and its
-    // backfill filed them under Gym #1; this is that backfill, run after them.
-    await db.exec(`
-      insert into gym_roles (gym_id, user_id, role, status)
-      select gym_one(), p.id, p.role,
-             case when p.status in ('active','pending_approval','suspended','archived') then p.status else 'active' end
-      from profiles p on conflict (gym_id, user_id) do nothing;
-      update profiles set active_gym_id = gym_one() where active_gym_id is null;
-      select set_config('request.jwt.claim.sub', '', false);`);
-  }
   return db;
 }
