@@ -31,11 +31,15 @@ members and Core Fitness is the **processor**, so the platform owner does not br
 
 ### New tables (migration 0097)
 
-- **`gyms`** — `id uuid`, `slug text unique` (for `/join/<slug>`), `name`, `logo_url`, `accent`
-  (one of eight pre-checked accent keys), `address`, `phone`, `email`, `opening_time`,
-  `closing_time`, `status` (`active` / `suspended`), `plan` (`trial` / `standard` / `premium`),
-  `paid_until date`, `created_at`. `gym_settings` folds into this table (its singleton row becomes
-  Gym #1's columns; a view named `gym_settings` keeps old reads working until the apps move).
+- **`gyms`** — the platform's side of a gym: `id uuid`, `slug text unique` (for `/join/<slug>`),
+  `name`, `status` (`active` / `suspended`), `plan` (`trial` / `standard` / `premium`),
+  `paid_until date`, `created_at`. The gym's own branding and contacts stay where they already
+  live, in `gym_settings` (name, short name, tagline and logo since 0067; address, phone, email,
+  hours), which gains `accent` (one of eight pre-checked accent keys).
+- **`gym_settings` becomes one row per gym** — `gym_id` is its new primary key; the old `id boolean`
+  column stays (always true, no longer unique) so every `.eq('id', true)` read keeps working and the
+  same-gym rule leaves each gym exactly its own row. Editing `gym_settings.gym_name` also renames
+  the gym in `gyms`, so there is one name.
 - **`gym_roles`** — `(gym_id, user_id)` primary key, `role user_role`, `status` (today's
   `profiles.status` values), `created_at`. Replaces `profiles.role`/`profiles.status` as the source
   of truth. The old columns stay, unused, until a clean-up migration at the end.
@@ -59,8 +63,9 @@ same moment — the last switch wins; each app re-checks the current gym when it
 
 ### Tagging the data (migration 0098)
 
-Every gym-specific table gets `gym_id uuid not null references gyms`, backfilled to Gym #1. A
-trigger fills `gym_id` from `current_gym_id()` when an insert leaves it out, so the old apps keep
+Every gym-specific table gets `gym_id uuid not null references gyms`, backfilled to Gym #1. Its
+column default is `current_gym_id()`, so an insert that leaves it out lands in the caller's gym
+(and an insert with no signed-in caller fails loudly instead of guessing) — the old apps keep
 working after the paste and before the new apps deploy. Keys that were per-person become
 per-person-per-gym: `member_profiles` is keyed `(gym_id, profile_id)`, and `qr_code` is unique per
 gym. The prototype's `gym_id text` columns (0001) are dropped.
@@ -76,9 +81,14 @@ gym. The prototype's `gym_id text` columns (0001) are dropped.
   the Core Fitness library every gym reads; a gym admin adds and edits only their own rows. The free
   library stays free (0019).
 
-### Rules (migrations 0099–0102, grouped by area)
+### Rules (migrations 0099–0103)
 
-Every policy gains `gym_id = current_gym_id()`. Every SECURITY DEFINER function that reads, counts,
+**0099 — one same-gym layer.** Every gym-specific table gets four *restrictive* policies
+(select / insert / update / delete) requiring `gym_id = current_gym_id()` (writes also need
+`gym_writable()`). Postgres ANDs restrictive policies with the existing permissive ones, so the ~180
+existing rules stay exactly as they are and simply stop at the gym's edge.
+
+**0100–0103 — functions.** Every SECURITY DEFINER function that reads, counts,
 awards or notifies is rewritten to stay inside one gym: points, badges, challenges, goals,
 bookings, cancel_booking, waitlist, quota, clashes, cash, refunds, invoice numbers, reminders,
 sweeps, `notify_once` (its dedupe key gains the gym). Sweeps run per gym. Groups:
@@ -121,11 +131,11 @@ show a notice naming the reason. Reading, export and check-out of data keep work
 
 - 0096 (class waitlist) is pasted first, so the tenancy rewrite covers it.
 - Before the first paste, the weekly backup workflow runs once by hand.
-- Migrations 0097–0102 are pasted one at a time and probed (`scripts/probe-migrations.py`).
+- Migrations 0097–0103 are pasted one at a time and probed (`scripts/probe-migrations.py`).
 - Existing data becomes **Gym #1, "Core Fitness"**, with today's name and contacts; every existing
   account gets its current role and status there; everyone's `active_gym_id` is Gym #1.
 - The old apps keep working between the paste and the deploy (the gym_id trigger, the
-  `gym_settings` view, `get_my_role()` unchanged in meaning for Gym #1).
+  per-gym `gym_settings` row, `get_my_role()` unchanged in meaning for Gym #1).
 - The demo data stays in Gym #1. A small second demo gym ("Gym B") is seeded for the defense to show
   switching and separation.
 
@@ -144,7 +154,7 @@ show a notice naming the reason. Reading, export and check-out of data keep work
 
 | Days | Part | Done when |
 |---|---|---|
-| 1–4 | **A. Tenancy foundation** — 0097–0102, isolation tests | Every isolation test passes locally and in CI; pasted; Gym #1 works as before |
+| 1–4 | **A. Tenancy foundation** — 0097–0103, isolation tests | Every isolation test passes locally and in CI; pasted; Gym #1 works as before |
 | 5–8 | **B. Gym-aware apps** — picker, sign-up gym list, join links, branding, admin on Vercel | Two gyms side by side on the phone and online admin, each seeing only its own |
 | 9–11 | **C. Platform app** — applications, `approve-gym`, gyms list, suspend, plan and paid-until | A test application is approved and its owner signs in to a seeded, empty gym |
 | 12–13 | **D. Website** — one page plus the form | A submitted form shows up in the platform app |
