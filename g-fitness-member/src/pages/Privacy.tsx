@@ -40,7 +40,7 @@ const sections: { title: string; body: string | string[] }[] = [
     body: [
       'You.',
       'The gym owner and the front desk, who need it to run the gym.',
-      'Your trainer sees only what you allow. Measurements, goals and workout logs are each a switch in Settings, and the database itself refuses a trainer the rest — it is not a hidden screen, it is a rule they cannot get around.',
+      'Your trainer sees only what you allow. Measurements, goals, and workouts with your saved routines are each a switch in Settings, and the database itself refuses a trainer the rest — it is not a hidden screen, it is a rule they cannot get around. Your training plan — the days you mean to come in — is visible to the coaches you train with, so they can plan around it, and so is your emergency contact, so a coach can call someone if you are hurt in a session.',
       'Nobody else. The gym does not sell, rent or trade any of it.',
     ],
   },
@@ -64,7 +64,7 @@ const sections: { title: string; body: string | string[] }[] = [
   {
     title: '6. Your rights under RA 10173',
     body: [
-      'See what is held about you, and have anything wrong corrected — ask at the desk and it is fixed the same day.',
+      'See what is held about you: Settings → Your data downloads a copy of all of it as one file, and the front desk can give you the same file. Have anything wrong corrected — most details you can change yourself in Edit profile; ask at the desk for the rest and it is fixed the same day.',
       'Object to receiving announcements: notification preferences are yours, in Settings.',
       'Complain to the National Privacy Commission if the gym gets this wrong.',
       'Deletion has a limit worth stating plainly: an account is archived rather than erased, because attendance and payment history are the gym\'s own accounting records. Archiving ends access and hides you from the roster; the records behind it stay.',
@@ -111,7 +111,7 @@ export default function Privacy() {
             <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3"
               style={{ color: 'var(--color-text-secondary)' }}>
               <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Last updated: 14 September 2026</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Last updated: 19 September 2026</p>
                 <p className="text-sm leading-relaxed">
                   This describes what the gym actually holds and who can actually reach it — not a
                   list of things a policy is expected to say. Written to the Data Privacy Act of

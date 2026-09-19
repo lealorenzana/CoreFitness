@@ -13,16 +13,29 @@ import {
 import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import { getCurrentMemberId } from '../services/bookingService';
 import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, SectionHead } from '../components/ui/noc';
+import { LineRow, NocButton, SectionHead } from '../components/ui/noc';
+import Avatar from '../components/ui/Avatar';
+import Modal from '../components/ui/Modal';
+import { BellRinging, DownloadSimple, Phone, EnvelopeSimple, SignOut } from '@phosphor-icons/react';
+import { exportMemberData, downloadExport } from '../lib/memberDataExport';
+import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
+import { logout } from '../utils/auth';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; label: string; description: string }[] = [
   { key: 'shareMeasurements', label: 'Body measurements', description: 'Weight, body fat and tape measurements' },
   { key: 'shareGoals', label: 'Goals', description: 'What you are working towards' },
-  { key: 'shareWorkouts', label: 'Workout log', description: 'Sessions you record yourself' },
+  // 0086: saved routines follow this switch too — they are how workouts are logged now.
+  { key: 'shareWorkouts', label: 'Workouts and routines', description: 'Sessions you log and the routines you build' },
 ];
 
 const APP_VERSION = '1.0.0';
+
+/** A link drawn as the ghost button — a real <a>, never a <button> inside one. */
+const linkBtn: React.CSSProperties = {
+  height: 46, gap: 7, borderRadius: 'var(--radius-btn)', fontSize: 14, fontWeight: 600,
+  color: 'var(--color-text-secondary)', border: '1px solid var(--color-hairline)',
+};
 
 /**
  * Settings (Nocturne redesign).
@@ -48,6 +61,12 @@ const APP_VERSION = '1.0.0';
  * Preferences gate *delivery*, never the record. A muted category still writes
  * its `notifications` row, because the bell is the history of what happened to
  * your membership and silencing a channel must not erase it.
+ *
+ * Reworked 2026-09-19: a **test** for this device's alerts; the coaches the
+ * sharing switches actually apply to, by name; **Your data** — a download of
+ * everything the gym holds about you (RA 10173's right to a copy; the desk
+ * exports the same file from the member drawer); the gym's phone and email as
+ * tap-to-call and tap-to-mail; and Log out.
  *
  * **About** was a modal with "Core Fitness Mamburao" and the address typed in.
  * It is now a section at the foot of the page reading `gym_settings`, so the
@@ -135,6 +154,10 @@ export default function Settings() {
   // the same state the app was in before these switches existed.
   const [share, setShare] = useState<SharePrefs>(SHARE_ALL);
   const [gym, setGym] = useState<GymSettingsRow | null>(null);
+  /** Coaches you train with — the ones "What your trainer sees" applies to (0082). Null while unknown. */
+  const [coaches, setCoaches] = useState<CoachCard[] | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const support = pushSupport();
 
   useEffect(() => {
@@ -153,6 +176,8 @@ export default function Settings() {
       if (!id || cancelled) return;
       const s = await getSharePrefs(id).catch(() => SHARE_ALL);
       if (!cancelled) setShare(s);
+      const directory = await loadCoachDirectory(id).catch(() => null);
+      if (!cancelled) setCoaches(directory ? directory.filter((c) => c.yours) : null);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -185,6 +210,42 @@ export default function Settings() {
       setPushOn(await isPushEnabled());
     } finally {
       setBusy(null);
+    }
+  };
+
+  /**
+   * A test alert on this device. With push on, the service worker shows a real
+   * system notification — what an alert will look like; otherwise the sound
+   * and an in-app note, and the reason push is off.
+   */
+  const testAlert = async () => {
+    if (prefs.soundEnabled) playNotificationSound();
+    try {
+      const reg = pushOn && 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+      if (reg && Notification.permission === 'granted') {
+        await reg.showNotification('Core Fitness', { body: 'This is how an alert looks on this device.', tag: 'settings-test' });
+        toast.success('Sent — check your notifications');
+        return;
+      }
+    } catch { /* fall through to the in-app note */ }
+    toast.success(pushOn ? 'Alerts are on — this device did not show a system notification'
+      : 'Push is off on this device — alerts still arrive in Updates');
+  };
+
+  const downloadMyData = async () => {
+    setExporting(true);
+    try {
+      const id = await getCurrentMemberId();
+      if (!id) throw new Error('Not signed in');
+      const exp = await exportMemberData(id);
+      const who = (exp.data.profiles?.[0] as { first_name?: string; last_name?: string } | undefined);
+      downloadExport(exp, `${who?.first_name ?? ''}-${who?.last_name ?? ''}`);
+      const missing = Object.keys(exp.unavailable).length;
+      toast.success(missing ? `Downloaded — ${missing} section${missing === 1 ? '' : 's'} could not be read and are listed in the file` : 'Downloaded');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not prepare your data'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -241,12 +302,17 @@ export default function Settings() {
     { label: 'Terms of service', description: 'Refunds, freezes and the rest of the rules', to: '/terms' },
   ];
 
+  const clock = (t: string | null | undefined) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  const hours = gym?.opening_time && gym?.closing_time ? `${clock(gym.opening_time)} – ${clock(gym.closing_time)}` : null;
   const about = [
-    ['Version', APP_VERSION],
     ['Gym', gym?.gym_name ?? null],
+    ['Open', hours],
     ['Address', gym?.address ?? null],
-    ['Phone', gym?.phone ?? null],
-    ['Email', gym?.email ?? null],
+    ['Version', APP_VERSION],
   ].filter((r): r is [string, string] => Boolean(r[1]));
 
   return (
@@ -290,7 +356,12 @@ export default function Settings() {
         </div>
         <Footnote>
           Muting a category stops the alert, not the record — everything still appears in Updates.
+          Coach notes, reminders, reward and renewal replies are always kept in Updates.
         </Footnote>
+        <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} icon={<BellRinging size={16} />}
+          onClick={() => void testAlert()}>
+          Send a test alert to this device
+        </NocButton>
       </section>
 
       {/* What your trainer sees.
@@ -315,30 +386,96 @@ export default function Settings() {
             />
           ))}
         </div>
+        {/* Named, so "my trainer" is somebody specific. A trainer sees only
+            their own trainees (0082) — the coaches you have trained with. */}
+        {coaches && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+              {coaches.length === 0 ? 'No coach has trained you yet' : 'Coaches these switches apply to'}
+            </p>
+            {coaches.length > 0 && (
+              <div className="flex flex-wrap" style={{ gap: 10, marginTop: 8 }}>
+                {coaches.map((c) => (
+                  <span key={c.trainer.id} className="inline-flex items-center" style={{ gap: 6, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                    <Avatar name={c.name} photoUrl={c.trainer.photo_url} size={24} /> {c.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <Footnote>
           Your name, membership and gym check-ins are always visible to gym staff — that is how the
-          front desk runs. These switches cover the personal logs you keep in Progress.
+          front desk runs. Your training plan is visible to your coaches too, so they can plan around it.
+          These switches cover the personal logs you keep in Progress.
+        </Footnote>
+      </section>
+
+      {/* ── Your data (RA 10173) ── */}
+      <section>
+        <SectionHead title="Your data" />
+        <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          Download a copy of everything the gym holds about you — membership, payments, visits, bookings,
+          workouts, goals, points and notes — as one file. The front desk can give you the same file.
+        </p>
+        <NocButton variant="structure" className="w-full" style={{ marginTop: 12 }} disabled={exporting}
+          icon={<DownloadSimple size={16} />} onClick={() => void downloadMyData()}>
+          {exporting ? 'Preparing…' : 'Download my data'}
+        </NocButton>
+        <Footnote>
+          Something wrong? Most details you can fix yourself in Edit profile; for the rest, ask at the desk.
         </Footnote>
       </section>
 
       <section>
         <SectionHead title="Account & app" />
         <div style={{ marginTop: 2 }}>
-          {links.map((l, i) => (
+          {links.map((l) => (
             <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
-              onClick={() => navigate(l.to)} last={i === links.length - 1} />
+              onClick={() => navigate(l.to)} />
           ))}
+          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
+            style={{ gap: 10, padding: '13px 0', fontSize: 14.5, color: 'var(--color-text-secondary)' }}>
+            <SignOut size={17} aria-hidden /> Log out
+          </button>
         </div>
       </section>
 
       <section>
         <SectionHead title="About" meta="Core Fitness member app" />
         <div style={{ marginTop: 2 }}>
-          {about.map(([k, v], i) => (
-            <LineRow key={k} gutter={k} gutterWidth={72} title={v} last={i === about.length - 1} />
+          {about.map(([k, v]) => (
+            <LineRow key={k} gutter={k} gutterWidth={72} title={v} />
           ))}
         </div>
+        {/* The gym's own contact details, from gym_settings — tap to call or write. */}
+        {(gym?.phone || gym?.email) && (
+          <div className="flex" style={{ gap: 9, marginTop: 12 }}>
+            {gym?.phone && (
+              <a href={`tel:${gym.phone.replace(/\s+/g, '')}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}>
+                <Phone size={15} aria-hidden /> Call the gym
+              </a>
+            )}
+            {gym?.email && (
+              <a href={`mailto:${gym.email}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}>
+                <EnvelopeSimple size={15} aria-hidden /> Email
+              </a>
+            )}
+          </div>
+        )}
       </section>
+
+      <Modal
+        isOpen={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title="Log out"
+        subtitle="You will need your email and password to get back in."
+        confirmLabel="Log out"
+        cancelLabel="Stay signed in"
+        onConfirm={async () => { await logout(); navigate('/'); }}
+      >
+        <span />
+      </Modal>
     </Page>
   );
 }

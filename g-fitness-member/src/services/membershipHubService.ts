@@ -1,6 +1,6 @@
 import { getMemberHome, type MemberHome } from './memberHomeService';
 import {
-  getBalance, listLedger, listMyRedemptions, listRewards,
+  getBalance, listLedger, listMyRedemptions, listRewards, getSavingFor,
   type LedgerEntry, type Redemption, type Reward,
 } from '../lib/api/points';
 import { listMemberPayments } from '../lib/api/payments';
@@ -67,6 +67,8 @@ export interface MembershipHub {
   term: TermUse | null;
   /** An open renewal request (0091) — the desk knows they are coming. */
   renewalRequest: RenewalRequest | null;
+  /** 0092: the reward the member pinned on Rewards, if any. */
+  savingFor: string | null;
 }
 
 /**
@@ -94,7 +96,7 @@ export type ActivityRow =
   | { kind: 'membership'; at: string; title: string; note: string | null };
 
 export async function getMembershipHub(memberId: string): Promise<MembershipHub> {
-  const [home, points, payments, events, rewards, ledger, redemptions, attendance, bookings, logs, requests] = await Promise.all([
+  const [home, points, payments, events, rewards, ledger, redemptions, attendance, bookings, logs, requests, savingFor] = await Promise.all([
     getMemberHome(memberId),
     getBalance(memberId).then(
       (n) => ({ ok: true as const, n }),
@@ -114,6 +116,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     listMyBookings(memberId).catch(() => null),
     listWorkoutLogs(memberId).catch(() => null),
     listMyRenewalRequests(memberId),
+    getSavingFor(memberId).catch(() => undefined),
   ]);
 
   // ── This term so far ──
@@ -159,6 +162,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     home,
     term,
     renewalRequest: requests?.find((r) => r.status === 'open') ?? null,
+    savingFor: savingFor ?? null,
     rewards,
     activity,
     activityGaps,

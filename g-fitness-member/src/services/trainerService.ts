@@ -81,6 +81,9 @@ export interface MemberDetailForTrainer {
   /** Goal id → current value from `goal_current_value` (0087), the number the
    *  member's own Goals tab shows. Null where the database gives none. */
   goalValues: Record<string, number | null>;
+  /** Who to call if something happens in a session — the member keeps it
+   *  current in Edit profile. Null when none on file or unreadable. */
+  emergency: { name: string; phone: string | null; relationship: string | null } | null;
 }
 
 export async function getMemberDetailForTrainer(memberId: string): Promise<MemberDetailForTrainer> {
@@ -100,6 +103,10 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
   ]);
 
   const openGoals = goals.filter((g) => g.achieved_on == null).slice(0, 4);
+  const { data: mp } = await supabase.from('member_profiles')
+    .select('emergency_contact_name, emergency_contact_phone, emergency_contact_relationship')
+    .eq('profile_id', memberId).maybeSingle();
+  const em = mp as { emergency_contact_name: string | null; emergency_contact_phone: string | null; emergency_contact_relationship: string | null } | null;
   const values = await Promise.all(openGoals.map(async (g) => {
     const { data, error } = await supabase.rpc('goal_current_value', { p_goal: g.id });
     return [g.id, error || data == null ? null : Number(data)] as const;
@@ -111,6 +118,9 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
     shared,
     // Newest first, and only what a coach can act on in a modal.
     goals: openGoals,
+    emergency: em?.emergency_contact_name
+      ? { name: em.emergency_contact_name, phone: em.emergency_contact_phone, relationship: em.emergency_contact_relationship }
+      : null,
     goalValues: Object.fromEntries(values),
     plan: planRows == null ? null : {
       days: active.map((r) => r.day_of_week).sort((a, b) => a - b),

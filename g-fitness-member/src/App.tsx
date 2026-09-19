@@ -22,6 +22,7 @@ import AccountActivity from './pages/AccountActivity';
 import MyEvaluations from './pages/MyEvaluations';
 import WorkoutHistory from './pages/WorkoutHistory';
 import VisitHistory from './pages/VisitHistory';
+import RewardRequests from './pages/RewardRequests';
 import ProgressHub from './pages/progress/ProgressHub';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -226,6 +227,7 @@ function App() {
           <Route path="track/routine/:routineId" element={<RoutineEditor />} />
           <Route path="track/session/:logId" element={<GuidedWorkout />} />
           <Route path="rewards" element={<Rewards />} />
+          <Route path="rewards/requests" element={<RewardRequests />} />
           <Route path="challenges" element={<Challenges />} />
           <Route path="challenges/completed" element={<Challenges completedOnly />} />
           <Route path="activity" element={<AccountActivity />} />

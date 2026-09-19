@@ -110,7 +110,11 @@ export default function MembershipHub() {
   // ── Points ──
   const rewards = (hub.rewards ?? []).filter((r) => r.stock !== 0);
   const balance = hub.points;
-  const nextUp = balance == null ? null : rewards.find((r) => r.costPoints > balance) ?? null;
+  // The reward they pinned on Rewards (0092) leads; otherwise the cheapest not yet affordable.
+  const pinned = hub.savingFor ? rewards.find((r) => r.id === hub.savingFor) ?? null : null;
+  const nextUp = balance == null ? null
+    : pinned && pinned.costPoints > balance ? pinned
+    : rewards.find((r) => r.costPoints > balance) ?? null;
   const canGet = balance == null ? 0 : rewards.filter((r) => r.costPoints <= balance).length;
 
   // ── Activity ──

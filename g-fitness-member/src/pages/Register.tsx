@@ -13,6 +13,7 @@ import { registerMember, isEmailTaken, isPhoneTaken } from '../lib/api/members';
 import { listPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 import BirthDateField from '../components/ui/BirthDateField';
+import { ageFrom, birthDateProblem, PHONE_RE } from '../utils/profileRules';
 
 /**
  * Member sign-up, as a three-step onboarding flow.
@@ -102,23 +103,6 @@ const GENDERS = [
   { value: 'prefer_not_to_say', label: 'Rather not say' },
 ];
 
-/**
- * Age from a birth date, for the "you are N" confirmation under the field.
- *
- * Subtracting years alone over-counts for anyone whose birthday has not
- * happened yet this year — wrong for roughly half of every member, half the
- * time. Mirrors `age_years()` in migration 0031.
- */
-function ageFrom(dob: string): number | null {
-  if (!dob) return null;
-  const d = new Date(`${dob}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  const monthDiff = now.getMonth() - d.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) age -= 1;
-  return age;
-}
 
 export default function Register() {
   const navigate = useNavigate();
@@ -188,15 +172,13 @@ export default function Register() {
       // quietly wrong. The bounds here catch typos; they are not gym policy on
       // who may join, which is the front desk's call at approval.
       if (!formData.dateOfBirth) return fail('Please enter your date of birth');
-      const age = ageFrom(formData.dateOfBirth);
-      if (age == null) return fail('That date of birth does not look right');
-      if (age < 0) return fail('That date of birth is in the future');
-      if (age > 120) return fail('Please check your date of birth');
+      const dobProblem = birthDateProblem(formData.dateOfBirth);
+      if (dobProblem) return fail(dobProblem);
 
       if (!formData.gender) return fail('Please choose an option for gender');
 
       if (formData.phone.trim()) {
-        if (!/^[\d+\s()-]{7,}$/.test(formData.phone.trim()))
+        if (!PHONE_RE.test(formData.phone.trim()))
           return fail('That phone number does not look right');
         if (await isPhoneTaken(formData.phone))
           return fail('That phone number is already registered. Ask the front desk if this is yours.');
@@ -209,7 +191,7 @@ export default function Register() {
       // columns since 0001 and nothing has ever filled them.
       if (!formData.emergencyName.trim()) return fail('Please enter an emergency contact name');
       if (!formData.emergencyPhone.trim()) return fail('Please enter an emergency contact number');
-      if (!/^[\d+\s()-]{7,}$/.test(formData.emergencyPhone.trim()))
+      if (!PHONE_RE.test(formData.emergencyPhone.trim()))
         return fail('That emergency contact number does not look right');
       return true;
     }

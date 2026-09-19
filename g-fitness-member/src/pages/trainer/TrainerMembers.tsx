@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
-import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, ListChecks, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, X, type Icon } from '@phosphor-icons/react';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -421,6 +421,21 @@ export default function TrainerMembers() {
                           {' '}— {new Date(`${detail.latestMeasurement.measured_on}T00:00:00`)
                             .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
+                      </p>
+                    )}
+                  </SharedBlock>
+
+                  {/* Who to call if something happens mid-session — kept current by
+                      the member in Edit profile. Always shown: safety, not a log. */}
+                  <SharedBlock icon={Lifebuoy} label="Emergency contact" shared
+                    empty={!detail?.emergency} emptyText="None on file — ask them to add one in Edit profile.">
+                    {detail?.emergency && (
+                      <p style={line}>
+                        {detail.emergency.name}
+                        {detail.emergency.relationship && <span style={muted}> · {detail.emergency.relationship}</span>}
+                        {detail.emergency.phone && (
+                          <> · <a href={`tel:${detail.emergency.phone.replace(/\s+/g, '')}`} style={{ color: 'var(--color-secondary)' }}>{detail.emergency.phone}</a></>
+                        )}
                       </p>
                     )}
                   </SharedBlock>

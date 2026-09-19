@@ -23,6 +23,8 @@ import { bmi, bmiBand, goalProgress } from '../../lib/api/progress';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
+import { supabase } from '../../lib/supabaseClient';
+import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 
@@ -226,9 +228,29 @@ function DrawerBody({
             </div>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* RA 10173's right to a copy, at the counter: the same file the
+              member downloads from Settings → Your data (lib/memberDataExport.ts). */}
+          <button
+            onClick={async () => {
+              try {
+                const exp = await exportMemberData(profile.id);
+                downloadExport(exp, fullName);
+                const missing = Object.keys(exp.unavailable).length;
+                showToast(missing ? `Exported — ${missing} section(s) could not be read and are listed in the file` : 'Member data exported', 'success');
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : 'Could not export', 'error');
+              }
+            }}
+            className="px-2.5 h-8 rounded-lg text-[11px] font-semibold"
+            data-tip="Everything held about this member, as one file — for a data request"
+            style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+            Export data
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1158,18 +1180,49 @@ function AccountHistorySection({ profileId }: { profileId: string }) {
  * on every open, to render a zero for members who have never earned anything,
  * is a cost paid for the uncommon case.
  */
+interface MemberRedemption {
+  id: string; status: string; cost_points: number; requested_at: string; rewards: { name: string } | null;
+}
+
 function PointsSection({ memberId }: { memberId: string }) {
   const [balance, setBalance] = useState<number | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [failed, setFailed] = useState(false);
+  /** Their open reward requests — the desk hands approved ones over here (0092). */
+  const [open, setOpen] = useState<MemberRedemption[]>([]);
+  /** What they pinned on Rewards (0092); null when none or before 0092. */
+  const [savingFor, setSavingFor] = useState<string | null>(null);
+  const [handing, setHanding] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let alive = true;
     Promise.all([getBalance(memberId), listLedger(memberId, 8)])
       .then(([b, l]) => { if (alive) { setBalance(b); setLedger(l); } })
       .catch(() => { if (alive) setFailed(true); });
+    void (async () => {
+      const [r, m] = await Promise.all([
+        supabase.from('reward_redemptions').select('id, status, cost_points, requested_at, rewards(name)')
+          .eq('member_id', memberId).in('status', ['pending', 'approved']).order('requested_at'),
+        supabase.from('member_profiles').select('saving_for_reward, rewards:saving_for_reward(name)')
+          .eq('profile_id', memberId).maybeSingle(),
+      ]);
+      if (!alive) return;
+      setOpen((r.data ?? []) as unknown as MemberRedemption[]);
+      const target = (m.data as { rewards?: { name: string } | null } | null)?.rewards;
+      setSavingFor(m.error ? null : target?.name ?? null);
+    })();
     return () => { alive = false; };
-  }, [memberId]);
+  }, [memberId, tick]);
+
+  const handOver = async (id: string) => {
+    setHanding(id);
+    const { error } = await supabase.rpc('mark_redemption_collected', { p_id: id });
+    setHanding(null);
+    if (error) { showToast(error.message, 'error'); return; }
+    showToast('Handed over — the member sees it as collected', 'success');
+    setTick((t) => t + 1);
+  };
 
   // A failed read says so. Rendering 0 would tell the desk this member has
   // never earned a point, which may be false — and they are standing there.
@@ -1201,7 +1254,33 @@ function PointsSection({ memberId }: { memberId: string }) {
           Earned automatically. Nobody can add or remove points by hand — approve
           a reward on the Rewards page to spend them.
         </p>
+        {savingFor && (
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-secondary)' }}>
+            Saving for {savingFor}
+          </p>
+        )}
       </div>
+
+      {open.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {open.map((r) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+              style={{ background: 'var(--color-surface-raised)', border: `1px solid ${r.status === 'approved' ? 'rgba(245,158,11,0.4)' : 'var(--color-border)'}` }}>
+              <div className="min-w-0">
+                <p className="text-xs text-white font-semibold truncate">{r.rewards?.name ?? 'Reward'}</p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {r.cost_points} points · {r.status === 'approved' ? 'ready to hand over' : 'waiting for an admin to approve'}
+                </p>
+              </div>
+              {r.status === 'approved' && (
+                <Button size="sm" variant="secondary" disabled={handing === r.id} onClick={() => void handOver(r.id)}>
+                  Handed over
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {ledger.length === 0 ? (
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>

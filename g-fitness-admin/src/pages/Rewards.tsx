@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package } from 'lucide-react';
+import { Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
@@ -30,6 +30,16 @@ import { supabase } from '../lib/supabaseClient';
  * admin. Points come from things members actually did. A gym that wants to be
  * generous adds a cheaper reward, which is recorded and auditable.
  *
+ * ## Deciding and handing over (0092, 2026-09-19)
+ *
+ * Decisions go through `decide_redemption()` — the member is notified either
+ * way, and a zero-row decision can no longer read as success. Approved requests
+ * wait under **Ready to collect**, where whoever hands the reward over (admin
+ * or front desk) marks it with `mark_redemption_collected()`; that is what
+ * finally turns the member's "Ready — collect at the desk" into "Collected".
+ * Each reward also shows how many members are saving for it — the demand the
+ * gym could not see before, and the thing to check before hiding one.
+ *
  * ## The screen
  *
  * Three stacked full-width panels, two of which existed only to say "nothing
@@ -57,6 +67,8 @@ interface Redemption {
   status: string;
   requested_at: string;
   decision_note: string | null;
+  /** 0092 — when the desk handed it over. */
+  fulfilled_at?: string | null;
   rewards: { name: string } | null;
   member_profiles: { profiles: { first_name: string; last_name: string } | null } | null;
 }
@@ -81,6 +93,8 @@ export default function Rewards() {
   const [rejecting, setRejecting] = useState<Redemption | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [toApprove, setToApprove] = useState<Redemption | null>(null);
+  /** reward id → members saving for it (0092). Null before it is live. */
+  const [wishlist, setWishlist] = useState<Map<string, number> | null>(null);
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
    *  call again from a button without flashing the whole screen away. */
@@ -90,7 +104,7 @@ export default function Rewards() {
         .select('id, name, description, cost_points, stock, is_active')
         .order('cost_points'),
       supabase.from('reward_redemptions')
-        .select('id, member_id, cost_points, status, requested_at, decision_note, rewards(name), member_profiles(profiles(first_name, last_name))')
+        .select('*, rewards(name), member_profiles(profiles(first_name, last_name))')
         .order('requested_at', { ascending: false })
         .limit(100),
     ]);
@@ -101,6 +115,9 @@ export default function Rewards() {
       setQueue((q.data ?? []) as unknown as Redemption[]);
       setFailed(false);
     }
+    const w = await supabase.rpc('reward_wishlist_counts');
+    setWishlist(w.error ? null : new Map(((w.data ?? []) as { reward_id: string; members: number }[])
+      .map((x) => [x.reward_id, x.members])));
   };
 
   useEffect(() => {
@@ -150,26 +167,46 @@ export default function Rewards() {
    */
   const decide = async (row: Redemption, status: 'approved' | 'rejected', note: string) => {
     setBusy(row.id);
-    const { data: me } = await supabase.auth.getUser();
-    const { error } = await supabase
-      .from('reward_redemptions')
-      .update({
-        status,
-        decided_by: me.user?.id ?? null,
-        decided_at: new Date().toISOString(),
-        decision_note: note || null,
-      })
-      .eq('id', row.id);
+    // decide_redemption (0092): admin-only, stamps who and when, refuses a
+    // request already decided, and notifies the member either way.
+    let { error } = await supabase.rpc('decide_redemption', { p_id: row.id, p_status: status, p_note: note || null });
+    // Before 0092 is pasted the function does not exist (PGRST202): fall back
+    // to 0051's direct update — admin-only by RLS — with the zero-row check it
+    // never had, so a refused write cannot read as a decision.
+    if (error?.code === 'PGRST202') {
+      const { data: me } = await supabase.auth.getUser();
+      const res = await supabase.from('reward_redemptions')
+        .update({ status, decided_by: me.user?.id ?? null, decided_at: new Date().toISOString(), decision_note: note || null })
+        .eq('id', row.id).eq('status', 'pending').select('id');
+      error = res.error ?? (!res.data || res.data.length === 0
+        ? { message: 'That request was not changed — it may already be decided.' } as typeof error : null);
+    }
     setBusy(null);
     if (error) { showToast(error.message, 'error'); return; }
-    showToast(status === 'approved' ? 'Approved' : 'Rejected', 'success');
+    showToast(status === 'approved' ? 'Approved — the member has been told to collect it' : 'Rejected — the member has been told why', 'success');
+    await load();
+  };
+
+  /** The reward left the desk — the member's app says Collected from now on. */
+  const handOver = async (row: Redemption) => {
+    setBusy(row.id);
+    const { error } = await supabase.rpc('mark_redemption_collected', { p_id: row.id });
+    setBusy(null);
+    if (error) { showToast(error.message, 'error'); return; }
+    showToast('Marked as collected', 'success');
     await load();
   };
 
   const toggleReward = async (r: Reward) => {
-    const { error } = await supabase.from('rewards')
-      .update({ is_active: !r.is_active }).eq('id', r.id);
+    const { data, error } = await supabase.from('rewards')
+      .update({ is_active: !r.is_active }).eq('id', r.id).select('id');
     if (error) { showToast(error.message, 'error'); return; }
+    // A zero-row update reports success (CLAUDE.md) — only an admin may edit rewards.
+    if (!data || data.length === 0) { showToast('Only an admin can change the catalogue', 'error'); return; }
+    const saving = wishlist?.get(r.id) ?? 0;
+    if (r.is_active && saving > 0) {
+      showToast(`Hidden. ${saving} member${saving === 1 ? ' was' : 's were'} saving for it — it drops off their target.`, 'info');
+    }
     setRewards((prev) => prev.map((x) => (x.id === r.id ? { ...x, is_active: !x.is_active } : x)));
   };
 
@@ -179,6 +216,7 @@ export default function Rewards() {
   };
 
   const pending = useMemo(() => queue.filter((q) => q.status === 'pending'), [queue]);
+  const ready = useMemo(() => queue.filter((q) => q.status === 'approved'), [queue]);
   const decided = useMemo(() => queue.filter((q) => q.status !== 'pending'), [queue]);
 
   const catalogue = useMemo(() => {
@@ -266,6 +304,29 @@ export default function Rewards() {
         )}
       </Section>
 
+      {/* ── Ready to collect (0092) ── approved, waiting at the desk. Whoever
+          hands it over marks it; the member's app then says Collected. */}
+      {ready.length > 0 && (
+        <Section title="Ready to collect" icon={HandHeart} count={ready.length}
+          hint="mark it when it leaves the desk">
+          <CardGrid min={300}>
+            {ready.map((row) => (
+              <TileCard key={row.id}>
+                <p className="text-[12px] font-semibold text-white truncate">{memberName(row)}</p>
+                <p className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                  {row.rewards?.name ?? 'Reward'} · {row.cost_points} points
+                </p>
+                <button onClick={() => void handOver(row)} disabled={busy === row.id}
+                  className="w-full h-8 mt-2.5 rounded-lg text-[11px] font-bold disabled:opacity-50"
+                  style={{ background: 'var(--color-secondary)', color: '#000' }}>
+                  <HandHeart size={12} className="inline mr-1" />Handed over
+                </button>
+              </TileCard>
+            ))}
+          </CardGrid>
+        </Section>
+      )}
+
       {/* ── The catalogue ─────────────────────────────────────────────────── */}
       <Section
         title="What points buy" icon={Gift} count={rewards.length}
@@ -327,6 +388,12 @@ export default function Rewards() {
                     {r.stock == null ? 'unlimited' : `${r.stock} left`}
                   </span>
                 </div>
+                {/* Demand (0092): members who pinned it on their Rewards screen. */}
+                {wishlist && (wishlist.get(r.id) ?? 0) > 0 && (
+                  <p className="text-[10px] mt-1 inline-flex items-center gap-1" style={{ color: 'var(--color-secondary)' }}>
+                    <Pin size={10} /> {wishlist.get(r.id)} saving for this
+                  </p>
+                )}
               </TileCard>
             ))}
           </CardGrid>
@@ -372,7 +439,9 @@ export default function Rewards() {
                     <span className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
                       style={{ color: row.status === 'rejected'
                         ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
-                      {row.status}
+                      {row.status === 'fulfilled'
+                        ? `collected${row.fulfilled_at ? ` ${new Date(row.fulfilled_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}` : ''}`
+                        : row.status === 'approved' ? 'ready' : row.status}
                     </span>
                   </div>
                 ))}

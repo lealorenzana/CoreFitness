@@ -41,6 +41,8 @@ export interface Redemption {
   status: 'pending' | 'approved' | 'rejected' | 'fulfilled';
   requestedAt: string;
   decisionNote: string | null;
+  /** 0092: when the desk handed it over. */
+  fulfilledAt: string | null;
 }
 
 /**
@@ -109,7 +111,7 @@ export async function listRewards(): Promise<Reward[]> {
 export async function listMyRedemptions(memberId: string): Promise<Redemption[]> {
   const { data, error } = await supabase
     .from('reward_redemptions')
-    .select('id, reward_id, cost_points, status, requested_at, decision_note, rewards(name)')
+    .select('*, rewards(name)')
     .eq('member_id', memberId)
     .order('requested_at', { ascending: false });
   if (error) throw error;
@@ -124,6 +126,7 @@ export async function listMyRedemptions(memberId: string): Promise<Redemption[]>
       status: r.status as Redemption['status'],
       requestedAt: r.requested_at as string,
       decisionNote: r.decision_note as string | null,
+      fulfilledAt: (r as { fulfilled_at?: string | null }).fulfilled_at ?? null,
     };
   });
 }
@@ -152,4 +155,24 @@ export async function cancelRedemption(id: string): Promise<void> {
     .select('id');
   if (error) throw error;
   assertWrote(data, 'That redemption could not be cancelled — the gym may have already approved it.');
+}
+
+/**
+ * The reward a member is saving for (0092), stored on their own
+ * `member_profiles` row. Null clears it. Returns false before 0092 is live,
+ * so the screen can hide the feature rather than fail.
+ */
+export async function getSavingFor(memberId: string): Promise<string | null | undefined> {
+  const { data, error } = await supabase
+    .from('member_profiles').select('saving_for_reward').eq('profile_id', memberId).maybeSingle();
+  if (error) return undefined; // column missing — feature not available
+  return (data as { saving_for_reward: string | null } | null)?.saving_for_reward ?? null;
+}
+
+export async function setSavingFor(memberId: string, rewardId: string | null): Promise<void> {
+  const { data, error } = await supabase
+    .from('member_profiles').update({ saving_for_reward: rewardId }).eq('profile_id', memberId)
+    .select('profile_id');
+  if (error) throw error;
+  assertWrote(data, 'Your target could not be saved.');
 }
