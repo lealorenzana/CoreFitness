@@ -327,10 +327,21 @@ export function TileCard({
   className?: string;
   title?: string;
 }) {
-  const Tag = onClick ? 'button' : 'div';
+  // A clickable card is a div with a button's role and keys, never a
+  // <button>: cards hold their own buttons (Edit, Suspend, Archive…), and a
+  // <button> inside a <button> is invalid HTML — the inner tap can fire the
+  // card, and React warns on every render (found on Trainers, 2026-09-19).
   return (
-    <Tag
+    <div
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      // Only the card's own Enter/Space: a key pressed on an inner button is
+      // that button's, not the card's.
+      onKeyDown={onClick ? (e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+      } : undefined}
       title={title}
       className={`text-left w-full rounded-xl p-3 transition-colors group ${className}`}
       style={{
@@ -339,8 +350,8 @@ export function TileCard({
         borderLeft: accent ? `3px solid ${SECONDARY}` : `1px solid ${BORDER}`,
         opacity: dim ? 0.55 : 1,
         cursor: onClick ? 'pointer' : 'default',
-        // A <button> centres its content vertically — the browser's own
-        // stylesheet does it, and nothing in the markup hints at it. Grid rows
+        // A <button> centred its content vertically (this was one until
+        // 2026-09-19) — the browser's own stylesheet does it. Grid rows
         // stretch every card to the tallest one, so three cards with different
         // amounts of text ended up with their titles at three different
         // heights, which reads as broken alignment rather than as centring.
@@ -352,7 +363,7 @@ export function TileCard({
       }}
     >
       {children}
-    </Tag>
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@
     { "file": "trainer-scenarios.js", "app": "member" },
     { "file": "admin-engagement-check.js", "app": "admin" },
     { "file": "admin-rewards-check.js", "app": "admin" },
-    { "file": "admin-ops-check.js", "app": "admin" }
+    { "file": "admin-ops-check.js", "app": "admin" },
+    { "file": "admin-sweep-check.js", "app": "admin" }
   ]
 }

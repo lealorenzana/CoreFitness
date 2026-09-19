@@ -40,8 +40,8 @@ export default function Revenue() {
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // `loading` starts true and this runs once, so there is nothing to set first.
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       dashboardService.getRevenueSummary(),
       dashboardService.getRevenueByTier(),

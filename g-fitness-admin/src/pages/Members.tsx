@@ -203,8 +203,16 @@ export default function Members() {
     }
   };
   const [pendingCount, setPendingCount] = useState(0);
-  /** The member whose full record is open in the drawer. */
-  const [viewingId, setViewingId] = useState<string | null>(null);
+  /** The member whose full record is open in the drawer. `?open=<id>` is how
+   *  the header search and the Activity feed land on one member (via
+   *  /members/:id) — read once, in the initialiser, like `?pending`. */
+  const [viewingId, setViewingId] = useState<string | null>(() => searchParams.get('open'));
+  const closeDrawer = () => {
+    setViewingId(null);
+    if (searchParams.has('open')) {
+      setSearchParams((prev) => { prev.delete('open'); return prev; }, { replace: true });
+    }
+  };
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
 
   const load = useCallback(async () => {
@@ -261,9 +269,7 @@ export default function Members() {
     }
   }, [showArchived]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   useEffect(() => {
     listPendingRegistrations()
@@ -794,7 +800,7 @@ export default function Members() {
       {/* The whole member record, opened by clicking a row. Reloads the roster
           behind it after any write, so a payment taken in the drawer moves the
           membership badge in the table without a manual refresh. */}
-      <MemberDetailDrawer memberId={viewingId} onClose={() => setViewingId(null)} onChanged={load} />
+      <MemberDetailDrawer memberId={viewingId} onClose={closeDrawer} onChanged={load} />
 
       {isAddOpen && (
         <AddMemberForm plans={plans} onClose={() => setIsAddOpen(false)} onCreated={async () => { setIsAddOpen(false); await load(); }} />

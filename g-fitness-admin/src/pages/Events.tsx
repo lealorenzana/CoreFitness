@@ -148,7 +148,7 @@ export default function Events() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setErrors({}); setShowModal(true); };
 

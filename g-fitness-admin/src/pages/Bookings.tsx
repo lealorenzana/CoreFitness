@@ -120,7 +120,7 @@ export default function Bookings() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   /** The write plus the member's notification. Shared by single and bulk paths. */
   const applyDecision = async (row: QueueRow, decision: 'approved' | 'rejected') => {

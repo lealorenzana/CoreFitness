@@ -32,7 +32,10 @@ export async function cashDay(day: string): Promise<CashDay | null> {
   const { data, error } = await supabase.rpc('cash_day_summary', { p_day: day });
   if (missingFn(error)) return null;
   if (error) throw error;
-  const r = (Array.isArray(data) ? data[0] : data) as Record<string, unknown>;
+  const r = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
+  // The function always answers with one row; none means something between
+  // here and the database went wrong — say so rather than crash on r.day.
+  if (!r) throw new Error('The cash summary came back empty. Try again in a moment.');
   const num = (v: unknown) => (v == null ? null : Number(v));
   return {
     day: r.day as string,

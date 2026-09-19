@@ -76,11 +76,16 @@ export default function TrainerDetailDrawer({ trainerId, onClose, onChanged }: P
     }
   }, [trainerId]);
 
-  useEffect(() => {
+  // A different trainer opens on Profile with nothing stale showing — reset
+  // while rendering (compare-during-render), not in an effect, so there is no
+  // flash of the previous trainer's tab. The load is the effect's job.
+  const [shownFor, setShownFor] = useState(trainerId);
+  if (shownFor !== trainerId) {
+    setShownFor(trainerId);
     setTab('profile');
     setDetail(null);
-    load();
-  }, [load]);
+  }
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   useEffect(() => {
     if (!trainerId) return;
@@ -286,7 +291,8 @@ function ProfileTab({ detail }: { detail: TrainerDetail }) {
 
 function ScheduleTab({ detail }: { detail: TrainerDetail }) {
   const { availability, classes, identity } = detail;
-  const now = Date.now();
+  // Once per opening: a lazy initialiser keeps render pure.
+  const [now] = useState(() => Date.now());
   const upcoming = classes.filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > now);
   const past = classes.filter((c) => c.scheduled_at == null || new Date(c.scheduled_at).getTime() <= now);
   const legacyDays = identity.trainer.availability;

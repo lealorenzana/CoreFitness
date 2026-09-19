@@ -97,9 +97,7 @@ export default function MembershipPlans() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { void (async () => { await loadData(); })(); }, []);
 
   const openAdd = () => {
     setEditingPlan(null);

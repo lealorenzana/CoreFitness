@@ -19,6 +19,8 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [day, setDay] = useState(() => todayKey());
   const [summary, setSummary] = useState<CashDay | null | undefined>(undefined);
+  /** A read that failed — distinct from 0095 not being pasted (summary null). */
+  const [failed, setFailed] = useState<string | null>(null);
   const [history, setHistory] = useState<Closeout[]>([]);
   const [counted, setCounted] = useState('');
   const [note, setNote] = useState('');
@@ -30,9 +32,9 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
       const [s, h] = await Promise.all([cashDay(day), recentCloseouts()]);
       setSummary(s);
       setHistory(h);
+      setFailed(null);
     } catch (err) {
-      setSummary(null);
-      showToast(err instanceof Error ? err.message : 'Could not read the cash drawer', 'error');
+      setFailed(err instanceof Error ? err.message : 'Could not read the cash drawer');
     }
   }, [day]);
 
@@ -66,6 +68,15 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
       setBusy(false);
     }
   };
+
+  if (failed) {
+    return (
+      <Section title="End of day" icon={Wallet}>
+        <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>The cash drawer could not be read: {failed}</p>
+        <Button size="sm" variant="ghost" className="mt-2" onClick={() => void load()}>Try again</Button>
+      </Section>
+    );
+  }
 
   if (summary === null) {
     return (

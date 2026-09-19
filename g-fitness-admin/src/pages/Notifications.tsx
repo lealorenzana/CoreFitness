@@ -156,7 +156,7 @@ export default function Notifications() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   /** How many this send will reach, known before the button is pressed. */
   const plannedRecipients =
@@ -266,8 +266,10 @@ export default function Notifications() {
     };
   }, [recent]);
 
+  // "5m ago" counted from when the page opened (a lazy initialiser keeps render pure).
+  const [renderedAt] = useState(() => Date.now());
   const timeAgo = (iso: string) => {
-    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    const mins = Math.floor((renderedAt - new Date(iso).getTime()) / 60000);
     if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
