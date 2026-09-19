@@ -373,4 +373,66 @@ check('Gym B approves them; Gym A is unchanged',
 await db.exec(`delete from gym_roles where user_id = '${P.memberA}' and gym_id = '${GYM_B}';
   delete from member_profiles where profile_id = '${P.memberA}' and gym_id = '${GYM_B}';`);
 
+// ---- 0101: the timetable stays in one gym ------------------------------------
+await asOwner();
+const bClassId = (await one(`select id from classes where name = 'Gym B Spin'`)).id;
+await db.exec(`select act_as_gym('${GYM_B}');
+  update memberships set status = 'active', start_date = current_date, expiry_date = current_date + 30,
+         plan_id = (select id from membership_plans where gym_id = '${GYM_B}' and can_book_pt
+                     and pt_sessions_per_month is distinct from 0 order by price desc limit 1)
+   where gym_id = '${GYM_B}' and member_id = '${P.memberB}';
+  insert into pt_sessions (gym_id, trainer_id, member_id, starts_at, status, requested_at)
+  values ('${GYM_B}', '${P.trainerB}', '${P.memberB}', now() + interval '5 days', 'pending', now() - interval '4 days');`);
+const bSessionId = (await one(`select id from pt_sessions where gym_id = '${GYM_B}' and member_id = '${P.memberB}' limit 1`)).id;
+await db.exec(`select act_as_gym(null)`);
+await as(P.memberA);
+check('Gym A member cannot see a Gym B class', (await db.query(`select id from classes where id = '${bClassId}'`)).rows.length === 0);
+check('Gym A member cannot book a Gym B class by id',
+  !!(await fails(`insert into bookings (member_id, class_id) values ('${P.memberA}', '${bClassId}')`)));
+check('seats left of a Gym B class says nothing to Gym A', (await one(`select class_seats_left('${bClassId}') as n`)).n === null);
+check('Gym A member cannot join a Gym B waitlist', !!(await fails(`select join_waitlist('${bClassId}')`)));
+await as(P.adminA);
+check('Gym A desk cannot cancel a Gym B session',
+  !!(await fails(`select cancel_booking('pt', '${bSessionId}', 'other', 'test')`)));
+check('Gym A desk cannot reassign a Gym B session', !!(await fails(`select reassign_pt_session('${bSessionId}', '${P.trainerA}')`)));
+check('Gym A desk cannot chase a Gym B coach', (await one(`select remind_trainer('pt', '${bSessionId}') as ok`)).ok === false);
+check('Gym A desk gets no coach suggestions for a Gym B session', !!(await fails(`select * from suggest_trainers_for_session('${bSessionId}')`)));
+const tms = await db.query(`select trainer_id from trainer_month_summary(date_trunc('month', now())::date)`);
+check('trainer totals list only Gym A coaches', !tms.rows.some((r) => r.trainer_id === P.trainerB) && tms.rows.length > 0,
+  `${tms.rows.length} rows`);
+check("Gym A's timetable build cannot target Gym B", !!(await fails(`select generate_class_instances(1, '${GYM_B}')`)));
+await as(P.trainerA);
+check('a Gym A coach does not count a Gym B member as a trainee', (await one(`select is_my_trainee('${P.memberB}') as ok`)).ok === false);
+await as(P.adminB);
+const beforeB = (await one(`select count(*)::int as n from notifications where gym_id = '${GYM_B}'`)).n;
+await db.exec(`select sweep_stale_requests()`);
+await asOwner();
+const sweptB = await one(`select count(*)::int as n,
+  count(*) filter (where gym_id <> '${GYM_B}')::int as elsewhere from notifications
+  where metadata->>'dedupe' like 'pt:${bSessionId}%'`);
+check("Gym B's sweep chases its 4-day-old request, and files the messages in Gym B",
+  sweptB.n > 0 && sweptB.elsewhere === 0, JSON.stringify(sweptB));
+check("the sweep told Gym B's admin, not Gym A's",
+  (await one(`select count(*)::int as n from notifications where metadata->>'dedupe' like 'pt:${bSessionId}:72h:%' and user_id = '${P.adminA}'`)).n === 0
+  && (await one(`select count(*)::int as n from notifications where metadata->>'dedupe' like 'pt:${bSessionId}:72h:%' and user_id = '${P.adminB}'`)).n === 1);
+// pg_cron: no caller, every gym.
+await db.exec(`update pt_sessions set requested_at = now() - interval '2 days' where id = '${bSessionId}'`);
+check('the sweep with no caller runs across gyms', !(await fails(`select sweep_stale_requests()`)));
+// Clashes across gyms are real, and say nothing about the other gym.
+await db.exec(`select act_as_gym('${GYM_B}');
+  insert into trainer_profiles (gym_id, profile_id) values ('${GYM_B}', '${P.trainerA}') on conflict do nothing;
+  insert into gym_roles (gym_id, user_id, role, status) values ('${GYM_B}', '${P.trainerA}', 'trainer', 'active') on conflict do nothing;
+  insert into classes (gym_id, name, trainer_id, scheduled_at, duration_minutes) values ('${GYM_B}', 'Gym B Secret Class', '${P.trainerA}', now() + interval '9 days', 60);
+  select act_as_gym('${GYM_A}');
+  insert into classes (gym_id, name, trainer_id, scheduled_at, duration_minutes) values ('${GYM_A}', 'Gym A Clash', '${P.trainerA}', now() + interval '9 days' + interval '30 minutes', 60);
+  select act_as_gym(null);`).catch((e) => check('cross-gym clash fixture', false, describe(e)));
+await as(P.adminA);
+const clash = await db.query(`select * from trainer_schedule_conflicts() where trainer_id = '${P.trainerA}'`);
+check("a coach's clash with another gym is listed", clash.rows.length === 1, JSON.stringify(clash.rows));
+check("…and names nothing from the other gym", !JSON.stringify(clash.rows).includes('Secret'));
+await asOwner();
+await db.exec(`delete from classes where name in ('Gym B Secret Class', 'Gym A Clash');
+  delete from gym_roles where gym_id = '${GYM_B}' and user_id = '${P.trainerA}';
+  delete from trainer_profiles where gym_id = '${GYM_B}' and profile_id = '${P.trainerA}';`);
+
 finish();
