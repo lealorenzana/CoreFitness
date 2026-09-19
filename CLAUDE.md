@@ -113,7 +113,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
   props while exiting and eats every tap (shipped 4×). Overlays portal, never `absolute` inside `<main>`.
 - **Back undoes the last step**: `PageTitle back fallback=…` does `history.length > 1 ? navigate(-1) :
   navigate(fallback)`. `/member/bookings` and `/member/book` are aliases written into notification
-  `action_url`s. **Per-member caches are memory-only and cleared in `logout()`**.
+  `action_url`s. **Per-member caches are memory-only and cleared in `logout()`** — the one exception is `lib/offlineSets.ts`, an outbox of sets logged with no signal.
 
 ### Styling and design system
 - **Admin is Tailwind v3; member is v4 with no config file** — **if a class looks like it does nothing, it
@@ -135,6 +135,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
 - **Copy is a claim**: screens read `point_rules`, `cancellation_reasons`, `gym_settings`,
   `membership_plans` — the prototype's 20-point visit and two-hour cancel rule do not exist. **Gym names
   and addresses are never typed in.** Fixtures need **real column names and a real `Content-Range`**.
+  Translate with `lib/i18n.ts` — `t('English text')`, falling back to English; pages load via `lib/lazyPage.ts`.
 
 ### Levels, achievements and what a trainer may see
 **Two different levels exist and must be named apart on screen.** `experience_level` is self-declared and drives class recommendations; the *earned* level comes from
@@ -151,7 +152,7 @@ matched "plans").
 `Sidebar.tsx` is **grouped**: nine rows, Attendance first; a one-child group **flattens**, and the open
 drawer is set in the **state initialiser, never an effect**. Attendance is **today only** (History has
 the rest); paired sections are `SectionTabs` of `NavLink`s, so old bookmarks resolve. **Modal labels
-are statement-style**, never questions.
+are statement-style**, never questions. Check-in rules live in `services/checkInService.ts`, shared by the desk and `/kiosk`.
 
 ## Conventions and docs
 React 19 + Router v7 + TS; function components, default-exported pages/layouts; Framer Motion,
@@ -165,7 +166,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0091 are live; 0092 (reward decide/hand-over, saving-for) 0093 (achievement progress + rarity) and 0094 (challenge standings, NULL-safe progress guard) await pasting.** `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0091 are live; 0092–0096 await pasting** (0095: crash reports, cash close-out, trainer totals, language; 0096: class waitlist) — admin **System** (`/system`) lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
@@ -178,7 +179,7 @@ never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is w
 - **Shipping works from an agent session** — `git push`, then `npx vercel deploy` and
   `promote`; **a push does not deploy**, and env vars must exist in Vercel *before* deploying
   because Vite inlines them ([DEPLOYMENT](docs/DEPLOYMENT.md); check with `scripts/verify-deploy.py`). **The APK never needs rebuilding
-  for a code change**; admin serves `dist/`, so **admin changes need `npm run build`**. `lib/appUpdate.ts` reloads an open app onto a new deploy.
+  for a code change**; admin serves `dist/`, so **admin changes need `npm run build`**. `lib/appUpdate.ts` reloads an open app onto a new deploy. Weekly encrypted DB backup: [BACKUPS](docs/BACKUPS.md).
 
 ### Verifying work
 **A green build proves nothing** — every visual bug here compiled perfectly. **Every recipe, the SQL
@@ -196,4 +197,4 @@ claiming anything is verified. The three that decide *how* you verify:
 - **The whole test matrix runs with no password**: `scripts/plan-gates.js` + `trainer-scenarios.js`
   (38 checks, the app) in the Playwright runner, and `scripts/sql/*.mjs` (66 checks, the rules, in
   pglite as a real `authenticated` role — **Docker has never started here**). **RLS filters rows and
-  does not raise**: a forbidden write is *zero rows and no error*. How: MIGRATION_STATUS → *harnesses*.
+  does not raise**: a forbidden write is *zero rows and no error*. How: MIGRATION_STATUS → *harnesses*. **CI runs all of it on every push** ([CI](docs/CI.md)); `scripts/ci/ui-checks.json` lists the fixture checks.

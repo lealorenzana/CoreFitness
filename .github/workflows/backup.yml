@@ -1,0 +1,72 @@
+# Weekly database backup — every Sunday 2:00 AM Manila (Saturday 18:00 UTC),
+# or on demand from the Actions tab ("Run workflow").
+#
+# The repository is PUBLIC, so the dump is encrypted before it leaves the
+# runner (AES-256 with your passphrase) and kept as a workflow artifact for 90
+# days — never committed. Setup, download and restore: docs/BACKUPS.md.
+#
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL      the Session pooler connection string from Supabase
+#                        (Project Settings → Database → Connection string)
+#   BACKUP_PASSPHRASE    a long passphrase you keep somewhere safe — without it
+#                        a backup cannot be opened, by you or anyone else
+name: Weekly database backup
+
+on:
+  schedule:
+    - cron: '0 18 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check the secrets are set
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB" ] || [ -z "$PASS" ]; then
+            echo "::error::Add the SUPABASE_DB_URL and BACKUP_PASSPHRASE repository secrets first — see docs/BACKUPS.md."
+            exit 1
+          fi
+
+      # pg_dump must be at least the server's major version; 17 dumps 15 and 17.
+      - name: Install pg_dump 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump and encrypt
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          stamp=$(TZ=Asia/Manila date +%Y-%m-%d)
+          file="corefitness-$stamp.dump"
+          # public = the gym's data; auth = sign-ins (password hashes included,
+          # which is why the file is encrypted). Custom format: pg_restore can
+          # bring back one table or everything.
+          /usr/lib/postgresql/17/bin/pg_dump "$DB" --schema=public --schema=auth \
+            --no-owner --no-privileges --format=custom --file="$file"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" \
+            --symmetric --cipher-algo AES256 --output "$file.gpg" "$file"
+          shred -u "$file"
+          ls -lh "$file.gpg"
+          echo "BACKUP_FILE=$file.gpg" >> "$GITHUB_ENV"
+
+      - name: Keep it for 90 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90
+          if-no-files-found: error

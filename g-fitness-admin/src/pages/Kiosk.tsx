@@ -182,9 +182,9 @@ export default function Kiosk() {
           style={{ background: '#000', border: '1px solid var(--color-border)', boxShadow: '0 30px 80px -30px rgba(124,58,237,0.6)' }}>
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
           {/* A frame to aim at — decoration only; the whole picture is read. */}
-          <div aria-hidden className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {!camError && <div aria-hidden className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-1/3 aspect-square rounded-2xl" style={{ border: '3px solid rgba(196,181,253,0.85)', boxShadow: '0 0 0 9999px rgba(0,0,0,0.25)' }} />
-          </div>
+          </div>}
           {camError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-8">
               <Camera size={40} style={{ color: 'var(--color-text-muted)' }} />
@@ -205,7 +205,7 @@ export default function Kiosk() {
 
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <QrCode size={26} className="flex-shrink-0 mt-1" style={{ color: 'var(--color-primary-light, #c4b5fd)' }} />
+            <QrCode size={26} className="flex-shrink-0 mt-1" style={{ color: '#c4b5fd' }} />
             <div>
               <p className="text-xl font-semibold text-white">Check yourself in</p>
               <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -214,9 +214,9 @@ export default function Kiosk() {
             </div>
           </div>
           <form onSubmit={(e) => { e.preventDefault(); void submit(code); }} className="flex gap-2">
-            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 12))}
+            <input value={code} onChange={(e) => setCode(e.target.value.slice(0, 64))}
               placeholder="Or type your 6-character code" aria-label="Check-in code"
-              className="flex-1 h-14 rounded-xl px-4 text-lg font-semibold tracking-[0.2em] text-white outline-none"
+              className={`flex-1 min-w-0 h-14 rounded-xl px-4 font-semibold text-white outline-none ${code ? 'text-lg tracking-[0.2em] uppercase' : 'text-sm'}`}
               style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
             <button type="submit" className="h-14 px-5 rounded-xl text-sm font-bold"
               style={{ background: 'var(--color-secondary)', color: '#08080E' }}>Go</button>

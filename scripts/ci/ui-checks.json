@@ -1,0 +1,16 @@
+{
+  "_comment": "Fixture checks run by run-ui-checks.mjs and CI. app = which dev server the check needs.",
+  "checks": [
+    { "file": "workout-run-check.js", "app": "member" },
+    { "file": "workout-offline-check.js", "app": "member" },
+    { "file": "achievements-check.js", "app": "member" },
+    { "file": "account-check.js", "app": "member" },
+    { "file": "renew-check.js", "app": "member" },
+    { "file": "language-check.js", "app": "member" },
+    { "file": "plan-gates.js", "app": "member" },
+    { "file": "trainer-scenarios.js", "app": "member" },
+    { "file": "admin-engagement-check.js", "app": "admin" },
+    { "file": "admin-rewards-check.js", "app": "admin" },
+    { "file": "admin-ops-check.js", "app": "admin" }
+  ]
+}

@@ -1,0 +1,120 @@
+# Every push and pull request: both apps build, every migration and the demo
+# seeds apply to a fresh PostgreSQL, the SQL rule checks pass, and the fixture
+# checks drive the real screens. No secrets are needed — the fixtures intercept
+# every Supabase request, and the SQL runs in pglite (PostgreSQL in WASM).
+#
+# How to read a failure: docs/CI.md.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The fixture checks route requests to this project's host, so the apps are
+# built pointing at it. The key is a placeholder: nothing reaches Supabase.
+env:
+  VITE_SUPABASE_URL: https://ifwxtekyjgeljerslnzr.supabase.co
+  VITE_SUPABASE_ANON_KEY: ci-placeholder-not-a-real-key
+
+jobs:
+  build:
+    name: Build both apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            g-fitness-member/package-lock.json
+            g-fitness-admin/package-lock.json
+      - name: Member app — build and achievement catalogue check
+        working-directory: g-fitness-member
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run check:achievements
+      - name: Admin app — build
+        working-directory: g-fitness-admin
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+  sql:
+    name: Migrations and SQL rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pglite (not an app dependency)
+        run: |
+          mkdir -p "$RUNNER_TEMP/sql" && cd "$RUNNER_TEMP/sql"
+          npm init -y > /dev/null
+          npm install @electric-sql/pglite --no-audit --no-fund
+      - name: Every migration, then both demo seeds
+        working-directory: ${{ runner.temp }}/sql
+        run: node "$GITHUB_WORKSPACE/scripts/sql/replay-migrations.mjs" "$GITHUB_WORKSPACE" seed-demo-data.sql seed-demo-data-2.sql
+      - name: Rule checks
+        working-directory: ${{ runner.temp }}/sql
+        run: |
+          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility; do
+            echo "::group::$s"
+            node "$GITHUB_WORKSPACE/scripts/sql/$s.mjs" "$GITHUB_WORKSPACE"
+            echo "::endgroup::"
+          done
+
+  ui:
+    name: Fixture checks (the real screens)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            g-fitness-member/package-lock.json
+            g-fitness-admin/package-lock.json
+      - name: Install both apps
+        run: |
+          (cd g-fitness-member && npm ci --no-audit --no-fund)
+          (cd g-fitness-admin && npm ci --no-audit --no-fund)
+      - name: Start the dev servers
+        run: |
+          (cd g-fitness-member && nohup npm run dev -- --port 5173 --strictPort > "$RUNNER_TEMP/member.log" 2>&1 &)
+          (cd g-fitness-admin && nohup npm run dev -- --port 5174 --strictPort > "$RUNNER_TEMP/admin.log" 2>&1 &)
+          for port in 5173 5174; do
+            for i in $(seq 1 60); do curl -sf "http://localhost:$port/" > /dev/null && break; sleep 2; done
+          done
+      - name: Install Playwright and Chromium
+        run: |
+          mkdir -p "$RUNNER_TEMP/ui" && cd "$RUNNER_TEMP/ui"
+          npm init -y > /dev/null
+          npm install playwright --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Run the checks
+        working-directory: ${{ runner.temp }}/ui
+        run: node "$GITHUB_WORKSPACE/scripts/ci/run-ui-checks.mjs"
+      - name: Keep the screenshots and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-check-shots
+          path: |
+            ${{ runner.temp }}/ui/shots
+            ${{ runner.temp }}/member.log
+            ${{ runner.temp }}/admin.log
+          retention-days: 14
