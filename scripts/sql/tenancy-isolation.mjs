@@ -13,7 +13,7 @@
 import { liveDb, describe } from './lib/live-db.mjs';
 
 // A statement that throws where no check expected it: one readable line, not pglite's dump.
-process.on('unhandledRejection', (e) => {
+for (const ev of ['unhandledRejection', 'uncaughtException']) process.on(ev, (e) => {
   console.log(`\nCRASH  ${describe(e)}${e.query ? '\n   query: ' + String(e.query).slice(0, 300) : ''}`);
   process.exit(2);
 });
@@ -204,5 +204,105 @@ check('the database refuses a Gym B membership on a Gym A plan',
 check('the database refuses a Gym A class run by a Gym B trainer',
   !!(await fails(`insert into classes (gym_id, name, trainer_id) values ('${GYM_A}', 'x', '${P.trainerB}')`)));
 check('list_gyms shows branding', (await one(`select accent from list_gyms('gym b')`))?.accent === 'violet');
+await db.exec(`select act_as_gym('${GYM_B}');
+  insert into notifications (gym_id, user_id, type, title, message) values ('${GYM_B}', '${P.both}', 'system', 'B for both', 'B');
+  insert into exercises (gym_id, name) values ('${GYM_B}', 'Gym B Secret Move');
+  select act_as_gym(null);`);
+
+// ---- 0099: nothing crosses, for every table and every role ------------------
+const crossed = [];
+for (const who of ['adminA', 'staffA', 'trainerA', 'memberA']) {
+  await as(P[who]);
+  for (const t of gymTables) {
+    const seen = (await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_B}'`)).n;
+    // Each write in its own rolled-back transaction. A guard trigger raising is
+    // still a crossing — it means the row was reachable.
+    const touched = async (sql) => {
+      await db.exec('begin');
+      try { return (await db.query(sql)).affectedRows; } catch { return 'raised'; } finally { await db.exec('rollback'); }
+    };
+    const upd = await touched(`update ${t} set gym_id = gym_id where gym_id = '${GYM_B}'`);
+    const del = await touched(`delete from ${t} where gym_id = '${GYM_B}'`);
+    if (seen || upd || del) crossed.push(`${who}:${t} read ${seen} upd ${upd} del ${del}`);
+  }
+}
+check('no Gym A role reads, updates or deletes a Gym B row, in any of the 51 tables', crossed.length === 0, crossed.slice(0, 8).join(' | '));
+await as(P.adminA);
+check('Gym A admin still sees Gym A rows', (await one('select count(*)::int as n from memberships')).n > 0);
+check('Gym A admin cannot insert into Gym B',
+  !!(await fails(`insert into events (gym_id, title, starts_at) values ('${GYM_B}', 'x', now())`)));
+const moved = await fails(`update events set gym_id = '${GYM_B}' where gym_id = '${GYM_A}'`);
+check('Gym A admin cannot move a row into Gym B', !!moved, 'the update went through');
+check('an insert that names no gym lands in my gym',
+  (await one(`insert into events (title, starts_at) values ('A event', now()) returning gym_id`)).gym_id === GYM_A);
+check('the shared library is readable; Gym B additions are not',
+  (await one(`select count(*) filter (where gym_id is null)::int as lib, count(*) filter (where gym_id = '${GYM_B}')::int as b from exercises`)).b === 0);
+check("Gym A admin cannot edit Gym B's own exercise",
+  (await db.query(`update exercises set name = 'x' where name = 'Gym B Secret Move'`)).affectedRows === 0);
+await as(P.adminB);
+check('Gym B admin cannot edit the shared library',
+  (await db.query(`update exercises set name = name where gym_id is null`)).affectedRows === 0);
+await as(P.adminA);
+check("Gym #1's admin still curates the shared library (today's Exercises page)",
+  (await db.query(`update exercises set name = name where id = (select id from exercises where gym_id is null limit 1)`)).affectedRows === 1);
+await as(P.both);
+check('a two-gym member sees only the current gym (in A: no B notification)',
+  (await one(`select count(*)::int as n from notifications where title = 'B for both'`)).n === 0);
+await db.exec(`select set_active_gym('${GYM_B}')`);
+check('after switching to B, the B notification shows',
+  (await one(`select count(*)::int as n from notifications where title = 'B for both'`)).n === 1);
+await db.exec(`select set_active_gym('${GYM_A}')`);
+// People: a gym sees its own people and nobody else's.
+await as(P.adminA);
+check('Gym A admin cannot read a Gym-B-only profile',
+  (await one(`select count(*)::int as n from profiles where id = '${P.memberB}'`)).n === 0);
+check('Gym A admin cannot edit a Gym-B-only profile',
+  (await db.query(`update profiles set first_name = 'x' where id = '${P.memberB}'`)).affectedRows === 0);
+check('Gym A admin reads the member of both gyms', (await one(`select count(*)::int as n from profiles where id = '${P.both}'`)).n === 1);
+check('Gym A admin reads no Gym B role rows', (await one(`select count(*)::int as n from gym_roles where gym_id = '${GYM_B}'`)).n === 0);
+await as(P.outsider);
+check('someone with no gym reads only their own profile', (await one('select count(*)::int as n from profiles')).n === 1);
+// Views: each stops at the gym edge.
+await as(P.memberA);
+const viewLeaks = [];
+for (const v of ['activity_feed', 'bookings_needing_attention', 'class_availability', 'my_trainer_members',
+  'public_trainer_credentials', 'public_trainers', 'trainer_evaluation_months', 'trainer_evaluation_summary',
+  'trainer_rating_summary', 'trainer_ratings_anon']) {
+  const r = await db.query(`select * from ${v}`).catch((e) => ({ err: describe(e) }));
+  if (r.err) { viewLeaks.push(`${v}: ${r.err}`); continue; }
+  if (r.rows.length && !('gym_id' in r.rows[0])) viewLeaks.push(`${v}: no gym_id column`);
+  const n = r.rows.filter((x) => x.gym_id && x.gym_id !== GYM_A).length;
+  if (n) viewLeaks.push(`${v}: ${n} rows of another gym`);
+}
+check('every view shows only the current gym', viewLeaks.length === 0, viewLeaks.join(' | '));
+const busy = await db.query(`select distinct trainer_id from trainer_busy_slots`);
+check("trainer_busy_slots names only my gym's coaches (their sessions anywhere: one body)",
+  !busy.rows.some((r) => r.trainer_id === P.trainerB));
+check('public_trainers lists Gym A coaches and no Gym B coach',
+  !(await db.query(`select id from public_trainers`)).rows.some((r) => r.id === P.trainerB));
+// Suspended / overdue: read-only.
+const setGymB = async (sql) => { await asOwner(); await db.exec(`update gyms set ${sql} where id = '${GYM_B}'`); await as(P.adminB); };
+await setGymB(`status = 'suspended'`);
+check('a suspended gym can still read', (await one('select count(*)::int as n from memberships')).n > 0);
+check('a suspended gym cannot write', !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
+check('a suspended gym cannot edit', (await db.query(`update events set title = 'x'`)).affectedRows === 0);
+check('the lock reason says suspended', (await one('select gym_lock_reason() as r')).r === 'suspended');
+await setGymB(`status = 'active', paid_until = current_date - 8`);
+check('8 days past paid-until is read-only', !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
+check('the lock reason says overdue', (await one('select gym_lock_reason() as r')).r === 'overdue');
+await setGymB(`paid_until = current_date - 6`);
+check('6 days past still writes (7-day grace)', !(await fails(`insert into events (title, starts_at) values ('grace', now())`)));
+await setGymB(`paid_until = null`);
+check('an unlocked gym has no lock reason', (await one('select gym_lock_reason() as r')).r === null);
+// No rule reads the global role; every one means "in my current gym".
+await asOwner();
+const direct = await db.query(`select tablename, policyname from pg_policies
+  where schemaname = 'public' and (coalesce(qual, '') ~ 'profiles' or coalesce(with_check, '') ~ 'profiles')
+    and (coalesce(qual, '') ~ '\\mrole\\M' or coalesce(with_check, '') ~ '\\mrole\\M')`);
+check('no policy reads profiles.role directly', direct.rows.length === 0,
+  direct.rows.map((r) => r.tablename + '.' + r.policyname).join(', '));
+const rlsOff = await db.query(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace
+  and c.relkind = 'r' and not c.relrowsecurity`);
+check('RLS is on for every table', rlsOff.rows.length === 0, rlsOff.rows.map((r) => r.relname).join(', '));
 
 finish();

@@ -138,6 +138,7 @@ CHECKS = [
     ('0096', 'rpc migration_0096_applied',     lambda: rpc('migration_0096_applied')),
     ('0097', 'rpc migration_0097_applied',     lambda: rpc('migration_0097_applied')),
     ('0098', 'rpc migration_0098_applied',     lambda: rpc('migration_0098_applied')),
+    ('0099', 'rpc migration_0099_applied',     lambda: rpc('migration_0099_applied')),
 ]
 
 print('project: %s' % URL)
