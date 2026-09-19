@@ -504,4 +504,45 @@ check('a goal settles against its own gym', (await one(`select achieved_on is no
 check("goal points land in the goal's gym",
   (await one(`select count(*)::int as n from point_ledger where rule_key = 'goal_achieved' and member_id = '${P.both}' and gym_id = '${GYM_B}'`)).n === 1);
 
+// ---- 0103: messages and the activity log stay in one gym ----------------------
+await asOwner();
+// System code with no caller and no acting gym writes a Gym B row: its log line is Gym B's.
+check('a system-written Gym B check-in logs its activity in Gym B', !(await fails(
+  `insert into attendance (gym_id, member_id) values ('${GYM_B}', '${P.memberB}')`)));
+const lastLog = await one(`select gym_id::text as g from activity_log where action = 'checkin.recorded' order by id desc limit 1`);
+check('…and the line is filed under Gym B', lastLog?.g === GYM_B, JSON.stringify(lastLog));
+// Reminder sweeps with no caller: every gym, and never a message in a gym the recipient is not in.
+await db.exec(`update memberships set expiry_date = (now() at time zone 'Asia/Manila')::date + 3
+  where member_id = '${P.both}';`);
+const sentN = (await one(`select send_membership_expiry_reminders() as n`)).n;
+const expiry = await db.query(`select gym_id::text as g from notifications
+  where user_id = '${P.both}' and type = 'expiry' order by gym_id`);
+check('an expiry reminder goes out in each gym the member belongs to, under that gym',
+  expiry.rows.length === 2 && expiry.rows.some((r) => r.g === GYM_A) && expiry.rows.some((r) => r.g === GYM_B),
+  `sent ${sentN}; ` + JSON.stringify(expiry.rows));
+await db.exec(`select send_upcoming_session_reminders(); select send_due_gym_reminders();`);
+const cross = await one(`select count(*)::int as n from notifications n
+  where not exists (select 1 from gym_roles r where r.user_id = n.user_id and r.gym_id = n.gym_id)`);
+check('no notification anywhere is filed in a gym its recipient is not part of', cross.n === 0, `${cross.n}`);
+// The same dedupe key in two gyms: one message in each.
+await as(P.both);
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'A', null, 'same-key')`);
+await db.exec(`select set_active_gym('${GYM_B}')`);
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B', null, 'same-key')`);
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B again', null, 'same-key')`);
+await db.exec(`select set_active_gym('${GYM_A}')`);
+await asOwner();
+const dd = await db.query(`select gym_id::text as g from notifications where user_id = '${P.both}' and metadata->>'dedupe' = 'same-key'`);
+check('the same dedupe key notifies once per gym', dd.rows.length === 2 && new Set(dd.rows.map((r) => r.g)).size === 2,
+  JSON.stringify(dd.rows));
+await as(P.adminA);
+check('the activity feed shows no Gym B activity',
+  (await one(`select count(*)::int as n from activity_feed where gym_id = '${GYM_B}'`)).n === 0
+  && (await one(`select count(*)::int as n from activity_feed`)).n > 0);
+check("Gym A's crash-report prune touches only Gym A", !(await fails(`select prune_client_errors()`)));
+await asOwner();
+check('no transition key is left but the three the apps still upsert on',
+  (await one(`select count(*)::int as n from pg_constraint where conname like '%\\_transition' escape '\\'`)).n === 3
+  && (await one(`select count(*)::int as n from pg_indexes where indexname like '%\\_transition'`)).n === 3);
+
 finish();

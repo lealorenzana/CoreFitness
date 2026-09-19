@@ -878,6 +878,42 @@ begin
 end;
 $fn$;
 
+-- 0087's body; a signed-in caller asks only about a goal of their current gym.
+create or replace function goal_is_reached(p_goal uuid)
+returns boolean
+language plpgsql stable security definer set search_path = public as $fn$
+declare
+  g record;
+  v numeric;
+  going_down boolean;
+begin
+  select * into g from fitness_goals where id = p_goal and in_my_gym(gym_id);
+  if g is null or g.target_value is null then return false; end if;
+  if g.template_key is null and g.metric not in ('weight_kg', 'body_fat_pct', 'waist_cm', 'lift_kg') then
+    return false;   -- a custom goal: nothing measures it
+  end if;
+  v := goal_value_of(p_goal);
+  if v is null then return false; end if;
+  if g.template_key is not null then return v >= g.target_value; end if;
+
+  -- Direction from the goal's own start. Without one: a lift goes up, a body
+  -- fat or waist goal goes down, and a weight goal — which could be either —
+  -- counts only an exact hit. (The app always records a start, from the latest
+  -- reading, so that last case is an old goal made before it did.)
+  if g.start_value is not null and g.start_value <> g.target_value then
+    going_down := g.target_value < g.start_value;
+  elsif g.metric = 'lift_kg' then
+    going_down := false;
+  elsif g.metric in ('body_fat_pct', 'waist_cm') then
+    going_down := true;
+  else
+    return v = g.target_value;
+  end if;
+
+  return case when going_down then v <= g.target_value else v >= g.target_value end;
+end;
+$fn$;
+
 create or replace function goal_progress(p_goal uuid)
 returns int
 language plpgsql stable security definer set search_path = public as $fn$
