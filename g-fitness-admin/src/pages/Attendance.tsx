@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getBalance } from '../lib/api/points';
 import { SectionTabs } from '../components/ui/kit';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -13,101 +12,17 @@ import {
   Info, History, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import { checkInCodeOf, formatCheckInCode, matchesCheckInCode } from '../utils/checkInCode';
+import { checkInCodeOf, formatCheckInCode } from '../utils/checkInCode';
 import { todayKey, localDateKey, addDays } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
 import { supabase } from '../lib/supabaseClient';
-import { listMembers, getMemberByQrCode, type MemberWithProfile } from '../lib/api/members';
-import { listAttendance, recordCheckIn, deleteCheckIn } from '../lib/api/attendance';
-import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
+import { listMembers, type MemberWithProfile } from '../lib/api/members';
+import { listAttendance, deleteCheckIn } from '../lib/api/attendance';
 import { getGymSettings } from '../lib/api/settings';
-import { notifyUser } from '../lib/api/notify';
+import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
 import type { AttendanceRow } from '../types/db';
 
 const ITEMS_PER_PAGE = 10;
-
-const QR_TTL_SECONDS = 60;
-
-interface ParsedQr {
-  memberId: string;
-  timestamp: number;
-}
-
-/** Current member-app format: `CF1.<timestamp base36>.<member id>`. */
-const parseCompactQr = (qrCode: string): ParsedQr | null => {
-  const parts = qrCode.trim().split('.');
-  if (parts.length !== 3 || parts[0].toUpperCase() !== 'CF1') return null;
-  const timestamp = parseInt(parts[1], 36);
-  if (!Number.isFinite(timestamp) || timestamp <= 0 || !parts[2]) return null;
-  return { memberId: parts[2].toLowerCase(), timestamp };
-};
-
-/**
- * Legacy base64(JSON) payload. Still accepted because an installed phone app
- * keeps serving its cached bundle until the next deploy reaches it — dropping
- * this would lock those members out of check-in in the meantime.
- */
-const parseLegacyQr = (qrCode: string): ParsedQr | null => {
-  try {
-    const data = JSON.parse(atob(qrCode));
-    if (!data?.memberId || typeof data.timestamp !== 'number') return null;
-    return { memberId: String(data.memberId).toLowerCase(), timestamp: data.timestamp };
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Tolerance, in each direction, for the member's phone and this PC disagreeing
- * about what time it is.
- *
- * The timestamp exists to stop a screenshot being reused, and nothing else. It
- * was compared against a bare 60-second window, which quietly assumed two
- * unsynchronised devices agree on the current time to within a minute. They
- * often do not: `Date.now()` is UTC epoch so time zones are irrelevant, but a
- * desk PC that has been off for a while, or whose clock service has not run,
- * drifts by minutes.
- *
- * The failure that produces is the nastiest kind. If this PC's clock is more
- * than 60 seconds AHEAD of the phone, every code the member generates is
- * already expired by the time it is scanned — so the desk tells them to refresh,
- * they refresh, it fails again, forever. Nothing about that loop points at the
- * clock.
- *
- * Three minutes of grace keeps a stolen screenshot useless while absorbing the
- * drift that actually occurs. When a code falls outside even that, the desk is
- * told the measured offset instead of "expired", because at that point the clock
- * is the thing to fix and no amount of refreshing will help.
- */
-const CLOCK_SKEW_GRACE_SECONDS = 180;
-
-type QrVerdict =
-  | { kind: 'ok'; data: ParsedQr }
-  /** Not one of our payloads at all — a short code or a UUID may still follow. */
-  | { kind: 'not-ours' }
-  | { kind: 'stale'; ageSeconds: number }
-  | { kind: 'future'; aheadSeconds: number };
-
-const validateQR = (qrCode: string): QrVerdict => {
-  const data = parseCompactQr(qrCode) ?? parseLegacyQr(qrCode);
-  if (!data) return { kind: 'not-ours' };
-
-  const ageMs = Date.now() - data.timestamp;
-  if (ageMs < -CLOCK_SKEW_GRACE_SECONDS * 1000) {
-    return { kind: 'future', aheadSeconds: Math.round(-ageMs / 1000) };
-  }
-  if (ageMs > (QR_TTL_SECONDS + CLOCK_SKEW_GRACE_SECONDS) * 1000) {
-    return { kind: 'stale', ageSeconds: Math.round(ageMs / 1000) };
-  }
-  return { kind: 'ok', data };
-};
-
-/** "4 minutes" / "40 seconds" — for a message the desk can act on. */
-const describeGap = (seconds: number): string => {
-  const s = Math.abs(seconds);
-  if (s < 90) return `${s} seconds`;
-  return `${Math.round(s / 60)} minutes`;
-};
 
 /**
  * The two views of one section.
@@ -157,9 +72,8 @@ export default function Attendance() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // An IIFE, so no setState runs synchronously in the effect body.
+  useEffect(() => { void (async () => { await loadData(); })(); }, []);
 
   const memberNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -203,170 +117,31 @@ export default function Attendance() {
   }, [allAttendance, todayStr]);
 
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
-    if (todayAttendance.find((a) => a.member_id === member.profile.id)) {
-      showToast(`${member.profile.first_name} already checked in today`, 'error');
-      return;
-    }
-    const membership = await getCurrentMembership(member.profile.id).catch(() => null);
-    if (!membership) {
-      showToast(`${member.profile.first_name} has no membership on file`, 'error');
-      return;
-    }
-    // membershipIsUsable covers the cases a plain status check gets wrong: a
-    // *cancelled* membership still admits the member until expiry (they paid for
-    // those days), and a *frozen* one doesn't, however far off its expiry is.
-    if (!membershipIsUsable(membership.status, membership.expiry_date, membership.never_expires)) {
-      showToast(
-        membership.status === 'frozen'
-          ? `${member.profile.first_name}'s membership is frozen`
-          : `${member.profile.first_name}'s membership has expired`,
-        'error'
-      );
-      return;
-    }
-    if (!adminId) {
-      // Falling back to the member's own id would file a false audit record: it would
-      // read as the member having checked themselves in, which RLS forbids by design.
-      showToast('Your admin session could not be verified. Please refresh and try again.', 'error');
-      return;
-    }
-    try {
-      await recordCheckIn({
-        memberId: member.profile.id,
-        method,
-        recordedBy: adminId,
-        // Left off entirely when the desk didn't pick one — a NULL says
-        // "nobody asked", a default would say "they did Strength".
-        activity: activity || undefined,
-      });
-      // The balance, at the one moment the desk can act on it — the member is
-      // standing there. Points are awarded by a trigger on the insert (0051),
-      // so this reads *after* the write rather than adding to a stale number.
-      //
-      // Never allowed to fail the check-in: the member is in the gym either
-      // way, and a points read that 404s must not read as a failed scan. A
-      // failure drops the suffix rather than showing 0, which would tell the
-      // desk something false.
-      const bonus = await getBalance(member.profile.id).catch(() => null);
-      showToast(
-        bonus === null
-          ? `${member.profile.first_name} checked in successfully!`
-          : `${member.profile.first_name} checked in · ${bonus.toLocaleString('en-PH')} CORE Points`,
-        'success',
-      );
-
-      // Tell the member too. The desk saw a toast; the phone being held out at
-      // the counter said nothing, so the member had to ask whether it worked.
-      //
-      // Fire-and-forget, and deliberately after the check-in is already written:
-      // the attendance row is the record and the message is only the alert, so a
-      // notification failure must never fail a check-in that has happened. Same
-      // rule as booking approvals.
-      notifyUser({
-        userId: member.profile.id,
-        // 'system', not a category of its own. The four preference categories
-        // (booking/payment/membership/event) are what a member can mute, and a
-        // check-in confirmation is not one of them — it is the app reporting
-        // something that just happened to them at the desk.
-        type: 'system',
-        title: 'Checked in',
-        message: activity
-          ? `Your QR code was scanned at the front desk and logged as ${activity}.`
-          : 'Your QR code was scanned at the front desk and your attendance is logged.',
-        actionUrl: '/member/attendance-history',
-      }).catch(() => undefined);
-
-      setQrInput('');
-      setSearchTerm('');
-      await loadData();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Check-in failed', 'error');
-    }
+    const result = await performCheckIn(member, method, {
+      alreadyInToday: !!todayAttendance.find((a) => a.member_id === member.profile.id),
+      adminId,
+      activity: activity || undefined,
+    });
+    if (!result.ok) { showToast(result.message, 'error'); return; }
+    showToast(
+      result.points === null
+        ? `${member.profile.first_name} checked in successfully!`
+        : `${member.profile.first_name} checked in · ${result.points.toLocaleString('en-PH')} CORE Points`,
+      'success',
+    );
+    setQrInput('');
+    setSearchTerm('');
+    await loadData();
   };
 
   const handleQRCheckIn = async (qrCodeValue?: string) => {
     const qr = (qrCodeValue || qrInput).trim();
     if (!qr) return showToast('Scan a code or type one in', 'error');
-
-    // Three shapes reach this desk:
-    //   1. the member app's rotating QR payload (carries a timestamp),
-    //   2. the six-character check-in code the member reads out when the camera
-    //      won't focus or their battery is flat,
-    //   3. a full member UUID, pasted from the Members page.
-    const verdict = validateQR(qr);
-
-    if (verdict.kind === 'stale') {
-      // Distinguished from a genuine expiry on purpose. Past the grace window
-      // the member refreshing again cannot help, so saying "ask them to refresh"
-      // would send the desk round a loop that never terminates.
-      return showToast(
-        verdict.ageSeconds > (QR_TTL_SECONDS + CLOCK_SKEW_GRACE_SECONDS) * 2
-          ? `That code was made ${describeGap(verdict.ageSeconds)} ago. If the member just refreshed it, this PC's clock is wrong.`
-          : 'That QR code has expired. Ask the member to refresh it.',
-        'error'
-      );
-    }
-
-    if (verdict.kind === 'future') {
-      return showToast(
-        `That code is stamped ${describeGap(verdict.aheadSeconds)} in the future — this PC's clock is behind the member's phone.`,
-        'error'
-      );
-    }
-
-    if (verdict.kind === 'ok') {
-      // Not `.catch(() => null)`. That reported a permission error, a dropped
-      // connection and an unknown member as the same sentence, which is how a
-      // broken lookup can look like a member who does not exist.
-      let member: MemberWithProfile | null;
-      try {
-        member = await getMemberByQrCode(verdict.data.memberId);
-      } catch (err) {
-        return showToast(
-          `Could not look that member up: ${err instanceof Error ? err.message : 'unknown error'}`,
-          'error'
-        );
-      }
-      if (!member) {
-        return showToast('That code is valid but no member matches it.', 'error');
-      }
-      return doCheckIn(member, 'qr');
-    }
-
-    // Short code — resolved against the roster already in memory rather than
-    // with a prefix query, so an ambiguous code can be refused outright instead
-    // of silently checking in whichever row the database happened to return.
-    const typed = qr.replace(/[\s-]/g, '');
-    if (typed.length === 6) {
-      const matches = members.filter((m) => matchesCheckInCode(m.profile.id, typed));
-      if (matches.length === 1) return doCheckIn(matches[0], 'manual');
-      if (matches.length > 1) {
-        return showToast('More than one member has that code — use the search instead.', 'error');
-      }
-      return showToast(`No member has the code ${typed.toUpperCase()}.`, 'error');
-    }
-
-    // A full member UUID, pasted from the Members page. Same reasoning as above:
-    // a failed lookup and an unknown member are different problems and must not
-    // share a message.
-    let member: MemberWithProfile | null;
-    try {
-      member = await getMemberByQrCode(qr);
-    } catch (err) {
-      return showToast(
-        `Could not look that member up: ${err instanceof Error ? err.message : 'unknown error'}`,
-        'error'
-      );
-    }
-    if (!member) {
-      return showToast(
-        typed.length > 6
-          ? 'No member matches that. Six-character codes go in as-is; anything longer must be a full member ID.'
-          : 'No member matches that code.',
-        'error'
-      );
-    }
-    await doCheckIn(member, 'manual');
+    // Three shapes reach this desk — the rotating QR, the six-character code,
+    // a pasted member id. Resolved in checkInService, shared with the kiosk.
+    const found = await resolveCheckInCode(qr, members);
+    if ('error' in found) return showToast(found.error, 'error');
+    await doCheckIn(found.member, found.method);
   };
 
   const handleManualCheckIn = (member: MemberWithProfile) => doCheckIn(member, 'manual');
@@ -584,6 +359,11 @@ export default function Attendance() {
               className="w-full flex items-center justify-center gap-1.5 !text-[10px]">
               <Camera size={12} /> Open Camera
             </Button>
+            {/* Self-service: members scan themselves in at the door. */}
+            <Link to="/kiosk" className="w-full text-center text-[10px] font-semibold py-1.5 rounded-lg"
+              style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
+              Kiosk mode
+            </Link>
             <div className="flex items-center gap-2 w-full">
               <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
               <span className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>OR</span>

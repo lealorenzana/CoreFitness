@@ -26,6 +26,7 @@ import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
 import AttendanceHistory from './pages/AttendanceHistory';
+import Kiosk from './pages/Kiosk';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -91,6 +92,10 @@ function App() {
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
           </Route>
 
+          {/* Self-service check-in by the door (2026-09-19): full screen, outside
+              the sidebar layout, but behind the same sign-in — check-ins are
+              written under the signed-in staff account. */}
+          <Route path="/kiosk" element={<ProtectedRoute><Kiosk /></ProtectedRoute>} />
           <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/admin/login" replace />} />

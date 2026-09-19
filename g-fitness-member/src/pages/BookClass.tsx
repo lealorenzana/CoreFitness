@@ -25,6 +25,7 @@ import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
 import { readCache, writeCache } from '../lib/pageCache';
+import { joinWaitlist, leaveWaitlist } from '../lib/api/waitlist';
 import { weekRangeLabel } from '../utils/dates';
 import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import type { ClassLevel } from '../types/db';
@@ -234,21 +235,30 @@ function Legend() {
  * so it keeps its own word — the member can act on this one, by cancelling the
  * other thing, which is why the row goes on to name it.
  *
- * "Full", not the prototype's "Wait": there is no waitlist, and a word that
- * implies one is a control that does nothing.
+ * A full class offers the waitlist (0096) — "Waitlist", or your place in
+ * line once you are on it. Before 0096 is pasted it says "Full", because a word
+ * that implies a waitlist that does not exist is a control that does nothing.
  */
 function classAction(c: BookableClass, blocked: boolean) {
   if (c.myStatus != null) {
     return { word: c.myStatus === 'approved' ? 'Confirmed' : 'Pending', tone: 'structure' as const, bookable: false, mine: true };
   }
-  if (c.spotsLeft === 0) return { word: 'Full', tone: 'muted' as const, bookable: false, mine: false };
+  if (c.spotsLeft === 0) {
+    if (c.waitlistOpen && c.myWaitPosition != null) {
+      return { word: `#${c.myWaitPosition} in line`, tone: 'structure' as const, bookable: false, mine: false };
+    }
+    if (c.waitlistOpen) return { word: 'Waitlist', tone: 'action' as const, bookable: false, mine: false };
+    return { word: 'Full', tone: 'muted' as const, bookable: false, mine: false };
+  }
   if (blocked) return { word: 'Locked', tone: 'muted' as const, bookable: false, mine: false };
   if (c.conflict !== null) return { word: 'Busy', tone: 'muted' as const, bookable: false, mine: false };
   return { word: 'Book', tone: 'action' as const, bookable: true, mine: false };
 }
 
 function classMeta(c: BookableClass) {
-  const seats = c.spotsLeft === 0 ? `Full · ${c.booked}/${c.capacity}` : `${c.spotsLeft} of ${c.capacity} left`;
+  const seats = c.spotsLeft === 0
+    ? `Full · ${c.booked}/${c.capacity}${c.waiting > 0 ? ` · ${c.waiting} waiting` : ''}`
+    : `${c.spotsLeft} of ${c.capacity} left`;
   const facts = [LEVEL_LABEL[c.level], c.trainerName, c.location, seats].filter(Boolean).join(' · ');
   return (
     <>
@@ -310,6 +320,8 @@ export default function BookClass() {
   const [level, setLevel] = useState<ExperienceLevel | null>(cached?.level ?? null);
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [confirmClass, setConfirmClass] = useState<BookableClass | null>(null);
+  /** A full class whose waitlist sheet is open (0096). */
+  const [waitClass, setWaitClass] = useState<BookableClass | null>(null);
 
   /** trainerId → the weekdays they keep bookable hours, for the coach list. Null until read. */
   const [workDays, setWorkDays] = useState<Map<string, number[]> | null>(null);
@@ -431,6 +443,27 @@ export default function BookClass() {
       setEntitlement(ent);
     } catch (err) {
       toast.error(errorMessage(err, 'Could not book that class'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Join or leave a full class's waitlist, then reload the list so the row says where you stand. */
+  const toggleWaitlist = async () => {
+    if (!memberId || !waitClass) return;
+    setBusy(true);
+    try {
+      if (waitClass.myWaitPosition != null) {
+        await leaveWaitlist(waitClass.id);
+        toast.success('You left the waitlist');
+      } else {
+        const pos = await joinWaitlist(waitClass.id);
+        toast.success(`You are #${pos} in line — we will tell you the moment a spot opens`);
+      }
+      setWaitClass(null);
+      setClasses(await listBookableClasses(memberId));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not update the waitlist'));
     } finally {
       setBusy(false);
     }
@@ -716,7 +749,8 @@ export default function BookClass() {
                           actionTone={a.tone}
                           onClick={a.mine
                             ? () => navigate('/member/booking-history')
-                            : a.bookable ? () => setConfirmClass(c) : undefined}
+                            : a.bookable ? () => setConfirmClass(c)
+                              : c.spotsLeft === 0 && c.waitlistOpen ? () => setWaitClass(c) : undefined}
                           last={i === dayClasses.length - 1}
                         />
                       );
@@ -826,6 +860,26 @@ export default function BookClass() {
       </Modal>
 
       {/* Confirm — personal training */}
+      <Modal
+        isOpen={waitClass !== null}
+        onClose={() => !busy && setWaitClass(null)}
+        title={waitClass?.myWaitPosition != null ? 'You are on the waitlist' : 'This class is full'}
+        subtitle={waitClass
+          ? `${waitClass.name} · ${waitClass.waiting} ${waitClass.waiting === 1 ? 'person' : 'people'} waiting`
+          : undefined}
+        confirmLabel={busy ? 'Saving…' : waitClass?.myWaitPosition != null ? 'Leave the waitlist' : 'Join the waitlist'}
+        cancelLabel="Close"
+        confirmDisabled={busy}
+        onConfirm={toggleWaitlist}>
+        {waitClass && (
+          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+            {waitClass.myWaitPosition != null
+              ? `You are #${waitClass.myWaitPosition} in line. When someone cancels, everyone waiting gets a notification, and the first to book takes the spot.`
+              : 'Join and you get a notification the moment someone cancels. Everyone waiting is told at the same time, and the first to book takes the spot — so book quickly when it comes.'}
+          </p>
+        )}
+      </Modal>
+
       <Modal
         isOpen={confirmSlot !== null}
         onClose={() => !busy && setConfirmSlot(null)}

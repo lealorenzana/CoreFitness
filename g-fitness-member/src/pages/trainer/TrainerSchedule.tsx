@@ -1,3 +1,4 @@
+import { supabase } from '../../lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClockCountdown, MapPin, PencilSimple, Plus, Users, X } from '@phosphor-icons/react';
@@ -79,9 +80,12 @@ function ClassLine({
   last,
   editable,
   onEdit,
+  waiting = 0,
 }: {
   cls: ClassRow;
   booked: number | null;
+  /** Members on the waitlist (0096) — told automatically when a seat frees. */
+  waiting?: number;
   isNext: boolean;
   last: boolean;
   /** Upcoming only — a past class is history, not something to edit. */
@@ -144,6 +148,7 @@ function ClassLine({
             }}>
               <Users size={13} />
               {booked == null ? `${cls.capacity} places` : full ? `Full · ${booked} of ${cls.capacity}` : `${booked} booked · ${left} of ${cls.capacity} left`}
+              {waiting > 0 ? ` · ${waiting} waiting` : ''}
             </span>
           </div>
 
@@ -390,6 +395,10 @@ export default function TrainerSchedule() {
   const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>(cached?.availability ?? []);
   /** classId → live bookings. Null means the query failed, which is not zero. */
   const [bookedByClass, setBookedByClass] = useState<Map<string, number> | null>(cached?.bookedByClass ?? null);
+  /** Waitlist sizes for this coach's classes (0096; RLS shows a coach their own). Empty before 0096. */
+  /** Taken once per visit (a lazy initialiser keeps render pure); the page reloads its list on return. */
+  const [now] = useState(() => Date.now());
+  const [waitingByClass, setWaitingByClass] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -413,6 +422,12 @@ export default function TrainerSchedule() {
         if (cancelled) return;
         setClasses(rows);
         setAvailability(hours);
+        const { data: wl } = await supabase.from('class_waitlist').select('class_id');
+        if (!cancelled) {
+          const w = new Map<string, number>();
+          for (const r of wl ?? []) w.set(r.class_id as string, (w.get(r.class_id as string) ?? 0) + 1);
+          setWaitingByClass(w);
+        }
         let counts: Map<string, number> | null = null;
         if (bookings) {
           counts = new Map<string, number>();
@@ -446,7 +461,6 @@ export default function TrainerSchedule() {
 
   // Grouped by CALENDAR DATE, not weekday name — four occurrences of a weekly
   // class under one "MONDAY" heading read as a duplication bug.
-  const now = Date.now();
   const scheduled = classes.filter((c) => c.scheduled_at);
   const upcoming = scheduled
     .filter((c) => new Date(c.scheduled_at as string).getTime() >= now)
@@ -614,6 +628,7 @@ export default function TrainerSchedule() {
                     key={cls.id}
                     cls={cls}
                     booked={bookedByClass ? bookedByClass.get(cls.id) ?? 0 : null}
+                    waiting={waitingByClass.get(cls.id) ?? 0}
                     isNext={tab === 'upcoming' && cls.id === upcoming[0]?.id}
                     last={i === items.length - 1}
                     editable={tab === 'upcoming'}

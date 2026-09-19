@@ -3,6 +3,7 @@ import {
   renderSchedulePng, scheduleToCsv, downloadBlob, type ScheduleSlot,
 } from '../utils/exportSchedule';
 import { useBranding } from '../hooks/useBranding';
+import { supabase } from '../lib/supabaseClient';
 import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Button from '../components/ui/Button';
@@ -89,6 +90,16 @@ export default function Schedule() {
   const [availability, setAvailability] = useState<TrainerAvailabilityRow[]>([]);
   const [trainers, setTrainers] = useState<TrainerWithProfile[]>([]);
   const [sessions, setSessions] = useState<UpcomingSession[]>([]);
+  /** Waitlist sizes per class (0096). Empty before it is pasted, so nothing shows. */
+  const [waitingByClass, setWaitingByClass] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase.from('class_waitlist').select('class_id');
+      const w = new Map<string, number>();
+      for (const r of data ?? []) w.set(r.class_id as string, (w.get(r.class_id as string) ?? 0) + 1);
+      setWaitingByClass(w);
+    })();
+  }, [sessions]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generated, setGenerated] = useState<number | null>(null);
@@ -160,7 +171,7 @@ export default function Schedule() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   /**
    * The last local date a generated session exists for.
@@ -596,6 +607,11 @@ export default function Schedule() {
                           <span className="text-[11px] font-bold flex-shrink-0"
                             style={{ color: full ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
                             {s.booked}/{s.capacity}
+                            {(waitingByClass.get(s.id) ?? 0) > 0 && (
+                              <span className="block text-[10px] font-semibold" style={{ color: 'var(--color-secondary)' }}>
+                                +{waitingByClass.get(s.id)} waiting
+                              </span>
+                            )}
                           </span>
                         </div>
                         <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--color-border)' }}>

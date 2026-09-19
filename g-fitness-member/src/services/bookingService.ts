@@ -17,6 +17,7 @@ import { getMemberProfile, updateMemberProfile, NO_MEMBER_ROW } from '../lib/api
 import { readParkedAnswers, parkAnswers, clearParkedAnswers } from '../lib/api/parkedAnswers';
 import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
 import type { BookingStatus, ClassLevel } from '../types/db';
+import { waitlistStatus } from '../lib/api/waitlist';
 import { matchesInterests } from '../data/activities';
 
 /**
@@ -63,6 +64,12 @@ export interface BookableClass {
    * NULL means no clash *that we could see*, never "definitely free".
    */
   conflict: string | null;
+  /** How many are waiting for a seat (0096). 0 when nobody, or before 0096. */
+  waiting: number;
+  /** Your place in line, or null when you are not on the list. */
+  myWaitPosition: number | null;
+  /** False before 0096 is pasted — a full class then just says "Full". */
+  waitlistOpen: boolean;
 }
 
 /** An open PT slot, with the same courtesy check applied. */
@@ -392,7 +399,7 @@ export async function listBookableClasses(memberId: string): Promise<BookableCla
 
   const now = Date.now();
 
-  return classes
+  const list = classes
     .filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > now)
     .map((c): BookableClass => {
       const cap = capacityById.get(c.id);
@@ -421,9 +428,23 @@ export async function listBookableClasses(memberId: string): Promise<BookableCla
               const clash = clashesWith(held, c.scheduled_at as string, c.duration_minutes);
               return clash ? conflictLabel(clash) : null;
             })(),
+        waiting: 0,
+        myWaitPosition: null,
+        waitlistOpen: false,
       };
     })
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+  // Waitlists (0096) matter only on full classes. A failed or missing read
+  // leaves them closed, and the row says "Full" exactly as before.
+  const full = list.filter((c) => c.spotsLeft === 0 && c.myStatus == null).map((c) => c.id);
+  const status = await waitlistStatus(full).catch(() => null);
+  if (!status) return list;
+  return list.map((c) => {
+    if (!full.includes(c.id)) return c;
+    const w = status.get(c.id);
+    return { ...c, waitlistOpen: true, waiting: w?.waiting ?? 0, myWaitPosition: w?.myPosition ?? null };
+  });
 }
 
 export async function bookClass(memberId: string, classId: string): Promise<void> {
