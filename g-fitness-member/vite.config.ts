@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon-32.png', 'favicon-64.png', 'apple-touch-icon-180x180.png', 'logo.png'],
       manifest: {
         name: 'Core Fitness',
         short_name: 'Core Fitness',

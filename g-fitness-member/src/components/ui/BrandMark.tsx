@@ -122,7 +122,7 @@ export default function BrandMark({
           inset: innerInset,
           width: size * 0.792,
           height: size * 0.792,
-          borderRadius: size * 0.208,
+          borderRadius: '50%',   // the mark is a disc (2026-09-19 logo)
           boxShadow: `0 0 40px ${accent}4D`,
           transition,
         }}
