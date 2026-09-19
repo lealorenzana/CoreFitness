@@ -435,4 +435,73 @@ await db.exec(`delete from classes where name in ('Gym B Secret Class', 'Gym A C
   delete from gym_roles where gym_id = '${GYM_B}' and user_id = '${P.trainerA}';
   delete from trainer_profiles where gym_id = '${GYM_B}' and profile_id = '${P.trainerA}';`);
 
+// ---- 0102: points, badges, challenges and goals are per gym -------------------
+// The two-gym member gets an active membership in each gym, then checks in at Gym B.
+await asOwner();
+const planFor = (g) => `(select id from membership_plans where gym_id = '${g}' and is_active order by price desc limit 1)`;
+await db.exec(`select act_as_gym('${GYM_A}');
+  insert into memberships (gym_id, member_id, plan_id, status, start_date, expiry_date)
+  values ('${GYM_A}', '${P.both}', ${planFor(GYM_A)}, 'active', current_date, current_date + 30);
+  select act_as_gym('${GYM_B}');
+  insert into memberships (gym_id, member_id, plan_id, status, start_date, expiry_date)
+  values ('${GYM_B}', '${P.both}', ${planFor(GYM_B)}, 'active', current_date, current_date + 30);
+  insert into attendance (gym_id, member_id) values ('${GYM_B}', '${P.both}');
+  select act_as_gym(null);`);
+const ledger = await db.query(`select gym_id::text as g, sum(points)::int as p from point_ledger where member_id = '${P.both}' group by 1`);
+const byGym = Object.fromEntries(ledger.rows.map((r) => [r.g, r.p]));
+check("a Gym B check-in earns Gym B's check-in points, in Gym B, and nothing in Gym A",
+  (byGym[GYM_B] ?? 0) > 0 && !byGym[GYM_A], JSON.stringify(byGym));
+await as(P.both);
+const balA = (await one(`select member_points_balance('${P.both}') as n`)).n;
+await db.exec(`select set_active_gym('${GYM_B}')`);
+const balB = (await one(`select member_points_balance('${P.both}') as n`)).n;
+check("each gym's balance is that gym's ledger only", Number(balA) === 0 && Number(balB) === (byGym[GYM_B] ?? 0),
+  JSON.stringify({ balA, balB }));
+const statsB = await one(`select training_days from member_training_stats('${P.both}')`);
+await db.exec(`select set_active_gym('${GYM_A}')`);
+const statsA = await one(`select training_days from member_training_stats('${P.both}')`);
+check('training days count per gym', statsB.training_days === 1 && statsA.training_days === 0, JSON.stringify({ statsA, statsB }));
+// Badges.
+await as(P.adminB);
+const rare = await db.query(`select * from achievement_rarity()`);
+const bPop = (await one(`select count(*)::int as n from gym_roles where gym_id = '${GYM_B}' and status = 'active' and role = 'member'`)).n;
+const memberBadges = (await db.query(`select key from achievements where gym_id = '${GYM_B}' and audience = 'member' and active`)).rows.map((r) => r.key);
+check("badge rarity is counted over Gym B's own members", rare.rows.length > 0
+  && rare.rows.filter((r) => memberBadges.includes(r.achievement_key)).every((r) => r.audience_size === bPop),
+  `Gym B members ${bPop}; ` + JSON.stringify(rare.rows.slice(0, 2)));
+await db.exec(`select award_achievement('${P.memberB}', (select key from achievements where gym_id = '${GYM_B}' and audience = 'member' limit 1))`);
+await as(P.adminA);
+check("Gym A admin cannot award to a Gym-B-only member",
+  !!(await fails(`select award_achievement('${P.memberB}', (select key from achievements where audience = 'member' limit 1))`)));
+check("Gym A admin cannot revoke Gym B's badge", !(await fails(`select revoke_achievement('${P.memberB}', (select key from achievements where audience = 'member' limit 1))`))
+  && (await (async () => { await asOwner(); return one(`select count(*)::int as n from achievement_unlocks where gym_id = '${GYM_B}' and user_id = '${P.memberB}'`); })()).n === 1);
+await as(P.memberB);
+check("a Gym B member's badge sync reads Gym B's catalogue", !(await fails(`select * from sync_my_achievements()`)));
+// Challenges: standings and settling stay in their gym; pg_cron now settles.
+await asOwner();
+await db.exec(`select act_as_gym('${GYM_B}');
+  insert into challenges (gym_id, title, metric_key, target, starts_on, ends_on, is_active, reward_points)
+  values ('${GYM_B}', 'Gym B one visit', 'training_days', 1, current_date - 1, current_date + 7, true, 50);
+  insert into challenge_participants (gym_id, challenge_id, member_id)
+  values ('${GYM_B}', (select id from challenges where title = 'Gym B one visit'), '${P.both}');
+  select act_as_gym(null);`);
+const chB = (await one(`select id from challenges where title = 'Gym B one visit'`)).id;
+await as(P.adminA);
+check("Gym A cannot read Gym B's challenge standings", (await db.query(`select * from challenge_standings('${chB}')`)).rows.length === 0);
+check("Gym A reads no progress on Gym B's challenge", (await one(`select challenge_progress('${chB}', '${P.both}') as n`)).n === 0);
+await asOwner();
+const settled = (await one(`select settle_challenges() as n`)).n;
+const reward = await one(`select gym_id::text as g, points from point_ledger where rule_key = 'challenge_complete' and member_id = '${P.both}'`);
+check('pg_cron (no caller) settles a finished challenge — it saw zero progress before 0102', settled >= 1, `settled ${settled}`);
+check("the challenge's points land in the challenge's gym", reward?.g === GYM_B && reward?.points === 50, JSON.stringify(reward));
+// Goals: a goal settles in its own gym.
+await db.exec(`select act_as_gym('${GYM_B}');
+  insert into fitness_goals (gym_id, member_id, title, template_key, target_value)
+  values ('${GYM_B}', '${P.both}', 'Visit once', (select key from goal_templates where gym_id = '${GYM_B}' and metric = 'training_days' limit 1), 1);
+  select act_as_gym(null);`);
+await db.exec(`select settle_goals()`);
+check('a goal settles against its own gym', (await one(`select achieved_on is not null as done from fitness_goals where title = 'Visit once'`)).done === true);
+check("goal points land in the goal's gym",
+  (await one(`select count(*)::int as n from point_ledger where rule_key = 'goal_achieved' and member_id = '${P.both}' and gym_id = '${GYM_B}'`)).n === 1);
+
 finish();
