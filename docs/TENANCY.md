@@ -108,8 +108,8 @@ will in production.
 
 ## Pasting 0097–0103
 
-1. Run the backup by hand first: `gh workflow run backup.yml`, then confirm it succeeded
-   ([BACKUPS](BACKUPS.md)).
+1. Run the backup by hand first: GitHub → **Actions → Weekly database backup → Run workflow**, and
+   wait for the green tick ([BACKUPS](BACKUPS.md)).
 2. Paste one at a time, in order. After each, paste its `scripts/sql/verify/verifyNNNN.sql`
    (read-only; it ends in an error that *is* the report) and stop at any **NOT OK**; then
    `python scripts/probe-migrations.py`.
