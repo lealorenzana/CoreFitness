@@ -305,4 +305,72 @@ const rlsOff = await db.query(`select c.relname from pg_class c where c.relnames
   and c.relkind = 'r' and not c.relrowsecurity`);
 check('RLS is on for every table', rlsOff.rows.length === 0, rlsOff.rows.map((r) => r.relname).join(', '));
 
+// ---- 0100: accounts and money stay in one gym --------------------------------
+await asOwner();
+check('a person can hold a member profile in each of two gyms', !(await fails(`select act_as_gym('${GYM_B}');
+  insert into member_profiles (gym_id, profile_id, qr_code) values ('${GYM_B}', '${P.both}', '${P.both}');`)));
+await as(P.adminB);
+const cashB = await one(`select * from cash_day_summary((now() at time zone 'Asia/Manila')::date)`);
+check('Gym B cash drawer counts only Gym B cash', Number(cashB.cash_in) === 999 && cashB.payment_count === 1,
+  JSON.stringify({ cash_in: cashB.cash_in, n: cashB.payment_count }));
+const invB = (await one(`select next_invoice_number(extract(year from now())::int) as n`)).n;
+check('invoice numbers run per gym (Gym B is on its second)', /-0002$/.test(invB), invB);
+await as(P.adminA);
+const cashA = await one(`select * from cash_day_summary((now() at time zone 'Asia/Manila')::date)`);
+await asOwner();
+const cashAExpected = (await one(`select coalesce(sum(amount), 0) as s from payments where gym_id = '${GYM_A}'
+  and status = 'completed' and lower(method) = 'cash'
+  and coalesce(paid_on, (created_at at time zone 'Asia/Manila')::date) = (now() at time zone 'Asia/Manila')::date`)).s;
+check("Gym A's drawer is Gym A's cash only", Number(cashA.cash_in) === Number(cashAExpected), `${cashA.cash_in} vs ${cashAExpected}`);
+await as(P.adminA);
+check('Gym A admin cannot change a Gym-B-only account',
+  !!(await fails(`select set_account_status('${P.memberB}', 'suspended', 'test')`)));
+await db.exec(`select set_account_status('${P.both}', 'suspended', 'tenancy test')`);
+await asOwner();
+const bothRoles = await db.query(`select gym_id::text as g, status from gym_roles where user_id = '${P.both}'`);
+const st = Object.fromEntries(bothRoles.rows.map((r) => [r.g, r.status]));
+check('suspending in Gym A suspends there and leaves Gym B untouched', st[GYM_A] === 'suspended' && st[GYM_B] === 'active', JSON.stringify(st));
+await db.exec(`update gym_roles set status = 'active' where user_id = '${P.both}'`);
+const bPlanId = (await one(`select id from membership_plans where gym_id = '${GYM_B}' and tier = 'premium' limit 1`)).id;
+await as(P.adminA);
+check('Gym A admin cannot retire a Gym B plan', !!(await fails(`select * from retire_plan('${bPlanId}')`)));
+const bMembership = (await (async () => { await asOwner(); return one(`select id from memberships where gym_id = '${GYM_B}' limit 1`); })()).id;
+await as(P.adminA);
+check('Gym A desk cannot quote a Gym B refund', !!(await fails(`select * from refund_quote('${bMembership}')`)));
+await as(P.adminB);
+check('Gym B desk quotes its own refund', !(await fails(`select * from refund_quote('${bMembership}')`)));
+// Sign-up into a chosen gym; today's sign-up (no gym) goes to Gym #1.
+await asOwner();
+await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values
+  ('5a000000-0000-4000-8000-000000000001', 'joinb@corefitness-test.com',
+   '{"signup_source":"member_self_registration","first_name":"Join","last_name":"B","gym_id":"${GYM_B}"}'),
+  ('5a000000-0000-4000-8000-000000000002', 'oldapp@corefitness-test.com',
+   '{"signup_source":"member_self_registration","first_name":"Old","last_name":"App"}')`);
+const joined = await db.query(`select user_id::text as u, gym_id::text as g, status from gym_roles where user_id::text like '5a000000%' order by 1`);
+check('sign-up lands in the chosen gym, pending', joined.rows[0]?.g === GYM_B && joined.rows[0]?.status === 'pending_approval'
+  && joined.rows.filter((r) => r.u.endsWith('1')).length === 1, JSON.stringify(joined.rows));
+check("today's sign-up (no gym sent) lands in Gym #1", joined.rows.find((r) => r.u.endsWith('2'))?.g === GYM_A);
+check('the chosen gym has the pending registration and member row',
+  (await one(`select count(*)::int as n from pending_registrations where gym_id = '${GYM_B}' and email = 'joinb@corefitness-test.com'`)).n === 1 &&
+  (await one(`select count(*)::int as n from member_profiles where gym_id = '${GYM_B}' and profile_id = '5a000000-0000-4000-8000-000000000001'`)).n === 1);
+check('sign-up to a suspended gym is refused', !!(await fails(`update gyms set status = 'suspended' where id = '${GYM_B}';
+  insert into auth.users (id, email, raw_user_meta_data) values ('5a000000-0000-4000-8000-000000000003', 'late@corefitness-test.com',
+   '{"signup_source":"member_self_registration","gym_id":"${GYM_B}"}')`)));
+await db.exec(`update gyms set status = 'active' where id = '${GYM_B}'`);
+await as(P.memberA);
+await db.exec(`select request_to_join('${GYM_B}')`);
+await asOwner();
+check('asking to join another gym is pending there',
+  (await one(`select status from gym_roles where user_id = '${P.memberA}' and gym_id = '${GYM_B}'`))?.status === 'pending_approval');
+check("that gym's desk is told", (await one(`select count(*)::int as n from notifications
+  where gym_id = '${GYM_B}' and user_id = '${P.adminB}' and title = 'New member request'`)).n === 1);
+await as(P.adminB);
+await db.exec(`select set_account_status('${P.memberA}', 'active')`);
+await asOwner();
+check('Gym B approves them; Gym A is unchanged',
+  (await one(`select string_agg(gym_id::text || '=' || status, ',' order by gym_id) as s from gym_roles where user_id = '${P.memberA}'`)).s
+    === `${GYM_B}=active,${GYM_A}=active`.split(',').sort().join(','));
+await db.exec(`delete from gym_roles where user_id = '${P.memberA}' and gym_id = '${GYM_B}';
+  delete from member_profiles where profile_id = '${P.memberA}' and gym_id = '${GYM_B}';`);
+
 finish();
