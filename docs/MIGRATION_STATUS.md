@@ -2,7 +2,7 @@
 
 Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-09-07**.
 
-## Tenancy: 0097–0103 (written 2026-09-20)
+## Tenancy: 0097–0103 (live 2026-09-20; every verify script OK)
 
 Core Fitness became a service for many gyms: roles per gym, `gym_id` on 51 tables, a same-gym policy
 layer, and every definer function scoped to one gym. Today's data is Gym #1 and the apps are
