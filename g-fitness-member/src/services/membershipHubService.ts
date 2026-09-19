@@ -5,6 +5,10 @@ import {
 } from '../lib/api/points';
 import { listMemberPayments } from '../lib/api/payments';
 import { listMyMembershipEvents, type MyMembershipEvent } from '../lib/api/memberships';
+import { listMemberAttendance } from '../lib/api/attendance';
+import { listWorkoutLogs } from '../lib/api/progress';
+import { listMyBookings } from './bookingService';
+import { dateKey, localDateKey } from '../utils/dates';
 
 /**
  * Everything the Membership tab states, assembled in one place.
@@ -57,6 +61,27 @@ export interface MembershipHub {
    */
   activity: ActivityRow[];
   activityGaps: string[];
+  /** What this term has been used for so far; null with no dated term, or
+   *  when the reads failed — never a row of zeros that were never counted. */
+  term: TermUse | null;
+}
+
+/**
+ * The current term, used (2026-09-19). Counted from `start_date` to today, in
+ * Manila days. The admin drawer's Membership tab counts the same four things
+ * the same way, so the desk and the member read one set of numbers.
+ */
+export interface TermUse {
+  /** Days since the term started, today included. */
+  elapsedDays: number;
+  /** Distinct days with a check-in. */
+  visitDays: number;
+  /** Class bookings the gym approved, whose class has started. */
+  classes: number;
+  /** 1-on-1 sessions approved, already started. */
+  sessions: number;
+  /** Finished workouts logged in the app. */
+  workouts: number;
 }
 
 export type ActivityRow =
@@ -66,7 +91,7 @@ export type ActivityRow =
   | { kind: 'membership'; at: string; title: string; note: string | null };
 
 export async function getMembershipHub(memberId: string): Promise<MembershipHub> {
-  const [home, points, payments, events, rewards, ledger, redemptions] = await Promise.all([
+  const [home, points, payments, events, rewards, ledger, redemptions, attendance, bookings, logs] = await Promise.all([
     getMemberHome(memberId),
     getBalance(memberId).then(
       (n) => ({ ok: true as const, n }),
@@ -82,7 +107,30 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
     listRewards().catch(() => null),
     listLedger(memberId, 20).catch(() => null as LedgerEntry[] | null),
     listMyRedemptions(memberId).catch(() => null as Redemption[] | null),
+    listMemberAttendance(memberId).catch(() => null),
+    listMyBookings(memberId).catch(() => null),
+    listWorkoutLogs(memberId).catch(() => null),
   ]);
+
+  // ── This term so far ──
+  let term: TermUse | null = null;
+  if (home.startDate && attendance && bookings && logs) {
+    const start = home.startDate;
+    const today = dateKey(new Date());
+    const [y, m, d] = start.split('-').map(Number);
+    const elapsedDays = Math.max(1, Math.round((new Date().setHours(0, 0, 0, 0) - new Date(y, m - 1, d).getTime()) / 86_400_000) + 1);
+    const inTerm = (key: string) => key >= start && key <= today;
+    const now = Date.now();
+    const started = (b: { startsAt: string | null }) => b.startsAt != null && new Date(b.startsAt).getTime() <= now && inTerm(localDateKey(b.startsAt));
+    term = {
+      elapsedDays,
+      visitDays: new Set(attendance.map((a) => localDateKey(a.check_in_time)).filter(inTerm)).size,
+      classes: bookings.filter((b) => b.kind === 'class' && b.status === 'approved' && started(b)).length,
+      sessions: bookings.filter((b) => b.kind === 'pt' && b.status === 'approved' && started(b)).length,
+      // An open session (0050: completed_at null) is not a workout yet.
+      workouts: logs.filter((l) => (l as { completed_at?: string | null }).completed_at !== null && inTerm(l.performed_on)).length,
+    };
+  }
 
   // Most recent by the date the money changed hands, not by when the row was
   // typed — the desk records a Monday payment on Tuesday often enough that
@@ -121,6 +169,7 @@ export async function getMembershipHub(memberId: string): Promise<MembershipHub>
 
   return {
     home,
+    term,
     rewards,
     activity,
     activityGaps,

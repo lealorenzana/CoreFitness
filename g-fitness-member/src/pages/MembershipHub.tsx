@@ -1,9 +1,13 @@
 import Avatar from '../components/ui/Avatar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Minus } from '@phosphor-icons/react';
+import {
+  ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, EnvelopeSimple, Gear, Gift, Key,
+  ListChecks, Minus, SignOut, UserCircle, Warning,
+} from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
-import { Eyebrow, LineRow, NocButton, ProgressBar, SectionHead } from '../components/ui/noc';
+import { Chip, Eyebrow, InlineStat, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
+import Disclosure from '../components/ui/Disclosure';
 import Modal from '../components/ui/Modal';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -12,6 +16,7 @@ import {
 } from '../services/membershipHubService';
 import { membershipTerm } from '../utils/membershipTerm';
 import { errorMessage } from '../utils/errorMessage';
+import { localDateKey } from '../utils/dates';
 import { useLiveData } from '../hooks/useLiveData';
 import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import { readCache, writeCache } from '../lib/pageCache';
@@ -31,35 +36,64 @@ function localDate(key: string): Date {
 
 const shortDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-function activityLine(a: ActivityRow): { title: string; sub: string | null; amount: string; tone: string } {
-  switch (a.kind) {
-    case 'earned':
-      return { title: a.title, sub: 'Points earned', amount: `+${a.points}`, tone: 'var(--color-primary-300)' };
-    case 'spent':
-      return {
-        title: `Redeemed ${a.title.toLowerCase()}`,
+type Filter = 'all' | 'points' | 'payments';
+
+/**
+ * One line of the statement. Identical entries on the same day fold into one —
+ * five "Logged a workout +15" rows said less than "Logged a workout ×5 · +75".
+ */
+interface Line {
+  key: string;
+  at: string;
+  title: string;
+  sub: string | null;
+  amount: string;
+  tone: string;
+  kind: ActivityRow['kind'];
+}
+
+function toLines(rows: ActivityRow[]): Line[] {
+  const out: (Line & { base: string; count: number; points: number })[] = [];
+  for (const a of rows) {
+    const day = localDateKey(a.at);
+    if (a.kind === 'earned') {
+      const prev = out[out.length - 1];
+      if (prev && prev.kind === 'earned' && localDateKey(prev.at) === day && prev.base === a.title) {
+        prev.count += 1;
+        prev.points += a.points;
+        prev.title = `${a.title} ×${prev.count}`;
+        prev.amount = `+${prev.points}`;
+        continue;
+      }
+      out.push({ key: `e:${a.at}`, at: a.at, kind: a.kind, title: a.title, base: a.title, sub: 'Points earned',
+        amount: `+${a.points}`, tone: 'var(--color-primary-300)', count: 1, points: a.points });
+    } else if (a.kind === 'spent') {
+      out.push({ key: `s:${a.at}`, at: a.at, kind: a.kind, title: `Redeemed ${a.title.toLowerCase()}`,
         sub: a.status === 'pending' ? 'Requested — waiting for the desk'
           : a.status === 'fulfilled' ? 'Collected at the desk' : 'Approved — collect at the desk',
-        amount: `−${a.points}`,
-        tone: 'var(--color-text-muted)',
-      };
-    case 'paid':
-      return { title: `Payment · ${a.method}`, sub: 'Recorded at the desk', amount: peso(a.amount), tone: 'var(--color-text-primary)' };
-    case 'membership':
-      return { title: a.title, sub: a.note, amount: '', tone: 'var(--color-text-muted)' };
+        amount: `−${a.points}`, tone: 'var(--color-text-muted)', base: '', count: 1, points: 0 });
+    } else if (a.kind === 'paid') {
+      out.push({ key: `p:${a.at}`, at: a.at, kind: a.kind, title: `Payment · ${a.method}`, sub: 'Recorded at the desk',
+        amount: peso(a.amount), tone: 'var(--color-text-primary)', base: '', count: 1, points: 0 });
+    } else {
+      out.push({ key: `m:${a.at}`, at: a.at, kind: a.kind, title: a.title, sub: a.note, amount: '',
+        tone: 'var(--color-text-muted)', base: '', count: 1, points: 0 });
+    }
   }
+  return out;
 }
 
 /**
- * You — the account, as one statement (Nocturne redesign, 2026-09-16).
+ * You — the account, as one statement (Nocturne redesign 2026-09-16; reworked
+ * 2026-09-19).
  *
- * Membership, points and payments merge into one screen: who you are, the term
- * you are on, what you can spend, and what has moved. The four navigation tiles
- * are gone; their destinations are in the header rail.
- *
- * **The user asked (2026-09-16) for this screen to carry its content rather than
- * links to it**, so what the plan includes and the membership's history stay
- * here as sections — the prototype had shrunk both back to links.
+ *   Membership     plan, status, the term bar, Renew — amber in the last week
+ *   This term      visit days, classes, 1-on-1s and workouts since it started,
+ *                  and how often you came — the same four figures the admin
+ *                  drawer's Membership tab shows
+ *   Points         balance, and how far to the next reward
+ *   Activity       one statement, same-day repeats folded, filterable
+ *   Folded         what the plan includes, membership history, account
  *
  * Every figure is a row: the term bar is `start_date → expiry_date` (never the
  * plan's nominal length, which a freeze credit makes wrong), the balance is the
@@ -74,6 +108,8 @@ export default function MembershipHub() {
   const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -112,158 +148,228 @@ export default function MembershipHub() {
   }
 
   const term = membershipTerm(home.daysLeft, home.neverExpires);
-
   const termTotal = home.startDate && home.expiryDate
     ? Math.round((localDate(home.expiryDate).getTime() - localDate(home.startDate).getTime()) / 86_400_000)
     : null;
 
-  const rewards = hub.rewards ?? [];
-  const balance = hub.points;
-  const affordable = balance == null ? null
-    : [...rewards].reverse().find((r) => r.costPoints <= balance && r.stock !== 0) ?? null;
-  const nextUp = balance == null ? null
-    : rewards.find((r) => r.costPoints > balance && r.stock !== 0) ?? null;
+  const status: { label: string; tone: 'structure' | 'action' | 'muted' } =
+    !home.planName ? { label: 'None', tone: 'muted' }
+    : home.frozen ? { label: 'Frozen', tone: 'muted' }
+    : home.expired ? { label: 'Expired', tone: 'action' }
+    : home.cancelled ? { label: 'Cancelled', tone: 'action' }
+    : home.expiringSoon ? { label: 'Ending soon', tone: 'action' }
+    : { label: 'Active', tone: 'structure' };
 
-  const activity = hub.activity.slice(0, 8);
+  // ── Points ──
+  const rewards = (hub.rewards ?? []).filter((r) => r.stock !== 0);
+  const balance = hub.points;
+  const nextUp = balance == null ? null : rewards.find((r) => r.costPoints > balance) ?? null;
+  const canGet = balance == null ? 0 : rewards.filter((r) => r.costPoints <= balance).length;
+
+  // ── Activity ──
+  const lines = toLines(hub.activity.filter((a) =>
+    filter === 'all' ? true
+      : filter === 'points' ? a.kind === 'earned' || a.kind === 'spent'
+      : a.kind === 'paid'));
+  const shown = showAll ? lines.slice(0, 40) : lines.slice(0, 6);
+
+  const t = hub.term;
+  const rate = t && t.elapsedDays > 0 ? t.visitDays / t.elapsedDays : null;
+
+  const account: { label: string; icon: typeof Gear; to: string }[] = [
+    { label: 'Profile', icon: UserCircle, to: '/member/profile' },
+    { label: 'Settings', icon: Gear, to: '/member/settings' },
+    { label: 'Change password', icon: Key, to: '/member/change-password' },
+    { label: 'Change email', icon: EnvelopeSimple, to: '/member/change-email' },
+  ];
 
   return (
     <Page>
-      {error && (
-        <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>
-      )}
+      {error && <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>}
 
       {/* ── Identity ── */}
-      <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left" style={{ gap: 13 }}>
-        {/* The shared Avatar, so an uploaded photo shows. This was a hand-drawn
-            initials disc that never looked at `photo_url` at all. */}
-        <Avatar name={home.fullName} photoUrl={home.photoUrl} size={46} />
-        <span className="min-w-0">
-          <span className="block truncate" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{home.fullName}</span>
+      <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left noc-press-soft" style={{ gap: 13 }}>
+        <Avatar name={home.fullName} photoUrl={home.photoUrl} size={48} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate" style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>{home.fullName}</span>
           <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
             {home.memberSince
               ? `Member since ${new Date(home.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
               : 'Edit your profile'}
           </span>
         </span>
+        <CaretRight size={15} style={{ color: 'var(--color-text-muted)' }} aria-hidden />
       </button>
 
-      {/* ── The term ── */}
-      <section>
-        <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
-          <span style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{home.planName ?? 'No membership'}</span>
-          <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
-            {home.frozen ? 'frozen'
-              : term.kind === 'unlimited' ? 'no expiry'
-              : home.expiryDate
-                ? `${home.expired ? 'expired' : home.cancelled ? 'access until' : 'expires'} ${shortDate(localDate(home.expiryDate))}`
-                : ''}
-          </span>
+      {/* ── Membership ── */}
+      <Panel glow={status.tone === 'action' ? 'action' : 'structure'}>
+        <div className="flex items-center justify-between" style={{ gap: 10 }}>
+          <Eyebrow tone={status.tone === 'action' ? 'action' : undefined}>Membership</Eyebrow>
+          <StatusPill label={status.label} tone={status.tone} />
         </div>
+        <p style={{ fontSize: 24, fontWeight: 700, marginTop: 8, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>
+          {home.planName ?? 'No membership'}
+        </p>
 
         {home.frozen ? (
-          <p style={{ marginTop: 9, fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          <p style={{ marginTop: 8, fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
             You cannot check in or book while it is frozen, and the days you have left are kept for you.
             Ask the front desk to start it again.
           </p>
         ) : term.kind === 'countdown' && termTotal != null && termTotal > 0 && home.daysLeft != null ? (
           <>
-            <ProgressBar style={{ marginTop: 9 }} fraction={home.daysLeft / termTotal} />
-            <div className="flex justify-between" style={{ marginTop: 7, fontSize: 12 }}>
-              <span style={{ color: 'var(--color-text-secondary)' }}>
-                {home.daysLeft === 0 ? 'Last day of this term' : `${home.daysLeft} of ${termTotal} days left`}
-                {home.cancelled ? ' · cancelled' : ''}
+            <div className="flex items-baseline justify-between" style={{ marginTop: 10, gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>{home.daysLeft}</span>
+                {' '}of {termTotal} days left{home.cancelled ? ' · cancelled' : ''}
               </span>
-              <button onClick={() => navigate('/member/renew-membership')} style={{ color: 'var(--color-secondary)' }}>
-                Renew
-              </button>
+              {home.expiryDate && (
+                <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                  {home.cancelled ? 'access until' : 'ends'} {shortDate(localDate(home.expiryDate))}
+                </span>
+              )}
             </div>
+            <ProgressBar style={{ marginTop: 9 }} fraction={home.daysLeft / termTotal}
+              tone={home.expiringSoon || home.cancelled ? 'action' : 'structure'} />
           </>
-        ) : home.expired ? (
-          <NocButton variant="fill" className="w-full" style={{ marginTop: 12 }}
-            onClick={() => navigate('/member/renew-membership')}>
-            Renew membership
-          </NocButton>
+        ) : term.kind === 'unlimited' ? (
+          <p style={{ marginTop: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>Does not expire</p>
+        ) : home.expired && home.expiryDate ? (
+          <p style={{ marginTop: 6, fontSize: 13, color: 'var(--color-secondary)' }}>
+            Ended {shortDate(localDate(home.expiryDate))} — you cannot check in or book until you renew.
+          </p>
         ) : null}
-      </section>
+
+        {(home.expiringSoon || home.expired) && !home.frozen && (
+          <p className="flex items-start" style={{ gap: 8, marginTop: 12, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+            <Warning size={15} weight="fill" className="flex-none" style={{ marginTop: 1 }} aria-hidden />
+            {home.expired ? 'Renew at the front desk — payment is in cash.'
+              : `Only ${home.daysLeft} ${home.daysLeft === 1 ? 'day' : 'days'} left. Renew at the front desk before it ends — payment is in cash.`}
+          </p>
+        )}
+
+        {!home.frozen && home.planName && (
+          <div className="flex" style={{ gap: 9, marginTop: 14 }}>
+            <NocButton variant={home.expiringSoon || home.expired ? 'fill' : 'action'} className="flex-1"
+              icon={<ArrowsClockwise size={15} />} onClick={() => navigate('/member/renew-membership')}>
+              {home.expired ? 'Renew membership' : 'Renew or change plan'}
+            </NocButton>
+          </div>
+        )}
+      </Panel>
+
+      {/* ── This term so far ── */}
+      {t && !home.frozen && (
+        <section>
+          <SectionHead title="This term so far" meta={`${t.elapsedDays} ${t.elapsedDays === 1 ? 'day' : 'days'} in`} />
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
+            <InlineStat value={t.visitDays} label={t.visitDays === 1 ? 'visit day' : 'visit days'} />
+            <InlineStat value={t.classes} label={t.classes === 1 ? 'class' : 'classes'} />
+            <InlineStat value={t.sessions} label="1-on-1" />
+            <InlineStat value={t.workouts} label={t.workouts === 1 ? 'workout' : 'workouts'} />
+          </div>
+          {rate != null && (
+            <>
+              <ProgressBar style={{ marginTop: 14 }} fraction={rate} />
+              <p style={{ fontSize: 12, marginTop: 7, color: 'var(--color-text-secondary)' }}>
+                You came in on {Math.round(rate * 100)}% of the days so far
+                {t.visitDays > 0 ? ` — about ${Math.round((t.visitDays / t.elapsedDays) * 7 * 10) / 10} a week` : ''}.
+              </p>
+            </>
+          )}
+        </section>
+      )}
 
       {/* ── Points ── */}
-      <section className="flex items-end justify-between" style={{
-        gap: 12, padding: '14px 0',
-        borderTop: '1px solid rgba(233, 233, 237, 0.12)', borderBottom: '1px solid rgba(233, 233, 237, 0.12)',
-      }}>
-        <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>CORE points</p>
-          <p style={{ fontSize: 38, fontWeight: 600, lineHeight: 1.1, marginTop: 4, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
-            {balance ?? '—'}
+      <Panel onClick={() => navigate('/member/rewards')} ariaLabel="CORE points — open rewards">
+        <div className="flex items-center justify-between" style={{ gap: 12 }}>
+          <div>
+            <Eyebrow>CORE points</Eyebrow>
+            <p style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginTop: 6, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+              {balance ?? '—'}
+            </p>
+          </div>
+          <span className="inline-flex items-center flex-none" style={{ gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
+            <Gift size={16} aria-hidden /> Spend
+          </span>
+        </div>
+        {balance == null ? (
+          <p style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-muted)' }}>Your balance could not be read.</p>
+        ) : nextUp ? (
+          <>
+            <ProgressBar style={{ marginTop: 12 }} fraction={balance / nextUp.costPoints} />
+            <p style={{ fontSize: 12, marginTop: 7, color: 'var(--color-text-secondary)' }}>
+              {nextUp.costPoints - balance} to go for {nextUp.name}
+              {canGet > 0 ? ` · ${canGet} ${canGet === 1 ? 'reward' : 'rewards'} you can get now` : ''}
+            </p>
+          </>
+        ) : rewards.length > 0 ? (
+          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-primary-300)' }}>
+            Enough for every reward on the list.
           </p>
-          {balance == null && (
-            <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>Your balance could not be read</p>
-          )}
-        </div>
-        <div className="text-right min-w-0">
-          {affordable && (
-            <p className="truncate" style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
-              {affordable.name} · {affordable.costPoints}
-            </p>
-          )}
-          {nextUp && balance != null && (
-            <p className="truncate" style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-secondary)' }}>
-              {nextUp.name} · {nextUp.costPoints - balance} to go
-            </p>
-          )}
-          <button onClick={() => navigate('/member/rewards')}
-            style={{ fontSize: 12.5, marginTop: 7, color: 'var(--color-secondary)' }}>
-            Spend points
-          </button>
-        </div>
-      </section>
+        ) : (
+          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
+            The gym has no rewards listed right now.
+          </p>
+        )}
+      </Panel>
 
       {/* ── Activity ── */}
       <section>
-        <SectionHead title="Activity" meta={balance != null ? `Balance ${balance}` : undefined} />
-        {activity.length === 0 ? (
+        <SectionHead title="Activity" />
+        <div className="flex" style={{ gap: 8, marginTop: 10 }}>
+          <Chip label="All" on={filter === 'all'} onClick={() => { setFilter('all'); setShowAll(false); }} />
+          <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); setShowAll(false); }} />
+          <Chip label="Payments" on={filter === 'payments'} onClick={() => { setFilter('payments'); setShowAll(false); }} />
+        </div>
+        {lines.length === 0 ? (
           <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Nothing yet. Check-ins earn points, and payments at the desk appear here.
+            {filter === 'payments' ? 'No payments recorded yet — they appear here once the desk records one.'
+              : 'Nothing yet. Check-ins and workouts earn points, and payments at the desk appear here.'}
           </p>
         ) : (
           <div className="noc-rows" style={{ marginTop: 4 }}>
-            {activity.map((a, i) => {
-              const l = activityLine(a);
-              return (
-                <LineRow
-                  key={`${a.kind}:${a.at}:${i}`}
-                  gutterWidth={46}
-                  gutter={<span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{shortDate(new Date(a.at))}</span>}
-                  title={l.title}
-                  meta={l.sub ?? undefined}
-                  action={l.amount ? <span style={{ fontSize: 13.5, color: l.tone }}>{l.amount}</span> : undefined}
-                  last={i === activity.length - 1}
-                />
-              );
-            })}
+            {shown.map((l, i) => (
+              <div key={`${l.key}:${i}`} className="flex items-center" style={{
+                gap: 12, padding: '12px 0', borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--color-separator)',
+              }}>
+                <span className="flex-none" style={{ width: 44, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  {shortDate(new Date(l.at))}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{l.title}</span>
+                  {l.sub && <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>{l.sub}</span>}
+                </span>
+                {l.amount && <span className="flex-none" style={{ fontSize: 14, fontWeight: 600, color: l.tone }}>{l.amount}</span>}
+              </div>
+            ))}
           </div>
+        )}
+        {lines.length > 6 && (
+          <button onClick={() => setShowAll((v) => !v)} style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+            {showAll ? 'Show less' : `Show ${Math.min(lines.length, 40) - 6} more`}
+          </button>
         )}
         {hub.activityGaps.length > 0 && (
           <p style={{ marginTop: 8, fontSize: 12, color: 'var(--color-secondary)' }}>
             Could not load {hub.activityGaps.join(' or ')} — this list may be missing entries.
           </p>
         )}
-        <div className="flex flex-wrap" style={{ gap: '14px 20px', marginTop: 14, fontSize: 13 }}>
+        <div className="flex flex-wrap" style={{ gap: '12px 20px', marginTop: 14, fontSize: 13 }}>
           <button onClick={() => navigate('/member/payments')} style={{ color: 'var(--color-primary-300)' }}>All payments</button>
           <button onClick={() => navigate('/member/rewards')} style={{ color: 'var(--color-primary-300)' }}>How you earn points</button>
           <button onClick={() => navigate('/member/attendance-history')} style={{ color: 'var(--color-primary-300)' }}>Attendance</button>
         </div>
       </section>
 
-      {/* ── What the plan gets you — both halves ── */}
-      {home.access && (
-        <section>
-          <SectionHead title={`What ${home.planName ?? 'your plan'} includes`} />
-          <div style={{ marginTop: 6 }}>
+      {/* ── Folded: the plan, its history, the account ── */}
+      <div className="flex flex-col" style={{ gap: 10 }}>
+        {home.access && (
+          <Disclosure title={`What ${home.planName ?? 'your plan'} includes`} icon={<ListChecks size={17} />}
+            meta={home.access.excluded.length ? `${home.access.excluded.length} not included` : 'Everything'}>
             {home.access.included.map((item) => (
               <p key={item} className="flex items-start" style={{
-                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)',
-                fontSize: 14, color: 'var(--color-text-primary)',
+                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14, color: 'var(--color-text-primary)',
               }}>
                 <Check size={15} className="flex-none" style={{ marginTop: 2, color: 'var(--color-primary-400)' }} />
                 {item}
@@ -271,51 +377,51 @@ export default function MembershipHub() {
             ))}
             {home.access.excluded.map((item) => (
               <p key={item} className="flex items-start" style={{
-                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)',
-                fontSize: 14, color: 'var(--color-text-muted)',
+                gap: 10, padding: '10px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14, color: 'var(--color-text-muted)',
               }}>
                 <Minus size={15} className="flex-none" style={{ marginTop: 2 }} />
                 {item} — not on this plan
               </p>
             ))}
-          </div>
-          {!home.access.isFullAccess && (
-            <NocButton variant="action" className="w-full" style={{ marginTop: 14 }}
-              onClick={() => navigate('/member/renew-membership')}>
-              Compare plans
-            </NocButton>
-          )}
-        </section>
-      )}
+            {!home.access.isFullAccess && (
+              <NocButton variant="action" className="w-full" style={{ marginTop: 12 }} onClick={() => navigate('/member/renew-membership')}>
+                Compare plans
+              </NocButton>
+            )}
+          </Disclosure>
+        )}
 
-      {/* ── What has happened to this membership (0057) ── */}
-      {hub.events.length > 0 && (
-        <section>
-          <SectionHead title="Membership history" />
-          <div style={{ marginTop: 4 }}>
+        {hub.events.length > 0 && (
+          <Disclosure title="Membership history" icon={<ClockCounterClockwise size={17} />} meta={String(hub.events.length)}>
             {hub.events.map((e, i) => (
-              <LineRow
-                key={e.id}
-                title={e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled'}
-                meta={`${new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${e.reason ? ` · ${e.reason}` : ''}`}
-                last={i === hub.events.length - 1}
-              />
+              <div key={e.id} style={{ padding: '10px 0', borderBottom: i === hub.events.length - 1 ? 'none' : '1px solid var(--color-separator)' }}>
+                <p style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>
+                  {e.kind === 'freeze' ? 'Membership frozen' : e.kind === 'unfreeze' ? 'Membership restarted' : 'Membership cancelled'}
+                </p>
+                <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
+                  {new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {e.reason ? ` · ${e.reason}` : ''}
+                </p>
+              </div>
             ))}
-          </div>
-        </section>
-      )}
+          </Disclosure>
+        )}
 
-      {/* ── The account ── */}
-      <section className="flex flex-col" style={{ gap: 12 }}>
-        <Eyebrow mark>Account</Eyebrow>
-        <div className="flex flex-wrap" style={{ gap: '14px 20px', fontSize: 13 }}>
-          <button onClick={() => navigate('/member/profile')} style={{ color: 'var(--color-primary-300)' }}>Profile</button>
-          <button onClick={() => navigate('/member/settings')} style={{ color: 'var(--color-primary-300)' }}>Settings</button>
-          <button onClick={() => navigate('/member/change-password')} style={{ color: 'var(--color-primary-300)' }}>Change password</button>
-          <button onClick={() => navigate('/member/change-email')} style={{ color: 'var(--color-primary-300)' }}>Change email</button>
-          <button onClick={() => setConfirmLogout(true)} style={{ color: 'var(--color-text-secondary)' }}>Log out</button>
-        </div>
-      </section>
+        <Disclosure title="Account" icon={<UserCircle size={17} />}>
+          {account.map(({ label, icon: Icon, to }) => (
+            <button key={to} onClick={() => navigate(to)} className="w-full flex items-center text-left noc-press-soft"
+              style={{ gap: 12, padding: '12px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14, color: 'var(--color-text-primary)' }}>
+              <Icon size={17} style={{ color: 'var(--color-primary-300)' }} aria-hidden />
+              <span className="flex-1">{label}</span>
+              <CaretRight size={14} style={{ color: 'var(--color-text-muted)' }} aria-hidden />
+            </button>
+          ))}
+          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
+            style={{ gap: 12, padding: '12px 0', fontSize: 14, color: 'var(--color-text-secondary)' }}>
+            <SignOut size={17} aria-hidden /> Log out
+          </button>
+        </Disclosure>
+      </div>
 
       <Modal
         isOpen={confirmLogout}

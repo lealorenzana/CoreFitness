@@ -465,6 +465,22 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
               <MiniStat label="Freezes this month" value={`${freezesUsed ?? '…'} of 2`} />
             </div>
 
+            {/* The same four figures the member sees under You → This term so far. */}
+            {detail.termUse && current.status !== 'frozen' && (
+              <div className="mt-3">
+                <p className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                  This term so far · {detail.termUse.elapsedDays} day{detail.termUse.elapsedDays === 1 ? '' : 's'} in
+                  {' '}· came in on {Math.round((detail.termUse.visitDays / detail.termUse.elapsedDays) * 100)}% of days
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  <MiniStat label="Visit days" value={String(detail.termUse.visitDays)} />
+                  <MiniStat label="Classes" value={String(detail.termUse.classes)} />
+                  <MiniStat label="1-on-1" value={String(detail.termUse.sessions)} />
+                  <MiniStat label="Workouts" value={String(detail.termUse.workouts)} />
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
               <Button size="sm" variant="secondary" disabled={busy} onClick={() => setShowPayment((v) => !v)}>
                 <Banknote size={13} /> {showPayment ? 'Cancel' : 'Record payment'}

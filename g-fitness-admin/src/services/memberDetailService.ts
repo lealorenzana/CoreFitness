@@ -61,6 +61,44 @@ export interface MemberDetail {
   /** null when migration 0028 isn't live — the drawer hides the section. */
   progression: MemberProgression | null;
   stats: MemberStats;
+  /** The current term, used — null with no started membership. */
+  termUse: TermUse | null;
+}
+
+/**
+ * What the current term has been used for, from `start_date` to today.
+ * **The member app's You tab ("This term so far") counts the same four things
+ * the same way** (membershipHubService.ts), so the desk and the member quote
+ * one set of numbers: distinct check-in days; approved classes and approved
+ * 1-on-1s that have already started; finished workouts logged in the app.
+ */
+export interface TermUse {
+  elapsedDays: number;
+  visitDays: number;
+  classes: number;
+  sessions: number;
+  workouts: number;
+}
+
+function computeTermUse(
+  start: string | null, attendance: AttendanceRow[], bookings: BookingWithDetails[],
+  ptSessions: PtSessionRow[], workouts: WorkoutLogRow[],
+): TermUse | null {
+  if (!start) return null;
+  const today = dateKey(new Date());
+  const [y, m, d] = start.split('-').map(Number);
+  const elapsedDays = Math.max(1, Math.round((new Date().setHours(0, 0, 0, 0) - new Date(y, m - 1, d).getTime()) / 86_400_000) + 1);
+  const inTerm = (key: string) => key >= start && key <= today;
+  const now = Date.now();
+  const started = (at: string | null | undefined) => !!at && new Date(at).getTime() <= now && inTerm(dateKey(at));
+  return {
+    elapsedDays,
+    visitDays: new Set(attendance.map((a) => dateKey(a.check_in_time)).filter(inTerm)).size,
+    classes: bookings.filter((b) => b.status === 'approved' && started(b.classes?.scheduled_at)).length,
+    sessions: ptSessions.filter((s) => s.status === 'approved' && started(s.starts_at)).length,
+    // An open session (0050: completed_at null) is not a workout yet.
+    workouts: workouts.filter((w) => (w as { completed_at?: string | null }).completed_at !== null && inTerm(w.performed_on)).length,
+  };
 }
 
 export interface MemberStats {
@@ -234,5 +272,6 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     goalValues,
     progression,
     stats: computeStats(identity, payments, attendance, bookings, ptSessions),
+    termUse: computeTermUse(memberships[0]?.start_date ?? null, attendance, bookings, ptSessions, workouts),
   };
 }

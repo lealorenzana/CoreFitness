@@ -71,8 +71,22 @@ async (page) => {
       seen_at: iso(-1), done_at: null }],
     fitness_goals: [{ id: 'g1', member_id: 'm1', title: 'Squat 80 kg', metric: 'lift_kg', start_value: 50,
       target_value: 80, target_date: null, achieved_on: null, created_at: iso(-20), template_key: null, exercise_id: 'e1' }],
-    memberships: [], payments: [], attendance: [], bookings: [], pt_sessions: [], body_measurements: [],
-    workout_logs: [], notifications: [],
+    // A term that started 10 days ago: 3 visit days (two check-ins on one), one
+    // class that has happened and one that has not, one finished workout and
+    // one still open. Expected: 3 visit days, 1 class, 0 1-on-1, 1 workout.
+    memberships: [{ id: 'ms1', member_id: 'm1', plan_id: 'p3', status: 'active', start_date: day(-10), expiry_date: day(20),
+      never_expires: false, frozen_at: null, created_at: iso(-10),
+      membership_plans: { id: 'p3', name: 'Premium', price: 1500, duration_days: 30, tier: 'premium' } }],
+    attendance: [-1, -1, -4, -8].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d), method: 'qr' })),
+    bookings: [
+      { id: 'b1', member_id: 'm1', class_id: 'c1', status: 'approved', requested_at: iso(-6), classes: { id: 'c1', name: 'HIIT', scheduled_at: iso(-3), duration_minutes: 45 } },
+      { id: 'b2', member_id: 'm1', class_id: 'c2', status: 'approved', requested_at: iso(-1), classes: { id: 'c2', name: 'Yoga', scheduled_at: iso(2), duration_minutes: 60 } },
+    ],
+    workout_logs: [
+      { id: 'l1', member_id: 'm1', performed_on: day(-2), activity: 'Leg day', duration_minutes: 50, notes: null, created_at: iso(-2), completed_at: iso(-2) },
+      { id: 'l2', member_id: 'm1', performed_on: day(0), activity: 'Arms', duration_minutes: null, notes: null, created_at: iso(0), completed_at: null },
+    ],
+    payments: [], pt_sessions: [], body_measurements: [], notifications: [],
   };
   const RPC = {
     resource_save_counts: [{ resource_id: 'w1', saved: 12, done: 5 }],
@@ -134,6 +148,10 @@ async (page) => {
   await page.waitForTimeout(2500);
   await page.getByText('Lea Lorenzana').first().click();
   await page.waitForTimeout(2000);
+  await page.locator('aside').getByRole('button', { name: 'Membership', exact: true }).click();
+  await page.waitForTimeout(800);
+  out.push('drawer term: ' + grab(await text(), 'This term so far', 120));
+  await page.screenshot({ path: 'shots/admin-align-drawer-membership.png' });
   await page.getByRole('button', { name: /Progress/ }).first().click();
   await page.waitForTimeout(800);
   t = await text();
