@@ -2,6 +2,16 @@
 
 Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-09-07**.
 
+## Tenancy: 0097–0103 (written 2026-09-20)
+
+Core Fitness became a service for many gyms: roles per gym, `gym_id` on 51 tables, a same-gym policy
+layer, and every definer function scoped to one gym. Today's data is Gym #1 and the apps are
+unchanged until Part B. Paste order, the read-only `verifyNNNN.sql` after each, and what is
+deliberately not per gym: [TENANCY](TENANCY.md). Proof: `scripts/sql/tenancy-isolation.mjs`, 120
+checks, in CI. **Behaviour that changed:** the free trial is once per member *per gym*; points,
+badges and levels are per gym; `challenge_progress` no longer returns zero to pg_cron (0094's guard
+blocked its own writer, so challenges only ever settled on page load).
+
 ## What is live, as of 7 September 2026
 
 **Verified against the project, not assumed.** Run `python scripts/probe-migrations.py`
@@ -836,6 +846,7 @@ membership does not expire".
 
 ### The Freemium trial is once per member, ever
 
+**Per gym since 0100** — each gym runs its own offer, so the key is `(gym_id, member_id)`.
 `freemium_trials` (0041) holds one row per member — the primary key *is* the rule. It is written only
 by `claim_freemium_trial()`, a `SECURITY DEFINER` trigger on `memberships` with no INSERT policy.
 

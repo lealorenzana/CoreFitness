@@ -172,8 +172,11 @@ Run it. **Not in Docker** — Docker has never started in this environment, so a
 as "run it in a container" is not a plan. `@electric-sql/pglite` is real PostgreSQL compiled to
 WASM, in-process, installed with one `npm install` and needing no daemon and no credentials.
 
-**`scripts/sql/` is the working harness** — three scripts, 64 checks, and its README carries the
-traps. The shape: stub only the tables the migration touches, to the same column types the real
+**`scripts/sql/` is the working harness** — its README lists the scripts and carries the traps.
+**`tenancy-isolation.mjs` is the one to run after touching any policy or definer function**: it
+builds the real schema from every migration (`lib/live-db.mjs`, demo seeds at their live position,
+Supabase's grants) and proves two gyms cannot reach each other — see [TENANCY](TENANCY.md). Ad hoc
+queries against that schema: `last-definition.py` for a function's current text. The shape: stub only the tables the migration touches, to the same column types the real
 ones use; stub `auth.uid()` to read `current_setting('request.jwt.claim.sub')`; apply the migration
 **verbatim from `supabase/migrations/`** so the test cannot drift from the file; then assert
 behaviour from Node, where a refusal is a caught exception whose *message* can be asserted too.

@@ -1288,3 +1288,27 @@ check('the activity feed shows no Gym B activity',
 - **Known judgement calls an executor may hit:** `create or replace view` column order (append
   `gym_id` last); a new parameter list is a new function (drop first, R5); demo seeds run as the
   real admin in the harness so the `gym_id` default resolves.
+
+---
+
+## As built (2026-09-20) — where the build differed from this plan
+
+Each was found by a test, not by reading; [TENANCY](../../TENANCY.md) is the reference now.
+
+- **51 gym tables, not 52** (a miscount above). The harness checks "every table is gym-scoped or on
+  the global list" instead of a number.
+- **The acting gym** (`acting_gym_id()`, `act_as_gym()`) replaced "default `current_gym_id()`":
+  inserts made by triggers and sweeps with no signed-in caller need a gym too. While only one gym
+  exists it falls back to that gym, so pg_cron and today's Edge Functions keep working between the
+  pastes.
+- **Transition keys.** Widening a key breaks every `ON CONFLICT` that names the old columns, so 0098
+  kept each old key as `*_transition`, dropped by the migration that rewrote its last user
+  (0100, 0102, 0103). Three stay until Part B (the apps upsert on them).
+- **`log_activity`/`log_profile_activity` moved into 0098**: account creation by an Edge Function
+  (no caller) logs a line and would otherwise have failed on the new NOT NULL.
+- **Demo seeds run before 0097 in the harness** (where they ran live) instead of after every migration.
+- **Owner-run views are 11, not 9**; the library stays curated by Gym #1 (today's Exercises page).
+- **Found on the way:** 0094's `challenge_progress` guard returned zero to pg_cron, so challenges only
+  settled on page load — fixed in 0102.
+- Verify scripts for 0097+ are paste-after, read-only live checks; the harness checks live in
+  `tenancy-isolation.mjs` (120).

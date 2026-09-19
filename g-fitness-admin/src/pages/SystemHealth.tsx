@@ -13,7 +13,7 @@ import { SETTINGS_TABS } from '../components/ui/settingsTabs';
  * is live is one REST call — the same test `scripts/probe-migrations.py` runs.
  * Add a number here when a migration adds its function.
  */
-const CHECKED = Array.from({ length: 96 - 74 + 1 }, (_, i) => String(74 + i).padStart(4, '0'));
+const CHECKED = Array.from({ length: 103 - 74 + 1 }, (_, i) => String(74 + i).padStart(4, '0'));
 
 interface ErrorRow {
   id: string; created_at: string; app: 'member' | 'admin'; route: string | null;

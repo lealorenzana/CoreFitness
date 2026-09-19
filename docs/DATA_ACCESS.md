@@ -9,6 +9,12 @@ multi-table screen assembly in a service, not a component.
 RLS enforces authorization. The API layer does **not** duplicate it — a check in TypeScript that
 the database also makes is a check that can drift out of agreement with the database.
 
+**Every gym's rows are separate (0097–0103).** A role is per gym (`gym_roles`), `get_my_role()` means
+"in my current gym", 51 tables carry `gym_id`, a restrictive same-gym policy sits on each, and every
+SECURITY DEFINER function stays in one gym. **Read [TENANCY](TENANCY.md) before writing a policy, a
+trigger or a definer function** — its rules R1–R5 and its list of what is deliberately *not* per gym
+(clash checks: one body) are the contract `scripts/sql/tenancy-isolation.mjs` enforces in CI.
+
 ## Copying between the two apps
 
 The two apps have no shared workspace, so most of these modules exist twice and must stay in sync

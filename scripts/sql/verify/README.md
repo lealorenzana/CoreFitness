@@ -1,4 +1,12 @@
-# Migration verification scripts (0092–0096)
+# Migration verification scripts
+
+**0097 onwards are different: paste them into the Supabase SQL editor right after the migration of
+the same number.** They are read-only against the live data, end in an error that *is* the report,
+and any **NOT OK** means stop before pasting the next one ([TENANCY](../../../docs/TENANCY.md)). The
+harness checks for those migrations live in `../tenancy-isolation.mjs`. The rest of this file is
+about 0092–0096.
+
+## 0092–0096
 
 One per migration: each signs in as the real roles (member, trainer, staff,
 admin, a user with no profile) in turn, tries what that role should and should
