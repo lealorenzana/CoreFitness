@@ -5,6 +5,7 @@ import {
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
+import GymDetail from '../components/GymDetail';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -35,6 +36,10 @@ export default function Gyms() {
   const [form, setForm] = useState({ name: '', slug: '' });
   /** The gym whose owner is being named, if any. */
   const [inviting, setInviting] = useState<PlatformGym | null>(null);
+  /** The gym opened up. One at a time — this is a list, not a dashboard. */
+  const [opened, setOpened] = useState<string | null>(null);
+  /** Narrows the list once there are more gyms than fit on a screen. */
+  const [search, setSearch] = useState('');
 
   /** The tiers on offer (0108). Retired ones are not offered, but a gym on one keeps it. */
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
@@ -89,6 +94,10 @@ export default function Gyms() {
         <span className="grow muted" style={{ fontSize: 13 }}>
           {gyms ? `${gyms.length} gym${gyms.length === 1 ? '' : 's'}` : 'Loading…'}
         </span>
+        {(gyms?.length ?? 0) > 6 && (
+          <input style={{ maxWidth: 200 }} value={search} placeholder="Find a gym"
+            onChange={(e) => setSearch(e.target.value)} />
+        )}
         <button className="btn ghost" onClick={() => setAdding((v) => !v)}>
           {adding ? 'Cancel' : 'Add a gym'}
         </button>
@@ -124,12 +133,17 @@ export default function Gyms() {
 
       {gyms?.length === 0 && <p className="empty">No gyms yet.</p>}
 
-      {gyms?.map((gym) => (
+      {gyms?.filter((g) => !search.trim()
+        || (g.name + ' ' + g.slug).toLowerCase().includes(search.trim().toLowerCase())
+      ).map((gym) => (
         <div key={gym.id}>
           <div className="card">
             <div className="row">
               <span className="grow">
-                <span className="name">{gym.name}</span>
+                <button type="button" className="linky"
+                  onClick={() => setOpened(opened === gym.id ? null : gym.id)}>
+                  <span className="name">{gym.name}</span>
+                </button>
                 <span className="meta">
                   /join/{gym.slug} · {gym.members} member{gym.members === 1 ? '' : 's'} · {gym.staff} on the desk
                   {' · '}{since(gym.last_activity)}
@@ -215,6 +229,10 @@ export default function Gyms() {
                 await load();
               }}
             />
+          )}
+
+          {opened === gym.id && (
+            <GymDetail gym={gym} onChanged={() => void load()} onClose={() => setOpened(null)} />
           )}
 
           {inviting?.id === gym.id && (

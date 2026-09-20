@@ -133,8 +133,11 @@ export interface CrashReport {
   app: string;
   route: string | null;
   message: string;
+  /** Added in 0109; undefined against an older database. */
+  stack?: string | null;
   build: string | null;
   created_at: string;
+  resolved_at?: string | null;
 }
 
 const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> => {
@@ -147,7 +150,9 @@ export const listGyms = () => call<PlatformGym[]>('platform_gyms');
 export const listApplications = (status?: string) =>
   call<Application[]>('platform_applications', { p_status: status ?? null });
 export const listEvents = (limit = 100) => call<PlatformEvent[]>('platform_events_recent', { p_limit: limit });
-export const listCrashes = (days = 14) => call<CrashReport[]>('platform_crash_reports', { p_days: days });
+/** Open reports only by default — a list that only grows stops being read (0109). */
+export const listCrashes = (days = 14, includeResolved = false) =>
+  call<CrashReport[]>('platform_crash_reports', { p_days: days, p_include_resolved: includeResolved });
 
 export const createGym = (name: string, slug: string, applicationId?: string) =>
   call<string>('create_gym', { p_name: name, p_slug: slug, p_application: applicationId ?? null });
@@ -299,3 +304,66 @@ export async function isPlatformAdmin(): Promise<boolean> {
 export const slugFor = (name: string) =>
   name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+
+// ---- running the service (0109) ----------------------------------------------------
+
+/** A gym's admins and staff. Never its members or coaches — see docs/TENANCY.md. */
+export interface GymPerson {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  role: 'admin' | 'staff';
+  status: string;
+  is_owner: boolean;
+}
+
+export interface GymDetail {
+  id: string; name: string; slug: string; status: string;
+  plan: string; plan_name: string | null;
+  paid_until: string | null; days_left: number | null;
+  lock_reason: 'suspended' | 'overdue' | null;
+  created_at: string; onboarded_at: string | null;
+  members: number; staff: number; owners: number; trainers: number;
+  classes: number; checkins_30d: number; payments_30d: number;
+  paid_total: string; last_paid_on: string | null;
+  address: string | null; phone: string | null; email: string | null;
+}
+
+export interface Overview {
+  gyms: number; gyms_live: number; gyms_suspended: number; gyms_locked: number;
+  gyms_unclaimed: number; gyms_unset_up: number;
+  members: number; staff: number; trainers: number;
+  checkins_30d: number; new_gyms_30d: number;
+  applications_waiting: number; crashes_open: number;
+  revenue_this_month: string; revenue_all_time: string;
+  overdue_gyms: number;
+}
+
+export interface PlatformAdmin {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  is_me: boolean;
+}
+
+export const gymPeople = (gym: string) => call<GymPerson[]>('platform_gym_people', { p_gym: gym });
+export const gymDetail = async (gym: string): Promise<GymDetail | null> => {
+  const rows = await call<GymDetail[]>('platform_gym_detail', { p_gym: gym });
+  return rows?.[0] ?? null;
+};
+export const renameGym = (gym: string, name: string, slug: string | null) =>
+  call<void>('platform_rename_gym', { p_gym: gym, p_name: name, p_slug: slug });
+
+export const resolveCrashes = (app: string, message: string) =>
+  call<number>('resolve_crashes', { p_app: app, p_message: message });
+
+export const getOverview = async (): Promise<Overview | null> => {
+  const rows = await call<Overview[]>('platform_overview');
+  return rows?.[0] ?? null;
+};
+
+export const listAdmins = () => call<PlatformAdmin[]>('list_platform_admins');
+export const addAdmin = (email: string) => call<string>('add_platform_admin', { p_email: email });
+export const removeAdmin = (user: string) => call<void>('remove_platform_admin', { p_user: user });

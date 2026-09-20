@@ -818,4 +818,89 @@ check('a member sees no gym billing at all',
   (await one('select count(*)::int as n from gym_payments')).n === 0
   && (await db.query('select * from my_gym_billing()')).rows.length === 0);
 
+// ---- 0109: running the service ------------------------------------------------------
+// The privacy line is the one that matters here: the platform may look at the
+// people it invoices, and at nobody else in a gym.
+await as(PLATFORM);
+const people = (await db.query("select * from platform_gym_people('" + GYM_A + "')")).rows;
+check('the platform sees who runs a gym',
+  people.length > 0 && people.some((p) => p.is_owner === true && !!p.email));
+check('and sees no member, coach or their data through it',
+  people.every((p) => p.role === 'admin' || p.role === 'staff'));
+const detail = await one("select * from platform_gym_detail('" + GYM_A + "')");
+check('a gym detail is counts and dates, never rows',
+  typeof detail.members === 'number' && typeof detail.checkins_30d === 'number'
+  && detail.slug === 'core-fitness');
+
+check('renaming a gym renames it everywhere it is written', await (async () => {
+  await db.exec("select platform_rename_gym('" + GYM_B + "', 'Gym B Renamed', null)");
+  const g = await one("select name from platform_gyms() where id = '" + GYM_B + "'");
+  await asOwner();
+  const s = await one("select gym_name from gym_settings where gym_id = '" + GYM_B + "'");
+  await as(PLATFORM);
+  return g.name === 'Gym B Renamed' && s.gym_name === 'Gym B Renamed';
+})());
+check('a link name already in use is refused, and a bad one too',
+  !!(await fails("select platform_rename_gym('" + GYM_B + "', 'Gym B Renamed', 'core-fitness')"))
+  && !!(await fails("select platform_rename_gym('" + GYM_B + "', 'Gym B Renamed', 'Not A Slug')")));
+check('changing a link name says in the log that the old one stops working', await (async () => {
+  await db.exec("select platform_rename_gym('" + GYM_B + "', 'Gym B Renamed', 'gym-b-new')");
+  const e = await one("select summary from platform_events_recent() where action = 'gym.renamed' order by id desc limit 1");
+  return /old links stop working/.test(e.summary);
+})());
+
+// Crashes.
+// Filed as the table owner: a crash report is written by whoever crashed, and
+// the platform owner belongs to no gym, so the tenant policy refuses them.
+await asOwner();
+await db.exec("insert into client_errors (app, route, message, gym_id) values" +
+  " ('admin', '/members', 'Boom went the screen', '" + GYM_A + "')," +
+  " ('admin', '/payments', 'Boom went the screen', '" + GYM_A + "')," +
+  " ('member', '/today', 'A different problem', '" + GYM_B + "')");
+await as(PLATFORM);
+check('an open crash is listed', (await db.query('select * from platform_crash_reports(14)')).rows.length >= 3);
+check('resolving clears every copy of that one problem, not just the row you clicked',
+  (await one("select resolve_crashes('admin', 'Boom went the screen') as n")).n === 2
+  && (await db.query('select * from platform_crash_reports(14)')).rows.length === 1
+  && (await db.query('select * from platform_crash_reports(14, true)')).rows.length >= 3);
+
+// The service in numbers.
+const ov = await one('select * from platform_overview()');
+check('the service has numbers, and they are numbers',
+  typeof ov.gyms === 'number' && ov.gyms >= 2
+  && typeof ov.members === 'number' && typeof ov.crashes_open === 'number'
+  && ov.crashes_open === 1);
+check('a gym nobody can sign into is counted as unclaimed', typeof ov.gyms_unclaimed === 'number');
+
+// Platform admins.
+check('the platform owner is listed as themselves',
+  (await db.query('select * from list_platform_admins()')).rows.some((r) => r.is_me === true));
+check('adding a platform admin needs an account that exists',
+  !!(await fails("select add_platform_admin('nobody@nowhere.test')")));
+check('the last platform admin cannot be removed, and nobody can remove themselves',
+  !!(await fails("select remove_platform_admin('" + PLATFORM + "')")));
+check('a second platform admin can be added by the first, and then removed', await (async () => {
+  // This fixture's outsider has no email; add_platform_admin() looks people up
+  // by one, which is how the platform owner would actually type it.
+  await asOwner();
+  await db.exec("update profiles set email = 'outsider@corefitness-test.com' where id = '" + P.outsider + "'");
+  await as(PLATFORM);
+  await db.exec("select add_platform_admin('outsider@corefitness-test.com')");
+  const two = (await db.query('select * from list_platform_admins()')).rows.length === 2;
+  await db.exec("select remove_platform_admin('" + P.outsider + "')");
+  return two && (await db.query('select * from list_platform_admins()')).rows.length === 1;
+})());
+
+// And none of it from inside a gym.
+await as(P.adminA);
+check('a gym admin cannot rename a gym, read another gym people, or clear a crash',
+  !!(await fails("select platform_rename_gym('" + GYM_B + "', 'Mine Now', null)"))
+  && (await db.query("select * from platform_gym_people('" + GYM_B + "')")).rows.length === 0
+  && !!(await fails("select resolve_crashes('member', 'A different problem')")));
+check('a gym admin sees no service-wide numbers and no platform admin list',
+  (await db.query('select * from platform_overview()')).rows.length === 0
+  && (await db.query('select * from list_platform_admins()')).rows.length === 0);
+check('a gym admin cannot make themselves the platform',
+  !!(await fails("select add_platform_admin((select email from profiles where id = '" + P.adminA + "'))")));
+
 finish();

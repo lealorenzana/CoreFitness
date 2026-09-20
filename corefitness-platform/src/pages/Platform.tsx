@@ -1,58 +1,154 @@
-import { useEffect, useState } from 'react';
-import { listCrashes, listEvents, type CrashReport, type PlatformEvent } from '../lib/platform';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  addAdmin, explain, getOverview, listAdmins, listCrashes, listEvents, removeAdmin, resolveCrashes,
+  type CrashReport, type Overview, type PlatformAdmin, type PlatformEvent,
+} from '../lib/platform';
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const peso = (n: string) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 0 });
 
 /**
- * The platform's own health: what the owner decided, and what has crashed
- * anywhere on the service.
+ * The service's own health: how big it is, what has broken, what the platform
+ * decided, and who else holds the keys.
  *
  * Crash reports are the one thing here that crosses gyms — they are the
- * platform's to fix (0095 files them, 0106 reads them). They carry a screen and
- * an error, never a member's data.
+ * platform's to fix (0095 files them, 0106 reads them, 0109 lets you clear
+ * them). They carry a screen and an error, never a member's data.
+ *
+ * The numbers are counts and sums over every gym, which is the one cross-gym
+ * read that stays inside the processor line: nothing here names a gym's member
+ * or resolves to a row (docs/TENANCY.md).
  */
 export default function Platform() {
   const [events, setEvents] = useState<PlatformEvent[] | null>(null);
   const [crashes, setCrashes] = useState<CrashReport[] | null>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
+  const [showResolved, setShowResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addingAdmin, setAddingAdmin] = useState('');
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const [e, c] = await Promise.all([listEvents(60), listCrashes(14)]);
-        setEvents(e);
-        setCrashes(c);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load the platform log');
-      }
-    })();
-  }, []);
+  const load = useCallback(async () => {
+    try {
+      const [e, c] = await Promise.all([listEvents(60), listCrashes(14, showResolved)]);
+      setEvents(e);
+      setCrashes(c);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load the platform log');
+    }
+    // 0109's half, kept separate: on a database where it is not pasted yet the
+    // log above still works, and only these two sections say they are waiting.
+    try {
+      const [o, a] = await Promise.all([getOverview(), listAdmins()]);
+      setOverview(o);
+      setAdmins(a);
+    } catch (err) {
+      setOverview(null);
+      setAdmins([]);
+      setError(explain(err, '0109'));
+    }
+  }, [showResolved]);
+
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // One line per distinct message: fifty copies of one broken screen is one
-  // problem, and a list of fifty hides the other two.
+  // problem, and a list of fifty hides the other two. Resolving works the same
+  // way — by message, so a fix clears every copy including the late arrivals.
   const grouped = (crashes ?? []).reduce<Record<string, { n: number; last: CrashReport }>>((acc, c) => {
     const key = `${c.app}:${c.message}`;
     acc[key] = { n: (acc[key]?.n ?? 0) + 1, last: acc[key]?.last ?? c };
     return acc;
   }, {});
 
+  const clear = async (c: CrashReport) => {
+    try {
+      const n = await resolveCrashes(c.app, c.message);
+      await load();
+      setError(`Marked ${n} report${n === 1 ? '' : 's'} handled.`);
+    } catch (e) {
+      setError(explain(e, '0109'));
+    }
+  };
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addAdmin(addingAdmin.trim());
+      setAddingAdmin('');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add them');
+    }
+  };
+
   return (
     <>
       {error && <p className="err">{error}</p>}
 
+      {overview && (
+        <div className="card">
+          <div className="name">Core Fitness, right now</div>
+          <div className="meta">
+            Counts and sums across every gym. No gym's own rows are read to build this.
+          </div>
+          <div className="stats">
+            <Stat n={overview.gyms} label="gyms" sub={`${overview.gyms_live} open for business`} />
+            <Stat n={overview.members} label="members" sub={`across every gym`} />
+            <Stat n={overview.checkins_30d} label="check-ins" sub="last 30 days" />
+            <Stat n={overview.staff + overview.trainers} label="staff and coaches" sub="signed in somewhere" />
+            <Stat text={peso(overview.revenue_this_month)} label="this month" sub={`${peso(overview.revenue_all_time)} in all`} />
+            <Stat n={overview.new_gyms_30d} label="new gyms" sub="last 30 days" />
+          </div>
+          {(overview.applications_waiting > 0 || overview.gyms_unclaimed > 0
+            || overview.gyms_unset_up > 0 || overview.overdue_gyms > 0
+            || overview.gyms_suspended > 0) && (
+            <div className="meta" style={{ marginTop: 12 }}>
+              {[
+                overview.applications_waiting > 0 && `${overview.applications_waiting} application${overview.applications_waiting === 1 ? '' : 's'} waiting for an answer`,
+                overview.gyms_unclaimed > 0 && `${overview.gyms_unclaimed} gym${overview.gyms_unclaimed === 1 ? '' : 's'} nobody can sign into`,
+                overview.gyms_unset_up > 0 && `${overview.gyms_unset_up} not set up by their owner yet`,
+                overview.overdue_gyms > 0 && `${overview.overdue_gyms} past their paid-until date`,
+                overview.gyms_suspended > 0 && `${overview.gyms_suspended} suspended by you`,
+              ].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="card">
-        <div className="name">Crashes, last 14 days</div>
-        <div className="meta">Filed automatically by both apps when a screen breaks (0095).</div>
+        <div className="row">
+          <span className="grow">
+            <span className="name">
+              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'}
+            </span>
+            <span className="meta">Filed automatically by both apps when a screen breaks (0095).</span>
+          </span>
+          <button className="btn ghost" onClick={() => setShowResolved((v) => !v)}>
+            {showResolved ? 'Open only' : 'Show handled too'}
+          </button>
+        </div>
         <div style={{ marginTop: 10 }}>
           {crashes === null && <p className="empty">Loading…</p>}
-          {crashes?.length === 0 && <p className="empty">Nothing has crashed. </p>}
+          {crashes?.length === 0 && (
+            <p className="empty">
+              {showResolved ? 'Nothing has crashed in the last 14 days.' : 'Nothing is outstanding.'}
+            </p>
+          )}
           {Object.entries(grouped).map(([key, { n, last }]) => (
-            <div className="log" key={key}>
-              <strong style={{ color: 'var(--text)' }}>{last.message.slice(0, 140)}</strong>
-              <br />
-              {last.app} · {last.gym_name ?? 'before sign-in'} · {last.route ?? 'no route'} ·{' '}
-              {n} time{n === 1 ? '' : 's'} · last {stamp(last.created_at)}
+            <div className="row log" key={key}>
+              <span className="grow">
+                <strong style={{ color: 'var(--text)' }}>{last.message.slice(0, 140)}</strong>
+                <br />
+                {last.app} · {last.gym_name ?? 'before sign-in'} · {last.route ?? 'no route'} ·{' '}
+                {n} time{n === 1 ? '' : 's'} · last {stamp(last.created_at)}
+                {last.resolved_at && ' · handled'}
+              </span>
+              {!last.resolved_at && (
+                <button className="btn ghost" onClick={() => void clear(last)}>
+                  {n === 1 ? 'Handled' : `Handled (all ${n})`}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -60,7 +156,7 @@ export default function Platform() {
 
       <div className="card">
         <div className="name">What the platform did</div>
-        <div className="meta">Every gym let in, suspended, reactivated or moved to another plan.</div>
+        <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
         <div style={{ marginTop: 10 }}>
           {events === null && <p className="empty">Loading…</p>}
           {events?.length === 0 && <p className="empty">Nothing yet.</p>}
@@ -74,6 +170,41 @@ export default function Platform() {
         </div>
       </div>
 
+      {admins !== null && admins.length > 0 && (
+        <div className="card">
+          <div className="name">Who can run the platform</div>
+          <div className="meta">
+            Anyone here can let a gym in, suspend one, and change what the service sells. The last one
+            cannot be removed — there is no way back in if nobody holds the keys.
+          </div>
+          <div style={{ marginTop: 10 }}>
+            {admins.map((a) => (
+              <div className="row log" key={a.user_id}>
+                <span className="grow">
+                  <strong style={{ color: 'var(--text)' }}>
+                    {[a.first_name, a.last_name].filter(Boolean).join(' ') || a.email}
+                  </strong>
+                  {a.email && ` · ${a.email}`}
+                  {a.is_me && ' · you'}
+                </span>
+                {!a.is_me && admins.length > 1 && (
+                  <button className="btn ghost" onClick={() => void (async () => {
+                    try { await removeAdmin(a.user_id); await load(); }
+                    catch (e) { setError(e instanceof Error ? e.message : 'Could not remove them'); }
+                  })()}>Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <form className="row" style={{ marginTop: 12 }} onSubmit={add}>
+            <input className="grow" type="email" required value={addingAdmin}
+              placeholder="their email — they need a Core Fitness account already"
+              onChange={(e) => setAddingAdmin(e.target.value)} />
+            <button className="btn" type="submit">Add</button>
+          </form>
+        </div>
+      )}
+
       <div className="card">
         <div className="name">Migrations</div>
         <div className="meta">
@@ -84,5 +215,15 @@ export default function Platform() {
         </div>
       </div>
     </>
+  );
+}
+
+function Stat({ n, text, label, sub }: { n?: number; text?: string; label: string; sub?: string }) {
+  return (
+    <span className="stat">
+      <strong>{text ?? (n ?? 0).toLocaleString('en-PH')}</strong>
+      <span>{label}</span>
+      {sub && <span className="muted">{sub}</span>}
+    </span>
   );
 }
