@@ -133,7 +133,8 @@ await asOwner();
 const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).rows.map((r) => r.t);
 // Every public table is either one gym's, or deliberately global.
 const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
-  'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications'];
+  'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
+  'platform_events'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
@@ -604,5 +605,65 @@ check('set_gym_role makes a coach, with a coach profile',
   (await one(`select role::text as r from gym_roles where user_id = '${P.staffA}' and gym_id = '${GYM_A}'`)).r === 'trainer'
   && (await one(`select count(*)::int as n from trainer_profiles where profile_id = '${P.staffA}' and gym_id = '${GYM_A}'`)).n === 1);
 await db.exec(`update gym_roles set role = 'staff' where user_id = '${P.staffA}' and gym_id = '${GYM_A}'`);
+
+// ---- 0106: the platform owner runs the service, and reads nobody's data ------
+await asOwner();
+const PLATFORM = '9a000000-0000-4000-8000-000000000001';
+await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('${PLATFORM}', 'platform@corefitness-test.com', '{}');
+  insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)
+  values ('${PLATFORM}', 'Platform', 'Owner', 'platform@corefitness-test.com', 'active', 'member', null);
+  delete from gym_roles where user_id = '${PLATFORM}';
+  insert into platform_admins (user_id) values ('${PLATFORM}');`);
+await as(P.adminA);
+check('a gym admin reads nothing from platform_gyms', (await db.query(`select * from platform_gyms()`)).rows.length === 0);
+check('a gym admin cannot create a gym', !!(await fails(`select create_gym('Sneaky Gym', 'sneaky')`)));
+check('a gym admin cannot suspend a gym', !!(await fails(`select set_gym_status('${GYM_B}', 'suspended', 'because')`)));
+check('a gym admin cannot change a gym plan', !!(await fails(`select set_gym_plan('${GYM_A}', 'premium', null)`)));
+check('a gym admin reads no platform events', (await db.query(`select * from platform_events_recent()`)).rows.length === 0);
+await as(PLATFORM);
+const pg = await db.query(`select * from platform_gyms()`);
+check('the platform sees every gym, with counts', pg.rows.length === 2 && pg.rows.every((r) => typeof r.members === 'number'),
+  JSON.stringify(pg.rows.map((r) => [r.name, r.members, r.staff])));
+check('the platform reads no member rows of any gym (processor, not controller)',
+  (await one(`select count(*)::int as n from member_profiles`)).n === 0
+  && (await one(`select count(*)::int as n from payments`)).n === 0
+  && (await one(`select count(*)::int as n from attendance`)).n === 0);
+check('suspending a gym without a reason is refused', !!(await fails(`select set_gym_status('${GYM_B}', 'suspended', '')`)));
+await db.exec(`select set_gym_status('${GYM_B}', 'suspended', 'Did not pay for three months')`);
+await as(P.adminB);
+check('a gym the platform suspended is read-only for its own admin',
+  !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
+await as(PLATFORM);
+await db.exec(`select set_gym_status('${GYM_B}', 'active', '')`);
+await db.exec(`select set_gym_plan('${GYM_B}', 'standard', (current_date + 30)::date)`);
+check('the plan and paid-until are recorded',
+  (await one(`select plan from platform_gyms() where id = '${GYM_B}'`)).plan === 'standard');
+check('every platform decision is logged, with the reason it was given',
+  (await one(`select count(*)::int as n from platform_events_recent() where gym_id = '${GYM_B}'`)).n >= 3
+  && (await one(`select count(*)::int as n from platform_events_recent()
+       where action = 'gym.suspended' and detail->>'reason' = 'Did not pay for three months'`)).n === 1);
+const newGym = (await one(`select create_gym('Seaside Fit', 'seaside-fit') as id`)).id;
+// Counted as the owner: the platform itself cannot read a gym's rows (asserted
+// above), so a count run as the platform would be zero however well it seeded.
+await asOwner();
+check('a gym the platform lets in opens working, not empty',
+  (await one(`select count(*)::int as n from membership_plans where gym_id = '${newGym}'`)).n > 0
+  && (await one(`select count(*)::int as n from point_rules where gym_id = '${newGym}'`)).n > 0
+  && (await one(`select count(*)::int as n from achievements where gym_id = '${newGym}'`)).n > 0
+  && (await one(`select count(*)::int as n from gym_settings where gym_id = '${newGym}'`)).n === 1);
+await as(PLATFORM);
+check('a second gym cannot take a link name already in use', !!(await fails(`select create_gym('Copycat', 'seaside-fit')`)));
+check('a link name with spaces or capitals is refused', !!(await fails(`select create_gym('Bad', 'Seaside Fit')`)));
+await db.exec(`select make_gym_owner('${newGym}', '${P.outsider}')`);
+await as(P.outsider);
+check('the new owner runs their own gym and sees no other',
+  (await one(`select role::text as r from my_gym_context()`))?.r === 'admin'
+  && (await one(`select count(*)::int as n from gyms`)).n === 1);
+await as(PLATFORM);
+check('rejecting an application needs a reason',
+  !!(await fails(`select reject_application((select id from gym_applications where status = 'pending' limit 1), '')`)));
+await db.exec(`select reject_application((select id from gym_applications where status = 'pending' limit 1), 'Outside our area for now')`);
+check('a rejected application keeps the reason the applicant is told',
+  (await one(`select reason from platform_applications('rejected') limit 1`))?.reason === 'Outside our area for now');
 
 finish();
