@@ -2,19 +2,19 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this is
-A gym management capstone for a real gym in Mamburao, Occidental Mindoro. It began as a localStorage
-prototype; **that migration is complete** — everything runs on Supabase, free tier. Two independent
-Vite apps: **`g-fitness-admin/`** (`:5174`) is the desktop dashboard, run locally from a desktop icon
-and never deployed; **`g-fitness-member/`** (`:5173`) is the installable phone app (PWA → Android TWA)
-and hosts the **trainer** role as well as the member one. Not a monorepo — run `npm` from inside the
-app directory. `supabase/` holds 80 migrations, RLS policies and four Edge Functions —
-[supabase/README.md](supabase/README.md) covers setup and secrets.
+A gym management capstone for a real gym in Mamburao — **now a multi-tenant SaaS**, many gyms on one
+system ([TENANCY](docs/TENANCY.md)). Everything runs on Supabase, free tier. Four Vite apps, not a
+monorepo (run `npm` from inside each): **`g-fitness-admin/`** (`:5174`, Vercel) is the gym owner's and
+front desk's dashboard; **`g-fitness-member/`** (`:5173`, PWA → Android TWA) is the phone app and hosts
+the **trainer** role too; **`corefitness-platform/`** (`:5175`, **localhost only**) is the platform
+owner's; **`corefitness-site/`** (`:5176`) is the public website. The folder names are pre-rename
+legacy — deliberately left alone. `supabase/` holds 110 migrations, RLS policies and six Edge
+Functions — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
-`npm install && npm run dev` **from inside each app directory** — admin on `:5174`, member on `:5173`.
-- `npm run build` — `tsc -b && vite build`. Both build clean. Both tsconfigs set `noUnusedLocals`/
-  `noUnusedParameters`, so **an unused import fails the build** though `npm run dev` is happy.
-- `npm run lint` · `npm run check:achievements` (member). No test framework — see *Verifying work*. Both apps need `.env.local` (copy `.env.example`).
+`npm install && npm run dev` **from inside each app directory**; all four build clean. Every tsconfig sets
+`noUnusedLocals`/`noUnusedParameters`, so **an unused import fails the build** though `npm run dev` is happy.
+`npm run lint` · `check:achievements` (member). No test framework — see *Verifying work*. Each app needs `.env.local`.
 
 ## Data honesty — read this before touching a page
 **Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is Supabase-backed. **"No mock data
@@ -125,8 +125,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
 - **Build screens from `components/ui/noc.tsx`** (`PageTitle`, `LineRow`, `NocButton`, `Panel`,
   `StatusPill`, `TextTabs`, `Chip`, `ProgressBar`, `InlineStat`) and `Field`/`TextInput`/`Select`. A list is
   rows on the page, **not a card per row**; a long list is a preview plus `SeeAll` to **its own page — never an in-place "show more"**; `ProgressBar` renders **nothing without a real fraction**.
-- **Admin** (unchanged): tokens never `brand-*`/`dark-*`; primitives `FormField`, `DatePicker`,
-  `TimePicker`, `Popover`, `kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`, `SectionTabs`.
+- **Admin** (unchanged): tokens never `brand-*`/`dark-*`; primitives `FormField`, `DatePicker`, `TimePicker`, `Popover`, `kit.tsx`, `usePaged`, `DetailSheet`, `TooltipLayer`, `SectionTabs`.
 - **Layout traps:** `cn()` drops a bare `flex` beside `flex-col`; **`minmax(0, 1fr)`, never bare `1fr`**;
   Tailwind emits CSS **only for literal class names**; **a `<button>` centres its content**; **never a
   `<button>` inside a `<button>`**. **Never declare a component inside a render body.** For
@@ -166,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0106 are live; 0107 (a gym's first day) awaits pasting, with the `approve-gym` Edge Function** — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. **A new gym gets Gym #1's rules and none of its identity**, so its owner is created by `approve-gym` (a temporary password, shown once — nothing here sends mail) and then sets the gym up at `/admin/setup`. — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0107 are live; 0108–0110 await pasting** — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. **A new gym gets Gym #1's rules and none of its identity**: `approve-gym` makes its owner (a temporary password, shown once — nothing here sends mail), who sets the gym up at `/admin/setup`. **The platform sells plans to gyms exactly as a gym sells them to members** — `platform_plans`/`gym_plan_allows()` mirror `membership_plans`/`plan_allows()`, and a plan limit is a trigger on `gym_roles`, not a label. **Three gates, and they differ on screen**: the gym's plan and the gym's own `gym_modules` both **hide** (a member can never buy either), the member's plan **locks and explains** (0049). — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.

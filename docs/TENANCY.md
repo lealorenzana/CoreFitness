@@ -172,6 +172,51 @@ that was already configured, so no existing gym meets the wizard.
 The platform's own list carries `owners` and `onboarded`, so a gym nobody can
 sign into is visible as exactly that.
 
+### What the service sells, and the three gates (0108–0110)
+
+The platform→gym relationship is deliberately the **same shape** as the
+gym→member one, one level up, so there is one idiom here rather than two:
+
+| gym → member (0049)  | platform → gym (0108)    | what it is                |
+|----------------------|--------------------------|---------------------------|
+| `membership_plans`   | `platform_plans`         | what is sold              |
+| `features`           | `platform_features`      | what can be sold          |
+| `plan_features`      | `platform_plan_features` | what this plan includes   |
+| `plan_allows()`      | `gym_plan_allows()`      | the single question       |
+| `payments`           | `gym_payments`           | that it was paid for      |
+
+Prices live in those rows, not in code: the website reads `public_plans()`, so a
+price change is one edit and never disagrees with what a gym is charged. A price
+left NULL means **not decided** and the page says "Talk to us" — NULL is never
+zero. `gyms.paid_until` is the consequence of `record_gym_payment()`, and a late
+payment covering an old period never pulls a gym's access in.
+
+A `max_members` on a plan is enforced by a **trigger on `gym_roles`**, not by a
+screen, so it holds on every road into a gym — the desk, an approval, an Edge
+Function, the platform itself. It fires on the way *in* only, so a gym over a
+lowered cap can still archive its way back under it.
+
+**Three gates decide whether a member sees a feature, and the honest treatment
+differs:**
+
+| gate | function | when it says no |
+|---|---|---|
+| the gym's plan | `gym_plan_allows()` (0108) | **hide** |
+| the gym's own choice | `gym_module_on()` (0110) | **hide** |
+| the member's membership | `plan_allows()` (0049) | **lock and explain** |
+
+The first two mean the member can never have it however much they pay, so a lock
+would advertise something that will never open. The third they can change, so
+0049's rule stands unaltered. `gym_module_on()` folds the first two together
+because a member cannot act on either, and the gym owner's own settings screen
+is the one place that separates them (`my_gym_modules()` returns `not_sold` vs
+`off`, and offers no switch for the former).
+
+A gym also owns **its own words** (`points_name`, `welcome_message` — Gym #1
+keeps "CORE Points"; every other gym starts at plain "Points") and **its own
+door**: `open` (listed, anyone may ask), `code` (unlisted; link or a six-character
+code, replaceable when it leaks) or `closed` (the desk creates every account).
+
 The website writes the one row a stranger may write anywhere here: a `pending`
 `gym_applications` row (0097). The status and shape are enforced in SQL, not in
 the form, and the page has a honeypot field for bots. Its prices live in
