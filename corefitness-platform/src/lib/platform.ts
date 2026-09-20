@@ -367,3 +367,27 @@ export const getOverview = async (): Promise<Overview | null> => {
 export const listAdmins = () => call<PlatformAdmin[]>('list_platform_admins');
 export const addAdmin = (email: string) => call<string>('add_platform_admin', { p_email: email });
 export const removeAdmin = (user: string) => call<void>('remove_platform_admin', { p_user: user });
+
+/**
+ * Give a gym's owner or front desk a new temporary password (support's answer
+ * to "I cannot get in"). Returned once, shown once, stored nowhere.
+ *
+ * The token is passed by hand for the same reason inviteOwner does it: a
+ * session restored from storage is neither a sign-in nor a refresh, so
+ * supabase-js can still be sending the anon key.
+ */
+export async function resetGymPassword(gymId: string, userId: string):
+  Promise<{ email: string | null; isOwner: boolean; password: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('You are signed out. Sign in again and retry.');
+
+  const { data, error } = await supabase.functions.invoke('reset-gym-password', {
+    body: { gymId, userId },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? error.message);
+  }
+  return data as { email: string | null; isOwner: boolean; password: string };
+}

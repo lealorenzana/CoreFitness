@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  explain, gymDetail, gymPeople, renameGym,
+  explain, gymDetail, gymPeople, renameGym, resetGymPassword,
   type GymDetail as Detail, type GymPerson, type PlatformGym,
 } from '../lib/platform';
 
@@ -24,6 +24,8 @@ export default function GymDetail({ gym, onChanged, onClose }: {
   const [people, setPeople] = useState<GymPerson[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ name: string; slug: string } | null>(null);
+  /** A new password, shown once, for the platform owner to read out. */
+  const [reset, setReset] = useState<{ who: string; email: string | null; password: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -132,16 +134,47 @@ export default function GymDetail({ gym, onChanged, onClose }: {
         {people?.length === 0 && (
           <p className="empty">Nobody can sign into this gym yet. Invite its owner from the gym's row.</p>
         )}
-        {people?.map((p) => (
-          <div className="log" key={p.user_id}>
-            <strong style={{ color: 'var(--text)' }}>
-              {[p.first_name, p.last_name].filter(Boolean).join(' ') || p.email}
-            </strong>
-            {' · '}{p.is_owner ? 'owner' : 'front desk'}
-            {p.status !== 'active' && ` · ${p.status}`}
-            {p.email && <> · {p.email}</>}
+        {people?.map((p) => {
+          const who = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email || 'They';
+          return (
+            <div className="row log" key={p.user_id}>
+              <span className="grow">
+                <strong style={{ color: 'var(--text)' }}>{who}</strong>
+                {' · '}{p.is_owner ? 'owner' : 'front desk'}
+                {p.status !== 'active' && ` · ${p.status}`}
+                {p.email && <> · {p.email}</>}
+              </span>
+              <button className="btn ghost" onClick={() => void (async () => {
+                setError(null);
+                try {
+                  const r = await resetGymPassword(gym.id, p.user_id);
+                  setReset({ who, email: r.email, password: r.password });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Could not reset it');
+                }
+              })()}>New password</button>
+            </div>
+          );
+        })}
+
+        {reset && (
+          <div className="card handover" style={{ marginTop: 12 }}>
+            <div className="name">A new password for {reset.who}</div>
+            <div className="meta">
+              Their old one stopped working the moment you pressed the button. Read this out or send
+              it however you normally reach them — nothing here sends email — and they will be asked
+              to choose their own when they sign in.
+            </div>
+            <pre className="handover-box">
+{`${gym.name} — sign in
+Where: https://corefitness-admin.vercel.app
+Email: ${reset.email ?? '(no email on file)'}
+Temporary password: ${reset.password}`}
+            </pre>
+            <div style={{ height: 12 }} />
+            <button className="btn" onClick={() => setReset(null)}>I have passed it on</button>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

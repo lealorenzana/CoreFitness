@@ -6,7 +6,10 @@
 --
 --   * a gym could not be renamed, and its link name was fixed at creation
 --   * there was no way to see who owns a gym, or to reach them
---   * a gym owner who lost their password could not be helped at all
+--   * a gym owner who lost their password could not be helped at all (that one
+--     needs the Auth admin key, so it is the reset-gym-password Edge Function
+--     rather than anything in here — it asks platform_gym_people() below who
+--     may be reset, so the two cannot disagree)
 --   * a crash you had already fixed stayed on the list for ever
 --   * there were no service-wide numbers — only per-gym counts
 --   * a second platform admin meant hand-writing an INSERT

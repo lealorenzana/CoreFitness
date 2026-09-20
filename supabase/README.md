@@ -141,6 +141,7 @@ would swap the admin's own browser session for the newly created account.
 | `create-member` | Admin registers a **walk-in** member at the front desk (Members page). Created already `active`, skipping the self-registration approval queue |
 | `create-staff` | Admin creates a front-desk staff account. The only way one can exist — staff have no write access to `profiles` |
 | `approve-gym` | **The platform owner only.** Gives a new gym its owner — the account SQL cannot create. Returns a temporary password once, for the platform app to show and the platform owner to hand over; nothing here sends email. Called from `corefitness-platform` |
+| `reset-gym-password` | **The platform owner only.** A new temporary password for a gym's owner or front desk, shown once — support's answer to "I cannot get in". Refuses anyone who is not that gym's admin or staff |
 | `send-push` | Delivers a web push notification to a member's registered devices. Needs the VAPID secrets below |
 | `fitness-assistant` | **Optional.** General fitness questions the rule table cannot answer. Needs the three assistant secrets below. Not deploying it is a supported state |
 
