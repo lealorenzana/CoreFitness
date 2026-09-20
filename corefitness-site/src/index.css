@@ -1,0 +1,79 @@
+/*
+ * The public page. Nocturne's ground and violet, so a gym owner who signs up
+ * meets the same app they were shown — but plain structure: this is a page to
+ * read, not an app to use.
+ */
+:root {
+  --bg: #0b0b12;
+  --surface: #14141d;
+  --surface-high: #1e1d2b;
+  --hairline: #26263a;
+  --text: #f4f4f7;
+  --text-2: #a8a8bb;
+  --text-3: #6f6f86;
+  --violet: #7c3aed;
+  --violet-text: #c4b5fd;
+  --amber: #f59e0b;
+
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.55;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+section { padding: 56px 0; border-top: 1px solid var(--hairline); }
+section:first-of-type { border-top: 0; }
+h1, h2, h3 { letter-spacing: -0.015em; margin: 0; }
+h1 { font-size: clamp(30px, 6vw, 46px); font-weight: 680; line-height: 1.12; }
+h2 { font-size: 21px; font-weight: 650; margin-bottom: 6px; }
+h3 { font-size: 15px; font-weight: 620; }
+p { margin: 10px 0 0; color: var(--text-2); }
+.lede { font-size: clamp(15px, 2.2vw, 17.5px); max-width: 60ch; }
+.eyebrow { font-size: 12px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--violet-text); }
+
+header.top { display: flex; align-items: center; gap: 10px; padding: 18px 0; }
+header.top .mark { width: 28px; height: 28px; border-radius: 50%; background: var(--violet); display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+header.top .name { font-weight: 650; font-size: 15px; }
+header.top .grow { flex: 1; }
+header.top a { color: var(--text-2); text-decoration: none; font-size: 13.5px; }
+
+.hero { padding: 40px 0 56px; }
+.cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; height: 44px; padding: 0 20px;
+  border-radius: 10px; background: var(--amber); color: #1a1205; font-weight: 680; font-size: 14.5px;
+  border: 0; text-decoration: none; }
+.cta.ghost { background: transparent; color: var(--text); border: 1px solid var(--hairline); margin-left: 8px; }
+
+.grid { display: grid; gap: 14px; margin-top: 22px; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px; }
+.card p { font-size: 13.5px; margin-top: 6px; }
+
+.tier { display: flex; flex-direction: column; }
+.price { font-size: 26px; font-weight: 680; margin-top: 10px; }
+.price small { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.tier ul { list-style: none; padding: 0; margin: 14px 0 0; }
+.tier li { font-size: 13.5px; color: var(--text-2); padding: 5px 0 5px 18px; position: relative; }
+.tier li::before { content: '·'; position: absolute; left: 6px; color: var(--violet-text); font-weight: 700; }
+
+.gyms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.gym { font-size: 13px; color: var(--text-2); border: 1px solid var(--hairline); border-radius: 999px; padding: 5px 12px; }
+
+form.apply { margin-top: 20px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+form.apply .full { grid-column: 1 / -1; }
+label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 5px; }
+input, textarea { width: 100%; padding: 10px 12px; border-radius: 9px; background: var(--surface-high);
+  border: 1px solid var(--hairline); color: var(--text); }
+textarea { min-height: 84px; resize: vertical; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.note { font-size: 13px; }
+.note.bad { color: var(--amber); }
+.sent { background: var(--surface); border: 1px solid var(--violet); border-radius: 12px; padding: 18px; margin-top: 20px; }
+
+footer { padding: 30px 0 50px; color: var(--text-3); font-size: 12.5px; border-top: 1px solid var(--hairline); }
+footer a { color: var(--text-2); }

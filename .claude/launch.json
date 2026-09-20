@@ -9,18 +9,32 @@
       "port": 5173
     },
     {
-      "name": "nocturne",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5180"],
-      "cwd": "Nocturne mobile app scope/design_handoff_member_nocturne",
-      "port": 5180
-    },
-    {
       "name": "admin",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "g-fitness-admin",
       "port": 5174
+    },
+    {
+      "name": "platform",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "corefitness-platform",
+      "port": 5175
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "corefitness-site",
+      "port": 5176
+    },
+    {
+      "name": "nocturne",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5180"],
+      "cwd": "Nocturne mobile app scope/design_handoff_member_nocturne",
+      "port": 5180
     }
   ]
 }

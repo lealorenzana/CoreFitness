@@ -46,8 +46,10 @@ a { color: var(--accent-text); }
 .card + .card { margin-top: 12px; }
 .row { display: flex; align-items: center; gap: 12px; }
 .grow { flex: 1; min-width: 0; }
-.name { font-size: 14.5px; font-weight: 600; }
-.meta { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+/* Both are spans inside a span (a row's growing cell), so they need to be told
+   to be lines — inline, "active today" and "premium" ran together. */
+.name { display: block; font-size: 14.5px; font-weight: 600; }
+.meta { display: block; font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
 .muted { color: var(--text-3); }
 
 .pill {
