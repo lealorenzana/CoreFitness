@@ -130,6 +130,27 @@ policy that reads `profiles.role`, a table with RLS off, or a gym-to-gym foreign
 `gym_id`. The demo seeds run where they ran live, before 0097, so the backfills meet them as they
 will in production.
 
+## The four apps (Parts C and D)
+
+| App | Who | Where |
+|---|---|---|
+| `g-fitness-member` | members and coaches | `corefitness-gym.vercel.app` (and the APK) |
+| `g-fitness-admin` | gym owners and their front desk | `corefitness-admin.vercel.app` |
+| `corefitness-platform` | the platform owner | **localhost only**, `:5175` |
+| `corefitness-site` | anyone | `corefitness-site.vercel.app` |
+
+The platform app stays off the internet on purpose: letting a gym in and
+suspending one are the two most consequential actions in the system. It calls
+only 0106's functions — gyms with counts and status, applications, crash
+reports and its own decision log — and the isolation harness asserts it reads
+no member, payment or attendance row of any gym.
+
+The website writes the one row a stranger may write anywhere here: a `pending`
+`gym_applications` row (0097). The status and shape are enforced in SQL, not in
+the form, and the page has a honeypot field for bots. Its prices live in
+`corefitness-site/src/pricing.ts`; a tier with no number says "Talk to us"
+rather than inventing one.
+
 ## Pasting 0097–0103
 
 1. Run the backup by hand first: GitHub → **Actions → Weekly database backup → Run workflow**, and

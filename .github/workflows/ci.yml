@@ -1,4 +1,4 @@
-# Every push and pull request: both apps build, every migration and the demo
+# Every push and pull request: all four apps build, every migration and the demo
 # seeds apply to a fresh PostgreSQL, the SQL rule checks pass, and the fixture
 # checks drive the real screens. No secrets are needed — the fixtures intercept
 # every Supabase request, and the SQL runs in pglite (PostgreSQL in WASM).
@@ -27,7 +27,7 @@ env:
 
 jobs:
   build:
-    name: Build both apps
+    name: Build every app
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +38,8 @@ jobs:
           cache-dependency-path: |
             g-fitness-member/package-lock.json
             g-fitness-admin/package-lock.json
+            corefitness-platform/package-lock.json
+            corefitness-site/package-lock.json
       - name: Member app — build and achievement catalogue check
         working-directory: g-fitness-member
         run: |
@@ -49,6 +51,21 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+      # The platform app (the owner's own) and the public site. Neither has
+      # fixture checks: the platform app is three screens over the 0106
+      # functions, which the SQL harness covers, and the site is a page.
+      - name: Platform app — build
+        working-directory: corefitness-platform
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Website — build
+        working-directory: corefitness-site
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Every gym accent stays readable as text
+        run: node scripts/accent-contrast.mjs
 
   sql:
     name: Migrations and SQL rules

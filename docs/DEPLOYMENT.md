@@ -29,6 +29,9 @@ launch full-screen with the right icon.
 | Vercel project | `zatanaels-projects/core-fitness` |
 | **Admin app (gym owners and front desk)** | **`https://corefitness-admin.vercel.app`** |
 | Vercel project | `zatanaels-projects/corefitness-admin` |
+| **Website (what the service is, and the sign-up form)** | **`https://corefitness-site.vercel.app`** |
+| Vercel project | `zatanaels-projects/corefitness-site` |
+| **Platform app (the owner's own)** | **not deployed, deliberately** — `corefitness-platform`, `npm run dev` on `:5175` |
 
 The admin app went online on 2026-09-20 (SaaS Part B): a gym owner is not in Mamburao, so a
 dashboard that only ran from one desktop icon could not be a service. It deploys exactly like the
