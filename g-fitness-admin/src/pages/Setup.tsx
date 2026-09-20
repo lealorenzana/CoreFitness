@@ -9,6 +9,7 @@ import {
   finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
 } from '../lib/api/settings';
 import { listPlans, updatePlan } from '../lib/api/membershipPlans';
+import { getGymApp, saveGymWords, setJoinPolicy, setOnboardingStep, type JoinPolicy } from '../lib/api/gymApp';
 import type { MembershipPlanRow } from '../types/db';
 
 /**
@@ -29,12 +30,13 @@ import type { MembershipPlanRow } from '../types/db';
  * had already been configured.
  */
 
-type Step = 'gym' | 'look' | 'plans' | 'password';
+type Step = 'gym' | 'look' | 'plans' | 'door' | 'password';
 
 const STEPS: { key: Step; title: string; blurb: string }[] = [
   { key: 'gym', title: 'Your gym', blurb: 'What your members and your receipts will say.' },
-  { key: 'look', title: 'Your hours and colour', blurb: 'When you are open, and your colour in the phone app.' },
+  { key: 'look', title: 'Your look and your words', blurb: 'When you are open, your colour, and what you call your points.' },
   { key: 'plans', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.' },
+  { key: 'door', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.' },
   { key: 'password', title: 'Your password', blurb: 'Replace the temporary one you were given.' },
 ];
 
@@ -49,15 +51,18 @@ export default function Setup() {
   const [gym, setGym] = useState({
     gym_name: '', short_name: '', tagline: '', address: '', phone: '', email: '',
     opening_time: '', closing_time: '', accent: 'violet',
+    points_name: '', points_name_short: '', welcome_message: '',
   });
+  const [door, setDoor] = useState<JoinPolicy>('open');
+  const [joinCode, setJoinCode] = useState<string | null>(null);
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [edited, setEdited] = useState<Record<string, { name: string; price: string }>>({});
   const [password, setPassword] = useState({ next: '', again: '' });
 
   const load = useCallback(async () => {
     try {
-      const [ctx, settings, planRows, temp] = await Promise.all([
-        getGymContext(true), getGymSettings(), listPlans(), mustChangePassword(),
+      const [ctx, settings, planRows, temp, app] = await Promise.all([
+        getGymContext(true), getGymSettings(), listPlans(), mustChangePassword(), getGymApp(),
       ]);
       // Already set up — someone typed the address, or came back later.
       if (ctx?.onboarded) { window.location.assign('/dashboard'); return; }
@@ -71,7 +76,18 @@ export default function Setup() {
         opening_time: settings?.opening_time ?? '',
         closing_time: settings?.closing_time ?? '',
         accent: settings?.accent ?? 'violet',
+        points_name: app?.points_name ?? '',
+        points_name_short: app?.points_name_short ?? '',
+        welcome_message: app?.welcome_message ?? '',
       });
+      setDoor(app?.join_policy ?? 'open');
+      setJoinCode(app?.join_code ?? null);
+      // Pick up where they left off (0111). Every step already saved before it
+      // advanced, so this only spares them walking back through screens they
+      // have already filled in.
+      if (ctx?.onboardingStep && STEPS.some((x) => x.key === ctx.onboardingStep)) {
+        setStep(ctx.onboardingStep as Step);
+      }
       setPlans(planRows);
       setEdited(Object.fromEntries(
         planRows.map((p) => [p.id, { name: p.name, price: String(p.price) }])
@@ -108,6 +124,17 @@ export default function Setup() {
       closing_time: gym.closing_time || null,
       accent: gym.accent,
     });
+    // Their own word for their points, and the line their members read on
+    // opening the app. Blank leaves the plain "Points" (0110).
+    await saveGymWords({
+      points_name: gym.points_name.trim(),
+      points_name_short: gym.points_name_short.trim() || null,
+      welcome_message: gym.welcome_message.trim() || null,
+    });
+  };
+
+  const saveDoor = async () => {
+    setJoinCode(await setJoinPolicy(door, false));
   };
 
   const savePlans = async () => {
@@ -134,10 +161,13 @@ export default function Setup() {
       if (step === 'gym') await saveGym();
       if (step === 'look') await saveLook();
       if (step === 'plans') await savePlans();
+      if (step === 'door') await saveDoor();
       if (step === 'password') await savePassword();
 
       if (!isLast) {
-        setStep(steps[index + 1].key);
+        const next = steps[index + 1].key;
+        await setOnboardingStep(next);
+        setStep(next);
       } else {
         await finishGymSetup();
         clearGymContext();
@@ -273,6 +303,67 @@ export default function Setup() {
                   </button>
                 ))}
               </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={label} style={labelStyle} htmlFor="s-pn">Your points are called</label>
+                  <input id="s-pn" className={input} style={inputStyle} maxLength={30}
+                    value={gym.points_name} placeholder="Points"
+                    onChange={(e) => setGym({ ...gym, points_name: e.target.value })} />
+                </div>
+                <div>
+                  <label className={label} style={labelStyle} htmlFor="s-pns">In the middle of a sentence</label>
+                  <input id="s-pns" className={input} style={inputStyle} maxLength={30}
+                    value={gym.points_name_short} placeholder="points"
+                    onChange={(e) => setGym({ ...gym, points_name_short: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={label} style={labelStyle} htmlFor="s-wm">
+                    A line on your members' home screen (optional)
+                  </label>
+                  <input id="s-wm" className={input} style={inputStyle} maxLength={280}
+                    value={gym.welcome_message} placeholder="Open 5am–10pm. Ask the desk about the new racks."
+                    onChange={(e) => setGym({ ...gym, welcome_message: e.target.value })} />
+                </div>
+                <p className="sm:col-span-2 text-xs" style={labelStyle}>
+                  Members earn points for turning up and logging workouts. Leave these blank and the
+                  app simply calls them &ldquo;points&rdquo;.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 'door' && (
+            <div className="mt-4 space-y-2">
+              {([
+                ['open', 'Anyone can find you', 'You are listed in the app’s gym list. Anyone with the app can search for you and ask to join.'],
+                ['code', 'Only with your link or code', 'You are not listed. Members join with your link, or by typing a short code you give them.'],
+                ['closed', 'Only at the front desk', 'Nobody can ask to join from the app. Your desk creates every member account, or invites them.'],
+              ] as const).map(([key, title, blurb]) => (
+                <button key={key} type="button" onClick={() => setDoor(key)}
+                  className="w-full flex items-start gap-3 rounded-lg border px-3.5 py-3 text-left"
+                  style={{
+                    borderColor: door === key ? 'var(--color-primary)' : 'var(--color-border)',
+                    background: 'var(--color-bg)',
+                  }}>
+                  <span className="mt-0.5 shrink-0">
+                    {door === key
+                      ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
+                      : <span className="block h-4 w-4 rounded-full border" style={{ borderColor: 'var(--color-border)' }} />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{title}</span>
+                    <span className="block text-xs mt-0.5" style={labelStyle}>{blurb}</span>
+                  </span>
+                </button>
+              ))}
+              <p className="text-xs" style={labelStyle}>
+                However they arrive, you still approve every sign-up. You can change this any time on
+                Your app, and invite the members you already have from Invitations.
+                {joinCode && door === 'code' && (
+                  <> Your join code is <strong style={{ color: 'var(--color-text-primary)', letterSpacing: '0.12em' }}>{joinCode}</strong>.</>
+                )}
+              </p>
             </div>
           )}
 

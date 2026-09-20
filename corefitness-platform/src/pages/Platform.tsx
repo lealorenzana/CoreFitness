@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  addAdmin, explain, getOverview, listAdmins, listCrashes, listEvents, removeAdmin, resolveCrashes,
-  type CrashReport, type Overview, type PlatformAdmin, type PlatformEvent,
+  addAdmin, explain, getOverview, lastBackup, listAdmins, listCrashes, listEvents, removeAdmin,
+  resolveCrashes,
+  type Backup, type CrashReport, type Overview, type PlatformAdmin, type PlatformEvent,
 } from '../lib/platform';
 
 const stamp = (iso: string) =>
@@ -28,6 +29,7 @@ export default function Platform() {
   const [showResolved, setShowResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addingAdmin, setAddingAdmin] = useState('');
+  const [backup, setBackup] = useState<Backup | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     try {
@@ -40,9 +42,10 @@ export default function Platform() {
     // 0109's half, kept separate: on a database where it is not pasted yet the
     // log above still works, and only these two sections say they are waiting.
     try {
-      const [o, a] = await Promise.all([getOverview(), listAdmins()]);
+      const [o, a, b] = await Promise.all([getOverview(), listAdmins(), lastBackup()]);
       setOverview(o);
       setAdmins(a);
+      setBackup(b);
     } catch (err) {
       setOverview(null);
       setAdmins([]);
@@ -202,6 +205,26 @@ export default function Platform() {
               onChange={(e) => setAddingAdmin(e.target.value)} />
             <button className="btn" type="submit">Add</button>
           </form>
+        </div>
+      )}
+
+      {backup !== undefined && (
+        <div className={'card' + (backup === null || backup.days_ago > 8 ? ' notice' : '')}>
+          <div className="name">
+            {backup === null ? 'No backup has ever reported itself'
+              : backup.days_ago <= 1 ? 'The database was backed up today'
+              : `The database was backed up ${backup.days_ago} days ago`}
+          </div>
+          <div className="meta">
+            {backup === null
+              ? 'The weekly backup runs on GitHub (Actions → Weekly database backup). Nothing has '
+                + 'reported success here, which means either it has not run since this was added, or '
+                + 'it is not running at all. Silence is the thing worth checking.'
+              : backup.days_ago > 8
+                ? 'It runs weekly, so more than eight days is a run that did not happen. Check '
+                  + 'Actions → Weekly database backup on GitHub.'
+                : backup.summary}
+          </div>
         </div>
       )}
 

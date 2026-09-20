@@ -115,6 +115,10 @@ export interface Application {
   reason: string | null;
   gym_id: string | null;
   created_at: string;
+  /** Other applications from the same address or gym name (0111). */
+  duplicates?: number;
+  /** That address already owns a gym here — an existing customer, not a new one. */
+  already_a_gym?: boolean;
 }
 
 export interface PlatformEvent {
@@ -391,3 +395,11 @@ export async function resetGymPassword(gymId: string, userId: string):
   }
   return data as { email: string | null; isOwner: boolean; password: string };
 }
+
+/** When the weekly backup last reported itself (0111). Null = it never has. */
+export interface Backup { at: string; summary: string; days_ago: number }
+
+export const lastBackup = async (): Promise<Backup | null> => {
+  const rows = await call<Backup[]>('last_backup');
+  return rows?.[0] ?? null;
+};

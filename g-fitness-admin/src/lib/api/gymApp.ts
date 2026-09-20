@@ -90,3 +90,16 @@ export async function setJoinPolicy(policy: JoinPolicy, newCode = false): Promis
   if (error) throw new Error(error.message);
   return (data as string) ?? null;
 }
+
+/**
+ * Where the owner got to in setup (0111). The data itself is already saved step
+ * by step, so this is only the bookmark — it stops moving once the gym is open.
+ */
+export async function setOnboardingStep(step: string): Promise<void> {
+  const { error } = await supabase.rpc('set_onboarding_step', { p_step: step });
+  // Deliberately swallowed: a bookmark that fails to save is not a reason to
+  // stop someone setting their gym up. They land a step earlier next time.
+  if (error && !/schema cache|does not exist/i.test(error.message)) {
+    console.warn('Could not save the setup bookmark:', error.message);
+  }
+}

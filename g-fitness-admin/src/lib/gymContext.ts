@@ -40,6 +40,10 @@ export interface GymContext {
    * so an absent value reads as set up, never as "start the wizard".
    */
   onboarded: boolean;
+  /** Where setup got to (0111). NULL means it has not been started. */
+  onboardingStep: string | null;
+  /** One word for this gym, folded from facts that already exist (0111). */
+  gymState: string | null;
   /** True when read from profiles because 0104 is not live yet. */
   legacy: boolean;
 }
@@ -58,6 +62,7 @@ interface ContextRow {
   gym_id: string; gym_name: string; slug: string; role: GymRole; status: GymStatus;
   lock_reason: 'suspended' | 'overdue' | null; short_name: string | null; logo_url: string | null;
   accent: string | null; gym_count: number; onboarded?: boolean;
+  onboarding_step?: string | null; gym_state?: string | null;
 }
 
 async function load(): Promise<GymContext | null> {
@@ -72,7 +77,9 @@ async function load(): Promise<GymContext | null> {
       gymId: row.gym_id, gymName: row.gym_name, slug: row.slug, role: row.role, status: row.status,
       lockReason: row.lock_reason, shortName: row.short_name, logoUrl: row.logo_url,
       accent: row.accent ?? 'violet', gymCount: row.gym_count ?? 1,
-      onboarded: row.onboarded ?? true, legacy: false,
+      onboarded: row.onboarded ?? true,
+      onboardingStep: row.onboarding_step ?? null, gymState: row.gym_state ?? null,
+      legacy: false,
     };
   }
 
@@ -87,7 +94,7 @@ async function load(): Promise<GymContext | null> {
     gymId: null, gymName: null, slug: null,
     role: profile.role as GymRole, status: profile.status as GymStatus,
     lockReason: null, shortName: null, logoUrl: null, accent: 'violet', gymCount: 1,
-    onboarded: true, legacy: true,
+    onboarded: true, onboardingStep: null, gymState: null, legacy: true,
   };
 }
 

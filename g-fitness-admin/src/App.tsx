@@ -17,6 +17,7 @@ import Resources from './pages/Resources';
 import Trainers from './pages/Trainers';
 import Settings from './pages/Settings';
 import GymApp from './pages/GymApp';
+import Invitations from './pages/Invitations';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
 import Events from './pages/Events';
@@ -57,6 +58,10 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
             <Route path="members/:memberId" element={<MemberDetail />} />
+            {/* Bringing in the members a gym already has (0111). Staff too:
+                inviting a member is front-desk work, and the database refuses
+                them a coach or another desk account either way. */}
+            <Route path="invitations" element={<Invitations />} />
             <Route path="attendance" element={<Attendance />} />
             {/* Staff see it too: "did this member come in last week" is a
                 front-desk question, and the data is already theirs to read. */}

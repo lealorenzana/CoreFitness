@@ -82,6 +82,20 @@ export default function Applications() {
                 {app.member_estimate != null ? ` · about ${app.member_estimate} members` : ''}
               </span>
               <span className="meta muted">Applied {when(app.created_at)}</span>
+              {/* 0111: the same gym filling the form five times used to be five
+                  unrelated rows. Neither of these blocks anything — they are
+                  the two things worth knowing before you create a gym. */}
+              {app.already_a_gym && (
+                <span className="meta" style={{ color: 'var(--warn)' }}>
+                  This email already owns a gym here. Letting them in again makes a second one —
+                  they may have meant to ask for something else.
+                </span>
+              )}
+              {!!app.duplicates && app.duplicates > 0 && (
+                <span className="meta" style={{ color: 'var(--warn)' }}>
+                  Applied {app.duplicates + 1} times in total, from this email or this gym name.
+                </span>
+              )}
               {app.message && <span className="meta">“{app.message}”</span>}
               {app.status === 'rejected' && app.reason && (
                 <span className="meta">Turned down: {app.reason}</span>

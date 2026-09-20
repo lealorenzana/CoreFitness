@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History,
-  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone,
+  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -82,6 +82,7 @@ const NAV: Entry[] = [
     icon: Users,
     children: [
       { label: 'Members', path: '/members', icon: Users },
+      { label: 'Invitations', path: '/invitations', icon: MailPlus },
       { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true },
       { label: 'Credentials', path: '/credentials', icon: ShieldCheck, adminOnly: true },
     ],

@@ -55,6 +55,7 @@ const GymPlan = lazyPage(() => import('./pages/GymPlan'));
 const MembershipHub = lazyPage(() => import('./pages/MembershipHub'));
 const ChooseGym = lazyPage(() => import('./pages/ChooseGym'));
 const JoinGym = lazyPage(() => import('./pages/JoinGym'));
+const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 
 
 type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
@@ -169,6 +170,11 @@ function App() {
         <Route path="/choose-gym" element={<ChooseGym />} />
         <Route path="/join" element={<JoinGym />} />
         <Route path="/join/:slug" element={<JoinGym />} />
+        {/* An invitation from a gym (0111). Public on purpose: it is usually
+            opened before the person has an account, and `peek_invitation`
+            reveals only which gym invited them. Accepting still needs a
+            session whose email matches the invitation. */}
+        <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/register" element={<Register />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />
