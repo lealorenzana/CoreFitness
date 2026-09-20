@@ -3,6 +3,7 @@ import {
   createGym, listGyms, setGymPlan, setGymStatus, slugFor, type PlatformGym,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
+import Ask from '../components/Ask';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -58,21 +59,10 @@ export default function Gyms() {
     }
   };
 
-  const suspend = (gym: PlatformGym) => {
-    // A suspension stops a gym trading, so it is never done without a reason —
-    // 0106 refuses a blank one, and the gym's owner is told this sentence.
-    const reason = window.prompt(`Why is ${gym.name} being suspended? The gym is told.`);
-    if (reason === null) return;
-    void act(gym.id, () => setGymStatus(gym.id, 'suspended', reason));
-  };
-
-  const plan = (gym: PlatformGym) => {
-    const next = window.prompt(`Plan for ${gym.name} — trial, standard or premium`, gym.plan);
-    if (next === null) return;
-    const paid = window.prompt('Paid until (YYYY-MM-DD), or leave blank for none', gym.paid_until ?? '');
-    if (paid === null) return;
-    void act(gym.id, () => setGymPlan(gym.id, next.trim(), paid.trim() || null));
-  };
+  /** Which question is open on which gym's row: 'suspend' or 'plan'. */
+  const [asking, setAsking] = useState<{ gym: PlatformGym; what: 'suspend' | 'plan' } | null>(null);
+  const open = (gym: PlatformGym, what: 'suspend' | 'plan') =>
+    setAsking(asking?.gym.id === gym.id && asking.what === what ? null : { gym, what });
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,23 +142,61 @@ export default function Gyms() {
                   {gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}
                 </span>
               )}
-              {gym.owners === 0 && (
-                <button className="btn" disabled={busy === gym.id}
-                  onClick={() => setInviting(inviting?.id === gym.id ? null : gym)}>
-                  {inviting?.id === gym.id ? 'Cancel' : 'Invite the owner'}
-                </button>
-              )}
-              <button className="btn ghost" disabled={busy === gym.id} onClick={() => plan(gym)}>Plan</button>
-              {gym.status === 'active' ? (
-                <button className="btn ghost" disabled={busy === gym.id} onClick={() => suspend(gym)}>Suspend</button>
-              ) : (
-                <button className="btn" disabled={busy === gym.id}
-                  onClick={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))}>
-                  Reactivate
-                </button>
-              )}
+              <span className="actions">
+                {gym.owners === 0 && (
+                  <button className="btn" disabled={busy === gym.id}
+                    onClick={() => setInviting(inviting?.id === gym.id ? null : gym)}>
+                    {inviting?.id === gym.id ? 'Cancel' : 'Invite the owner'}
+                  </button>
+                )}
+                <button className="btn ghost" disabled={busy === gym.id}
+                  onClick={() => open(gym, 'plan')}>Plan</button>
+                {gym.status === 'active' ? (
+                  <button className="btn ghost" disabled={busy === gym.id}
+                    onClick={() => open(gym, 'suspend')}>Suspend</button>
+                ) : (
+                  <button className="btn" disabled={busy === gym.id}
+                    onClick={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))}>
+                    Reactivate
+                  </button>
+                )}
+              </span>
             </div>
           </div>
+
+          {asking?.gym.id === gym.id && asking.what === 'suspend' && (
+            <Ask
+              title={`Suspend ${gym.name}?`}
+              blurb="The gym goes read-only: its desk can still look things up, but nothing can be written. Its owner is shown the reason you give, so write it for them."
+              fields={[{ key: 'reason', label: 'Why', required: true,
+                placeholder: 'Did not pay for three months' }]}
+              confirmLabel="Suspend the gym"
+              onCancel={() => setAsking(null)}
+              onConfirm={async (v) => {
+                await setGymStatus(gym.id, 'suspended', v.reason.trim());
+                setAsking(null);
+                await load();
+              }}
+            />
+          )}
+
+          {asking?.gym.id === gym.id && asking.what === 'plan' && (
+            <Ask
+              title={`What does ${gym.name} pay?`}
+              blurb="A gym past its paid-until date goes read-only until you move the date. Leave the date blank for a gym that is not paying yet."
+              fields={[
+                { key: 'plan', label: 'Plan', options: ['trial', 'standard', 'premium'], initial: gym.plan },
+                { key: 'paid', label: 'Paid until', type: 'date', initial: gym.paid_until ?? '' },
+              ]}
+              confirmLabel="Save"
+              onCancel={() => setAsking(null)}
+              onConfirm={async (v) => {
+                await setGymPlan(gym.id, v.plan, v.paid.trim() || null);
+                setAsking(null);
+                await load();
+              }}
+            />
+          )}
 
           {inviting?.id === gym.id && (
             <InviteOwner

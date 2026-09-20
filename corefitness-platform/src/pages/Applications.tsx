@@ -3,6 +3,7 @@ import {
   createGym, listApplications, rejectApplication, slugFor, splitName, type Application,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
+import Ask from '../components/Ask';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -20,7 +21,6 @@ const when = (iso: string) =>
 export default function Applications() {
   const [apps, setApps] = useState<Application[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
   const [show, setShow] = useState<'pending' | 'all'>('pending');
   /** Set the moment a gym is created: its owner is named next, from the application. */
   const [naming, setNaming] = useState<{ gymId: string; app: Application } | null>(null);
@@ -36,40 +36,10 @@ export default function Applications() {
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const approve = async (app: Application) => {
-    const slug = window.prompt(
-      `Link name for ${app.gym_name} — members will use corefitness-gym.vercel.app/join/<name>`,
-      slugFor(app.gym_name)
-    );
-    if (slug === null) return;
-    setBusy(app.id);
-    setError(null);
-    try {
-      const gymId = await createGym(app.gym_name, slug.trim(), app.id);
-      await load();
-      // The gym exists; it has nobody in it. Straight on to the owner.
-      setNaming({ gymId, app });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create the gym');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const reject = async (app: Application) => {
-    const reason = window.prompt(`Why is ${app.gym_name} being turned down? They are told.`);
-    if (reason === null) return;
-    setBusy(app.id);
-    setError(null);
-    try {
-      await rejectApplication(app.id, reason);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not answer the application');
-    } finally {
-      setBusy(null);
-    }
-  };
+  /** Which answer is being given to which application. */
+  const [answering, setAnswering] = useState<{ app: Application; what: 'in' | 'down' } | null>(null);
+  const open = (app: Application, what: 'in' | 'down') =>
+    setAnswering(answering?.app.id === app.id && answering.what === what ? null : { app, what });
 
   return (
     <>
@@ -101,8 +71,9 @@ export default function Applications() {
       )}
 
       {apps?.map((app) => (
-        <div className="card" key={app.id}>
-          <div className="row">
+        <div key={app.id}>
+          <div className="card">
+            <div className="row">
             <span className="grow">
               <span className="name">{app.gym_name}</span>
               <span className="meta">
@@ -117,18 +88,52 @@ export default function Applications() {
               )}
             </span>
             {app.status === 'pending' ? (
-              <>
-                <button className="btn" disabled={busy === app.id} onClick={() => void approve(app)}>
+              <span className="actions">
+                <button className="btn" onClick={() => open(app, 'in')}>
                   Let them in
                 </button>
-                <button className="btn ghost" disabled={busy === app.id} onClick={() => void reject(app)}>
+                <button className="btn ghost" onClick={() => open(app, 'down')}>
                   Turn down
                 </button>
-              </>
+              </span>
             ) : (
               <span className="pill">{app.status === 'approved' ? 'Let in' : 'Turned down'}</span>
             )}
+            </div>
           </div>
+
+          {answering?.app.id === app.id && answering.what === 'in' && (
+            <Ask
+              title={`Let ${app.gym_name} in?`}
+              blurb="The link name is what their members type — corefitness-gym.vercel.app/join/…  Small letters, numbers and dashes, and it cannot be changed casually afterwards."
+              fields={[{ key: 'slug', label: 'Link name', required: true, initial: slugFor(app.gym_name) }]}
+              confirmLabel="Create the gym"
+              onCancel={() => setAnswering(null)}
+              onConfirm={async (v) => {
+                const gymId = await createGym(app.gym_name, v.slug.trim(), app.id);
+                setAnswering(null);
+                await load();
+                // The gym exists; it has nobody in it. Straight on to the owner.
+                setNaming({ gymId, app });
+              }}
+            />
+          )}
+
+          {answering?.app.id === app.id && answering.what === 'down' && (
+            <Ask
+              title={`Turn ${app.gym_name} down?`}
+              blurb="They are shown the reason you give, so write it for them to read."
+              fields={[{ key: 'reason', label: 'Why', required: true,
+                placeholder: 'Outside the area we can support for now' }]}
+              confirmLabel="Turn them down"
+              onCancel={() => setAnswering(null)}
+              onConfirm={async (v) => {
+                await rejectApplication(app.id, v.reason.trim());
+                setAnswering(null);
+                await load();
+              }}
+            />
+          )}
         </div>
       ))}
     </>

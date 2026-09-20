@@ -44,8 +44,13 @@ a { color: var(--accent-text); }
 
 .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 16px; }
 .card + .card { margin-top: 12px; }
-.row { display: flex; align-items: center; gap: 12px; }
-.grow { flex: 1; min-width: 0; }
+/* Wraps rather than squeezes: a row of three buttons beside a gym's details
+   crushed the text into a column of single words on a narrow window. The
+   growing cell keeps a floor so it takes the whole line instead. */
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.grow { flex: 1 1 260px; min-width: 0; }
+/* A gym's buttons move to the next line together, never one at a time. */
+.actions { display: flex; gap: 8px; flex-wrap: nowrap; margin-left: auto; }
 /* Both are spans inside a span (a row's growing cell), so they need to be told
    to be lines — inline, "active today" and "premium" ran together. */
 .name { display: block; font-size: 14.5px; font-weight: 600; }
