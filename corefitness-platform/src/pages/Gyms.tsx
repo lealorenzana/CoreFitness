@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  createGym, listGyms, setGymPlan, setGymStatus, slugFor, type PlatformGym,
+  createGym, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
+  type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
@@ -35,9 +36,14 @@ export default function Gyms() {
   /** The gym whose owner is being named, if any. */
   const [inviting, setInviting] = useState<PlatformGym | null>(null);
 
+  /** The tiers on offer (0108). Retired ones are not offered, but a gym on one keeps it. */
+  const [plans, setPlans] = useState<PlatformPlan[]>([]);
+
   const load = useCallback(async () => {
     try {
-      setGyms(await listGyms());
+      const [g, p] = await Promise.all([listGyms(), listPlatformPlans()]);
+      setGyms(g);
+      setPlans(p);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load the gyms');
@@ -129,7 +135,14 @@ export default function Gyms() {
                   {' · '}{since(gym.last_activity)}
                 </span>
                 <span className="meta">
-                  {gym.plan}{gym.paid_until ? ` · paid to ${day(gym.paid_until)}` : ' · no paid-until date'}
+                  {gym.plan_name ?? gym.plan}
+                  {gym.max_members !== null && ` · ${gym.members} of ${gym.max_members} members`}
+                  {gym.paid_until
+                    ? ` · paid to ${day(gym.paid_until)}${
+                        gym.days_left !== null && gym.days_left < 0 ? ` (${-gym.days_left} days late)`
+                        : gym.days_left !== null && gym.days_left <= 14 ? ` (${gym.days_left} days left)` : ''}`
+                    : ' · no paid-until date'}
+                  {Number(gym.paid_total) > 0 && ` · ₱${Number(gym.paid_total).toLocaleString('en-PH')} paid in all`}
                   {/* The two states that mean "this gym is not open yet", in the
                       order they are fixed: no owner, then owner has not set up. */}
                   {gym.owners === 0
@@ -182,10 +195,16 @@ export default function Gyms() {
 
           {asking?.gym.id === gym.id && asking.what === 'plan' && (
             <Ask
-              title={`What does ${gym.name} pay?`}
-              blurb="A gym past its paid-until date goes read-only until you move the date. Leave the date blank for a gym that is not paying yet."
+              title={`What plan is ${gym.name} on?`}
+              blurb="The plan decides what the gym can use and how many members it may have. The date is better moved by recording a payment on the Money screen — that leaves an amount and a reference behind it."
               fields={[
-                { key: 'plan', label: 'Plan', options: ['trial', 'standard', 'premium'], initial: gym.plan },
+                {
+                  key: 'plan', label: 'Plan', initial: gym.plan,
+                  // The plans that exist, not three words typed here. A retired
+                  // plan is still listed when this gym is the one on it —
+                  // otherwise the picker could not show its own current value.
+                  options: plans.filter((p) => p.is_active || p.key === gym.plan).map((p) => p.key),
+                },
                 { key: 'paid', label: 'Paid until', type: 'date', initial: gym.paid_until ?? '' },
               ]}
               confirmLabel="Save"

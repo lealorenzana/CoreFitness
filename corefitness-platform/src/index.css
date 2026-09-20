@@ -86,6 +86,20 @@ input, select {
   font-size: 12.5px; line-height: 1.7; color: var(--text); white-space: pre-wrap; user-select: all;
 }
 
+/* Something the owner should read before acting on the screen below it. Not an
+   error — an amber left edge, so it reads as "know this", not "this broke". */
+.notice { border-left: 3px solid var(--warn); }
+
+/* The plan/feature grid. Wraps at any width; the label is the whole hit area. */
+.ticks {
+  display: grid; gap: 6px 14px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.tick { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); margin: 0; cursor: pointer; }
+.tick input { width: 15px; height: 15px; flex: none; accent-color: var(--accent); cursor: pointer; }
+.tick input:checked + span { color: var(--text); }
+
 .empty { color: var(--text-2); font-size: 13.5px; padding: 26px 0; text-align: center; }
 .err { color: var(--warn); font-size: 13px; margin: 10px 0; }
 .log { font-size: 12.5px; color: var(--text-2); padding: 7px 0; border-bottom: 1px solid var(--hairline); }

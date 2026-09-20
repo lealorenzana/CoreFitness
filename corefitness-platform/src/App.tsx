@@ -6,6 +6,9 @@ import SignIn from './pages/SignIn';
 import Gyms from './pages/Gyms';
 import Applications from './pages/Applications';
 import Platform from './pages/Platform';
+import Plans from './pages/Plans';
+import Money from './pages/Money';
+import ErrorBoundary from './components/ErrorBoundary';
 
 /**
  * Core Fitness, the service — the platform owner's own app.
@@ -55,16 +58,22 @@ export default function App() {
       <nav className="tabs">
         <NavLink to="/gyms" className={({ isActive }) => (isActive ? 'on' : '')}>Gyms</NavLink>
         <NavLink to="/applications" className={({ isActive }) => (isActive ? 'on' : '')}>Applications</NavLink>
+        <NavLink to="/plans" className={({ isActive }) => (isActive ? 'on' : '')}>Plans</NavLink>
+        <NavLink to="/money" className={({ isActive }) => (isActive ? 'on' : '')}>Money</NavLink>
         <NavLink to="/platform" className={({ isActive }) => (isActive ? 'on' : '')}>Platform</NavLink>
       </nav>
 
-      <Routes>
-        <Route path="/" element={<Navigate to="/gyms" replace />} />
-        <Route path="/gyms" element={<Gyms />} />
-        <Route path="/applications" element={<Applications />} />
-        <Route path="/platform" element={<Platform />} />
-        <Route path="*" element={<Navigate to="/gyms" replace />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Navigate to="/gyms" replace />} />
+          <Route path="/gyms" element={<Gyms />} />
+          <Route path="/applications" element={<Applications />} />
+          <Route path="/plans" element={<Plans />} />
+          <Route path="/money" element={<Money />} />
+          <Route path="/platform" element={<Platform />} />
+          <Route path="*" element={<Navigate to="/gyms" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </div>
   );
 }

@@ -132,9 +132,14 @@ await db.exec(`update profiles set role = 'member' where id = '${P.memberA}'`);
 await asOwner();
 const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).rows.map((r) => r.t);
 // Every public table is either one gym's, or deliberately global.
+// Deliberately not one gym's. The last group is the platform's own side of the
+// relationship (0106/0108): `gym_payments` carries a gym_id and is still not a
+// gym table — it is Core Fitness's ledger *about* a gym, the way an invoice a
+// supplier sends you is theirs, not yours. It is RLS-on with no policy at all,
+// and the checks further down assert no gym can reach it.
 const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
-  'platform_events'];
+  'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
@@ -694,5 +699,123 @@ await as(P.staffA);
 check('the front desk cannot declare a gym set up', !!(await fails(`select finish_gym_setup()`)));
 await as(P.adminA);
 check('a gym admin cannot look up a stranger by email', !(await one(`select platform_find_user('${"platform@corefitness-test.com"}') as id`)).id);
+
+// ---- 0108: the service is a product ------------------------------------------------
+// The two halves that make this real: what a plan includes is a row the owner
+// edits, and a limit on that row is refused by the database — not merely greyed
+// out on a screen.
+await as(PLATFORM);
+check('the three plans gyms are already on exist as rows',
+  (await one("select count(*)::int as n from platform_plans where key in ('trial','standard','premium')")).n === 3);
+check('no price is invented: only the free trial carries a number',
+  (await one('select count(*)::int as n from platform_plans where price_monthly is not null')).n === 1
+  && Number((await one("select price_monthly from platform_plans where key = 'trial'")).price_monthly) === 0);
+check('every plan opens including everything, so pasting takes nothing away',
+  (await one('select count(*)::int as n from platform_plan_features where not enabled')).n === 0
+  && (await one('select count(*)::int as n from platform_plan_features')).n
+     === (await one('select ((select count(*) from platform_plans) * (select count(*) from platform_features))::int as n')).n);
+check('a gym cannot be put on a plan that does not exist',
+  !!(await fails("select set_gym_plan('" + GYM_B + "', 'diamond', null)")));
+check('a plan the owner invents opens with every feature ticked', await (async () => {
+  await db.exec("select save_platform_plan('starter', 'Starter', 'Small gyms', 500, null, null, 2, 1, true, true, 0)");
+  return (await one("select count(*)::int as n from platform_plan_features where plan_key = 'starter'")).n
+       === (await one('select count(*)::int as n from platform_features')).n;
+})());
+
+// The ceiling, from both sides of the fence.
+await db.exec("select set_gym_plan('" + GYM_B + "', 'starter', null)");
+await as(P.adminB);
+const headroomB = await one('select * from gym_headroom()');
+check('a gym sees its own ceiling and what it has used of it',
+  headroomB.max_members === 2 && typeof headroomB.members === 'number');
+check('the gym owner can read what they are on and what they owe',
+  !!(await one('select plan_name, max_members from my_gym_billing()'))?.plan_name);
+
+await asOwner();
+check('a member past the ceiling is refused by the database, not the screen', await (async () => {
+  const room = (await one("select (max_members - members)::int as n from gym_headroom('" + GYM_B + "')")).n;
+  for (let i = 0; i < room; i++) {
+    const id = 'b2000000-0000-4000-8000-0000000000c' + i;
+    await db.exec("insert into auth.users (id, email, raw_user_meta_data) values ('" + id + "', 'cap" + i + "@t.com', '{}');" +
+      "insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)" +
+      " values ('" + id + "', 'Cap', 'Member', 'cap" + i + "@t.com', 'active', 'member', '" + GYM_B + "');" +
+      "insert into gym_roles (gym_id, user_id, role, status) values ('" + GYM_B + "', '" + id + "', 'member', 'active');");
+  }
+  // The profile is created belonging to no gym. Naming the gym here would be
+  // refused by this same rule one step earlier, through the legacy
+  // profiles→gym_roles mirror — which is correct, and is asserted below.
+  const over = 'b2000000-0000-4000-8000-0000000000ff';
+  await db.exec("insert into auth.users (id, email, raw_user_meta_data) values ('" + over + "', 'over@t.com', '{}');" +
+    "insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)" +
+    " values ('" + over + "', 'One', 'Too Many', 'over@t.com', 'active', 'member', null);");
+  return !!(await fails("insert into gym_roles (gym_id, user_id, role, status) values ('" + GYM_B + "', '" + over + "', 'member', 'active')"));
+})());
+check('creating the account itself is refused too, so nobody gets half-added',
+  !!(await fails("insert into auth.users (id, email, raw_user_meta_data)" +
+    " values ('b2000000-0000-4000-8000-0000000000fe', 'over2@t.com', '{}');" +
+    "insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)" +
+    " values ('b2000000-0000-4000-8000-0000000000fe', 'Two', 'Too Many', 'over2@t.com', 'active', 'member', '" + GYM_B + "')")));
+check('a gym at its ceiling can still archive someone to get back under it',
+  !(await fails("update gym_roles set status = 'archived' where gym_id = '" + GYM_B + "'" +
+    " and role = 'member' and status = 'active' and user_id = (select user_id from gym_roles" +
+    " where gym_id = '" + GYM_B + "' and role = 'member' and status = 'active' limit 1)")));
+
+check('a plan without the coaching side refuses a coach', await (async () => {
+  await as(PLATFORM);
+  await db.exec("select set_platform_plan_feature('starter', 'coaching', false)");
+  await asOwner();
+  const t = 'b2000000-0000-4000-8000-00000000c0ac';
+  await db.exec("insert into auth.users (id, email, raw_user_meta_data) values ('" + t + "', 'coach@t.com', '{}');" +
+    "insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)" +
+    " values ('" + t + "', 'A', 'Coach', 'coach@t.com', 'active', 'trainer', null);");
+  return !!(await fails("insert into gym_roles (gym_id, user_id, role, status) values ('" + GYM_B + "', '" + t + "', 'trainer', 'active')"));
+})());
+await as(P.adminB);
+check('a gym is told which parts of the system its plan does not include',
+  (await one("select enabled from my_gym_features() where feature_key = 'coaching'")).enabled === false
+  && (await one("select enabled from my_gym_features() where feature_key = 'front_desk'")).enabled === true);
+await as(P.adminA);
+check('a gym on a plan with coaching keeps it — nothing was taken away',
+  (await one("select enabled from my_gym_features() where feature_key = 'coaching'")).enabled === true);
+
+// Money.
+await as(PLATFORM);
+await db.exec("select set_platform_plan_feature('starter', 'coaching', true)");
+const payId = (await one("select record_gym_payment('" + GYM_B + "', 1500, (current_date + 30)::date," +
+  " current_date, current_date, 'cash', 'OR-001', null) as id")).id;
+check('recording a payment is what moves the paid-until date', !!payId
+  && (await one("select paid_until from platform_gyms() where id = '" + GYM_B + "'")).paid_until !== null);
+check('a late payment for an old period never pulls a gym access in', await (async () => {
+  const before = String((await one("select paid_until from platform_gyms() where id = '" + GYM_B + "'")).paid_until);
+  await db.exec("select record_gym_payment('" + GYM_B + "', 1500, (current_date - 60)::date," +
+    " current_date, (current_date - 90)::date, 'cash', 'OR-000', 'settling an old month')");
+  return String((await one("select paid_until from platform_gyms() where id = '" + GYM_B + "'")).paid_until) === before;
+})());
+check('a payment with no amount, or no date it covers to, is refused',
+  !!(await fails("select record_gym_payment('" + GYM_B + "', null, current_date)"))
+  && !!(await fails("select record_gym_payment('" + GYM_B + "', 100, null)")));
+check('the platform sees what it has been paid, by month',
+  (await db.query('select * from platform_revenue(12)')).rows.length > 0);
+check('a gym due for renewal is listed before it locks, not after',
+  (await db.query('select * from gyms_due(60)')).rows.length > 0);
+check('the price list the website reads carries what each plan includes', await (async () => {
+  const rows = (await db.query('select * from public_plans()')).rows;
+  return rows.length >= 3 && rows.every((r) => Array.isArray(r.includes) && r.includes.length > 0);
+})());
+
+await as(P.adminB);
+check('a gym reads no money rows, its own included, outside the functions for it',
+  (await one('select count(*)::int as n from gym_payments')).n === 0
+  && (await one('select count(*)::int as n from platform_gym_payments()')).n === 0);
+check('a gym admin cannot record a payment against itself',
+  !!(await fails("select record_gym_payment('" + GYM_B + "', 99999, (current_date + 365)::date)")));
+check('a gym admin cannot change what Core Fitness sells',
+  !!(await fails("select save_platform_plan('free_forever', 'Free forever', null, 0, null, null, null, null, true, true, 0)"))
+  && !!(await fails("select set_platform_plan_feature('starter', 'coaching', false)"))
+  && !!(await fails("select retire_platform_plan('premium')")));
+await as(P.memberA);
+check('a member sees no gym billing at all',
+  (await one('select count(*)::int as n from gym_payments')).n === 0
+  && (await db.query('select * from my_gym_billing()')).rows.length === 0);
 
 finish();

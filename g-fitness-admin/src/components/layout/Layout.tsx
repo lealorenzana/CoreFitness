@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar, { useSidebarCollapsed } from './Sidebar';
 import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
+import SubscriptionBanner from '../SubscriptionBanner';
 
 export default function Layout() {
   const location = useLocation();
@@ -24,6 +25,10 @@ export default function Layout() {
         style={{ marginLeft: collapsed ? 56 : 208 }}
       >
         <Header />
+        {/* Above <main>, not inside it: it must not scroll away, and it must
+            not be re-mounted by the route transition below. Renders nothing at
+            all unless this gym's owner needs to know something. */}
+        <SubscriptionBanner />
         <main
           ref={mainRef}
           className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-dark-border scrollbar-track-dark"

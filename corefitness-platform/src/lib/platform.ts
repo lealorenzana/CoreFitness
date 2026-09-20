@@ -12,7 +12,8 @@ export interface PlatformGym {
   name: string;
   slug: string;
   status: 'active' | 'suspended';
-  plan: 'trial' | 'standard' | 'premium';
+  /** A key in `platform_plans` (0108), not one of three fixed words any more. */
+  plan: string;
   paid_until: string | null;
   lock_reason: 'suspended' | 'overdue' | null;
   members: number;
@@ -23,6 +24,73 @@ export interface PlatformGym {
   owners: number;
   /** True once the owner finished first-run setup in the admin app (0107). */
   onboarded: boolean;
+  /** From the plan row (0108). NULL price = the owner has not set one. */
+  plan_name: string | null;
+  price_monthly: string | null;
+  /** Days until `paid_until`; negative is overdue, null is no date set. */
+  days_left: number | null;
+  max_members: number | null;
+  /** Everything this gym has ever paid. */
+  paid_total: string;
+}
+
+/** A tier of the service itself (0108). Prices are strings: numeric over the wire. */
+export interface PlatformPlan {
+  key: string;
+  name: string;
+  blurb: string | null;
+  price_monthly: string | null;
+  price_yearly: string | null;
+  trial_days: number | null;
+  max_members: number | null;
+  max_staff: number | null;
+  is_public: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface PlatformFeature {
+  key: string;
+  label: string;
+  description: string;
+  sort_order: number;
+}
+
+export interface PlanFeatureCell {
+  plan_key: string;
+  feature_key: string;
+  enabled: boolean;
+}
+
+export interface GymPayment {
+  id: string;
+  gym_id: string;
+  amount: string;
+  paid_on: string;
+  covers_from: string | null;
+  covers_until: string;
+  method: string | null;
+  reference: string | null;
+  note: string | null;
+  plan_key: string | null;
+  created_at: string;
+}
+
+export interface RevenueMonth {
+  month: string;
+  gyms: number;
+  payments: number;
+  total: string;
+}
+
+export interface GymDue {
+  id: string;
+  name: string;
+  plan: string;
+  paid_until: string;
+  days_left: number;
+  lock_reason: 'suspended' | 'overdue' | null;
+  members: number;
 }
 
 /** What approve-gym gives back. `password` is null when the owner already had an account. */
@@ -91,6 +159,87 @@ export const setGymPlan = (gym: string, plan: string, paidUntil: string | null) 
   call<void>('set_gym_plan', { p_gym: gym, p_plan: plan, p_paid_until: paidUntil });
 
 /**
+ * Turn "Could not find the table 'public.platform_plan_features'" into the
+ * sentence that actually helps.
+ *
+ * Migrations here are pasted by hand, one at a time, so an app deployed ahead
+ * of its migration is a normal state rather than a fault — and PostgREST's own
+ * wording ("schema cache") sends the reader looking for a cache problem that
+ * does not exist. Every screen that needs a migration says which one.
+ */
+export function explain(err: unknown, migration: string): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/schema cache|does not exist|Could not find the (table|function)/i.test(message)) {
+    return `This screen needs migration ${migration}, which has not been pasted yet. `
+         + `Paste supabase/migrations/${migration}_*.sql in the Supabase SQL editor, then `
+         + `scripts/sql/verify/verify${migration}.sql, and reload. (${message})`;
+  }
+  return message;
+}
+
+// ---- what the service sells (0108) -------------------------------------------------
+// These three tables are the only ones this app reads directly. They are the
+// platform's own catalogue — no gym's data is in them — and RLS lets anyone
+// signed in read them, because a gym's admin app shows a gym what its own plan
+// includes from the same rows. Every write goes through a function that checks
+// `platform_admins`, so reading is not writing.
+
+export const listPlatformPlans = async (): Promise<PlatformPlan[]> => {
+  const { data, error } = await supabase.from('platform_plans').select('*')
+    .order('sort_order').order('name');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PlatformPlan[];
+};
+
+export const listPlatformFeatures = async (): Promise<PlatformFeature[]> => {
+  const { data, error } = await supabase.from('platform_features').select('*').order('sort_order');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PlatformFeature[];
+};
+
+export const listPlanFeatures = async (): Promise<PlanFeatureCell[]> => {
+  const { data, error } = await supabase.from('platform_plan_features').select('*');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PlanFeatureCell[];
+};
+
+/** Create or change a tier. A null price means "not decided", never free. */
+export const savePlan = (p: {
+  key: string; name: string; blurb: string | null;
+  price_monthly: number | null; price_yearly: number | null; trial_days: number | null;
+  max_members: number | null; max_staff: number | null;
+  is_public: boolean; is_active: boolean; sort_order: number;
+}) => call<string>('save_platform_plan', {
+  p_key: p.key, p_name: p.name, p_blurb: p.blurb,
+  p_price_monthly: p.price_monthly, p_price_yearly: p.price_yearly, p_trial_days: p.trial_days,
+  p_max_members: p.max_members, p_max_staff: p.max_staff,
+  p_is_public: p.is_public, p_is_active: p.is_active, p_sort: p.sort_order,
+});
+
+export const setPlanFeature = (plan: string, feature: string, enabled: boolean) =>
+  call<void>('set_platform_plan_feature', { p_plan: plan, p_feature: feature, p_enabled: enabled });
+
+/** Retires, never deletes — gyms point at these rows. Returns how many are on it. */
+export const retirePlan = (key: string) => call<number>('retire_platform_plan', { p_key: key });
+
+// ---- money -------------------------------------------------------------------------
+
+export const recordPayment = (p: {
+  gym: string; amount: number; coversUntil: string;
+  paidOn?: string | null; coversFrom?: string | null;
+  method?: string | null; reference?: string | null; note?: string | null;
+}) => call<string>('record_gym_payment', {
+  p_gym: p.gym, p_amount: p.amount, p_covers_until: p.coversUntil,
+  p_paid_on: p.paidOn ?? null, p_covers_from: p.coversFrom ?? null,
+  p_method: p.method ?? null, p_reference: p.reference ?? null, p_note: p.note ?? null,
+});
+
+export const listPayments = (gym?: string) =>
+  call<GymPayment[]>('platform_gym_payments', { p_gym: gym ?? null });
+export const listRevenue = (months = 12) => call<RevenueMonth[]>('platform_revenue', { p_months: months });
+export const listDue = (withinDays = 14) => call<GymDue[]>('gyms_due', { p_within_days: withinDays });
+
+/**
  * Give a gym its owner — the one thing in this app that is not a SQL function,
  * because creating a login needs the Auth admin key that only an Edge Function
  * may hold (supabase/functions/approve-gym).
@@ -103,8 +252,20 @@ export async function inviteOwner(
   gymId: string,
   owner: { email: string; firstName: string; lastName: string; phone?: string },
 ): Promise<OwnerInvited> {
+  // The token is passed by hand, not left to the client.
+  //
+  // supabase-js builds its Functions client with the *anon key* as the
+  // Authorization header and swaps in the user's token when it sees a sign-in
+  // or a refresh. A session restored from storage on page load is neither, so
+  // after a reload `invoke` can still be sending the anon key — which reaches
+  // the function, fails `getUser()`, and comes back as "Invalid session" while
+  // every RPC on the same page works. Naming the header removes the question.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('You are signed out. Sign in again and retry.');
+
   const { data, error } = await supabase.functions.invoke('approve-gym', {
     body: { gymId, ...owner },
+    headers: { Authorization: `Bearer ${session.access_token}` },
   });
   // An Edge Function's own error message lives in the response body, not in
   // `error.message` — which only ever says "non-2xx status code".

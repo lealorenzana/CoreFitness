@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { TIERS } from './pricing';
+import { toTier, type PublicPlanRow, type Tier } from './pricing';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
@@ -19,12 +19,22 @@ const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
  */
 export default function App() {
   const [gyms, setGyms] = useState<Gym[] | null>(null);
+  /** null while loading; [] when the price list cannot be read at all. */
+  const [tiers, setTiers] = useState<Tier[] | null>(null);
 
   useEffect(() => {
     void (async () => {
-      if (!supabase) return setGyms([]);
-      const { data } = await supabase.rpc('list_gyms', { p_search: null });
-      setGyms(Array.isArray(data) ? (data as Gym[]) : []);
+      if (!supabase) { setGyms([]); setTiers([]); return; }
+      const [gymRes, planRes] = await Promise.all([
+        supabase.rpc('list_gyms', { p_search: null }),
+        // The price list, from the same rows the platform owner edits and
+        // `gyms.plan` points at (0108). Before that migration is pasted this
+        // function does not exist; the section then says so rather than
+        // printing numbers from a file that nobody is maintaining any more.
+        supabase.rpc('public_plans'),
+      ]);
+      setGyms(Array.isArray(gymRes.data) ? (gymRes.data as Gym[]) : []);
+      setTiers(Array.isArray(planRes.data) ? (planRes.data as PublicPlanRow[]).map(toTier) : []);
     })();
   }, []);
 
@@ -103,18 +113,34 @@ export default function App() {
 
         <section>
           <span className="eyebrow">Pricing</span>
-          <h2>Start free for thirty days</h2>
+          <h2>
+            {tiers === null ? 'Loading…'
+              : tiers.length === 0 ? 'Ask us what it costs'
+              : tiers.some((t) => t.trialDays) ? `Start free for ${tiers.find((t) => t.trialDays)!.trialDays} days`
+              : 'What it costs'}
+          </h2>
           <p>Paid in cash or bank transfer, like the gyms we built this for. Cancel by telling us.</p>
+          {tiers?.length === 0 && (
+            <p>
+              Our price list is not loading right now. Send the form below and we will answer with it.
+            </p>
+          )}
           <div className="grid">
-            {TIERS.map((t) => (
+            {tiers?.map((t) => (
               <div className="card tier" key={t.key}>
                 <h3>{t.name}</h3>
                 <div className="price">
                   {t.monthly === 0 ? 'Free' : t.monthly === null ? 'Talk to us' : peso(t.monthly)}
                   {t.monthly ? <small> / month</small> : null}
                 </div>
-                <p>{t.line}</p>
-                <ul>{t.includes.map((line) => <li key={line}>{line}</li>)}</ul>
+                {t.yearly !== null && t.yearly > 0 && (
+                  <p className="yearly">or {peso(t.yearly)} a year</p>
+                )}
+                {t.line && <p>{t.line}</p>}
+                <ul>
+                  {t.maxMembers !== null && <li>Up to {t.maxMembers.toLocaleString('en-PH')} members</li>}
+                  {t.includes.map((line) => <li key={line}>{line}</li>)}
+                </ul>
               </div>
             ))}
           </div>
