@@ -903,4 +903,121 @@ check('a gym admin sees no service-wide numbers and no platform admin list',
 check('a gym admin cannot make themselves the platform',
   !!(await fails("select add_platform_admin((select email from profiles where id = '" + P.adminA + "'))")));
 
+// ---- 0110: a gym's app is the gym's ------------------------------------------------
+// The point of this block is that the three layers stay three: the platform
+// decides what a gym may run, the gym decides what it does run, and neither can
+// be walked around by the other.
+await as(P.adminA);
+check('a gym that has renamed nothing still has words for its points',
+  (await one('select points_name from gym_words()')).points_name === 'CORE Points');
+check('every part of the system starts switched on, so pasting changes nothing',
+  (await db.query("select * from my_gym_modules() where state <> 'on'")).rows.length === 0);
+
+check('an owner can switch a part of the system off, and their app stops drawing it',
+  await (async () => {
+    await db.exec("select set_gym_module('coaching', false)");
+    const m = await one("select state, enabled from my_gym_modules() where feature_key = 'coaching'");
+    return m.state === 'off' && m.enabled === false
+      && (await one("select gym_module_on(null, 'coaching') as on")).on === false;
+  })());
+check('and switch it back on again', await (async () => {
+  await db.exec("select set_gym_module('coaching', true)");
+  return (await one("select gym_module_on(null, 'coaching') as on")).on === true;
+})());
+check('the front desk cannot decide what the gym runs', await (async () => {
+  await as(P.staffA);
+  return !!(await fails("select set_gym_module('coaching', false)"))
+      && !!(await fails("select save_gym_words('Desk Points', null, null)"))
+      && !!(await fails("select set_join_policy('closed', false)"));
+})());
+check('and neither can a member', await (async () => {
+  await as(P.memberA);
+  return !!(await fails("select set_gym_module('engagement', false)"));
+})());
+
+// The platform's layer sits above the gym's, and the gym cannot climb over it.
+check('a gym cannot switch on what its plan does not include', await (async () => {
+  await as(PLATFORM);
+  await db.exec("select set_gym_plan('" + GYM_B + "', 'starter', null)");
+  await db.exec("select set_platform_plan_feature('starter', 'engagement', false)");
+  await as(P.adminB);
+  const m = await one("select state, enabled from my_gym_modules() where feature_key = 'engagement'");
+  return m.state === 'not_sold' && m.enabled === false
+    && !!(await fails("select set_gym_module('engagement', true)"));
+})());
+check('turning it off at the gym is still allowed — it is already off either way',
+  !(await fails("select set_gym_module('engagement', false)")));
+check('a gym whose plan gains a feature can switch it on again', await (async () => {
+  await as(PLATFORM);
+  await db.exec("select set_platform_plan_feature('starter', 'engagement', true)");
+  await as(P.adminB);
+  await db.exec("select set_gym_module('engagement', true)");
+  return (await one("select gym_module_on(null, 'engagement') as on")).on === true;
+})());
+
+// The gym's own words, and its own door.
+await as(P.adminA);
+await db.exec("select save_gym_words('Iron Points', 'iron', 'Welcome back, see you on the floor.')");
+check('a gym names its own points, and its own members read that name',
+  (await one('select points_name, points_name_short, welcome_message from gym_words()')).points_name === 'Iron Points');
+check('no gym inherits another gym words', await (async () => {
+  await as(P.adminB);
+  return (await one('select points_name from gym_words()')).points_name === 'Points';
+})());
+check('a name for the points longer than a label is refused',
+  !!(await fails("select save_gym_words('" + 'x'.repeat(40) + "', null, null)")));
+
+await as(P.adminA);
+check('a gym is listed to strangers while it is open', await (async () => {
+  await as(P.outsider);
+  return (await db.query('select * from list_gyms(null)')).rows.some((g) => g.slug === 'core-fitness');
+})());
+check('a gym that chooses the code door leaves the public list', await (async () => {
+  await as(P.adminA);
+  const code = (await one("select set_join_policy('code', false) as c")).c;
+  await as(P.outsider);
+  const listed = (await db.query('select * from list_gyms(null)')).rows.some((g) => g.slug === 'core-fitness');
+  const byCode = (await db.query("select * from gym_by_code('" + code + "')")).rows.length === 1;
+  const byLink = (await db.query("select * from gym_by_slug('core-fitness')")).rows.length === 1;
+  return !listed && byCode && byLink && /^[A-Z0-9]{6}$/.test(code);
+})());
+check('a wrong code finds nothing',
+  (await db.query("select * from gym_by_code('ZZZZZZ')")).rows.length === 0);
+check('a new code replaces the old one, so a leaked code can be taken back', await (async () => {
+  await as(P.adminA);
+  const first = (await one("select set_join_policy('code', false) as c")).c;
+  const second = (await one("select set_join_policy('code', true) as c")).c;
+  await as(P.outsider);
+  return first !== second
+    && (await db.query("select * from gym_by_code('" + first + "')")).rows.length === 0
+    && (await db.query("select * from gym_by_code('" + second + "')")).rows.length === 1;
+})());
+check('a closed gym refuses a join request, and says how to get in instead', await (async () => {
+  await as(P.adminA);
+  await db.exec("select set_join_policy('closed', false)");
+  await as(P.outsider);
+  const e = await fails("select request_to_join('" + GYM_A + "')");
+  return !!e && /front desk/i.test(e)
+    && (await db.query("select * from gym_by_code('ZZZZZZ')")).rows.length === 0;
+})());
+check('an open gym still takes requests exactly as it always did', await (async () => {
+  await as(P.adminA);
+  await db.exec("select set_join_policy('open', false)");
+  await as(P.outsider);
+  // The outsider already runs their own gym; joining a second is the normal
+  // multi-gym case this whole system exists for.
+  return !(await fails("select request_to_join('" + GYM_A + "')"));
+})());
+
+// One call for the phone.
+await as(P.memberA);
+const app = await one('select * from my_gym_app()');
+check('the phone app gets brand, words and shape in one call',
+  app.gym_name === 'Core Fitness' && app.points_name === 'Iron Points'
+  && typeof app.modules === 'object' && app.modules.coaching === true);
+check('a member is not shown the gym own join code', app.join_code === null);
+await as(P.adminA);
+check('the desk is, because it is theirs to hand out',
+  (await one('select join_code from my_gym_app()')).join_code !== null);
+
 finish();
