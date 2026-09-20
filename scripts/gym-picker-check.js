@@ -79,8 +79,10 @@ async (page) => {
   const out = [];
   const go = async (p) => {
     await page.goto(`http://localhost:5173${p}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
-    await page.waitForTimeout(1200);
+    await page.waitForSelector('#boot', { state: 'detached', timeout: 15000 }).catch(() => {});
+    // The gates read my_gym_context before they decide; wait for the app to
+    // settle on a route rather than for a fixed number of milliseconds.
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   };
   const main = async () => (await page.locator('main, body').first().innerText()).replace(/\s+/g, ' ');
 
@@ -89,7 +91,8 @@ async (page) => {
   await page.locator('input[type="email"]').first().fill('lea@corefitness-test.com');
   await page.locator('input[type="password"]').first().fill('whatever');
   await page.getByRole('button', { name: /^Sign in as/ }).first().click();
-  await page.waitForTimeout(2200);
+  await page.waitForURL(/\/choose-gym/, { timeout: 20000 }).catch(() => {});
+  await page.getByText('Harbour Strength').waitFor({ timeout: 20000 }).catch(() => {});
   out.push('sign-in with three gyms → ' + page.url().replace('http://localhost:5173', ''));
   const list = await main();
   out.push('picker lists: ' + ['Core Fitness', 'Harbour Strength', 'Northside Barbell']
@@ -100,7 +103,11 @@ async (page) => {
 
   // Switching goes to the gym's own landing (a coach there, not a member).
   await page.getByText('Harbour Strength').click();
-  await page.waitForTimeout(1500);
+  await page.waitForURL(/\/trainer\/home/, { timeout: 20000 }).catch(() => {});
+  // The accent is applied once the context comes back, a frame after the route.
+  await page.waitForFunction(
+    () => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim().toLowerCase() === '#0d9488',
+    null, { timeout: 15000 }).catch(() => {});
   out.push('after switch: set_active_gym=' + (CALLS.set_active_gym?.p_gym ?? 'MISSING')
     + ' · at ' + page.url().replace('http://localhost:5173', ''));
 
@@ -124,7 +131,7 @@ async (page) => {
   out.push('join list: ' + (/Seaside Fit/.test(joinText) ? 'other gyms shown' : 'MISSING gyms')
     + ' · already-joined marked: ' + (/already here/.test(joinText) ? 'yes' : 'NO'));
   await page.getByText('Seaside Fit').click();
-  await page.waitForTimeout(1200);
+  await page.waitForURL(/\/choose-gym/, { timeout: 20000 }).catch(() => {});
   out.push('asked to join: ' + (CALLS.request_to_join ? CALLS.request_to_join.p_gym : 'MISSING'));
   await page.screenshot({ path: 'shots/gym-04-join.png' });
 

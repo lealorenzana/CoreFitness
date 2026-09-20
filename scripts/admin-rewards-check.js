@@ -116,8 +116,24 @@ async (page) => {
       // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
       // own profiles, so the sign-in gates see the role they always did.
       if (fn === 'my_gym_context') {
-        const rows = (typeof DB !== 'undefined' ? DB.profiles : TABLES.profiles) || [];
-        const me = rows.find((p) => p.id === (route.request().headers()['x-fixture-user'] || session.user.id));
+        // Each fixture keeps its rows differently (DB, TABLES, tables()); take
+        // whichever exists rather than naming one and crashing the run in the others.
+        const rows = (() => {
+          try { return DB.profiles; } catch { /* not this fixture */ }
+          try { return TABLES.profiles; } catch { /* nor this */ }
+          try { return tables().profiles; } catch { /* nor this */ }
+          return [];
+        })() || [];
+        // Who is asking: the `sub` of the bearer token the app just sent. Read
+        // from the request rather than a fixture variable, because the fixtures
+        // name their session differently and some mint one per role.
+        const sub = (() => {
+          try {
+            const raw = (route.request().headers()['authorization'] || '').split(' ')[1].split('.')[1];
+            return JSON.parse(Buffer.from(raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()).sub;
+          } catch { return null; }
+        })();
+        const me = rows.find((p) => p.id === sub) || rows[0];
         return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
           role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
           accent: 'violet', gym_count: 1 }] : []);

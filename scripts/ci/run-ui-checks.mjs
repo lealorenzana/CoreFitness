@@ -45,8 +45,23 @@ mkdirSync(join(process.cwd(), 'shots'), { recursive: true });
 // own download — handy on a PC that has Chrome and no Playwright browsers.
 const browser = await chromium.launch(process.env.UI_CHECKS_CHANNEL ? { channel: process.env.UI_CHECKS_CHANNEL } : {});
 let failed = 0;
+let running = '(none)';
+
+// A throw inside a fixture's own route handler happens outside the awaited
+// check, so node would exit on it and print nothing about which check was
+// running — a red CI job with no name in it. Say the name, then stop.
+for (const ev of ['uncaughtException', 'unhandledRejection']) {
+  process.on(ev, (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`
+FAIL  ${running}  crashed outside the check: ${msg}`);
+    console.log(`::error title=${running}::crashed outside the check: ${msg}`);
+    process.exit(1);
+  });
+}
 
 for (const check of checks) {
+  running = check.file;
   const code = readFileSync(join(repo, 'scripts', check.file), 'utf-8');
   const started = Date.now();
   // The gym's clock, whatever the machine's: the app and the fixtures both
