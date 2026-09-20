@@ -1020,4 +1020,158 @@ await as(P.adminA);
 check('the desk is, because it is theirs to hand out',
   (await one('select join_code from my_gym_app()')).join_code !== null);
 
+// ---- 0111: a gym's life, and its front door ----------------------------------------
+// The security-critical one here is that an invitation is ADDRESSED. A link
+// that let whoever saw it take a staff seat would be the widest hole in the
+// system, so it is asserted from both sides.
+await as(PLATFORM);
+check('a gym nobody owns reads as exactly that, not as active', await (async () => {
+  const g = (await one("select create_gym('State Test Gym', 'state-test') as id")).id;
+  const s = (await one("select gym_state('" + g + "') as s")).s;
+  globalThis.__stateGym = g;
+  return s === 'no_owner';
+})());
+check('once it has an owner but no setup, it reads as onboarding', await (async () => {
+  const g = globalThis.__stateGym;
+  await db.exec("select make_gym_owner('" + g + "', '" + P.memberB + "')");
+  return (await one("select gym_state('" + g + "') as s")).s === 'onboarding';
+})());
+check('a gym that has left is not merely overdue', await (async () => {
+  const g = globalThis.__stateGym;
+  await db.exec("select set_gym_status('" + g + "', 'cancelled', 'They closed the gym')");
+  return (await one("select gym_state('" + g + "') as s")).s === 'cancelled'
+    && (await one("select gym_lock_reason('" + g + "') as r")).r === 'cancelled';
+})());
+check('ending a gym without a reason is refused, the same as suspending one',
+  !!(await fails("select set_gym_status('" + GYM_B + "', 'cancelled', '')")));
+check('a cancelled gym is not offered to strangers', await (async () => {
+  await as(P.outsider);
+  return !(await db.query('select * from list_gyms(null)')).rows.some((g) => g.slug === 'state-test');
+})());
+
+// The setup bookmark.
+await as(P.adminB);
+check('a half-finished setup remembers where it got to', await (async () => {
+  await db.exec("update gyms set onboarded_at = null where id = '" + GYM_B + "'");
+  await db.exec("select set_onboarding_step('plans')");
+  return (await one('select onboarding_step from my_gym_context()')).onboarding_step === 'plans';
+})());
+check('and stops moving once the gym is open', await (async () => {
+  await db.exec("select finish_gym_setup()");
+  await db.exec("select set_onboarding_step('gym')");
+  return (await one('select onboarding_step from my_gym_context()')).onboarding_step === 'plans';
+})());
+check('the front desk cannot drive someone else through setup', await (async () => {
+  await as(P.staffA);
+  return !!(await fails("select set_onboarding_step('gym')"));
+})());
+
+// Invitations.
+await as(P.adminA);
+const inv = await one("select * from invite_to_gym('newcomer@corefitness-test.com', 'member', 'New', 'Comer', null, null)");
+check('a gym can invite someone it already has on paper', !!inv.token && inv.token.length === 64);
+check('the desk sees its own invitations and their state',
+  (await db.query('select * from list_invitations(false)')).rows.some(
+    (r) => r.email === 'newcomer@corefitness-test.com' && r.state === 'waiting'));
+check('inviting the same address twice leaves only one live token', await (async () => {
+  const again = await one("select * from invite_to_gym('newcomer@corefitness-test.com', 'member', null, null, null, null)");
+  const live = (await db.query('select * from list_invitations(false)')).rows
+    .filter((r) => r.email === 'newcomer@corefitness-test.com');
+  globalThis.__tok = again.token;
+  return live.length === 1 && again.token !== inv.token;
+})());
+check('the old token stops working the moment it is replaced', await (async () => {
+  return (await one("select state from peek_invitation('" + inv.token + "')")).state === 'revoked';
+})());
+check('somebody already in the gym cannot be invited again',
+  !!(await fails("select * from invite_to_gym((select email from profiles where id = '" + P.memberA + "'), 'member', null, null, null, null)")));
+check('an address that is not an address is refused',
+  !!(await fails("select * from invite_to_gym('not-an-email', 'member', null, null, null, null)")));
+check('the front desk may invite a member but not a coach or more desk staff', await (async () => {
+  await as(P.staffA);
+  const ok = !(await fails("select * from invite_to_gym('walkin@corefitness-test.com', 'member', null, null, null, null)"));
+  return ok
+    && !!(await fails("select * from invite_to_gym('coach2@corefitness-test.com', 'trainer', null, null, null, null)"))
+    && !!(await fails("select * from invite_to_gym('desk2@corefitness-test.com', 'staff', null, null, null, null)"));
+})());
+check('a member of the gym cannot read anybody tokens', await (async () => {
+  await as(P.memberA);
+  return (await one('select count(*)::int as n from gym_invitations')).n === 0
+    && (await db.query('select * from list_invitations(true)')).rows.length === 0;
+})());
+
+// Accepting — the addressed-invitation rule, from both sides.
+check('an invitation cannot be taken by whoever happens to hold the link', await (async () => {
+  await asOwner();
+  await db.exec("update profiles set email = 'someone-else@corefitness-test.com' where id = '" + P.outsider + "'");
+  await as(P.outsider);
+  const e = await fails("select accept_invitation('" + globalThis.__tok + "')");
+  return !!e && /sign in with that email/i.test(e);
+})());
+check('the person it was addressed to is let straight in, already approved', await (async () => {
+  await asOwner();
+  await db.exec("update profiles set email = 'newcomer@corefitness-test.com' where id = '" + P.outsider + "'");
+  await as(P.outsider);
+  const gym = (await one("select accept_invitation('" + globalThis.__tok + "') as g")).g;
+  await asOwner();
+  const row = await one("select role::text as role, status from gym_roles where gym_id = '" + GYM_A + "' and user_id = '" + P.outsider + "'");
+  return gym === GYM_A && row.role === 'member' && row.status === 'active';
+})());
+check('and the same link cannot be used twice',
+  !!(await fails("select accept_invitation('" + globalThis.__tok + "')")));
+check('a withdrawn invitation is refused with a reason a person can act on', await (async () => {
+  await as(P.adminA);
+  const fresh = await one("select * from invite_to_gym('revoked@corefitness-test.com', 'member', null, null, null, null)");
+  const id = (await db.query('select * from list_invitations(false)')).rows
+    .find((r) => r.email === 'revoked@corefitness-test.com').id;
+  await db.exec("select revoke_invitation('" + id + "')");
+  return (await one("select state from peek_invitation('" + fresh.token + "')")).state === 'revoked';
+})());
+check('peeking at an invitation reveals a gym name and no email or token', await (async () => {
+  await as(P.adminA);
+  const fresh = await one("select * from invite_to_gym('peek@corefitness-test.com', 'trainer', null, null, null, null)");
+  const row = await one("select * from peek_invitation('" + fresh.token + "')");
+  return row.gym_name === 'Core Fitness' && row.role === 'trainer'
+    && !('email' in row) && !('token' in row);
+})());
+check('a gym cannot see another gym invitations', await (async () => {
+  await as(P.adminB);
+  return !(await db.query('select * from list_invitations(true)')).rows
+    .some((r) => r.email === 'peek@corefitness-test.com');
+})());
+
+// The same gym asking twice.
+await as(PLATFORM);
+check('two applications from one address are flagged as each other duplicates', await (async () => {
+  await asOwner();
+  await db.exec("insert into gym_applications (gym_name, owner_name, email, phone) values" +
+    " ('Twice Gym', 'Someone', 'twice@corefitness-test.com', '09171234567')," +
+    " ('Twice Gym', 'Someone', 'twice@corefitness-test.com', '09171234567')");
+  await as(PLATFORM);
+  const rows = (await db.query("select * from platform_applications(null)")).rows
+    .filter((r) => r.email === 'twice@corefitness-test.com');
+  return rows.length === 2 && rows.every((r) => r.duplicates >= 1);
+})());
+check('an address that already owns a gym here is flagged as an existing customer', await (async () => {
+  await asOwner();
+  await db.exec("insert into gym_applications (gym_name, owner_name, email, phone)" +
+    " select 'Second Gym', 'Owner', p.email, '09171234567' from profiles p where p.id = '" + P.adminA + "'");
+  await as(PLATFORM);
+  return (await db.query("select * from platform_applications(null)")).rows
+    .some((r) => r.gym_name === 'Second Gym' && r.already_a_gym === true);
+})());
+
+// Backups.
+check('a backup that never ran says nothing at all',
+  (await db.query('select * from last_backup()')).rows.length === 0);
+check('a recorded backup is visible to the platform and nobody else', await (async () => {
+  await db.exec("select record_backup(52428800, 'weekly')");
+  const mine = (await db.query('select * from last_backup()')).rows.length === 1;
+  await as(P.adminA);
+  const theirs = (await db.query('select * from last_backup()')).rows.length;
+  return mine && theirs === 0;
+})());
+check('a gym cannot claim a backup happened',
+  !!(await fails("select record_backup(1, 'nope')")));
+
 finish();
