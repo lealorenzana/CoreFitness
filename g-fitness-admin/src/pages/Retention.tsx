@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useBranding } from '../hooks/useBranding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -13,6 +14,8 @@ import {
 } from '../services/dashboardService';
 
 export default function Retention() {
+  // A "we miss you" from this gym, signed with this gym's name (0110).
+  const branding = useBranding();
   const years = dashboardService.getYears();
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [atRiskMembers, setAtRiskMembers] = useState<AtRiskMemberRow[]>([]);
@@ -47,7 +50,7 @@ export default function Retention() {
       await notifyUser({
         userId: m.id,
         type: 'system',
-        title: 'We miss you at Core Fitness',
+        title: `We miss you at ${branding.name}`,
         message:
           `It has been ${m.daysInactive} days since your last visit. ` +
           'Nothing needs booking — just come in when you can, and tell the front desk ' +

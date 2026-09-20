@@ -1,3 +1,4 @@
+import { moduleOn, type FeatureKey, type GymApp } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
 import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChartLineUp, ChatCircleText, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
@@ -16,6 +17,11 @@ import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, 
  */
 
 export type TabId = 'today' | 'train' | 'you';
+
+/** Filters a rail or a group to what this gym actually runs (0110). */
+export function visibleDestinations(items: Destination[], app: GymApp | null): Destination[] {
+  return items.filter((d) => moduleOn(app, d.module));
+}
 
 export interface Tab {
   id: TabId;
@@ -90,6 +96,13 @@ export function tabRootFor(pathname: string): Tab | null {
 export interface Destination {
   label: string;
   path: string;
+  /**
+   * The part of the system this belongs to (0110). When the gym does not run
+   * it, the destination is not drawn at all — see `visibleDestinations`.
+   * Absent means always shown: the free workout library has no module on
+   * purpose, because CLAUDE.md forbids gating it.
+   */
+  module?: FeatureKey;
   /** Drawn in the rail pill before the label. */
   icon?: Icon;
 }
@@ -103,26 +116,26 @@ export interface Destination {
 export const RAILS: Record<TabId, Destination[]> = {
   today: [
     { label: 'Updates', path: '/member/notifications', icon: Bell },
-    { label: 'Announcements', path: '/member/events', icon: Megaphone },
-    { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales },
-    { label: 'My routines', path: '/member/track', icon: Barbell },
+    { label: 'Announcements', path: '/member/events', icon: Megaphone , module: 'push' },
+    { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales , module: 'progress' },
+    { label: 'My routines', path: '/member/track', icon: Barbell , module: 'progress' },
   ],
   train: [
-    { label: 'Progress', path: '/member/progress', icon: ChartLineUp },
-    { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck },
-    { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText },
+    { label: 'Progress', path: '/member/progress', icon: ChartLineUp , module: 'progress' },
+    { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck , module: 'classes' },
+    { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText , module: 'progress' },
     { label: 'Free workouts', path: '/member/workouts', icon: BookOpen },
-    { label: 'Coaches', path: '/member/trainers', icon: Users },
-    { label: 'Challenges', path: '/member/challenges', icon: Trophy },
-    { label: 'Achievements', path: '/member/achievements', icon: Medal },
-    { label: 'Goals', path: '/member/progress?tab=goals', icon: Target },
-    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText },
+    { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching' },
+    { label: 'Challenges', path: '/member/challenges', icon: Trophy , module: 'engagement' },
+    { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
+    { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
+    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress' },
   ],
   you: [
     { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise },
     { label: 'Payments', path: '/member/payments', icon: Receipt },
     { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots },
-    { label: 'Spend points', path: '/member/rewards', icon: Gift },
+    { label: 'Spend points', path: '/member/rewards', icon: Gift , module: 'engagement' },
     { label: 'Edit profile', path: '/member/profile/edit', icon: UserCircle },
     { label: 'Settings', path: '/member/settings', icon: GearSix },
   ],
@@ -141,30 +154,30 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Today', path: '/member/home' },
       { label: 'Updates', path: '/member/notifications' },
-      { label: 'Events and announcements', path: '/member/events' },
-      { label: 'Ask the assistant', path: '/member/chatbot' },
+      { label: 'Events and announcements', path: '/member/events' , module: 'push' },
+      { label: 'Ask the assistant', path: '/member/chatbot' , module: 'assistant' },
     ],
   },
   {
     group: 'Train',
     items: [
-      { label: 'Book a session', path: '/member/book-class' },
-      { label: 'My bookings', path: '/member/booking-history' },
-      { label: 'Training plan', path: '/member/gym-plan' },
-      { label: 'Rebuild my plan', path: '/member/plan' },
+      { label: 'Book a session', path: '/member/book-class' , module: 'classes' },
+      { label: 'My bookings', path: '/member/booking-history' , module: 'classes' },
+      { label: 'Training plan', path: '/member/gym-plan' , module: 'progress' },
+      { label: 'Rebuild my plan', path: '/member/plan' , module: 'progress' },
       { label: 'Free workouts', path: '/member/workouts' },
-      { label: 'My routines', path: '/member/track' },
-      { label: 'Coaches', path: '/member/trainers' },
-      { label: 'Challenges', path: '/member/challenges' },
+      { label: 'My routines', path: '/member/track' , module: 'progress' },
+      { label: 'Coaches', path: '/member/trainers' , module: 'coaching' },
+      { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
     ],
   },
   {
     group: 'Progress',
     items: [
-      { label: 'Body', path: '/member/progress?tab=body' },
-      { label: 'Goals', path: '/member/progress?tab=goals' },
-      { label: 'Coach notes', path: '/member/progress?tab=feedback' },
-      { label: 'Achievements and level', path: '/member/achievements' },
+      { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
+      { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
+      { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress' },
+      { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
     ],
   },
   {
@@ -174,7 +187,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Renew', path: '/member/renew' },
       { label: 'Payments', path: '/member/payments' },
       { label: 'Attendance', path: '/member/attendance-history' },
-      { label: 'Spend points', path: '/member/rewards' },
+      { label: 'Spend points', path: '/member/rewards' , module: 'engagement' },
       { label: 'Profile', path: '/member/profile' },
       { label: 'Edit profile', path: '/member/profile/edit' },
       { label: 'Settings', path: '/member/settings' },

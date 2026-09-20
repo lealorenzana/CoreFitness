@@ -55,7 +55,7 @@ export async function exportMemberData(memberId: string): Promise<MemberDataExpo
   const out: MemberDataExport = {
     exported_at: new Date().toISOString(),
     member_id: memberId,
-    note: 'Core Fitness — a copy of the records held about this member. Passwords are never held by the gym and are not included.',
+    note: 'A copy of the records this gym holds about this member. Passwords are never held by the gym and are not included.',
     data: {},
     unavailable: {},
   };

@@ -352,7 +352,7 @@ export default function Workouts() {
           )}
 
           <p style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
-            These are free resources published by others, not Core Fitness programmes.
+            These are free resources published by others, not your gym’s own programmes.
             Check with a trainer before starting something new.
           </p>
         </>

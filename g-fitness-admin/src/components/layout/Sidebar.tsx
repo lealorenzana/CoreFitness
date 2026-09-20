@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History,
-  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp,
+  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -140,6 +140,7 @@ const NAV: Entry[] = [
     ],
   },
 
+  { label: 'Your app', path: '/gym-app', icon: Smartphone, adminOnly: true },
   { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true, alsoMatches: ['/system'] },
 ];
 

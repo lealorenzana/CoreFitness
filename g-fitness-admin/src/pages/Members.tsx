@@ -2,6 +2,7 @@ import Avatar from '../components/ui/Avatar';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
+import { useBranding } from '../hooks/useBranding';
 import { useSearchParams } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -135,6 +136,9 @@ function daysUntilExpiry(row: MemberRow): number | null {
 }
 
 export default function Members() {
+  // The gym's own name: a welcome from Ferrer Gym must not greet a member
+  // in Core Fitness's name (0110).
+  const branding = useBranding();
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -396,7 +400,7 @@ export default function Members() {
         userId: m.id,
         type: 'membership',
         title: 'Your account is approved',
-        message: 'You can sign in to the Core Fitness app now.',
+        message: 'You can sign in to the app now.',
         actionUrl: '/member/home',
       }).catch(() => undefined);
       await load();
@@ -923,7 +927,7 @@ export default function Members() {
                           userId: reg.auth_user_id,
                           type: 'membership',
                           title: "You're in",
-                          message: `Welcome to Core Fitness, ${reg.first_name}. Your membership is active — you can book classes now.`,
+                          message: `Welcome to ${branding.name}, ${reg.first_name}. Your membership is active — you can book classes now.`,
                           actionUrl: '/member/home',
                         }).catch(() => {
                           showToast('Approved, but the member could not be notified', 'error');

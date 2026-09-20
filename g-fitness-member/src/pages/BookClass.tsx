@@ -844,7 +844,7 @@ export default function BookClass() {
               { label: 'Class', value: confirmClass.name },
               { label: 'When', value: `${dayTitle(new Date(confirmClass.scheduledAt))}, ${timeLabel(confirmClass.scheduledAt)}` },
               { label: 'Coach', value: confirmClass.trainerName },
-              { label: 'Location', value: confirmClass.location ?? 'Core Fitness' },
+              { label: 'Location', value: confirmClass.location ?? 'At the gym' },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between"
                 style={{ padding: '10px 0', borderBottom: '1px solid var(--color-separator)', fontSize: 14 }}>

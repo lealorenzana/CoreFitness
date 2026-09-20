@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
-import { RAILS, type Tab } from './memberNav';
+import { RAILS, visibleDestinations, type Tab } from './memberNav';
+import { useGymApp } from '../../hooks/useGymApp';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
 import { weekRangeLabel } from '../../utils/dates';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
@@ -84,6 +85,9 @@ export function IconButton({
  * Only on the three roots: a pushed screen has its own "Back" header.
  */
 export default function TabHeader({ tab }: { tab: Tab }) {
+  // What this gym runs (0110). Null until the read lands, which every
+  // consumer reads as "show everything" — never as "hide everything".
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const override = useTabHeaderOverride(tab.id);
   const now = new Date();
@@ -147,7 +151,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         {/* Plain pills with an icon (member's request, 2026-09-17): no colour
             treatment — the gradient ring, then amber, were both tried and
             removed. The icon is the only addition over the original. */}
-        {RAILS[tab.id].map((d) => {
+        {visibleDestinations(RAILS[tab.id], gymApp).map((d) => {
           const RailIcon = d.icon;
           return (
             <button

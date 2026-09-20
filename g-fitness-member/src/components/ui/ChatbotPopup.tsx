@@ -57,7 +57,7 @@ interface ChatbotPopupProps {
 export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: "Hi! I'm your Core Fitness assistant. How can I help today?", sender: 'bot', timestamp: new Date() },
+    { id: '1', text: "Hi! I'm your gym's assistant. How can I help today?", sender: 'bot', timestamp: new Date() },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);

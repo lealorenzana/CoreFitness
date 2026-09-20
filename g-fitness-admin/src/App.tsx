@@ -16,6 +16,7 @@ import MembershipPlans from './pages/MembershipPlans';
 import Resources from './pages/Resources';
 import Trainers from './pages/Trainers';
 import Settings from './pages/Settings';
+import GymApp from './pages/GymApp';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
 import Events from './pages/Events';
@@ -73,6 +74,10 @@ function App() {
                 not a change to pricing, accounts, or who has access. */}
             <Route path="resources" element={<Resources />} />
             <Route path="trainers" element={<ProtectedRoute adminOnly><Trainers /></ProtectedRoute>} />
+            {/* What this gym's own app says, runs and how members join it
+                (0110). Admin-only: it is the gym's identity and its shape,
+                not the front desk's to change. */}
+            <Route path="gym-app" element={<ProtectedRoute adminOnly><GymApp /></ProtectedRoute>} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="events" element={<Events />} />

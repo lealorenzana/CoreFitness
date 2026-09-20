@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, X } from '@phosphor-icons/react';
-import { EVERYTHING } from './memberNav';
+import { EVERYTHING, visibleDestinations } from './memberNav';
+import { useGymApp } from '../../hooks/useGymApp';
 import { GLASS } from '../ui/glass';
 import { useT } from '../../lib/i18n';
 
@@ -19,6 +20,7 @@ import { useT } from '../../lib/i18n';
  * `createPortal` runs only while open, so nothing sits over the app at rest.
  */
 export default function EverythingSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const gymApp = useGymApp();
   const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +68,12 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide noc-rows" style={{ padding: '14px var(--gutter) var(--stack)' }}>
-        {EVERYTHING.map(({ group, items }) => (
+        {EVERYTHING
+          // A group whose every item belongs to something this gym does not
+          // run disappears with them, rather than leaving an empty heading.
+          .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp) }))
+          .filter(({ items }) => items.length > 0)
+          .map(({ group, items }) => (
           <section key={group} style={{ marginBottom: 24 }}>
             <h3 className="flex items-center" style={{ gap: 10, marginBottom: 6 }}>
               <span aria-hidden style={{

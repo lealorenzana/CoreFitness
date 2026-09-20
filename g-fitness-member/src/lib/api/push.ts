@@ -79,7 +79,7 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
   const existing = await navigator.serviceWorker.getRegistration();
   if (!existing) {
     throw new Error(
-      'Push needs the installed app. Open Core Fitness from your home screen or at its web address — it is not available on the dev server.'
+      'Push needs the installed app. Open it from your home screen or at its web address — it is not available on the dev server.'
     );
   }
   return Promise.race([
@@ -110,7 +110,7 @@ export async function enablePush(): Promise<void> {
   // denied permission can only be undone in browser settings, not re-prompted.
   if (!(await hasServiceWorker())) {
     throw new Error(
-      'Push needs the installed app. Open Core Fitness from your home screen or at its web address — it is not available on the dev server.'
+      'Push needs the installed app. Open it from your home screen or at its web address — it is not available on the dev server.'
     );
   }
 

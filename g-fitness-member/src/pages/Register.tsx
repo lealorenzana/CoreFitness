@@ -321,7 +321,7 @@ export default function Register() {
             <p className="text-xs mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
               Confirm your email. The gym reviews new sign-ups, and once yours is approved you can
               sign in on the free plan{selectedPlan ? ` — we have noted you asked about ${selectedPlan.name}` : ''}.
-              Visit Core Fitness Mamburao to pay whenever you want to upgrade.
+              Visit the gym to pay whenever you want to upgrade.
             </p>
             <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>Taking you to sign in…</p>
           </motion.div>
@@ -494,7 +494,7 @@ export default function Register() {
                   >
                     <Dumbbell size={15} style={{ color: 'var(--color-primary)' }} className="flex-shrink-0 mt-0.5" />
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      Coaching at Core Fitness? Trainer accounts are created by the gym — ask the front
+                      Coaching at this gym? Trainer accounts are created by the gym — ask the front
                       desk, then{' '}
                       <button
                         type="button"
@@ -724,7 +724,7 @@ export default function Register() {
                     <Info size={15} style={{ color: 'var(--color-primary)' }} className="flex-shrink-0 mt-0.5" />
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                       Your account stays pending until the gym records your payment. Bring cash to
-                      Core Fitness Mamburao and it activates on the spot.
+                      the gym and it activates on the spot.
                     </p>
                   </div>
 

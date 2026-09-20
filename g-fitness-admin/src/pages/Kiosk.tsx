@@ -209,7 +209,7 @@ export default function Kiosk() {
             <div>
               <p className="text-xl font-semibold text-white">Check yourself in</p>
               <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-                Open the Core Fitness app, tap your check-in, and hold the QR code up to the camera.
+                Open the app, tap your check-in, and hold the QR code up to the camera.
               </p>
             </div>
           </div>

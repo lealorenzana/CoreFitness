@@ -361,7 +361,7 @@ export default function Resources() {
                   <div>
                     <h2 className="text-base font-bold text-white">Add Resource</h2>
                     <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                      Links out to the source — nothing is copied into Core Fitness.
+                      Links out to the source — nothing is copied into your library.
                     </p>
                   </div>
                   <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">

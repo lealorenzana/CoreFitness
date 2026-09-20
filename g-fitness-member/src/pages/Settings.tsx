@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { useGymApp } from '../hooks/useGymApp';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { playNotificationSound } from '../utils/notificationSound';
@@ -145,6 +146,8 @@ function Footnote({ children }: { children: React.ReactNode }) {
 }
 
 export default function Settings() {
+  // The test alert is shown by this gym's app, so it carries this gym's name.
+  const gymApp = useGymApp();
   const t = useT();
   const lang = useLanguage();
   const chooseLanguage = async (next: Lang) => {
@@ -236,7 +239,7 @@ export default function Settings() {
     try {
       const reg = pushOn && 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
       if (reg && Notification.permission === 'granted') {
-        await reg.showNotification('Core Fitness', { body: 'This is how an alert looks on this device.', tag: 'settings-test' });
+        await reg.showNotification(gymApp?.gymName ?? 'Your gym', { body: 'This is how an alert looks on this device.', tag: 'settings-test' });
         toast.success('Sent — check your notifications');
         return;
       }

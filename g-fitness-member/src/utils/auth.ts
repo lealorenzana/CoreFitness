@@ -15,6 +15,7 @@ import { clearPageCache } from '../lib/pageCache';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
 import { clearFeatureCache } from '../hooks/useFeatures';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
+import { clearGymApp } from '../lib/gymApp';
 
 interface User {
   id: string;
@@ -124,6 +125,8 @@ export const logout = async (): Promise<void> => {
   clearFeatureCache();
   // Which gym, and its brand, belong to the person who just left.
   clearGymContext();
+  // The gym's words and shape are per-member cache too (CLAUDE.md).
+  clearGymApp();
   // The language is the member's (0095); the next person starts in English
   // until their own choice loads.
   setLanguage('en');

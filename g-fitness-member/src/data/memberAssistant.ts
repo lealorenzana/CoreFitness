@@ -572,7 +572,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
   {
     match: /\b(?:pay\w*|paid|cash|gcash|card|receipt|invoice)s?\b/,
     reply: () =>
-      'Core Fitness takes **cash at the front desk**. Your membership extends the moment staff record the payment, and the receipt appears under Profile → Payments.',
+      'Your gym takes **cash at the front desk**. Your membership extends the moment staff record the payment, and the receipt appears under Profile → Payments.',
   },
   {
     // NOT a bare `weights`: "should I do cardio before or after weights" is a

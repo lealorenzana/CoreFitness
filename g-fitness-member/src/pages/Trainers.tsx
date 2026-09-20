@@ -134,7 +134,7 @@ export default function Trainers() {
   return (
     <Page>
       <PageTitle back title="Coaches"
-        subtitle={loading || cards.length === 0 ? 'The coaching team at Core Fitness'
+        subtitle={loading || cards.length === 0 ? 'The coaching team at your gym'
           : `${cards.length} at the gym · ${freeThisWeek} with 1-on-1 time this week`} />
 
       {loading ? (
