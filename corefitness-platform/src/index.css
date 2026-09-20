@@ -72,6 +72,15 @@ input, select {
 }
 .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
 
+/* The one screen that shows a real credential: bordered so it reads as
+   something to act on and then leave, not a row in a list. */
+.handover { border-color: var(--accent); }
+.handover-box {
+  margin: 12px 0 0; padding: 12px 14px; border-radius: 8px; background: var(--surface-high);
+  border: 1px solid var(--hairline); font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12.5px; line-height: 1.7; color: var(--text); white-space: pre-wrap; user-select: all;
+}
+
 .empty { color: var(--text-2); font-size: 13.5px; padding: 26px 0; text-align: center; }
 .err { color: var(--warn); font-size: 13px; margin: 10px 0; }
 .log { font-size: 12.5px; color: var(--text-2); padding: 7px 0; border-bottom: 1px solid var(--hairline); }

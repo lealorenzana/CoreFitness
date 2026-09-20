@@ -33,6 +33,13 @@ export interface GymContext {
   accent: string;
   /** Gyms this person belongs to (not archived). */
   gymCount: number;
+  /**
+   * True once the owner has finished first-run setup (0107). False sends an
+   * admin to /admin/setup instead of a dashboard full of blanks. Before 0107 is
+   * pasted the column does not exist, and every gym here is already running —
+   * so an absent value reads as set up, never as "start the wizard".
+   */
+  onboarded: boolean;
   /** True when read from profiles because 0104 is not live yet. */
   legacy: boolean;
 }
@@ -50,7 +57,7 @@ let cached: Promise<GymContext | null> | null = null;
 interface ContextRow {
   gym_id: string; gym_name: string; slug: string; role: GymRole; status: GymStatus;
   lock_reason: 'suspended' | 'overdue' | null; short_name: string | null; logo_url: string | null;
-  accent: string | null; gym_count: number;
+  accent: string | null; gym_count: number; onboarded?: boolean;
 }
 
 async function load(): Promise<GymContext | null> {
@@ -64,7 +71,8 @@ async function load(): Promise<GymContext | null> {
     return {
       gymId: row.gym_id, gymName: row.gym_name, slug: row.slug, role: row.role, status: row.status,
       lockReason: row.lock_reason, shortName: row.short_name, logoUrl: row.logo_url,
-      accent: row.accent ?? 'violet', gymCount: row.gym_count ?? 1, legacy: false,
+      accent: row.accent ?? 'violet', gymCount: row.gym_count ?? 1,
+      onboarded: row.onboarded ?? true, legacy: false,
     };
   }
 
@@ -78,7 +86,8 @@ async function load(): Promise<GymContext | null> {
   return {
     gymId: null, gymName: null, slug: null,
     role: profile.role as GymRole, status: profile.status as GymStatus,
-    lockReason: null, shortName: null, logoUrl: null, accent: 'violet', gymCount: 1, legacy: true,
+    lockReason: null, shortName: null, logoUrl: null, accent: 'violet', gymCount: 1,
+    onboarded: true, legacy: true,
   };
 }
 

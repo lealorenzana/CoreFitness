@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 
@@ -22,7 +22,9 @@ interface ProtectedRouteProps {
  *   - the 'staff' role (migration 0011), which otherwise couldn't sign in at all.
  */
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
-  const [status, setStatus] = useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden'>('checking');
+  const [status, setStatus] =
+    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner'>('checking');
+  const { pathname } = useLocation();
 
   useEffect(() => {
     let active = true;
@@ -46,6 +48,14 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         setStatus('unauthorized');
         return;
       }
+      // A gym nobody has set up yet (0107). Its owner types in its name, hours,
+      // colour and prices before seeing a dashboard of blanks; the front desk
+      // cannot — those are the owner's to decide — so staff are simply told.
+      // Skipped on /admin/setup itself, which is where they are being sent.
+      if (!profile!.onboarded && pathname !== '/admin/setup') {
+        setStatus(profile!.role === 'admin' ? 'unset-up' : 'waiting-for-owner');
+        return;
+      }
       // Signed in and allowed in the dashboard, but not for this page. Sending
       // them to the login screen here would look like a session failure and
       // invite a pointless re-login, so it's a distinct state.
@@ -60,7 +70,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       active = false;
       subscription.unsubscribe();
     };
-  }, [adminOnly]);
+  }, [adminOnly, pathname]);
 
   if (status === 'checking') {
     return (
@@ -75,6 +85,22 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
   if (status === 'unauthorized') {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (status === 'unset-up') {
+    return <Navigate to="/admin/setup" replace />;
+  }
+
+  if (status === 'waiting-for-owner') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center"
+        style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
+        <p className="max-w-sm text-sm">
+          This gym is not set up yet. Its owner signs in first and fills in the gym's details, hours
+          and prices — after that, the desk works as normal.
+        </p>
+      </div>
+    );
   }
 
   if (status === 'forbidden') {

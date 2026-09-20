@@ -134,3 +134,36 @@ export async function createStaffAccount(input: {
   }
   return data as { id: string; email: string };
 }
+
+/**
+ * Mark this gym as set up (0107), so the owner stops meeting the wizard and
+ * lands on their dashboard from now on.
+ *
+ * Idempotent in SQL: the first stamp stands, so the date a gym opened never
+ * moves because someone walked the wizard again.
+ */
+export async function finishGymSetup(): Promise<void> {
+  const { error } = await supabase.rpc('finish_gym_setup');
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * True when this account is still on the temporary password the platform owner
+ * handed over (approve-gym sets the flag). Setting a real one clears it.
+ *
+ * Read from the session's user metadata, which the owner cannot forge into a
+ * privilege: it grants nothing — it only decides whether we insist.
+ */
+export async function mustChangePassword(): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.user_metadata?.must_change_password === true;
+}
+
+/** The owner's own first password, replacing the temporary one. */
+export async function setFirstPassword(next: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: next,
+    data: { must_change_password: false },
+  });
+  if (error) throw new Error(error.message);
+}

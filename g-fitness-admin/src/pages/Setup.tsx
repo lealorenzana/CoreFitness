@@ -1,0 +1,353 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Check, LogOut } from 'lucide-react';
+import Button from '../components/ui/Button';
+import { supabase } from '../lib/supabaseClient';
+import { showToast } from '../utils/toast';
+import { ACCENTS } from '../lib/accents';
+import { clearGymContext, getGymContext } from '../lib/gymContext';
+import {
+  finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
+} from '../lib/api/settings';
+import { listPlans, updatePlan } from '../lib/api/membershipPlans';
+import type { MembershipPlanRow } from '../types/db';
+
+/**
+ * A gym's first day.
+ *
+ * `create_gym()` copies Core Fitness's *rules* into a new gym — plans, point
+ * rules, cancellation reasons, badges — and deliberately copies none of its
+ * *identity*: a new gym must never inherit someone else's address on its own
+ * receipts. So a new owner's first sign-in would otherwise land on a dashboard
+ * of blanks and a plan list priced for a gym in Mamburao.
+ *
+ * This asks for the four things nothing else can supply, in the order they
+ * matter, and stamps `gyms.onboarded_at` (0107) at the end so it never appears
+ * again. Nothing here is unavailable afterwards: every field lives on Settings
+ * and Membership Plans, which is where they change it from then on.
+ *
+ * Existing gyms never see this screen — 0107's backfill stamped every gym that
+ * had already been configured.
+ */
+
+type Step = 'gym' | 'look' | 'plans' | 'password';
+
+const STEPS: { key: Step; title: string; blurb: string }[] = [
+  { key: 'gym', title: 'Your gym', blurb: 'What your members and your receipts will say.' },
+  { key: 'look', title: 'Your hours and colour', blurb: 'When you are open, and your colour in the phone app.' },
+  { key: 'plans', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.' },
+  { key: 'password', title: 'Your password', blurb: 'Replace the temporary one you were given.' },
+];
+
+const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
+
+export default function Setup() {
+  const [step, setStep] = useState<Step>('gym');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(false);
+
+  const [gym, setGym] = useState({
+    gym_name: '', short_name: '', tagline: '', address: '', phone: '', email: '',
+    opening_time: '', closing_time: '', accent: 'violet',
+  });
+  const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  const [edited, setEdited] = useState<Record<string, { name: string; price: string }>>({});
+  const [password, setPassword] = useState({ next: '', again: '' });
+
+  const load = useCallback(async () => {
+    try {
+      const [ctx, settings, planRows, temp] = await Promise.all([
+        getGymContext(true), getGymSettings(), listPlans(), mustChangePassword(),
+      ]);
+      // Already set up — someone typed the address, or came back later.
+      if (ctx?.onboarded) { window.location.assign('/dashboard'); return; }
+      setGym({
+        gym_name: settings?.gym_name ?? ctx?.gymName ?? '',
+        short_name: settings?.short_name ?? '',
+        tagline: settings?.tagline ?? '',
+        address: settings?.address ?? '',
+        phone: settings?.phone ?? '',
+        email: settings?.email ?? '',
+        opening_time: settings?.opening_time ?? '',
+        closing_time: settings?.closing_time ?? '',
+        accent: settings?.accent ?? 'violet',
+      });
+      setPlans(planRows);
+      setEdited(Object.fromEntries(
+        planRows.map((p) => [p.id, { name: p.name, price: String(p.price) }])
+      ));
+      setNeedsPassword(temp);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not open setup', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
+
+  const steps = STEPS.filter((s) => s.key !== 'password' || needsPassword);
+  const index = steps.findIndex((s) => s.key === step);
+  const isLast = index === steps.length - 1;
+
+  const saveGym = async () => {
+    if (!gym.gym_name.trim()) throw new Error('Your gym needs a name.');
+    await updateGymSettings({
+      gym_name: gym.gym_name.trim(),
+      short_name: gym.short_name.trim() || null,
+      tagline: gym.tagline.trim() || null,
+      address: gym.address.trim() || null,
+      phone: gym.phone.trim() || null,
+      email: gym.email.trim() || null,
+    });
+  };
+
+  const saveLook = async () => {
+    await updateGymSettings({
+      opening_time: gym.opening_time || null,
+      closing_time: gym.closing_time || null,
+      accent: gym.accent,
+    });
+  };
+
+  const savePlans = async () => {
+    for (const plan of plans) {
+      const next = edited[plan.id];
+      if (!next) continue;
+      const price = Number(next.price);
+      if (!Number.isFinite(price) || price < 0) throw new Error(`${plan.name}: that price is not a number.`);
+      if (next.name.trim() === plan.name && price === plan.price) continue;
+      if (!next.name.trim()) throw new Error('A plan needs a name.');
+      await updatePlan(plan.id, { name: next.name.trim(), price });
+    }
+  };
+
+  const savePassword = async () => {
+    if (password.next.length < 8) throw new Error('Use at least 8 characters.');
+    if (password.next !== password.again) throw new Error('Those two passwords are not the same.');
+    await setFirstPassword(password.next);
+  };
+
+  const next = async () => {
+    setSaving(true);
+    try {
+      if (step === 'gym') await saveGym();
+      if (step === 'look') await saveLook();
+      if (step === 'plans') await savePlans();
+      if (step === 'password') await savePassword();
+
+      if (!isLast) {
+        setStep(steps[index + 1].key);
+      } else {
+        await finishGymSetup();
+        clearGymContext();
+        // A full load, not a route change: the shell reads the gym's name and
+        // colour once at boot, and both just changed.
+        window.location.assign('/dashboard');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    clearGymContext();
+    window.location.assign('/admin/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  const label = 'block text-xs mb-1';
+  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
+  const inputStyle = {
+    borderColor: 'var(--color-border)', background: 'var(--color-surface)',
+    color: 'var(--color-text-primary)',
+  };
+  const labelStyle = { color: 'var(--color-text-secondary)' };
+
+  return (
+    <div className="min-h-screen p-6" style={{ background: 'var(--color-bg)' }}>
+      <div className="mx-auto w-full max-w-2xl">
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          Welcome to Core Fitness
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Four short steps and your gym is open. You can change every one of these later in Settings.
+        </p>
+
+        <div className="mt-5 flex gap-2">
+          {steps.map((s, i) => (
+            <span key={s.key} className="h-1 flex-1 rounded-full"
+              style={{ background: i <= index ? 'var(--color-primary)' : 'var(--color-border)' }} />
+          ))}
+        </div>
+
+        <div className="mt-6 rounded-xl border p-5"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            {steps[index].title}
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            {steps[index].blurb}
+          </p>
+
+          {step === 'gym' && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={label} style={labelStyle} htmlFor="s-name">Gym name</label>
+                <input id="s-name" className={input} style={inputStyle} value={gym.gym_name}
+                  onChange={(e) => setGym({ ...gym, gym_name: e.target.value })} />
+              </div>
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-short">Short name (optional)</label>
+                <input id="s-short" className={input} style={inputStyle} value={gym.short_name}
+                  placeholder="For tight corners of the phone app"
+                  onChange={(e) => setGym({ ...gym, short_name: e.target.value })} />
+              </div>
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-tag">Tagline (optional)</label>
+                <input id="s-tag" className={input} style={inputStyle} value={gym.tagline}
+                  onChange={(e) => setGym({ ...gym, tagline: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={label} style={labelStyle} htmlFor="s-addr">Address</label>
+                <input id="s-addr" className={input} style={inputStyle} value={gym.address}
+                  onChange={(e) => setGym({ ...gym, address: e.target.value })} />
+              </div>
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-phone">Mobile number</label>
+                <input id="s-phone" className={input} style={inputStyle} value={gym.phone}
+                  placeholder="09XX XXX XXXX"
+                  onChange={(e) => setGym({ ...gym, phone: e.target.value })} />
+              </div>
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-email">Email</label>
+                <input id="s-email" type="email" className={input} style={inputStyle} value={gym.email}
+                  onChange={(e) => setGym({ ...gym, email: e.target.value })} />
+              </div>
+              <p className="sm:col-span-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                These appear on your members' app, your receipts and your Terms page. Your logo is on
+                the Settings page once you are in.
+              </p>
+            </div>
+          )}
+
+          {step === 'look' && (
+            <div className="mt-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={label} style={labelStyle} htmlFor="s-open">Opens at</label>
+                  <input id="s-open" type="time" className={input} style={inputStyle} value={gym.opening_time}
+                    onChange={(e) => setGym({ ...gym, opening_time: e.target.value })} />
+                </div>
+                <div>
+                  <label className={label} style={labelStyle} htmlFor="s-close">Closes at</label>
+                  <input id="s-close" type="time" className={input} style={inputStyle} value={gym.closing_time}
+                    onChange={(e) => setGym({ ...gym, closing_time: e.target.value })} />
+                </div>
+              </div>
+
+              <p className="mt-5 text-xs" style={labelStyle}>Your colour in the members' app</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {ACCENTS.map((accent) => (
+                  <button key={accent.key} type="button"
+                    onClick={() => setGym({ ...gym, accent: accent.key })}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                    style={{
+                      borderColor: gym.accent === accent.key ? accent.swatch : 'var(--color-border)',
+                      background: 'var(--color-bg)', color: 'var(--color-text-primary)',
+                    }}>
+                    <span className="h-4 w-4 rounded-full" style={{ background: accent.swatch }} />
+                    {accent.label}
+                    {gym.accent === accent.key && <Check size={14} style={{ color: accent.swatch }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 'plans' && (
+            <div className="mt-4 space-y-3">
+              {plans.length === 0 && (
+                <p className="text-sm" style={labelStyle}>
+                  This gym has no plans yet. You can add them on Membership Plans.
+                </p>
+              )}
+              {plans.map((plan) => (
+                <div key={plan.id} className="grid gap-3 sm:grid-cols-[1fr_140px] items-end">
+                  <div>
+                    <label className={label} style={labelStyle} htmlFor={`p-${plan.id}`}>
+                      {plan.tier} · {plan.duration_days ? `${plan.duration_days} days` : 'does not expire'}
+                    </label>
+                    <input id={`p-${plan.id}`} className={input} style={inputStyle}
+                      value={edited[plan.id]?.name ?? ''}
+                      onChange={(e) => setEdited({
+                        ...edited, [plan.id]: { ...edited[plan.id], name: e.target.value },
+                      })} />
+                  </div>
+                  <div>
+                    <label className={label} style={labelStyle} htmlFor={`pp-${plan.id}`}>
+                      Price ({peso(plan.price)} now)
+                    </label>
+                    <input id={`pp-${plan.id}`} type="number" min={0} className={input} style={inputStyle}
+                      value={edited[plan.id]?.price ?? ''}
+                      onChange={(e) => setEdited({
+                        ...edited, [plan.id]: { ...edited[plan.id], price: e.target.value },
+                      })} />
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs" style={labelStyle}>
+                Free plans stay free at ₱0. What each plan lets a member do — classes, coaching,
+                the assistant — is on the Membership Plans page.
+              </p>
+            </div>
+          )}
+
+          {step === 'password' && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-pw">New password</label>
+                <input id="s-pw" type="password" className={input} style={inputStyle} value={password.next}
+                  onChange={(e) => setPassword({ ...password, next: e.target.value })} />
+              </div>
+              <div>
+                <label className={label} style={labelStyle} htmlFor="s-pw2">Type it again</label>
+                <input id="s-pw2" type="password" className={input} style={inputStyle} value={password.again}
+                  onChange={(e) => setPassword({ ...password, again: e.target.value })} />
+              </div>
+              <p className="sm:col-span-2 text-xs" style={labelStyle}>
+                At least 8 characters. The temporary password you were given stops working.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center gap-2">
+            <Button onClick={() => void next()} disabled={saving}>
+              {saving ? 'Saving…' : isLast ? 'Open my gym' : 'Save and continue'}
+            </Button>
+            {index > 0 && (
+              <Button variant="ghost" disabled={saving} onClick={() => setStep(steps[index - 1].key)}>
+                Back
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <Button variant="ghost" className="mt-5" onClick={() => void signOut()}>
+          <LogOut size={16} className="mr-2" /> Sign out
+        </Button>
+      </div>
+    </div>
+  );
+}

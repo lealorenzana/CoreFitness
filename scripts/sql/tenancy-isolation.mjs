@@ -666,4 +666,33 @@ await db.exec(`select reject_application((select id from gym_applications where 
 check('a rejected application keeps the reason the applicant is told',
   (await one(`select reason from platform_applications('rejected') limit 1`))?.reason === 'Outside our area for now');
 
+// ---- 0107: a gym's first day -------------------------------------------------------
+// A gym the platform creates is real, empty of people, and not set up. Both of
+// those show on the platform's own list, because a gym nobody can sign into is
+// the one thing worth chasing.
+const blankGym = (await one(`select create_gym('Harbour Strength', 'harbour-strength') as id`)).id;
+const blankRow = await one(`select owners, onboarded from platform_gyms() where id = '${blankGym}'`);
+check('a gym with no owner says so: nobody can sign in yet',
+  blankRow.owners === 0 && blankRow.onboarded === false);
+const seasideRow = await one(`select owners, onboarded from platform_gyms() where id = '${newGym}'`);
+check('naming an owner is visible to the platform, but setting up is still to come',
+  seasideRow.owners === 1 && seasideRow.onboarded === false);
+check('the platform cannot finish a gym’s setup for it', !!(await fails(`select finish_gym_setup()`)));
+
+await as(P.outsider);
+check('the owner of a new gym is sent to set it up',
+  (await one(`select onboarded from my_gym_context()`)).onboarded === false);
+const stamped = (await one(`select finish_gym_setup() as t`)).t;
+check('the owner finishing setup is enough to open the gym', !!stamped);
+check('the gym is set up from then on',
+  (await one(`select onboarded from my_gym_context()`)).onboarded === true);
+const again = (await one(`select finish_gym_setup() as t`)).t;
+check('walking the wizard again does not move the day the gym opened',
+  new Date(again).getTime() === new Date(stamped).getTime());
+
+await as(P.staffA);
+check('the front desk cannot declare a gym set up', !!(await fails(`select finish_gym_setup()`)));
+await as(P.adminA);
+check('a gym admin cannot look up a stranger by email', !(await one(`select platform_find_user('${"platform@corefitness-test.com"}') as id`)).id);
+
 finish();

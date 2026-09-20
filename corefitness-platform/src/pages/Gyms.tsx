@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   createGym, listGyms, setGymPlan, setGymStatus, slugFor, type PlatformGym,
 } from '../lib/platform';
+import InviteOwner from '../components/InviteOwner';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -30,6 +31,8 @@ export default function Gyms() {
   const [busy, setBusy] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', slug: '' });
+  /** The gym whose owner is being named, if any. */
+  const [inviting, setInviting] = useState<PlatformGym | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -100,8 +103,9 @@ export default function Gyms() {
           <div className="name">A gym that is not applying through the website</div>
           <div className="meta">
             It opens with Core Fitness's own plans, point rules, badges and settings, which the gym
-            then edits as its own. Name its owner from the Applications screen, or invite them in the
-            admin app once they have an account.
+            then edits as its own. Its name, address and logo stay blank — the owner fills those in
+            when they first sign in. Name the owner on the gym's row afterwards; until you do, nobody
+            can sign into it.
           </div>
           <div className="fields">
             <div>
@@ -125,33 +129,55 @@ export default function Gyms() {
       {gyms?.length === 0 && <p className="empty">No gyms yet.</p>}
 
       {gyms?.map((gym) => (
-        <div className="card" key={gym.id}>
-          <div className="row">
-            <span className="grow">
-              <span className="name">{gym.name}</span>
-              <span className="meta">
-                /join/{gym.slug} · {gym.members} member{gym.members === 1 ? '' : 's'} · {gym.staff} on the desk
-                {' · '}{since(gym.last_activity)}
+        <div key={gym.id}>
+          <div className="card">
+            <div className="row">
+              <span className="grow">
+                <span className="name">{gym.name}</span>
+                <span className="meta">
+                  /join/{gym.slug} · {gym.members} member{gym.members === 1 ? '' : 's'} · {gym.staff} on the desk
+                  {' · '}{since(gym.last_activity)}
+                </span>
+                <span className="meta">
+                  {gym.plan}{gym.paid_until ? ` · paid to ${day(gym.paid_until)}` : ' · no paid-until date'}
+                  {/* The two states that mean "this gym is not open yet", in the
+                      order they are fixed: no owner, then owner has not set up. */}
+                  {gym.owners === 0
+                    ? ' · nobody can sign in yet'
+                    : !gym.onboarded ? ' · the owner has not set the gym up yet' : ''}
+                </span>
               </span>
-              <span className="meta">
-                {gym.plan}{gym.paid_until ? ` · paid to ${day(gym.paid_until)}` : ' · no paid-until date'}
-              </span>
-            </span>
-            {gym.lock_reason && (
-              <span className="pill warn">
-                {gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}
-              </span>
-            )}
-            <button className="btn ghost" disabled={busy === gym.id} onClick={() => plan(gym)}>Plan</button>
-            {gym.status === 'active' ? (
-              <button className="btn ghost" disabled={busy === gym.id} onClick={() => suspend(gym)}>Suspend</button>
-            ) : (
-              <button className="btn" disabled={busy === gym.id}
-                onClick={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))}>
-                Reactivate
-              </button>
-            )}
+              {gym.lock_reason && (
+                <span className="pill warn">
+                  {gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}
+                </span>
+              )}
+              {gym.owners === 0 && (
+                <button className="btn" disabled={busy === gym.id}
+                  onClick={() => setInviting(inviting?.id === gym.id ? null : gym)}>
+                  {inviting?.id === gym.id ? 'Cancel' : 'Invite the owner'}
+                </button>
+              )}
+              <button className="btn ghost" disabled={busy === gym.id} onClick={() => plan(gym)}>Plan</button>
+              {gym.status === 'active' ? (
+                <button className="btn ghost" disabled={busy === gym.id} onClick={() => suspend(gym)}>Suspend</button>
+              ) : (
+                <button className="btn" disabled={busy === gym.id}
+                  onClick={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))}>
+                  Reactivate
+                </button>
+              )}
+            </div>
           </div>
+
+          {inviting?.id === gym.id && (
+            <InviteOwner
+              gymId={gym.id}
+              gymName={gym.name}
+              onCancel={() => setInviting(null)}
+              onDone={() => { setInviting(null); void load(); }}
+            />
+          )}
         </div>
       ))}
     </>

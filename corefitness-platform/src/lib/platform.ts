@@ -19,6 +19,19 @@ export interface PlatformGym {
   staff: number;
   created_at: string;
   last_activity: string | null;
+  /** Active admins. 0 means nobody can sign into this gym yet (0107). */
+  owners: number;
+  /** True once the owner finished first-run setup in the admin app (0107). */
+  onboarded: boolean;
+}
+
+/** What approve-gym gives back. `password` is null when the owner already had an account. */
+export interface OwnerInvited {
+  id: string;
+  email: string;
+  gym: string;
+  existing: boolean;
+  password: string | null;
 }
 
 export interface Application {
@@ -76,6 +89,38 @@ export const setGymStatus = (gym: string, status: 'active' | 'suspended', reason
   call<void>('set_gym_status', { p_gym: gym, p_status: status, p_reason: reason });
 export const setGymPlan = (gym: string, plan: string, paidUntil: string | null) =>
   call<void>('set_gym_plan', { p_gym: gym, p_plan: plan, p_paid_until: paidUntil });
+
+/**
+ * Give a gym its owner — the one thing in this app that is not a SQL function,
+ * because creating a login needs the Auth admin key that only an Edge Function
+ * may hold (supabase/functions/approve-gym).
+ *
+ * It answers with a temporary password when the account was created here. That
+ * is the only time it ever exists in readable form, so the screen shows it once
+ * and this app stores it nowhere.
+ */
+export async function inviteOwner(
+  gymId: string,
+  owner: { email: string; firstName: string; lastName: string; phone?: string },
+): Promise<OwnerInvited> {
+  const { data, error } = await supabase.functions.invoke('approve-gym', {
+    body: { gymId, ...owner },
+  });
+  // An Edge Function's own error message lives in the response body, not in
+  // `error.message` — which only ever says "non-2xx status code".
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? error.message);
+  }
+  return data as OwnerInvited;
+}
+
+/** "Maria Ferrer" → first and last. One box on the website's form, two columns here. */
+export function splitName(full: string): { firstName: string; lastName: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length < 2) return { firstName: parts[0] ?? '', lastName: '' };
+  return { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+}
 
 /** Am I the platform owner? The one thing this app asks before showing anything. */
 export async function isPlatformAdmin(): Promise<boolean> {

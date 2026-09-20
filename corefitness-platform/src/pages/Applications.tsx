@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  createGym, listApplications, rejectApplication, slugFor, type Application,
+  createGym, listApplications, rejectApplication, slugFor, splitName, type Application,
 } from '../lib/platform';
+import InviteOwner from '../components/InviteOwner';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -10,16 +11,19 @@ const when = (iso: string) =>
  * Gyms asking to join, from the website's form.
  *
  * Approving creates the gym, seeded with Core Fitness's plans, rules and badges
- * so it opens working. The owner's account is a separate step: they sign up in
- * the phone app, or the platform names them from the Gyms screen — inviting by
- * email needs the Auth admin API, which is Part C's `approve-gym` function and
- * is not wired yet, so this screen does not pretend to send one.
+ * so it opens working, and then — in the same breath, because a gym nobody can
+ * sign into is not really let in — names its owner from what they told us on
+ * the website (approve-gym).
+ *
+ * Nothing here emails them. The owner's sign-in is shown once, to hand over.
  */
 export default function Applications() {
   const [apps, setApps] = useState<Application[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [show, setShow] = useState<'pending' | 'all'>('pending');
+  /** Set the moment a gym is created: its owner is named next, from the application. */
+  const [naming, setNaming] = useState<{ gymId: string; app: Application } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -41,8 +45,10 @@ export default function Applications() {
     setBusy(app.id);
     setError(null);
     try {
-      await createGym(app.gym_name, slug.trim(), app.id);
+      const gymId = await createGym(app.gym_name, slug.trim(), app.id);
       await load();
+      // The gym exists; it has nobody in it. Straight on to the owner.
+      setNaming({ gymId, app });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create the gym');
     } finally {
@@ -77,6 +83,17 @@ export default function Applications() {
       </div>
 
       {error && <p className="err">{error}</p>}
+
+      {naming && (
+        <InviteOwner
+          gymId={naming.gymId}
+          gymName={naming.app.gym_name}
+          initial={{ ...splitName(naming.app.owner_name), email: naming.app.email, phone: naming.app.phone }}
+          onCancel={() => setNaming(null)}
+          onDone={() => setNaming(null)}
+        />
+      )}
+
       {apps?.length === 0 && (
         <p className="empty">
           {show === 'pending' ? 'No gym is waiting for an answer.' : 'Nobody has applied yet.'}

@@ -145,6 +145,33 @@ only 0106's functions — gyms with counts and status, applications, crash
 reports and its own decision log — and the isolation harness asserts it reads
 no member, payment or attendance row of any gym.
 
+### Letting a gym in, end to end (0107)
+
+Creating the gym and creating its owner are deliberately two acts, because they
+need two different powers. `create_gym()` is SQL: it makes the gym and copies
+Gym #1's **rules** — plans, point rules, cancellation reasons, goal templates,
+badges, settings — and none of its **identity**, so no gym ever inherits
+another's address, phone or logo on its own receipts. Making a login needs the
+Auth admin key, which no SQL function and no browser may hold; that half is the
+`approve-gym` Edge Function, called from the platform app.
+
+`approve-gym` creates the account with a **temporary password it returns once**,
+and the platform app shows it to hand over. Nothing in this project sends mail,
+so no screen claims an invitation was emailed. If the address already belongs to
+someone here, no second account is made — a role is per gym, a person is not —
+and `make_gym_owner()` simply adds the gym to them.
+
+The gym is then real but blank, and `gyms.onboarded_at` is NULL. The admin app
+sends its **owner** to `/admin/setup` — gym details, hours, accent, plan prices,
+and their own password in place of the temporary one — and tells **staff** that
+the owner has not set the gym up yet, because those are not the desk's to
+decide. `finish_gym_setup()` stamps the date, once; every field stays editable
+on Settings and Membership Plans afterwards. 0107's backfill stamped every gym
+that was already configured, so no existing gym meets the wizard.
+
+The platform's own list carries `owners` and `onboarded`, so a gym nobody can
+sign into is visible as exactly that.
+
 The website writes the one row a stranger may write anywhere here: a `pending`
 `gym_applications` row (0097). The status and shape are enforced in SQL, not in
 the form, and the page has a honeypot field for bots. Its prices live in

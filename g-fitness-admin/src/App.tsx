@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ChooseGym from './pages/ChooseGym';
+import Setup from './pages/Setup';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLogin from './pages/AdminLogin';
@@ -38,6 +39,10 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           {/* Which gym this desk is. Outside the shell: the shell belongs to a gym. */}
           <Route path="/admin/choose-gym" element={<ChooseGym />} />
+          {/* A gym's first day (0107). Outside the shell for the same reason:
+              the shell shows a gym's name, hours and colour, and this is where
+              they are typed in. It sends itself away once the gym is set up. */}
+          <Route path="/admin/setup" element={<ProtectedRoute adminOnly>{<Setup />}</ProtectedRoute>} />
 
           <Route
             path="/"

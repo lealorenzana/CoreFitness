@@ -166,7 +166,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0104 and 0106 are live; 0105 (clean-up) awaits pasting** — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0106 are live; 0107 (a gym's first day) awaits pasting, with the `approve-gym` Edge Function** — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. **A new gym gets Gym #1's rules and none of its identity**, so its owner is created by `approve-gym` (a temporary password, shown once — nothing here sends mail) and then sets the gym up at `/admin/setup`. — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
