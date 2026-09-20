@@ -2,6 +2,13 @@
 
 Detail split out of [CLAUDE.md](../CLAUDE.md). Last audited **2026-09-07**.
 
+## Gym-aware apps: 0104–0105 (written 2026-09-20)
+
+`my_gym_context()` and the `gym_people` view are what the apps read to know which gym they are in;
+`add_person_to_gym()` is how the Edge Functions create an account into the caller's gym. 0105 drops
+the last of Part A's transition keys and **must be pasted only after the member app is deployed**.
+The admin app is online at `corefitness-admin.vercel.app` (DEPLOYMENT). Detail: [TENANCY](TENANCY.md).
+
 ## Tenancy: 0097–0103 (live 2026-09-20; every verify script OK)
 
 Core Fitness became a service for many gyms: roles per gym, `gym_id` on 51 tables, a same-gym policy

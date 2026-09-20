@@ -541,9 +541,19 @@ check('the activity feed shows no Gym B activity',
   && (await one(`select count(*)::int as n from activity_feed`)).n > 0);
 check("Gym A's crash-report prune touches only Gym A", !(await fails(`select prune_client_errors()`)));
 await asOwner();
-check('no transition key is left but the three the apps still upsert on',
-  (await one(`select count(*)::int as n from pg_constraint where conname like '%\\_transition' escape '\\'`)).n === 3
-  && (await one(`select count(*)::int as n from pg_indexes where indexname like '%\\_transition'`)).n === 3);
+check('0105 removed the last transition keys',
+  (await one(`select count(*)::int as n from pg_constraint where conname like '%\\_transition' escape '\\'`)).n === 0
+  && (await one(`select count(*)::int as n from pg_indexes where indexname like '%\\_transition'`)).n === 0);
+// What those keys were holding back: one person, two gyms, the same day.
+await db.exec(`select act_as_gym('${GYM_A}');
+  insert into body_measurements (gym_id, member_id, measured_on, weight_kg) values ('${GYM_A}', '${P.both}', current_date, 70);
+  insert into member_share_prefs (gym_id, member_id, share_goals) values ('${GYM_A}', '${P.both}', true);
+  select act_as_gym('${GYM_B}');`);
+check('a two-gym member can be measured in both gyms on one day', !(await fails(
+  `insert into body_measurements (gym_id, member_id, measured_on, weight_kg) values ('${GYM_B}', '${P.both}', current_date, 70)`)));
+check('…and shares different things with each gym', !(await fails(
+  `insert into member_share_prefs (gym_id, member_id, share_goals) values ('${GYM_B}', '${P.both}', false)`)));
+await db.exec(`select act_as_gym(null)`);
 
 // ---- 0104: what the apps read to be gym-aware ---------------------------------
 await as(P.adminB);

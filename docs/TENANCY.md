@@ -89,13 +89,37 @@ the free trial is **once per member per gym**; invoice numbers; the cash drawer;
 the processing fee; cancellation reasons; goal templates; notification dedupe (the same event
 notifies once in each gym); the crash-report cap.
 
+## What the apps read (Part B, 0104)
+
+- **`my_gym_context()`** answers "who am I, where": gym, role and status *there*, branding, lock
+  reason, and how many gyms this person belongs to. Every sign-in gate in both apps reads it —
+  never the legacy `profiles.role`. Before 0104 is pasted both apps fall back to `profiles`, which
+  is exactly right while there is one gym (`lib/gymContext.ts`, in each app; diff before you copy).
+- **`gym_people`** is `profiles` with this gym's role and status in place of the legacy columns, so
+  a list screen swaps the table name and keeps its filters. Fifteen admin queries and two member
+  ones read it.
+- **`add_person_to_gym()` / `set_gym_role()`** are how an account joins a gym or changes role; the
+  three `create-*` Edge Functions call the first **as the caller**, so the rules decide, not the
+  service key. **`public_plans(gym)`** lets someone with no account see the plans of the gym they
+  are signing up to — that step had nothing to show before.
+- **The picker.** One gym: no picker, ever. Several: at sign-in and from More → Gyms (phone) or
+  `/admin/choose-gym`. The gym is remembered (it is `profiles.active_gym_id`), so a relaunch goes
+  straight in. Switching reloads the app, which is the only sure way to drop every memory cache.
+- **Colour.** Eight accents (`g-fitness-member/src/lib/gymTheme.ts`, chosen in admin Settings →
+  Branding). They replace violet only; amber keeps its meaning. `scripts/accent-contrast.mjs`
+  proves each text shade clears 4.5:1, so a gym cannot make its own app unreadable.
+
 ## Transition leftovers (removed by the clean-up after Part B)
 
-- `trg_mirror_profile_role` and `profiles.active_gym_id default gym_one()`.
-- Three `*_transition` keys the apps' own upserts still name: `member_share_prefs(member_id)`,
-  `body_measurements(member_id, measured_on)`, `trainer_ratings(member_id, trainer_id, period)`.
-  Until they go, a person in two gyms shares those three rows' uniqueness across gyms.
-- Sign-up without a `gym_id` in its metadata (today's app) lands in Gym #1.
+- **Gone in 0105:** the three `*_transition` keys (share preferences, body measurements, coach
+  ratings). Part B's apps name the gym in those upserts, so a person in two gyms can now be
+  measured in both on the same day. **Paste 0105 only after the member app carrying Part B is
+  deployed** — an older copy still open on a phone would upsert on a key that no longer exists.
+- **Still here on purpose:** `trg_mirror_profile_role` and `profiles.active_gym_id default
+  gym_one()`. Three admin paths still write `profiles.status` directly (archive a member, suspend a
+  coach, suspend a staff account). Each needs a reason dialog before it can move to
+  `set_account_status()`, and inventing a reason to satisfy 0069 would be worse than waiting.
+- Sign-up without a `gym_id` in its metadata (an older app build) still lands in Gym #1.
 
 ## Proving it
 

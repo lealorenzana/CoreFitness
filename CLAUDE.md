@@ -49,7 +49,7 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
 ### Auth and routing — real Supabase Auth, many gyms
 **A role is per gym**: `gym_roles` (`admin`/`staff`/`trainer`/`member`; `active`/`pending_approval`/`suspended`/
 `archived`) in the current gym (`profiles.active_gym_id`), **not** legacy `profiles.role` — **[TENANCY](docs/TENANCY.md) before any policy or definer function**.
-**`staff`** is front desk (0011/0012): payments, check-ins, extensions — not pricing, trainers,
+**Both apps read `my_gym_context()`/`gym_people` (0104), never the legacy columns.** **`staff`** is front desk (0011/0012): payments, check-ins, not pricing, trainers,
 accounts, settings or the audit log. `<ProtectedRoute adminOnly>` is convenience; **RLS is the
 boundary.** The member app also caches a legacy user object into `localStorage['user']` for the ~6 pages
 still on `getCurrentUser()` — **never real auth state**; `syncUserCache()` rebuilds it on boot. **Sessions last until Logout.** **Only
@@ -166,7 +166,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0103 are live** (0097–0103 = tenancy, [TENANCY](docs/TENANCY.md); all seven verify scripts OK, 2026-09-20) — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0103 are live; 0104–0105 (gym-aware apps) await pasting** — tenancy: [TENANCY](docs/TENANCY.md) — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
