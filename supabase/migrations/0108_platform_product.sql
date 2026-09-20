@@ -473,8 +473,13 @@ grant execute on function my_gym_billing() to authenticated;
 --
 -- Granted to anon deliberately: it is a price list, and a price list that needs
 -- a login is not a price list. It exposes no gym and no person.
+--
+-- NOT `public_plans()`: 0104 already has `public_plans(gym)`, which is a *gym's*
+-- membership plans shown to someone signing up to it. Two different things one
+-- name apart, distinguished only by an argument, is the kind of collision that
+-- costs an afternoon — so this one says whose price list it is.
 
-create or replace function public_plans()
+create or replace function platform_price_list()
 returns table (key text, name text, blurb text,
                price_monthly numeric, price_yearly numeric, trial_days int,
                max_members int, includes text[], sort_order int)
@@ -492,8 +497,8 @@ language sql stable security definer set search_path = public as $$
    where p.is_public and p.is_active
    order by p.sort_order, p.name;
 $$;
-revoke all on function public_plans() from public;
-grant execute on function public_plans() to anon, authenticated;
+revoke all on function platform_price_list() from public;
+grant execute on function platform_price_list() to anon, authenticated;
 
 -- ============================================================================
 -- 8. THE OWNER EDITS ALL OF IT

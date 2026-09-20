@@ -31,7 +31,7 @@ export default function App() {
         // `gyms.plan` points at (0108). Before that migration is pasted this
         // function does not exist; the section then says so rather than
         // printing numbers from a file that nobody is maintaining any more.
-        supabase.rpc('public_plans'),
+        supabase.rpc('platform_price_list'),
       ]);
       setGyms(Array.isArray(gymRes.data) ? (gymRes.data as Gym[]) : []);
       setTiers(Array.isArray(planRes.data) ? (planRes.data as PublicPlanRow[]).map(toTier) : []);

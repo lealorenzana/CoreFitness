@@ -799,7 +799,7 @@ check('the platform sees what it has been paid, by month',
 check('a gym due for renewal is listed before it locks, not after',
   (await db.query('select * from gyms_due(60)')).rows.length > 0);
 check('the price list the website reads carries what each plan includes', await (async () => {
-  const rows = (await db.query('select * from public_plans()')).rows;
+  const rows = (await db.query('select * from platform_price_list()')).rows;
   return rows.length >= 3 && rows.every((r) => Array.isArray(r.includes) && r.includes.length > 0);
 })());
 

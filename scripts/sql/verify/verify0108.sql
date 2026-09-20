@@ -30,7 +30,7 @@ begin
   select count(*) into v_fns from pg_proc
    where pronamespace = 'public'::regnamespace
      and proname in ('gym_plan_allows', 'gym_headroom', 'my_gym_features', 'my_gym_billing',
-                     'record_gym_payment', 'platform_revenue', 'gyms_due', 'public_plans',
+                     'record_gym_payment', 'platform_revenue', 'gyms_due', 'platform_price_list',
                      'save_platform_plan', 'set_platform_plan_feature', 'retire_platform_plan');
 
   -- Nothing may read a gym's payments through a policy; every read is a
