@@ -223,9 +223,17 @@ export default function Login() {
                 transition={morph}
               />
             </div>
+            {/* This screen belongs to the *platform*, not to a gym: you sign
+                in to Core Fitness and then pick which gym you are using, so the
+                name here is deliberately the service's.
+
+                The line under it used to read "Mamburao, Occidental Mindoro" —
+                Gym #1's address, printed to every member of every gym on the
+                service. Gone: a gym's address belongs on that gym's own
+                screens, from `gym_settings`, never typed in (CLAUDE.md). */}
             <h1 className="display text-3xl text-white leading-none">Core Fitness</h1>
             <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-              Mamburao, Occidental Mindoro
+              Sign in, then choose your gym
             </p>
           </div>
 

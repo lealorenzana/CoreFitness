@@ -8,8 +8,11 @@ import { clearGymContext, getGymContext } from '../lib/gymContext';
 import {
   finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
 } from '../lib/api/settings';
-import { listPlans, updatePlan } from '../lib/api/membershipPlans';
-import { getGymApp, saveGymWords, setJoinPolicy, setOnboardingStep, type JoinPolicy } from '../lib/api/gymApp';
+import { createPlan, listPlans, updatePlan } from '../lib/api/membershipPlans';
+import {
+  getGymApp, saveGymLook, saveGymWords, setJoinPolicy, setOnboardingStep, type JoinPolicy,
+} from '../lib/api/gymApp';
+import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
 
 /**
@@ -53,6 +56,11 @@ export default function Setup() {
     opening_time: '', closing_time: '', accent: 'violet',
     points_name: '', points_name_short: '', welcome_message: '',
   });
+  const [action, setAction] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  /** Plans typed on this screen that do not exist yet. */
+  const [adding, setAdding] = useState<{ name: string; price: string; days: string }[]>([]);
   const [door, setDoor] = useState<JoinPolicy>('open');
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
@@ -80,6 +88,8 @@ export default function Setup() {
         points_name_short: app?.points_name_short ?? '',
         welcome_message: app?.welcome_message ?? '',
       });
+      setAction(app?.accent_action ?? '');
+      setLogoUrl(settings?.logo_url ?? null);
       setDoor(app?.join_policy ?? 'open');
       setJoinCode(app?.join_code ?? null);
       // Pick up where they left off (0111). Every step already saved before it
@@ -122,7 +132,13 @@ export default function Setup() {
     await updateGymSettings({
       opening_time: gym.opening_time || null,
       closing_time: gym.closing_time || null,
+    });
+    // Both colour roles and the logo in one call (0112). Passing the logo
+    // explicitly here is what stops a colour change wiping it.
+    await saveGymLook({
       accent: gym.accent,
+      accentAction: action || null,
+      logoUrl: logoUrl ?? '',
     });
     // Their own word for their points, and the line their members read on
     // opening the app. Blank leaves the plain "Points" (0110).
@@ -138,6 +154,36 @@ export default function Setup() {
   };
 
   const savePlans = async () => {
+    // The new ones first, so a failure leaves nothing half-written: a plan that
+    // could not be created must not be followed by prices saved against the
+    // ones that could.
+    for (const row of adding) {
+      if (!row.name.trim()) continue;
+      const price = Number(row.price || 0);
+      const days = row.days.trim() === '' ? null : Number(row.days);
+      if (!Number.isFinite(price) || price < 0) throw new Error(`${row.name}: that price is not a number.`);
+      if (days !== null && (!Number.isFinite(days) || days < 1)) {
+        throw new Error(`${row.name}: leave the days empty for a plan that does not expire.`);
+      }
+      await createPlan({
+        name: row.name.trim(),
+        // A paid plan is `premium` and a free one `free`; the tier is a label
+        // the refund floor reads (0073), not a hidden rulebook. What the plan
+        // actually lets a member do is set on Membership Plans, where the
+        // feature matrix lives (0049) — this screen does not guess at it.
+        tier: price > 0 ? 'premium' : 'free',
+        price,
+        duration_days: days,
+        description: null,
+        is_active: true,
+        can_book_classes: true,
+        can_book_pt: price > 0,
+        class_bookings_per_week: null,
+        pt_sessions_per_month: null,
+      });
+    }
+    if (adding.length) setAdding([]);
+
     for (const plan of plans) {
       const next = edited[plan.id];
       if (!next) continue;
@@ -265,9 +311,40 @@ export default function Setup() {
                 <input id="s-email" type="email" className={input} style={inputStyle} value={gym.email}
                   onChange={(e) => setGym({ ...gym, email: e.target.value })} />
               </div>
+              <div className="sm:col-span-2">
+                <label className={label} style={labelStyle}>Your logo</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {logoUrl
+                    ? <img src={logoUrl} alt="" className="h-14 w-14 rounded-xl object-cover"
+                        style={{ background: 'var(--color-bg)' }} />
+                    : <div className="grid h-14 w-14 place-items-center rounded-xl text-lg font-bold"
+                        style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                        {(gym.short_name || gym.gym_name || '?').slice(0, 2).toUpperCase()}
+                      </div>}
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                    {uploading ? 'Uploading…' : logoUrl ? 'Choose another' : 'Choose a picture'}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploading(true);
+                        void uploadMedia(file, 'logos')
+                          .then((url) => setLogoUrl(url))
+                          .catch((err) => showToast(err instanceof Error ? err.message : 'That could not be uploaded', 'error'))
+                          .finally(() => setUploading(false));
+                      }} />
+                  </label>
+                  {logoUrl && <Button variant="ghost" onClick={() => setLogoUrl(null)}>Remove</Button>}
+                </div>
+                <p className="mt-2 text-xs" style={labelStyle}>
+                  Square works best. It is shown in your members' app and on this dashboard, and is
+                  saved when you finish the next step.
+                </p>
+              </div>
               <p className="sm:col-span-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                These appear on your members' app, your receipts and your Terms page. Your logo is on
-                the Settings page once you are in.
+                These appear on your members' app, your receipts and your Terms page. You can change
+                every one of them later in Settings.
               </p>
             </div>
           )}
@@ -287,7 +364,9 @@ export default function Setup() {
                 </div>
               </div>
 
-              <p className="mt-5 text-xs" style={labelStyle}>Your colour in the members' app</p>
+              <p className="mt-5 text-xs" style={labelStyle}>
+                Your main colour — where you are, and what you have
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {ACCENTS.map((accent) => (
                   <button key={accent.key} type="button"
@@ -303,6 +382,42 @@ export default function Setup() {
                   </button>
                 ))}
               </div>
+
+              {/* The second role (0112). It used to be amber for every gym, so
+                  one that picked red got a red-and-yellow app rather than its
+                  own. Two roles, two colours: the roles are what keep a screen
+                  readable, the colours are the gym's. */}
+              <p className="mt-5 text-xs" style={labelStyle}>
+                Your action colour — the buttons that do the next thing: book, renew, save
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setAction('')}
+                  className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                  style={{
+                    borderColor: action === '' ? '#F59E0B' : 'var(--color-border)',
+                    background: 'var(--color-bg)', color: 'var(--color-text-primary)',
+                  }}>
+                  <span className="h-4 w-4 rounded-full" style={{ background: '#F59E0B' }} />
+                  Amber
+                  {action === '' && <Check size={14} style={{ color: '#F59E0B' }} />}
+                </button>
+                {ACCENTS.map((accent) => (
+                  <button key={accent.key} type="button" onClick={() => setAction(accent.key)}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                    style={{
+                      borderColor: action === accent.key ? accent.swatch : 'var(--color-border)',
+                      background: 'var(--color-bg)', color: 'var(--color-text-primary)',
+                    }}>
+                    <span className="h-4 w-4 rounded-full" style={{ background: accent.swatch }} />
+                    {accent.label}
+                    {action === accent.key && <Check size={14} style={{ color: accent.swatch }} />}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs" style={labelStyle}>
+                Pick the same colour twice for an app in one colour throughout. Every colour here is
+                checked to stay readable as text on the app's dark background.
+              </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div>
@@ -398,9 +513,36 @@ export default function Setup() {
                   </div>
                 </div>
               ))}
+              {adding.map((row, i) => (
+                <div key={i} className="grid gap-3 sm:grid-cols-[1fr_120px_110px] items-end">
+                  <div>
+                    <label className={label} style={labelStyle} htmlFor={`np-${i}`}>A new plan</label>
+                    <input id={`np-${i}`} className={input} style={inputStyle} value={row.name}
+                      placeholder="Student rate"
+                      onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))} />
+                  </div>
+                  <div>
+                    <label className={label} style={labelStyle} htmlFor={`npp-${i}`}>Price (₱)</label>
+                    <input id={`npp-${i}`} type="number" min={0} className={input} style={inputStyle}
+                      value={row.price}
+                      onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, price: e.target.value } : r)))} />
+                  </div>
+                  <div>
+                    <label className={label} style={labelStyle} htmlFor={`npd-${i}`}>—ays</label>
+                    <input id={`npd-${i}`} type="number" min={1} className={input} style={inputStyle}
+                      value={row.days} placeholder="never ends"
+                      onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, days: e.target.value } : r)))} />
+                  </div>
+                </div>
+              ))}
+              <Button variant="ghost"
+                onClick={() => setAdding([...adding, { name: '', price: '', days: '30' }])}>
+                Add another plan
+              </Button>
               <p className="text-xs" style={labelStyle}>
-                Free plans stay free at ₱0. What each plan lets a member do — classes, coaching,
-                the assistant — is on the Membership Plans page.
+                Free plans stay free at ₱0, and a plan with no number of days never expires. What
+                each plan lets a member do — classes, coaching, the assistant — is on the Membership
+                Plans page, which is also where you retire one you no longer sell.
               </p>
             </div>
           )}

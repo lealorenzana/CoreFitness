@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useGymApp } from '../../../hooks/useGymApp';
+import { pointsWord } from '../../../lib/gymApp';
 import {
   Barbell, CalendarCheck, Check, Flag, PencilSimple, Percent, Plus, Ruler, Scales, Sparkle, Trash, Trophy,
 } from '@phosphor-icons/react';
@@ -201,6 +203,7 @@ const blankDraft = {
 };
 
 export default function GoalsTab() {
+  const gymApp = useGymApp();
   const memberId = useMemberId();
   const [snap, setSnap] = useState<GoalsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -499,7 +502,7 @@ export default function GoalsTab() {
           <p style={{ fontSize: 17, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>Give your training a target</p>
           <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
             A weight to reach, a lift to hit, or a habit to build. It tracks itself from what you already log,
-            tells you if you are on pace, and earns CORE Points when you get there.
+            tells you if you are on pace, and earns {pointsWord(gymApp, true)} when you get there.
           </p>
         </Panel>
       )}
@@ -533,7 +536,7 @@ export default function GoalsTab() {
       )}
 
       <p style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-        Body, lift and habit goals complete themselves when your numbers get there, and earn CORE Points. A goal in
+        Body, lift and habit goals complete themselves when your numbers get there, and earn {pointsWord(gymApp, true)}. A goal in
         your own words is yours to tick.
       </p>
 

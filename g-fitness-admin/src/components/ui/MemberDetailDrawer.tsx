@@ -688,13 +688,33 @@ function RecordPaymentInline({
   const durationDays = plan?.duration_days ?? null;
   const changingPlan = planId !== currentPlanId;
 
-  const planPrice = plan && Number(plan.price) > 0 ? String(Number(plan.price)) : '';
+  // A free plan prefills 0, not blank. Blank parses as NaN, which the guard
+  // below reads as "nothing typed" — so the Free Trial could not be recorded at
+  // all without the desk typing a zero it had no reason to think was needed.
+  const planPrice = plan ? String(Number(plan.price)) : '';
   const amount = typedAmount ?? planPrice;
 
   const submit = async () => {
     const value = parseFloat(amount);
-    if (!Number.isFinite(value) || value <= 0) {
+    // A free plan costs ₱0, and starting someone on the Free Trial is a real
+    // membership event with a real term — so zero is a valid amount *for a
+    // plan that is free*. `value <= 0` refused exactly that, which left the
+    // desk unable to put anybody on the trial at all.
+    //
+    // Still refused for a plan that costs money: a ₱0 payment against Premium
+    // is either a typo or a month given away by accident, and the desk should
+    // say which by changing the plan rather than the amount.
+    const planIsFree = plan !== null && Number(plan.price) === 0;
+    if (!Number.isFinite(value) || value < 0) {
       showToast('Enter the amount received', 'error');
+      return;
+    }
+    if (value === 0 && !planIsFree) {
+      showToast(
+        `${plan?.name ?? 'That plan'} costs ₱${Number(plan?.price ?? 0).toLocaleString('en-PH')}. `
+        + 'Enter what was received, or change the plan.',
+        'error',
+      );
       return;
     }
     setSaving(true);

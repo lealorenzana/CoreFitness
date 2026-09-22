@@ -10,7 +10,9 @@
  * 3.5:1 on the ground and unreadable as small text, and each ramp here is
  * checked at 4.5:1 or better by scripts/accent-contrast.mjs.
  */
-export type AccentKey = 'violet' | 'indigo' | 'blue' | 'teal' | 'emerald' | 'rose' | 'orange' | 'slate';
+export type AccentKey =
+  | 'violet' | 'indigo' | 'blue' | 'sky' | 'cyan' | 'teal' | 'emerald'
+  | 'lime' | 'amber' | 'orange' | 'red' | 'rose' | 'fuchsia' | 'slate';
 
 interface Ramp {
   label: string;
@@ -34,14 +36,37 @@ export const ACCENTS: Record<AccentKey, Ramp> = {
     c200: '#fecdd3', c300: '#fda4af', c400: '#fb7185', c600: '#e11d48', c700: '#be123c', c800: '#9f1239', c900: '#4c0519' },
   orange: { label: 'Orange', base: '#EA580C', hover: '#C2410C', lift: '#F97316', deep: '#9A3412', light: '#2A1206',
     c200: '#fed7aa', c300: '#fdba74', c400: '#fb923c', c600: '#ea580c', c700: '#c2410c', c800: '#9a3412', c900: '#431407' },
+  sky: { label: 'Sky', base: '#0284C7', hover: '#0369A1', lift: '#0EA5E9', deep: '#075985', light: '#081B2A',
+    c200: '#bae6fd', c300: '#7dd3fc', c400: '#38bdf8', c600: '#0284c7', c700: '#0369a1', c800: '#075985', c900: '#082f49' },
+  cyan: { label: 'Cyan', base: '#0891B2', hover: '#0E7490', lift: '#06B6D4', deep: '#155E75', light: '#072429',
+    c200: '#a5f3fc', c300: '#67e8f9', c400: '#22d3ee', c600: '#0891b2', c700: '#0e7490', c800: '#155e75', c900: '#083344' },
+  lime: { label: 'Lime', base: '#65A30D', hover: '#4D7C0F', lift: '#84CC16', deep: '#3F6212', light: '#131F07',
+    c200: '#d9f99d', c300: '#bef264', c400: '#a3e635', c600: '#65a30d', c700: '#4d7c0f', c800: '#3f6212', c900: '#1a2e05' },
+  amber: { label: 'Amber', base: '#D97706', hover: '#B45309', lift: '#F59E0B', deep: '#92400E', light: '#231604',
+    c200: '#fde68a', c300: '#fcd34d', c400: '#fbbf24', c600: '#d97706', c700: '#b45309', c800: '#92400e', c900: '#451a03' },
+  // Red and Rose are different colours, and a gym that asks for red means red.
+  red: { label: 'Red', base: '#DC2626', hover: '#B91C1C', lift: '#EF4444', deep: '#991B1B', light: '#2A0B0B',
+    c200: '#fecaca', c300: '#fca5a5', c400: '#f87171', c600: '#dc2626', c700: '#b91c1c', c800: '#991b1b', c900: '#450a0a' },
+  fuchsia: { label: 'Fuchsia', base: '#C026D3', hover: '#A21CAF', lift: '#D946EF', deep: '#86198F', light: '#290A2C',
+    c200: '#f5d0fe', c300: '#f0abfc', c400: '#e879f9', c600: '#c026d3', c700: '#a21caf', c800: '#86198f', c900: '#4a044e' },
   slate: { label: 'Slate', base: '#475569', hover: '#334155', lift: '#64748B', deep: '#1E293B', light: '#141A22',
     c200: '#e2e8f0', c300: '#cbd5e1', c400: '#94a3b8', c600: '#475569', c700: '#334155', c800: '#1e293b', c900: '#020617' },
 };
 
 export const ACCENT_KEYS = Object.keys(ACCENTS) as AccentKey[];
 
-/** Apply a gym's accent. Called once the gym context is known, and on a switch. */
-export function applyAccent(accent: string | null | undefined): void {
+/**
+ * Apply a gym's two colours. Called once the gym is known, and on a switch.
+ *
+ * `action` is the second role — what you can do next: book, renew, save, send.
+ * It was always amber, which meant a gym that chose Rose got a red-and-yellow
+ * app rather than its own (0112). NULL keeps amber, which is what every gym
+ * had before the column existed.
+ *
+ * Both are set as CSS variables on the root, so a screen that was written
+ * against `--color-primary` or `--color-secondary` needs no change at all.
+ */
+export function applyAccent(accent: string | null | undefined, action?: string | null): void {
   const ramp = ACCENTS[(accent ?? 'violet') as AccentKey] ?? ACCENTS.violet;
   const s = document.documentElement.style;
   s.setProperty('--color-primary', ramp.base);
@@ -57,4 +82,22 @@ export function applyAccent(accent: string | null | undefined): void {
   s.setProperty('--color-primary-800', ramp.c800);
   s.setProperty('--color-primary-900', ramp.c900);
   document.documentElement.dataset.accent = ramp === ACCENTS.violet ? 'violet' : (accent as string);
+
+  // The action role. Absent leaves the stylesheet's amber untouched rather
+  // than writing it back — so a gym that never chose one is byte-identical to
+  // how it rendered before this existed.
+  if (!action) {
+    ['', '-hover', '-light', '-200', '-300', '-700'].forEach((step) =>
+      s.removeProperty(`--color-secondary${step}`));
+    delete document.documentElement.dataset.accentAction;
+    return;
+  }
+  const act = ACCENTS[action as AccentKey] ?? ACCENTS.amber;
+  s.setProperty('--color-secondary', act.base);
+  s.setProperty('--color-secondary-hover', act.hover);
+  s.setProperty('--color-secondary-light', act.light);
+  s.setProperty('--color-secondary-200', act.c200);
+  s.setProperty('--color-secondary-300', act.c300);
+  s.setProperty('--color-secondary-700', act.c700);
+  document.documentElement.dataset.accentAction = action;
 }

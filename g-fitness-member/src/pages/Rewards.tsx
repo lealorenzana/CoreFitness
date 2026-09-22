@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useGymApp } from '../hooks/useGymApp';
+import { pointsWord } from '../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
 import { CaretRight, Gift, Package, PushPin, Storefront, WarningCircle } from '@phosphor-icons/react';
 import FeatureLock from '../components/ui/FeatureLock';
@@ -33,6 +35,7 @@ import { SkeletonList } from '../components/ui/Skeleton';
  * come from the table, never a sentence typed here.
  */
 export default function Rewards() {
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const { features } = useFeatures();
   const mayRedeem = isEnabled(features, 'points_redeem');
@@ -146,7 +149,7 @@ export default function Rewards() {
 
           {/* ── Balance and target ── */}
           <Panel glow="structure">
-            <Eyebrow>CORE points</Eyebrow>
+            <Eyebrow>{pointsWord(gymApp)}</Eyebrow>
             <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
               {balance == null ? '—' : balance.toLocaleString()}
             </p>

@@ -15,5 +15,11 @@ export const ACCENTS: { key: string; label: string; swatch: string }[] = [
   { key: 'emerald', label: 'Emerald', swatch: '#059669' },
   { key: 'rose', label: 'Rose', swatch: '#E11D48' },
   { key: 'orange', label: 'Orange', swatch: '#EA580C' },
+  { key: 'sky', label: 'Sky', swatch: '#0284C7' },
+  { key: 'cyan', label: 'Cyan', swatch: '#0891B2' },
+  { key: 'lime', label: 'Lime', swatch: '#65A30D' },
+  { key: 'amber', label: 'Amber', swatch: '#D97706' },
+  { key: 'red', label: 'Red', swatch: '#DC2626' },
+  { key: 'fuchsia', label: 'Fuchsia', swatch: '#C026D3' },
   { key: 'slate', label: 'Slate', swatch: '#475569' },
 ];

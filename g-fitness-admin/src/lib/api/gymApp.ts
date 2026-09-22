@@ -38,6 +38,7 @@ export interface GymWords {
 export type JoinPolicy = 'open' | 'code' | 'closed';
 
 export interface GymApp {
+  accent_action: string | null;
   gym_id: string;
   gym_name: string;
   slug: string;
@@ -102,4 +103,24 @@ export async function setOnboardingStep(step: string): Promise<void> {
   if (error && !/schema cache|does not exist/i.test(error.message)) {
     console.warn('Could not save the setup bookmark:', error.message);
   }
+}
+
+/**
+ * The gym's two colours and its logo, written together (0112).
+ *
+ * `accentAction` is "what you can do next" — book, renew, save, send. NULL
+ * leaves it amber, which is what every gym had before the column existed.
+ *
+ * `logoUrl` distinguishes three things on purpose: `undefined` leaves the logo
+ * alone (so saving a colour never wipes it), a URL sets it, and '' clears it.
+ */
+export async function saveGymLook(look: {
+  accent: string; accentAction?: string | null; logoUrl?: string | null;
+}): Promise<void> {
+  const { error } = await supabase.rpc('save_gym_look', {
+    p_accent: look.accent,
+    p_accent_action: look.accentAction ?? null,
+    p_logo_url: look.logoUrl === undefined ? null : look.logoUrl,
+  });
+  if (error) throw new Error(error.message);
 }

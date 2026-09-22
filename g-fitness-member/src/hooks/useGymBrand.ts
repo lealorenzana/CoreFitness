@@ -19,7 +19,9 @@ export function useGymBrand(): GymContext | null {
       const c = await getGymContext();
       if (!active || !c) return;
       setCtx(c);
-      applyAccent(c.accent);
+      // Both roles (0112): a gym that chose Rose used to get a red app with
+      // amber buttons, which reads as the setting not having worked.
+      applyAccent(c.accent, c.accentAction);
     })();
     return () => { active = false; };
   }, []);

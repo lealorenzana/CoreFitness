@@ -1174,4 +1174,43 @@ check('a recorded backup is visible to the platform and nobody else', await (asy
 check('a gym cannot claim a backup happened',
   !!(await fails("select record_backup(1, 'nope')")));
 
+// ---- 0112: a gym's colour, all the way through -------------------------------------
+await as(P.adminA);
+check('a gym that never chose an action colour keeps amber, so nothing changed on paste',
+  (await one('select accent_action from my_gym_app()')).accent_action === null);
+check('an owner picks both roles, and a red gym can be red all the way', await (async () => {
+  await db.exec("select save_gym_look('red', 'red', null)");
+  const app = await one('select accent, accent_action from my_gym_app()');
+  return app.accent === 'red' && app.accent_action === 'red';
+})());
+check('the six new colours are accepted and a made-up one is refused', await (async () => {
+  for (const c of ['sky', 'cyan', 'lime', 'amber', 'red', 'fuchsia']) {
+    if (await fails("select save_gym_look('" + c + "', null, null)")) return false;
+  }
+  return !!(await fails("select save_gym_look('burnt-sienna', null, null)"));
+})());
+check('saving a colour never wipes the logo', await (async () => {
+  await db.exec("select save_gym_look('rose', 'rose', 'https://example.test/logo.png')");
+  await db.exec("select save_gym_look('teal', 'teal', null)");
+  return (await one('select logo_url from my_gym_app()')).logo_url === 'https://example.test/logo.png';
+})());
+check('and an empty string is how a logo is taken away', await (async () => {
+  await db.exec("select save_gym_look('teal', 'teal', '')");
+  return (await one('select logo_url from my_gym_app()')).logo_url === null;
+})());
+check('the front desk cannot restyle the gym', await (async () => {
+  await as(P.staffA);
+  return !!(await fails("select save_gym_look('lime', 'lime', null)"));
+})());
+check('a gym a stranger is about to join is listed in its own colours', await (async () => {
+  await as(P.outsider);
+  const row = (await db.query("select * from gym_by_slug('core-fitness')")).rows[0];
+  return row.accent === 'teal' && row.accent_action === 'teal';
+})());
+check('no gym inherits another gym colours', await (async () => {
+  await as(P.adminB);
+  const app = await one('select accent, accent_action from my_gym_app()');
+  return app.accent !== 'teal' && app.accent_action === null;
+})());
+
 finish();

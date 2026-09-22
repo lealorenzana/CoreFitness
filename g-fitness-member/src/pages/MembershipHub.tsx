@@ -1,5 +1,7 @@
 import Avatar from '../components/ui/Avatar';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGymApp } from '../hooks/useGymApp';
+import { pointsWord } from '../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, EnvelopeSimple, Gear, Gift, Key,
@@ -50,6 +52,8 @@ const shortDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', d
  * because the countdown is untrue while frozen (0057).
  */
 export default function MembershipHub() {
+  // The gym's own word for its points (0110). Null reads as "Points".
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const cached = readCache<Hub>(CACHE_KEY);
   const [hub, setHub] = useState<Hub | null>(cached ?? null);
@@ -240,10 +244,10 @@ export default function MembershipHub() {
       )}
 
       {/* ── Points ── */}
-      <Panel onClick={() => navigate('/member/rewards')} ariaLabel="CORE points — open rewards">
+      <Panel onClick={() => navigate('/member/rewards')} ariaLabel={`${pointsWord(gymApp)} — open rewards`}>
         <div className="flex items-center justify-between" style={{ gap: 12 }}>
           <div>
-            <Eyebrow>CORE points</Eyebrow>
+            <Eyebrow>{pointsWord(gymApp)}</Eyebrow>
             <p style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginTop: 6, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
               {balance ?? '—'}
             </p>
