@@ -8,7 +8,7 @@ monorepo (run `npm` from inside each): **`g-fitness-admin/`** (`:5174`, Vercel) 
 front desk's dashboard; **`g-fitness-member/`** (`:5173`, PWA → Android TWA) is the phone app and hosts
 the **trainer** role too; **`corefitness-platform/`** (`:5175`, **localhost only**) is the platform
 owner's; **`corefitness-site/`** (`:5176`) is the public website. The folder names are pre-rename
-legacy — deliberately left alone. `supabase/` holds 110 migrations, RLS policies and six Edge
+legacy — deliberately left alone. `supabase/` holds 111 migrations, RLS policies and seven Edge
 Functions — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Roadmap
-**0001–0107 are live; 0108–0110 await pasting** — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. **A new gym gets Gym #1's rules and none of its identity**: `approve-gym` makes its owner (a temporary password, shown once — nothing here sends mail), who sets the gym up at `/admin/setup`. **The platform sells plans to gyms exactly as a gym sells them to members** — `platform_plans`/`gym_plan_allows()` mirror `membership_plans`/`plan_allows()`, and a plan limit is a trigger on `gym_roles`, not a label. **Three gates, and they differ on screen**: the gym's plan and the gym's own `gym_modules` both **hide** (a member can never buy either), the member's plan **locks and explains** (0049). — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
+**0001–0111 are all live** (verified by their own reports, 2026-09-22) — tenancy: [TENANCY](docs/TENANCY.md). Four apps: member, admin (Vercel), platform (localhost), site. **A new gym gets Gym #1's rules and none of its identity**: `approve-gym` makes its owner (a temporary password, shown once — nothing here sends mail), who sets the gym up at `/admin/setup`. **The platform sells plans to gyms exactly as a gym sells them to members** — `platform_plans`/`gym_plan_allows()` mirror `membership_plans`/`plan_allows()`, and a plan limit is a trigger on `gym_roles`, not a label. **Three gates, and they differ on screen**: the gym's plan and the gym's own `gym_modules` both **hide** (a member can never buy either), the member's plan **locks and explains** (0049). **A gym's stored `status` is only the platform's decision** — everything derivable (no owner, not set up, on trial, overdue) is derived once by `gym_state()` (0111), never a second column. **An invitation is addressed**: accepting needs the email it was sent to, and `gym_invitations` has RLS on with **no permissive policy** because a token is a credential. — admin **System** lists what is not live. `lib/memberDataExport.ts` is identical in both apps. Verify with `python scripts/probe-migrations.py` (REST, no DB credentials)
 **rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and
 never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail,
 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
