@@ -133,6 +133,16 @@ async (page) => {
     gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
       ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
     my_features: FEATURES, plan_allows: true, member_points_balance: 345,
+    // 0110: a gym names its own points, and 0112 adds its second colour. This
+    // fixture's gym calls them "Iron Points", so the assertions below prove the
+    // gym's word reaches the screen — the whole point of the feature. They used
+    // to assert the hardcoded "CORE points", which passed for the wrong reason.
+    my_gym_app: [{
+      gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
+      short_name: null, logo_url: null, accent: 'violet', accent_action: null,
+      points_name: 'Iron Points', points_name_short: 'iron points',
+      welcome_message: null, join_policy: 'open', join_code: null, modules: {},
+    }],
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
     member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
@@ -228,7 +238,7 @@ async (page) => {
   await go('/member/rewards');
   await shot('01-rewards');
   let text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
-  out.push('balance/pace: ' + (/CORE points \d+ \+\d+ this month[^|]{0,40}/i.exec(text) || ['MISSING'])[0]);
+  out.push('balance/pace: ' + (/Iron Points \d+ \+\d+ this month[^|]{0,40}/i.exec(text) || ['MISSING'])[0]);
   out.push('ready banner: ' + (/Shaker bottle is ready/.exec(text) ? 'shown' : 'MISSING'));
   out.push('per-rule: ' + (/\d+× this month · \+\d+/.exec(text) || ['MISSING'])[0]);
   await page.getByRole('button', { name: /Gym towel/ }).first().click();

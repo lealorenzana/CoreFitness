@@ -60,3 +60,26 @@ npx claude-code-templates@latest --skill web-development/react-best-practices
 npx claude-code-templates@latest --skill creative-design/canvas-design
 npx claude-code-templates@latest --skill business-marketing/seo-optimizer
 ```
+
+## Running the fixture checks without CI
+
+They need `playwright` resolvable and both dev servers up. Neither app carries
+it, so install it wherever you are running from — the same arrangement as the
+SQL harness:
+
+```bash
+mkdir -p ~/uicheck && cd ~/uicheck && npm init -y && npm install playwright
+```
+
+Then, with `npm run dev` going in `g-fitness-member` (:5173) and
+`g-fitness-admin` (:5174):
+
+```bash
+node <path-to-repo>/scripts/ci/run-ui-checks.mjs          # all 13
+node <path-to-repo>/scripts/ci/run-ui-checks.mjs account  # one by name
+```
+
+Worth knowing: this found a real regression that had been sitting unnoticed —
+`account-check.js` asserted the literal string "CORE points", so it kept
+passing for the wrong reason until 0110 let a gym rename them. Running it
+locally is the fastest way to know, and does not wait on a push.
