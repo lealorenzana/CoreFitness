@@ -52,6 +52,11 @@ types the real ones use, then applies the migration file **verbatim from
 `supabase/migrations/`**. Nothing is retyped, so a script cannot drift from the
 migration it is testing.
 
+- **Reproduce Supabase's *default privileges*, not a sweep of grants.** `live-db.mjs` used to
+  re-run `grant all on all tables ... to anon` after the last migration, which undid every
+  `revoke ... from anon` any migration had written: a revoke was untestable and `anon` was more
+  privileged in the harness than in production. It now sets `alter default privileges` before the
+  migrations, which is what Supabase uses and what grants at creation, so a later revoke survives.
 - **Reproduce Supabase's roles first.** `create role anon; authenticated;
   service_role;` — nearly every migration here revokes from `anon`, and a
   missing role fails the whole file with an error that looks nothing like the

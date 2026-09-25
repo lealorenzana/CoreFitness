@@ -102,11 +102,37 @@ const GRANTS = `
   grant all on all sequences in schema public to anon, authenticated;
   grant execute on all functions in schema public to authenticated;`;
 
+/**
+ * Supabase's project defaults, as defaults rather than as a sweep.
+ *
+ * The blanket GRANTS above used to run a second time after the last migration,
+ * "for everything created after the seeds" — and that quietly undid every
+ * `revoke ... from anon` any migration had written. This file already warns
+ * about exactly that hazard for functions, and then did it for tables: a
+ * revoke was untestable, and anon looked more privileged here than in
+ * production.
+ *
+ * `alter default privileges` is what Supabase actually uses, and it has the
+ * property the sweep lacks: the grant lands when an object is *created*, so a
+ * later revoke in a later migration survives. Set once, before the migrations,
+ * and the final sweep is gone.
+ *
+ * Execute still goes to `authenticated` only. What anon may call, its own
+ * migration grants.
+ */
+const DEFAULTS = `
+  alter default privileges in schema public grant all on tables to anon, authenticated;
+  alter default privileges in schema public grant all on sequences to anon, authenticated;
+  alter default privileges in schema public grant execute on functions to authenticated;`;
+
 /** Every migration, Supabase's grants, the real admin and the named seeds. Throws on the first failure. */
 export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
   const MIG = `${repo}/supabase/migrations`;
   const db = await PGlite.create();
   await db.exec(STUBS);
+  // Before any migration runs, so every table and view a migration creates is
+  // granted at creation and a later revoke is not swept away afterwards.
+  await db.exec(DEFAULTS);
   const files = readdirSync(MIG).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   let seeded = false;
   const seed = async () => {
@@ -131,7 +157,9 @@ export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
    ${describe(e)}`); }
   }
   if (!seeded) await seed();
-  await db.exec(GRANTS);   // again, for everything created after the seeds
+  // No second sweep here. `DEFAULTS` above already granted everything created
+  // after the seeds, at the moment it was created, and re-granting now would
+  // undo any `revoke ... from anon` a migration wrote (0115's, for one).
   log(`applied ${files.length}/${files.length} migrations`);
   return db;
 }

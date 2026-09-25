@@ -292,6 +292,61 @@ check("trainer_busy_slots names only my gym's coaches (their sessions anywhere: 
   !busy.rows.some((r) => r.trainer_id === P.trainerB));
 check('public_trainers lists Gym A coaches and no Gym B coach',
   !(await db.query(`select id from public_trainers`)).rows.some((r) => r.id === P.trainerB));
+
+// 0115: every view is either invoker, or a definer view with a barrier.
+//
+// Supabase's advisor flags all seven definer views as CRITICAL. They are not a
+// leak — each filters to current_gym_id() in its own body, which the loop above
+// asserts — but without security_barrier a caller's WHERE clause can be pushed
+// below that filter and evaluated against rows it was going to remove.
+//
+// Asserted as a *rule over every view* rather than as seven names, because the
+// failure to catch is the eighth view somebody adds next year. 0099 set the
+// barrier on trainer_ratings_anon and on none of its six neighbours, and
+// nothing noticed for sixteen migrations.
+check('every definer view has a security barrier', await (async () => {
+  const { rows } = await db.query('select * from views_without_protection()');
+  if (rows.length) viewLeaks.push(rows.map((r) => r.view_name).join(', '));
+  return rows.length === 0;
+})(), viewLeaks.join(' | '));
+
+// A signed-out stranger cannot reach a view that bypasses RLS by design.
+//
+// All seven were readable by `anon` until 0115: every `grant select` said
+// `to authenticated`, and Supabase's defaults had already granted anon at
+// creation. It was harmless — `current_gym_id()` is NULL with no session, so
+// they returned nothing — but that one function was the whole defence.
+//
+// This check could not exist before today: lib/live-db.mjs re-ran a blanket
+// `grant all ... to anon` after the last migration, so every revoke in every
+// migration was swept away and anon looked more privileged here than in
+// production. Default privileges now do that job, at creation time.
+check('no definer view is readable by a signed-out stranger', await (async () => {
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false); set role anon;`);
+  const reachable = [];
+  for (const v of ['class_availability', 'public_trainers', 'public_trainer_credentials',
+    'trainer_busy_slots', 'trainer_rating_summary', 'trainer_evaluation_summary',
+    'trainer_ratings_anon']) {
+    // Reaching it at all is the failure, not what it returns: permission is the
+    // boundary, and "it happens to be empty" is not one.
+    if (!(await fails(`select 1 from ${v} limit 1`))) reachable.push(v);
+  }
+  await as(P.memberA);
+  return reachable.length === 0;
+})());
+
+// And the reason they cannot simply be flipped, kept as an executable fact
+// rather than a comment: as invoker, class_availability still returns one row
+// per class and counts zero bookings. A check that counted rows would call
+// that safe and ship a booking screen saying every class is empty.
+check('a definer view is doing work the caller could not do alone', await (async () => {
+  const seen = await one('select coalesce(sum(booked_count), 0)::int as n from class_availability');
+  // Every booking row RLS lets this member read. `auth.uid()` is not callable
+  // here — the test role has no rights on the auth schema — and it is not
+  // needed: the point is that the view counts more than the caller can see.
+  const own = await one('select count(*)::int as n from bookings');
+  return seen.n > own.n;
+})());
 // Suspended / overdue: read-only.
 const setGymB = async (sql) => { await asOwner(); await db.exec(`update gyms set ${sql} where id = '${GYM_B}'`); await as(P.adminB); };
 await setGymB(`status = 'suspended'`);

@@ -256,6 +256,61 @@ the form, and the page has a honeypot field for bots. Its prices live in
 `corefitness-site/src/pricing.ts`; a tier with no number says "Talk to us"
 rather than inventing one.
 
+### The seven definer views, and Supabase's advisor (0115)
+
+Supabase's Security Advisor flags seven views as **CRITICAL "Security Definer
+View"**. Expect it, and know the answer, because a panel can open that page.
+
+A view without `security_invoker` reads as its owner and skips RLS, which on a
+multi-tenant database is a real danger. These seven are not it: each filters to
+the current gym **in its own body** (`where gym_id = current_gym_id()`, or for
+`trainer_busy_slots` a trainer_id drawn from this gym's `gym_roles`), and with
+no session `current_gym_id()` is NULL, so `gym_id = NULL` is NULL and the view
+returns nothing. They fail closed.
+
+**They cannot simply be flipped**, and that was measured rather than argued D
+each was flipped in pglite and re-read as a seeded member of Gym A:
+
+| view | as definer | as invoker |
+|---|---|---|
+| `class_availability` | 72 rows / 308 bookings | 72 rows / **0** |
+| `public_trainers` | 12 rows | 0 |
+| `public_trainer_credentials` | 23 rows | 0 |
+| `trainer_busy_slots` | 173 rows | 0 |
+| `trainer_rating_summary` | 12 rows / 148 ratings | 12 rows / **0** |
+| `trainer_evaluation_summary` | 24 rows / 158 ratings | 0 |
+| `trainer_ratings_anon` | 158 rows | 0 |
+
+All seven are projections or aggregates over rows the caller may not read one
+by one — a member may know a class has 18 of 20 places taken without reading
+the eighteen bookings. That is the legitimate use of a definer view.
+**`class_availability` is the one to remember**: it returns 72 rows either way
+and every number inside goes to zero, so a check counting *rows* would have
+called it safe and shipped a booking screen saying every class was empty.
+
+What was actually missing, and what 0115 fixes, is two things beside the
+finding:
+
+* **`security_barrier`.** Without it Postgres may push a caller's WHERE clause
+  *below* the view's own gym filter. The tell that this was an oversight is
+  that 0099 set the barrier on `trainer_ratings_anon` and on none of its six
+  neighbours.
+* **`anon` could read all seven.** Every `grant select` written for them said
+  `to authenticated`; Supabase's project defaults had granted anon at creation
+  anyway, so reading the *grants* rather than the grant statements is what
+  found it. Harmless while `current_gym_id()` is NULL for a stranger — and
+  defence one function deep is not defence.
+
+`views_without_protection()` is the rule rather than a comment, and
+`tenancy-isolation.mjs` asserts it is empty, that no definer view is reachable
+by anon, and that `class_availability` still counts more than its caller can
+see. The anon half **could not be tested before 0115**: `lib/live-db.mjs`
+re-ran a blanket `grant all ... to anon` after the last migration, so every
+`revoke ... from anon` in every migration was swept away and anon looked more
+privileged in the harness than in production. It now uses `alter default
+privileges`, which is what Supabase actually uses and grants at creation, so a
+later revoke survives.
+
 ## Pasting 0097–0103
 
 1. Run the backup by hand first: GitHub → **Actions → Weekly database backup → Run workflow**, and
