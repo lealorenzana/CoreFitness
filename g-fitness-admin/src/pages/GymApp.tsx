@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, Lock, RefreshCw } from 'lucide-react';
+import { Check, Copy, LifeBuoy, Lock, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import {
-  getGymApp, getGymModules, saveGymWords, setGymModule, setJoinPolicy,
-  type GymApp as App, type GymModule, type JoinPolicy,
+  getGymApp, getGymModules, getSupportGrant, grantSupportAccess, revokeSupportAccess,
+  saveGymWords, setGymModule, setJoinPolicy,
+  type GymApp as App, type GymModule, type JoinPolicy, type SupportGrant,
 } from '../lib/api/gymApp';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -30,11 +31,19 @@ export default function GymApp() {
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** A live invitation to Core Fitness to look at this gym (0113). */
+  const [support, setSupport] = useState<SupportGrant | null>(null);
+  /** The reason box, open. window.prompt() does nothing in an embedded browser
+      — it throws "prompt() is not supported" and the button looks dead, which
+      is the same bug the platform app already had and fixed. */
+  const [asking, setAsking] = useState<number | null>(null);
+  const [why, setWhy] = useState('');
 
   const load = useCallback(async () => {
-    const [a, m] = await Promise.all([getGymApp(), getGymModules()]);
+    const [a, m, sup] = await Promise.all([getGymApp(), getGymModules(), getSupportGrant()]);
     setApp(a);
     setModules(m);
+    setSupport(sup);
     if (a) {
       setWords({
         points_name: a.points_name,
@@ -206,6 +215,88 @@ export default function GymApp() {
             );
           })}
         </div>
+      </div>
+
+      {/* ---- letting us look -------------------------------------------------- */}
+      <div className={card} style={cardStyle}>
+        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          Support access
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          If something here is wrong and we cannot work it out from a description, you can let Core
+          Fitness look at your gym for a few hours. We can only ever look — the database refuses us
+          every change while your access is open — and it ends by itself.
+        </p>
+
+        {support ? (
+          <div className="mt-4 rounded-lg border p-3.5"
+            style={{ borderColor: 'var(--color-primary)', background: 'var(--color-bg)' }}>
+            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+              Open for another {Number(support.hours_left).toFixed(1)} hours
+            </p>
+            <p className="mt-1 text-xs" style={labelStyle}>
+              {support.reason ? `You wrote: "${support.reason}". ` : ''}
+              {support.first_used_at
+                ? 'We have looked at least once, and every visit is in your activity log.'
+                : 'Nobody has looked yet. Every visit is written into your activity log.'}
+            </p>
+            <Button variant="ghost" className="mt-3" onClick={() => void (async () => {
+              try { await revokeSupportAccess(); await load(); showToast('Support access withdrawn.', 'success'); }
+              catch (e) { showToast(e instanceof Error ? e.message : 'That did not work', 'error'); }
+            })()}>
+              Withdraw it now
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {[1, 4, 24].map((h) => (
+                <Button key={h} variant="ghost" onClick={() => { setAsking(h); setWhy(''); }}>
+                  <LifeBuoy size={14} className="mr-1.5" />
+                  {h === 24 ? 'For a day' : h === 1 ? 'For an hour' : `For ${h} hours`}
+                </Button>
+              ))}
+            </div>
+
+            {asking !== null && (
+              <form
+                className="mt-3 rounded-lg border p-3.5"
+                style={{ borderColor: 'var(--color-primary)', background: 'var(--color-bg)' }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void (async () => {
+                    try {
+                      await grantSupportAccess(asking, why.trim() || null);
+                      setAsking(null);
+                      await load();
+                    } catch (err) {
+                      showToast(err instanceof Error ? err.message : 'That did not work', 'error');
+                    }
+                  })();
+                }}
+              >
+                <label className={label} style={labelStyle} htmlFor="sup-why">
+                  What should we look at?
+                </label>
+                <input id="sup-why" className={input} style={inputStyle} value={why} autoFocus
+                  maxLength={200} placeholder="The members page shows nobody since Tuesday"
+                  onChange={(e) => setWhy(e.target.value)} />
+                <p className="mt-2 text-xs" style={labelStyle}>
+                  This is written into your own activity log, next to every visit we make.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button type="submit">
+                    Open for {asking === 24 ? 'a day' : asking === 1 ? 'an hour' : `${asking} hours`}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setAsking(null)}>Cancel</Button>
+                </div>
+              </form>
+            )}
+            <p className="mt-2 text-xs" style={labelStyle}>
+              Nobody at Core Fitness can give themselves this. It only exists while you offer it.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ---- how they join --------------------------------------------------- */}

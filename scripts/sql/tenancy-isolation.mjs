@@ -139,7 +139,13 @@ const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).r
 // and the checks further down assert no gym can reach it.
 const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
-  'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features'];
+  'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features',
+  // 0113. Both carry a gym_id and neither is a gym table, for the same reason
+  // gym_payments is not: they are the platform's side of the relationship. The
+  // outbox holds messages this service sent (whose bodies can contain a
+  // credential), and a support grant is a gym lending the platform a key.
+  // Both are RLS-on with no policy at all; every read is a definer function.
+  'email_outbox', 'support_grants'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
@@ -1211,6 +1217,140 @@ check('no gym inherits another gym colours', await (async () => {
   await as(P.adminB);
   const app = await one('select accent, accent_action from my_gym_app()');
   return app.accent !== 'teal' && app.accent_action === null;
+})());
+
+// ---- 0113: email, and support access the gym controls -------------------------------
+// The support half is the one that could undo everything else in this file, so
+// it is asserted from every angle: only the gym grants it, it cannot be taken,
+// it expires, it can be withdrawn, and while it is in use NOTHING can be
+// written to the gym it points at.
+await as(PLATFORM);
+check('the platform cannot let itself into a gym', await (async () => {
+  // There is deliberately no platform-side grant function. The only way in is
+  // a gym offering, so entering without an offer must fail.
+  return !!(await fails("select enter_support_session('" + GYM_B + "')"));
+})());
+check('and setting the session flag by hand grants nothing', await (async () => {
+  await db.exec("select set_config('cf.support_gym', '" + GYM_B + "', false)");
+  const got = await one('select support_session_gym() as g');
+  await db.exec("select set_config('cf.support_gym', '', false)");
+  return got.g === null;
+})());
+
+await as(P.staffB);
+check('the front desk cannot grant it either',
+  !!(await fails('select * from grant_support_access(4, null)')));
+
+await as(P.adminB);
+const grant = await one("select * from grant_support_access(4, 'Members page looks wrong')");
+check('the gym owner grants it, with an expiry', !!grant.grant_id && !!grant.grant_expires_at);
+check('the gym can see its own live grant and who gave it',
+  (await one('select reason, hours_left from my_support_grant()')).reason === 'Members page looks wrong');
+check('granting twice leaves one window open, not two', await (async () => {
+  await db.exec("select * from grant_support_access(2, 'again')");
+  await asOwner();
+  const live = await one("select count(*)::int as n from support_grants where gym_id = '" + GYM_B + "' and revoked_at is null and expires_at > now()");
+  await as(P.adminB);
+  return live.n === 1;
+})());
+check('an absurd window is refused',
+  !!(await fails('select * from grant_support_access(99, null)'))
+  && !!(await fails('select * from grant_support_access(0, null)')));
+
+await as(PLATFORM);
+check('the platform sees which gyms have invited it in',
+  (await db.query('select * from platform_support_grants()')).rows.some((r) => r.gym_id === GYM_B));
+check('entering is logged where the GYM can read it, not only where we can', await (async () => {
+  await db.exec("select enter_support_session('" + GYM_B + "')");
+  await asOwner();
+  const seen = await one("select count(*)::int as n from activity_log where gym_id = '" + GYM_B + "' and action = 'gym.support_entered'");
+  await as(PLATFORM);
+  await db.exec("select enter_support_session('" + GYM_B + "')");
+  return seen.n >= 1;
+})());
+check('inside the session the platform reads that gym, and only that gym',
+  (await one('select current_gym_id() as g')).g === GYM_B
+  && (await one('select count(*)::int as n from member_profiles')).n >= 0);
+
+// The part that has to be true, or none of the rest matters.
+check('and can write NOTHING to it — the same rule that stops a suspended gym',
+  (await one('select gym_writable() as w')).w === false);
+check('every write to that gym is refused while support is looking', await (async () => {
+  const refusals = await Promise.all([
+    fails("insert into events (title, starts_at, gym_id) values ('Support wrote this', now(), '" + GYM_B + "')"),
+    fails("update member_profiles set address = 'changed by support' where gym_id = '" + GYM_B + "'"),
+    fails("delete from notifications where gym_id = '" + GYM_B + "'"),
+    fails("insert into point_rules (gym_id, key, label, points) values ('" + GYM_B + "', 'sneak', 'Sneak', 999)"),
+  ]);
+  // An RLS refusal on UPDATE/DELETE is zero rows rather than an error
+  // (CLAUDE.md), so the honest assertion is "nothing changed", not "it threw".
+  const changed = await one("select count(*)::int as n from member_profiles where gym_id = '" + GYM_B + "' and address = 'changed by support'");
+  const wrote = await one("select count(*)::int as n from point_rules where gym_id = '" + GYM_B + "' and key = 'sneak'");
+  return !!refusals[0] && !!refusals[3] && changed.n === 0 && wrote.n === 0;
+})());
+
+check('leaving puts it back to seeing no gym at all', await (async () => {
+  await db.exec('select leave_support_session()');
+  return (await one('select current_gym_id() as g')).g === null;
+})());
+check('a withdrawn grant stops working immediately', await (async () => {
+  await as(P.adminB);
+  await db.exec('select revoke_support_access()');
+  await as(PLATFORM);
+  return !!(await fails("select enter_support_session('" + GYM_B + "')"));
+})());
+check('an expired grant stops working too', await (async () => {
+  await as(P.adminB);
+  await db.exec("select * from grant_support_access(1, 'about to expire')");
+  await asOwner();
+  // created_at moves with it: the table refuses a window that ends before it
+  // starts, which is the constraint doing its job rather than a test problem.
+  await db.exec("update support_grants set created_at = now() - interval '2 hours'," +
+    " expires_at = now() - interval '1 minute'" +
+    " where gym_id = '" + GYM_B + "' and revoked_at is null");
+  await as(PLATFORM);
+  return !!(await fails("select enter_support_session('" + GYM_B + "')"))
+    && (await db.query('select * from platform_support_grants()')).rows.length === 0;
+})());
+check('a gym cannot see whether another gym granted access', await (async () => {
+  await as(P.adminA);
+  return (await db.query('select * from my_support_grant()')).rows.length === 0
+    && (await db.query('select * from platform_support_grants()')).rows.length === 0;
+})());
+
+// ---- email --------------------------------------------------------------------------
+await as(PLATFORM);
+const mail = (await one("select record_email('owner@example.test', 'Your sign-in', 'body here', 'owner_credentials', '" + GYM_B + "', 'An Owner') as id")).id;
+check('the platform records what it is about to send', !!mail);
+check('and settles it with what actually happened', await (async () => {
+  await db.exec("select settle_email('" + mail + "', 'not_configured', 'No provider set')");
+  const row = await one("select status, error from platform_email_log(30) where id = '" + mail + "'");
+  return row.status === 'not_configured' && /No provider/.test(row.error);
+})());
+check('the log says who was told what, and never the body itself', await (async () => {
+  const row = await one("select * from platform_email_log(30) where id = '" + mail + "'");
+  return row.to_email === 'owner@example.test' && row.kind === 'owner_credentials'
+    && !('body' in row);
+})());
+check('a gym may send its own invitations and read its own sending', await (async () => {
+  await as(P.adminA);
+  const id = (await one("select record_email('newbie@example.test', 'Join us', 'link', 'invitation', '" + GYM_A + "', null) as id")).id;
+  return !!id && (await db.query('select * from my_gym_email_log(30)')).rows.some((r) => r.id === id);
+})());
+check('but not in another gym name', await (async () => {
+  await as(P.adminA);
+  return !!(await fails("select record_email('x@example.test', 'Hi', 'b', 'invitation', '" + GYM_B + "', null)"));
+})());
+check('and cannot read another gym mail, or the platform own', await (async () => {
+  await as(P.adminA);
+  return !(await db.query('select * from my_gym_email_log(30)')).rows.some((r) => r.to_email === 'owner@example.test')
+    && (await db.query('select * from platform_email_log(30)')).rows.length === 0;
+})());
+check('a member sends nothing and reads nothing', await (async () => {
+  await as(P.memberA);
+  return !!(await fails("select record_email('x@example.test', 'Hi', 'b', 'invitation', '" + GYM_A + "', null)"))
+    && (await one('select count(*)::int as n from email_outbox')).n === 0
+    && (await db.query('select * from my_gym_email_log(30)')).rows.length === 0;
 })());
 
 finish();

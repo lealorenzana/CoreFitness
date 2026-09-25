@@ -124,3 +124,42 @@ export async function saveGymLook(look: {
   });
   if (error) throw new Error(error.message);
 }
+
+// ---- letting Core Fitness look, on your terms (0113) --------------------------------
+
+export interface SupportGrant {
+  id: string;
+  reason: string | null;
+  expires_at: string;
+  /** Stamped the first time support actually looked. NULL = offered, not used. */
+  first_used_at: string | null;
+  hours_left: string;
+  granted_by_name: string | null;
+}
+
+/** The gym's own live grant, or null when it has not offered one. */
+export async function getSupportGrant(): Promise<SupportGrant | null> {
+  const { data, error } = await supabase.rpc('my_support_grant');
+  if (error || !Array.isArray(data)) return null;
+  return (data[0] as SupportGrant) ?? null;
+}
+
+/**
+ * Let Core Fitness look at this gym for a while.
+ *
+ * Read-only for the whole window, and not by convention: `gym_writable()` is
+ * false inside a support session, and all fifty-odd gym tables gate their
+ * writes on it (0099). Revocable at any moment, and every visit is written
+ * into this gym's own activity log.
+ */
+export async function grantSupportAccess(hours: number, reason: string | null): Promise<void> {
+  const { error } = await supabase.rpc('grant_support_access', {
+    p_hours: hours, p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function revokeSupportAccess(): Promise<void> {
+  const { error } = await supabase.rpc('revoke_support_access');
+  if (error) throw new Error(error.message);
+}

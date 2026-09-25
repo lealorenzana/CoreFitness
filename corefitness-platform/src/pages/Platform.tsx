@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  addAdmin, explain, getOverview, lastBackup, listAdmins, listCrashes, listEvents, removeAdmin,
-  resolveCrashes,
+  addAdmin, enterSupport, explain, getOverview, lastBackup, leaveSupport, listAdmins,
+  listCrashes, listEmails, listEvents, listSupportGrants, removeAdmin, resolveCrashes,
   type Backup, type CrashReport, type Overview, type PlatformAdmin, type PlatformEvent,
+  type SentEmail, type SupportGrant,
 } from '../lib/platform';
 
 const stamp = (iso: string) =>
@@ -30,6 +31,9 @@ export default function Platform() {
   const [error, setError] = useState<string | null>(null);
   const [addingAdmin, setAddingAdmin] = useState('');
   const [backup, setBackup] = useState<Backup | null | undefined>(undefined);
+  const [grants, setGrants] = useState<SupportGrant[]>([]);
+  const [emails, setEmails] = useState<SentEmail[]>([]);
+  const [inside, setInside] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +58,15 @@ export default function Platform() {
   }, [showResolved]);
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+
+  // 0113, in its own effect: on a database where it is not pasted these two
+  // simply stay empty and the rest of the screen is untouched.
+  useEffect(() => {
+    void (async () => {
+      try { setGrants(await listSupportGrants()); } catch { setGrants([]); }
+      try { setEmails(await listEmails(30)); } catch { setEmails([]); }
+    })();
+  }, []);
 
   // One line per distinct message: fifty copies of one broken screen is one
   // problem, and a list of fifty hides the other two. Resolving works the same
@@ -224,6 +237,74 @@ export default function Platform() {
                 ? 'It runs weekly, so more than eight days is a run that did not happen. Check '
                   + 'Actions → Weekly database backup on GitHub.'
                 : backup.summary}
+          </div>
+        </div>
+      )}
+
+      {grants.length > 0 && (
+        <div className="card notice">
+          <div className="name">
+            {grants.length === 1 ? 'A gym has asked for help' : `${grants.length} gyms have asked for help`}
+          </div>
+          <div className="meta">
+            They granted this themselves and can withdraw it at any moment. You can look and not
+            touch: the database refuses every write while you are inside, and the visit is written
+            into that gym's own activity log where its owner reads it.
+          </div>
+          <div style={{ marginTop: 10 }}>
+            {grants.map((g) => (
+              <div className="row log" key={g.id}>
+                <span className="grow">
+                  <strong style={{ color: 'var(--text)' }}>{g.gym_name}</strong>
+                  {g.reason ? ` — "${g.reason}"` : ''}
+                  <br />
+                  until {stamp(g.expires_at)}
+                  {g.first_used_at ? ' — already visited' : ' — not looked at yet'}
+                </span>
+                <button className="btn" onClick={() => void (async () => {
+                  try {
+                    const name = await enterSupport(g.gym_id);
+                    setInside(name ?? g.gym_name);
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Could not enter');
+                  }
+                })()}>Look</button>
+              </div>
+            ))}
+          </div>
+          {inside && (
+            <div className="meta" style={{ marginTop: 10, color: 'var(--warn)' }}>
+              You are looking at <strong>{inside}</strong>. Nothing you do can change it.{' '}
+              <button className="btn ghost" style={{ marginLeft: 8 }}
+                onClick={() => void (async () => { await leaveSupport(); setInside(null); })()}>
+                Stop looking
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {emails.length > 0 && (
+        <div className="card">
+          <div className="name">Mail, last 30 days</div>
+          <div className="meta">
+            Who was told what, and whether it arrived. Never the message itself — an invitation or a
+            temporary password lives in there, and it was shown once already.
+          </div>
+          <div style={{ marginTop: 10 }}>
+            {emails.slice(0, 25).map((e) => (
+              <div className="log" key={e.id}>
+                <strong style={{ color: 'var(--text)' }}>{e.subject}</strong>
+                <br />
+                {e.to_email}{e.gym_name ? ` — ${e.gym_name}` : ''} — {e.kind.replace(/_/g, ' ')} —{' '}
+                <span style={{ color: e.status === 'sent' ? 'var(--text-2)' : 'var(--warn)' }}>
+                  {e.status === 'sent' ? `sent ${stamp(e.sent_at!)}`
+                    : e.status === 'not_configured' ? 'no mail provider set up — handed over by hand'
+                    : e.status === 'failed' ? `failed: ${e.error ?? 'no reason given'}`
+                    : 'queued'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

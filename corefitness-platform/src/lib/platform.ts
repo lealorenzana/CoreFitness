@@ -403,3 +403,60 @@ export const lastBackup = async (): Promise<Backup | null> => {
   const rows = await call<Backup[]>('last_backup');
   return rows?.[0] ?? null;
 };
+
+// ---- support access a gym granted (0113) -------------------------------------------
+
+export interface SupportGrant {
+  id: string;
+  gym_id: string;
+  gym_name: string;
+  reason: string | null;
+  expires_at: string;
+  first_used_at: string | null;
+}
+
+/** The gyms that have invited us in right now. Never any we let ourselves into. */
+export const listSupportGrants = () => call<SupportGrant[]>('platform_support_grants');
+
+/**
+ * Look at a gym that granted access. Read-only for the whole session — the
+ * database refuses every write while it is in use — and the visit is written
+ * into that gym's own log, where its owner can read it.
+ */
+export const enterSupport = (gym: string) => call<string>('enter_support_session', { p_gym: gym });
+export const leaveSupport = () => call<void>('leave_support_session');
+
+export interface SentEmail {
+  id: string; gym_id: string | null; gym_name: string | null;
+  to_email: string; to_name: string | null; subject: string; kind: string;
+  status: 'queued' | 'sent' | 'failed' | 'not_configured';
+  error: string | null; sent_at: string | null; created_at: string;
+}
+
+/** Who was told what, and whether it arrived. Never the body — it can hold a credential. */
+export const listEmails = (days = 30) => call<SentEmail[]>('platform_email_log', { p_days: days });
+
+/**
+ * Send one message. Records it first and always, then tries to deliver: with no
+ * provider configured the reply says `configured: false` and the screen keeps
+ * offering the copy-paste, because nothing here claims a mail went out that did not.
+ */
+export async function sendEmail(m: {
+  to: string; toName?: string | null; subject: string; body: string;
+  kind: 'owner_credentials' | 'password_reset' | 'invitation'
+      | 'application_approved' | 'application_rejected' | 'test';
+  gymId?: string | null;
+}): Promise<{ id: string; configured: boolean; status: string; error?: string; message?: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('You are signed out. Sign in again and retry.');
+
+  const { data, error } = await supabase.functions.invoke('send-email', {
+    body: m,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? error.message);
+  }
+  return data as { id: string; configured: boolean; status: string };
+}
