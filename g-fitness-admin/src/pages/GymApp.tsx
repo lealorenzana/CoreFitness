@@ -1,24 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, LifeBuoy, Lock, RefreshCw } from 'lucide-react';
+import { Check, Copy, LifeBuoy, Link2, Lock, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import {
   getGymApp, getGymModules, getSupportGrant, grantSupportAccess, revokeSupportAccess,
-  saveGymWords, setGymModule, setJoinPolicy,
-  type GymApp as App, type GymModule, type JoinPolicy, type SupportGrant,
+  saveGymLook, saveGymVocabulary, saveGymWords, setGymModule, setGymSlug, setJoinPolicy,
+  type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy,
+  type SupportGrant,
 } from '../lib/api/gymApp';
+import { ACCENTS } from '../lib/accents';
+import { uploadMedia } from '../lib/api/media';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
 /**
  * Your app — what this gym's members see, in this gym's words.
  *
- * Three things live here, and they are three because they answer to different
- * people (0110):
+ * Four things live here, and they are four because they answer to different
+ * people (0110, 0114):
  *
- *   What it says   the gym's own words for its points and its welcome
- *   What it runs   which parts of the system this gym actually uses
- *   How they join  listed, by code, or only at the desk
+ *   What it looks like  two colour roles and a logo
+ *   What it says        the gym's own words for its points, its people and its welcome
+ *   What it runs        which parts of the system this gym actually uses
+ *   How they join       listed, by code, or only at the desk — and at which address
+ *
+ * **"What it looks like" is here because it was nowhere.** 0112 gave a gym two
+ * colours, and the only screen that ever set the second one was the setup
+ * wizard — which an owner sees once. A gym that picked Rose during onboarding
+ * and later wanted its buttons to match had a column, a function, and no way to
+ * reach either. A setting you cannot change after the first day is not a
+ * setting.
  *
  * "What it runs" shows a plan lock rather than a switch for anything the gym's
  * Core Fitness plan does not include — offering a switch that would be refused
@@ -28,6 +39,15 @@ export default function GymApp() {
   const [app, setApp] = useState<App | null>(null);
   const [modules, setModules] = useState<GymModule[]>([]);
   const [words, setWords] = useState({ points_name: '', points_name_short: '', welcome_message: '' });
+  /** The nouns (0114). Blank is not possible here — the server always returns
+      all six, defaults filled in — so an empty box means "the English word". */
+  const [vocab, setVocab] = useState<GymVocabulary | null>(null);
+  /** Both colour roles and the logo, edited together because they are one look. */
+  const [look, setLook] = useState({ accent: 'violet', action: '', logo_url: '' });
+  const [uploading, setUploading] = useState(false);
+  /** The gym's address, open for editing. NULL means "not editing" rather than
+      "blank", so an accidental empty box cannot be saved as one. */
+  const [slug, setSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -50,6 +70,13 @@ export default function GymApp() {
         points_name_short: a.points_name_short,
         welcome_message: a.welcome_message ?? '',
       });
+      setVocab(a.vocabulary ?? null);
+      setLook({
+        accent: a.accent || 'violet',
+        action: a.accent_action ?? '',
+        logo_url: a.logo_url ?? '',
+      });
+      setSlug(null);
     }
     setReady(true);
   }, []);
@@ -74,12 +101,46 @@ export default function GymApp() {
         points_name_short: words.points_name_short.trim() || null,
         welcome_message: words.welcome_message.trim() || null,
       });
+      // Sent in the same breath, because to the owner this was one Save. A
+      // blank box means the English word, which is what the server stores as
+      // nothing — so clearing one and saving really does reset it.
+      if (vocab) await saveGymVocabulary(vocab);
       await load();
       showToast('Saved. Your members see this next time they open the app.', 'success');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveLook = async () => {
+    setSaving(true);
+    try {
+      // '' clears the logo, a URL sets it; undefined would leave it alone, and
+      // this form always knows which of the two it means.
+      await saveGymLook({
+        accent: look.accent,
+        accentAction: look.action || null,
+        logoUrl: look.logo_url,
+      });
+      await load();
+      showToast('Saved. Your members see this next time they open the app.', 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSlug = async () => {
+    if (slug === null) return;
+    try {
+      await setGymSlug(slug.trim());
+      await load();
+      showToast('Your link has moved. Share the new one.', 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
     }
   };
 
@@ -126,9 +187,110 @@ export default function GymApp() {
       <div>
         <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Your app</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          What {app.gym_name}'s members see on their phones. Your name, logo and colour are on
-          Settings; this is everything else.
+          What {app.gym_name}'s members see on their phones. Your gym's name, address and
+          opening hours are on Settings; everything your members actually look at is here.
         </p>
+      </div>
+
+      {/* ---- what it looks like ------------------------------------------------ */}
+      <div className={card} style={cardStyle}>
+        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          What it looks like
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Your members' app uses two colours, and they mean different things. Pick both — a gym
+          that changes only the first gets its own colour for progress and somebody else's amber
+          on every button.
+        </p>
+
+        <div className="mt-4">
+          <label className={label} style={labelStyle}>Where you are, and what you have</label>
+          <p className="mb-2 text-xs" style={labelStyle}>
+            Selected tabs, progress bars, your points, anything showing state.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ACCENTS.map((a) => (
+              <button key={a.key} type="button" title={a.label}
+                aria-label={a.label} aria-pressed={look.accent === a.key}
+                onClick={() => setLook({ ...look, accent: a.key })}
+                className="h-9 w-9 rounded-full border-2"
+                style={{
+                  background: a.swatch,
+                  borderColor: look.accent === a.key ? 'var(--color-text-primary)' : 'transparent',
+                }} />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className={label} style={labelStyle}>What you can do next</label>
+          <p className="mb-2 text-xs" style={labelStyle}>
+            Book, renew, save, send — every button that starts something.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ACCENTS.map((a) => (
+              <button key={a.key} type="button" title={a.label}
+                aria-label={a.label} aria-pressed={(look.action || 'amber') === a.key}
+                onClick={() => setLook({ ...look, action: a.key })}
+                className="h-9 w-9 rounded-full border-2"
+                style={{
+                  background: a.swatch,
+                  borderColor: (look.action || 'amber') === a.key
+                    ? 'var(--color-text-primary)' : 'transparent',
+                }} />
+            ))}
+          </div>
+          {!look.action && (
+            <p className="mt-2 text-xs" style={labelStyle}>
+              Not set, so your buttons are amber — the colour every gym started with.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-5">
+          <label className={label} style={labelStyle}>Your logo</label>
+          <div className="flex items-center gap-3">
+            {look.logo_url
+              ? <img src={look.logo_url} alt="" className="h-14 w-14 rounded-xl object-cover"
+                  style={{ border: '1px solid var(--color-border)' }} />
+              : <div className="h-14 w-14 rounded-xl grid place-items-center text-xs"
+                  style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>
+                  None
+                </div>}
+            <div>
+              <label className="inline-block">
+                <span className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm cursor-pointer"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
+                  {uploading ? 'Uploading' + '…' : look.logo_url ? 'Choose another' : 'Choose a picture'}
+                </span>
+                <input type="file" accept="image/*" className="hidden" disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    setUploading(true);
+                    void uploadMedia(file, 'logos')
+                      .then((url) => setLook((l) => ({ ...l, logo_url: url })))
+                      .catch((err) => showToast(
+                        err instanceof Error ? err.message : 'That picture would not upload', 'error'))
+                      .finally(() => setUploading(false));
+                  }} />
+              </label>
+              {look.logo_url && (
+                <Button variant="ghost" className="ml-2"
+                  onClick={() => setLook({ ...look, logo_url: '' })}>Remove</Button>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-xs" style={labelStyle}>
+            Square works best — it renders in a circle on your members' sign-in screen. Nothing
+            here means they see the Core Fitness mark instead.
+          </p>
+        </div>
+
+        <Button className="mt-5" onClick={() => void saveLook()} disabled={saving || uploading}>
+          {saving ? 'Saving' + '…' : 'Save'}
+        </Button>
       </div>
 
       {/* ---- what it says ---------------------------------------------------- */}
@@ -162,9 +324,40 @@ export default function GymApp() {
               onChange={(e) => setWords({ ...words, welcome_message: e.target.value })} />
           </div>
         </div>
-        <p className="mt-3 text-xs" style={labelStyle}>
+        {vocab && (
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              What you call your people
+            </h3>
+            <p className="mt-1 text-xs" style={labelStyle}>
+              A boxing gym has trainers, a box has coaches, a studio has instructors. Leave a box
+              empty to go back to the standard word.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {([
+                ['trainer', 'One of them', 'coach'],
+                ['trainers', 'All of them', 'coaches'],
+                ['member', 'One of your people', 'member'],
+                ['members', 'All of your people', 'members'],
+                ['class', 'One session', 'class'],
+                ['classes', 'All of them', 'classes'],
+              ] as const).map(([key, title, fallback]) => (
+                <div key={key}>
+                  <label className={label} style={labelStyle} htmlFor={'v-' + key}>{title}</label>
+                  <input id={'v-' + key} className={input} style={inputStyle} maxLength={30}
+                    value={vocab[key]} placeholder={fallback}
+                    onChange={(e) => setVocab({ ...vocab, [key]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="mt-4 text-xs" style={labelStyle}>
           Preview: “You earned 20 {words.points_name_short.trim() || 'points'} for checking in.
           {' '}{(words.points_name.trim() || 'Points')}: 340.”
+          {vocab && ' “Book a ' + (vocab.class.trim() || 'class') + ' with one of our '
+            + (vocab.trainers.trim() || 'coaches') + '.”'}
         </p>
         <Button className="mt-4" onClick={() => void saveWords()} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
@@ -336,7 +529,33 @@ export default function GymApp() {
           <div className="mt-4 rounded-lg border p-3.5"
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
             <p className="text-xs" style={labelStyle}>Give your members either of these</p>
-            <p className="mt-1.5 text-sm break-all" style={{ color: 'var(--color-text-primary)' }}>{joinLink}</p>
+            {slug === null ? (
+              <p className="mt-1.5 text-sm break-all" style={{ color: 'var(--color-text-primary)' }}>
+                {joinLink}
+                <button type="button" className="ml-2 underline align-middle text-xs"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                  onClick={() => setSlug(app.slug)}>
+                  <Link2 size={12} className="inline mr-1" />Change
+                </button>
+              </p>
+            ) : (
+              <form className="mt-1.5" onSubmit={(e) => { e.preventDefault(); void saveSlug(); }}>
+                <label className={label} style={labelStyle} htmlFor="slug">
+                  {MEMBER_APP}/join/
+                </label>
+                <input id="slug" className={input} style={inputStyle} value={slug} autoFocus
+                  maxLength={40} placeholder="your-gym"
+                  onChange={(e) => setSlug(e.target.value.toLowerCase())} />
+                <p className="mt-2 text-xs" style={{ color: 'var(--color-warning, #D97706)' }}>
+                  Every /join/{app.slug} link already printed, posted or sent stops working the
+                  moment you save this. Nobody is locked out — they just cannot use the old link.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button type="submit" disabled={slug.trim() === app.slug}>Move my link</Button>
+                  <Button variant="ghost" onClick={() => setSlug(null)}>Cancel</Button>
+                </div>
+              </form>
+            )}
             {app.join_code && (
               <p className="mt-2 text-sm" style={{ color: 'var(--color-text-primary)' }}>
                 Join code: <strong style={{ letterSpacing: '0.12em' }}>{app.join_code}</strong>

@@ -1353,4 +1353,110 @@ check('a member sends nothing and reads nothing', await (async () => {
     && (await db.query('select * from my_gym_email_log(30)')).rows.length === 0;
 })());
 
+
+// ---- 0114: the gym own words, and the gym own address --------------------------------
+// The words are identity, so the same rule as the name and the logo: the owner
+// sets them, nobody else, and a word this gym never chose reads as the English
+// one rather than as a blank.
+check('every gym starts with the standard words', await (async () => {
+  await as(P.memberA);
+  const v = (await one('select gym_vocabulary() as v')).v;
+  return v.trainers === 'coaches' && v.members === 'members' && v.classes === 'classes';
+})());
+check('the owner renames them, and only the ones they named change', await (async () => {
+  await as(P.adminA);
+  const v = (await one(`select save_gym_vocabulary('{"trainer":"PT","trainers":"PTs"}'::jsonb) as v`)).v;
+  return v.trainer === 'PT' && v.trainers === 'PTs' && v.members === 'members';
+})());
+check('a word this gym chose does not reach the other gym', await (async () => {
+  await as(P.adminB);
+  return (await one('select gym_vocabulary() as v')).v.trainers === 'coaches';
+})());
+check('the front desk cannot rename anything', await (async () => {
+  await as(P.staffA);
+  return !!(await fails(`select save_gym_vocabulary('{"trainer":"Boss"}'::jsonb)`));
+})());
+check('a member cannot either', await (async () => {
+  await as(P.memberA);
+  return !!(await fails(`select save_gym_vocabulary('{"trainer":"Boss"}'::jsonb)`));
+})());
+check('a word that does not exist is refused, not silently dropped', await (async () => {
+  await as(P.adminA);
+  return !!(await fails(`select save_gym_vocabulary('{"nonsense":"x"}'::jsonb)`));
+})());
+check('and so is one nobody could read', await (async () => {
+  await as(P.adminA);
+  const long = 'x'.repeat(40);
+  return !!(await fails(`select save_gym_vocabulary('{"trainer":"${long}"}'::jsonb)`))
+    && !!(await fails(`select save_gym_vocabulary('{"trainer":123}'::jsonb)`));
+})());
+check('typing the default back in clears it rather than storing it', await (async () => {
+  await as(P.adminA);
+  await db.exec(`select save_gym_vocabulary('{"trainer":"coach","trainers":"coaches"}'::jsonb)`);
+  await asOwner();
+  const row = await one(`select vocabulary from gym_settings where gym_id = '` + GYM_A + `'`);
+  return row.vocabulary === null;
+})());
+check('the constraint refuses a bad word written straight at the table', await (async () => {
+  await asOwner();
+  return !!(await fails(`update gym_settings set vocabulary = '{"boss":"me"}'::jsonb where gym_id = '` + GYM_A + `'`));
+})());
+
+// The address. Same rules as the platform's rename, because two rule sets for
+// one column is how a link that works on one screen 404s from another.
+check('the owner moves their own front door', await (async () => {
+  await as(P.adminA);
+  const slug = (await one(`select set_gym_slug('g-fitness') as s`)).s;
+  await asOwner();
+  return slug === 'g-fitness'
+    && (await one(`select slug from gyms where id = '` + GYM_A + `'`)).slug === 'g-fitness';
+})());
+check('and the gym own activity log says every old link just broke', await (async () => {
+  await asOwner();
+  const row = await one(`select summary from activity_log where action = 'gym.slug' and gym_id = '` + GYM_A + `' order by occurred_at desc limit 1`);
+  return /\/join\/g-fitness/.test(row.summary) && /stopped working/.test(row.summary);
+})());
+check('a link another gym already uses is refused', await (async () => {
+  await as(P.adminB);
+  return !!(await fails(`select set_gym_slug('g-fitness')`));
+})());
+check('so is one nobody could type', await (async () => {
+  await as(P.adminA);
+  return !!(await fails(`select set_gym_slug('G Fitness!')`))
+    && !!(await fails(`select set_gym_slug('ab')`));
+})());
+check('the front desk cannot move the door', await (async () => {
+  await as(P.staffA);
+  return !!(await fails(`select set_gym_slug('front-desk-was-here')`));
+})());
+check('and neither can Core Fitness while it is only looking', await (async () => {
+  await as(P.adminB);
+  await db.exec(`select * from grant_support_access(2, 'check the link')`);
+  await as(PLATFORM);
+  await db.exec(`select enter_support_session('` + GYM_B + `')`);
+  const refused = await fails(`select set_gym_slug('taken-over')`);
+  await db.exec('select leave_support_session()');
+  await as(P.adminB);
+  await db.exec('select revoke_support_access()');
+  await asOwner();
+  return !!refused
+    && (await one(`select slug from gyms where id = '` + GYM_B + `'`)).slug !== 'taken-over';
+})());
+check('my_gym_app carries the words, the tagline and the logo in one call', await (async () => {
+  await as(P.adminA);
+  await db.exec(`select save_gym_words('Iron Points', 'iron points', 'Welcome in')`);
+  await db.exec(`select save_gym_vocabulary('{"trainers":"PTs"}'::jsonb)`);
+  // The tagline is written by Settings through the table, not by a function:
+  // one column, one writer. my_gym_app only has to carry it out to the phone.
+  await db.exec(`update gym_settings set tagline = 'Strength, daily' where gym_id = '` + GYM_A + `'`);
+  const row = await one('select * from my_gym_app()');
+  return row.points_name === 'Iron Points' && row.tagline === 'Strength, daily'
+    && row.vocabulary.trainers === 'PTs' && row.welcome_message === 'Welcome in';
+})());
+check('and a stranger reading the gym list sees the tagline, never the join code', await (async () => {
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false); set role anon;`);
+  const rows = (await db.query(`select * from list_gyms('Core')`)).rows;
+  return rows.every((r) => !('join_code' in r)) && rows.every((r) => 'tagline' in r);
+})());
+
 finish();

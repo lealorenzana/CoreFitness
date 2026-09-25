@@ -29,6 +29,26 @@ export type FeatureKey =
   | 'front_desk' | 'checkin' | 'classes' | 'coaching'
   | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics';
 
+/**
+ * What this gym calls its people and its sessions (0114).
+ *
+ * Always all six keys — `gym_vocabulary()` merges whatever the gym chose over
+ * the English defaults, so no screen has to know which were set. A gym that
+ * never touched this reads exactly as every gym read before the column existed.
+ */
+export interface GymVocabulary {
+  member: string; members: string;
+  trainer: string; trainers: string;
+  class: string; classes: string;
+}
+
+/** The words a gym gets when it has chosen none. Mirrors gym_vocabulary_defaults(). */
+export const DEFAULT_WORDS: GymVocabulary = {
+  member: 'member', members: 'members',
+  trainer: 'coach', trainers: 'coaches',
+  class: 'class', classes: 'classes',
+};
+
 export interface GymApp {
   gymId: string;
   gymName: string;
@@ -41,6 +61,9 @@ export interface GymApp {
   /** The same word mid-sentence: "you earned 20 points". */
   pointsNameShort: string;
   welcomeMessage: string | null;
+  /** The small line under the gym's name wherever somebody is choosing one. */
+  tagline: string | null;
+  vocabulary: GymVocabulary;
   modules: Partial<Record<FeatureKey, boolean>>;
 }
 
@@ -49,6 +72,8 @@ interface Row {
   short_name: string | null; logo_url: string | null; accent: string | null;
   points_name: string | null; points_name_short: string | null;
   welcome_message: string | null;
+  tagline: string | null;
+  vocabulary: Partial<GymVocabulary> | null;
   modules: Partial<Record<FeatureKey, boolean>> | null;
 }
 
@@ -63,6 +88,7 @@ interface Row {
 const FALLBACK: Omit<GymApp, 'gymId' | 'gymName' | 'slug'> = {
   shortName: null, logoUrl: null, accent: 'violet',
   pointsName: 'Points', pointsNameShort: 'points', welcomeMessage: null,
+  tagline: null, vocabulary: DEFAULT_WORDS,
   modules: {},
 };
 
@@ -86,6 +112,11 @@ async function load(): Promise<GymApp | null> {
     pointsName: row.points_name || FALLBACK.pointsName,
     pointsNameShort: row.points_name_short || FALLBACK.pointsNameShort,
     welcomeMessage: row.welcome_message,
+    tagline: row.tagline,
+    // Merged over the defaults a second time on this side. The server already
+    // fills every key; a database without 0114 sends none, and a half-filled
+    // object would put an empty string where a noun belongs.
+    vocabulary: { ...DEFAULT_WORDS, ...(row.vocabulary ?? {}) },
     modules: row.modules ?? {},
   };
 }
@@ -115,4 +146,29 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 export function pointsWord(app: GymApp | null, sentence = false): string {
   if (!app) return sentence ? 'points' : 'Points';
   return sentence ? app.pointsNameShort : app.pointsName;
+}
+
+/**
+ * This gym's word for something (0114).
+ *
+ * Unknown answers with the English word, for the same reason `moduleOn` answers
+ * TRUE: the one frame before the read lands, a database without 0114 and a
+ * failed read are all cases where the app must read as it did yesterday.
+ *
+ * `title` capitalises the first letter only — a gym that typed "PTs" keeps its
+ * capitals, and one that typed "coaches" gets "Coaches". Never `toUpperCase()`
+ * on the rest, which would turn "PTs" into "PTS".
+ */
+export function word(
+  app: GymApp | null, key: keyof GymVocabulary, title = false
+): string {
+  const value = (app?.vocabulary ?? DEFAULT_WORDS)[key] || DEFAULT_WORDS[key];
+  return title ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+/** True when this gym renamed anything, so a caller can skip the work entirely. */
+export function hasOwnWords(app: GymApp | null): boolean {
+  if (!app) return false;
+  return (Object.keys(DEFAULT_WORDS) as (keyof GymVocabulary)[])
+    .some((k) => app.vocabulary[k] !== DEFAULT_WORDS[k]);
 }

@@ -10,7 +10,8 @@ import {
 } from '../lib/api/settings';
 import { createPlan, listPlans, updatePlan } from '../lib/api/membershipPlans';
 import {
-  getGymApp, saveGymLook, saveGymWords, setJoinPolicy, setOnboardingStep, type JoinPolicy,
+  getGymApp, saveGymLook, saveGymVocabulary, saveGymWords, setGymSlug, setJoinPolicy,
+  setOnboardingStep, type GymVocabulary, type JoinPolicy,
 } from '../lib/api/gymApp';
 import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
@@ -57,6 +58,17 @@ export default function Setup() {
     points_name: '', points_name_short: '', welcome_message: '',
   });
   const [action, setAction] = useState<string>('');
+  /** What this gym calls its people (0114). Loaded with the defaults filled in,
+      so an empty box here means "go back to the English word" rather than
+      "blank", which is not a thing a noun can be. */
+  const [vocab, setVocab] = useState<GymVocabulary | null>(null);
+  /** The address members will be handed. Suggested from the name when the gym
+      was created, and confirmed here — changing it later breaks printed links,
+      so the cheapest moment to get it right is before anyone has one. */
+  const [slug, setSlug] = useState('');
+  /** What the address actually is right now, so saving an unchanged box does
+      not call set_gym_slug() and write a "your link moved" line into the log. */
+  const [savedSlug, setSavedSlug] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   /** Plans typed on this screen that do not exist yet. */
@@ -89,6 +101,9 @@ export default function Setup() {
         welcome_message: app?.welcome_message ?? '',
       });
       setAction(app?.accent_action ?? '');
+      setVocab(app?.vocabulary ?? null);
+      setSlug(app?.slug ?? '');
+      setSavedSlug(app?.slug ?? '');
       setLogoUrl(settings?.logo_url ?? null);
       setDoor(app?.join_policy ?? 'open');
       setJoinCode(app?.join_code ?? null);
@@ -147,9 +162,20 @@ export default function Setup() {
       points_name_short: gym.points_name_short.trim() || null,
       welcome_message: gym.welcome_message.trim() || null,
     });
+    // The nouns (0114). Sent whole: the server keeps only what differs from the
+    // English word, so a gym that changed nothing stores nothing.
+    if (vocab) await saveGymVocabulary(vocab);
   };
 
   const saveDoor = async () => {
+    // The address first: the join code and the link are shown together, and a
+    // link printed from the old slug would be wrong the moment this saves.
+    const wanted = slug.trim().toLowerCase();
+    if (wanted && wanted !== savedSlug) {
+      const moved = await setGymSlug(wanted);
+      setSlug(moved);
+      setSavedSlug(moved);
+    }
     setJoinCode(await setJoinPolicy(door, false));
   };
 
@@ -445,11 +471,62 @@ export default function Setup() {
                   app simply calls them &ldquo;points&rdquo;.
                 </p>
               </div>
+
+              {/* The nouns (0114). A boxing gym has trainers, a box has coaches,
+                  a studio has instructors — and every one of them reads "Coaches"
+                  as somebody else's gym. */}
+              {vocab && (
+                <div className="mt-6">
+                  <p className="text-xs" style={labelStyle}>
+                    What you call your people — leave a box empty for the standard word
+                  </p>
+                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                    {([
+                      ['trainers', 'Your coaches', 'coaches'],
+                      ['members', 'Your members', 'members'],
+                      ['classes', 'Your classes', 'classes'],
+                    ] as const).map(([key, title, fallback]) => (
+                      <div key={key}>
+                        <label className={label} style={labelStyle} htmlFor={'s-v-' + key}>{title}</label>
+                        <input id={'s-v-' + key} className={input} style={inputStyle} maxLength={30}
+                          value={vocab[key]} placeholder={fallback}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setVocab((old) => old && { ...old, [key]: v });
+                          }} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs" style={labelStyle}>
+                    You can rename the singulars too, later, on Your app.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {step === 'door' && (
             <div className="mt-4 space-y-2">
+              {/* Confirmed here, before it is printed anywhere. It was suggested
+                  from the gym's name when the account was made, so a gym that
+                  was later renamed is carrying the old one — which is exactly
+                  how a poster ends up pointing at somebody else's name. */}
+              <div className="pb-2">
+                <label className={label} style={labelStyle} htmlFor="s-slug">
+                  Your members' link
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs shrink-0" style={labelStyle}>/join/</span>
+                  <input id="s-slug" className={input} style={inputStyle} maxLength={40}
+                    value={slug} placeholder="your-gym"
+                    onChange={(e) => setSlug(e.target.value.toLowerCase())} />
+                </div>
+                <p className="mt-1 text-xs" style={labelStyle}>
+                  Small letters, numbers and dashes. Get this right now — changing it later stops
+                  every link you have already handed out.
+                </p>
+              </div>
+
               {([
                 ['open', 'Anyone can find you', 'You are listed in the app’s gym list. Anyone with the app can search for you and ask to join.'],
                 ['code', 'Only with your link or code', 'You are not listed. Members join with your link, or by typing a short code you give them.'],

@@ -217,6 +217,39 @@ keeps "CORE Points"; every other gym starts at plain "Points") and **its own
 door**: `open` (listed, anyone may ask), `code` (unlisted; link or a six-character
 code, replaceable when it leaks) or `closed` (the desk creates every account).
 
+### Its own nouns, and its own address (0114)
+
+`gym_settings.vocabulary` is a jsonb of exactly six nouns — `member(s)`,
+`trainer(s)`, `class(es)`. The allowed keys are enforced by a CHECK through
+`gym_vocabulary_keys_ok()`, so a typo in a client is an error rather than a word
+that silently never appears, and a value that is not a short string is refused
+rather than coerced. **A missing key means the English word**, so a gym that
+never opened the setting reads byte for byte as it did before the column
+existed; typing the default back in stores nothing, so "reset" and "never set"
+are one row rather than two that drift. `gym_vocabulary()` always returns all
+six, merged, so no screen has to know which were overridden. In the member app
+`visibleDestinations()` skips the rename entirely unless `hasOwnWords()` — so
+`t()` still finds its translations for every gym that did not rename anything,
+and a gym that did gets its own word untranslated, which is right: "PTs" is that
+gym's proper noun, not a string with a Filipino equivalent.
+
+`set_gym_slug()` lets the **owner** move `/join/<slug>`, which until 0114 only a
+platform admin could do — so a gym created as `core-fitness` and later renamed
+"G Fitness" handed its members a link with somebody else's name on it, and the
+link is printed on posters. Deliberately the *same* rules as
+`platform_rename_gym()` (lowercase, digits, single dashes, 3–40, unique): two
+rule sets for one column is how a link that works on one screen 404s from
+another. It refuses while `gym_writable()` is false, so a suspended gym cannot
+move its door and **neither can a support session** (0113). Both the gym's own
+activity log and the platform log record the move, because "every link you
+already shared has stopped working" is the kind of fact somebody rings about.
+
+**`/join/<slug>` reads `gym_by_slug()`, never `list_gyms()`.** `list_gyms()`
+returns only gyms whose rule is `open` — so the gyms whose entire joining story
+*is* that link were the one case it could never find, and a `code` gym's own
+link answered "No gym by that name". Searching is the listed question; a link is
+the addressed one.
+
 The website writes the one row a stranger may write anywhere here: a `pending`
 `gym_applications` row (0097). The status and shape are enforced in SQL, not in
 the form, and the page has a honeypot field for bots. Its prices live in

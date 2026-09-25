@@ -9,6 +9,8 @@ import {
   getGymContext, homeFor, myGyms, switchGym, type MyGym,
 } from '../lib/gymContext';
 import { logout } from '../utils/auth';
+import { useGymApp } from '../hooks/useGymApp';
+import { word } from '../lib/gymApp';
 import { errorMessage } from '../utils/errorMessage';
 import { toast } from '../components/ui/Toast';
 
@@ -23,6 +25,10 @@ import { toast } from '../components/ui/Toast';
  */
 export default function ChooseGym() {
   const navigate = useNavigate();
+  // The words of the gym they are *currently* in. Another gym in the list may
+  // call its coaches something else; this screen cannot know that without a
+  // read per gym, so it uses the neutral role name for the rest.
+  const gymApp = useGymApp();
   const [gyms, setGyms] = useState<MyGym[] | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -51,7 +57,12 @@ export default function ChooseGym() {
     if (gym.status === 'pending_approval') return 'Waiting for the gym to approve you';
     if (gym.status === 'suspended') return 'Suspended here — ask the gym';
     if (gym.role === 'admin' || gym.role === 'staff') return 'You run this gym — use the admin app';
-    return gym.role === 'trainer' ? 'Coach' : 'Member';
+    // Only the row for the gym they are actually in gets that gym's words.
+    // Every other row is a gym whose vocabulary this app has not read, and
+    // labelling it with this gym's word would be a confident wrong answer.
+    const own = gym.gym_id === current;
+    if (gym.role === 'trainer') return own ? word(gymApp, 'trainer', true) : 'Coach';
+    return own ? word(gymApp, 'member', true) : 'Member';
   };
 
   return (

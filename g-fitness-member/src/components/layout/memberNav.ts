@@ -1,4 +1,4 @@
-import { moduleOn, type FeatureKey, type GymApp } from '../../lib/gymApp';
+import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
 import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChartLineUp, ChatCircleText, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
@@ -18,10 +18,27 @@ import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, 
 
 export type TabId = 'today' | 'train' | 'you';
 
-/** Filters a rail or a group to what this gym actually runs (0110). */
+/**
+ * Filters a rail or a group to what this gym actually runs (0110), and puts the
+ * gym's own nouns into the labels that contain one (0114).
+ *
+ * The rename is skipped entirely when the gym chose no words of its own, which
+ * is almost every gym: the plain `label` is then the object that ships, and
+ * `t()` finds its translation exactly as before. A gym that *did* rename
+ * something gets its word untranslated, which is correct — "PTs" is a proper
+ * noun for that gym, not a string with a Filipino equivalent.
+ */
 export function visibleDestinations(items: Destination[], app: GymApp | null): Destination[] {
-  return items.filter((d) => moduleOn(app, d.module));
+  const rename = hasOwnWords(app);
+  return items
+    .filter((d) => moduleOn(app, d.module))
+    .map((d) => (rename && d.words
+      ? { ...d, label: d.words((k, title) => word(app, k, title)) }
+      : d));
 }
+
+/** Reads one of this gym's words. Passed to a Destination's `words` builder. */
+export type WordReader = (key: keyof GymVocabulary, title?: boolean) => string;
 
 export interface Tab {
   id: TabId;
@@ -105,6 +122,13 @@ export interface Destination {
   module?: FeatureKey;
   /** Drawn in the rail pill before the label. */
   icon?: Icon;
+  /**
+   * Rebuilds `label` from this gym's own nouns when it renamed any of them
+   * (0114). `label` stays the default and is what ships for every gym that did
+   * not — so this is additive, and a gym that never opened the setting sees
+   * byte-for-byte what it saw before.
+   */
+  words?: (w: WordReader) => string;
 }
 
 /**
@@ -125,11 +149,13 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck , module: 'classes' },
     { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText , module: 'progress' },
     { label: 'Free workouts', path: '/member/workouts', icon: BookOpen },
-    { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching' },
+    { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching',
+      words: (w) => w('trainers', true) },
     { label: 'Challenges', path: '/member/challenges', icon: Trophy , module: 'engagement' },
     { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
     { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
-    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress' },
+    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress',
+      words: (w) => w('trainer', true) + ' notes' },
   ],
   you: [
     { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise },
@@ -167,7 +193,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Rebuild my plan', path: '/member/plan' , module: 'progress' },
       { label: 'Free workouts', path: '/member/workouts' },
       { label: 'My routines', path: '/member/track' , module: 'progress' },
-      { label: 'Coaches', path: '/member/trainers' , module: 'coaching' },
+      { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
+        words: (w) => w('trainers', true) },
       { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
     ],
   },
@@ -176,7 +203,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
       { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
-      { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress' },
+      { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
+        words: (w) => w('trainer', true) + ' notes' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
     ],
   },

@@ -35,6 +35,20 @@ export interface GymWords {
   welcome_message: string | null;
 }
 
+/**
+ * What this gym calls its people and its sessions (0114).
+ *
+ * Always all six keys: `gym_vocabulary()` merges whatever the gym chose over
+ * the English defaults, so nothing downstream has to know which were set. A
+ * gym that never touched this reads exactly as every gym did before the column
+ * existed.
+ */
+export interface GymVocabulary {
+  member: string; members: string;
+  trainer: string; trainers: string;
+  class: string; classes: string;
+}
+
 export type JoinPolicy = 'open' | 'code' | 'closed';
 
 export interface GymApp {
@@ -48,6 +62,8 @@ export interface GymApp {
   points_name: string;
   points_name_short: string;
   welcome_message: string | null;
+  tagline: string | null;
+  vocabulary: GymVocabulary;
   join_policy: JoinPolicy;
   /** Only the gym's own desk sees this; it is null for a member. */
   join_code: string | null;
@@ -81,6 +97,36 @@ export async function saveGymWords(w: {
     p_welcome: w.welcome_message,
   });
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Rename the nouns (0114). Returns the full set, defaults filled in.
+ *
+ * Send only what changed: a key left out is left alone, and a key sent blank
+ * goes back to the English word. Typing the default back in is stored as
+ * nothing, so "reset" and "never set" are one row rather than two states that
+ * drift apart.
+ */
+export async function saveGymVocabulary(
+  words: Partial<GymVocabulary>
+): Promise<GymVocabulary> {
+  const { data, error } = await supabase.rpc('save_gym_vocabulary', { p_words: words });
+  if (error) throw new Error(error.message);
+  return data as GymVocabulary;
+}
+
+/**
+ * Move this gym's front door — the `/join/<slug>` every poster and every
+ * invitation points at (0114).
+ *
+ * The old link stops working the moment this returns. That is a fact about
+ * links rather than a setting, so the screen says it before the button, not
+ * after; the gym's own activity log says it again afterwards.
+ */
+export async function setGymSlug(slug: string): Promise<string> {
+  const { data, error } = await supabase.rpc('set_gym_slug', { p_slug: slug });
+  if (error) throw new Error(error.message);
+  return data as string;
 }
 
 /** Returns the join code, which is regenerated when `newCode` is true. */

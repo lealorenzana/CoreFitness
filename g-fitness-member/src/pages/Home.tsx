@@ -19,6 +19,7 @@ import {
 import { DAY_LABELS } from '../lib/api/gymPlans';
 import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/api/routines';
 import { readCache, writeCache } from '../lib/pageCache';
+import { useGymApp } from '../hooks/useGymApp';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -93,6 +94,9 @@ export default function Home() {
   // loading, and unknown is drawn as open rather than flashing a lock.
   const { features } = useFeatures();
   const lockedOut = (key: 'workout_tracker') => features != null && !isEnabled(features, key);
+  // This gym's own words and its welcome line (0110/0114). Cached for the whole
+  // launch, so a hook on ten screens is one request.
+  const gymApp = useGymApp();
 
   const cached = readCache<MemberHome>(CACHE_KEY);
   const [home, setHome] = useState<MemberHome | null>(cached ?? null);
@@ -278,6 +282,19 @@ export default function Home() {
 
   return (
     <Page>
+      {/* The gym's own line to its members (0110). It has been saveable from
+          the admin app since that migration and appeared nowhere — a control
+          writing a field nothing reads is a lie (CLAUDE.md). Rendered only when
+          the gym wrote one: no placeholder, no stand-in greeting. */}
+      {gymApp?.welcomeMessage && (
+        <p style={{
+          fontSize: 13, lineHeight: 1.45, marginBottom: 10,
+          color: 'var(--color-text-secondary)',
+        }}>
+          {gymApp.welcomeMessage}
+        </p>
+      )}
+
       {/* ── Month panel ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
         <Panel glow="structure" style={{ padding: '16px 16px 14px' }}>

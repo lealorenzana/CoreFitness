@@ -24,7 +24,6 @@ import { updateProfile } from '../lib/api/profiles';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
 import ImageField from '../components/ui/ImageField';
 import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
-import { ACCENTS } from '../lib/accents';
 import {
   getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
 } from '../lib/api/settings';
@@ -107,7 +106,7 @@ export default function Settings() {
     gym_name: '', address: '', phone: '', email: '', opening_time: '', closing_time: '',
     // Branding (0067). Blank means "not chosen", which renders the bundled
     // default — never a blank space where a logo should be.
-    short_name: '', tagline: '', logo_url: '', accent: 'violet',
+    short_name: '', tagline: '', logo_url: '',
   });
 
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -149,7 +148,6 @@ export default function Settings() {
           email: gym.email ?? '',
           opening_time: gym.opening_time ?? '',
           closing_time: gym.closing_time ?? '',
-          accent: gym.accent ?? 'violet',
           short_name: gym.short_name ?? '',
           tagline: gym.tagline ?? '',
           logo_url: gym.logo_url ?? '',
@@ -207,7 +205,6 @@ export default function Settings() {
         short_name: gymForm.short_name.trim() || null,
         tagline: gymForm.tagline.trim() || null,
         logo_url: gymForm.logo_url.trim() || null,
-        accent: gymForm.accent,
         activity_options: activityOptions,
       });
       // Repaint the sidebar and header now rather than on the next full reload.
@@ -461,39 +458,32 @@ export default function Settings() {
                       />
                     </div>
 
-                    {/* The gym's colour in the phone app. It replaces violet
-                        only — amber still means "what you can do next"
-                        everywhere, because that is meaning, not branding
-                        (g-fitness-member/src/lib/gymTheme.ts). */}
-                    <div className="mt-3">
-                      <span className="block text-xs mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                        Colour in the member app
+                    {/* The colours moved to Your app (0114), and this is a
+                        pointer rather than a second picker. There are TWO colour
+                        roles, not one — "where you are" and "what you can do
+                        next" — and this control only ever wrote the first. A gym
+                        that picked Rose here got a rose app with amber buttons
+                        and read that as the setting not working. One control,
+                        one source; the other page owns both. */}
+                    <div className="mt-3 rounded-md border px-3 py-2.5"
+                      style={{ borderColor: 'var(--color-border)' }}>
+                      <span className="block text-xs" style={{ color: 'var(--color-text-primary)' }}>
+                        Colours in the member app
                       </span>
-                      <div className="flex flex-wrap gap-2">
-                        {ACCENTS.map((a) => (
-                          <button
-                            key={a.key}
-                            type="button"
-                            onClick={() => setGymForm({ ...gymForm, accent: a.key })}
-                            aria-pressed={gymForm.accent === a.key}
-                            className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
-                            style={{
-                              borderColor: gymForm.accent === a.key ? a.swatch : 'var(--color-border)',
-                              color: 'var(--color-text-primary)',
-                            }}
-                          >
-                            <span className="h-3.5 w-3.5 rounded-full" style={{ background: a.swatch }} />
-                            {a.label}
-                          </button>
-                        ))}
-                      </div>
+                      <span className="block text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                        Your members' app uses two colours — one for where they are, one for what
+                        they can do next. Both live on{' '}
+                        <Link to="/gym-app" className="underline"
+                          style={{ color: 'var(--color-text-secondary)' }}>Your app</Link>,
+                        alongside your words and which features you run.
+                      </span>
                     </div>
 
                     <div className="mt-3" style={{ maxWidth: 260 }}>
                       <ImageField
                         value={gymForm.logo_url}
                         onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })}
-                        kind="resources"
+                        kind="logos"
                         label="Logo"
                         aspect={1}
                         hint="Square works best — it renders in a circle. Blank uses the built-in logo."

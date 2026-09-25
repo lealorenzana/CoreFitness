@@ -7,7 +7,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
-import { listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
+import { gymBySlug, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
 import { getGymContext, myGyms } from '../lib/gymContext';
 import { supabase } from '../lib/supabaseClient';
 
@@ -28,8 +28,20 @@ export default function JoinGym() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(async (term: string) => {
+  /**
+   * `byLink` is the `/join/<slug>` case and asks a different question.
+   *
+   * `list_gyms()` returns listed gyms only, so a gym whose joining rule is
+   * "only with your link or code" could not be found by its own link. Searching
+   * is the listed question; a link is the addressed one.
+   */
+  const load = useCallback(async (term: string, byLink = false) => {
     try {
+      if (byLink) {
+        const gym = await gymBySlug(term);
+        setGyms(gym ? [gym] : []);
+        return;
+      }
       setGyms(await listGyms(term));
     } catch (e) {
       setGyms([]);
@@ -42,7 +54,7 @@ export default function JoinGym() {
       const { data: { session } } = await supabase.auth.getSession();
       setSignedIn(!!session);
       if (session) setMine(new Set((await myGyms()).map((g) => g.gym_id)));
-      await load(slug ?? '');
+      await load(slug ?? '', !!slug);
     })();
   }, [load, slug]);
 
@@ -99,8 +111,23 @@ export default function JoinGym() {
           {gyms.map((gym, i) => (
             <LineRow
               key={gym.id}
+              // The gym's own mark, at the size the row already reserves. A gym
+              // that uploaded none gets nothing here rather than the Core
+              // Fitness logo: this is a list of gyms, and every one of them
+              // wearing the platform's mark is the opposite of what it is for.
+              gutter={gym.logo_url
+                ? <img src={gym.logo_url} alt="" width={36} height={36}
+                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                : undefined}
+              gutterWidth={gym.logo_url ? 48 : undefined}
               title={gym.name}
-              meta={mine.has(gym.id) ? 'You are already here' : busy === gym.id ? 'Asking…' : 'Tap to join'}
+              // The gym's own line when it wrote one — its pitch, not ours.
+              // The state of *this* member's relationship to it wins, because
+              // "you are already here" is the answer to the question they are
+              // about to ask by tapping.
+              meta={mine.has(gym.id) ? 'You are already here'
+                : busy === gym.id ? 'Asking…'
+                : gym.tagline || 'Tap to join'}
               dim={mine.has(gym.id)}
               onClick={mine.has(gym.id) ? undefined : () => void join(gym)}
               last={i === gyms.length - 1}
