@@ -13,6 +13,7 @@
     { "file": "admin-engagement-check.js", "app": "admin" },
     { "file": "admin-rewards-check.js", "app": "admin" },
     { "file": "admin-ops-check.js", "app": "admin" },
+    { "file": "admin-gym-app-check.js", "app": "admin" },
     { "file": "admin-sweep-check.js", "app": "admin" }
   ]
 }

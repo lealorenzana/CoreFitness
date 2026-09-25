@@ -251,9 +251,9 @@ export default function GymApp() {
           <label className={label} style={labelStyle}>Your logo</label>
           <div className="flex items-center gap-3">
             {look.logo_url
-              ? <img src={look.logo_url} alt="" className="h-14 w-14 rounded-xl object-cover"
+              ? <img src={look.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover"
                   style={{ border: '1px solid var(--color-border)' }} />
-              : <div className="h-14 w-14 rounded-xl grid place-items-center text-xs"
+              : <div className="h-14 w-14 shrink-0 rounded-xl grid place-items-center text-xs"
                   style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>
                   None
                 </div>}
