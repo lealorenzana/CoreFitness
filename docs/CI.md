@@ -41,3 +41,22 @@ node <repo>/scripts/sql/replay-migrations.mjs <repo> seed-demo-data.sql seed-dem
 Write it as one `async (page) => { ... }` expression in `scripts/` (copy the
 head of `renew-check.js` for the fixture), print `label: value` lines with a
 capitalised word on failure, and add it to `scripts/ci/ui-checks.json`.
+
+## Skills (not in git)
+
+`.claude/skills/` is gitignored: 7.9 MB of third-party content including font
+binaries, reinstallable in one command each, and nobody diffs it — the same
+reasoning as the generated documentation. Nothing in CI reads them; they are a
+convenience for an agent session on a developer's machine.
+
+To restore them after a fresh clone:
+
+```bash
+npx claude-code-templates@latest --skill development/senior-backend
+npx claude-code-templates@latest --skill development/senior-fullstack
+npx claude-code-templates@latest --skill development/brainstorming
+npx claude-code-templates@latest --skill development/mcp-builder
+npx claude-code-templates@latest --skill web-development/react-best-practices
+npx claude-code-templates@latest --skill creative-design/canvas-design
+npx claude-code-templates@latest --skill business-marketing/seo-optimizer
+```

@@ -18,3 +18,9 @@ CoreFitness-System-Documentation.html
 .env
 .env.*
 !.env.example
+
+# Skills installed with `npx claude-code-templates@latest --skill <name>`.
+# 7.9 MB of third-party content including .ttf font binaries, reinstallable in
+# one command each, and nobody diffs it - the same reasoning as the generated
+# documentation above. The commands that install them are in docs/CI.md.
+.claude/skills/
