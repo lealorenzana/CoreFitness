@@ -3,7 +3,8 @@ import {
   Buildings,
   Bell, CalendarBlank, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
-import type { Destination } from './memberNav';
+import type { Destination, WordReader } from './memberNav';
+import { hasOwnWords, word, type GymApp } from '../../lib/gymApp';
 
 /**
  * The trainer app's navigation, in one place — the trainer counterpart of
@@ -23,13 +24,23 @@ export interface TrainerTab {
   icon: Icon;
   /** Small caps line under the title. */
   eyebrow: string;
+  /**
+   * Rebuilds `label` and `eyebrow` from this gym's own nouns when it renamed
+   * any of them (0114) — the same shape as a member Destination's `words`.
+   * The plain strings stay the default and are what ship for every gym that
+   * renamed nothing.
+   */
+  words?: (w: WordReader) => { label?: string; eyebrow?: string };
 }
 
 export const TRAINER_TABS: TrainerTab[] = [
   { id: 'home', label: 'Home', path: '/trainer/home', icon: House, eyebrow: 'Your coaching day' },
-  { id: 'members', label: 'Members', path: '/trainer/members', icon: UsersThree, eyebrow: 'Progress and notes' },
-  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours' },
-  { id: 'bookings', label: 'Bookings', path: '/trainer/bookings', icon: Tray, eyebrow: 'Classes and 1-on-1' },
+  { id: 'members', label: 'Members', path: '/trainer/members', icon: UsersThree, eyebrow: 'Progress and notes',
+    words: (w) => ({ label: w('members', true) }) },
+  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours',
+    words: (w) => ({ eyebrow: w('classes', true) + ' and hours' }) },
+  { id: 'bookings', label: 'Bookings', path: '/trainer/bookings', icon: Tray, eyebrow: 'Classes and 1-on-1',
+    words: (w) => ({ eyebrow: w('classes', true) + ' and 1-on-1' }) },
   { id: 'profile', label: 'Profile', path: '/trainer/profile', icon: User, eyebrow: 'Account and ratings' },
 ];
 
@@ -89,3 +100,20 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
     { label: 'Gyms', path: '/choose-gym', icon: Buildings },
   ],
 };
+
+/**
+ * The five tabs, in this gym's words (0114).
+ *
+ * Skipped entirely when the gym renamed nothing, so the exported constant is
+ * the object that ships for almost every gym and nothing re-renders for a
+ * substitution that would change no characters.
+ */
+export function trainerTabs(app: GymApp | null): TrainerTab[] {
+  if (!hasOwnWords(app)) return TRAINER_TABS;
+  return TRAINER_TABS.map((tab) => {
+    if (!tab.words) return tab;
+    const next = tab.words((k, title) => word(app, k, title));
+    return { ...tab, ...(next.label ? { label: next.label } : {}),
+             ...(next.eyebrow ? { eyebrow: next.eyebrow } : {}) };
+  });
+}

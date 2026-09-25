@@ -123,10 +123,31 @@ async (page) => {
   out.push('action colour sent: ' + (CALLS.save_gym_look?.p_accent_action ?? 'MISSING')
     + ' (kept accent ' + (CALLS.save_gym_look?.p_accent ?? 'MISSING') + ')');
 
+  // "Members" and "Trainers" are children of the People group, and a group is
+  // a closed drawer until it is opened — so the rename is invisible until then.
+  // Opened here rather than asserted around, because a test that reads a closed
+  // drawer proves nothing either way.
+  const aside = () => page.evaluate(() => document.querySelector('aside')?.innerText ?? '');
+  await page.getByRole('button', { name: /^People/ }).click();
+  await page.waitForTimeout(500);
+  const navBefore = await aside();
+  out.push('sidebar before: ' + (/Trainers/.test(navBefore) ? 'Trainers' : 'MISSING')
+    + ' / ' + (/Members/.test(navBefore) ? 'Members' : 'MISSING'));
+
   await page.getByLabel('All of them', { exact: true }).first().fill('PTs');
+  await page.getByLabel('All of your people', { exact: true }).fill('Athletes');
   await page.getByRole('button', { name: 'Save' }).nth(1).click();
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1500);
   out.push('noun sent: ' + (CALLS.save_gym_vocabulary?.p_words?.trainers ?? 'MISSING'));
+
+  // CLAUDE.md's standing rule, asserted rather than asserted-to: the gym owner
+  // renamed what their *members* read, and the gym's own dashboard follows. A
+  // gym that renamed members to "Athletes" and still finds "Members" in its own
+  // sidebar reads that as the setting half-working.
+  const navAfter = await aside();
+  out.push('sidebar renamed without a reload: '
+    + (/PTs/.test(navAfter) ? 'PTs' : 'MISSING')
+    + ' / ' + (/Athletes/.test(navAfter) ? 'Athletes' : 'MISSING'));
 
   // Moving the front door. The warning has to be on screen *before* the button,
   // because "every printed link stops working" is not a thing to learn after.
@@ -139,6 +160,36 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('slug sent: ' + (CALLS.set_gym_slug?.p_slug ?? 'MISSING'));
   await page.screenshot({ path: 'shots/admin-gym-app-link.png', fullPage: true });
+
+  // The poster. Asserted on the QR's own <svg> rather than on the screenshot,
+  // because a QR that renders as an empty box is exactly the failure a
+  // picture-only check sails past.
+  await page.getByRole('button', { name: 'Poster' }).click();
+  await page.waitForTimeout(700);
+  const poster = await page.evaluate(() => {
+    const svg = document.querySelector('body > div svg');
+    const body = document.body.innerText;
+    return {
+      qr: svg ? svg.querySelectorAll('path, rect').length : 0,
+      name: /Harbour Strength/.test(body),
+      // The moved link, not the one the page loaded with.
+      link: /harbour-strength-mamburao/.test(body),
+      code: /HARB42/.test(body),
+      // Approval is not optional (0078); a poster implying instant access
+      // starts an argument at the counter on day one.
+      honest: /we approve every new member/.test(body),
+      // Portalled out of #root, which is what lets one print rule hide the
+      // dashboard instead of three `print:hidden` someone will forget.
+      portalled: !!svg && document.body.classList.contains('poster-open'),
+    };
+  });
+  out.push('poster: name ' + (poster.name ? 'shown' : 'MISSING')
+    + ' / link ' + (poster.link ? 'the moved one' : 'MISSING')
+    + ' / code ' + (poster.code ? 'shown' : 'MISSING')
+    + ' / approval line ' + (poster.honest ? 'shown' : 'MISSING'));
+  out.push('poster QR drew: ' + (poster.qr > 0 ? poster.qr + ' shapes' : 'MISSING'));
+  out.push('poster portalled for printing: ' + (poster.portalled ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-join-poster.png', fullPage: true });
 
   return out.join('\n');
 }

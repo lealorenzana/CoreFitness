@@ -1,6 +1,6 @@
 """The gyms on this service, as a stranger sees them.
 
-Asks the live database rather than trusting a screen or a report — the same
+Asks the live database rather than trusting a screen or a report - the same
 rule as `probe-migrations.py`, and for the same reason (0070 was believed
 pasted for a day and had never run).
 
@@ -55,13 +55,39 @@ if not rows:
     sys.exit(0)
 
 print(f'{len(rows)} gym(s) a stranger can find in the member app:\n')
+todo = []
 for g in rows:
-    # accent/accent_action arrive from 0112; an older database omits them.
+    # accent/accent_action arrive from 0112, tagline from 0114; an older
+    # database omits them, and a missing key must read as "not set" rather
+    # than crash the probe.
     main = g.get('accent') or 'violet'
     action = g.get('accent_action') or 'amber'
     logo = 'logo set' if g.get('logo_url') else 'no logo'
     print(f"  {g['name']}")
-    print(f"    /join/{g['slug']}  ·  {main}/{action}  ·  {logo}")
+    print(f"    /join/{g['slug']}  -  {main}/{action}  -  {logo}")
+    if g.get('tagline'):
+        print('    "{}"'.format(g['tagline']))
+
+    # The three things an owner has to do once and usually has not. Said as
+    # work rather than as a fault: none of these is broken, they are unset.
+    if not g.get('accent_action'):
+        todo.append(f"{g['name']}: buttons are still amber - set the action "
+                    f"colour on admin -> Your app")
+    if not g.get('logo_url'):
+        todo.append(f"{g['name']}: no logo - members see the Core Fitness mark")
+    if not g.get('tagline'):
+        todo.append(f"{g['name']}: no tagline - the gym list shows only a name")
 
 print('\nThe two colours are "where you are" and "what you can do next" (0112).')
 print('Both the same means an app in one colour throughout.')
+
+# `list_gyms` is the anon view and deliberately carries no vocabulary: what a
+# gym calls its members is for its own members, not for a stranger browsing.
+# Reading it needs a session, so this probe stops honestly at the public edge.
+print('\nWhat each gym calls its people (0114) is not public, so this probe')
+print('cannot show it. Open admin -> Your app on that gym to see or change it.')
+
+if todo:
+    print(f'\n{len(todo)} thing(s) still unset:')
+    for line in todo:
+        print(f'  - {line}')

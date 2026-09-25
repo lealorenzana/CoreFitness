@@ -3,7 +3,9 @@ import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
 import { IconButton } from './TabHeader';
-import { TRAINER_RAILS, type TrainerTab } from './trainerNav';
+import { TRAINER_RAILS, trainerTabs, type TrainerTab } from './trainerNav';
+import { useGymApp } from '../../hooks/useGymApp';
+import { word } from '../../lib/gymApp';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
 
 /** From the device's own clock — the one thing a greeting can honestly know. */
@@ -51,7 +53,13 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
   const navigate = useNavigate();
   const me = useMyIdentity();
   const now = new Date();
-  const [line1, line2] = titleFor(tab, now, me?.fullName);
+  // This gym's own nouns (0114). Renamed here rather than in TrainerLayout so
+  // the title, the eyebrow and the rail's aria-label all read one object D
+  // three places taking the word from two sources is the drift trainerNav.ts
+  // exists to prevent.
+  const app = useGymApp();
+  const named = trainerTabs(app).find((x) => x.id === tab.id) ?? tab;
+  const [line1, line2] = titleFor(named, now, me?.fullName);
   const isHome = tab.id === 'home';
   const rail = TRAINER_RAILS[tab.id];
 
@@ -72,7 +80,7 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
             aria-label="Your profile" style={{ gap: 11 }}>
             <Avatar name={me?.fullName} photoUrl={me?.photoUrl} size={40} />
             <span className="min-w-0">
-              <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{greetingFor(now)}, Coach</span>
+              <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{greetingFor(now)}, {word(app, 'trainer', true)}</span>
               <span className="block truncate" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
                 {me?.firstName ?? ' '}
               </span>
@@ -92,12 +100,12 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
         {!isHome && <div style={{ paddingTop: 4 }}>{actions}</div>}
       </div>
 
-      <p className="eyebrow" style={{ marginTop: 12 }}>{tab.eyebrow}</p>
+      <p className="eyebrow" style={{ marginTop: 12 }}>{named.eyebrow}</p>
 
       <div className="rule" style={{ marginTop: 12 }} />
 
       {rail.length > 0 ? (
-        <nav aria-label={`${tab.label} screens`} className="rail" style={{
+        <nav aria-label={`${named.label} screens`} className="rail" style={{
           margin: '0 calc(var(--gutter) * -1)',
           padding: '12px var(--gutter) 12px',
         }}>

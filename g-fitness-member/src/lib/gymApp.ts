@@ -166,9 +166,21 @@ export function word(
   return title ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
+/**
+ * True when this gym chose its own word for this noun.
+ *
+ * Per key, deliberately. "Did they rename anything?" is the wrong question:
+ * the default for `trainers` is "coaches", so a gym that renamed only its
+ * members would still have every "Coaches" label rebuilt — harmless in this
+ * app, and in the admin sidebar it renamed a row on every gym in the service.
+ * One rule, asked the same way in both apps.
+ */
+export function renamed(app: GymApp | null, key: keyof GymVocabulary): boolean {
+  return !!app && app.vocabulary[key] !== DEFAULT_WORDS[key];
+}
+
 /** True when this gym renamed anything, so a caller can skip the work entirely. */
 export function hasOwnWords(app: GymApp | null): boolean {
   if (!app) return false;
-  return (Object.keys(DEFAULT_WORDS) as (keyof GymVocabulary)[])
-    .some((k) => app.vocabulary[k] !== DEFAULT_WORDS[k]);
+  return (Object.keys(DEFAULT_WORDS) as (keyof GymVocabulary)[]).some((k) => renamed(app, k));
 }

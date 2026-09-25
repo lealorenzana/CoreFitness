@@ -10,6 +10,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
 import { useBranding, DEFAULT_BRANDING } from '../../hooks/useBranding';
+import { DEFAULT_WORDS, title, useGymWords } from '../../hooks/useGymWords';
 import { supabase } from '../../lib/supabaseClient';
 
 const BG           = 'var(--color-bg)';
@@ -26,6 +27,18 @@ interface Leaf {
   path: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  /**
+   * The gym-renameable noun this row is named after (0114).
+   *
+   * Named explicitly rather than matched inside `label`, because substring
+   * substitution on a nav is how "Members" and "Membership plans" both become
+   * "Athletes" and nobody can find the prices. Rows without one never rename.
+   *
+   * Group labels deliberately have no `noun`: a group's label is also the key
+   * its open/closed state is stored under, so renaming one would silently
+   * reopen every drawer the day the owner changed a word.
+   */
+  noun?: 'members' | 'trainers' | 'classes';
   /**
    * Other routes that belong to this row.
    *
@@ -81,9 +94,9 @@ const NAV: Entry[] = [
     label: 'People',
     icon: Users,
     children: [
-      { label: 'Members', path: '/members', icon: Users },
+      { label: 'Members', path: '/members', icon: Users, noun: 'members' },
       { label: 'Invitations', path: '/invitations', icon: MailPlus },
-      { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true },
+      { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true, noun: 'trainers' },
       { label: 'Credentials', path: '/credentials', icon: ShieldCheck, adminOnly: true },
     ],
   },
@@ -170,6 +183,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(true);
   const brand = useBranding();
+  // This gym's own nouns (0114). Defaults to the English words, so the nav
+  // never flickers between two wordings while the read lands.
+  const words = useGymWords();
 
   // Hide admin-only destinations from front-desk staff. Cosmetic only — the real
   // enforcement is ProtectedRoute's adminOnly guard plus RLS. Defaults to true so
@@ -189,19 +205,32 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
    */
   const entries = useMemo<Entry[]>(() => {
     const visible = (l: Leaf) => isAdmin || !l.adminOnly;
+    // Renamed only where the gym actually chose a word — compared key by key
+    // against the defaults, not by "did they rename anything".
+    //
+    // This is not a nicety. The default for `trainers` is "coaches", which is
+    // what the *member* app has always called them; this sidebar has always
+    // said "Trainers". Substituting unconditionally renamed a row for every
+    // gym on the service, including the ones that never opened the setting.
+    // The rule everywhere in 0114 is that a gym which changed nothing reads
+    // exactly as it did before, and only a per-key comparison delivers it.
+    const named = (l: Leaf): Leaf =>
+      (l.noun && words[l.noun] && words[l.noun] !== DEFAULT_WORDS[l.noun]
+        ? { ...l, label: title(words[l.noun]) }
+        : l);
     const out: Entry[] = [];
     for (const e of NAV) {
       if (!isGroup(e)) {
-        if (visible(e)) out.push(e);
+        if (visible(e)) out.push(named(e));
         continue;
       }
-      const children = e.children.filter(visible);
+      const children = e.children.filter(visible).map(named);
       if (children.length === 0) continue;
       if (children.length === 1) { out.push(children[0]); continue; }
       out.push({ ...e, children });
     }
     return out;
-  }, [isAdmin]);
+  }, [isAdmin, words]);
 
   /**
    * Which drawers are open — remembered, so the section you work in every day

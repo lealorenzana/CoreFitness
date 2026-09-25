@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { TRAINER_TABS, trainerTabForPath } from './trainerNav';
+import { TRAINER_TABS, trainerTabForPath, trainerTabs } from './trainerNav';
+import { useGymApp } from '../../hooks/useGymApp';
 
 /**
  * The trainer bar: Home · Members · Schedule · Bookings · Profile.
@@ -15,6 +16,9 @@ export default function TrainerBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const active = trainerTabForPath(location.pathname);
+  // This gym's own nouns (0114). Null — the frame before the read lands D
+  // gives the exported constant, which is the English wording.
+  const tabs = trainerTabs(useGymApp());
   const onRoot = TRAINER_TABS.some((t) => t.path === location.pathname);
 
   return (
@@ -28,7 +32,7 @@ export default function TrainerBottomNav() {
         padding: '0 10px 8px',
       }}
     >
-      {TRAINER_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = active === tab.id;
         const Icon = tab.icon;
         return (

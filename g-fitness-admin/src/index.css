@@ -281,3 +281,12 @@
      value and the ring renders white. Exclude outline from any transition. */
   transition-property: color, background-color, border-color, box-shadow, opacity, transform;
 }
+
+/* ---- printing a join poster (0114) --------------------------------------
+   The poster portals to <body>, so hiding #root leaves exactly the poster on
+   the page. Doing this with `print:hidden` on the sidebar, the header and the
+   search bar would be three places to forget the next time one is added. */
+@media print {
+  body.poster-open #root { display: none !important; }
+  body.poster-open { background: #FFFFFF; }
+}

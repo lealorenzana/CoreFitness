@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, LifeBuoy, Link2, Lock, RefreshCw } from 'lucide-react';
+import { Check, Copy, LifeBuoy, Link2, Lock, Printer, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import {
@@ -10,6 +10,8 @@ import {
 } from '../lib/api/gymApp';
 import { ACCENTS } from '../lib/accents';
 import { uploadMedia } from '../lib/api/media';
+import { refreshGymWords } from '../hooks/useGymWords';
+import JoinPoster from '../components/JoinPoster';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -48,6 +50,7 @@ export default function GymApp() {
   /** The gym's address, open for editing. NULL means "not editing" rather than
       "blank", so an accidental empty box cannot be saved as one. */
   const [slug, setSlug] = useState<string | null>(null);
+  const [poster, setPoster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -106,6 +109,10 @@ export default function GymApp() {
       // nothing — so clearing one and saving really does reset it.
       if (vocab) await saveGymVocabulary(vocab);
       await load();
+      // Repaint the sidebar now rather than on the next full reload. Saving a
+      // new word for your members and watching the old one stay in the corner
+      // is how an admin concludes the save did not work.
+      refreshGymWords();
       showToast('Saved. Your members see this next time they open the app.', 'success');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
@@ -569,6 +576,12 @@ export default function GymApp() {
               }}>
                 <Copy size={14} className="mr-1.5" /> {copied ? 'Copied' : 'Copy'}
               </Button>
+              {/* The link and the code have been copyable since 0110, and the
+                  thing a gym actually needs is a piece of paper for its door.
+                  Every gym was being left to make that themselves. */}
+              <Button variant="ghost" onClick={() => setPoster(true)}>
+                <Printer size={14} className="mr-1.5" /> Poster
+              </Button>
               {app.join_policy === 'code' && (
                 <Button variant="ghost" onClick={() => void changeDoor('code', true)}>
                   <RefreshCw size={14} className="mr-1.5" /> New code
@@ -583,6 +596,20 @@ export default function GymApp() {
           </div>
         )}
       </div>
+
+      {poster && (
+        <JoinPoster
+          gymName={app.gym_name}
+          tagline={app.tagline}
+          logoUrl={app.logo_url}
+          joinLink={joinLink}
+          /* A listed gym has no code, so the poster leaves that half out rather
+             than printing a blank box under "type this". */
+          joinCode={app.join_policy === 'code' ? app.join_code : null}
+          accent={ACCENTS.find((a) => a.key === app.accent)?.swatch ?? '#7C3AED'}
+          onClose={() => setPoster(false)}
+        />
+      )}
     </div>
   );
 }
