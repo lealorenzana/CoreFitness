@@ -1,6 +1,6 @@
 # Content Studio — the gym's own exercises, videos and programs
 
-**Date:** 2026-09-26 · **Status:** approved in conversation, spec awaiting review
+**Date:** 2026-09-26 · **Status:** built — 0120 and 0121 live; 0122 built, pasted by hand. Plans: `docs/superpowers/plans/2026-09-26-content-studio-0121.md`, `-0122.md`
 **Migrations:** 0120 (storage tenancy, prerequisite) · 0121 (exercise media) · 0122 (workouts and programs)
 
 ## Why
