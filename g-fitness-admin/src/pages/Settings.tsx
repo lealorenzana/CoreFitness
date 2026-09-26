@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import WaiverTab from '../components/WaiverTab';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
@@ -9,11 +10,7 @@ import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import FormField from '../components/ui/FormField';
-import {
-  User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight,
-  UserX, UserCheck, Archive, Camera, Trash2, Check,
-  Banknote,
-} from 'lucide-react';
+import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, UserX, UserCheck, Archive, Camera, Trash2, Check, Banknote, FileSignature } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listRefundRules, updateRefundRule, getRefundFee, setRefundFee,
@@ -51,7 +48,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'refunds' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'refunds' | 'waiver' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -60,6 +57,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'gym', label: 'Gym Information', icon: Building2 },
   { id: 'refunds', label: 'Refund Policy', icon: Banknote },
+  { id: 'waiver', label: 'Waiver', icon: FileSignature },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'staff', label: 'Staff Accounts', icon: UserPlus },
 ];
@@ -588,6 +586,7 @@ export default function Settings() {
             )}
 
             {activeTab === 'refunds' && <RefundPolicyTab />}
+            {activeTab === 'waiver' && <WaiverTab />}
 
             {activeTab === 'security' && (
               <div className="rounded-xl p-5 space-y-4" style={panel}>

@@ -50,6 +50,9 @@ async (page) => {
   };
 
   const CALLS = {};
+  // 0119. Starts with nothing published, which is every gym on the day it pastes 0119.
+  const WAIVERS = [];
+  let waiverRequired = false;
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -85,10 +88,39 @@ async (page) => {
       }
       if (fn === 'set_gym_slug') { gym.slug = body.p_slug; return json(body.p_slug); }
       if (fn === 'save_gym_words') return json(null);
+      if (fn === 'parq_questions') return json(['heart_condition', 'chest_pain_active', 'chest_pain_rest',
+        'balance', 'bone_joint', 'medication', 'other_reason']
+        .map((key, i) => ({ key, question: 'Question ' + (i + 1) + ' (' + key + ')', sort_order: i + 1 })));
+      if (fn === 'gym_waiver_signatures') return json([{ member_id: 'm9', member_name: 'Lea Lorenzana',
+        accepted_at: new Date().toISOString(), version: 1, flagged: true,
+        par_q: { bone_joint: true, heart_condition: false } }]);
+      if (fn === 'save_gym_waiver') {
+        const draft = WAIVERS.find((w) => !w.published_at);
+        if (draft) { draft.title = body.p_title; draft.body = body.p_body; return json(draft.id); }
+        const v = { id: 'w' + (WAIVERS.length + 1), version: WAIVERS.length + 1,
+          title: body.p_title, body: body.p_body, published_at: null };
+        WAIVERS.push(v);
+        return json(v.id);
+      }
+      if (fn === 'publish_gym_waiver') {
+        const draft = WAIVERS.find((w) => !w.published_at);
+        draft.published_at = new Date().toISOString();
+        return json(draft.version);
+      }
       return json(null);
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1];
+    if (t === 'gym_waivers') return json([...WAIVERS].sort((a, b) => b.version - a.version));
+    if (t === 'gym_settings') {
+      if (req.method() === 'PATCH') {
+        waiverRequired = JSON.parse(req.postData() || '{}').waiver_required ?? waiverRequired;
+        CALLS.waiver_required = waiverRequired;
+        return json([{ id: true }]);
+      }
+      const row = { id: true, waiver_required: waiverRequired };
+      return json(req.headers()['accept']?.includes('vnd.pgrst.object') ? row : [row]);
+    }
     if (t === 'profiles' || t === 'gym_people') {
       return json(req.headers()['accept']?.includes('vnd.pgrst.object') ? owner : [owner]);
     }
@@ -190,6 +222,49 @@ async (page) => {
   out.push('poster QR drew: ' + (poster.qr > 0 ? poster.qr + ' shapes' : 'MISSING'));
   out.push('poster portalled for printing: ' + (poster.portalled ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-join-poster.png', fullPage: true });
+
+  // ---- Settings -> Waiver (0119) ----------------------------------------
+  // The rule under test is that published words cannot be edited: the screen
+  // must say so before anyone types, and saving after publishing has to make
+  // the NEXT version rather than rewrite the one people signed.
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
+  await page.getByRole('button', { name: /^Waiver$/ }).click();
+  await page.waitForTimeout(900);
+  let w = await text();
+  out.push('waiver tab: ' + (/Nothing published yet/.test(w) ? 'nothing published, says so' : 'MISSING'));
+  // Distinct: the follow-up list repeats the question somebody said yes to.
+  out.push('PAR-Q shown read-only: ' + (new Set(w.match(/Question \d/g) || []).size === 7 ? '7 questions' : 'MISSING'));
+  await page.getByLabel('Waiver text').fill('I train at my own risk.');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: /^Publish version 1$/ }).click();
+  await page.waitForTimeout(900);
+  out.push('published: ' + (WAIVERS[0]?.published_at ? 'version 1' : 'MISSING'));
+  w = await text();
+  out.push('warns before editing a published one: '
+    + (/Published words cannot be changed/.test(w) ? 'yes' : 'MISSING'));
+  await page.getByLabel('Waiver text').fill('I train at my own risk. Revised.');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await page.waitForTimeout(900);
+  out.push('saving after publishing makes version 2, and v1 is untouched: '
+    + (WAIVERS.length === 2 && WAIVERS[0].body === 'I train at my own risk.' ? 'yes' : 'MISSING'));
+  // Clicked, not check(): the box is controlled and only flips once the save
+  // has round-tripped, and check() asserts the new state immediately.
+  await page.getByRole('checkbox').first().click();
+  await page.waitForTimeout(1200);
+  const boxOn = await page.getByRole('checkbox').first().isChecked();
+  // The toast has to agree with the box. It once said 'no longer waits' while
+  // the box was ticked, because it read the event after an await.
+  const toastSays = await page.evaluate(() => document.body.innerText);
+  out.push('booking gate sent: ' + (CALLS.waiver_required === true ? 'on' : 'MISSING')
+    + ' / box reflects it: ' + (boxOn ? 'yes' : 'MISSING')
+    + ' / toast agrees: ' + (/now waits for a signature/.test(toastSays) && !/no longer waits/.test(toastSays) ? 'yes' : 'MISSING'));
+  w = await text();
+  out.push('a yes on the PAR-Q is listed for follow-up: '
+    + (/Lea Lorenzana/.test(w) && /bone_joint/.test(w) ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-waiver.png', fullPage: true });
 
   return out.join('\n');
 }

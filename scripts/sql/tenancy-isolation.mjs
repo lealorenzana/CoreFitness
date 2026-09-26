@@ -1677,4 +1677,155 @@ check('a member can withdraw, and cannot withdraw twice', await (async () => {
   return mine.status === 'withdrawn' && !!(await fails('select withdraw_membership_request()'));
 })());
 
+
+// ---- 0119: the waiver, the PAR-Q, and a record that cannot be rewritten --------------
+// The value of a signature is that the words cannot change afterwards. Most of
+// these checks are about that rather than about the happy path.
+await as(P.adminA);
+check('the owner writes a draft, and it is not yet anybody to sign', await (async () => {
+  const id = (await one(`select save_gym_waiver('Waiver', 'I train at my own risk.') as id`)).id;
+  await as(P.memberA);
+  const st = (await db.query('select * from my_waiver_status()')).rows;
+  await as(P.adminA);
+  return !!id && st.length === 0;
+})());
+check('saving again edits the draft rather than making a second one', await (async () => {
+  await db.exec(`select save_gym_waiver('Waiver', 'I train at my own risk. Version one.')`);
+  await asOwner();
+  const n = await one(`select count(*)::int as n from gym_waivers where gym_id = '` + GYM_A + `'`);
+  await as(P.adminA);
+  return n.n === 1;
+})());
+check('the front desk cannot write it, and a member certainly cannot', await (async () => {
+  await as(P.staffA);
+  const a = await fails(`select save_gym_waiver('Mine', 'Nope')`);
+  await as(P.memberA);
+  const b = await fails(`select save_gym_waiver('Mine', 'Nope')`);
+  const c = await fails('select publish_gym_waiver()');
+  await as(P.adminA);
+  return !!a && !!b && !!c;
+})());
+check('publishing makes it the one members sign', await (async () => {
+  const v = (await one('select publish_gym_waiver() as v')).v;
+  await as(P.memberA);
+  const st = await one('select * from my_waiver_status()');
+  await as(P.adminA);
+  return v === 1 && st.version === 1 && st.accepted_at === null
+    && /own risk/.test(st.body);
+})());
+
+// The rule the whole feature rests on.
+check('published words cannot be edited, by anyone, ever', await (async () => {
+  await asOwner();   // the table owner, who bypasses RLS entirely
+  const refused = await fails(`update gym_waivers set body = 'Actually you waive much more'
+    where gym_id = '` + GYM_A + `' and published_at is not null`);
+  const still = await one(`select body from gym_waivers where gym_id = '` + GYM_A + `'`);
+  await as(P.adminA);
+  return !!refused && /own risk/.test(still.body);
+})());
+check('and a second draft starts at the next version', await (async () => {
+  await db.exec(`select save_gym_waiver('Waiver', 'Second version, new words.')`);
+  await asOwner();
+  const rows = (await db.query(`select version, published_at from gym_waivers
+    where gym_id = '` + GYM_A + `' order by version`)).rows;
+  await as(P.adminA);
+  return rows.length === 2 && rows[1].version === 2 && rows[1].published_at === null;
+})());
+check('a member sees the published one, never the draft', await (async () => {
+  await as(P.memberA);
+  const st = await one('select * from my_waiver_status()');
+  const seen = (await db.query('select version from gym_waivers')).rows.map((r) => r.version);
+  return st.version === 1 && !seen.includes(2);
+})());
+
+// The PAR-Q.
+await as(P.memberA);
+check('every health question must be answered', await (async () => {
+  const w = await one('select * from my_waiver_status()');
+  return !!(await fails(`select accept_waiver('` + w.waiver_id + `', '{}'::jsonb)`))
+    && !!(await fails(`select accept_waiver('` + w.waiver_id + `', '{"heart_condition":true}'::jsonb)`))
+    // A string is not an answer: "no" as text would coerce and quietly pass.
+    && !!(await fails(`select accept_waiver('` + w.waiver_id + `',
+         (select jsonb_object_agg(key, '"no"'::jsonb) from parq_questions()))`));
+})());
+check('all seven answered no: signed, not flagged', await (async () => {
+  const w = await one('select * from my_waiver_status()');
+  const flagged = (await one(`select accept_waiver('` + w.waiver_id + `',
+    (select jsonb_object_agg(key, to_jsonb(false)) from parq_questions())) as f`)).f;
+  const after = await one('select * from my_waiver_status()');
+  return flagged === false && after.accepted_at !== null && after.flagged === false;
+})());
+check('a yes is recorded, kept whole, and flagged', await (async () => {
+  await as(P.memberB);
+  // Give B its own waiver to sign, in its own gym.
+  await as(P.adminB);
+  await db.exec(`select save_gym_waiver('B waiver', 'Gym B terms.')`);
+  await db.exec('select publish_gym_waiver()');
+  await as(P.memberB);
+  const w = await one('select * from my_waiver_status()');
+  const flagged = (await one(`select accept_waiver('` + w.waiver_id + `',
+    (select jsonb_object_agg(key, to_jsonb(key = 'bone_joint')) from parq_questions())) as f`)).f;
+  await as(P.adminB);
+  const row = await one('select * from gym_waiver_signatures() limit 1');
+  return flagged === true && row.flagged === true
+    && row.par_q.bone_joint === true && row.par_q.heart_condition === false;
+})());
+check('a member cannot sign another gym waiver', await (async () => {
+  await asOwner();
+  const bWaiver = (await one(`select id from gym_waivers where gym_id = '` + GYM_B + `'`)).id;
+  await as(P.memberA);
+  return !!(await fails(`select accept_waiver('` + bWaiver + `',
+    (select jsonb_object_agg(key, to_jsonb(false)) from parq_questions()))`));
+})());
+check('a signature cannot be written by hand', await (async () => {
+  await as(P.memberA);
+  const w = await one('select * from my_waiver_status()');
+  return !!(await fails(`insert into waiver_acceptances (gym_id, waiver_id, member_id)
+    values ('` + GYM_A + `', '` + w.waiver_id + `', '` + P.memberA + `')`));
+})());
+check('one gym cannot read another gym signatures', await (async () => {
+  await as(P.adminA);
+  const rows = (await db.query('select * from gym_waiver_signatures()')).rows;
+  return rows.every((r) => r.member_id !== P.memberB);
+})());
+
+// The gate. Off by default, and narrow when on.
+check('nothing is gated until the gym asks for it', await (async () => {
+  await asOwner();
+  return (await one(`select waiver_required from gym_settings where gym_id = '` + GYM_A + `'`))
+    .waiver_required === false;
+})());
+check('a gym that requires it but wrote none blocks nobody', await (async () => {
+  await asOwner();
+  await db.exec(`update gym_settings set waiver_required = true where gym_id = '` + GYM_B + `'`);
+  // Gym B has a published waiver; remove the acceptance to make the member unsigned,
+  // then check a gym with NO waiver at all separately.
+  return (await one(`select waiver_blocks('` + P.outsider + `', '` + GYM_A + `') as b`)).b === null;
+})());
+check('required, written, unsigned: the member is told what to do', await (async () => {
+  await asOwner();
+  await db.exec(`delete from waiver_acceptances where gym_id = '` + GYM_B + `'`);
+  const b = (await one(`select waiver_blocks('` + P.memberB + `', '` + GYM_B + `') as b`)).b;
+  return typeof b === 'string' && /sign/i.test(b) && /app/i.test(b);
+})());
+check('and signing clears it', await (async () => {
+  await as(P.memberB);
+  const w = await one('select * from my_waiver_status()');
+  await db.exec(`select accept_waiver('` + w.waiver_id + `',
+    (select jsonb_object_agg(key, to_jsonb(false)) from parq_questions()))`);
+  await asOwner();
+  return (await one(`select waiver_blocks('` + P.memberB + `', '` + GYM_B + `') as b`)).b === null;
+})());
+
+
+// The Privacy page promises this (RA 10173: health answers are sensitive
+// personal information), so it is asserted rather than hoped: a trainer reads
+// no PAR-Q answers, whatever the member's other sharing switches say.
+check('a trainer cannot read anybody health answers', await (async () => {
+  await as(P.trainerB);
+  const direct = (await one('select count(*)::int as n from waiver_acceptances')).n;
+  const via = (await db.query('select * from gym_waiver_signatures()')).rows.length;
+  return direct === 0 && via === 0;
+})());
+
 finish();

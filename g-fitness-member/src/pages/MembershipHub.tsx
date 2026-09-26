@@ -22,6 +22,7 @@ import { useLiveData } from '../hooks/useLiveData';
 import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import { readCache, writeCache } from '../lib/pageCache';
 import { logout } from '../utils/auth';
+import { myWaiverStatus, type WaiverStatus } from '../lib/api/waiver';
 
 const CACHE_KEY = 'member:membership';
 
@@ -61,6 +62,17 @@ export default function MembershipHub() {
   const [error, setError] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  /** The gym's waiver (0119), read on its own so a database without it leaves
+      the rest of this screen untouched. Null = nothing published. */
+  const [waiver, setWaiver] = useState<WaiverStatus | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const w = await myWaiverStatus();
+      if (alive) setWaiver(w);
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -220,6 +232,21 @@ export default function MembershipHub() {
           </div>
         )}
       </Panel>
+
+      {/* The gym's waiver, when there is one to sign (0119). A booking refused
+          for want of it tells the member to look here, so this row is what
+          makes that sentence true. */}
+      {waiver && !waiver.acceptedAt && (
+        <Panel glow="action" onClick={() => navigate('/member/waiver')} ariaLabel="Sign the gym's waiver">
+          <Eyebrow tone="action">Waiver</Eyebrow>
+          <p style={{ fontSize: 14, fontWeight: 600, marginTop: 6, color: 'var(--color-text-primary)' }}>
+            {waiver.required ? 'Sign before you book' : 'Please read and sign'}
+          </p>
+          <p style={{ fontSize: 12, marginTop: 3, color: 'var(--color-text-secondary)' }}>
+            {waiver.title} · seven short health questions
+          </p>
+        </Panel>
+      )}
 
       {/* ── This term so far ── */}
       {t && !home.frozen && (

@@ -151,7 +151,8 @@ export default function PauseOrCancel() {
             The desk has been told. Nothing has changed on your membership yet — it changes when
             they make the change, not when you ask.
           </p>
-          <NocButton variant="ghost" onClick={() => void withdraw()} disabled={busy}>
+          <NocButton variant="ghost" className="w-full" style={{ marginTop: 10 }}
+            onClick={() => void withdraw()} disabled={busy}>
             Withdraw this
           </NocButton>
         </section>
@@ -273,13 +274,14 @@ export default function PauseOrCancel() {
             <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
               <NocButton
                 variant="action"
+                className="flex-1"
                 onClick={() => void send()}
                 disabled={busy || reason.trim().length === 0
                   || (kind === 'freeze' && !(Number(days) >= 1 && Number(days) <= 90))}
               >
                 {busy ? 'Sending…' : 'Send to the desk'}
               </NocButton>
-              <NocButton variant="ghost" onClick={() => setKind(null)} disabled={busy}>
+              <NocButton variant="ghost" className="flex-1" onClick={() => setKind(null)} disabled={busy}>
                 Back
               </NocButton>
             </div>
