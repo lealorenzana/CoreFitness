@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   explain, listPlanFeatures, listPlatformFeatures, listPlatformPlans, retirePlan, savePlan, setPlanFeature,
+  setPlanPhotoLimit,
   type PlanFeatureCell, type PlatformFeature, type PlatformPlan,
 } from '../lib/platform';
 
@@ -84,6 +85,11 @@ export default function Plans() {
         price_yearly: editing.price_yearly === null || editing.price_yearly === ''
           ? null : Number(editing.price_yearly),
       });
+      // 0121's photo limit, only when the database has the column (it arrives
+      // as a key on every plan row once 0121 is pasted).
+      if (editing.max_photos !== undefined) {
+        await setPlanPhotoLimit(editing.key, editing.max_photos);
+      }
       setEditing(null);
       await load();
     } catch (err) {
@@ -199,6 +205,14 @@ export default function Plans() {
                 placeholder="no limit"
                 onChange={(e) => setEditing({ ...editing, max_staff: e.target.value === '' ? null : Number(e.target.value) })} />
             </div>
+            {editing.max_photos !== undefined && (
+              <div>
+                <label htmlFor="pl-ph">Most photos</label>
+                <input id="pl-ph" type="number" min={1} value={editing.max_photos ?? ''}
+                  placeholder="no limit"
+                  onChange={(e) => setEditing({ ...editing, max_photos: e.target.value === '' ? null : Number(e.target.value) })} />
+              </div>
+            )}
             <div>
               <label htmlFor="pl-pub">On the website</label>
               <select id="pl-pub" value={editing.is_public ? 'yes' : 'no'}
@@ -238,6 +252,7 @@ export default function Plans() {
                 {' · '}
                 {plan.max_members === null ? 'any number of members' : `up to ${plan.max_members} members`}
                 {plan.max_staff !== null && ` · up to ${plan.max_staff} on the desk`}
+                {plan.max_photos !== undefined && (plan.max_photos === null ? ' · any number of photos' : ` · up to ${plan.max_photos} photos`)}
               </span>
               {plan.blurb && <span className="meta muted">“{plan.blurb}”</span>}
             </span>

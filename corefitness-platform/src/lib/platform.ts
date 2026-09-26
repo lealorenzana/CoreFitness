@@ -44,6 +44,8 @@ export interface PlatformPlan {
   trial_days: number | null;
   max_members: number | null;
   max_staff: number | null;
+  /** 0121. Photos a gym may upload (exercise guides); NULL = unlimited. Absent before 0121. */
+  max_photos?: number | null;
   is_public: boolean;
   is_active: boolean;
   sort_order: number;
@@ -224,6 +226,10 @@ export const savePlan = (p: {
   p_max_members: p.max_members, p_max_staff: p.max_staff,
   p_is_public: p.is_public, p_is_active: p.is_active, p_sort: p.sort_order,
 });
+
+/** 0121: the photo limit is its own call, so save_platform_plan's signature stays as it is. */
+export const setPlanPhotoLimit = (plan: string, max: number | null) =>
+  call<void>('set_platform_plan_photo_limit', { p_plan: plan, p_max: max });
 
 export const setPlanFeature = (plan: string, feature: string, enabled: boolean) =>
   call<void>('set_platform_plan_feature', { p_plan: plan, p_feature: feature, p_enabled: enabled });
