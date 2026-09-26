@@ -49,6 +49,12 @@ async function read(): Promise<GymVocabulary> {
   return cached;
 }
 
+/** Forget the gym's nouns when the account changes — see `clearAdminCaches()`. */
+export function clearGymWordsCache(): void {
+  cached = DEFAULT_WORDS;
+  inFlight = null;
+}
+
 /** Re-read after a save on Your app, so every open screen renames at once. */
 export function refreshGymWords(): void {
   inFlight = read();

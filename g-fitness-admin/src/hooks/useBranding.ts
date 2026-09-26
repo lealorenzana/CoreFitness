@@ -75,6 +75,15 @@ function toBranding(row: {
   };
 }
 
+/**
+ * Forget the gym's identity. Called by `clearAdminCaches()` when the signed-in
+ * account changes — this cache is *one gym's*, and it outlived a Logout: the
+ * next owner to sign in on that tab wore the last gym's name and logo.
+ */
+export function clearBrandingCache(): void {
+  cache = null;
+}
+
 /** Called by Settings after a successful save, so the shell repaints at once. */
 export function publishBranding(row: Parameters<typeof toBranding>[0]): void {
   cache = toBranding(row);

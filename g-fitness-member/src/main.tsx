@@ -5,12 +5,15 @@ import App from './App.tsx';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { keepAppUpdated } from './lib/appUpdate';
 import { installErrorReporter } from './lib/errorReporter';
+import { forgetGymWhenAccountChanges } from './lib/accountWatch';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Registers the service worker and reloads onto a new deploy — see appUpdate.ts.
 keepAppUpdated();
 // Crashes are filed in client_errors (0095) — see errorReporter.ts.
 installErrorReporter('member');
+// A new account never inherits the last one's gym — see accountWatch.ts.
+forgetGymWhenAccountChanges();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
