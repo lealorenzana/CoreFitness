@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  addAdmin, enterSupport, explain, getOverview, lastBackup, leaveSupport, listAdmins,
-  listCrashes, listEmails, listEvents, listSupportGrants, removeAdmin, resolveCrashes,
-  type Backup, type CrashReport, type Overview, type PlatformAdmin, type PlatformEvent,
-  type SentEmail, type SupportGrant,
+  addAdmin, demoSummary, enterSupport, explain, getOverview, lastBackup, leaveSupport,
+  listAdmins, listCrashes, listEmails, listEvents, listSupportGrants, removeAdmin,
+  removeDemoData, resolveCrashes,
+  type Backup, type CrashReport, type DemoSummary, type Overview, type PlatformAdmin,
+  type PlatformEvent, type SentEmail, type SupportGrant,
 } from '../lib/platform';
 
 const stamp = (iso: string) =>
@@ -34,6 +35,13 @@ export default function Platform() {
   const [grants, setGrants] = useState<SupportGrant[]>([]);
   const [emails, setEmails] = useState<SentEmail[]>([]);
   const [inside, setInside] = useState<string | null>(null);
+  /** Seeded rows (0117). Null on a database without it, which draws nothing. */
+  const [demo, setDemo] = useState<DemoSummary | null>(null);
+  /** The typed confirmation, open. Only this action has one D it is the only
+      thing here that cannot be set back afterwards. */
+  const [wiping, setWiping] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [wiped, setWiped] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -65,6 +73,7 @@ export default function Platform() {
     void (async () => {
       try { setGrants(await listSupportGrants()); } catch { setGrants([]); }
       try { setEmails(await listEmails(30)); } catch { setEmails([]); }
+      try { setDemo(await demoSummary()); } catch { setDemo(null); }
     })();
   }, []);
 
@@ -306,6 +315,73 @@ export default function Platform() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ---- the demo data ---------------------------------------------------
+          The removal SQL has existed since the seeds did. The problem was never
+          the SQL, it was that its only interface was a 166-line paste into a
+          production console — and the evening anybody needs it is the evening
+          before a demo, with the dashboard showing 150 people who do not exist.
+
+          Drawn only while there is something to remove, so this card disappears
+          for good the moment it has been used. */}
+      {demo && demo.people > 0 && (
+        <div className="card notice">
+          <div className="name">Demo data is live on this deployment</div>
+          <div className="meta">
+            {demo.people} seeded people ({demo.coaches} of them coaches), {demo.payments} payments,
+            {' '}{demo.attendance} check-ins, {demo.classes} classes, {demo.bookings} bookings,
+            {' '}{demo.events} events, {demo.challenges} challenges and {demo.rewards} rewards.
+            Every figure on every gym dashboard counts these.
+          </div>
+          <div className="meta" style={{ marginTop: 8 }}>
+            Removing them takes out the seeded people and everything attached to them, and nothing
+            else: a real class handed to a demo coach keeps existing without one, and a real member
+            who spent points on a demo reward keeps their points.
+            {' '}<strong style={{ color: 'var(--warn)' }}>There is no undo.</strong>
+          </div>
+
+          {!wiping ? (
+            <button className="btn" style={{ marginTop: 10 }}
+              onClick={() => { setWiping(true); setTyped(''); }}>
+              Remove the demo data
+            </button>
+          ) : (
+            <form className="fields" style={{ marginTop: 10 }} onSubmit={(e) => {
+              e.preventDefault();
+              void (async () => {
+                try {
+                  const said = await removeDemoData();
+                  setWiped(said);
+                  setWiping(false);
+                  setDemo(await demoSummary());
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Could not remove it');
+                }
+              })();
+            }}>
+              <label htmlFor="wipe">Type <strong>remove</strong> to confirm</label>
+              <input id="wipe" autoFocus value={typed} autoComplete="off"
+                onChange={(e) => setTyped(e.target.value)} />
+              <div style={{ marginTop: 8 }}>
+                <button className="btn" type="submit" disabled={typed.trim().toLowerCase() !== 'remove'}>
+                  Remove {demo.people} seeded people
+                </button>
+                <button className="btn ghost" type="button" style={{ marginLeft: 8 }}
+                  onClick={() => setWiping(false)}>Cancel</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* The database's own sentence, not this app's — it counted what actually
+          went, which is the number worth reading afterwards. */}
+      {wiped && (
+        <div className="card">
+          <div className="name">Demo data removed</div>
+          <div className="meta">{wiped}</div>
         </div>
       )}
 

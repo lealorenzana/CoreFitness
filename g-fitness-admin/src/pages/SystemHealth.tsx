@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Database, Bug, HardDriveDownload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, Bug, FlaskConical, HardDriveDownload } from 'lucide-react';
 import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { PageHeader, Section, SectionTabs, StatTiles } from '../components/ui/kit';
 import { supabase } from '../lib/supabaseClient';
 import { showToast } from '../utils/toast';
+import { getDemoDataSummary, type DemoSummary } from '../lib/api/settings';
 import { SETTINGS_TABS } from '../components/ui/settingsTabs';
 
 
 /**
  * Every migration since 0074 declares `migration_NNNN_applied()`, so whether it
  * is live is one REST call — the same test `scripts/probe-migrations.py` runs.
- * Add a number here when a migration adds its function.
+ *
+ * **The end of this range is the whole check.** It read 103 while fourteen
+ * migrations had shipped past it, so this page said "everything up to 0103 is
+ * live" on a database that was missing every one of them: a check that could
+ * not fail. `scripts/probe-migrations.py` is the list that gets updated
+ * reliably, because a migration is not finished until its entry is there — so
+ * the honest fix is to keep this end matching the probe's last row, and the
+ * comment on that file says the same thing back.
  */
-const CHECKED = Array.from({ length: 103 - 74 + 1 }, (_, i) => String(74 + i).padStart(4, '0'));
+const LAST = 117;
+const CHECKED = Array.from({ length: LAST - 74 + 1 }, (_, i) => String(74 + i).padStart(4, '0'));
 
 interface ErrorRow {
   id: string; created_at: string; app: 'member' | 'admin'; route: string | null;
@@ -38,6 +47,9 @@ export default function SystemHealth() {
   const [confirmClear, setConfirmClear] = useState(false);
   /** When the reports were read — "last 24 h" is measured from here, keeping render pure. */
   const [loadedAt, setLoadedAt] = useState(0);
+  /** Seeded rows, counted (0117). Null = this database has no 0117, which
+      renders nothing: "no demo data" and "cannot tell" are different sentences. */
+  const [demo, setDemo] = useState<DemoSummary | null>(null);
 
   const load = useCallback(async () => {
     const results = await Promise.all(CHECKED.map(async (n) => {
@@ -52,6 +64,7 @@ export default function SystemHealth() {
     setErrorsMissing(!!error);
     setErrors((data ?? []) as ErrorRow[]);
     setLoadedAt(Date.now());
+    setDemo(await getDemoDataSummary());
   }, []);
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
@@ -108,6 +121,34 @@ export default function SystemHealth() {
           </div>
         )}
       </Section>
+
+      {/* Seeded rows, counted rather than left to inflate things quietly.
+
+          `scripts/demo-data` puts 150 members, their payments, classes and
+          attendance into this gym, and every figure on the dashboard counts
+          them. Nothing here was lying — they are real counts of real rows — but
+          an owner reading a year's revenue deserves to know which part of it
+          was seeded for a demo.
+
+          No button on purpose: removing it deletes rows in `profiles` and
+          `auth.users`, which are not gym-scoped, so it is not a gym owner's to
+          press. It is on the platform app (0117). */}
+      {demo && demo.people > 0 && (
+        <Section title="Demo data" icon={FlaskConical}
+          hint="Seeded rows, counted in every figure on this dashboard.">
+          <p className="text-sm text-white">
+            {demo.people} seeded {demo.people === 1 ? 'person' : 'people'}
+            {demo.coaches > 0 ? ` (${demo.coaches} of them coaches)` : ''}, with{' '}
+            {demo.payments} payments, {demo.attendance} check-ins, {demo.classes} classes
+            and {demo.bookings} bookings.
+          </p>
+          <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+            Your dashboard, revenue and retention all include these. Ask Core Fitness to clear
+            them before you show the system to anyone — it cannot be undone, which is why it is
+            deliberately not a button on this page.
+          </p>
+        </Section>
+      )}
 
       <Section title="Crash reports" icon={Bug} count={errors?.length}
         hint="Filed automatically when a screen breaks in either app. Kept 60 days."

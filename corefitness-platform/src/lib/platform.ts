@@ -460,3 +460,29 @@ export async function sendEmail(m: {
   }
   return data as { id: string; configured: boolean; status: string };
 }
+
+// ---- the demo data (0117) -------------------------------------------------------------
+
+export interface DemoSummary {
+  people: number; coaches: number; payments: number; attendance: number;
+  classes: number; bookings: number; events: number; challenges: number; rewards: number;
+}
+
+/** What `scripts/demo-data` put into this deployment. Read-only. */
+export const demoSummary = async (): Promise<DemoSummary | null> => {
+  const rows = await call<DemoSummary[]>('demo_data_summary');
+  return rows?.[0] ?? null;
+};
+
+/**
+ * Remove everything the demo seeds created, and only that.
+ *
+ * **Irreversible, and there is no undo anywhere behind it** — no soft delete,
+ * no archive, no backup this app can reach. The screen asks for the word to be
+ * typed for that reason and not as ceremony.
+ *
+ * Returns the sentence the function composed, which names how many people went
+ * — so the confirmation the operator reads is the database's own count rather
+ * than the number this app showed them a minute ago.
+ */
+export const removeDemoData = () => call<string>('remove_demo_data');

@@ -167,3 +167,25 @@ export async function setFirstPassword(next: string): Promise<void> {
   });
   if (error) throw new Error(error.message);
 }
+
+/**
+ * How much of this dashboard's figures are seeded demo rows (0117).
+ *
+ * Read-only and readable by a gym admin: a gym whose numbers are inflated by
+ * `scripts/demo-data` is entitled to know which ones and by how much. Removing
+ * it is a platform action — it reaches `profiles` and `auth.users`, which are
+ * not gym-scoped — so this screen counts and does not offer a button.
+ *
+ * Returns null on a database without 0117, which renders nothing rather than a
+ * zero: "no demo data" and "cannot tell" are different sentences.
+ */
+export async function getDemoDataSummary(): Promise<DemoSummary | null> {
+  const { data, error } = await supabase.rpc('demo_data_summary');
+  if (error || !Array.isArray(data)) return null;
+  return (data[0] as DemoSummary) ?? null;
+}
+
+export interface DemoSummary {
+  people: number; coaches: number; payments: number; attendance: number;
+  classes: number; bookings: number; events: number; challenges: number; rewards: number;
+}
