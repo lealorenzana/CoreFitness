@@ -21,7 +21,7 @@ import { SETTINGS_TABS } from '../components/ui/settingsTabs';
  * the honest fix is to keep this end matching the probe's last row, and the
  * comment on that file says the same thing back.
  */
-const LAST = 121;
+const LAST = 122;
 const CHECKED = Array.from({ length: LAST - 74 + 1 }, (_, i) => String(74 + i).padStart(4, '0'));
 
 interface ErrorRow {
