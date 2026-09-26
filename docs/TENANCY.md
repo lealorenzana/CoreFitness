@@ -121,6 +121,21 @@ notifies once in each gym); the crash-report cap.
   `set_account_status()`, and inventing a reason to satisfy 0069 would be worse than waiting.
 - Sign-up without a `gym_id` in its metadata (an older app build) still lands in Gym #1.
 
+## Files are gym data too (0120)
+
+Storage policies live on `storage.objects`, outside every table the tenancy
+migrations swept, and 0097–0105 never touched them. They asked only "is the
+caller an admin?" — and `get_my_role()` answers that for *whichever* gym the
+caller is in — so one gym's owner could read every gym's trainer credential
+files and delete another gym's logo. 0120's rule: **the path names the gym**.
+`media` writes go to `gyms/<gym_id>/<kind>/…` and need an active admin/desk of
+that gym plus `gym_writable()`; a credential file is readable by an admin only
+when a `trainer_credentials` row *in their gym* points at it; an admin deletes
+only avatars of people in their gym. Legacy media paths stay readable and
+become nobody's to delete. `storage_policies_without_gym()` lists any storage
+policy that trusts a role without a gym; `scripts/sql/storage-tenancy.mjs`
+proves each leak refused and each legitimate action still allowed.
+
 ## Proving it
 
 `scripts/sql/tenancy-isolation.mjs` (in CI on every push): two gyms on the real migrations and

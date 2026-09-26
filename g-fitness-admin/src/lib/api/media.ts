@@ -1,13 +1,16 @@
 import { supabase } from '../supabaseClient';
+import { currentGymId } from '../gymContext';
 
 /**
  * Picture attachments for events, challenges, announcements and resources
  * (migration 0065).
  *
- * Files live at `media/<kind>/<random>.jpg`. Unlike avatars, the folder is not
- * a permission boundary — an event picture belongs to the gym, not to whoever
- * uploaded it, so the storage policies key off the **role**. The folder is
- * there to keep the bucket browsable.
+ * Files live at `media/gyms/<gym_id>/<kind>/<random>.jpg`. **The gym folder is
+ * the permission boundary** (0120): only an active admin or desk of *that* gym
+ * may write there. Before 0120 the path was `<kind>/<random>.jpg` and the
+ * policies asked only "are you an admin?" — of any gym — so one gym could
+ * delete another's logo. Those legacy files stay readable and nobody's to
+ * delete. An event picture belongs to the gym, not to whoever uploaded it.
  *
  * The bucket caps size and mime type server-side as well, so the checks here
  * exist to produce a sentence a human can act on rather than a 400.
@@ -95,7 +98,11 @@ export async function uploadMedia(file: File, kind: MediaKind): Promise<string> 
     throw new Error('That image is still too large after resizing. Please choose another.');
   }
 
-  const path = `${kind}/${crypto.randomUUID()}.jpg`;
+  // The gym folder is what 0120's storage policies check. No gym, no upload:
+  // guessing a folder would put the file where the database refuses it anyway.
+  const gymId = await currentGymId();
+  if (!gymId) throw new Error('Could not tell which gym this picture belongs to. Reload and try again.');
+  const path = `gyms/${gymId}/${kind}/${crypto.randomUUID()}.jpg`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, body, { contentType: 'image/jpeg', upsert: false });

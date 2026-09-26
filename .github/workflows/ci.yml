@@ -86,7 +86,7 @@ jobs:
       - name: Rule checks
         working-directory: ${{ runner.temp }}/sql
         run: |
-          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation; do
+          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation storage-tenancy demo-removal; do
             echo "::group::$s"
             node "$GITHUB_WORKSPACE/scripts/sql/$s.mjs" "$GITHUB_WORKSPACE"
             echo "::endgroup::"

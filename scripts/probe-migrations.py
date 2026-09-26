@@ -159,7 +159,21 @@ CHECKS = [
     ('0117', 'rpc migration_0117_applied',     lambda: rpc('migration_0117_applied')),
     ('0118', 'rpc migration_0118_applied',     lambda: rpc('migration_0118_applied')),
     ('0119', 'rpc migration_0119_applied',     lambda: rpc('migration_0119_applied')),
+    ('0120', 'rpc migration_0120_applied',     lambda: rpc('migration_0120_applied')),
 ]
+
+# The admin System page checks 0074..LAST. It read 117 while 0118 and 0119
+# shipped, so it could not see either (2026-09-26) — the drift its own comment
+# warns about. Said here, where a new migration's entry is always added.
+import os, re as _re
+_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'g-fitness-admin', 'src', 'pages', 'SystemHealth.tsx')
+try:
+    _last = int(_re.search(r'const LAST = (\d+);', open(_sh, encoding='utf-8').read()).group(1))
+    if _last != int(CHECKS[-1][0]):
+        print('WARNING: SystemHealth.tsx LAST = %d but the last probe row is %s. Update LAST.' % (_last, CHECKS[-1][0]))
+        print()
+except (OSError, AttributeError):
+    pass
 
 print('project: %s' % URL)
 print()
