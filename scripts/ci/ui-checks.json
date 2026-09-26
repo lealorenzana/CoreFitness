@@ -11,6 +11,7 @@
     { "file": "waiver-check.js", "app": "member" },
     { "file": "exercise-guide-check.js", "app": "member" },
     { "file": "trainer-exercises-check.js", "app": "member" },
+    { "file": "program-check.js", "app": "member" },
     { "file": "plan-gates.js", "app": "member" },
     { "file": "trainer-scenarios.js", "app": "member" },
     { "file": "admin-engagement-check.js", "app": "admin" },

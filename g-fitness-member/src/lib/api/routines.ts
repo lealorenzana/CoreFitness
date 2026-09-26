@@ -176,23 +176,28 @@ export async function startRoutineSession(memberId: string, routine: Routine): P
 
 /** The open (unfinished) session, with the routine it runs if any. */
 export async function getOpenRoutineSession(memberId: string): Promise<
-  { logId: string; routineId: string | null; activity: string | null; startedAt: string } | null
+  { logId: string; routineId: string | null; gymWorkoutId: string | null; activity: string | null; startedAt: string } | null
 > {
-  const { data, error } = await supabase
+  // 0122's gym_workout_id first; before 0122 the column does not exist.
+  const q = (cols: string) => supabase
     .from('workout_logs')
-    .select('id, routine_id, activity, created_at')
+    .select(cols)
     .eq('member_id', memberId)
     .is('completed_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  const full = await q('id, routine_id, gym_workout_id, activity, created_at');
+  const { data, error } = !full.error ? full : await q('id, routine_id, activity, created_at');
   if (error) throw error;
-  return data
+  const row = data as unknown as Record<string, string | null> | null;
+  return row
     ? {
-        logId: data.id as string,
-        routineId: (data.routine_id as string | null) ?? null,
-        activity: (data.activity as string | null) ?? null,
-        startedAt: data.created_at as string,
+        logId: row.id as string,
+        routineId: row.routine_id ?? null,
+        gymWorkoutId: row.gym_workout_id ?? null,
+        activity: row.activity ?? null,
+        startedAt: row.created_at as string,
       }
     : null;
 }
@@ -200,25 +205,27 @@ export async function getOpenRoutineSession(memberId: string): Promise<
 export interface SessionHeader {
   logId: string;
   routineId: string | null;
+  /** A gym program day (0122) runs a gym workout instead of the member's routine. */
+  gymWorkoutId: string | null;
   activity: string | null;
   startedAt: string;
   completedAt: string | null;
 }
 
 export async function getSession(logId: string): Promise<SessionHeader | null> {
-  const { data, error } = await supabase
-    .from('workout_logs')
-    .select('id, routine_id, activity, created_at, completed_at')
-    .eq('id', logId)
-    .maybeSingle();
+  const q = (cols: string) => supabase.from('workout_logs').select(cols).eq('id', logId).maybeSingle();
+  const full = await q('id, routine_id, gym_workout_id, activity, created_at, completed_at');
+  const { data, error } = !full.error ? full : await q('id, routine_id, activity, created_at, completed_at');
   if (error) throw error;
-  return data
+  const row = data as unknown as Record<string, string | null> | null;
+  return row
     ? {
-        logId: data.id as string,
-        routineId: (data.routine_id as string | null) ?? null,
-        activity: (data.activity as string | null) ?? null,
-        startedAt: data.created_at as string,
-        completedAt: (data.completed_at as string | null) ?? null,
+        logId: row.id as string,
+        routineId: row.routine_id ?? null,
+        gymWorkoutId: row.gym_workout_id ?? null,
+        activity: row.activity ?? null,
+        startedAt: row.created_at as string,
+        completedAt: row.completed_at ?? null,
       }
     : null;
 }

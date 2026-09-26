@@ -31,7 +31,9 @@ export type FeatureKey =
   | 'ai_model'
   | 'points_earn'
   | 'points_redeem'
-  | 'challenges';
+  | 'challenges'
+  /** 0122: the gym's Premium programs. A program not marked Premium is never gated. */
+  | 'premium_programs';
 
 export interface Feature {
   key: FeatureKey;

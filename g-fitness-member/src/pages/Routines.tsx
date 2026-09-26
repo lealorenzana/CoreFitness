@@ -82,7 +82,7 @@ export default function Routines() {
             {/* A workout already under way comes first — it is the one thing
                 the member most likely came back for. */}
             {open && (
-              <Panel glow="action" onClick={() => navigate(open.routineId
+              <Panel glow="action" onClick={() => navigate(open.routineId || open.gymWorkoutId
                 ? `/member/track/session/${open.logId}` : '/member/track/log')}>
                 <Eyebrow tone="action">In progress</Eyebrow>
                 <p className="flex items-center" style={{ gap: 8, marginTop: 6, fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>

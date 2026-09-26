@@ -11,6 +11,7 @@ import FeatureLock from '../components/ui/FeatureLock';
 import Modal from '../components/ui/Modal';
 import GlassSheet from '../components/ui/GlassSheet';
 import { ExerciseGuideFor } from '../components/workout/ExerciseGuide';
+import { getGymWorkoutRoutine } from '../lib/api/programs';
 import { toast } from '../components/ui/Toast';
 import { Confetti, CountRing, Stepper, WorkoutBackdrop } from '../components/workout/WorkoutParts';
 import { beep, buzz, glassCard, iconFor, useWakeLock } from '../components/workout/workoutFx';
@@ -236,8 +237,12 @@ function WorkoutRun() {
         if (!logId) throw new Error('No workout to open.');
         const s = await getSession(logId);
         if (!s) throw new Error('That workout could not be found.');
-        if (!s.routineId) { navigate('/member/track/log', { replace: true }); return; }
-        const [r, serverSets, me] = await Promise.all([getRoutine(s.routineId), listSets(logId), getCurrentMemberId()]);
+        if (!s.routineId && !s.gymWorkoutId) { navigate('/member/track/log', { replace: true }); return; }
+        // A program day (0122) runs the gym's workout in the same player.
+        const [r, serverSets, me] = await Promise.all([
+          s.routineId ? getRoutine(s.routineId) : getGymWorkoutRoutine(s.gymWorkoutId!),
+          listSets(logId), getCurrentMemberId(),
+        ]);
         // Anything logged offline last time is shown straight away and sent below.
         const waiting = me ? pendingFor(logId, me).filter((q) => !serverSets.some((x) => x.id === q.id)) : [];
         const recorded = [...serverSets, ...waiting.map(fromQueued)];

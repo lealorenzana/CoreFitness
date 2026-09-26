@@ -20,6 +20,7 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, Eyebrow, Panel, StatusPill, TextTabs } from '../components/ui/noc';
 import { CLAMP_2 } from '../components/ui/styles';
 import ExerciseLibrary from './workouts/ExerciseLibrary';
+import GymPrograms from '../components/workout/GymPrograms';
 
 /**
  * Free workouts — the gym's library (0019), its exercise list (0050), and what
@@ -226,6 +227,9 @@ export default function Workouts() {
     <Page>
       <PageTitle back fallback="/member/book-class" title="Free workouts"
         subtitle="Training material your gym picked, free to everyone" />
+
+      {/* The gym's own programs (0122), first: its own training beats anyone's links. */}
+      <GymPrograms memberId={memberId} />
 
       {/* The one amber thing on the screen: the builder turns reading into a week. */}
       <Panel glow="action" filled onClick={() => navigate('/member/plan')} ariaLabel="Build your training week">

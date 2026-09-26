@@ -14,6 +14,7 @@ const Terms = lazyPage(() => import('./pages/Terms'));
 const Privacy = lazyPage(() => import('./pages/Privacy'));
 import Home from './pages/Home';
 const Workouts = lazyPage(() => import('./pages/Workouts'));
+const Program = lazyPage(() => import('./pages/Program'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
 const Routines = lazyPage(() => import('./pages/Routines'));
@@ -243,6 +244,7 @@ function App() {
               rather than deleted so older links and notification action_urls
               still land somewhere sensible. */}
           <Route path="workouts" element={<Workouts />} />
+          <Route path="program/:programId" element={<Program />} />
           <Route path="plan" element={<PlanBuilder />} />
           {/* Routines (0086): the list, the editor, and a routine run set by set.
               The free-form log stays at /track/log for a session with no routine. */}
