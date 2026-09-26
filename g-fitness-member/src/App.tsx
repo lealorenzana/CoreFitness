@@ -48,6 +48,7 @@ const TrainerMembers = lazyPage(() => import('./pages/trainer/TrainerMembers'));
 const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
 const TrainerAvailability = lazyPage(() => import('./pages/trainer/TrainerAvailability'));
 const TrainerSettings = lazyPage(() => import('./pages/trainer/TrainerSettings'));
+const TrainerExercises = lazyPage(() => import('./pages/trainer/TrainerExercises'));
 const TrainerBookings = lazyPage(() => import('./pages/trainer/TrainerBookings'));
 const TrainerProfile = lazyPage(() => import('./pages/trainer/TrainerProfile'));
 const TrainerEditProfile = lazyPage(() => import('./pages/trainer/TrainerEditProfile'));
@@ -203,6 +204,7 @@ function App() {
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />
           <Route path="settings" element={<TrainerSettings />} />
+          <Route path="exercises" element={<TrainerExercises />} />
           {/* Same component as the member route below — it reads the path to
               pick which catalogue to draw and which shell to return to. */}
           <Route path="achievements" element={<Achievements />} />

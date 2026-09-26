@@ -1,6 +1,6 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
-  Buildings,
+  Barbell, Buildings,
   Bell, CalendarBlank, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
 import type { Destination, WordReader } from './memberNav';
@@ -85,6 +85,8 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
+    // The gym's exercise guides (0121) — a coach writes them between sessions.
+    { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
     { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
   ],
   members: [],
@@ -95,6 +97,7 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
     { label: 'Edit profile', path: '/trainer/profile/edit', icon: UserCircle },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
+    { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
     { label: 'Settings', path: '/trainer/settings', icon: GearSix },
     // Coaches work at more than one gym; this is how they switch.
     { label: 'Gyms', path: '/choose-gym', icon: Buildings },
