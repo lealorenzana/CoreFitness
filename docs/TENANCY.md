@@ -78,9 +78,14 @@ its gym or its insert fails on NOT NULL (loudly, never into a guessed gym). Poli
 - **Reached only through an already-scoped key** (definer, but safe): `plan_allows` (plan from
   the gym's membership), `trg_payment_plan_snapshot`, `trg_redemption_decided`, and own-row
   writers `leave_waitlist`, `mark_feedback`, `touch_assistant_conversation`, `trg_bookings_waitlist`.
-- **The shared library.** NULL-gym exercises and resources are read by every gym and curated by the
-  platform and by Gym #1's staff (`may_curate_library()`), as on today's Exercises page; a Gym #1
-  insert stays shared (`trg_library_row_gym`). Other gyms add and edit only their own rows.
+- **The shared library.** NULL-gym exercises and resources are read by every gym and curated by
+  **the platform alone** (`may_curate_library()`, since 0121). Until 0121 Gym #1's staff curated it
+  too and a Gym #1 insert became shared — one customer editing every customer's list (Gym #1 hiding
+  "Deadlift" hid it everywhere). Now every gym adds only its own rows, hides a shared exercise *for
+  itself* with `gym_exercise_media.hidden`, and puts its own photo/video/cues/steps on any exercise in
+  that same per-gym overlay — never on the shared row. Content photos are counted per gym
+  (`gym_photos`, `platform_plans.max_photos`) and a content upload needs a slot from
+  `reserve_gym_photo()`, so the storage policy enforces the count.
 
 ## Per gym now, where it used to be global
 

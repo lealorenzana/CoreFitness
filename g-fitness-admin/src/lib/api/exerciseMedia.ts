@@ -136,7 +136,7 @@ export async function uploadContentPhoto(file: File): Promise<string> {
 }
 
 /** The storage path inside one of our public URLs, or null. */
-export function contentPathFromUrl(url: string | null | undefined): string | null {
+function contentPathFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const marker = `/storage/v1/object/public/${BUCKET}/`;
   const at = url.indexOf(marker);
