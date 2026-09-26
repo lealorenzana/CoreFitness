@@ -180,6 +180,23 @@ let cache: AchievementDef[] | null = null;
 let cacheByKey = new Map<string, AchievementDef>();
 let inflight: Promise<AchievementDef[]> | null = null;
 
+/**
+ * Empty it — on a gym switch, and on sign-out.
+ *
+ * `achievements` is a per-gym table (0098 tags it), so this catalogue belongs
+ * to one gym and not to the app. It had no clearer at all, which meant it
+ * survived both a gym switch *and* one person signing out and another signing
+ * in on the same phone: the second person's gallery was the first person's
+ * gym's rules until a screen happened to pass `force`.
+ *
+ * Called from `lib/memberCaches.ts`, which is the one list both paths use.
+ */
+export function clearAchievementCache(): void {
+  cache = null;
+  cacheByKey = new Map();
+  inflight = null;
+}
+
 function toDef(row: AchievementRow): AchievementDef & { audience: AchievementRole } {
   return {
     key: row.key,

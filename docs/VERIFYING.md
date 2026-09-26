@@ -267,3 +267,13 @@ Log what the route actually receives before assuming the fixtures are right.
 real build; the data is invented. Good enough to show a feature renders and
 reads correctly. Useless for showing a database rule works — that is what
 `docs/TEST_MATRIX.md` is for.
+
+- **Vite dev serves one module per URL, not per file.** `import('/src/lib/x')` and
+  `import('/src/lib/x.ts')` are **two instances with two copies of every module-level cache**, and
+  a module's own `./x` import is resolved to one spelling of its choosing. A check that populated
+  a cache through one spelling and cleared it through another reported working code broken, twice.
+  **Import by one spelling, or assert through the UI**, which uses whatever the app itself wired.
+- **A page that reloads clears every cache for you.** `switchGym()` ends in
+  `window.location.assign()`, so a test driving it proves nothing about cache clearing. `logout()`
+  is followed by `navigate()` and does *not* reload — that is the path where a stale module cache
+  is a real leak between two people on one phone.

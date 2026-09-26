@@ -29,7 +29,7 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
 - **An identifier is unique because a constraint says so**, not because a formula looks unlikely to repeat; **clocks
   disagree too**. **`BarcodeDetector` does not exist in Chrome on Windows** and fails *silently* — `QRScanner` uses
   **jsQR** over the full frame, **never a crop**. **A control writing a flag nothing reads is a lie**; **a rule
-  enforced only in SQL the user cannot read ambushes them** (0017 → 0041). **Per-user state never lives in
+  enforced only in SQL the user cannot read ambushes them** (0017 → 0041). **Every per-member cache is cleared in ONE list, `lib/memberCaches.ts`**, called by `logout()` and `switchGym()` — two hand-kept lists had drifted and the achievement catalogue (a per-gym table) had no clearer at all, so it survived one person signing out and the next signing in. **Per-user state never lives in
   `localStorage`** — *and a column is not the fix unless the row exists when the write runs* (0033 → 0036).
 - **The legal pages are part of the system.** Terms/Privacy were boilerplate that *contradicted* it —
   "non-refundable" against 0073's pro-rata payout, a payment processor in a cash-only gym, deletion

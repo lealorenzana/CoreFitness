@@ -62,6 +62,22 @@ async (page) => {
       CALLS[fn] = body;
       if (fn === 'my_gym_context') return json(ctx());
       if (fn === 'my_gyms') return json([A, B, C3]);
+      // Per gym, and deliberately different in every field a screen shows: a
+      // cache that survived a switch then reads as the other gym's app rather
+      // than as a subtle difference nobody would notice.
+      if (fn === 'my_gym_app') {
+        const g = [A, B, C3].find((x) => x.gym_id === state.current) ?? A;
+        return json([{
+          gym_id: g.gym_id, gym_name: g.name, slug: g.slug,
+          short_name: g.name.split(' ')[0], logo_url: null,
+          accent: g.gym_id === 'gym-b' ? 'teal' : 'violet', accent_action: null,
+          points_name: g.gym_id === 'gym-b' ? 'Harbour Points' : 'CORE points',
+          points_name_short: 'points', welcome_message: null, tagline: null,
+          vocabulary: { member: 'member', members: 'members', trainer: 'coach',
+            trainers: 'coaches', class: 'class', classes: 'classes' },
+          join_policy: 'open', join_code: null, modules: {},
+        }]);
+      }
       if (fn === 'set_active_gym') { state.current = body.p_gym; return json(null); }
       if (fn === 'list_gyms') return json([
         { id: 'gym-a', slug: 'core-fitness', name: 'Core Fitness', short_name: null, logo_url: null, accent: 'violet' },
@@ -115,6 +131,46 @@ async (page) => {
   const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim());
   out.push('accent after switch: ' + accent + (accent.toLowerCase() === '#0d9488' ? ' (teal)' : ' MISSING teal'));
   await page.screenshot({ path: 'shots/gym-02-teal-trainer.png' });
+
+  // ---- the caches a switch has to empty --------------------------------
+  //
+  // `switchGym()` used to clear the gym CONTEXT and nothing else, so a member
+  // of two gyms carried the previous gym's cached Today, plan entitlements,
+  // achievement catalogue and — since 0114 and 0116 — its words, colours and
+  // logo into the next gym. The reload does not save it: these are module
+  // state, and assigning a URL this SPA already owns does not always tear the
+  // module down.
+  //
+  // Exercised through the dev server by importing the modules directly
+  // (CLAUDE.md's recipe), because the bug lives below the screens.
+  // ---- the catalogue that was never cleared ----------------------------
+  //
+  // `achievements` is a per-gym table (0098 tags it) and its module cache had
+  // no clearer anywhere — not in `logout()`, not in `switchGym()`. Logout is
+  // followed by `navigate('/login')`, a client-side route change with no
+  // reload, so module state survives it: the next person to sign in on that
+  // phone read the previous account's gym's achievement rules.
+  //
+  // Imported by ONE specifier and cleared through the same module object.
+  // Vite's dev server keys modules by request URL, so `/src/lib/api/achievements`
+  // and `/…/achievements.ts` are two instances with two copies of this cache D
+  // two earlier versions of this check cleared one and read the other, and
+  // called working code broken.
+  const cat = await page.evaluate(async () => {
+    const mod = await import('/src/lib/api/achievements');
+    if (typeof mod.clearAchievementCache !== 'function') return { missing: true };
+    const first = await mod.loadCatalogue();
+    const second = await mod.loadCatalogue();
+    mod.clearAchievementCache();
+    const third = await mod.loadCatalogue();
+    return {
+      cached: first === second,
+      cleared: first !== third,
+    };
+  });
+  out.push('achievement catalogue is cached: '
+    + (cat.missing ? 'MISSING a clearer' : cat.cached ? 'yes' : 'not cached'));
+  out.push('and a sign-out empties it: ' + (cat.cleared ? 'yes' : 'MISSING a clear'));
 
   // A read-only gym says so, in the shell, on every screen.
   state.lock = 'overdue';

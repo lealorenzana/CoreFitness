@@ -11,11 +11,8 @@
 import { setLanguage } from '../lib/i18n';
 import { supabase } from '../lib/supabaseClient';
 import { clearPushOnSignOut } from '../lib/api/push';
-import { clearPageCache } from '../lib/pageCache';
-import { clearScrollMemory } from '../hooks/useScrollMemory';
-import { clearFeatureCache } from '../hooks/useFeatures';
+import { clearMemberCaches } from '../lib/memberCaches';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
-import { clearGymApp } from '../lib/gymApp';
 
 interface User {
   id: string;
@@ -118,15 +115,15 @@ export const logout = async (): Promise<void> => {
   await clearPushOnSignOut();
   await supabase.auth.signOut();
   PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
-  clearPageCache();
-  clearScrollMemory();
-  // Entitlements are per-member and the cache is not keyed by one. Two people
-  // on one phone would otherwise inherit the last member's plan.
-  clearFeatureCache();
-  // Which gym, and its brand, belong to the person who just left.
+  // Every per-member, per-gym cache, in one list — the same list `switchGym()`
+  // uses. They were two hand-kept lists and they had drifted: switching gyms
+  // cleared one of the five, and nothing ever cleared the achievement
+  // catalogue at all.
+  clearMemberCaches();
+  // Which gym, and its brand, belong to the person who just left. Not in
+  // `clearMemberCaches` only because importing it there would cycle with
+  // `switchGym`, which lives in the same file.
   clearGymContext();
-  // The gym's words and shape are per-member cache too (CLAUDE.md).
-  clearGymApp();
   // The language is the member's (0095); the next person starts in English
   // until their own choice loads.
   setLanguage('en');

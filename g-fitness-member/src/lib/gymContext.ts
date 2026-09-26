@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { clearMemberCaches } from './memberCaches';
 
 /**
  * "Who am I, and where" — the gym this person is signed in to, their role and
@@ -122,6 +123,13 @@ export async function switchGym(gymId: string, landing: string): Promise<void> {
   const { error } = await supabase.rpc('set_active_gym', { p_gym: gymId });
   if (error) throw new Error(error.message);
   clearGymContext();
+  // Everything else the last gym cached. The `assign` below is a real
+  // navigation and tears every module down, so this is not fixing a live leak
+  // — it is making sure the reload is not the only thing preventing one. The
+  // day this becomes a client-side transition to lose the white flash, a stale
+  // `gymApp` would put the previous gym's logo (0116) and words (0114) on the
+  // next gym's screens, and that would be found by a member, not by a test.
+  clearMemberCaches();
   window.location.assign(landing);
 }
 
