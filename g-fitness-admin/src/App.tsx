@@ -25,6 +25,7 @@ import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
 import Achievements from './pages/Achievements';
 import Exercises from './pages/Exercises';
+import Programs from './pages/Programs';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
@@ -99,6 +100,7 @@ function App() {
             {/* Admin-only: the catalogue defines what every member's training
                 history is measured in, the same class of decision as a badge. */}
             <Route path="exercises" element={<ProtectedRoute adminOnly><Exercises /></ProtectedRoute>} />
+            <Route path="programs" element={<ProtectedRoute adminOnly><Programs /></ProtectedRoute>} />
             {/* Staff can SEE the queue (RLS lets them), but approving commits the
                 gym to giving something away, so the page is admin-only. */}
             <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />

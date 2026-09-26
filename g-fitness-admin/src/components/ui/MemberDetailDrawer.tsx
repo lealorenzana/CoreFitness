@@ -16,6 +16,7 @@ import {
   type AchievementRow, type AchievementProgress,
 } from '../../lib/api/achievements';
 import { recordPayment } from '../../lib/api/payments';
+import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
   freezesThisMonth, type MembershipActionDetail,
@@ -976,6 +977,8 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
         )}
       </Section>
 
+      <ProgramSection memberId={detail.identity.profile.id} />
+
       <Section title={`Saved routines${routines ? ` (${routines.length})` : ''}`}>
         {routines == null ? (
           <Empty text="Routines could not be read just now." />
@@ -1495,6 +1498,41 @@ function Row({
       </div>
       {note && <p className="text-[10px] mt-1.5" style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
     </div>
+  );
+}
+
+/**
+ * The gym program this member follows (0122), and how far in. Computed from
+ * their finished workout logs by `program_progress()`, so it cannot disagree
+ * with the workout log below it.
+ */
+function ProgramSection({ memberId }: { memberId: string }) {
+  const [days, setDays] = useState<ProgressDay[] | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const d = await memberProgramProgress(memberId);
+      if (alive) setDays(d);
+    })();
+    return () => { alive = false; };
+  }, [memberId]);
+
+  // Before 0122, or unreadable: say nothing rather than "not following".
+  if (days === undefined || days === null) return null;
+  if (days.length === 0) {
+    return (
+      <Section title="Program">
+        <Empty text="Not following a gym program. Members start one under Train; a coach can assign one." />
+      </Section>
+    );
+  }
+  const done = days.filter((d) => d.done).length;
+  const next = days.find((d) => !d.done);
+  return (
+    <Section title="Program">
+      <Row title={days[0].programName}
+        subtitle={`${done} of ${days.length} training days done${next ? ` · next: week ${next.week}, ${next.workoutName}` : ' · finished'}`} />
+    </Section>
   );
 }
 

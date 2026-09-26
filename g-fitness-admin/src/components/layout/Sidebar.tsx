@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History,
-  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus,
+  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus, CalendarRange,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -150,6 +150,7 @@ const NAV: Entry[] = [
     icon: BookOpen,
     children: [
       { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
+      { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true },
       { label: 'Resources', path: '/resources', icon: BookOpen },
     ],
   },
