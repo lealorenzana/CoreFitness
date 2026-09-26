@@ -10,6 +10,7 @@ import { NocButton } from '../components/ui/noc';
 import FeatureLock from '../components/ui/FeatureLock';
 import Modal from '../components/ui/Modal';
 import GlassSheet from '../components/ui/GlassSheet';
+import { ExerciseGuideFor } from '../components/workout/ExerciseGuide';
 import { toast } from '../components/ui/Toast';
 import { Confetti, CountRing, Stepper, WorkoutBackdrop } from '../components/workout/WorkoutParts';
 import { beep, buzz, glassCard, iconFor, useWakeLock } from '../components/workout/workoutFx';
@@ -140,6 +141,8 @@ function WorkoutRun() {
   const [holdStart, setHoldStart] = useState<number | null>(null);
   const [sound, setSound] = useState(true);
   const [overview, setOverview] = useState(false);
+  /** The gym's guide for the exercise on screen (0121). */
+  const [howTo, setHowTo] = useState(false);
   /** The set just logged, for its one ring-out. */
   const [flash, setFlash] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -587,7 +590,16 @@ function WorkoutRun() {
             <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.08, marginTop: 12, color: 'var(--color-text-primary)' }}>
               {ex.name}
             </h1>
-            <p style={{ fontSize: 14, marginTop: 6, color: 'var(--color-text-secondary)' }}>{targetLine(ex)}</p>
+            <div className="flex items-center justify-between" style={{ gap: 10, marginTop: 6 }}>
+              <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{targetLine(ex)}</p>
+              {/* The gym's guide (0121), for a catalogue exercise. A custom one
+                  the member typed has no guide to show. */}
+              {ex.exerciseId && (
+                <NocButton variant="ghost" onClick={() => setHowTo(true)} style={{ height: 32, padding: '0 12px', flex: 'none' }}>
+                  How to
+                </NocButton>
+              )}
+            </div>
             {lastSets.length > 0 && (
               <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>
                 Last time: {lastSets.map(describeSet).join(', ')}
@@ -771,6 +783,10 @@ function WorkoutRun() {
           onAdjust={(delta) => setRest(Math.max(now + 1000, (restEndRef.current ?? now) + delta * 1000))}
           onSkip={() => setRest(null)} onHide={() => setRestMin(true)} />
       )}
+
+      <GlassSheet open={howTo && !!ex?.exerciseId} onClose={() => setHowTo(false)} title={ex?.name ?? ''} subtitle="How your gym does it">
+        {ex?.exerciseId && <ExerciseGuideFor exerciseId={ex.exerciseId} name={ex.name} />}
+      </GlassSheet>
 
       <GlassSheet open={overview} onClose={() => setOverview(false)} title="Exercises" subtitle={`${doneCount} of ${total} done · ${sets.length} sets logged`}>
         <div className="flex flex-col" style={{ gap: 6 }}>

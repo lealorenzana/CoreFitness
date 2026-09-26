@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Lock, MagnifyingGlass, Plus, Timer } from '@phosphor-icons/react';
+import { Lock, MagnifyingGlass, Plus, Timer, Video } from '@phosphor-icons/react';
 import GlassSheet from '../../components/ui/GlassSheet';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { TextInput } from '../../components/ui/Field';
@@ -9,6 +9,8 @@ import { useFeatures } from '../../hooks/useFeatures';
 import { isEnabled } from '../../lib/api/planFeatures';
 import { listExercises, type Exercise } from '../../lib/api/workoutSets';
 import { lastSetsFor, listRoutines, type LastSet, type Routine } from '../../lib/api/routines';
+import { listExerciseMedia, type ExerciseMedia } from '../../lib/api/exerciseMedia';
+import ExerciseGuide from '../../components/workout/ExerciseGuide';
 
 /**
  * The gym's exercise catalogue (0050), browsable — the same list the tracker
@@ -18,6 +20,10 @@ import { lastSetsFor, listRoutines, type LastSet, type Routine } from '../../lib
  * `member_last_sets`), a link out to form videos, and "Add to a routine", which
  * opens the routine editor with it already added. Browsing is free; adding goes
  * through the tracker's gate, and says so with a lock rather than hiding.
+ *
+ * Since 0121 the sheet shows the gym's own guide (photo, video, cues, steps),
+ * and an exercise the gym hid for itself is left out of this list. The guide is
+ * never locked: how to do a movement safely is not a paid feature.
  */
 
 const GROUP_LABEL: Record<string, string> = {
@@ -46,10 +52,16 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
   const [last, setLast] = useState<LastSet[] | null | undefined>(undefined);
   const [routines, setRoutines] = useState<Routine[] | null>(null);
   const [picking, setPicking] = useState(false);
+  const [media, setMedia] = useState<Map<string, ExerciseMedia>>(new Map());
 
   useEffect(() => {
     void (async () => {
-      try { setExercises(await listExercises()); } catch { setFailed(true); }
+      try {
+        const [list, m] = await Promise.all([listExercises(), listExerciseMedia()]);
+        // The gym hid these for itself (0121) - gone from its members' list.
+        setExercises(list.filter((e) => !m.get(e.id)?.hidden));
+        setMedia(m);
+      } catch { setFailed(true); }
     })();
   }, []);
 
@@ -127,6 +139,9 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
                     {equipmentLabel(e.equipment)}{group !== 'all' || query ? ` · ${groupLabel(e.muscleGroup)}` : ''}
                   </span>
                 </span>
+                {media.get(e.id)?.videoUrl && (
+                  <Video size={15} aria-label="Has a video" style={{ color: 'var(--color-primary-300)', flex: 'none' }} />
+                )}
                 {e.isTimed && (
                   <span className="inline-flex items-center flex-none" style={{ gap: 4, fontSize: 12, color: 'var(--color-primary-300)' }}>
                     <Timer size={14} aria-hidden /> Timed
@@ -161,14 +176,8 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
                   : lastLine(last)}
               </p>
             </div>
-            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${open.name} proper form`)}`}
-              target="_blank" rel="noopener noreferrer" className="inline-flex items-center"
-              style={{ gap: 6, fontSize: 13.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
-              Watch form videos on YouTube <ArrowUpRight size={14} aria-hidden />
-            </a>
-            <p style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-              A search on YouTube, not the gym's own video. Ask a coach to check your form the first time.
-            </p>
+            <ExerciseGuide name={open.name} libraryCues={open.cues} librarySteps={open.steps}
+              media={media.get(open.id) ?? null} />
 
             {picking && (
               <div>

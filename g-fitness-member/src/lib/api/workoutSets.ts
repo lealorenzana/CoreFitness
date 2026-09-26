@@ -16,6 +16,9 @@ export interface Exercise {
   equipment: string;
   /** Measured in time/distance rather than reps and weight. Changes the form. */
   isTimed: boolean;
+  /** The library's starter cues and steps (0121). Empty before 0121, or none written. */
+  cues: string[];
+  steps: string[];
 }
 
 export interface WorkoutSet {
@@ -38,15 +41,19 @@ export interface SessionSummary {
 
 interface ExerciseRow {
   id: string; name: string; muscle_group: string; equipment: string; is_timed: boolean;
+  cues?: string[]; steps?: string[];
 }
 
 /** Active exercises only — a deactivated one stays in history but leaves the picker. */
 export async function listExercises(): Promise<Exercise[]> {
-  const { data, error } = await supabase
-    .from('exercises')
-    .select('id, name, muscle_group, equipment, is_timed')
-    .eq('is_active', true)
-    .order('sort_order');
+  // 0121 added cues/steps. Asked for first; before 0121 is pasted the columns
+  // do not exist and the catalogue is read as it always was.
+  const BASE = 'id, name, muscle_group, equipment, is_timed';
+  const full = await supabase.from('exercises').select(`${BASE}, cues, steps`)
+    .eq('is_active', true).order('sort_order');
+  const { data, error } = !full.error
+    ? full
+    : await supabase.from('exercises').select(BASE).eq('is_active', true).order('sort_order');
   if (error) throw error;
   return ((data ?? []) as ExerciseRow[]).map((r) => ({
     id: r.id,
@@ -54,6 +61,8 @@ export async function listExercises(): Promise<Exercise[]> {
     muscleGroup: r.muscle_group,
     equipment: r.equipment,
     isTimed: r.is_timed,
+    cues: r.cues ?? [],
+    steps: r.steps ?? [],
   }));
 }
 
