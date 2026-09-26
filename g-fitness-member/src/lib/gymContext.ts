@@ -42,6 +42,10 @@ export interface MyGym {
   slug: string;
   role: GymRole;
   status: GymStatus;
+  /** 0116. Absent on a database without it, which renders a monogram. */
+  short_name?: string | null;
+  logo_url?: string | null;
+  accent?: string | null;
 }
 
 let cached: Promise<GymContext | null> | null = null;

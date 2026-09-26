@@ -20,6 +20,8 @@ import { DAY_LABELS } from '../lib/api/gymPlans';
 import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/api/routines';
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
+import GymMark from '../components/ui/GymMark';
+import { ACCENTS, type AccentKey } from '../lib/gymTheme';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -282,17 +284,41 @@ export default function Home() {
 
   return (
     <Page>
-      {/* The gym's own line to its members (0110). It has been saveable from
-          the admin app since that migration and appeared nowhere — a control
-          writing a field nothing reads is a lie (CLAUDE.md). Rendered only when
-          the gym wrote one: no placeholder, no stand-in greeting. */}
-      {gymApp?.welcomeMessage && (
-        <p style={{
-          fontSize: 13, lineHeight: 1.45, marginBottom: 10,
-          color: 'var(--color-text-secondary)',
-        }}>
-          {gymApp.welcomeMessage}
-        </p>
+      {/* Whose gym this is, on the screen a member opens every day.
+
+          The logo has existed since 0067 and reached the phone in 0112, and no
+          component drew it — a gym owner could upload one from two screens,
+          see it previewed on both, and no member would ever see it. The
+          welcome line (0110) had the same problem. Both are here now, in one
+          strip, because they are one thought: this is your gym, and this is
+          what it is telling you today.
+
+          Drawn whenever the gym is known. A gym with no logo gets a monogram
+          in its own colour, never the Core Fitness mark. */}
+      {gymApp && (
+        <div className="flex items-center" style={{ gap: 10, marginBottom: 12 }}>
+          <GymMark
+            name={gymApp.gymName}
+            logoUrl={gymApp.logoUrl}
+            accent={ACCENTS[(gymApp.accent ?? 'violet') as AccentKey]?.base}
+            size={34}
+          />
+          <div className="min-w-0">
+            <p className="truncate" style={{
+              fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)',
+            }}>
+              {gymApp.shortName?.trim() || gymApp.gymName}
+            </p>
+            {gymApp.welcomeMessage && (
+              <p style={{
+                fontSize: 12, lineHeight: 1.4, marginTop: 1,
+                color: 'var(--color-text-secondary)',
+              }}>
+                {gymApp.welcomeMessage}
+              </p>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Month panel ── */}

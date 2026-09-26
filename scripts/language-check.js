@@ -115,6 +115,18 @@ async (page) => {
       has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
     gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
       ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
+    // 0110/0112/0114/0116. A gym with a logo and a welcome line, because the
+    // failure worth catching is Today drawing neither: the logo existed from
+    // 0067, reached the phone in 0112, and no component rendered it until 0116.
+    my_gym_app: [{
+      gym_id: 'gym-a', gym_name: 'Harbour Strength', slug: 'harbour-strength',
+      short_name: 'Harbour', logo_url: '/logo.png', accent: 'rose', accent_action: 'rose',
+      points_name: 'Iron Points', points_name_short: 'iron points',
+      welcome_message: 'Open 5am to 10pm all week.', tagline: 'Strength, daily',
+      vocabulary: { member: 'member', members: 'members', trainer: 'coach',
+        trainers: 'coaches', class: 'class', classes: 'classes' },
+      join_policy: 'open', join_code: null, modules: {},
+    }],
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
@@ -211,6 +223,20 @@ async (page) => {
   out.push('tab bar (fil saved): ' + await bar());
   const header = (await page.locator('header').first().innerText()).replace(/\s+/g, ' ');
   out.push('header: ' + header.slice(0, 80));
+
+  // Whose gym this is, on the screen a member opens every day. The logo has
+  // existed since 0067 and no component drew it until 0116 — an owner could
+  // upload one from two screens, watch it preview on both, and no member would
+  // ever see it. The name is asserted as the SHORT name, which is the one the
+  // gym chose for small spaces.
+  const gymStrip = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const img = main?.querySelector('img[src="/logo.png"]');
+    return { text: (main?.innerText ?? '').replace(/\s+/g, ' '), logo: !!img };
+  });
+  out.push('gym on Today: ' + (gymStrip.logo ? 'logo drawn' : 'MISSING')
+    + ' / ' + (/Harbour/.test(gymStrip.text) ? 'named' : 'MISSING')
+    + ' / ' + (/Open 5am to 10pm/.test(gymStrip.text) ? 'welcome line' : 'MISSING'));
   await page.screenshot({ path: 'shots/lang-01-today-fil.png' });
   await go('/member/settings');
   await page.waitForTimeout(900);

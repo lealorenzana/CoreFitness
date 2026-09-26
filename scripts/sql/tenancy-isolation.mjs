@@ -310,6 +310,40 @@ check('every definer view has a security barrier', await (async () => {
   return rows.length === 0;
 })(), viewLeaks.join(' | '));
 
+// 0116: the gym picker can draw a gym's own mark.
+//
+// The logo existed from 0067, reached the phone in 0112, and no component drew
+// it: an owner could upload one from two screens and no member would ever see
+// it. my_gyms() was half the reason — it returned no logo at all, so the one
+// screen whose job is "which of these is mine" had nothing to draw.
+check('my_gyms carries each gym its own identity', await (async () => {
+  await as(P.both);   // belongs to two gyms, so this proves the join, not a row
+  const { rows } = await db.query('select * from my_gyms()');
+  return rows.length === 2
+    && rows.every((r) => 'logo_url' in r && 'accent' in r && 'short_name' in r)
+    && rows.every((r) => r.accent);   // coalesced, never null
+})());
+check('a gym with no settings row is still listed to its own people', await (async () => {
+  await asOwner();
+  const bare = 'dddddddd-0000-4000-8000-00000000000d';
+  await db.exec(`insert into gyms (id, slug, name) values ('${bare}', 'bare-gym', 'Bare Gym');
+    insert into gym_roles (gym_id, user_id, role, status)
+      values ('${bare}', '${P.both}', 'member', 'active');`);
+  await as(P.both);
+  // An inner join on gym_settings would drop it, and "not seeing your gym at
+  // all reads as the app lost it" (docs/TENANCY.md).
+  const { rows } = await db.query('select * from my_gyms()');
+  const row = rows.find((r) => r.gym_id === bare);
+  // Removed again before returning. Left behind, this third gym changed the
+  // counts two later checks assert ("my_gym_context counts both gyms", "the
+  // platform sees every gym") and failed them both — a fixture that edits
+  // shared state has to put it back.
+  await asOwner();
+  await db.exec(`delete from gyms where id = '${bare}'`);
+  await as(P.memberA);
+  return !!row && row.logo_url === null && row.accent === 'violet';
+})());
+
 // A signed-out stranger cannot reach a view that bypasses RLS by design.
 //
 // All seven were readable by `anon` until 0115: every `grant select` said

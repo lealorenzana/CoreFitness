@@ -11,6 +11,8 @@ import {
 import { logout } from '../utils/auth';
 import { useGymApp } from '../hooks/useGymApp';
 import { word } from '../lib/gymApp';
+import GymMark from '../components/ui/GymMark';
+import { ACCENTS, type AccentKey } from '../lib/gymTheme';
 import { errorMessage } from '../utils/errorMessage';
 import { toast } from '../components/ui/Toast';
 
@@ -84,6 +86,14 @@ export default function ChooseGym() {
           {gyms.map((gym, i) => (
             <LineRow
               key={gym.gym_id}
+              // The one screen whose entire job is "which of these is mine",
+              // and until 0116 it could not draw a gym's mark: my_gyms()
+              // returned no logo. A gym with none gets a monogram in its own
+              // colour — never the Core Fitness mark, which would put the
+              // platform's badge on somebody's gym.
+              gutter={<GymMark name={gym.name} logoUrl={gym.logo_url}
+                accent={ACCENTS[(gym.accent ?? 'violet') as AccentKey]?.base} size={38} />}
+              gutterWidth={50}
               title={gym.name}
               meta={label(gym)}
               action={
