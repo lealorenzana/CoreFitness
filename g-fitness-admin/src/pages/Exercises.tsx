@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Dumbbell, EyeOff, Eye, AlertTriangle } from 'lucide-react';
+import { Plus, Dumbbell, EyeOff, Eye, AlertTriangle, BookOpen, Video } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import ExerciseGuideEditor from '../components/ExerciseGuideEditor';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
+import { listExerciseMedia, photoUsage, saveExerciseMedia, type ExerciseMedia } from '../lib/api/exerciseMedia';
 
 /**
  * The exercise catalogue (migration 0050).
@@ -23,6 +25,18 @@ import { supabase } from '../lib/supabaseClient';
  * (`on delete restrict`). Removing an exercise members have logged would
  * rewrite their history. Deactivating takes it out of the member's picker and
  * leaves every past set intact.
+ *
+ * ## Library rows and your rows (0121)
+ *
+ * The 36 standard exercises are one shared row each, read by every gym. Since
+ * 0121 only the platform edits them, so on this page they are labelled
+ * "Core Fitness library" and hiding one writes **this gym's** overlay
+ * (`gym_exercise_media.hidden`) - before 0121, Gym #1 hiding "Deadlift" hid it
+ * in every gym. Exercises the gym added are "Yours" and keep the `is_active`
+ * toggle. Either kind takes the gym's own guide: photo, video, cues, steps.
+ *
+ * The page works before 0121 is pasted: it asks for the new columns and falls
+ * back to the old list, without the guide buttons, if they are not there yet.
  */
 
 interface ExerciseRow {
@@ -33,6 +47,10 @@ interface ExerciseRow {
   is_timed: boolean;
   is_active: boolean;
   sort_order: number;
+  /** NULL = the shared library (0098). Absent before 0121's select succeeds. */
+  gym_id?: string | null;
+  cues?: string[];
+  steps?: string[];
 }
 
 const GROUPS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'full_body', 'cardio'];
@@ -49,15 +67,31 @@ export default function Exercises() {
   const [saving, setSaving] = useState(false);
   /** exercise → routines using it (0090). Null before 0090, so no count is shown. */
   const [usage, setUsage] = useState<Map<string, { routines: number; members: number }> | null>(null);
+  /** This gym's guides (0121), by exercise. */
+  const [media, setMedia] = useState<Map<string, ExerciseMedia>>(new Map());
+  /** Whether 0121 is live - the guide buttons need it. */
+  const [guides, setGuides] = useState(false);
+  const [photos, setPhotos] = useState<{ used: number; cap: number | null } | null>(null);
+  const [editing, setEditing] = useState<ExerciseRow | null>(null);
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
    *  call again from a button without flashing the whole screen away. */
   const load = async () => {
-    const { data, error } = await supabase
-      .from('exercises')
-      .select('id, name, muscle_group, equipment, is_timed, is_active, sort_order')
-      .order('muscle_group')
-      .order('sort_order');
+    // 0121's columns first; before it is pasted they do not exist, and the
+    // page falls back to the list it always showed.
+    const BASE = 'id, name, muscle_group, equipment, is_timed, is_active, sort_order';
+    const full = await supabase.from('exercises').select(`${BASE}, gym_id, cues, steps`)
+      .order('muscle_group').order('sort_order');
+    const live = !full.error;
+    const { data, error } = live
+      ? full
+      : await supabase.from('exercises').select(BASE).order('muscle_group').order('sort_order');
+    setGuides(live);
+    if (live) {
+      const [m, p] = await Promise.all([listExerciseMedia(), photoUsage()]);
+      setMedia(m);
+      setPhotos(p);
+    }
     if (error) {
       setFailed(true);
     } else {
@@ -115,6 +149,23 @@ export default function Exercises() {
     await load();
   };
 
+  /** A library row is hidden per gym, in the overlay; the gym's own row by is_active. */
+  const isLibrary = (r: ExerciseRow) => guides && r.gym_id === null;
+  const shown = (r: ExerciseRow) => (isLibrary(r) ? !media.get(r.id)?.hidden : r.is_active);
+
+  const toggleShown = async (row: ExerciseRow) => {
+    if (!isLibrary(row)) { await toggleActive(row); return; }
+    const hide = shown(row);
+    try {
+      await saveExerciseMedia(row.id, { hidden: hide });
+      setMedia(await listExerciseMedia());
+      showToast(hide ? `${row.name} is hidden from your members. Other gyms are not affected.`
+        : `${row.name} is back in your members' list.`, 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be changed', 'error');
+    }
+  };
+
   const toggleActive = async (row: ExerciseRow) => {
     const { data, error } = await supabase
       .from('exercises')
@@ -165,7 +216,8 @@ export default function Exercises() {
         <div>
           <h1 className="text-2xl font-bold text-white">Exercises</h1>
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            What members can choose when tracking a workout · {rows.filter((r) => r.is_active).length} active
+            What members can choose when tracking a workout · {rows.filter(shown).length} shown
+            {photos && ` · ${photos.used}${photos.cap !== null ? ` of ${photos.cap}` : ''} photos`}
           </p>
         </div>
         <Button variant="secondary" onClick={() => setAdding((v) => !v)}>
@@ -217,6 +269,22 @@ export default function Exercises() {
         </Card>
       )}
 
+      {editing && (
+        <ExerciseGuideEditor
+          key={editing.id}
+          exerciseId={editing.id}
+          name={editing.name}
+          libraryCues={editing.cues ?? []}
+          librarySteps={editing.steps ?? []}
+          media={media.get(editing.id) ?? null}
+          onSaved={() => { void (async () => {
+            const [m, p] = await Promise.all([listExerciseMedia(), photoUsage()]);
+            setMedia(m); setPhotos(p); setEditing(null);
+          })(); }}
+          onClose={() => { setEditing(null); void photoUsage().then(setPhotos); }}
+        />
+      )}
+
       <Card className="!p-4">
         <p className="text-[10px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           An exercise members have already logged cannot be deleted — that would rewrite
@@ -234,20 +302,34 @@ export default function Exercises() {
                   <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg"
                        style={{ background: 'var(--color-surface-high)',
                                 border: '1px solid var(--color-border)',
-                                opacity: r.is_active ? 1 : 0.45 }}>
+                                opacity: shown(r) ? 1 : 0.45 }}>
                     <div className="min-w-0">
-                      <p className="text-xs text-white truncate">{r.name}</p>
+                      <p className="text-xs text-white truncate">
+                        {r.name}
+                        {media.get(r.id)?.videoUrl && <Video size={10} className="inline ml-1" style={{ color: 'var(--color-primary)' }} aria-label="has a video" />}
+                      </p>
                       <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
+                        {guides && (isLibrary(r) ? 'Core Fitness library · ' : 'Yours · ')}
                         {r.equipment}{r.is_timed ? ' · timed' : ''}
                         {usage && (usage.get(r.id)?.routines ?? 0) > 0 && ` · in ${usage.get(r.id)!.routines} routine${usage.get(r.id)!.routines === 1 ? '' : 's'}`}
                       </p>
                     </div>
-                    <button onClick={() => toggleActive(r)}
-                      data-tip={r.is_active ? 'Hide from members' : 'Show to members'}
-                      className="p-1.5 rounded-lg flex-shrink-0"
-                      style={{ color: 'var(--color-text-muted)' }}>
-                      {r.is_active ? <Eye size={12} /> : <EyeOff size={12} />}
-                    </button>
+                    <div className="flex items-center flex-shrink-0">
+                      {guides && (
+                        <button onClick={() => setEditing(r)}
+                          aria-label={`Guide for ${r.name}`} data-tip="Photo, video and cues"
+                          className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>
+                          <BookOpen size={12} />
+                        </button>
+                      )}
+                      <button onClick={() => void toggleShown(r)}
+                        aria-label={`${shown(r) ? 'Hide' : 'Show'} ${r.name} ${shown(r) ? 'from' : 'to'} members`}
+                        data-tip={shown(r) ? 'Hide from members' : 'Show to members'}
+                        className="p-1.5 rounded-lg"
+                        style={{ color: 'var(--color-text-muted)' }}>
+                        {shown(r) ? <Eye size={12} /> : <EyeOff size={12} />}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

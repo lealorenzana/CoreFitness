@@ -16,6 +16,7 @@
     { "file": "admin-ops-check.js", "app": "admin" },
     { "file": "admin-gym-app-check.js", "app": "admin" },
     { "file": "admin-sweep-check.js", "app": "admin" },
-    { "file": "admin-account-swap-check.js", "app": "admin" }
+    { "file": "admin-account-swap-check.js", "app": "admin" },
+    { "file": "admin-exercise-media-check.js", "app": "admin" }
   ]
 }
