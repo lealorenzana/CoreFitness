@@ -255,8 +255,12 @@ await as(P.adminB);
 check('Gym B admin cannot edit the shared library',
   (await db.query(`update exercises set name = name where gym_id is null`)).affectedRows === 0);
 await as(P.adminA);
-check("Gym #1's admin still curates the shared library (today's Exercises page)",
-  (await db.query(`update exercises set name = name where id = (select id from exercises where gym_id is null limit 1)`)).affectedRows === 1);
+// Until 0121 this asserted the opposite: Gym #1 built the list alone, so its
+// admin curated it for everyone. In a SaaS that is one customer editing every
+// customer's list, so 0121 made curation the platform's. Gym #1 hides a shared
+// exercise for itself through gym_exercise_media.hidden instead.
+check("Gym #1's admin no longer edits the shared library for every gym (0121)",
+  (await db.query(`update exercises set name = name where id = (select id from exercises where gym_id is null limit 1)`)).affectedRows === 0);
 await as(P.both);
 check('a two-gym member sees only the current gym (in A: no B notification)',
   (await one(`select count(*)::int as n from notifications where title = 'B for both'`)).n === 0);
