@@ -213,6 +213,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Membership', path: '/member/membership' },
       { label: 'Renew', path: '/member/renew' },
+      { label: 'Pause or cancel', path: '/member/pause-or-cancel' },
       { label: 'Payments', path: '/member/payments' },
       { label: 'Attendance', path: '/member/attendance-history' },
       { label: 'Spend points', path: '/member/rewards' , module: 'engagement' },

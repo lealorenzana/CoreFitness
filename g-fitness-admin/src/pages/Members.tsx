@@ -1,5 +1,9 @@
 import Avatar from '../components/ui/Avatar';
 import { setAccountStatus } from '../lib/api/accountEvents';
+import {
+  declineMembershipRequest, listOpenMembershipRequests,
+  type OpenMembershipRequest,
+} from '../lib/api/membershipRequests';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { useBranding } from '../hooks/useBranding';
@@ -207,6 +211,12 @@ export default function Members() {
     }
   };
   const [pendingCount, setPendingCount] = useState(0);
+  /** Members asking to pause or stop (0118). Null = 0118 not pasted; the
+      section then renders nothing rather than an empty promise. */
+  const [msRequests, setMsRequests] = useState<OpenMembershipRequest[] | null>(null);
+  /** The decline box, open on one request. */
+  const [decliningId, setDecliningId] = useState<string | null>(null);
+  const [declineWhy, setDeclineWhy] = useState('');
   /** The member whose full record is open in the drawer. `?open=<id>` is how
    *  the header search and the Activity feed land on one member (via
    *  /members/:id) — read once, in the initialiser, like `?pending`. */
@@ -272,6 +282,11 @@ export default function Members() {
       setLoading(false);
     }
   }, [showArchived]);
+
+  const loadMsRequests = useCallback(async () => {
+    setMsRequests(await listOpenMembershipRequests());
+  }, []);
+  useEffect(() => { void (async () => { await loadMsRequests(); })(); }, [loadMsRequests]);
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
@@ -475,6 +490,90 @@ export default function Members() {
 
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col gap-3 overflow-hidden">
+      {/* ---- members asking to pause or stop (0118) ------------------------
+          Here rather than on its own screen because this is where the desk
+          already freezes and cancels people — and **granting is not a button**.
+          Freezing or cancelling the member the way the desk always has is what
+          closes the request (a trigger on membership_events). A "mark granted"
+          control would let the member read "granted" and still book. */}
+      {msRequests && msRequests.length > 0 && (
+        <div className="flex-shrink-0 rounded-xl border p-3"
+          style={{ borderColor: 'var(--color-secondary)', background: 'var(--color-surface)' }}>
+          <p className="text-xs font-bold text-white">
+            {msRequests.length === 1
+              ? 'A member is asking to pause or stop'
+              : `${msRequests.length} members are asking to pause or stop`}
+          </p>
+          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+            Open the member and freeze or cancel them as usual — that closes the request by
+            itself. Nothing has changed on their membership yet.
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {msRequests.map((r) => (
+              <div key={r.id} className="rounded-lg px-3 py-2"
+                style={{ background: 'var(--color-surface-raised)' }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-white">
+                      <strong>{r.memberName}</strong>
+                      {' '}D{' '}
+                      {r.kind === 'freeze'
+                        ? `pause for ${r.requestedDays} days`
+                        : 'cancel'}
+                      {r.planName ? ` (${r.planName})` : ''}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      &ldquo;{r.reason}&rdquo;
+                      {r.expiryDate ? ` — term ends ${r.expiryDate}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-none">
+                    <Button size="sm" variant="outline"
+                      onClick={() => { setViewingId(r.memberId); }}>
+                      Open
+                    </Button>
+                    <Button size="sm" variant="ghost"
+                      onClick={() => { setDecliningId(r.id); setDeclineWhy(''); }}>
+                      Turn down
+                    </Button>
+                  </div>
+                </div>
+
+                {decliningId === r.id && (
+                  <form className="mt-2 flex items-center gap-2" onSubmit={(e) => {
+                    e.preventDefault();
+                    void (async () => {
+                      try {
+                        await declineMembershipRequest(r.id, declineWhy.trim());
+                        setDecliningId(null);
+                        await loadMsRequests();
+                        showToast('The member has been told.', 'success');
+                      } catch (err) {
+                        showToast(err instanceof Error ? err.message : 'That did not work', 'error');
+                      }
+                    })();
+                  }}>
+                    <input
+                      className="flex-1 rounded-lg border px-2.5 py-1.5 text-xs"
+                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)',
+                               color: 'var(--color-text-primary)' }}
+                      value={declineWhy} autoFocus maxLength={280}
+                      placeholder="Why? The member reads this."
+                      onChange={(e) => setDeclineWhy(e.target.value)} />
+                    <Button size="sm" type="submit" disabled={declineWhy.trim().length === 0}>
+                      Send
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDecliningId(null)}>
+                      Cancel
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>

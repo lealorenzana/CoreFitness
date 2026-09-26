@@ -124,9 +124,23 @@ insert into memberships (member_id, plan_id, status, start_date, expiry_date)
          current_date - 10, current_date + 20
     from unnest(array['${M1}','${M2}','${M3}']::uuid[]) p;
 
+-- Pinned to a time of day, not to now().
+--
+-- These used to sit at now() + 3 days, i.e. at whatever o'clock the suite
+-- happened to run. PT_WAIT below books the same coach at 10:00 on that same
+-- day, and 0068's clash rule is a half-open overlap — so the whole file failed
+-- with "that trainer is already booked" for anybody who ran it between about
+-- 09:00 and 11:00, and passed for everybody else. It ran green here all
+-- morning and red at 09:03.
+--
+-- A test whose result depends on the wall clock is worse than a failing one:
+-- it teaches you to re-run instead of to read. 07:00 and 18:00 are outside the
+-- 10:00 session and inside the 08:00-17:00 availability that matters.
 insert into classes (id, name, trainer_id, scheduled_at, capacity) values
-  ('${CLS}','Morning Strength','${TA}', now() + interval '3 days', 12),
-  ('${CLS2}','Evening Mobility','${TA}', now() + interval '5 days', 10);
+  ('${CLS}','Morning Strength','${TA}',
+     date_trunc('day', now() + interval '3 days') + interval '7 hours', 12),
+  ('${CLS2}','Evening Mobility','${TA}',
+     date_trunc('day', now() + interval '5 days') + interval '18 hours', 10);
 insert into bookings (id, member_id, class_id, status) values
   ('${BK}','${M1}','${CLS}','approved'),
   ('${BK2}','${M1}','${CLS2}','pending');

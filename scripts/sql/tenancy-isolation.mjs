@@ -1548,4 +1548,133 @@ check('and a stranger reading the gym list sees the tagline, never the join code
   return rows.every((r) => !('join_code' in r)) && rows.every((r) => 'tagline' in r);
 })());
 
+
+// ---- 0118: a member asks, the desk decides ------------------------------------------
+// Freezing stays a front-desk action (0057's reasoning is unchanged): what is
+// self-serve is the ASKING. The rule worth proving is that nothing here lets a
+// member change their own membership, and that "granted" cannot be faked.
+await as(P.memberA);
+check('a member with no membership is told so, not left waiting', await (async () => {
+  // memberA has no membership row in this fixture, which is exactly the case
+  // that would otherwise sit open on the desk's queue for a week.
+  return !!(await fails(`select request_membership_change('cancel', 'Moving away')`));
+})());
+
+// Give them one, so the rest is about the request rather than the setup.
+await asOwner();
+const planA = (await one(`select id from membership_plans where gym_id = '` + GYM_A + `' limit 1`)).id;
+await db.exec(`insert into memberships (member_id, gym_id, plan_id, status, start_date, expiry_date)
+  values ('` + P.memberA + `', '` + GYM_A + `', '` + planA + `', 'active', current_date - 10, current_date + 20)`);
+
+await as(P.memberA);
+check('a member asks to freeze, with a reason and a length', await (async () => {
+  const id = (await one(`select request_membership_change('freeze', 'Away for work', 14) as id`)).id;
+  const mine = await one('select * from my_membership_request()');
+  return !!id && mine.kind === 'freeze' && mine.requested_days === 14
+    && mine.status === 'open' && mine.reason === 'Away for work';
+})());
+check('a reason is required, and so is a sane number of days', await (async () => {
+  return !!(await fails(`select request_membership_change('freeze', '   ', 14)`))
+    && !!(await fails(`select request_membership_change('freeze', 'Away', 400)`))
+    && !!(await fails(`select request_membership_change('freeze', 'Away', null)`));
+})());
+check('asking again replaces the ask rather than failing on the index', await (async () => {
+  const id = (await one(`select request_membership_change('cancel', 'Changed my mind') as id`)).id;
+  await asOwner();
+  const rows = (await db.query(`select status, kind from membership_requests
+    where member_id = '` + P.memberA + `' order by created_at`)).rows;
+  await as(P.memberA);
+  return !!id && rows.length === 2
+    && rows[0].status === 'withdrawn' && rows[1].status === 'open' && rows[1].kind === 'cancel';
+})());
+check('and only one can be open at a time', await (async () => {
+  await asOwner();
+  return (await one(`select count(*)::int as n from membership_requests
+    where member_id = '` + P.memberA + `' and status = 'open'`)).n === 1;
+})());
+
+// The point of the whole thing: asking changes nothing by itself.
+check('asking does not change the membership', await (async () => {
+  await asOwner();
+  return (await one(`select status from memberships where member_id = '` + P.memberA + `'`)).status === 'active';
+})());
+check('a member cannot write the table directly', await (async () => {
+  await as(P.memberA);
+  const refused = await fails(`insert into membership_requests (gym_id, member_id, kind, reason)
+    values ('` + GYM_A + `', '` + P.memberA + `', 'cancel', 'sneaking in')`);
+  // And cannot grant their own: RLS refuses an update with zero rows, not an error.
+  await db.exec(`update membership_requests set status = 'granted' where member_id = '` + P.memberA + `'`)
+    .catch(() => {});
+  await asOwner();
+  const still = await one(`select status from membership_requests
+    where member_id = '` + P.memberA + `' and kind = 'cancel'`);
+  return !!refused && still.status === 'open';
+})());
+check('a member cannot decline their own request', await (async () => {
+  await as(P.memberA);
+  const id = (await one('select id from my_membership_request()')).id;
+  return !!(await fails(`select decline_membership_request('` + id + `', 'no')`));
+})());
+check('a member of another gym cannot see it', await (async () => {
+  await as(P.adminB);
+  return (await db.query('select * from open_membership_requests()')).rows.length === 0
+    && (await one('select count(*)::int as n from membership_requests')).n === 0;
+})());
+
+// The desk.
+check('the desk sees the queue, with what it needs to decide', await (async () => {
+  await as(P.staffA);
+  const rows = (await db.query('select * from open_membership_requests()')).rows;
+  const mine = rows.find((r) => r.member_id === P.memberA);
+  return !!mine && mine.kind === 'cancel' && !!mine.member_name.trim() && !!mine.expiry_date;
+})());
+check('a trainer does not', await (async () => {
+  await as(P.trainerA);
+  return (await db.query('select * from open_membership_requests()')).rows.length === 0;
+})());
+check('the desk must say why when it turns one down', await (async () => {
+  await as(P.staffA);
+  const id = (await one(`select id from open_membership_requests() limit 1`)).id;
+  const refused = await fails(`select decline_membership_request('` + id + `', '  ')`);
+  await db.exec(`select decline_membership_request('` + id + `', 'Come to the desk, we can pause it instead')`);
+  await as(P.memberA);
+  const mine = await one('select * from my_membership_request()');
+  return !!refused && mine.status === 'declined'
+    && /Come to the desk/.test(mine.close_note);
+})());
+check('a declined request stays readable, because the reason is the point', await (async () => {
+  await as(P.memberA);
+  return (await one('select * from my_membership_request()')).close_note !== null;
+})());
+
+// Granting is never a button.
+check('recording the real freeze is what grants the request', await (async () => {
+  await as(P.memberA);
+  await db.exec(`select request_membership_change('freeze', 'Knee surgery', 21)`);
+  await asOwner();
+  const m = await one(`select id from memberships where member_id = '` + P.memberA + `'`);
+  await db.exec(`insert into membership_events (membership_id, member_id, gym_id, kind, reason)
+    values ('` + m.id + `', '` + P.memberA + `', '` + GYM_A + `', 'freeze', 'Knee surgery')`);
+  await as(P.memberA);
+  const mine = await one('select * from my_membership_request()');
+  return mine.status === 'granted' && mine.closed_at !== null;
+})());
+check('and a cancel grants only a cancel request, never a freeze one', await (async () => {
+  await as(P.memberA);
+  await db.exec(`select request_membership_change('freeze', 'Away again', 7)`);
+  await asOwner();
+  const m = await one(`select id from memberships where member_id = '` + P.memberA + `'`);
+  await db.exec(`insert into membership_events (membership_id, member_id, gym_id, kind, reason)
+    values ('` + m.id + `', '` + P.memberA + `', '` + GYM_A + `', 'cancel', 'Left the city')`);
+  await as(P.memberA);
+  // Still open: the desk cancelled, the member had asked to freeze.
+  return (await one('select * from my_membership_request()')).status === 'open';
+})());
+check('a member can withdraw, and cannot withdraw twice', await (async () => {
+  await as(P.memberA);
+  await db.exec('select withdraw_membership_request()');
+  const mine = await one('select * from my_membership_request()');
+  return mine.status === 'withdrawn' && !!(await fails('select withdraw_membership_request()'));
+})());
+
 finish();

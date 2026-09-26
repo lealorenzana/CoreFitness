@@ -35,6 +35,7 @@ const ChatbotPage = lazyPage(() => import('./pages/ChatbotPage'));
 const Events = lazyPage(() => import('./pages/Events'));
 const PaymentHistory = lazyPage(() => import('./pages/PaymentHistory'));
 const RenewMembership = lazyPage(() => import('./pages/RenewMembership'));
+const PauseOrCancel = lazyPage(() => import('./pages/PauseOrCancel'));
 const EditProfile = lazyPage(() => import('./pages/EditProfile'));
 const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
 const BookClass = lazyPage(() => import('./pages/BookClass'));
@@ -278,6 +279,9 @@ function App() {
           <Route path="bookings" element={<Navigate to="/member/booking-history" replace />} />
           <Route path="book" element={<Navigate to="/member/book-class" replace />} />
           <Route path="renew-membership" element={<RenewMembership />} />
+          {/* Asking the desk to pause or stop (0118). The screen asks; the desk
+              still makes the change. */}
+          <Route path="pause-or-cancel" element={<PauseOrCancel />} />
           <Route path="attendance-history" element={<AttendanceHistory />} />
           <Route path="visits" element={<VisitHistory />} />
           {/* An unknown path under /member rendered the shell with an empty
