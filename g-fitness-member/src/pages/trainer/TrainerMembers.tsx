@@ -5,6 +5,7 @@ import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import GlassSheet from '../../components/ui/GlassSheet';
+import TraineeProgram from '../../components/trainer/TraineeProgram';
 import { TextArea, TextInput } from '../../components/ui/Field';
 import { InlineStat, LineRow, NocButton, ProgressBar, StatusPill } from '../../components/ui/noc';
 import { supabase } from '../../lib/supabaseClient';
@@ -349,6 +350,9 @@ export default function TrainerMembers() {
               <InlineStat value={<span style={{ fontSize: 17 }}>{detail?.progression ? levelLabel(detail.progression.level) : '—'}</span>} label="Earned" />
               <InlineStat value={<span style={{ fontSize: 17 }}>{selectedMember.visitsLast30}</span>} label="Visits (30d)" />
             </div>
+
+            {/* The gym program they follow, and assigning one (0122). */}
+            <TraineeProgram memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
 
             {/* Notes already sent, newest first, with the member's side of it. */}
             {sentNotes && sentNotes.length > 0 && (
