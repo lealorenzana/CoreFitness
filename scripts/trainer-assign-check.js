@@ -125,6 +125,8 @@ async (page) => {
   let assigned = null;
   const FN = {
     assign_program: (b) => { assigned = b.p_program; return 'en1'; },
+    member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
+      { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
     program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({
       program_id: assigned, program_name: 'Starter Strength', day_id: 'd' + d, week: 1, day: d,
       workout_id: 'gw1', workout_name: 'Leg Day A', done: false })),
@@ -237,6 +239,7 @@ async (page) => {
   await page.waitForTimeout(1500);
   let t = await text();
   out.push('trainee sheet shows their program: ' + (/Program/.test(t) && /Lea is not following a program/.test(t) ? 'none yet' : 'MISSING'));
+  out.push("trainee's records on the sheet: " + (/Personal records/.test(t) && /Deadlift/.test(t) && /120 kg/.test(t) ? 'shown' : 'MISSING'));
   out.push('premium programs marked in the picker: ' + ((await page.locator('option', { hasText: 'Advanced Block (Premium)' }).count()) === 1 ? 'marked' : 'MISSING'));
 
   await page.getByLabel('Program to assign').selectOption('pF');

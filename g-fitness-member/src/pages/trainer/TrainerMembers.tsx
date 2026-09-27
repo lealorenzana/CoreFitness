@@ -6,6 +6,7 @@ import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import GlassSheet from '../../components/ui/GlassSheet';
 import TraineeProgram from '../../components/trainer/TraineeProgram';
+import TraineeRecords from '../../components/trainer/TraineeRecords';
 import { TextArea, TextInput } from '../../components/ui/Field';
 import { InlineStat, LineRow, NocButton, ProgressBar, StatusPill } from '../../components/ui/noc';
 import { supabase } from '../../lib/supabaseClient';
@@ -353,6 +354,8 @@ export default function TrainerMembers() {
 
             {/* The gym program they follow, and assigning one (0122). */}
             <TraineeProgram memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
+            {/* Their latest personal records (0123), when they share their workouts. */}
+            <TraineeRecords memberId={selectedMember.id} />
 
             {/* Notes already sent, newest first, with the member's side of it. */}
             {sentNotes && sentNotes.length > 0 && (
