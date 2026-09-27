@@ -75,7 +75,7 @@ const TAB_PATHS: string[][] = [
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
    '/member/booking-history', '/member/progress', '/member/achievements',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts',
-   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season',
+   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad',
    '/member/workout-history'],
   // You: the money-and-access half, and the account itself. Profile lost its
   // tab in this redesign; its screens live here now.
@@ -153,6 +153,7 @@ export const RAILS: Record<TabId, Destination[]> = {
       words: (w) => w('trainers', true) },
     { label: 'Challenges', path: '/member/challenges', icon: Trophy , module: 'engagement' },
     { label: 'Season', path: '/member/season', icon: Medal , module: 'engagement' },
+    { label: 'Squad', path: '/member/squad', icon: Users , module: 'engagement' },
     { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
     { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
     { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress',
@@ -198,6 +199,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
         words: (w) => w('trainers', true) },
       { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
       { label: 'Season', path: '/member/season' , module: 'engagement' },
+      { label: 'Squad', path: '/member/squad' , module: 'engagement' },
     ],
   },
   {

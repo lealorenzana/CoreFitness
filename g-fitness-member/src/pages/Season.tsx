@@ -4,6 +4,7 @@ import { Trophy } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
+import GymGoalStrip from '../components/workout/GymGoalStrip';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -143,6 +144,15 @@ export default function Season() {
           })}
         </section>
       )}
+
+      <GymGoalStrip />
+
+      <Panel onClick={() => navigate('/member/squad')} ariaLabel="Your squad">
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>Your squad</p>
+        <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
+          Train with friends: hit your weekly target together and everyone gets the points.
+        </p>
+      </Panel>
 
       <Panel onClick={() => navigate('/member/challenges')} ariaLabel="This week's quests">
         <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>

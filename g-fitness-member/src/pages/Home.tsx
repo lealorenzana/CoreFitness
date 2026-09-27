@@ -21,6 +21,7 @@ import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/a
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
 import GymMark from '../components/ui/GymMark';
+import GymGoalStrip from '../components/workout/GymGoalStrip';
 import { ACCENTS, type AccentKey } from '../lib/gymTheme';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
@@ -320,6 +321,9 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* The gym-wide goal (0124) — nothing when the gym has none running. */}
+      <GymGoalStrip />
 
       {/* ── Month panel ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
