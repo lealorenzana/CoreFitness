@@ -5,6 +5,7 @@ import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { PointRulesSection } from '../components/ui/EngagementRules';
+import SeasonSection from '../components/SeasonSection';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
   SearchBox, Chips, Toolbar, PageSummary,
@@ -549,6 +550,9 @@ export default function Rewards() {
       </Modal>
 
       {/* Approving hands something over and drops stock, so it asks first. */}
+      {/* The monthly season (0123): tiers and the rewards waiting at the desk. */}
+      <SeasonSection isAdmin />
+
       <ConfirmDialog
         isOpen={!!toApprove}
         onClose={() => setToApprove(null)}

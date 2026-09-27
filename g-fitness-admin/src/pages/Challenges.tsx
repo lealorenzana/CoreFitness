@@ -40,6 +40,9 @@ interface Challenge {
   is_active: boolean;
   /** Optional picture (0065). NULL is normal. */
   image_url: string | null;
+  /** 0123: a template that gives every week its own copy. Absent before 0123. */
+  repeats_weekly?: boolean;
+  parent_id?: string | null;
 }
 
 function today(): string {
@@ -66,6 +69,7 @@ export default function Challenges() {
     title: '', description: '', metric_key: 'training_days',
     target: '10', starts_on: today(), ends_on: inDays(30), reward_points: '250',
     imageUrl: '',
+    repeatsWeekly: false,
   });
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
@@ -75,15 +79,23 @@ export default function Challenges() {
       supabase.from('achievement_metrics')
         .select('key, label, unit').eq('challengeable', true).order('sort_order'),
       supabase.from('challenges')
-        .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, is_active, image_url')
-        .order('ends_on', { ascending: false }),
+        .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, is_active, image_url, repeats_weekly, parent_id')
+        .order('ends_on', { ascending: false })
+        .then(async (r) => (r.error
+          // Before 0123 the two columns do not exist; the list is read as before.
+          ? supabase.from('challenges')
+              .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, is_active, image_url')
+              .order('ends_on', { ascending: false })
+          : r)),
       supabase.from('challenge_participants').select('challenge_id, completed_on'),
     ]);
     if (m.error || c.error || p.error) {
       setFailed(true);
     } else {
       setMetrics((m.data ?? []) as Metric[]);
-      setItems((c.data ?? []) as Challenge[]);
+      // A weekly quest's copies are the template's business, not rows of their
+      // own here: the owner edits and hides the template (0123).
+      setItems(((c.data ?? []) as Challenge[]).filter((x) => !x.parent_id));
       const agg: Record<string, { joined: number; done: number }> = {};
       for (const row of p.data ?? []) {
         const id = row.challenge_id as string;
@@ -131,6 +143,8 @@ export default function Challenges() {
       reward_points: Number.isFinite(points) ? points : 0,
       // Empty means no picture; an empty string would render a broken image.
       image_url: form.imageUrl.trim() || null,
+      // Only when ticked, so creating a one-off still works before 0123.
+      ...(form.repeatsWeekly ? { repeats_weekly: true } : {}),
     });
     setBusy(false);
     if (error) { showToast(error.message, 'error'); return; }
@@ -184,7 +198,13 @@ export default function Challenges() {
             style={{ aspectRatio: '16 / 9', background: 'var(--color-bg)' }} />
         )}
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[12px] font-semibold text-white leading-snug">{c.title}</p>
+          <p className="text-[12px] font-semibold text-white leading-snug">
+            {c.title}
+            {c.repeats_weekly && (
+              <span className="ml-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                style={{ background: 'var(--color-surface-high)', color: 'var(--color-primary)' }}>Repeats weekly</span>
+            )}
+          </p>
           <button onClick={() => toggle(c)}
             className="text-[9px] font-semibold flex-shrink-0 px-2 py-1 rounded"
             style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
@@ -339,6 +359,14 @@ export default function Challenges() {
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
             </label>
           </div>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" className="mt-0.5" checked={form.repeatsWeekly} aria-label="Repeat every week"
+              onChange={(e) => setForm({ ...form, repeatsWeekly: e.target.checked })} />
+            <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+              Repeat every week — a weekly quest. Each Monday it starts again, every member is in it
+              automatically, and it pays its points once a week. The dates above are when it runs.
+            </span>
+          </label>
           <ImageField
             value={form.imageUrl}
             onChange={(imageUrl) => setForm({ ...form, imageUrl })}

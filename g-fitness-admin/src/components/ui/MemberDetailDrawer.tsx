@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/achievements';
 import { recordPayment } from '../../lib/api/payments';
 import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
+import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/season';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
   freezesThisMonth, type MembershipActionDetail,
@@ -978,6 +979,7 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
       </Section>
 
       <ProgramSection memberId={detail.identity.profile.id} />
+      <RecordsSection memberId={detail.identity.profile.id} />
 
       <Section title={`Saved routines${routines ? ` (${routines.length})` : ''}`}>
         {routines == null ? (
@@ -1532,6 +1534,54 @@ function ProgramSection({ memberId }: { memberId: string }) {
     <Section title="Program">
       <Row title={days[0].programName}
         subtitle={`${done} of ${days.length} training days done${next ? ` · next: week ${next.week}, ${next.workoutName}` : ' · finished'}`} />
+    </Section>
+  );
+}
+
+/**
+ * The member's personal records (0123), detected by the database from their
+ * logged sets. Weights are self-typed, so the desk can remove one that is
+ * obviously not real: its points are taken back and it stops being the bar a
+ * real lift has to beat.
+ */
+function RecordsSection({ memberId }: { memberId: string }) {
+  const [records, setRecords] = useState<MemberRecord[] | null | undefined>(undefined);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(async () => { setRecords(await memberRecords(memberId)); }, [memberId]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
+
+  // Before 0123, or unreadable: nothing, rather than "no records".
+  if (records === undefined || records === null) return null;
+  const remove = async (r: MemberRecord) => {
+    setBusy(r.id);
+    try {
+      await removeRecord(r.id);
+      showToast(`${r.exerciseName} ${recordValue(r.kind, r.value)} removed, and its points taken back.`, 'success');
+      await load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That record could not be removed', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <Section title={`Personal records (${records.length})`}>
+      {records.length === 0 ? (
+        <Empty text="None yet. A set heavier (or longer) than their best on an exercise becomes one." />
+      ) : (
+        <div className="space-y-1.5">
+          {records.slice(0, 8).map((r) => (
+            <Row key={r.id} title={`${r.exerciseName} — ${recordValue(r.kind, r.value)}`}
+              subtitle={`up from ${recordValue(r.kind, r.previous)} · ${formatDate(r.achievedAt)}`}
+              right={
+                <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void remove(r)}
+                  aria-label={`Remove record ${r.exerciseName} ${recordValue(r.kind, r.value)}`}>
+                  Remove
+                </Button>
+              } />
+          ))}
+        </div>
+      )}
     </Section>
   );
 }
