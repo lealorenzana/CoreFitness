@@ -107,15 +107,19 @@ async (page) => {
     await page.getByLabel('Product name').fill('Protein bar');
     await page.getByLabel('Category').fill('Snacks');
     await page.getByLabel('Price').fill('75');
+    await page.getByLabel('How many you have now').fill('3');
+    await page.screenshot({ path: 'shots/admin-shop-form.png' });
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.waitForTimeout(600);
     const sp = CALLS.find(([f]) => f === 'save_product');
     out.push('the owner adds a product: ' + (sp && sp[1].p_name === 'Protein bar' && sp[1].p_price === 75 ? 'saved' : 'MISSING ' + JSON.stringify(sp)));
+    const open = CALLS.find(([f, b]) => f === 'move_stock' && b.p_note === 'Opening stock');
+    out.push('what they have now becomes the opening stock: ' + (open && open[1].p_product === 'p9' && open[1].p_qty === 3 && open[1].p_reason === 'delivery' ? '3, recorded' : 'MISSING ' + JSON.stringify(open)));
     await page.getByRole('button', { name: 'Delivery' }).first().click();
     await page.getByLabel('Quantity').fill('24');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await page.waitForTimeout(600);
-    const mv = CALLS.find(([f]) => f === 'move_stock');
+    const mv = CALLS.find(([f, b]) => f === 'move_stock' && b.p_qty === 24);
     out.push('the owner records a delivery: ' + (mv && mv[1].p_reason === 'delivery' && mv[1].p_qty === 24 ? 'recorded' : 'MISSING ' + JSON.stringify(mv)));
     await page.screenshot({ path: 'shots/admin-shop-products.png' });
   } else {

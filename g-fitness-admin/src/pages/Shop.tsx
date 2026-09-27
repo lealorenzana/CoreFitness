@@ -15,7 +15,7 @@ const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(
 const manilaToday = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 const monthStart = () => `${manilaToday().slice(0, 8)}01`;
 type Tab = 'sell' | 'products' | 'sales';
-const blank = { id: null as string | null, name: '', category: 'Drinks', description: '', price: '', trackStock: true, lowStockAt: '5', shownInApp: true };
+const blank = { id: null as string | null, name: '', category: 'Drinks', description: '', price: '', trackStock: true, lowStockAt: '5', shownInApp: true, opening: '', stock: 0 };
 
 /**
  * Billing → Shop (0133). Sell: tap products into a sale, optionally name the
@@ -208,27 +208,55 @@ export default function Shop() {
             {owner && <Button variant="secondary" onClick={() => setForm({ ...blank })}><Plus size={14} /> Add product</Button>}
           </div>
           {form && (
-            <div className="rounded-lg p-3 mb-3 grid gap-2" style={{ ...FIELD, gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name, e.g. Whey scoop" aria-label="Product name"
-                className="col-span-2 h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
-              <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Category" aria-label="Category"
-                className="h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
-              <input value={form.price} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value.replace(/[^0-9.]/g, '') })}
-                placeholder="Price (₱)" aria-label="Price" className="h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description (optional)"
-                aria-label="Description" className="col-span-2 h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
-              <input value={form.lowStockAt} inputMode="numeric" onChange={(e) => setForm({ ...form, lowStockAt: e.target.value.replace(/\D/g, '') })}
-                aria-label="Warn when stock is at" placeholder="Warn at" className="h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
-              <div className="flex flex-col gap-1 text-[11px] text-white">
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock</label>
+            // Every box is labelled: an owner typed their stock into the unlabelled
+            // "warn at" box (a placeholder vanishes once you type) and saw 0 in stock.
+            <div className="rounded-lg p-3 mb-3 grid gap-3" style={{ ...FIELD, gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+              <Labelled label="Name" span={2}>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Whey scoop" aria-label="Product name"
+                  className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+              </Labelled>
+              <Labelled label="Category">
+                <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Drinks" aria-label="Category"
+                  className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+              </Labelled>
+              <Labelled label="Price (₱)">
+                <input value={form.price} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value.replace(/[^0-9.]/g, '') })}
+                  placeholder="e.g. 100" aria-label="Price" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+              </Labelled>
+              <Labelled label="Description (optional)" span={2}>
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What members see under the name"
+                  aria-label="Description" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+              </Labelled>
+              {form.trackStock && (form.id ? (
+                <Labelled label="In stock now">
+                  <p className="h-9 flex items-center text-xs text-white">{form.stock} — change it with Delivery or Count</p>
+                </Labelled>
+              ) : (
+                <Labelled label="How many you have now">
+                  <input value={form.opening} inputMode="numeric" onChange={(e) => setForm({ ...form, opening: e.target.value.replace(/\D/g, '') })}
+                    placeholder="e.g. 3" aria-label="How many you have now" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+                </Labelled>
+              ))}
+              {form.trackStock && (
+                <Labelled label="Warn me when down to">
+                  <input value={form.lowStockAt} inputMode="numeric" onChange={(e) => setForm({ ...form, lowStockAt: e.target.value.replace(/\D/g, '') })}
+                    aria-label="Warn me when down to" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
+                </Labelled>
+              )}
+              <div className="col-span-4 flex flex-wrap gap-4 text-[11px] text-white">
+                <label className="flex items-center gap-1.5"><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock (untick for services like towel rental)</label>
                 <label className="flex items-center gap-1.5"><input type="checkbox" checked={form.shownInApp} onChange={(e) => setForm({ ...form, shownInApp: e.target.checked })} /> Show in members' app</label>
               </div>
               <div className="col-span-4 flex gap-2">
                 <Button size="sm" variant="secondary" disabled={busy || !form.name.trim() || form.price === ''}
                   onClick={() => void run(async () => {
-                    await saveProduct({ id: form.id, name: form.name, category: form.category, description: form.description.trim() || null,
+                    const id = await saveProduct({ id: form.id, name: form.name, category: form.category, description: form.description.trim() || null,
                       price: Number(form.price), photoUrl: null, trackStock: form.trackStock, lowStockAt: Number(form.lowStockAt || 0),
                       shownInApp: form.shownInApp, active: true });
+                    // A new product's opening stock is its first delivery, so it has a record like every other change.
+                    if (!form.id && form.trackStock && Number(form.opening) > 0) {
+                      await moveStock(id, 'delivery', Number(form.opening), 'Opening stock');
+                    }
                     setForm(null);
                   }, form.id ? 'Product saved' : 'Product added')}>
                   {form.id ? 'Save' : 'Add'}
@@ -258,7 +286,7 @@ export default function Shop() {
                       <Button size="sm" variant="ghost" onClick={() => setStockFor({ p, reason: 'count', qty: String(p.stock), note: '' })}>Count</Button>
                     </>)}
                     <Button size="sm" variant="ghost" onClick={() => setForm({ id: p.id, name: p.name, category: p.category, description: p.description ?? '',
-                      price: String(p.price), trackStock: p.trackStock, lowStockAt: String(p.lowStockAt), shownInApp: p.shownInApp })}>Edit</Button>
+                      price: String(p.price), trackStock: p.trackStock, lowStockAt: String(p.lowStockAt), shownInApp: p.shownInApp, opening: '', stock: p.stock })}>Edit</Button>
                     <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => saveProduct({ ...p, active: !p.active }),
                       p.active ? `${p.name} retired — past sales keep it` : `${p.name} is back on sale`)}>{p.active ? 'Retire' : 'Restore'}</Button>
                   </div>
@@ -315,5 +343,14 @@ export default function Shop() {
         </Card>
       )}
     </div>
+  );
+}
+
+function Labelled({ label, span = 1, children }: { label: string; span?: number; children: React.ReactNode }) {
+  return (
+    <label className="block" style={{ gridColumn: `span ${span} / span ${span}` }}>
+      <span className="block text-[10px] font-semibold uppercase mb-1" style={{ color: MUTED }}>{label}</span>
+      {children}
+    </label>
   );
 }
