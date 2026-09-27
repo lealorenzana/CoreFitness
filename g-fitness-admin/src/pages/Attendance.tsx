@@ -364,6 +364,11 @@ export default function Attendance() {
               style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
               Kiosk mode
             </Link>
+            {/* The lobby TV: the gym goal, records, boards and classes, for a screen in the gym. */}
+            <Link to="/tv" className="w-full text-center text-[10px] font-semibold py-1.5 rounded-lg"
+              style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
+              Lobby TV
+            </Link>
             <div className="flex items-center gap-2 w-full">
               <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
               <span className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>OR</span>

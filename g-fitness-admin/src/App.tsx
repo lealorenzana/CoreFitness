@@ -31,6 +31,7 @@ import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
+import LobbyTv from './pages/LobbyTv';
 import SystemHealth from './pages/SystemHealth';
 import { Toaster } from './components/ui/sonner';
 
@@ -116,6 +117,8 @@ function App() {
               the sidebar layout, but behind the same sign-in — check-ins are
               written under the signed-in staff account. */}
           <Route path="/kiosk" element={<ProtectedRoute><Kiosk /></ProtectedRoute>} />
+          {/* The lobby TV (0126): full screen, outside the shell, like the kiosk. */}
+          <Route path="/tv" element={<ProtectedRoute><LobbyTv /></ProtectedRoute>} />
           <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
