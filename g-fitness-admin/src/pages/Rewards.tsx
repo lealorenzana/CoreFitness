@@ -6,6 +6,7 @@ import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { PointRulesSection } from '../components/ui/EngagementRules';
 import SeasonSection from '../components/SeasonSection';
+import ReferralsSection from '../components/ReferralsSection';
 import {
   PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
   SearchBox, Chips, Toolbar, PageSummary,
@@ -552,6 +553,9 @@ export default function Rewards() {
       {/* Approving hands something over and drops stock, so it asks first. */}
       {/* The monthly season (0123): tiers and the rewards waiting at the desk. */}
       <SeasonSection isAdmin />
+
+      {/* Who brought whom (0125). */}
+      <ReferralsSection />
 
       <ConfirmDialog
         isOpen={!!toApprove}

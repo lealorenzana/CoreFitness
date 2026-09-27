@@ -62,6 +62,11 @@ async (page) => {
         role: 'admin', status: 'active', lock_reason: null, short_name: null, logo_url: null, accent: 'violet',
         gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'open' }]);
       if (fn === 'open_season_claims') return json(claims);
+      if (fn === 'gym_referrals') return json([
+        { id: 'rf1', referrer_name: 'Lea Lorenzana', friend_name: 'Ana Reyes', status: 'rewarded', created_at: new Date().toISOString(),
+          rewarded_at: new Date().toISOString(), referrer_points: 100, friend_points: 50 },
+        { id: 'rf2', referrer_name: 'Lea Lorenzana', friend_name: 'Joy Mendoza', status: 'pending', created_at: new Date().toISOString(),
+          rewarded_at: null, referrer_points: 0, friend_points: 0 }]);
       if (fn === 'gym_goal_progress') return json([{ progress: 412, contributors: 88 }]);
       if (fn === 'hand_over_season_claim') { claims = claims.filter((c) => c.id !== SENT.rpc[fn].p_claim); return json(null); }
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
@@ -99,6 +104,8 @@ async (page) => {
   out.push('season card: ' + (/Monthly season/.test(t) ? 'shown' : 'MISSING'));
   out.push('claim waiting: ' + (/Lea Lorenzana · Bronze — Protein shake/.test(t) ? 'shown' : 'MISSING'));
   out.push('tier listed: ' + (/Bronze · 300 points · Protein shake/.test(t) ? 'shown' : 'MISSING'));
+  out.push('referrals listed: ' + (/Lea Lorenzana brought Ana Reyes/.test(t) && /Paid · 100 \+ 50 pts/.test(t) && /Waiting for their first payment/.test(t) ? 'shown' : 'MISSING'));
+  out.push('referral counts: ' + (/2 invited · 1 joined and paid · 1 this month/.test(t) ? 'shown' : 'MISSING'));
   await page.getByRole('button', { name: 'Handed over' }).click();
   await page.waitForTimeout(900);
   out.push('hand-over sent: ' + (SENT.rpc.hand_over_season_claim?.p_claim === 'c1' ? 'c1' : 'MISSING'));
