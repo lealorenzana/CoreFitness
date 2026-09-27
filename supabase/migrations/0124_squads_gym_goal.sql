@@ -191,6 +191,26 @@ language sql stable security definer set search_path = public as $$
    limit 20;
 $$;
 
+-- One member's squad this week, for the desk and their coach (and themselves).
+-- The squad's name and figures only — never its code or other members.
+create or replace function member_squad(p_member uuid)
+returns table (squad_name text, members int, squad_days int, weekly_target int, member_days int)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not (p_member = auth.uid()
+          or coalesce(storage_role_here() in ('admin', 'staff'), false)
+          or (storage_role_here() = 'trainer' and is_my_trainee(p_member))) then
+    raise exception 'That is not yours to see.' using errcode = '42501';
+  end if;
+  return query
+    select s.name, (select count(*)::int from squad_members x where x.squad_id = s.id and x.left_at is null),
+           squad_days(s.id, manila_week_start()), s.weekly_target,
+           training_days_between(p_member, s.gym_id, manila_week_start(), manila_week_start() + 6)
+      from squad_members m join squads s on s.id = m.squad_id
+     where m.member_id = p_member and m.gym_id = current_gym_id() and m.left_at is null;
+end;
+$$;
+
 -- Pays a squad week once. This week and last, so Sunday's finish pays on Monday.
 create or replace function settle_squads() returns int
 language plpgsql security definer set search_path = public as $$
@@ -377,11 +397,11 @@ end $$;
 -- ---- grants ------------------------------------------------------------------------------------
 
 revoke all on function training_days_between(uuid, uuid, date, date), my_squad_id(), squad_days(uuid, date),
-  create_squad(text, int), join_squad(text), leave_squad(), my_squad(), squad_board(), settle_squads(),
+  create_squad(text, int), join_squad(text), leave_squad(), my_squad(), squad_board(), settle_squads(), member_squad(uuid),
   gym_goal_contribution(uuid, uuid), gym_goal_progress(uuid), current_gym_goal(), settle_gym_goals()
   from public, anon;
 grant execute on function training_days_between(uuid, uuid, date, date), my_squad_id(), squad_days(uuid, date),
-  create_squad(text, int), join_squad(text), leave_squad(), my_squad(), squad_board(), settle_squads(),
+  create_squad(text, int), join_squad(text), leave_squad(), my_squad(), squad_board(), settle_squads(), member_squad(uuid),
   gym_goal_contribution(uuid, uuid), gym_goal_progress(uuid), current_gym_goal(), settle_gym_goals()
   to authenticated;
 

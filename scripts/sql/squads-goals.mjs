@@ -116,6 +116,13 @@ check('once someone leaves, there is room again', !(await tryExec(`select join_s
 await as(M[4]);
 check('and the leaver may start their own', !(await tryExec(`select create_squad('Solo Start', 2)`)));
 
+// ---- the coach's and desk's view -------------------------------------------------------------
+await as(STAFF);
+const ms = await one(`select * from member_squad('${M[1]}')`);
+check("the desk sees a member's squad, not its code", ms && ms.squad_name === 'Iron Barkada' && !('code' in ms), JSON.stringify(ms));
+await as(M[3]);
+check("another member cannot look up someone's squad", !!(await tryExec(`select * from member_squad('${M[1]}')`)));
+
 // ---- the gym-wide goal ---------------------------------------------------------------------------
 await as(M[0]);
 check('a member cannot set a gym goal', !!(await tryExec(`insert into gym_goals (title, metric, target, starts_on, ends_on, reward_points)
