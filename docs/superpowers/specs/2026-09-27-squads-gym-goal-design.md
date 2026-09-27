@@ -1,6 +1,6 @@
 # Squads and the gym-wide goal — design
 
-**Date:** 2026-09-27 · **Status:** approved in conversation · **Migration:** 0124 · **Roadmap:** piece 3 of 5
+**Date:** 2026-09-27 · **Status:** built — SQL, member, admin and trainer; pasted by hand · **Migration:** 0124 · **Roadmap:** piece 3 of 5
 
 ## Decisions made in conversation
 
