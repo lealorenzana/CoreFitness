@@ -11,6 +11,7 @@ import {
   WORK_STATUS, assignmentDetail, deleteAssignment, dueLabel, returnSubmission, roomClasswork,
   type Classwork, type HandIn,
 } from '../../lib/api/rooms';
+import { submissionPhotos } from '../../lib/api/photos';
 
 /**
  * One piece of classwork, member by member (0129): who turned it in, late or
@@ -22,6 +23,7 @@ export default function AssignmentDetail() {
   const navigate = useNavigate();
   const [work, setWork] = useState<Classwork | null | undefined>(undefined);
   const [rows, setRows] = useState<HandIn[] | null>(null);
+  const [photos, setPhotos] = useState<Map<string, string>>(new Map());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -29,6 +31,7 @@ export default function AssignmentDetail() {
     const [all, detail] = await Promise.all([roomClasswork(roomId), assignmentDetail(assignmentId).catch(() => [])]);
     setWork(all?.find((w) => w.id === assignmentId) ?? null);
     setRows(detail);
+    setPhotos(await submissionPhotos(detail.map((d) => d.submissionId).filter((x): x is string => !!x)));
   }, [roomId, assignmentId]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
@@ -84,6 +87,10 @@ export default function AssignmentDetail() {
           </div>
           <StatusPill label={st.label} tone={st.tone} />
         </div>
+        {h.submissionId && photos.get(h.submissionId) && (
+          <img src={photos.get(h.submissionId)} alt={`Photo from ${h.name}`} loading="lazy"
+            style={{ marginTop: 8, width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: 10 }} />
+        )}
         {h.answerNumber != null && <p style={{ fontSize: 14, marginTop: 8, color: 'var(--color-text-primary)' }}>{h.answerNumber} kg</p>}
         {h.answerText && <p style={{ fontSize: 14, marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--color-text-primary)' }}>{h.answerText}</p>}
         {h.workout && h.workout.length > 0 && (

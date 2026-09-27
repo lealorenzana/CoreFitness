@@ -17,7 +17,7 @@ import { currentGymId } from '../gymContext';
  */
 
 export type RoomKind = 'class' | 'pt' | 'group';
-export type CheckinType = 'question' | 'weight' | 'note';
+export type CheckinType = 'question' | 'weight' | 'note' | 'photo';
 export type WorkStatus = 'assigned' | 'turned_in' | 'late' | 'missing' | 'returned';
 
 export interface Room {

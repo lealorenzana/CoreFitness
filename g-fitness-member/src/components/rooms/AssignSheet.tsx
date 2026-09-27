@@ -13,6 +13,7 @@ const CHECKIN: { id: CheckinType; label: string; hint: string }[] = [
   { id: 'question', label: 'A question', hint: 'They write an answer — how the week felt, what hurt, what to change.' },
   { id: 'weight', label: 'Body weight', hint: 'They enter their weight in kg. You see the trend in Progress.' },
   { id: 'note', label: 'A note', hint: 'A short update in their own words — a food log, a sleep note.' },
+  { id: 'photo', label: 'A progress photo', hint: 'They hand in one photo. Only you see it — not the room, not the desk.' },
 ];
 
 /**

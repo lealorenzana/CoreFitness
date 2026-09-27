@@ -96,7 +96,7 @@ export async function photoUsage(): Promise<{ used: number; cap: number | null }
 }
 
 /** Shrink on the device: a phone photo is 3–8 MB, the bucket takes 3. */
-async function shrink(file: File): Promise<Blob> {
+export async function shrink(file: File): Promise<Blob> {
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));

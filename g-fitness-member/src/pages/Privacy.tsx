@@ -41,7 +41,7 @@ const sections: { title: string; body: string | string[] }[] = [
     body: [
       'You.',
       'The gym owner and the front desk, who need it to run the gym.',
-      'Your trainer sees only what you allow. Measurements, goals, and workouts with your saved routines are each a switch in Settings, and the database itself refuses a trainer the rest — it is not a hidden screen, it is a rule they cannot get around. Your training plan — the days you mean to come in — is visible to the coaches you train with, so they can plan around it, and so is your emergency contact, so a coach can call someone if you are hurt in a session.',
+      'Your trainer sees only what you allow. Measurements, goals, and workouts with your saved routines are each a switch in Settings, and the database itself refuses a trainer the rest — it is not a hidden screen, it is a rule they cannot get around. Progress photos are private to you: only the coaches you train with can see them, and only if you switch on sharing on the Progress photos screen — the gym owner and the front desk never can, and a photo you hand in to a coach as classwork is seen by that coach alone. Your training plan — the days you mean to come in — is visible to the coaches you train with, so they can plan around it, and so is your emergency contact, so a coach can call someone if you are hurt in a session.',
       'Your answers to the health questions are seen by the gym owner and the front desk only — not by trainers, whatever your other switches say. A "yes" tells the desk to talk to you before you train hard. It does not stop you training, and nothing in the app changes your workouts because of it.',
       'Nobody else. The gym does not sell, rent or trade any of it.',
     ],

@@ -8,6 +8,7 @@ import GlassSheet from '../../components/ui/GlassSheet';
 import TraineeProgram from '../../components/trainer/TraineeProgram';
 import TraineeRecords from '../../components/trainer/TraineeRecords';
 import TraineeSquad from '../../components/trainer/TraineeSquad';
+import TraineePhotos from '../../components/trainer/TraineePhotos';
 import { TextArea, TextInput } from '../../components/ui/Field';
 import { InlineStat, LineRow, NocButton, ProgressBar, StatusPill } from '../../components/ui/noc';
 import { supabase } from '../../lib/supabaseClient';
@@ -359,6 +360,7 @@ export default function TrainerMembers() {
             <TraineeRecords memberId={selectedMember.id} />
             {/* Their squad this week (0124) — name and figures, never its code. */}
             <TraineeSquad memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
+            <TraineePhotos memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
 
             {/* Notes already sent, newest first, with the member's side of it. */}
             {sentNotes && sentNotes.length > 0 && (

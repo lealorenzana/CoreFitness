@@ -16,6 +16,7 @@
     { "file": "trainer-rooms-check.js", "app": "member" },
     { "file": "member-rooms-check.js", "app": "member" },
     { "file": "member-chat-check.js", "app": "member" },
+    { "file": "member-photos-check.js", "app": "member" },
     { "file": "trainer-chat-check.js", "app": "member" },
     { "file": "season-check.js", "app": "member" },
     { "file": "squad-check.js", "app": "member" },

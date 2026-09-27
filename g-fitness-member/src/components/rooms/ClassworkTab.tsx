@@ -8,6 +8,7 @@ import { toast } from '../ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { addDays, todayKey } from '../../utils/dates';
 import AssignSheet from './AssignSheet';
+import { addPhoto, submitPhotoCheckin } from '../../lib/api/photos';
 import {
   WORK_STATUS as STATUS, dueLabel, roomClasswork, startAssignment, submitCheckin, type Classwork, type Room,
 } from '../../lib/api/rooms';
@@ -50,6 +51,24 @@ export default function ClassworkTab({ room, mode }: { room: Room; mode: 'traine
     { title: 'Upcoming', items: work.filter((w) => w.dueOn > addDays(today, 6)) },
     { title: 'Past', items: work.filter((w) => w.dueOn < today) },
   ].filter((g) => g.items.length > 0);
+
+  // A photo check-in (0132): the photo joins their private album and is
+  // handed in, which shows that one photo to this room's coach only.
+  const handInPhoto = async (w: Classwork, file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const id = await addPhoto(file, 'front', null, w.title.slice(0, 200));
+      await submitPhotoCheckin(w.id, id);
+      toast.success('Photo handed in. Only your coach sees it.');
+      setOpen(null);
+      await load();
+    } catch (e) {
+      toast.error(errorMessage(e, 'That photo could not be handed in'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const act = async (w: Classwork) => {
     setBusy(true);
@@ -117,6 +136,18 @@ export default function ClassworkTab({ room, mode }: { room: Room; mode: 'traine
                           Start {w.workoutName ?? 'workout'}
                         </NocButton>
                       ) : <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-muted)' }}>Logged — it turned in by itself.</p>
+                    ) : w.checkinType === 'photo' ? (
+                      w.myStatus === 'returned' ? (
+                        <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-muted)' }}>You handed in a photo.</p>
+                      ) : (
+                        <label className="flex items-center justify-center noc-press" style={{ marginTop: 10, height: 44, borderRadius: 12,
+                          cursor: 'pointer', border: '1px solid var(--color-secondary)', color: 'var(--color-secondary)', fontWeight: 600,
+                          fontSize: 14, opacity: busy ? 0.5 : 1 }}>
+                          {w.myStatus === 'turned_in' || w.myStatus === 'late' ? 'Hand in a different photo' : 'Take or choose a photo'}
+                          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy}
+                            aria-label={`Photo for ${w.title}`} onChange={(e) => { void handInPhoto(w, e.target.files?.[0]); e.target.value = ''; }} />
+                        </label>
+                      )
                     ) : w.myStatus === 'returned' ? (
                       <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-muted)' }}>
                         You answered: {w.myAnswerNumber != null ? `${w.myAnswerNumber} kg` : w.myAnswerText}

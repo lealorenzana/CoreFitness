@@ -1,6 +1,6 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Bell, BookOpen, CalendarCheck, CalendarDots, ChalkboardTeacher, ChartLineUp, ChatCircleText, ChatsCircle, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Camera, Bell, BookOpen, CalendarCheck, CalendarDots, ChalkboardTeacher, ChartLineUp, ChatCircleText, ChatsCircle, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -75,7 +75,7 @@ const TAB_PATHS: string[][] = [
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
    '/member/booking-history', '/member/progress', '/member/achievements',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts',
-   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages',
+   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages', '/member/progress-photos',
    '/member/workout-history'],
   // You: the money-and-access half, and the account itself. Profile lost its
   // tab in this redesign; its screens live here now.
@@ -158,6 +158,7 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Messages', path: '/member/messages', icon: ChatsCircle , module: 'coaching' },
     { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
     { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
+    { label: 'Progress photos', path: '/member/progress-photos', icon: Camera , module: 'progress' },
     { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress',
       words: (w) => w('trainer', true) + ' notes' },
   ],
@@ -212,6 +213,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
       { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
+      { label: 'Progress photos', path: '/member/progress-photos' , module: 'progress' },
       { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
         words: (w) => w('trainer', true) + ' notes' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
