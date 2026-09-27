@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag,
   Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus, CalendarRange,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -113,6 +113,8 @@ const NAV: Entry[] = [
     icon: CreditCard,
     children: [
       { label: 'Payments', path: '/payments', icon: CreditCard },
+      // The counter (0133): the owner manages products, the desk sells.
+      { label: 'Shop', path: '/shop', icon: ShoppingBag },
       { label: 'Plans', path: '/membership-plans', icon: Banknote, adminOnly: true },
     ],
   },

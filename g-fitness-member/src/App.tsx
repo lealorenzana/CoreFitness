@@ -24,6 +24,7 @@ const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail')
 const TrainerRooms = lazyPage(() => import('./pages/trainer/TrainerRooms'));
 const Inbox = lazyPage(() => import('./pages/chat/Inbox'));
 const ProgressPhotos = lazyPage(() => import('./pages/ProgressPhotos'));
+const ShopMenu = lazyPage(() => import('./pages/ShopMenu'));
 const Conversation = lazyPage(() => import('./pages/chat/Conversation'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
@@ -263,6 +264,7 @@ function App() {
           <Route path="workouts" element={<Workouts />} />
           <Route path="program/:programId" element={<Program />} />
           <Route path="progress-photos" element={<ProgressPhotos />} />
+          <Route path="shop" element={<ShopMenu />} />
           <Route path="rooms" element={<MemberRooms />} />
           <Route path="rooms/:roomId" element={<Room />} />
           <Route path="messages" element={<Inbox />} />

@@ -102,7 +102,8 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
         <div className="grid gap-4" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
           <div className="space-y-1.5 text-xs">
             {[
-              ['Cash payments', `${peso(summary.cashIn)} · ${summary.paymentCount} ${summary.paymentCount === 1 ? 'payment' : 'payments'}`],
+              // Counter sales (0133) are cash in too, and counted here.
+              ['Cash in (payments and shop)', `${peso(summary.cashIn)} · ${summary.paymentCount} ${summary.paymentCount === 1 ? 'sale or payment' : 'sales and payments'}`],
               ['Refunds paid out', summary.refundsOut ? `− ${peso(summary.refundsOut)}` : '—'],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-2">

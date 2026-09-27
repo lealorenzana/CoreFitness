@@ -1,6 +1,6 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Camera, Bell, BookOpen, CalendarCheck, CalendarDots, ChalkboardTeacher, ChartLineUp, ChatCircleText, ChatsCircle, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Camera, Bell, BookOpen, CalendarCheck, CalendarDots, ChalkboardTeacher, ChartLineUp, ChatCircleText, ChatsCircle, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Storefront, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -80,7 +80,7 @@ const TAB_PATHS: string[][] = [
   // You: the money-and-access half, and the account itself. Profile lost its
   // tab in this redesign; its screens live here now.
   ['/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/payments', '/member/attendance-history', '/member/rewards',
+   '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',
    '/member/change-email', '/member/activity', '/member/visits'],
 ];
@@ -167,6 +167,7 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Payments', path: '/member/payments', icon: Receipt },
     { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots },
     { label: 'Spend points', path: '/member/rewards', icon: Gift , module: 'engagement' },
+    { label: 'Shop', path: '/member/shop', icon: Storefront },
     { label: 'Invite a friend', path: '/member/refer', icon: Users , module: 'engagement' },
     { label: 'Edit profile', path: '/member/profile/edit', icon: UserCircle },
     { label: 'Settings', path: '/member/settings', icon: GearSix },
@@ -229,6 +230,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Payments', path: '/member/payments' },
       { label: 'Attendance', path: '/member/attendance-history' },
       { label: 'Spend points', path: '/member/rewards' , module: 'engagement' },
+      { label: 'Shop', path: '/member/shop' },
       { label: 'Invite a friend', path: '/member/refer' , module: 'engagement' },
       { label: 'Profile', path: '/member/profile' },
       { label: 'Edit profile', path: '/member/profile/edit' },
