@@ -25,8 +25,8 @@ function titleFor(tab: TrainerTab, now: Date, fullName: string | undefined): [st
         now.toLocaleDateString('en-US', { weekday: 'long' }),
         now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }),
       ];
-    case 'members':
-      return ['My members', 'Who you coach'];
+    case 'rooms':
+      return ['Rooms', 'Your classes, trainees and groups'];
     case 'schedule':
       return ['Schedule', 'What you teach'];
     case 'bookings':

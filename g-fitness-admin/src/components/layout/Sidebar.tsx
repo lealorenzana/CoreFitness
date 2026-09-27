@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare,
   Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus, CalendarRange,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -152,6 +152,8 @@ const NAV: Entry[] = [
       { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
       { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true },
       { label: 'Resources', path: '/resources', icon: BookOpen },
+      // The trainers' rooms (0128): the desk reads and moderates.
+      { label: 'Rooms', path: '/rooms', icon: MessagesSquare },
     ],
   },
 

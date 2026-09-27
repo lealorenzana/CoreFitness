@@ -15,7 +15,7 @@ import { hasOwnWords, word, type GymApp } from '../../lib/gymApp';
  * file creates a screen.
  */
 
-export type TrainerTabId = 'home' | 'members' | 'schedule' | 'bookings' | 'profile';
+export type TrainerTabId = 'home' | 'rooms' | 'schedule' | 'bookings' | 'profile';
 
 export interface TrainerTab {
   id: TrainerTabId;
@@ -35,8 +35,9 @@ export interface TrainerTab {
 
 export const TRAINER_TABS: TrainerTab[] = [
   { id: 'home', label: 'Home', path: '/trainer/home', icon: House, eyebrow: 'Your coaching day' },
-  { id: 'members', label: 'Members', path: '/trainer/members', icon: UsersThree, eyebrow: 'Progress and notes',
-    words: (w) => ({ label: w('members', true) }) },
+  // Rooms (0128): a Google Classroom per class, per 1-on-1 trainee and per
+  // coaching group. The roster it replaced as a tab is "All my members" inside.
+  { id: 'rooms', label: 'Rooms', path: '/trainer/rooms', icon: UsersThree, eyebrow: 'Classwork and feedback' },
   { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours',
     words: (w) => ({ eyebrow: w('classes', true) + ' and hours' }) },
   { id: 'bookings', label: 'Bookings', path: '/trainer/bookings', icon: Tray, eyebrow: 'Classes and 1-on-1',
@@ -50,7 +51,7 @@ export const TRAINER_TABS: TrainerTab[] = [
  */
 const TRAINER_TAB_PATHS: string[][] = [
   ['/trainer/home', '/trainer/notifications'],
-  ['/trainer/members'],
+  ['/trainer/rooms', '/trainer/members'],
   ['/trainer/schedule', '/trainer/availability'],
   ['/trainer/bookings'],
   ['/trainer/profile', '/trainer/settings', '/trainer/achievements',
@@ -89,7 +90,10 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
     { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
   ],
-  members: [],
+  rooms: [
+    // The roster the Rooms tab replaced, unchanged.
+    { label: 'All my members', path: '/trainer/members', icon: UsersThree },
+  ],
   // Schedule leads with its own Bookable hours panel, so a pill would repeat it.
   schedule: [],
   bookings: [],

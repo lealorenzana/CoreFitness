@@ -22,6 +22,7 @@ import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
 import GymMark from '../components/ui/GymMark';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
+import DueStrip from '../components/rooms/DueStrip';
 import { ACCENTS, type AccentKey } from '../lib/gymTheme';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
@@ -323,6 +324,7 @@ export default function Home() {
       )}
 
       {/* The gym-wide goal (0124) — nothing when the gym has none running. */}
+      <DueStrip />
       <GymGoalStrip />
 
       {/* ── Month panel ── */}

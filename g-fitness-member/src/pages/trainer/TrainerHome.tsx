@@ -11,6 +11,7 @@ import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 import { errorMessage } from '../../utils/errorMessage';
 import { Page } from '../../components/ui/page';
+import ReviewNudge from '../../components/rooms/ReviewNudge';
 import { Eyebrow, InlineStat, LineRow, NocButton, Panel, SectionHead, StatusPill } from '../../components/ui/noc';
 
 /**
@@ -95,6 +96,8 @@ export default function TrainerHome() {
   if (error || !overview) {
     return (
       <Page>
+        {/* Classwork waiting is its own read — the dashboard failing does not hide it. */}
+        <ReviewNudge />
         <div className="text-center" style={{ padding: '48px 24px' }}>
           <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>Couldn't load your dashboard</p>
           <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>{error}</p>
@@ -121,6 +124,7 @@ export default function TrainerHome() {
           What needs you, when something does (amber — something to do);
           otherwise today's next class (violet — what you have). */}
       <div className="flex flex-col" style={{ gap: 10 }}>
+        <ReviewNudge />
         {pending > 0 && (
           <Panel glow="action" onClick={() => navigate('/trainer/bookings')}>
             <Eyebrow tone="action">Needs you</Eyebrow>

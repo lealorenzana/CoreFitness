@@ -18,6 +18,7 @@ import {
 import { recordPayment } from '../../lib/api/payments';
 import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
 import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/season';
+import { memberRoomsSummary } from '../../lib/api/rooms';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
   freezesThisMonth, type MembershipActionDetail,
@@ -980,6 +981,7 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
 
       <ProgramSection memberId={detail.identity.profile.id} />
       <RecordsSection memberId={detail.identity.profile.id} />
+      <RoomsSection memberId={detail.identity.profile.id} />
 
       <Section title={`Saved routines${routines ? ` (${routines.length})` : ''}`}>
         {routines == null ? (
@@ -1534,6 +1536,38 @@ function ProgramSection({ memberId }: { memberId: string }) {
     <Section title="Program">
       <Row title={days[0].programName}
         subtitle={`${done} of ${days.length} training days done${next ? ` · next: week ${next.week}, ${next.workoutName}` : ' · finished'}`} />
+    </Section>
+  );
+}
+
+/**
+ * The member's coaching rooms (0128) and classwork record (0129): which rooms
+ * they are in, and how much of what their coaches set they turned in on time.
+ * Computed in SQL from the hand-ins; nothing here is stored or typed.
+ */
+function RoomsSection({ memberId }: { memberId: string }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof memberRoomsSummary>> | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    void (async () => { const d = await memberRoomsSummary(memberId); if (alive) setData(d); })();
+    return () => { alive = false; };
+  }, [memberId]);
+  // Before 0128, or unreadable: nothing, rather than "in no rooms".
+  if (!data) return null;
+  const KIND = { class: 'Class', pt: '1-on-1', group: 'Group' } as const;
+  const r = data.record;
+  return (
+    <Section title={`Coaching rooms (${data.rooms.length})`}>
+      {data.rooms.length === 0 ? (
+        <Empty text="In no rooms. Booking a class or a 1-on-1 puts them in its room; a coach can give them a group code." />
+      ) : (
+        <div className="space-y-1.5">
+          {data.rooms.map((x) => <Row key={x.id} title={x.name} subtitle={`${KIND[x.kind]} · ${x.trainerName}`} />)}
+          {r && r.assigned > 0 && (
+            <Row title="Classwork" subtitle={`${r.onTime} of ${r.assigned} on time · ${r.late} late · ${r.missing} missing`} />
+          )}
+        </div>
+      )}
     </Section>
   );
 }
