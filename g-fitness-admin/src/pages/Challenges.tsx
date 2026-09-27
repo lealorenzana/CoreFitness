@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { ChallengeStandingsModal, GoalTemplatesSection } from '../components/ui/EngagementRules';
 import ImageField from '../components/ui/ImageField';
+import GymGoalSection from '../components/GymGoalSection';
 import { PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard } from '../components/ui/kit';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -267,6 +268,9 @@ export default function Challenges() {
         { label: 'Members joined', value: totalJoined, icon: Users },
         { label: 'Completions', value: totalDone, icon: Trophy, tone: 'secondary' },
       ]} />
+
+      {/* The whole gym's goal and the members' squads (0124). */}
+      <GymGoalSection />
 
       {items.length === 0 ? (
         <Section title="Challenges" icon={Flag}>

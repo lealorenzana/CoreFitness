@@ -42,7 +42,9 @@ async (page) => {
     { id: 'qW', title: 'Train twice a week (this week copy)', description: null, metric_key: 'training_days', target: 2,
       starts_on: d(-2), ends_on: d(4), reward_points: 50, is_active: true, image_url: null, repeats_weekly: false, parent_id: 'qT' },
   ];
-  const SENT = { rpc: {}, tiers: [], challenges: [] };
+  const SENT = { rpc: {}, tiers: [], challenges: [], goals: [] };
+  const GOALS = [{ id: 'g1', title: 'October days', metric: 'training_days', target: 1000, starts_on: d(-5), ends_on: d(20),
+    reward_points: 50, is_active: true, reached_at: null }];
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -60,6 +62,7 @@ async (page) => {
         role: 'admin', status: 'active', lock_reason: null, short_name: null, logo_url: null, accent: 'violet',
         gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'open' }]);
       if (fn === 'open_season_claims') return json(claims);
+      if (fn === 'gym_goal_progress') return json([{ progress: 412, contributors: 88 }]);
       if (fn === 'hand_over_season_claim') { claims = claims.filter((c) => c.id !== SENT.rpc[fn].p_claim); return json(null); }
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
     }
@@ -75,6 +78,12 @@ async (page) => {
       if (m === 'POST') { SENT.challenges.push(body()); return json([], 201); }
       return json(CHALLENGES);
     }
+    if (t === 'gym_goals') {
+      if (m === 'POST') { SENT.goals.push(body()); return json([], 201); }
+      return json(GOALS);
+    }
+    if (t === 'squads') return json([{ id: 'sq1', name: 'Iron Barkada', weekly_target: 9 }]);
+    if (t === 'squad_members') return json([{ squad_id: 'sq1' }, { squad_id: 'sq1' }, { squad_id: 'sq1' }]);
     if (t === 'achievement_metrics') return json([{ key: 'training_days', label: 'Training days', unit: 'days' }]);
     if (t === 'profiles' || t === 'gym_people') return json(one ? owner : [owner]);
     return json(one ? null : []);
@@ -110,6 +119,16 @@ async (page) => {
   await page.waitForTimeout(2500);
   t = await text();
   out.push('template marked: ' + (/Repeats weekly/.test(t) ? 'shown' : 'MISSING'));
+  out.push('gym goal with progress: ' + (/October days/.test(t) && /412 of 1,000 training days · 88 members contributing/.test(t) ? 'shown' : 'MISSING'));
+  out.push("members' squads listed: " + (/Iron Barkada · 3 · target 9\/wk/.test(t) ? 'shown' : 'MISSING'));
+  await page.getByLabel('Goal title').fill('500 workouts this month');
+  await page.getByLabel('What counts').selectOption('workouts_logged');
+  await page.getByLabel('Goal target').fill('500');
+  await page.getByRole('button', { name: 'Set the goal' }).click();
+  await page.waitForTimeout(900);
+  const gl = SENT.goals[SENT.goals.length - 1] || {};
+  out.push('goal sent: ' + (gl.title === '500 workouts this month' && gl.metric === 'workouts_logged' && gl.target === 500 ? 'workouts 500' : 'MISSING ' + JSON.stringify(gl)));
+  await page.screenshot({ path: 'shots/admin-gym-goal.png', fullPage: true });
   out.push('weekly copies not listed: ' + (/this week copy/.test(t) ? 'MISSING (copy listed)' : 'hidden'));
   await page.getByRole('button', { name: /New challenge/ }).first().click();
   await page.waitForTimeout(500);
