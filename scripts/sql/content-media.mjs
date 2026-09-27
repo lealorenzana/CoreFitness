@@ -136,11 +136,11 @@ await as(P.adminA);
 { const n = await touched(`update exercises set name = 'Squat (G)' where id = '${squat}'`);
   check("a gym owner cannot rename a shared exercise for every gym", n === 0, String(n)); }
 check("a gym owner's new exercise stays theirs",
-  !(await tryExec(`insert into exercises (name, muscle_group, equipment) values ('Sled Push', 'full_body', 'other')`))
-  && (await one(`select gym_id from exercises where name = 'Sled Push'`))?.gym_id === GYM_A);
+  !(await tryExec(`insert into exercises (name, muscle_group, equipment) values ('Tyre Sled Relay', 'full_body', 'other')`))
+  && (await one(`select gym_id from exercises where name = 'Tyre Sled Relay'`))?.gym_id === GYM_A);
 await as(P.memberB);
 check("gym B cannot see gym A's own exercise",
-  (await one(`select count(*)::int as n from exercises where name = 'Sled Push'`)).n === 0);
+  (await one(`select count(*)::int as n from exercises where name = 'Tyre Sled Relay'`)).n === 0);
 
 await as(P.trainerA);
 check('a trainer creates a gym exercise',

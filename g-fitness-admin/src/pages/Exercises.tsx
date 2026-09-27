@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Dumbbell, EyeOff, Eye, AlertTriangle, BookOpen, Video } from 'lucide-react';
+import { Plus, Dumbbell, EyeOff, Eye, AlertTriangle, BookOpen, Video, Trash2, Search } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ExerciseGuideEditor from '../components/ExerciseGuideEditor';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -19,12 +20,13 @@ import { listExerciseMedia, photoUsage, saveExerciseMedia, type ExerciseMedia } 
  * of the data. Same reasoning as the achievement catalogue (0038) and the
  * check-in activity options (0040): the rules are data the gym edits.
  *
- * ## Deactivate, never delete
+ * ## Delete only what nobody has used
  *
- * There is no delete button, and the database would refuse one anyway
- * (`on delete restrict`). Removing an exercise members have logged would
- * rewrite their history. Deactivating takes it out of the member's picker and
- * leaves every past set intact.
+ * The owner can delete an exercise **their gym added**. The database refuses
+ * (`on delete restrict`) once a member has logged it or a routine or program
+ * uses it — removing it would rewrite their history — and the page says to hide
+ * it instead, which takes it out of the picker and keeps every past set. The
+ * shared library (0126: 229 exercises) is the platform's; a gym hides those.
  *
  * ## Library rows and your rows (0121)
  *
@@ -73,6 +75,9 @@ export default function Exercises() {
   const [guides, setGuides] = useState(false);
   const [photos, setPhotos] = useState<{ used: number; cap: number | null } | null>(null);
   const [editing, setEditing] = useState<ExerciseRow | null>(null);
+  const [query, setQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [confirmDelete, setConfirmDelete] = useState<ExerciseRow | null>(null);
 
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
    *  call again from a button without flashing the whole screen away. */
@@ -184,6 +189,25 @@ export default function Exercises() {
     }
   };
 
+  /** Only the gym's own rows; the database refuses a used one (on delete restrict). */
+  const doDelete = async () => {
+    const row = confirmDelete;
+    setConfirmDelete(null);
+    if (!row) return;
+    const { data, error } = await supabase.from('exercises').delete().eq('id', row.id).select('id');
+    if (error) {
+      showToast(error.code === '23503'
+        ? `${row.name} has been logged by members or is in a routine or program, so it cannot be deleted. Hide it instead — their history stays.`
+        : error.message, 'error');
+      return;
+    }
+    // A zero-row delete reports success (CLAUDE.md).
+    if (!data || data.length === 0) { showToast('Only the owner can delete an exercise', 'error'); return; }
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    showToast(`${row.name} deleted`, 'success');
+  };
+  const isOwn = (r: ExerciseRow) => guides && r.gym_id != null;
+
   if (loading) {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading exercises…</div>;
   }
@@ -204,9 +228,12 @@ export default function Exercises() {
     );
   }
 
-  const byGroup = GROUPS.map((g) => ({ group: g, items: rows.filter((r) => r.muscle_group === g) }))
+  const q = query.trim().toLowerCase();
+  const matching = rows.filter((r) => (!q || r.name.toLowerCase().includes(q) || r.equipment.includes(q))
+    && (groupFilter === 'all' || r.muscle_group === groupFilter));
+  const byGroup = GROUPS.map((g) => ({ group: g, items: matching.filter((r) => r.muscle_group === g) }))
     .filter((s) => s.items.length > 0);
-  const orphans = rows.filter((r) => !GROUPS.includes(r.muscle_group));
+  const orphans = matching.filter((r) => !GROUPS.includes(r.muscle_group));
   if (orphans.length) byGroup.push({ group: 'other', items: orphans });
 
   return (
@@ -287,11 +314,29 @@ export default function Exercises() {
 
       <Card className="!p-4">
         <p className="text-[10px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-          An exercise members have already logged cannot be deleted — that would rewrite
-          their training history. Hide it instead and every past set stays intact. Hiding
-          removes it from the member app's picker and exercise list; routines members already
-          built with it keep it.
+          You can delete an exercise your gym added, until members log it or a routine or
+          program uses it — after that, deleting would rewrite their training history, so hide
+          it instead and every past set stays intact. Hiding removes it from the member app's
+          picker and exercise list; routines members already built with it keep it.
         </p>
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${rows.length} exercises`} aria-label="Search exercises"
+              className="w-full h-9 pl-9 pr-3 rounded-lg text-xs text-white"
+              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+          </div>
+          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} aria-label="Muscle group"
+            className="h-9 px-3 rounded-lg text-xs text-white"
+            style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+            <option value="all">All muscle groups</option>
+            {GROUPS.map((g) => <option key={g} value={g}>{g.replace('_', ' ')}</option>)}
+          </select>
+        </div>
+        {matching.length === 0 && rows.length > 0 && (
+          <p className="text-xs py-4 text-center" style={{ color: 'var(--color-text-muted)' }}>No exercise matches that.</p>
+        )}
         <div className="space-y-4">
           {byGroup.map(({ group, items }) => (
             <div key={group}>
@@ -329,6 +374,13 @@ export default function Exercises() {
                         style={{ color: 'var(--color-text-muted)' }}>
                         {shown(r) ? <Eye size={12} /> : <EyeOff size={12} />}
                       </button>
+                      {isOwn(r) && (
+                        <button onClick={() => setConfirmDelete(r)}
+                          aria-label={`Delete ${r.name}`} data-tip="Delete"
+                          className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -343,6 +395,16 @@ export default function Exercises() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        type="danger"
+        title={`Delete ${confirmDelete?.name ?? ''}`}
+        message="This removes it from your gym's list for good. If members have logged it, or a routine or program uses it, it cannot be deleted — hide it instead."
+        confirmText="Delete"
+        onConfirm={() => void doDelete()}
+        onClose={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
