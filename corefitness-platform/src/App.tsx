@@ -6,6 +6,7 @@ import { isPlatformAdmin, listApplications } from './lib/platform';
 import SignIn from './pages/SignIn';
 import Overview from './pages/Overview';
 import Gyms from './pages/Gyms';
+import GymProfile from './pages/GymProfile';
 import Applications from './pages/Applications';
 import Platform from './pages/Platform';
 import Plans from './pages/Plans';
@@ -137,6 +138,7 @@ function Shell() {
                 <Route path="/" element={<Navigate to="/overview" replace />} />
                 <Route path="/overview" element={<Overview />} />
                 <Route path="/gyms" element={<Gyms />} />
+                <Route path="/gyms/:gymId" element={<GymProfile />} />
                 <Route path="/applications" element={<Applications />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/money" element={<Money />} />

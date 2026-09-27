@@ -41,7 +41,19 @@ async (page) => {
       staff: 2, created_at: iso(90), last_activity: iso(2), owners: 1, onboarded: true, plan_name: 'Starter', price_monthly: '999',
       days_left: -9, max_members: 100, paid_total: '2997' },
   ];
+  const NOTES = [];
   const RPC = {
+    platform_gym_contacts: () => [
+      { user_id: 'o1', name: 'Gabby Owner', email: 'owner@gfitness.test', phone: '09171234567', role: 'admin', is_owner: true, status: 'active', last_sign_in_at: iso(2), joined_at: iso(200) },
+      { user_id: 'd1', name: 'Dee Desk', email: 'desk@gfitness.test', phone: null, role: 'staff', is_owner: false, status: 'active', last_sign_in_at: iso(45), joined_at: iso(100) }],
+    platform_gym_weeks: () => Array.from({ length: 26 }, (_, i) => ({ week_start: iso((25 - i) * 7).slice(0, 10), checkins: 20 + i * 3, new_members: i % 3, workouts: 10 + i, payments: '1500' })),
+    platform_gym_features: () => [
+      { feature: 'checkins', label: 'Check-ins', last_30: 320, ever: 4100 }, { feature: 'rooms', label: 'Coaching room posts', last_30: 12, ever: 40 },
+      { feature: 'shop', label: 'Shop sales', last_30: 0, ever: 0 }],
+    platform_gym_events: () => [{ id: 9, gym_id: 'g1', action: 'gym.plan', summary: 'G Fitness moved to Premium', detail: null, created_at: iso(30) }],
+    platform_gym_payments: () => [{ id: 'gp1', gym_id: 'g1', amount: '1999', paid_on: iso(3).slice(0, 10), covers_from: null, covers_until: iso(-27).slice(0, 10), method: 'GCash', reference: 'R1', note: null, plan_key: 'premium', created_at: iso(3) }],
+    platform_gym_detail: () => [],
+    platform_gym_people: () => [],
     is_platform_admin: () => signedIn,
     platform_overview: () => [{ gyms: 3, gyms_live: 2, gyms_suspended: 0, gyms_locked: 1, gyms_unclaimed: 0, gyms_unset_up: 0,
       members: 181, staff: 4, trainers: 12, checkins_30d: 1420, new_gyms_30d: 1, applications_waiting: 2, crashes_open: 1,
@@ -73,6 +85,10 @@ async (page) => {
       const fn = path.split('/rest/v1/rpc/')[1];
       return json(fn in RPC ? RPC[fn]() : []);
     }
+    if (path.endsWith('/gym_notes')) {
+      if (req.method() === 'POST') { const b = JSON.parse(req.postData() || '{}'); NOTES.unshift({ id: 'n' + NOTES.length, gym_id: b.gym_id, body: b.body, pinned: false, created_at: new Date().toISOString() }); return json([], 201); }
+      return json(NOTES);
+    }
     if (path.endsWith('/platform_plans')) return json([{ key: 'premium', name: 'Premium', is_active: true, sort_order: 1 }]);
     return json([]);
   });
@@ -102,6 +118,19 @@ async (page) => {
   out.push('no logo: initials, never the Core Fitness mark: ' + ((await page.getByRole('img', { name: 'Ana gymanigga, no logo yet' }).count()) === 1 ? 'AG' : 'MISSING'));
   out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
+
+  await page.getByRole('button', { name: 'G Fitness' }).click();
+  await page.waitForTimeout(1200);
+  t = await text();
+  out.push("a gym's own page: " + (/\/gyms\/g1$/.test(page.url()) && /Who runs it/i.test(t) && /What it uses/i.test(t) && /Payments to Core Fitness/i.test(t) ? 'opened' : 'MISSING ' + page.url()));
+  out.push('contacts to reach: ' + (/owner@gfitness\.test/.test(t) && /09171234567/.test(t) && /signed in 2 days ago/.test(t) ? 'shown' : 'MISSING'));
+  out.push('26 weeks of use: ' + ((await page.locator('.bar').count()) === 26 ? 'charted' : 'MISSING ' + (await page.locator('.bar').count())));
+  out.push('features used, and not: ' + (/Coaching room posts/.test(t) && /Not used yet: Shop sales/.test(t) ? 'shown' : 'MISSING'));
+  await page.getByLabel('New note').fill('Owner prefers calls after 6pm');
+  await page.getByRole('button', { name: 'Add note' }).click();
+  await page.waitForTimeout(800);
+  out.push('a private note: ' + (NOTES.length === 1 && /Owner prefers calls after 6pm/.test(await text()) ? 'saved' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-gym-profile.png', fullPage: true });
 
   for (const [nav, shot, expect] of [['Applications', 'apps', /Iron Temple/], ['Plans', 'plans', /Plans/], ['Money', 'money', /Money/], ['Platform', 'health', /Platform/]]) {
     await page.getByRole('link', { name: nav }).first().click();

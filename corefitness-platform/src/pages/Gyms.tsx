@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Activity, CalendarClock, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
 import {
   createGym, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
@@ -6,7 +7,6 @@ import {
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
-import GymDetail from '../components/GymDetail';
 import GymMark from '../components/GymMark';
 
 const day = (iso: string | null) =>
@@ -38,8 +38,7 @@ export default function Gyms() {
   const [form, setForm] = useState({ name: '', slug: '' });
   /** The gym whose owner is being named, if any. */
   const [inviting, setInviting] = useState<PlatformGym | null>(null);
-  /** The gym opened up. One at a time — this is a list, not a dashboard. */
-  const [opened, setOpened] = useState<string | null>(null);
+  const navigate = useNavigate();
   /** Narrows the list once there are more gyms than fit on a screen. */
   const [search, setSearch] = useState('');
 
@@ -146,7 +145,7 @@ export default function Gyms() {
               <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={48} />
               <span className="grow">
                 <button type="button" className="linky"
-                  onClick={() => setOpened(opened === gym.id ? null : gym.id)}>
+                  onClick={() => navigate(`/gyms/${gym.id}`)}>
                   <span className="name">{gym.name}</span>
                 </button>
                 <span className="chips">
@@ -250,9 +249,6 @@ export default function Gyms() {
             />
           )}
 
-          {opened === gym.id && (
-            <GymDetail gym={gym} onChanged={() => void load()} onClose={() => setOpened(null)} />
-          )}
 
           {inviting?.id === gym.id && (
             <InviteOwner

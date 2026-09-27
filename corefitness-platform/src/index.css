@@ -300,6 +300,8 @@ a.todo:hover .todo-text { color: var(--accent-text); }
   background: var(--surface-raised); border: 1px solid var(--border-soft); padding: 3px 9px; border-radius: 8px;
 }
 .chip svg { color: var(--text-3); }
+a.chip { text-decoration: none; }
+a.chip:hover { color: #fff; border-color: #3B2566; }
 .chip.warn { color: var(--warn); border-color: #5C3D0A; background: var(--warn-tint); }
 .meter { height: 6px; border-radius: 6px; background: var(--surface-high); overflow: hidden; margin-top: 8px; }
 .meter > span { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #7C3AED, #A78BFA); }

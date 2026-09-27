@@ -18,7 +18,8 @@ const peso = (n: string) => '₱' + Number(n).toLocaleString('en-PH', { maximumF
  * Everything else here is a count or a date. Opening a gym never opens its rows.
  */
 export default function GymDetail({ gym, onChanged, onClose }: {
-  gym: PlatformGym; onChanged: () => void; onClose: () => void;
+  /** Without onClose (the gym's own page) there is nothing to close, so no button. */
+  gym: PlatformGym; onChanged: () => void; onClose?: () => void;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [people, setPeople] = useState<GymPerson[] | null>(null);
@@ -71,7 +72,7 @@ export default function GymDetail({ gym, onChanged, onClose }: {
           <button className="btn ghost" onClick={() => setRenaming({ name: gym.name, slug: gym.slug })}>
             Rename
           </button>
-          <button className="btn ghost" onClick={onClose}>Close</button>
+          {onClose && <button className="btn ghost" onClick={onClose}>Close</button>}
         </span>
       </div>
 

@@ -495,3 +495,39 @@ export const demoSummary = async (): Promise<DemoSummary | null> => {
  * than the number this app showed them a minute ago.
  */
 export const removeDemoData = () => call<string>('remove_demo_data');
+
+// ---- one gym's profile (0135) ----------------------------------------------------------------
+
+export interface GymContact {
+  user_id: string; name: string; email: string | null; phone: string | null; role: 'admin' | 'staff';
+  is_owner: boolean; status: string; last_sign_in_at: string | null; joined_at: string;
+}
+export interface GymWeek { week_start: string; checkins: number; new_members: number; workouts: number; payments: string }
+export interface GymFeature { feature: string; label: string; last_30: number; ever: number }
+export interface GymNote { id: string; gym_id: string; body: string; pinned: boolean; created_at: string }
+
+export const gymContacts = (gym: string) => call<GymContact[]>('platform_gym_contacts', { p_gym: gym });
+export const gymWeeks = (gym: string, weeks = 26) => call<GymWeek[]>('platform_gym_weeks', { p_gym: gym, p_weeks: weeks });
+export const gymFeatures = (gym: string) => call<GymFeature[]>('platform_gym_features', { p_gym: gym });
+export const gymEvents = (gym: string, limit = 50) => call<PlatformEvent[]>('platform_gym_events', { p_gym: gym, p_limit: limit });
+
+export async function gymNotes(gym: string): Promise<GymNote[]> {
+  const { data, error } = await supabase.from('gym_notes').select('id, gym_id, body, pinned, created_at')
+    .eq('gym_id', gym).order('pinned', { ascending: false }).order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as GymNote[];
+}
+export async function addGymNote(gym: string, body: string): Promise<void> {
+  const { error } = await supabase.from('gym_notes').insert({ gym_id: gym, body: body.trim() });
+  if (error) throw new Error(error.message);
+}
+export async function setNotePinned(id: string, pinned: boolean): Promise<void> {
+  const { data, error } = await supabase.from('gym_notes').update({ pinned }).eq('id', id).select('id');
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error('That note could not be changed.');
+}
+export async function deleteGymNote(id: string): Promise<void> {
+  const { data, error } = await supabase.from('gym_notes').delete().eq('id', id).select('id');
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error('That note could not be removed.');
+}

@@ -145,7 +145,10 @@ const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'feature
   // outbox holds messages this service sent (whose bodies can contain a
   // credential), and a support grant is a gym lending the platform a key.
   // Both are RLS-on with no policy at all; every read is a definer function.
-  'email_outbox', 'support_grants'];
+  'email_outbox', 'support_grants',
+  // 0135. The platform owner's own notes about a gym: no gym ever reads them,
+  // so the only policy is is_platform_admin() (platform-profile.mjs proves it).
+  'gym_notes'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
