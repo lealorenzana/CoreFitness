@@ -29,6 +29,7 @@ import Exercises from './pages/Exercises';
 import Programs from './pages/Programs';
 import Rooms from './pages/Rooms';
 import Shop from './pages/Shop';
+import Support from './pages/Support';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
@@ -108,6 +109,7 @@ function App() {
             <Route path="programs" element={<ProtectedRoute adminOnly><Programs /></ProtectedRoute>} />
             <Route path="rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
             <Route path="shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+            <Route path="support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
             {/* Staff can SEE the queue (RLS lets them), but approving commits the
                 gym to giving something away, so the page is admin-only. */}
             <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />

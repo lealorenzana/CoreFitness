@@ -5,6 +5,7 @@ import Sidebar, { useSidebarCollapsed } from './Sidebar';
 import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
 import SubscriptionBanner from '../SubscriptionBanner';
+import AnnouncementBanner from '../AnnouncementBanner';
 
 export default function Layout() {
   const location = useLocation();
@@ -29,6 +30,8 @@ export default function Layout() {
             not be re-mounted by the route transition below. Renders nothing at
             all unless this gym's owner needs to know something. */}
         <SubscriptionBanner />
+        {/* Core Fitness's announcements to gyms (0137). */}
+        <AnnouncementBanner />
         <main
           ref={mainRef}
           className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-dark-border scrollbar-track-dark"

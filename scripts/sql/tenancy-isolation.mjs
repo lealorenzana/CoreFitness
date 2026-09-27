@@ -148,7 +148,11 @@ const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'feature
   'email_outbox', 'support_grants',
   // 0135. The platform owner's own notes about a gym: no gym ever reads them,
   // so the only policy is is_platform_admin() (platform-profile.mjs proves it).
-  'gym_notes'];
+  'gym_notes',
+  // 0137. The platform talking to gyms: announcements (and who dismissed them),
+  // and support tickets between one gym and the platform. RLS on, no policy;
+  // every read is a definer function (platform-talk.mjs).
+  'platform_announcements', 'announcement_dismissals', 'support_tickets', 'support_messages'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,

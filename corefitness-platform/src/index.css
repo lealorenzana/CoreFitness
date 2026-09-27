@@ -106,6 +106,7 @@ a { color: var(--accent-text); }
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .topbar {
   display: flex; align-items: center; gap: 16px; padding: 16px 32px; flex: none;
+  position: relative; z-index: 20; /* its backdrop-filter is a stacking context; the bell menu must sit over the page */
   border-bottom: 1px solid var(--border-soft); background: rgba(15, 15, 26, 0.85); backdrop-filter: blur(10px);
 }
 .topbar h1 { margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; }

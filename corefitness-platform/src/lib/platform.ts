@@ -546,3 +546,30 @@ export const gymHealth = () => call<GymHealth[]>('platform_gym_health');
 export const growth = (months = 12) => call<GrowthMonth[]>('platform_growth', { p_months: months });
 export const funnel = async (): Promise<Funnel | null> => (await call<Funnel[]>('platform_funnel'))?.[0] ?? null;
 export const adoption = () => call<Adoption[]>('platform_feature_adoption');
+
+// ---- talking to gyms (0137) ------------------------------------------------------------------
+
+export interface PlatformAnnouncement {
+  id: string; title: string; body: string; level: 'info' | 'warning'; plan_key: string | null;
+  starts_at: string; ends_at: string | null; live: boolean; gyms_reached: number; dismissed: number;
+}
+export interface PlatformTicket {
+  id: string; gym_id: string; gym_name: string; subject: string; status: 'open' | 'answered' | 'closed';
+  opened_by_name: string; created_at: string; updated_at: string; last_from: 'gym' | 'platform'; unread: boolean; messages: number;
+}
+export interface TicketMessage { id: string; author_name: string; from_platform: boolean; body: string; created_at: string }
+export interface BellItem { kind: string; label: string; count: number; href: string }
+
+export const listAnnouncements = () => call<PlatformAnnouncement[]>('platform_announcements_list');
+export const saveAnnouncement = (a: { id?: string | null; title: string; body: string; level: 'info' | 'warning'; plan: string | null; ends: string | null }) =>
+  call<string>('save_announcement', { p_id: a.id ?? null, p_title: a.title, p_body: a.body, p_level: a.level,
+    p_plan_key: a.plan, p_starts_at: null, p_ends_at: a.ends });
+export const endAnnouncement = (id: string) => call<void>('end_announcement', { p_id: id });
+export const listTickets = (status?: string) => call<PlatformTicket[]>('platform_support_tickets', { p_status: status ?? null });
+export const ticketThread = (id: string) => call<TicketMessage[]>('support_thread', { p_ticket: id });
+export const replyTicket = (id: string, body: string, close = false) =>
+  call<void>('reply_support_ticket', { p_ticket: id, p_body: body, p_close: close });
+export const setTicketStatus = (id: string, status: 'open' | 'closed') => call<void>('set_ticket_status', { p_ticket: id, p_status: status });
+export const bell = () => call<BellItem[]>('platform_bell');
+/** Fired on window after a page changes something the sidebar badges or the bell count. */
+export const CHANGED = 'platform:changed';

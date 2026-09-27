@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
   Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus, CalendarRange,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -161,6 +161,8 @@ const NAV: Entry[] = [
 
   { label: 'Your app', path: '/gym-app', icon: Smartphone, adminOnly: true },
   { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true, alsoMatches: ['/system'] },
+  // Talking to Core Fitness (0137): owner and desk.
+  { label: 'Support', path: '/support', icon: LifeBuoy },
 ];
 
 /** The group a path lives in, or null for a top-level page. */

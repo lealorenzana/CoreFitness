@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Inbox, Layers, LayoutDashboard, LogOut, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Inbox, Layers, LayoutDashboard, LifeBuoy, LogOut, Megaphone, TrendingUp, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
-import { isPlatformAdmin, listApplications } from './lib/platform';
+import { CHANGED, isPlatformAdmin, listApplications, listTickets } from './lib/platform';
 import SignIn from './pages/SignIn';
 import Overview from './pages/Overview';
 import Gyms from './pages/Gyms';
@@ -12,6 +12,9 @@ import Platform from './pages/Platform';
 import Plans from './pages/Plans';
 import Money from './pages/Money';
 import Growth from './pages/Growth';
+import Support from './pages/Support';
+import Announcements from './pages/Announcements';
+import Bell from './components/Bell';
 import ErrorBoundary from './components/ErrorBoundary';
 
 /**
@@ -36,6 +39,8 @@ const PAGES: Page[] = [
   { path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
   { path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
   { path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
+  { path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
+  { path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
   { path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
   { path: '/platform', label: 'Platform', icon: Activity, title: 'Platform', lede: 'Health, crashes, backups, admins and support access.' },
@@ -63,6 +68,7 @@ function Shell() {
   const { pathname } = useLocation();
   const [email, setEmail] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(0);
+  const [supportWaiting, setSupportWaiting] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -76,8 +82,13 @@ function Shell() {
   // Applications waiting: the one number worth a badge. Re-read on every move.
   useEffect(() => {
     let alive = true;
-    void listApplications('pending').then((a) => { if (alive) setWaiting(a.length); }, () => undefined);
-    return () => { alive = false; };
+    const count = () => {
+      void listApplications('pending').then((a) => { if (alive) setWaiting(a.length); }, () => undefined);
+      void listTickets().then((t) => { if (alive) setSupportWaiting(t.filter((x) => x.status !== 'closed' && x.last_from === 'gym').length); }, () => undefined);
+    };
+    count();
+    window.addEventListener(CHANGED, count);
+    return () => { alive = false; window.removeEventListener(CHANGED, count); };
   }, [pathname]);
 
   const page = PAGES.find((p) => pathname.startsWith(p.path)) ?? PAGES[0];
@@ -103,6 +114,7 @@ function Shell() {
                 <Icon size={17} />
                 <span>{p.label}</span>
                 {p.path === '/applications' && waiting > 0 && <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span>}
+                {p.path === '/support' && supportWaiting > 0 && <span className="count" aria-label={`${supportWaiting} support waiting`}>{supportWaiting}</span>}
               </NavLink>
             );
           })}
@@ -128,7 +140,8 @@ function Shell() {
             <h1>{page.title}</h1>
             <p className="lede">{page.lede}</p>
           </div>
-          <span className="today">
+          <span style={{ marginLeft: 'auto' }}><Bell /></span>
+          <span className="today" style={{ marginLeft: 0 }}>
             <span className="local-badge">This computer only</span>
             <span style={{ display: 'block', marginTop: 6 }}>{today}</span>
           </span>
@@ -145,6 +158,8 @@ function Shell() {
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/money" element={<Money />} />
                 <Route path="/growth" element={<Growth />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/announcements" element={<Announcements />} />
                 <Route path="/platform" element={<Platform />} />
                 <Route path="*" element={<Navigate to="/overview" replace />} />
               </Routes>

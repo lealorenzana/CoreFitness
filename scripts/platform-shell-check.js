@@ -42,6 +42,10 @@ async (page) => {
       days_left: -9, max_members: 100, paid_total: '2997' },
   ];
   const NOTES = [];
+  const TICKETS = [{ id: 't1', gym_id: 'g2', gym_name: 'Ana gymanigga', subject: 'Receipts will not print', status: 'open', opened_by_name: 'Ana R',
+    created_at: iso(1), updated_at: iso(1), last_from: 'gym', unread: true, messages: 1 }];
+  const THREAD = [{ id: 'm0', author_name: 'Ana R', from_platform: false, body: 'The print button does nothing on the desk PC.', created_at: iso(1) }];
+  const ANNS = [];
   const RPC = {
     platform_gym_contacts: () => [
       { user_id: 'o1', name: 'Gabby Owner', email: 'owner@gfitness.test', phone: '09171234567', role: 'admin', is_owner: true, status: 'active', last_sign_in_at: iso(2), joined_at: iso(200) },
@@ -64,6 +68,15 @@ async (page) => {
     platform_funnel: () => [{ applied: 6, let_in: 3, set_up: 3, active_30d: 2, paying: 2 }],
     platform_feature_adoption: () => [{ feature: 'checkins', label: 'Check-ins', gyms_30d: 3, gyms_total: 3 }, { feature: 'shop', label: 'Shop', gyms_30d: 1, gyms_total: 3 }],
     platform_gym_people: () => [],
+    platform_bell: () => [{ kind: 'applications', label: '2 gyms asking to join', count: 2, href: '/applications' },
+      { kind: 'support', label: '1 support question waiting', count: 1, href: '/support' }],
+    platform_support_tickets: () => TICKETS,
+    support_thread: () => THREAD,
+    reply_support_ticket: (b) => { THREAD.push({ id: 'm' + THREAD.length, author_name: 'Core Fitness', from_platform: true, body: b.p_body, created_at: new Date().toISOString() });
+      TICKETS[0].last_from = 'platform'; TICKETS[0].status = b.p_close ? 'closed' : 'answered'; return null; },
+    platform_announcements_list: () => ANNS,
+    save_announcement: (b) => { ANNS.unshift({ id: 'an' + ANNS.length, title: b.p_title, body: b.p_body, level: b.p_level, plan_key: b.p_plan_key,
+      starts_at: new Date().toISOString(), ends_at: b.p_ends_at, live: true, gyms_reached: 3, dismissed: 0 }); return 'an'; },
     is_platform_admin: () => signedIn,
     platform_overview: () => [{ gyms: 3, gyms_live: 2, gyms_suspended: 0, gyms_locked: 1, gyms_unclaimed: 0, gyms_unset_up: 0,
       members: 181, staff: 4, trainers: 12, checkins_30d: 1420, new_gyms_30d: 1, applications_waiting: 2, crashes_open: 1,
@@ -93,7 +106,7 @@ async (page) => {
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
-      return json(fn in RPC ? RPC[fn]() : []);
+      return json(fn in RPC ? RPC[fn](JSON.parse(req.postData() || '{}')) : []);
     }
     if (path.endsWith('/gym_notes')) {
       if (req.method() === 'POST') { const b = JSON.parse(req.postData() || '{}'); NOTES.unshift({ id: 'n' + NOTES.length, gym_id: b.gym_id, body: b.body, pinned: false, created_at: new Date().toISOString() }); return json([], 201); }
@@ -113,6 +126,8 @@ async (page) => {
   out.push('lands on Overview: ' + (/\/overview$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   out.push('the Core Fitness logo in the sidebar: ' + ((await page.locator('.side img[alt="Core Fitness"]').count()) === 1 ? 'shown' : 'MISSING'));
   out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Growth', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
+  out.push('support badge: ' + ((await page.getByLabel('1 support waiting').count()) === 1 ? '1' : 'MISSING'));
+  out.push('the bell: ' + ((await page.getByRole('button', { name: '3 things need you' }).count()) === 1 ? '3' : 'MISSING'));
   out.push('applications badge: ' + ((await page.getByLabel('2 waiting').count()) === 1 ? '2' : 'MISSING'));
   out.push('the figures: ' + (/Gyms live 2/i.test(t) && /181/.test(t) && /₱2,998/.test(t) && /1,420/.test(t) ? 'shown' : 'MISSING'));
   out.push('needs you: ' + (/2 gyms asking to join/.test(t) && /Harbour Strength is 9 days overdue/.test(t) && /Ana gymanigga is due in 5 days/.test(t) ? 'shown' : 'MISSING'));
@@ -150,6 +165,35 @@ async (page) => {
     out.push(`${nav} renders in the shell: ` + (expect.test(await text()) && (await page.locator('.side').count()) === 1 ? 'yes' : 'MISSING'));
     await page.screenshot({ path: `shots/platform-${shot}.png` });
   }
+
+  await page.getByRole('button', { name: '3 things need you' }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('link', { name: /1 support question waiting/ }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('bell leads to Support: ' + (/\/support$/.test(page.url()) && /Receipts will not print/.test(t) && /waiting for you/.test(t) ? 'yes' : 'MISSING ' + page.url()));
+  await page.getByRole('button', { name: /Receipts will not print/ }).click();
+  await page.waitForTimeout(700);
+  out.push('the thread: ' + (/The print button does nothing/.test(await text()) ? 'shown' : 'MISSING'));
+  await page.getByLabel('Reply').fill('Try Chrome — we are fixing Edge.');
+  await page.getByRole('button', { name: 'Reply', exact: true }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('a reply: ' + (THREAD.length === 2 && /Try Chrome/.test(t) && /Nothing waiting for you/.test(t) ? 'sent, and it leaves the waiting list' : 'MISSING'));
+  out.push('badge clears after the reply: ' + ((await page.getByLabel('1 support waiting').count()) === 0 ? 'yes' : 'STALE'));
+  await page.screenshot({ path: 'shots/platform-support.png' });
+
+  await page.getByRole('link', { name: 'Announcements' }).click();
+  await page.waitForTimeout(900);
+  await page.getByLabel('Title').fill('Maintenance tonight');
+  await page.getByLabel('Message').fill('The service pauses 10–11pm.');
+  await page.getByLabel('Kind').selectOption('warning');
+  await page.getByLabel('Who').selectOption('premium');
+  await page.getByRole('button', { name: 'Announce' }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('an announcement: ' + (ANNS.length === 1 && ANNS[0].plan_key === 'premium' && ANNS[0].level === 'warning' && /Maintenance tonight/.test(t) && /Gyms on Premium · 3 reached/.test(t) ? 'sent to Premium gyms' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-announcements.png' });
 
   await page.getByRole('link', { name: 'Growth' }).click();
   await page.waitForTimeout(900);
