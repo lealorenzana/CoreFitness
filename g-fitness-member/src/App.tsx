@@ -15,6 +15,7 @@ const Privacy = lazyPage(() => import('./pages/Privacy'));
 import Home from './pages/Home';
 const Workouts = lazyPage(() => import('./pages/Workouts'));
 const Program = lazyPage(() => import('./pages/Program'));
+const Season = lazyPage(() => import('./pages/Season'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
 const Routines = lazyPage(() => import('./pages/Routines'));
@@ -255,6 +256,7 @@ function App() {
           <Route path="rewards" element={<Rewards />} />
           <Route path="rewards/requests" element={<RewardRequests />} />
           <Route path="challenges" element={<Challenges />} />
+          <Route path="season" element={<Season />} />
           <Route path="challenges/completed" element={<Challenges completedOnly />} />
           <Route path="activity" element={<AccountActivity />} />
           <Route path="workout-history" element={<WorkoutHistory />} />

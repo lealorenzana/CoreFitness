@@ -27,6 +27,8 @@ export interface Challenge {
   completedOn: string | null;
   /** Optional picture the gym attached (0065). NULL is normal. */
   imageUrl: string | null;
+  /** This week's copy of a repeating challenge (0123): everyone is in it, nobody leaves it. */
+  isQuest: boolean;
 }
 
 interface Row {
@@ -40,6 +42,8 @@ interface Row {
   reward_points: number;
   image_url: string | null;
   achievement_metrics: { label: string } | { label: string }[] | null;
+  repeats_weekly?: boolean;
+  parent_id?: string | null;
 }
 
 /**
@@ -55,18 +59,21 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
   // being offered for the first eight hours of the day.
   const today = todayKey();
 
-  const [{ data, error }, joined] = await Promise.all([
-    supabase
-      .from('challenges')
-      .select('id, title, description, metric_key, target, starts_on, ends_on, reward_points, image_url, achievement_metrics(label)')
-      .eq('is_active', true)
-      .gte('ends_on', today)
-      .order('ends_on'),
+  // This week's quests exist once somebody asks (0123's sweep; pg_cron is
+  // optional here). Before 0123 the function is missing, which changes nothing.
+  await supabase.rpc('roll_weekly_quests').then(() => undefined, () => undefined);
+
+  const BASE = 'id, title, description, metric_key, target, starts_on, ends_on, reward_points, image_url, achievement_metrics(label)';
+  const q = (cols: string) => supabase.from('challenges').select(cols)
+    .eq('is_active', true).gte('ends_on', today).order('ends_on');
+  const [full, joined] = await Promise.all([
+    q(`${BASE}, repeats_weekly, parent_id`),
     supabase
       .from('challenge_participants')
       .select('challenge_id, completed_on')
       .eq('member_id', memberId),
   ]);
+  const { data, error } = !full.error ? full : await q(BASE);
   if (error) throw error;
   if (joined.error) throw joined.error;
 
@@ -74,7 +81,8 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
     (joined.data ?? []).map((j) => [j.challenge_id as string, j.completed_on as string | null])
   );
 
-  const list = ((data ?? []) as Row[]).map((r) => {
+  // A repeating challenge is a template: only its weekly copies are shown.
+  const list = ((data ?? []) as unknown as Row[]).filter((r) => !r.repeats_weekly).map((r) => {
     const m = r.achievement_metrics;
     const label = Array.isArray(m) ? m[0]?.label : m?.label;
     return {
@@ -91,6 +99,7 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
       joined: mine.has(r.id),
       completedOn: mine.get(r.id) ?? null,
       imageUrl: r.image_url ?? null,
+      isQuest: !!r.parent_id,
     };
   });
 

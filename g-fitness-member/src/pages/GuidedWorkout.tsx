@@ -12,6 +12,7 @@ import Modal from '../components/ui/Modal';
 import GlassSheet from '../components/ui/GlassSheet';
 import { ExerciseGuideFor } from '../components/workout/ExerciseGuide';
 import { getGymWorkoutRoutine } from '../lib/api/programs';
+import { setWasRecord } from '../lib/api/season';
 import { toast } from '../components/ui/Toast';
 import { Confetti, CountRing, Stepper, WorkoutBackdrop } from '../components/workout/WorkoutParts';
 import { beep, buzz, glassCard, iconFor, useWakeLock } from '../components/workout/workoutFx';
@@ -142,6 +143,8 @@ function WorkoutRun() {
   const [holdStart, setHoldStart] = useState<number | null>(null);
   const [sound, setSound] = useState(true);
   const [overview, setOverview] = useState(false);
+  /** When a set last came back as a personal record (0123) — replays the confetti. */
+  const [recordFlash, setRecordFlash] = useState<number | null>(null);
   /** The gym's guide for the exercise on screen (0121). */
   const [howTo, setHowTo] = useState(false);
   /** The set just logged, for its one ring-out. */
@@ -341,6 +344,11 @@ function WorkoutRun() {
       try {
         await addSet(logId, payload, id);
         await refresh(logId, memberId);
+        // The database decides what a record is (0123's trigger); ask it, and
+        // celebrate only when it says yes. Never blocks the rest timer.
+        void setWasRecord(id).then((pr) => {
+          if (pr) { toast.success(`New personal record — ${ex.name}!`); setRecordFlash(Date.now()); }
+        });
       } catch (err) {
         // No signal: keep it on the phone and carry on as if it had saved —
         // the rest timer and the next set must not wait for the network.
@@ -519,6 +527,8 @@ function WorkoutRun() {
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden">
       <WorkoutBackdrop icon={iconFor(ex)} cue={keyOf(ex) + idx} />
+      {/* A personal record (0123): the finish screen's confetti, keyed so each record replays it. */}
+      {recordFlash && <Confetti key={recordFlash} />}
 
       {/* ── Top bar ── */}
       <header className="relative flex items-center" style={{ gap: 10, padding: '10px var(--gutter) 0' }}>

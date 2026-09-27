@@ -96,8 +96,10 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
   const renderGroups = completedOnly
     ? [{ key: 'done', label: 'Completed', rows: done, collapsed: false }]
     : [
-      { key: 'active',    label: 'In progress',  rows: items.filter((c) => c.joined && c.completedOn == null),  collapsed: false },
-      { key: 'available', label: 'Open to join', rows: items.filter((c) => !c.joined && c.completedOn == null), collapsed: false },
+      // This week's quests (0123) lead: everyone is in them already.
+      { key: 'quests',    label: "This week's quests", rows: items.filter((c) => c.isQuest && c.completedOn == null), collapsed: false },
+      { key: 'active',    label: 'In progress',  rows: items.filter((c) => !c.isQuest && c.joined && c.completedOn == null),  collapsed: false },
+      { key: 'available', label: 'Open to join', rows: items.filter((c) => !c.isQuest && !c.joined && c.completedOn == null), collapsed: false },
       // Finished ones are a record, on their own page — a row here opens it.
       { key: 'done',      label: 'Completed',    rows: done,                                                     collapsed: true },
     ];
@@ -118,6 +120,14 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
           of the two screens CLAUDE.md names for exactly that. */}
       <FeatureLock feature="challenges" context={null}>
         <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
+          {!completedOnly && (
+            <Panel onClick={() => navigate('/member/season')} ariaLabel="This month's season">
+              <Eyebrow>This month's season</Eyebrow>
+              <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>
+                Your points this month, the tiers and their rewards, and the record wall.
+              </p>
+            </Panel>
+          )}
           {error && (
             <p className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
               <WarningCircle size={15} className="flex-none" style={{ marginTop: 1 }} /> {error}
@@ -212,7 +222,7 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
                           }}>
                             {busy === c.id ? '…' : 'Join'}
                           </span>
-                        ) : !done ? (
+                        ) : !done && !c.isQuest ? (
                           <button onClick={() => toggle(c)} disabled={busy === c.id} className="flex-none disabled:opacity-50"
                             style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                             {busy === c.id ? '…' : 'Leave'}
