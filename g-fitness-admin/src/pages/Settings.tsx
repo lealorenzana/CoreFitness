@@ -19,6 +19,7 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import { updateProfile } from '../lib/api/profiles';
 import { uploadMyAvatar, removeMyAvatar } from '../lib/api/avatars';
+import { announceMyProfileChanged } from '../lib/api/profiles';
 import ImageField from '../components/ui/ImageField';
 import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
 import {
@@ -176,6 +177,7 @@ export default function Settings() {
         phone: profileForm.phone.trim() || null,
       });
       showToast('Profile updated', 'success');
+      announceMyProfileChanged();
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update profile', 'error');
@@ -275,6 +277,7 @@ export default function Settings() {
     try {
       await uploadMyAvatar(file);
       showToast('Photo updated', 'success');
+      announceMyProfileChanged();
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not upload that photo', 'error');
@@ -288,6 +291,7 @@ export default function Settings() {
     try {
       await removeMyAvatar();
       showToast('Photo removed', 'success');
+      announceMyProfileChanged();
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not remove that photo', 'error');

@@ -3,7 +3,8 @@ import { useBranding } from '../../hooks/useBranding';
 import { useState, useEffect } from 'react';
 import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin } from 'lucide-react';
 import { dashboardService, type HeaderAlert } from '../../services/dashboardService';
-import { getMyProfile } from '../../lib/api/profiles';
+import { getMyProfile, MY_PROFILE_CHANGED } from '../../lib/api/profiles';
+import Avatar from '../ui/Avatar';
 import GlobalSearch from '../ui/GlobalSearch';
 
 const SURFACE        = 'var(--color-surface)';
@@ -34,6 +35,7 @@ export default function Header() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [adminPhoto, setAdminPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,22 +55,24 @@ export default function Header() {
 
   // Real signed-in identity. This used to be a hardcoded "Admin / Super Admin",
   // which is exactly the fallback-identity trap the project rules call out.
+  // Re-read when Settings changes the name or photo — it used to be read once,
+  // so a new photo showed in Settings and the header kept the initials.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       const profile = await getMyProfile().catch(() => null);
       if (!profile || cancelled) return;
       setAdminName(`${profile.first_name} ${profile.last_name}`.trim() || null);
       setAdminRole(profile.role);
-    })();
-    return () => { cancelled = true; };
+      setAdminPhoto(profile.photo_url ?? null);
+    };
+    void load();
+    window.addEventListener(MY_PROFILE_CHANGED, load);
+    return () => { cancelled = true; window.removeEventListener(MY_PROFILE_CHANGED, load); };
   }, []);
 
   const visible = alerts.filter((a) => !dismissed.has(a.id));
   const unreadCount = visible.length;
-  const initials = adminName
-    ? adminName.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0]).join('').toUpperCase()
-    : '';
 
   return (
     <header
@@ -203,9 +207,9 @@ export default function Header() {
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
         >
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: PRIMARY }}>
-            {initials}
-          </div>
+          {/* key: a new photo gets a fresh Avatar, so one that failed to load
+              before does not stay stuck on initials. */}
+          <Avatar key={adminPhoto ?? 'none'} name={adminName} photoUrl={adminPhoto} size={28} className="text-xs font-bold" />
           {/* Renders nothing until the profile actually loads — no placeholder
               name, per the project's no-fallback-identity rule. */}
           {adminName && (

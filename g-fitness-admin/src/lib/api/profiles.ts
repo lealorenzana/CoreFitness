@@ -12,6 +12,15 @@ export async function getMyProfile(): Promise<ProfileRow | null> {
   return data;
 }
 
+/**
+ * "My name or photo just changed." Settings says it; the header listens, so the
+ * chip in the top right repaints at once instead of on the next page load.
+ */
+export const MY_PROFILE_CHANGED = 'cf:my-profile-changed';
+export function announceMyProfileChanged(): void {
+  window.dispatchEvent(new Event(MY_PROFILE_CHANGED));
+}
+
 export async function getProfile(id: string): Promise<ProfileRow | null> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
