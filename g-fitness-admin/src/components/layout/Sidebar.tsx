@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
-import { useBranding, DEFAULT_BRANDING } from '../../hooks/useBranding';
+import { useBranding } from '../../hooks/useBranding';
 import { DEFAULT_WORDS, title, useGymWords } from '../../hooks/useGymWords';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -285,14 +285,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               stand-in mark belonging to nobody. */}
           <button
             className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 overflow-hidden flex-shrink-0"
-            style={{ background: brand.logoUrl === DEFAULT_BRANDING.logoUrl ? PRIMARY : 'var(--color-surface-high)' }}
+            style={{ background: brand.logoUrl ? 'var(--color-surface-high)' : PRIMARY }}
             onClick={onToggle}
             data-tip={`${brand.name} — expand the menu`}
           >
-            {brand.logoUrl === DEFAULT_BRANDING.logoUrl ? (
-              <span className="text-white font-bold text-[11px]">{brand.shortName}</span>
-            ) : (
+            {brand.logoUrl ? (
               <img src={brand.logoUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-white font-bold text-[12px]">{brand.initials}</span>
             )}
           </button>
 
@@ -363,9 +363,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               the header carried a second copy of the name that could disagree
               with this one. `truncate`, not `whitespace-nowrap`: a longer gym
               name should be cut off, not push the nav sideways. */}
-          <img src={brand.logoUrl} alt=""
-            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-            style={{ background: 'var(--color-surface-high)' }} />
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt=""
+              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              style={{ background: 'var(--color-surface-high)' }} />
+          ) : (
+            <span className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-[13px]"
+              style={{ background: PRIMARY }}>
+              {brand.initials}
+            </span>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white uppercase tracking-wide truncate"
               data-tip={brand.name}>

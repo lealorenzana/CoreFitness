@@ -29,7 +29,11 @@ export interface Branding {
   shortName: string;
   /** NULL hides the line entirely rather than printing an empty one. */
   tagline: string | null;
-  logoUrl: string;
+  /** The gym's own upload, or NULL: a gym with none shows `initials`, never
+   *  the Core Fitness mark (it wore ours on every gym that had not uploaded). */
+  logoUrl: string | null;
+  /** Two letters from the gym's name, drawn where a logo would be. */
+  initials: string;
   address: string | null;
 }
 
@@ -38,7 +42,8 @@ export const DEFAULT_BRANDING: Branding = {
   name: 'Core Fitness',
   shortName: 'CF',
   tagline: 'ADMIN PANEL',
-  logoUrl: '/core-fitness-logo.png',
+  logoUrl: null,
+  initials: 'CF',
   address: null,
 };
 
@@ -70,7 +75,8 @@ function toBranding(row: {
     // An explicitly blank tagline is a choice — "no second line" — and must not
     // fall back to "ADMIN PANEL". Only a missing row uses the default.
     tagline: row ? (row.tagline?.trim() || null) : DEFAULT_BRANDING.tagline,
-    logoUrl: row?.logo_url?.trim() || DEFAULT_BRANDING.logoUrl,
+    logoUrl: row?.logo_url?.trim() || null,
+    initials: deriveShortName(name),
     address: row?.address?.trim() || null,
   };
 }
