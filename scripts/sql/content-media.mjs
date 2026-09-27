@@ -156,8 +156,13 @@ await as(P.trainerA);
 await asOwner();
 await db.exec(`insert into platform_admins (user_id) values ('${P.adminB}') on conflict do nothing`);
 await as(P.adminB);
-check('the platform adds to the shared library',
-  !(await tryExec(`insert into exercises (name, muscle_group, equipment) values ('Farmer Carry', 'full_body', 'other')`))
+// Only by saying so (0127): a plain insert is the platform admin's own gym's,
+// like anyone's; the shared library takes an explicit gym_id NULL.
+check("the platform admin's plain insert is their own gym's (0127)",
+  !(await tryExec(`insert into exercises (name, muscle_group, equipment) values ('Platform Plain Add', 'core', 'other')`))
+  && (await one(`select gym_id from exercises where name = 'Platform Plain Add'`))?.gym_id === GYM_B);
+check('the platform adds to the shared library, explicitly',
+  !(await tryExec(`insert into exercises (gym_id, name, muscle_group, equipment) values (null, 'Farmer Carry', 'full_body', 'other')`))
   && (await one(`select gym_id from exercises where name = 'Farmer Carry'`))?.gym_id === null);
 { const n = await touched(`update exercises set cues = array['Stand tall'] where name = 'Farmer Carry'`);
   check('and edits it', n === 1, String(n)); }
