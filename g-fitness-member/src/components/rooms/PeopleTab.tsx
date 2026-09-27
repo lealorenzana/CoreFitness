@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Copy } from '@phosphor-icons/react';
 import Avatar from '../ui/Avatar';
 import { LineRow, NocButton, Panel, SectionHead } from '../ui/noc';
@@ -6,6 +7,7 @@ import { SkeletonList } from '../ui/Skeleton';
 import { toast } from '../ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { removeFromRoom, resetCode, roomPeople, type Room, type RoomPerson } from '../../lib/api/rooms';
+import { openConversation } from '../../lib/api/chat';
 
 const HOW: Record<Room['kind'], string> = {
   class: 'Everyone booked into this class in the last 60 days, and anyone booked for an upcoming one.',
@@ -21,6 +23,12 @@ const HOW: Record<Room['kind'], string> = {
 export default function PeopleTab({ room, mode, onChanged }: { room: Room; mode: 'trainer' | 'member'; onChanged: () => void }) {
   const [people, setPeople] = useState<RoomPerson[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  // Chat (0131): the database decides who may talk; a refusal says why.
+  const message = async (p: RoomPerson) => {
+    try { navigate(`${mode === 'trainer' ? '/trainer' : '/member'}/messages/${await openConversation(p.memberId)}`); }
+    catch (e) { toast.error(errorMessage(e, 'That chat could not be opened')); }
+  };
 
   const load = useCallback(async () => {
     try { setPeople(await roomPeople(room.id)); } catch { setPeople([]); }
@@ -65,7 +73,10 @@ export default function PeopleTab({ room, mode, onChanged }: { room: Room; mode:
         <section>
           <SectionHead title="Coach" />
           <LineRow gutter={<Avatar name={trainer.name} photoUrl={trainer.photoUrl} size={32} />} gutterWidth={44}
-            title={`${trainer.name}${trainer.isMe ? ' (you)' : ''}`} last />
+            title={`${trainer.name}${trainer.isMe ? ' (you)' : ''}`} last
+            action={mode === 'member' && room.fullAccess ? (
+              <button style={{ fontSize: 12, color: 'var(--color-secondary)' }} onClick={() => void message(trainer)}>Message</button>
+            ) : undefined} />
         </section>
       )}
       <section>
@@ -75,9 +86,14 @@ export default function PeopleTab({ room, mode, onChanged }: { room: Room; mode:
         {members.map((m, i) => (
           <LineRow key={m.memberId} gutter={<Avatar name={m.name} photoUrl={m.photoUrl} size={32} />} gutterWidth={44}
             title={`${m.name}${m.isMe ? ' (you)' : ''}`} last={i === members.length - 1}
-            action={mode === 'trainer' && room.kind === 'group' ? (
-              <button disabled={busy} style={{ fontSize: 12, color: 'var(--color-secondary)' }}
-                onClick={() => void run(() => removeFromRoom(room.id, m.memberId), `${m.name} was removed.`)}>Remove</button>
+            action={mode === 'trainer' ? (
+              <span className="flex items-center" style={{ gap: 12 }}>
+                <button style={{ fontSize: 12, color: 'var(--color-secondary)' }} onClick={() => void message(m)}>Message</button>
+                {room.kind === 'group' && (
+                  <button disabled={busy} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}
+                    onClick={() => void run(() => removeFromRoom(room.id, m.memberId), `${m.name} was removed.`)}>Remove</button>
+                )}
+              </span>
             ) : undefined} />
         ))}
       </section>

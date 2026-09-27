@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
   Barbell, Buildings,
-  Bell, CalendarBlank, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
+  Bell, CalendarBlank, ChatsCircle, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
 import type { Destination, WordReader } from './memberNav';
 import { hasOwnWords, word, type GymApp } from '../../lib/gymApp';
@@ -50,7 +50,7 @@ export const TRAINER_TABS: TrainerTab[] = [
  * — the same load-bearing order as `memberNav.ts`. Longest prefix wins.
  */
 const TRAINER_TAB_PATHS: string[][] = [
-  ['/trainer/home', '/trainer/notifications'],
+  ['/trainer/home', '/trainer/notifications', '/trainer/messages'],
   ['/trainer/rooms', '/trainer/members'],
   ['/trainer/schedule', '/trainer/availability'],
   ['/trainer/bookings'],
@@ -85,6 +85,7 @@ export function trainerTabRootFor(pathname: string): TrainerTab | null {
 export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
+    { label: 'Messages', path: '/trainer/messages', icon: ChatsCircle },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },

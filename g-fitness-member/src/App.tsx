@@ -22,6 +22,8 @@ const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
 const TrainerRooms = lazyPage(() => import('./pages/trainer/TrainerRooms'));
+const Inbox = lazyPage(() => import('./pages/chat/Inbox'));
+const Conversation = lazyPage(() => import('./pages/chat/Conversation'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
 const Routines = lazyPage(() => import('./pages/Routines'));
@@ -207,6 +209,9 @@ function App() {
           <Route path="rooms" element={<TrainerRooms />} />
           <Route path="rooms/:roomId" element={<Room />} />
           <Route path="rooms/:roomId/work/:assignmentId" element={<AssignmentDetail />} />
+          {/* Chat with trainees (0131). Same screens as the member's. */}
+          <Route path="messages" element={<Inbox />} />
+          <Route path="messages/:conversationId" element={<Conversation />} />
           <Route path="schedule" element={<TrainerSchedule />} />
           {/* Sub-route of Schedule rather than a sixth nav tab — the bottom bar
               is full at five, and hours are something you set occasionally, not
@@ -258,6 +263,8 @@ function App() {
           <Route path="program/:programId" element={<Program />} />
           <Route path="rooms" element={<MemberRooms />} />
           <Route path="rooms/:roomId" element={<Room />} />
+          <Route path="messages" element={<Inbox />} />
+          <Route path="messages/:conversationId" element={<Conversation />} />
           <Route path="plan" element={<PlanBuilder />} />
           {/* Routines (0086): the list, the editor, and a routine run set by set.
               The free-form log stays at /track/log for a session with no routine. */}

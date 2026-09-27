@@ -46,6 +46,8 @@ import { useEffect } from 'react';
 function ChatheadGate({ pathname }: { pathname: string }) {
   const { features, loading, error } = useFeatures();
   if (pathname.startsWith('/member/chatbot')) return null;
+  // A chat with a coach (0131) has its own Send button in that corner.
+  if (pathname.startsWith('/member/messages/')) return null;
   if (!error && (loading || !isEnabled(features, 'ai_model'))) return null;
   return <FloatingChathead />;
 }
