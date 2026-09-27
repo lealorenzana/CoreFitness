@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Activity, CalendarClock, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
 import {
   createGym, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
   type PlatformGym, type PlatformPlan,
@@ -90,16 +91,18 @@ export default function Gyms() {
 
   return (
     <>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <span className="grow muted" style={{ fontSize: 13 }}>
-          {gyms ? `${gyms.length} gym${gyms.length === 1 ? '' : 's'}` : 'Loading…'}
+      <div className="toolbar">
+        <span className="pill ok"><span className="dot" />{gyms ? `${gyms.filter((g) => !g.lock_reason).length} live` : '…'}</span>
+        <span className="muted" style={{ fontSize: 13 }}>
+          {gyms ? `${gyms.length} gym${gyms.length === 1 ? '' : 's'} in all · ${gyms.reduce((n, g) => n + g.members, 0).toLocaleString('en-PH')} members` : 'Loading…'}
         </span>
-        {(gyms?.length ?? 0) > 6 && (
-          <input style={{ maxWidth: 200 }} value={search} placeholder="Find a gym"
-            onChange={(e) => setSearch(e.target.value)} />
-        )}
-        <button className="btn ghost" onClick={() => setAdding((v) => !v)}>
-          {adding ? 'Cancel' : 'Add a gym'}
+        <span className="grow" />
+        <label className="search" style={{ width: 260, margin: 0 }} aria-label="Find a gym">
+          <Search size={15} />
+          <input value={search} placeholder="Find a gym" onChange={(e) => setSearch(e.target.value)} />
+        </label>
+        <button className="btn" onClick={() => setAdding((v) => !v)}>
+          {adding ? 'Cancel' : <><Plus size={15} /> Add a gym</>}
         </button>
       </div>
 
@@ -139,15 +142,23 @@ export default function Gyms() {
         <div key={gym.id}>
           <div className="card">
             <div className="row">
+              <span className="avatar">{gym.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
               <span className="grow">
                 <button type="button" className="linky"
                   onClick={() => setOpened(opened === gym.id ? null : gym.id)}>
                   <span className="name">{gym.name}</span>
                 </button>
-                <span className="meta">
-                  /join/{gym.slug} · {gym.members} member{gym.members === 1 ? '' : 's'} · {gym.staff} on the desk
-                  {' · '}{since(gym.last_activity)}
+                <span className="chips">
+                  <span className="chip"><Users size={12} />{gym.members.toLocaleString('en-PH')} member{gym.members === 1 ? '' : 's'}</span>
+                  <span className="chip"><UserCog size={12} />{gym.staff} on the desk</span>
+                  <span className="chip"><Activity size={12} />{since(gym.last_activity)}</span>
+                  <span className="chip"><Wallet size={12} />{gym.plan_name ?? gym.plan}</span>
+                  {gym.days_left !== null && gym.days_left <= 14 && (
+                    <span className="chip warn"><CalendarClock size={12} />
+                      {gym.days_left < 0 ? `${-gym.days_left} days late` : `due in ${gym.days_left} days`}</span>
+                  )}
                 </span>
+                <span className="meta">/join/{gym.slug}</span>
                 <span className="meta">
                   {gym.plan_name ?? gym.plan}
                   {gym.max_members !== null && ` · ${gym.members} of ${gym.max_members} members`}
@@ -164,10 +175,12 @@ export default function Gyms() {
                     : !gym.onboarded ? ' · the owner has not set the gym up yet' : ''}
                 </span>
               </span>
-              {gym.lock_reason && (
-                <span className="pill warn">
+              {gym.lock_reason ? (
+                <span className="pill warn"><span className="dot" />
                   {gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}
                 </span>
+              ) : (
+                <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>
               )}
               <span className="actions">
                 {gym.owners === 0 && (
@@ -189,6 +202,11 @@ export default function Gyms() {
                 )}
               </span>
             </div>
+            {gym.max_members !== null && (
+              <div className="meter" title={`${gym.members} of ${gym.max_members} members on this plan`}>
+                <span style={{ width: `${Math.min(100, (gym.members / Math.max(1, gym.max_members)) * 100)}%` }} />
+              </div>
+            )}
           </div>
 
           {asking?.gym.id === gym.id && asking.what === 'suspend' && (

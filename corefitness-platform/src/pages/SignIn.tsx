@@ -34,10 +34,22 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   };
 
   return (
-    <div className="shell" style={{ maxWidth: 380, paddingTop: 90 }}>
-      <div className="head"><h1>Core Fitness</h1></div>
-      <p className="sub">The platform. Sign in to run the service.</p>
-      <form className="card" onSubmit={submit}>
+    <div className="door">
+      <div className="door-art">
+        <div className="brand" style={{ padding: 0 }}>
+          <span className="brand-mark">CF</span>
+          <span><span className="brand-name">Core Fitness</span><span className="brand-sub">Platform</span></span>
+        </div>
+        <div>
+          <h2>Every gym on the service, <em>in one place.</em></h2>
+          <p>Let gyms in, set their plans, record what they pay, and keep the whole service healthy — from this computer only.</p>
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>Gym owners and their staff sign in to the admin app, not here.</p>
+      </div>
+      <div className="door-form">
+      <form onSubmit={submit}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Sign in</h1>
+        <p className="sub" style={{ marginBottom: 26 }}>The platform owner's account.</p>
         <label htmlFor="email">Email</label>
         <input id="email" type="email" autoComplete="username" value={email}
           onChange={(e) => setEmail(e.target.value)} required />
@@ -47,10 +59,11 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
           onChange={(e) => setPassword(e.target.value)} required />
         {error && <p className="err">{error}</p>}
         <div style={{ height: 14 }} />
-        <button className="btn" type="submit" disabled={busy} style={{ width: '100%' }}>
+        <button className="btn" type="submit" disabled={busy} style={{ width: '100%', height: 42 }}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,113 @@
+/**
+ * The platform app's shell (2026-09-27 redesign): signed in as the platform
+ * owner, the sidebar with every screen and the applications-waiting badge, the
+ * Overview's figures from platform_overview(), the revenue bars, "Needs you",
+ * the Gyms rows with their chips — at a full desktop width, edge to edge.
+ * Plus the door: signed out, the sign-in screen.
+ *
+ * Playwright runner's `filename` argument, platform dev server on :5175.
+ */
+async (page) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  const REF = 'ifwxtekyjgeljerslnzr';
+  const KEY = `sb-${REF}-auth-token`;
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const b64 = (o) => {
+    const str = JSON.stringify(o); let bits = '', out = '';
+    for (let i = 0; i < str.length; i++) bits += str.charCodeAt(i).toString(2).padStart(8, '0');
+    while (bits.length % 6) bits += '0';
+    for (let i = 0; i < bits.length; i += 6) out += CHARS[parseInt(bits.slice(i, i + 6), 2)];
+    return out;
+  };
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const session = {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'pa', role: 'authenticated', exp })}.sig`,
+    refresh_token: 'r', token_type: 'bearer', expires_at: exp,
+    user: { id: 'pa', aud: 'authenticated', role: 'authenticated', email: 'owner@corefitness.test', app_metadata: {}, user_metadata: {} },
+  };
+  let signedIn = true;
+  await page.addInitScript(([k, s]) => { if (!sessionStorage.getItem('out')) localStorage.setItem(k, JSON.stringify(s)); }, [KEY, session]);
+
+  const ym = (back) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back); return d.toISOString().slice(0, 7) + '-01'; };
+  const iso = (daysAgo) => new Date(Date.now() - daysAgo * 86400000).toISOString();
+  const GYMS = [
+    { id: 'g1', name: 'G Fitness', slug: 'core-fitness', status: 'active', plan: 'premium', paid_until: null, lock_reason: null, members: 142,
+      staff: 1, created_at: iso(200), last_activity: iso(0), owners: 1, onboarded: true, plan_name: 'Premium', price_monthly: '1999',
+      days_left: null, max_members: null, paid_total: '12000' },
+    { id: 'g2', name: 'Ana gymanigga', slug: 'ferrer-gym', status: 'active', plan: 'trial', paid_until: iso(-5).slice(0, 10), lock_reason: null, members: 1,
+      staff: 1, created_at: iso(20), last_activity: iso(5), owners: 1, onboarded: true, plan_name: 'Free trial', price_monthly: '0',
+      days_left: 5, max_members: 50, paid_total: '0' },
+    { id: 'g3', name: 'Harbour Strength', slug: 'harbour', status: 'active', plan: 'starter', paid_until: iso(9).slice(0, 10), lock_reason: 'overdue', members: 38,
+      staff: 2, created_at: iso(90), last_activity: iso(2), owners: 1, onboarded: true, plan_name: 'Starter', price_monthly: '999',
+      days_left: -9, max_members: 100, paid_total: '2997' },
+  ];
+  const RPC = {
+    is_platform_admin: () => signedIn,
+    platform_overview: () => [{ gyms: 3, gyms_live: 2, gyms_suspended: 0, gyms_locked: 1, gyms_unclaimed: 0, gyms_unset_up: 0,
+      members: 181, staff: 4, trainers: 12, checkins_30d: 1420, new_gyms_30d: 1, applications_waiting: 2, crashes_open: 1,
+      revenue_this_month: '2998', revenue_all_time: '14997', overdue_gyms: 1 }],
+    platform_revenue: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((b) => ({ month: ym(b), gyms: 2, payments: 2, total: String([2998, 2998, 1999, 1999, 999, 1999, 999, 999, 0, 999, 0, 0][b]) })),
+    gyms_due: () => [{ id: 'g3', name: 'Harbour Strength', plan: 'starter', paid_until: iso(9).slice(0, 10), days_left: -9, lock_reason: 'overdue', members: 38 },
+      { id: 'g2', name: 'Ana gymanigga', plan: 'trial', paid_until: iso(-5).slice(0, 10), days_left: 5, lock_reason: null, members: 1 }],
+    platform_gyms: () => GYMS,
+    platform_events_recent: () => [{ id: 1, gym_id: 'g2', action: 'gym.created', summary: 'Ana gymanigga was let in', detail: null, created_at: iso(5) },
+      { id: 2, gym_id: 'g1', action: 'payment', summary: 'G Fitness paid ₱1,999 (Premium)', detail: null, created_at: iso(1) }],
+    platform_applications: () => [{ id: 'a1', gym_name: 'Iron Temple', owner_name: 'Rico D', email: 'r@x.test', phone: '0917', address: 'Sablayan',
+      member_estimate: 80, message: null, status: 'pending', reason: null, gym_id: null, created_at: iso(1) },
+      { id: 'a2', gym_name: 'Beach Body', owner_name: 'Mae L', email: 'm@x.test', phone: '0918', address: null, member_estimate: 30,
+        message: null, status: 'pending', reason: null, gym_id: null, created_at: iso(0) }],
+  };
+
+  await page.route(`**://${REF}.supabase.co/**`, async (route) => {
+    const req = route.request();
+    const after = req.url().replace(/^https?:\/\/[^/]+/, '');
+    const path = (after.indexOf('?') === -1 ? after : after.slice(0, after.indexOf('?')));
+    const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b),
+      headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
+    if (path.startsWith('/auth/v1/logout')) { signedIn = false; return route.fulfill({ status: 204, body: '' }); }
+    if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
+    if (path.startsWith('/rest/v1/rpc/')) {
+      const fn = path.split('/rest/v1/rpc/')[1];
+      return json(fn in RPC ? RPC[fn]() : []);
+    }
+    if (path.endsWith('/platform_plans')) return json([{ key: 'premium', name: 'Premium', is_active: true, sort_order: 1 }]);
+    return json([]);
+  });
+
+  const out = [];
+  await page.setViewportSize({ width: 1600, height: 950 });
+  const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+  await page.goto('http://localhost:5175/', { waitUntil: 'domcontentloaded' });
+  await page.getByText('Revenue, last 12 months').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(700);
+  let t = await text();
+  out.push('lands on Overview: ' + (/\/overview$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
+  out.push('applications badge: ' + ((await page.getByLabel('2 waiting').count()) === 1 ? '2' : 'MISSING'));
+  out.push('the figures: ' + (/Gyms live 2/i.test(t) && /181/.test(t) && /₱2,998/.test(t) && /1,420/.test(t) ? 'shown' : 'MISSING'));
+  out.push('needs you: ' + (/2 gyms asking to join/.test(t) && /Harbour Strength is 9 days overdue/.test(t) && /Ana gymanigga is due in 5 days/.test(t) ? 'shown' : 'MISSING'));
+  out.push('revenue bars: ' + ((await page.locator('.bar').count()) === 12 ? '12 months' : 'MISSING'));
+  const fill = await page.evaluate(() => { const m = document.querySelector('.main'); return m ? Math.round(m.getBoundingClientRect().width) : 0; });
+  out.push('fills the window: ' + (fill >= 1600 - 260 ? `${fill}px main column` : 'MISSING ' + fill));
+  await page.screenshot({ path: 'shots/platform-overview.png' });
+
+  await page.getByRole('link', { name: 'Gyms', exact: true }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-gyms.png' });
+
+  for (const [nav, shot, expect] of [['Applications', 'apps', /Iron Temple/], ['Plans', 'plans', /Plans/], ['Money', 'money', /Money/], ['Platform', 'health', /Platform/]]) {
+    await page.getByRole('link', { name: nav }).first().click();
+    await page.waitForTimeout(900);
+    out.push(`${nav} renders in the shell: ` + (expect.test(await text()) && (await page.locator('.side').count()) === 1 ? 'yes' : 'MISSING'));
+    await page.screenshot({ path: `shots/platform-${shot}.png` });
+  }
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.evaluate(() => sessionStorage.setItem('out', '1'));
+  await page.waitForTimeout(1200);
+  out.push('signed out, the door: ' + (/Every gym on the service/.test(await text()) ? 'shown' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-door.png' });
+  return out.join('\n');
+}
