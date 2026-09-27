@@ -531,3 +531,18 @@ export async function deleteGymNote(id: string): Promise<void> {
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error('That note could not be removed.');
 }
+
+// ---- gym health & growth (0136) --------------------------------------------------------------
+
+export interface GymHealth {
+  gym_id: string; name: string; logo_url: string | null; accent: string; score: number;
+  level: 'high' | 'medium' | 'healthy'; reasons: string[]; checkins_14: number; usual_14: string; owner_seen: string | null;
+}
+export interface GrowthMonth { month: string; gyms: number; new_gyms: number; lost_gyms: number; members: number; revenue: string; mrr: string }
+export interface Funnel { applied: number; let_in: number; set_up: number; active_30d: number; paying: number }
+export interface Adoption { feature: string; label: string; gyms_30d: number; gyms_total: number }
+
+export const gymHealth = () => call<GymHealth[]>('platform_gym_health');
+export const growth = (months = 12) => call<GrowthMonth[]>('platform_growth', { p_months: months });
+export const funnel = async (): Promise<Funnel | null> => (await call<Funnel[]>('platform_funnel'))?.[0] ?? null;
+export const adoption = () => call<Adoption[]>('platform_feature_adoption');

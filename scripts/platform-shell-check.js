@@ -53,6 +53,16 @@ async (page) => {
     platform_gym_events: () => [{ id: 9, gym_id: 'g1', action: 'gym.plan', summary: 'G Fitness moved to Premium', detail: null, created_at: iso(30) }],
     platform_gym_payments: () => [{ id: 'gp1', gym_id: 'g1', amount: '1999', paid_on: iso(3).slice(0, 10), covers_from: null, covers_until: iso(-27).slice(0, 10), method: 'GCash', reference: 'R1', note: null, plan_key: 'premium', created_at: iso(3) }],
     platform_gym_detail: () => [],
+    platform_gym_health: () => [
+      { gym_id: 'g3', name: 'Harbour Strength', logo_url: null, accent: 'teal', score: 70, level: 'high',
+        reasons: ['No check-ins in 14 days', '9 days past its paid-until date'], checkins_14: 0, usual_14: '12', owner_seen: iso(30) },
+      { gym_id: 'g2', name: 'Ana gymanigga', logo_url: null, accent: 'rose', score: 25, level: 'medium',
+        reasons: ['Free trial ends in 5 days, nothing paid'], checkins_14: 1, usual_14: '0', owner_seen: iso(5) },
+      { gym_id: 'g1', name: 'G Fitness', logo_url: null, accent: 'violet', score: 0, level: 'healthy', reasons: [], checkins_14: 80, usual_14: '75', owner_seen: iso(1) }],
+    platform_growth: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].reverse().map((b) => ({ month: ym(b), gyms: 3 - Math.min(2, Math.floor(b / 5)),
+      new_gyms: b === 0 ? 1 : 0, lost_gyms: 0, members: 181 - b * 6, revenue: String(b < 6 ? 2998 : 999), mrr: String(b < 6 ? 2998 : 1999) })),
+    platform_funnel: () => [{ applied: 6, let_in: 3, set_up: 3, active_30d: 2, paying: 2 }],
+    platform_feature_adoption: () => [{ feature: 'checkins', label: 'Check-ins', gyms_30d: 3, gyms_total: 3 }, { feature: 'shop', label: 'Shop', gyms_30d: 1, gyms_total: 3 }],
     platform_gym_people: () => [],
     is_platform_admin: () => signedIn,
     platform_overview: () => [{ gyms: 3, gyms_live: 2, gyms_suspended: 0, gyms_locked: 1, gyms_unclaimed: 0, gyms_unset_up: 0,
@@ -102,10 +112,11 @@ async (page) => {
   let t = await text();
   out.push('lands on Overview: ' + (/\/overview$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   out.push('the Core Fitness logo in the sidebar: ' + ((await page.locator('.side img[alt="Core Fitness"]').count()) === 1 ? 'shown' : 'MISSING'));
-  out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
+  out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Growth', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
   out.push('applications badge: ' + ((await page.getByLabel('2 waiting').count()) === 1 ? '2' : 'MISSING'));
   out.push('the figures: ' + (/Gyms live 2/i.test(t) && /181/.test(t) && /₱2,998/.test(t) && /1,420/.test(t) ? 'shown' : 'MISSING'));
   out.push('needs you: ' + (/2 gyms asking to join/.test(t) && /Harbour Strength is 9 days overdue/.test(t) && /Ana gymanigga is due in 5 days/.test(t) ? 'shown' : 'MISSING'));
+  out.push('an at-risk gym in Needs you: ' + (/Harbour Strength may be leaving/.test(t) ? 'shown' : 'MISSING'));
   out.push('revenue bars: ' + ((await page.locator('.bar').count()) === 12 ? '12 months' : 'MISSING'));
   const fill = await page.evaluate(() => { const m = document.querySelector('.main'); return m ? Math.round(m.getBoundingClientRect().width) : 0; });
   out.push('fills the window: ' + (fill >= 1600 - 260 ? `${fill}px main column` : 'MISSING ' + fill));
@@ -116,6 +127,7 @@ async (page) => {
   t = await text();
   out.push("a gym's own logo: " + ((await page.getByAltText('G Fitness logo').count()) === 1 ? 'shown' : 'MISSING'));
   out.push('no logo: initials, never the Core Fitness mark: ' + ((await page.getByRole('img', { name: 'Ana gymanigga, no logo yet' }).count()) === 1 ? 'AG' : 'MISSING'));
+  out.push('at-risk tag on the row: ' + (/At risk: No check-ins in 14 days/.test(t) && /Watch: Free trial ends in 5 days/.test(t) ? 'shown' : 'MISSING'));
   out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
@@ -132,13 +144,19 @@ async (page) => {
   out.push('a private note: ' + (NOTES.length === 1 && /Owner prefers calls after 6pm/.test(await text()) ? 'saved' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gym-profile.png', fullPage: true });
 
-  for (const [nav, shot, expect] of [['Applications', 'apps', /Iron Temple/], ['Plans', 'plans', /Plans/], ['Money', 'money', /Money/], ['Platform', 'health', /Platform/]]) {
+  for (const [nav, shot, expect] of [['Growth', 'growth', /MRR/], ['Applications', 'apps', /Iron Temple/], ['Plans', 'plans', /Plans/], ['Money', 'money', /Money/], ['Platform', 'health', /Platform/]]) {
     await page.getByRole('link', { name: nav }).first().click();
     await page.waitForTimeout(900);
     out.push(`${nav} renders in the shell: ` + (expect.test(await text()) && (await page.locator('.side').count()) === 1 ? 'yes' : 'MISSING'));
     await page.screenshot({ path: `shots/platform-${shot}.png` });
   }
 
+  await page.getByRole('link', { name: 'Growth' }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('growth: MRR, ARR, the at-risk list: ' + (/₱2,998/.test(t) && /₱35,976/.test(t) && /9 days past its paid-until date/.test(t) ? 'shown' : 'MISSING'));
+  out.push('growth: funnel and adoption: ' + (/Paying/.test(t) && /1 of 3 gyms/.test(t) ? 'shown' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-growth.png' });
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.evaluate(() => sessionStorage.setItem('out', '1'));
   await page.waitForTimeout(1200);

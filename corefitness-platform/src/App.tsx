@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Inbox, Layers, LayoutDashboard, LogOut, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Inbox, Layers, LayoutDashboard, LogOut, TrendingUp, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { isPlatformAdmin, listApplications } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -11,6 +11,7 @@ import Applications from './pages/Applications';
 import Platform from './pages/Platform';
 import Plans from './pages/Plans';
 import Money from './pages/Money';
+import Growth from './pages/Growth';
 import ErrorBoundary from './components/ErrorBoundary';
 
 /**
@@ -33,6 +34,7 @@ interface Page { path: string; label: string; icon: LucideIcon; title: string; l
 const PAGES: Page[] = [
   { path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance — and what needs you.' },
   { path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
+  { path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
   { path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
   { path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
@@ -142,6 +144,7 @@ function Shell() {
                 <Route path="/applications" element={<Applications />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/money" element={<Money />} />
+                <Route path="/growth" element={<Growth />} />
                 <Route path="/platform" element={<Platform />} />
                 <Route path="*" element={<Navigate to="/overview" replace />} />
               </Routes>

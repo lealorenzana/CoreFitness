@@ -4,8 +4,8 @@ import {
   Activity, AlertTriangle, Building2, Bug, CalendarClock, CheckCircle2, Clock, Inbox, TrendingUp, UserX, Users, Wallet,
 } from 'lucide-react';
 import {
-  getOverview, listDue, listEvents, listGyms, listRevenue,
-  type GymDue, type Overview as O, type PlatformEvent, type PlatformGym, type RevenueMonth,
+  getOverview, gymHealth, listDue, listEvents, listGyms, listRevenue,
+  type GymDue, type GymHealth, type Overview as O, type PlatformEvent, type PlatformGym, type RevenueMonth,
 } from '../lib/platform';
 import GymMark from '../components/GymMark';
 
@@ -34,6 +34,7 @@ export default function Overview() {
   const [due, setDue] = useState<GymDue[]>([]);
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
   const [events, setEvents] = useState<PlatformEvent[]>([]);
+  const [risk, setRisk] = useState<GymHealth[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,9 @@ export default function Overview() {
           getOverview(), listRevenue(12).catch(() => []), listDue(14).catch(() => []),
           listGyms().catch(() => []), listEvents(8).catch(() => []),
         ]);
+        // 0136; before it is pasted, simply nothing at risk is listed.
+        const r = await gymHealth().catch(() => []);
+        if (alive) setRisk(r.filter((x) => x.level === 'high'));
         if (!alive) return;
         setO(a); setRev(b); setDue(c); setGyms(d); setEvents(e);
       } catch (err) {
@@ -66,6 +70,7 @@ export default function Overview() {
   if (o.applications_waiting > 0) todo.push({ icon: Inbox, text: `${o.applications_waiting} gym${o.applications_waiting === 1 ? '' : 's'} asking to join`, sub: 'Let them in or say why not', to: '/applications' });
   for (const g of due.filter((d) => d.days_left < 0).slice(0, 3)) todo.push({ icon: Wallet, text: `${g.name} is ${-g.days_left} days overdue`, sub: `${g.plan} · record a payment or suspend`, to: '/money' });
   for (const g of due.filter((d) => d.days_left >= 0).slice(0, 3)) todo.push({ icon: CalendarClock, text: `${g.name} is due in ${g.days_left} day${g.days_left === 1 ? '' : 's'}`, sub: `${g.plan} · paid to ${new Date(g.paid_until).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}`, to: '/money' });
+  for (const g of risk.slice(0, 3)) todo.push({ icon: AlertTriangle, text: `${g.name} may be leaving`, sub: g.reasons.slice(0, 2).join(' · '), to: `/gyms/${g.gym_id}` });
   if (o.gyms_unclaimed > 0) todo.push({ icon: UserX, text: `${o.gyms_unclaimed} gym${o.gyms_unclaimed === 1 ? '' : 's'} with no owner`, sub: 'Nobody can sign in — invite the owner', to: '/gyms' });
   if (o.gyms_unset_up > 0) todo.push({ icon: Clock, text: `${o.gyms_unset_up} gym${o.gyms_unset_up === 1 ? '' : 's'} not set up yet`, sub: 'The owner has not finished setup', to: '/gyms' });
   if (o.crashes_open > 0) todo.push({ icon: Bug, text: `${o.crashes_open} open crash report${o.crashes_open === 1 ? '' : 's'}`, sub: 'Read them on Platform', to: '/platform' });

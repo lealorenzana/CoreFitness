@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, CalendarClock, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarClock, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
 import {
-  createGym, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
+  createGym, gymHealth, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
   type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
@@ -44,6 +44,8 @@ export default function Gyms() {
 
   /** The tiers on offer (0108). Retired ones are not offered, but a gym on one keeps it. */
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
+  /** Gym id → its risk (0136). Empty before 0136. */
+  const [risk, setRisk] = useState<Map<string, { level: string; reasons: string[] }>>(new Map());
 
   const load = useCallback(async () => {
     try {
@@ -51,6 +53,8 @@ export default function Gyms() {
       setGyms(g);
       setPlans(p);
       setError(null);
+      const h = await gymHealth().catch(() => []);
+      setRisk(new Map(h.filter((x) => x.level !== 'healthy').map((x) => [x.gym_id, { level: x.level, reasons: x.reasons }])));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load the gyms');
     }
@@ -153,6 +157,10 @@ export default function Gyms() {
                   <span className="chip"><UserCog size={12} />{gym.staff} on the desk</span>
                   <span className="chip"><Activity size={12} />{since(gym.last_activity)}</span>
                   <span className="chip"><Wallet size={12} />{gym.plan_name ?? gym.plan}</span>
+                  {risk.get(gym.id) && (
+                    <span className="chip warn" title={risk.get(gym.id)!.reasons.join(' · ')}><AlertTriangle size={12} />
+                      {risk.get(gym.id)!.level === 'high' ? 'At risk' : 'Watch'}: {risk.get(gym.id)!.reasons[0]}</span>
+                  )}
                   {gym.days_left !== null && gym.days_left <= 14 && (
                     <span className="chip warn"><CalendarClock size={12} />
                       {gym.days_left < 0 ? `${-gym.days_left} days late` : `due in ${gym.days_left} days`}</span>
