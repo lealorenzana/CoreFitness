@@ -121,7 +121,7 @@ const NAV: Entry[] = [
     icon: TrendingUp,
     children: [
       { label: 'Revenue', path: '/revenue', icon: Banknote },
-      { label: 'Retention', path: '/retention', icon: Target },
+      { label: 'Retention', path: '/retention', icon: Target, alsoMatches: ['/retention/messages'] },
       { label: 'Activity log', path: '/activity', icon: History, adminOnly: true },
     ],
   },

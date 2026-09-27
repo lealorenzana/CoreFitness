@@ -12,6 +12,7 @@ import {
 import DetailSheet from '../components/ui/DetailSheet';
 import { loadBookingQueue } from '../services/bookingQueueService';
 import { sweepStaleRequests } from '../lib/api/bookings';
+import { winbackSweep } from '../lib/api/retention';
 import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
@@ -206,6 +207,9 @@ export default function Dashboard() {
       })
       .catch(() => {});
     dashboardService.getExpiringSoon().then(setExpiringSoon).catch(() => {});
+    // Win-back messages the owner switched on (0130): the dashboard is opened
+    // daily, so it is the sweep that runs. Never throws.
+    void winbackSweep();
     // The same sweep the Bookings page runs first (0071), so a request it would
     // expire on opening is not counted here as still waiting. Never throws.
     (async () => {

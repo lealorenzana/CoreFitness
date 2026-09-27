@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBranding } from '../hooks/useBranding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Button from '../components/ui/Button';
@@ -8,6 +9,7 @@ import { AlertTriangle, Users, Target, Activity } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { exportToCSV } from '../utils/exportUtils';
 import { notifyUser } from '../lib/api/notify';
+import { retentionRadar, sendRetentionMessage, winbackSweep, type AtRisk } from '../lib/api/retention';
 import {
   dashboardService,
   type AtRiskMemberRow, type RetentionSummary,
@@ -24,6 +26,10 @@ export default function Retention() {
   const [, setLoading] = useState(true);
   const [reachingOut, setReachingOut] = useState<string | null>(null);
   const [reachedOut, setReachedOut] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
+  // 0130's radar: the one definition of "at risk" (SQL, four signals, with the
+  // reasons). Undefined before 0130, when the older inactivity rule below runs.
+  const [radar, setRadar] = useState<AtRisk[] | undefined>(undefined);
 
   /**
    * What "at risk" is *for*.
@@ -47,6 +53,26 @@ export default function Retention() {
   const reachOut = async (m: AtRiskMemberRow) => {
     setReachingOut(m.id);
     try {
+      // Say the reason they are listed. "It has been 0 days since your last
+      // visit" went to members listed only because their membership ends soon.
+      const reasons = radar?.find((x) => x.memberId === m.id)?.reasons ?? [];
+      const ending = reasons.find((r) => r.startsWith('Membership ends'));
+      const text = m.daysInactive >= 7
+        ? `It has been ${m.daysInactive} days since your last visit. ` +
+          'Nothing needs booking — just come in when you can, and tell the front desk ' +
+          'if anything is getting in the way.'
+        : ending
+          ? `${ending.replace('Membership ends', 'Your membership ends')}. Renew at the front desk to keep your spot — ` +
+            'and tell us if anything is getting in the way.'
+          : 'Just checking in — how is your training going? Tell the front desk if anything is getting in the way.';
+      if (radar) {
+        // Recorded (0130), so the list shows who was already contacted and two
+        // people at the desk do not message the same member twice.
+        await sendRetentionMessage(m.id, text);
+        setReachedOut((prev) => new Set(prev).add(m.id));
+        showToast(`Message sent to ${m.name}`, 'success');
+        return;
+      }
       await notifyUser({
         userId: m.id,
         type: 'system',
@@ -69,10 +95,13 @@ export default function Retention() {
   };
 
   useEffect(() => {
-    Promise.all([dashboardService.getAtRiskMembers(), dashboardService.getRetentionSummary()])
-      .then(([rows, s]) => {
-        setAtRiskMembers(rows);
-        setSummary(s);
+    // Sends any switched-on win-back messages that are due (0130), then reads.
+    winbackSweep()
+      .then(() => Promise.all([retentionRadar(), dashboardService.getAtRiskMembers(), dashboardService.getRetentionSummary()]))
+      .then(([r, rows, s]) => {
+        setRadar(r);
+        setAtRiskMembers(r ? r.map(radarRow) : rows);
+        setSummary(r ? { ...s, atRisk: r.length } : s);
       })
       .catch((err) => showToast(err instanceof Error ? err.message : 'Failed to load retention data', 'error'))
       .finally(() => setLoading(false));
@@ -100,12 +129,15 @@ export default function Retention() {
         <div>
           <h1 className="text-xl font-bold text-white">Rule-Based Retention</h1>
           <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            Automated retention rules and at-risk member insights
+            Who is likely to stop coming, why, and the win-back messages you switch on
           </p>
         </div>
-        <Button variant="secondary" onClick={() => exportToCSV(atRiskMembers, 'at-risk-members')}>
-          Export List
-        </Button>
+        <div className="flex items-center gap-2">
+          {radar && <Button variant="ghost" onClick={() => navigate('/retention/messages')}>Win-back messages</Button>}
+          <Button variant="secondary" onClick={() => exportToCSV(atRiskMembers, 'at-risk-members')}>
+            Export List
+          </Button>
+        </div>
       </motion.div>
 
       {/* Stats row — compact */}
@@ -175,7 +207,7 @@ export default function Retention() {
             <table className="w-full">
               <thead className="sticky top-0" style={{ background: 'var(--color-surface)' }}>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['Member', 'Inactive', 'Rate', 'Risk', 'Action'].map(h => (
+                  {(radar ? ['Member', 'Why', 'Risk', 'Action'] : ['Member', 'Inactive', 'Rate', 'Risk', 'Action']).map(h => (
                     <th key={h} className="text-left py-2 px-2.5 text-[8px] font-semibold uppercase tracking-wider"
                       style={{ color: 'var(--color-text-muted)' }}>{h}</th>
                   ))}
@@ -196,6 +228,14 @@ export default function Retention() {
                         </div>
                       </div>
                     </td>
+                    {radar ? (
+                      <td className="py-2 px-2.5 text-[9px]" style={{ color: 'var(--color-text-secondary)' }}>
+                        {(radar.find((x) => x.memberId === m.id)?.reasons ?? []).join(' · ')}
+                        {radar.find((x) => x.memberId === m.id)?.lastContact && (
+                          <span style={{ color: 'var(--color-text-muted)' }}> · contacted {new Date(radar.find((x) => x.memberId === m.id)!.lastContact!).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                        )}
+                      </td>
+                    ) : (<>
                     <td className="py-2 px-2.5 text-[10px] font-semibold text-white">{m.daysInactive}d</td>
                     <td className="py-2 px-2.5">
                       <div className="flex items-center gap-1">
@@ -205,6 +245,7 @@ export default function Retention() {
                         <span className="text-[9px] text-white">{m.attendanceRate}%</span>
                       </div>
                     </td>
+                    </>)}
                     <td className="py-2 px-2.5">
                       <Badge variant={getRiskBadgeVariant(m.riskLevel)}>{m.riskLevel.toUpperCase()}</Badge>
                     </td>
@@ -225,4 +266,10 @@ export default function Retention() {
       </div>
     </div>
   );
+}
+
+/** A radar row in the table's shape. The plan column shows the radar's score. */
+function radarRow(r: AtRisk): AtRiskMemberRow {
+  const days = r.lastVisit ? Math.floor((Date.now() - new Date(r.lastVisit).getTime()) / 86_400_000) : 0;
+  return { id: r.memberId, name: r.name, daysInactive: days, attendanceRate: 0, riskLevel: r.level, planName: `Risk ${r.score} / 100` };
 }
