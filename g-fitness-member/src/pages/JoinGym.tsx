@@ -8,6 +8,7 @@ import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { gymBySlug, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
+import { claimReferral, refFromUrl } from '../lib/api/referrals';
 import { getGymContext, myGyms } from '../lib/gymContext';
 import { supabase } from '../lib/supabaseClient';
 
@@ -66,14 +67,19 @@ export default function JoinGym() {
   }, [search, slug, load]);
 
   const join = async (gym: PublicGym) => {
+    // A friend's code rides along from `/join/<slug>?ref=CODE` (0125).
+    const ref = refFromUrl();
     if (!signedIn) {
-      // No account yet: sign up into this gym.
-      navigate(`/register?gym=${encodeURIComponent(gym.id)}`);
+      // No account yet: sign up into this gym, keeping the friend's code.
+      navigate(`/register?gym=${encodeURIComponent(gym.id)}${ref ? `&ref=${ref}` : ''}`);
       return;
     }
     setBusy(gym.id);
     try {
       await requestToJoin(gym.id);
+      // Named after the request, so the member row it needs already exists. A
+      // code that does not apply is said, but the join itself has succeeded.
+      if (ref) await claimReferral(gym.id, ref).catch((e: Error) => toast.info(e.message));
       await getGymContext(true);
       toast.success(`${gym.name} has your request. They will approve it at the desk.`);
       navigate('/choose-gym');

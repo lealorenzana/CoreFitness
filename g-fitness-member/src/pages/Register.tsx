@@ -15,6 +15,7 @@ import { listPlans, publicPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 import BirthDateField from '../components/ui/BirthDateField';
 import { ageFrom, birthDateProblem, PHONE_RE } from '../utils/profileRules';
+import { refFromUrl } from '../lib/api/referrals';
 
 /**
  * Member sign-up, as a three-step onboarding flow.
@@ -273,6 +274,8 @@ export default function Register() {
         // so this is always true here — sent anyway rather than hardcoded,
         // because a consent record that cannot be false is not a record.
         termsAccepted: formData.termsAccepted,
+        // A friend's code from the join link (0125): carried into the account's metadata.
+        referralCode: refFromUrl() ?? undefined,
       });
       setIsLoading(false);
 

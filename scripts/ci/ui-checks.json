@@ -15,6 +15,7 @@
     { "file": "trainer-assign-check.js", "app": "member" },
     { "file": "season-check.js", "app": "member" },
     { "file": "squad-check.js", "app": "member" },
+    { "file": "refer-check.js", "app": "member" },
     { "file": "plan-gates.js", "app": "member" },
     { "file": "trainer-scenarios.js", "app": "member" },
     { "file": "admin-engagement-check.js", "app": "admin" },

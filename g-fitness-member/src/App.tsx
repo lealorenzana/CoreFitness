@@ -17,6 +17,7 @@ const Workouts = lazyPage(() => import('./pages/Workouts'));
 const Program = lazyPage(() => import('./pages/Program'));
 const Season = lazyPage(() => import('./pages/Season'));
 const Squad = lazyPage(() => import('./pages/Squad'));
+const Refer = lazyPage(() => import('./pages/Refer'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
 const Routines = lazyPage(() => import('./pages/Routines'));
@@ -259,6 +260,7 @@ function App() {
           <Route path="challenges" element={<Challenges />} />
           <Route path="season" element={<Season />} />
           <Route path="squad" element={<Squad />} />
+          <Route path="refer" element={<Refer />} />
           <Route path="challenges/completed" element={<Challenges completedOnly />} />
           <Route path="activity" element={<AccountActivity />} />
           <Route path="workout-history" element={<WorkoutHistory />} />

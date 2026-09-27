@@ -116,6 +116,9 @@ export async function registerMember(input: {
   termsAccepted?: boolean;
   /** The gym being joined (lib/api/gyms). Omitted when the platform has one gym. */
   gymId?: string;
+  /** A friend's referral code from a `?ref=` join link (0125). Recorded when the
+   *  member lands in the gym; paid only when the desk records their first payment. */
+  referralCode?: string;
   /**
    * True when the new account is already signed in.
    *
@@ -155,6 +158,8 @@ export async function registerMember(input: {
         // exactly 'true'. A string, because metadata reaches the trigger as
         // text either way and `meta->>'terms_accepted'` compares against one.
         terms_accepted: input.termsAccepted ? 'true' : 'false',
+        // Read by 0125's trigger on gym_roles. A bad code never blocks sign-up.
+        referral_code: input.referralCode ?? '',
       },
     },
   });
