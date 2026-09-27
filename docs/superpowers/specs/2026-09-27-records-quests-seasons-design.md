@@ -1,6 +1,6 @@
 # Personal records, weekly quests and monthly seasons — design
 
-**Date:** 2026-09-27 · **Status:** approved in conversation (three decisions below) · **Migration:** 0123
+**Date:** 2026-09-27 · **Status:** built — 0123 SQL, member, admin and trainer screens; pasted by hand · **Migration:** 0123
 **Roadmap:** piece 2 of 5 (after the Content Studio, 0120–0122).
 
 ## Decisions made in conversation
