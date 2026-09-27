@@ -1,6 +1,6 @@
 # Refer a friend — design
 
-**Date:** 2026-09-27 · **Status:** approved in conversation · **Migration:** 0125 · **Roadmap:** piece 4 of 5
+**Date:** 2026-09-27 · **Status:** built — SQL, member, admin; pasted by hand · **Migration:** 0125 · **Roadmap:** piece 4 of 5
 
 ## Decisions made in conversation
 
@@ -16,6 +16,7 @@
 - The friend is recorded as **referred** when they arrive in the gym through it:
   - a **new account** carries the code in sign-up metadata (`referral_code`), and a trigger on `gym_roles` records it when the member's row lands in that gym;
   - an **existing account** joining another gym calls `claim_referral(gym, code)` right after `request_to_join`.
+- There is **no box to type a code**; the link carries it. (The first copy promised one and was corrected.)
 - A friend can be referred **once per gym**, never by themselves, and only while they have **no completed payment above ₱0 there yet** — so an existing paying member cannot be "referred" after the fact.
 - A trigger on `payments` (insert or update to completed, amount > 0) pays the pending referral **once**: the referrer's points (under the monthly cap) and the friend's welcome points, both through the ledger's idempotency key, both behind `plan_allows(…, 'points_earn')`. Both are notified.
 - `referrals` has **no write policy**: only the functions and triggers write it.
