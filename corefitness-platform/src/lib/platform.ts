@@ -32,6 +32,9 @@ export interface PlatformGym {
   max_members: number | null;
   /** Everything this gym has ever paid. */
   paid_total: string;
+  /** The gym's own logo and colour (0134). Absent before 0134. */
+  logo_url?: string | null;
+  accent?: string | null;
 }
 
 /** A tier of the service itself (0108). Prices are strings: numeric over the wire. */

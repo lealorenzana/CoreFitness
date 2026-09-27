@@ -37,10 +37,11 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
     <div className="door">
       <div className="door-art">
         <div className="brand" style={{ padding: 0 }}>
-          <span className="brand-mark">CF</span>
+          <img className="brand-logo" src="/core-fitness-logo.png" alt="Core Fitness" />
           <span><span className="brand-name">Core Fitness</span><span className="brand-sub">Platform</span></span>
         </div>
         <div>
+          <img src="/core-fitness-logo.png" alt="" className="door-logo" />
           <h2>Every gym on the service, <em>in one place.</em></h2>
           <p>Let gyms in, set their plans, record what they pay, and keep the whole service healthy — from this computer only.</p>
         </div>

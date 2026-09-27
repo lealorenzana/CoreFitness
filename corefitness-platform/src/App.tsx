@@ -84,7 +84,7 @@ function Shell() {
     <div className="app">
       <aside className="side">
         <div className="brand">
-          <span className="brand-mark">CF</span>
+          <img className="brand-logo" src="/core-fitness-logo.png" alt="Core Fitness" />
           <span>
             <span className="brand-name">Core Fitness</span>
             <span className="brand-sub">Platform</span>

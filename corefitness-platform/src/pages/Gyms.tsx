@@ -7,6 +7,7 @@ import {
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
 import GymDetail from '../components/GymDetail';
+import GymMark from '../components/GymMark';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -142,7 +143,7 @@ export default function Gyms() {
         <div key={gym.id}>
           <div className="card">
             <div className="row">
-              <span className="avatar">{gym.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
+              <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={48} />
               <span className="grow">
                 <button type="button" className="linky"
                   onClick={() => setOpened(opened === gym.id ? null : gym.id)}>

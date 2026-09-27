@@ -7,6 +7,7 @@ import {
   getOverview, listDue, listEvents, listGyms, listRevenue,
   type GymDue, type Overview as O, type PlatformEvent, type PlatformGym, type RevenueMonth,
 } from '../lib/platform';
+import GymMark from '../components/GymMark';
 
 const peso = (v: string | number | null | undefined) => `₱${Number(v ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : String(Math.round(v)));
@@ -139,7 +140,7 @@ export default function Overview() {
           {biggest.length === 0 ? <p className="empty">No gyms yet.</p> : biggest.map((g) => (
             <div key={g.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-soft)' }}>
               <div className="row" style={{ gap: 12 }}>
-                <span className="avatar" style={{ width: 34, height: 34, fontSize: 12, borderRadius: 10 }}>{initials(g.name)}</span>
+                <GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={34} />
                 <span className="grow" style={{ flexBasis: 140 }}>
                   <span className="name" style={{ fontSize: 13.5 }}>{g.name}</span>
                   <span className="meta" style={{ marginTop: 1 }}>{g.plan_name ?? g.plan}{g.lock_reason ? ` · ${g.lock_reason}` : ''}</span>
@@ -163,9 +164,4 @@ export default function Overview() {
       </div>
     </>
   );
-}
-
-function initials(name: string): string {
-  const w = name.trim().split(/\s+/).filter(Boolean);
-  return (w.length > 1 ? w[0][0] + w[1][0] : (w[0] ?? '?').slice(0, 2)).toUpperCase();
 }

@@ -33,10 +33,10 @@ async (page) => {
   const GYMS = [
     { id: 'g1', name: 'G Fitness', slug: 'core-fitness', status: 'active', plan: 'premium', paid_until: null, lock_reason: null, members: 142,
       staff: 1, created_at: iso(200), last_activity: iso(0), owners: 1, onboarded: true, plan_name: 'Premium', price_monthly: '1999',
-      days_left: null, max_members: null, paid_total: '12000' },
+      days_left: null, max_members: null, paid_total: '12000', logo_url: 'https://logos.example.test/g-fitness.png', accent: 'violet' },
     { id: 'g2', name: 'Ana gymanigga', slug: 'ferrer-gym', status: 'active', plan: 'trial', paid_until: iso(-5).slice(0, 10), lock_reason: null, members: 1,
       staff: 1, created_at: iso(20), last_activity: iso(5), owners: 1, onboarded: true, plan_name: 'Free trial', price_monthly: '0',
-      days_left: 5, max_members: 50, paid_total: '0' },
+      days_left: 5, max_members: 50, paid_total: '0', logo_url: null, accent: 'rose' },
     { id: 'g3', name: 'Harbour Strength', slug: 'harbour', status: 'active', plan: 'starter', paid_until: iso(9).slice(0, 10), lock_reason: 'overdue', members: 38,
       staff: 2, created_at: iso(90), last_activity: iso(2), owners: 1, onboarded: true, plan_name: 'Starter', price_monthly: '999',
       days_left: -9, max_members: 100, paid_total: '2997' },
@@ -58,6 +58,9 @@ async (page) => {
         message: null, status: 'pending', reason: null, gym_id: null, created_at: iso(0) }],
   };
 
+  // A real picture for G Fitness's logo, so <img> loads rather than falling back.
+  const LOGO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await page.route('https://logos.example.test/**', (r) => r.fulfill({ status: 200, contentType: 'image/png', body: LOGO }));
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -82,6 +85,7 @@ async (page) => {
   await page.waitForTimeout(700);
   let t = await text();
   out.push('lands on Overview: ' + (/\/overview$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('the Core Fitness logo in the sidebar: ' + ((await page.locator('.side img[alt="Core Fitness"]').count()) === 1 ? 'shown' : 'MISSING'));
   out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
   out.push('applications badge: ' + ((await page.getByLabel('2 waiting').count()) === 1 ? '2' : 'MISSING'));
   out.push('the figures: ' + (/Gyms live 2/i.test(t) && /181/.test(t) && /₱2,998/.test(t) && /1,420/.test(t) ? 'shown' : 'MISSING'));
@@ -94,6 +98,8 @@ async (page) => {
   await page.getByRole('link', { name: 'Gyms', exact: true }).click();
   await page.waitForTimeout(900);
   t = await text();
+  out.push("a gym's own logo: " + ((await page.getByAltText('G Fitness logo').count()) === 1 ? 'shown' : 'MISSING'));
+  out.push('no logo: initials, never the Core Fitness mark: ' + ((await page.getByRole('img', { name: 'Ana gymanigga, no logo yet' }).count()) === 1 ? 'AG' : 'MISSING'));
   out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
