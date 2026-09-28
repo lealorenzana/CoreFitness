@@ -319,8 +319,27 @@ async (page) => {
       return (s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent') || s.backgroundImage !== 'none' || parseFloat(s.borderTopWidth) > 0;
     };
     for (const e of c.querySelectorAll('.page *')) { const r = e.getBoundingClientRect(); if (r.height > 0 && r.width > 0 && seen(e)) max = Math.max(max, r.bottom - top); }
-    return { gap: Math.round(inner - max), scrolls: c.scrollHeight > c.clientHeight + 1, wide: c.scrollWidth > c.clientWidth + 1 };
+    // A card whose content is taller than the card, with nothing to scroll it: text spilling over the next card.
+    const spill = [...c.querySelectorAll('.page .card')].filter((el) => {
+      const s = getComputedStyle(el);
+      return s.overflowY === 'visible' && el.scrollHeight > el.clientHeight + 2;
+    }).map((el) => (el.querySelector('.section-title, .name, h2')?.textContent ?? el.className).trim().slice(0, 30));
+    return { gap: Math.round(inner - max), scrolls: c.scrollHeight > c.clientHeight + 1, wide: c.scrollWidth > c.clientWidth + 1, spill };
   });
+  const SCREENS = [['Overview', '/overview'], ['Gyms', '/gyms'], ['Growth', '/growth'], ['Applications', '/applications'], ['Support', '/support'],
+    ['Announcements', '/announcements'], ['Capacity', '/capacity'], ['Plans', '/plans'], ['Money', '/money'], ['Platform', '/platform'], ["a gym's page", '/gyms/g1'],
+    ['Activity', '/activity'], ['Usage', '/usage'], ['Settings', '/settings']];
+  // The owner's own window (2026-09-28 screenshot): 1700 × 900. Nothing may spill over anything there.
+  await page.setViewportSize({ width: 1700, height: 900 });
+  const spills = [];
+  for (const [nav, path] of SCREENS) {
+    await page.goto('http://localhost:5175' + path, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1100);
+    const d = await dead();
+    if (d.spill.length) spills.push(nav + ': ' + d.spill.join(', '));
+  }
+  out.push('nothing spills at 1700×900: ' + (spills.length === 0 ? '14 screens' : 'MISSING ' + spills.join('; ')));
+  await page.setViewportSize({ width: 1600, height: 950 });
   const gaps = [];
   for (const [nav, path] of [['Overview', '/overview'], ['Gyms', '/gyms'], ['Growth', '/growth'], ['Applications', '/applications'], ['Support', '/support'],
     ['Announcements', '/announcements'], ['Capacity', '/capacity'], ['Plans', '/plans'], ['Money', '/money'], ['Platform', '/platform'], ["a gym's page", '/gyms/g1'],

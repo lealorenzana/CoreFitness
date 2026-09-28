@@ -128,8 +128,26 @@ async (page) => {
   out.push('capacity rows laid out: ' + (rowsLaid.length === 9 && rowsLaid.every((c) => c.under && c.h < 70 && c.barH <= 8) ? '9 rows, bars under their names' : 'MISSING ' + JSON.stringify(rowsLaid.slice(0, 3))));
   out.push('limits it cannot see, said so: ' + (/Egress/.test(t) && /Inactivity pause/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-capacity-140.png' });
-  const gap = await page.evaluate(() => { const c = document.querySelector('.content'); return c.scrollHeight - c.clientHeight; });
-  out.push('Capacity fits the window: ' + (gap <= 1 ? 'yes' : 'MISSING, scrolls ' + gap + 'px'));
+  // At the owner's 1700×900 window "Near a limit" once ran over "Largest files": no card overlaps another, none overflows.
+  await page.setViewportSize({ width: 1700, height: 900 });
+  await page.waitForTimeout(400);
+  const clash = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.cap .card')];
+    const r = cards.map((c) => c.getBoundingClientRect());
+    const name = (i) => (cards[i].querySelector('.section-title')?.textContent ?? '?').trim();
+    const bad = [];
+    for (let i = 0; i < r.length; i++) {
+      if (cards[i].scrollHeight > cards[i].clientHeight + 2 && getComputedStyle(cards[i]).overflowY === 'visible') bad.push(name(i) + ' overflows');
+      for (let j = i + 1; j < r.length; j++) {
+        const o = Math.min(r[i].right, r[j].right) - Math.max(r[i].left, r[j].left) > 1 && Math.min(r[i].bottom, r[j].bottom) - Math.max(r[i].top, r[j].top) > 1;
+        if (o) bad.push(name(i) + ' overlaps ' + name(j));
+      }
+    }
+    return bad;
+  });
+  out.push('Capacity at 1700×900, nothing overlaps: ' + (clash.length === 0 ? 'yes' : 'MISSING ' + clash.join('; ')));
+  await page.screenshot({ path: 'shots/platform-capacity-1700.png' });
+  await page.setViewportSize({ width: 1600, height: 1000 });
 
   // ---- Activity -----------------------------------------------------------------------------
   await page.getByRole('link', { name: 'Activity' }).click();

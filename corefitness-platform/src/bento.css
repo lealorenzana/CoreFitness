@@ -103,7 +103,9 @@
 .ov-event-text small { display: block; font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
 
 /* ---- a stretched card is a column; its empty message sits in the middle ---- */
-.page > .card:last-child, .grid-2 > .card, .grid-3 > .card, .split-main, .split-side > .card { display: flex; flex-direction: column; min-height: 0; }
+.page > .card:last-child, .grid-2 > .card, .grid-3 > .card, .split-main, .split-side > .card { display: flex; flex-direction: column; }
+/* A page's last card grows with the window but never shrinks below its content (min-height: auto, the
+   default): with min-height 0 it could, and Growth's last card spilled its rows over the page's end. */
 .page > .card:last-child > .empty, .grid-2 > .card > .empty, .grid-3 > .card > .empty, .split-main > .empty {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; margin: 0; }
 .empty-icon { color: var(--accent-text); opacity: 0.8; }
@@ -174,12 +176,10 @@
 @media (max-width: 1100px) { .pf-7, .pf-5 { grid-column: 1 / -1; } }
 
 /* ---- Capacity as a bento (0140) ---- */
-/* One screen, like the Overview: the rows share the window and lists scroll inside their cards. */
-.page:has(> .cap) { min-height: 0; }
-.page > .cap { min-height: 0; }
-.cap > *, .cap-col > .card { min-height: 0; }
+/* Rows take the height their content needs; the last one stretches to the bottom of a tall window.
+   (Squeezing them into one screen made "Near a limit" spill over the card below on a 900px window.) */
 .cap { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px;
-  grid-template-rows: auto minmax(300px, 1fr) minmax(320px, 1fr); }
+  grid-template-rows: auto auto minmax(300px, 1fr); }
 .cap > .card, .cap-col > .card { margin: 0; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .cap-meter { grid-column: span 4; gap: 10px; }
 .cap-8 { grid-column: span 8; } .cap-4 { grid-column: span 4; } .cap-3 { grid-column: span 3; } .cap-12 { grid-column: 1 / -1; }
