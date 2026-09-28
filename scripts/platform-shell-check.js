@@ -219,7 +219,7 @@ async (page) => {
   await page.getByRole('button', { name: /Receipts will not print/ }).click();
   await page.waitForTimeout(700);
   out.push('the thread: ' + (/The print button does nothing/.test(await text()) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Reply').fill('Try Chrome — we are fixing Edge.');
+  await page.getByLabel('Reply', { exact: true }).fill('Try Chrome — we are fixing Edge.');
   await page.getByRole('button', { name: 'Reply', exact: true }).click();
   await page.waitForTimeout(900);
   t = await text();
@@ -242,7 +242,7 @@ async (page) => {
   // 0138: billing rules, receipts, capacity.
   out.push('the platform sweeps reminders on load: ' + (SWEEPS.n >= 1 ? 'yes' : 'MISSING'));
   await page.getByRole('link', { name: 'Money' }).click();
-  await page.getByText('Billing rules and receipts').waitFor({ timeout: 10000 });
+  await page.getByText('Change in Settings').waitFor({ timeout: 10000 });
   t = await text();
   out.push("Money uses the platform's grace period: " + (/read-only 10 days after its date/.test(t) && /read-only in 2 more/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: 'Receipt' }).click();
@@ -251,21 +251,15 @@ async (page) => {
   out.push('a printable receipt: ' + (/San Jose, Occidental Mindoro/.test(t) && /₱1,999\.00/.test(t) && /Received from G Fitness/.test(t) ? 'CF-2026-00007' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-receipt.png' });
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByLabel('Days before read-only').fill('14');
-  await page.getByRole('button', { name: 'Save billing rules' }).click();
-  await page.waitForTimeout(600);
-  out.push('billing rules save: ' + (BILLING.saved && BILLING.grace_days === 14 ? 'grace 14' : 'MISSING'));
+  // The rules are edited in Settings now (platform-insight-check saves them); Money says them and links there.
+  out.push('Money states the rules and sends you to Settings: ' + (/Read-only 10 days after the due date/.test(await text())
+    && (await page.getByRole('link', { name: 'Change in Settings' }).getAttribute('href')) === '/settings' ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-money.png', fullPage: true });
   await page.getByRole('link', { name: 'Capacity' }).click();
   await page.waitForTimeout(900);
   t = await text();
-  out.push('capacity against the free tier: ' + (/44\.0 MB/.test(t) && /850\.0 MB/.test(t) && /83% used/.test(t) && /Past 80%/.test(t) && /G Fitness/.test(t) ? 'shown, storage flagged' : 'MISSING'));
-  // The rows once collapsed into one line of text over fat bars (their CSS was lost): a bar sits under its text, rows stay rows.
-  const cap = await page.evaluate(() => [...document.querySelectorAll('.cap-row')].map((r) => {
-    const name = r.querySelector('.cap-name').getBoundingClientRect(), bar = r.querySelector('.cap-bar').getBoundingClientRect();
-    return { under: bar.top >= name.bottom - 1, h: r.getBoundingClientRect().height, barH: bar.height };
-  }));
-  out.push('capacity rows laid out: ' + (cap.length === 10 && cap.every((c) => c.under && c.h < 60 && c.barH <= 8) ? '10 rows, bars under their names' : 'MISSING ' + JSON.stringify(cap.slice(0, 3))));
+  // The rows' layout and the 0140 detail are platform-insight-check's; here, the three limits and the warning.
+  out.push('capacity against the free tier: ' + (/44\.0 MB/.test(t) && /850\.0 MB/.test(t) && /Past 80%/.test(t) ? 'shown, storage flagged' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-capacity.png' });
 
 
@@ -329,7 +323,8 @@ async (page) => {
   });
   const gaps = [];
   for (const [nav, path] of [['Overview', '/overview'], ['Gyms', '/gyms'], ['Growth', '/growth'], ['Applications', '/applications'], ['Support', '/support'],
-    ['Announcements', '/announcements'], ['Capacity', '/capacity'], ['Plans', '/plans'], ['Money', '/money'], ['Platform', '/platform'], ["a gym's page", '/gyms/g1']]) {
+    ['Announcements', '/announcements'], ['Capacity', '/capacity'], ['Plans', '/plans'], ['Money', '/money'], ['Platform', '/platform'], ["a gym's page", '/gyms/g1'],
+    ['Activity', '/activity'], ['Usage', '/usage'], ['Settings', '/settings']]) {
     await page.goto('http://localhost:5175' + path, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1300);
     const d = await dead();
@@ -338,7 +333,7 @@ async (page) => {
     }
     await page.screenshot({ path: 'shots/fill' + path.replace(/\//g, '-') + '.png' });
   }
-  out.push('no dead space on any screen: ' + (gaps.length === 0 ? '11 screens filled' : 'MISSING ' + gaps.join('; ')));
+  out.push('no dead space on any screen: ' + (gaps.length === 0 ? '14 screens filled' : 'MISSING ' + gaps.join('; ')));
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.evaluate(() => sessionStorage.setItem('out', '1'));

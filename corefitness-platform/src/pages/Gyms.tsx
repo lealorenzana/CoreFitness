@@ -139,6 +139,9 @@ export default function Gyms() {
           const on = t.f !== null && filter === t.f;
           return (
             <button key={t.label} type="button" className={`tile${t.act ? ' act' : ''}${on ? ' on' : ''}`}
+              data-tip={{ Gyms: 'Every gym on Core Fitness — click to show them all', Live: 'Open, set up, and not read-only',
+                'Setting up': 'No owner yet, or the owner has not finished /admin/setup', Members: 'Active members across every gym — click for Growth',
+                'Need you': 'Read-only, at risk of leaving, or due within 14 days — click to show only these' }[t.label]}
               onClick={() => (t.go ? navigate(t.go) : pick(on ? 'all' : t.f!))}>
               <span className="tile-icon"><Icon size={19} /></span>
               <span className="tile-text">

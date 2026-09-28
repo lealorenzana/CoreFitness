@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import InfoDot from '../components/InfoDot';
 import { Link } from 'react-router-dom';
 import { Building2, CheckCircle2, Inbox, LifeBuoy, MessageSquareReply, Send } from 'lucide-react';
 import Tiles from '../components/Tiles';
@@ -59,7 +60,7 @@ export default function Support() {
       {/* The tiles are the filter; a second row of buttons saying the same was clutter. */}
       <div className="grid-2" style={{ marginTop: 0, gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)' }}>
         <section className="card">
-          <h2 className="section-title"><LifeBuoy size={14} /> Tickets</h2>
+          <h2 className="section-title"><LifeBuoy size={14} /> Tickets <InfoDot tip="Opened by gym owners and front desks from their admin app's Support page. Replying notifies whoever opened it." /></h2>
           {shown.length === 0 && <p className="empty"><CheckCircle2 size={22} className="empty-icon" />{filter === 'waiting' ? 'Nothing waiting for you.' : 'None.'}</p>}
           {shown.map((t) => (
             <button key={t.id} type="button" className="linky" onClick={() => void show(t)}

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import InfoDot from '../components/InfoDot';
+import { Link } from 'react-router-dom';
 import { Download, Receipt as ReceiptIcon } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import ReceiptSheet from '../components/ReceiptSheet';
 import {
-  billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment, saveBillingSettings,
+  billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
 } from '../lib/platform';
 
@@ -108,7 +110,7 @@ export default function Money() {
       </div>
 
       <div className="card">
-        <div className="name">Due in the next 30 days</div>
+        <div className="name">Due in the next 30 days <InfoDot tip="Gyms whose paid-until date falls in the next 30 days, or has passed. Owners are reminded before; the grace period is in Settings." /></div>
         <div className="meta">
           A gym goes read-only {grace} day{grace === 1 ? '' : 's'} after its date, and its owners are reminded before. This is where you see it coming.
         </div>
@@ -143,7 +145,7 @@ export default function Money() {
       <div className="card">
         <div className="row">
           <span className="grow">
-            <span className="name">Every payment</span>
+            <span className="name">Every payment <InfoDot tip="What each gym paid Core Fitness. Each one has a numbered receipt the gym's owner can print from Your plan." /></span>
             <span className="meta">What each gym paid, what it covered, and how it arrived.</span>
           </span>
           <button className="btn ghost" disabled={!payments?.length} onClick={() => downloadCsv('core-fitness-payments', payments ?? [], [
@@ -185,58 +187,18 @@ export default function Money() {
         </div>
       </div>
 
-      {settings && <BillingSettingsCard initial={settings} onSaved={setSettings} />}
+      {settings && (
+        <div className="card">
+          <div className="row">
+            <span className="grow">
+              <span className="name">Billing rules</span>
+              <span className="meta">Read-only {settings.grace_days} day{settings.grace_days === 1 ? '' : 's'} after the due date · owners reminded {settings.reminder_days.join(', ')} day{settings.reminder_days.length === 1 && settings.reminder_days[0] === 1 ? '' : 's'} before · receipts from {settings.business_name}</span>
+            </span>
+            <Link to="/settings" className="btn ghost" style={{ textDecoration: 'none' }}>Change in Settings</Link>
+          </div>
+        </div>
+      )}
     </>
-  );
-}
-
-/**
- * The platform's billing rules (0138): how long after its date a gym keeps
- * working, which days its owners are reminded, and the details printed on every
- * receipt. One row in the database; the gyms' lock and banner read the same one.
- */
-function BillingSettingsCard({ initial, onSaved }: { initial: BillingSettings; onSaved: (b: BillingSettings) => void }) {
-  const [f, setF] = useState({ ...initial, reminders: initial.reminder_days.join(', ') });
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true); setMsg(null);
-    const b: BillingSettings = { grace_days: Number(f.grace_days), business_name: f.business_name,
-      reminder_days: f.reminders.split(/[ ,]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0),
-      business_address: f.business_address || null, business_email: f.business_email || null,
-      business_phone: f.business_phone || null, receipt_note: f.receipt_note || null };
-    try { await saveBillingSettings(b); onSaved(b); setMsg('Saved. Every gym\'s lock date follows it now.'); }
-    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save'); }
-    finally { setBusy(false); }
-  };
-  return (
-    <form className="card" onSubmit={save}>
-      <div className="name">Billing rules and receipts</div>
-      <div className="meta">A gym keeps working this many days after its paid-until date, then goes read-only. Nothing is ever deleted.</div>
-      <div className="fields">
-        <div><label htmlFor="bs-grace">Days before read-only</label>
-          <input id="bs-grace" type="number" min={0} max={60} required value={f.grace_days}
-            onChange={(e) => setF({ ...f, grace_days: Number(e.target.value) })} /></div>
-        <div><label htmlFor="bs-rem">Remind owners, days before</label>
-          <input id="bs-rem" value={f.reminders} placeholder="7, 3, 1" onChange={(e) => setF({ ...f, reminders: e.target.value })} /></div>
-        <div><label htmlFor="bs-name">Name on receipts</label>
-          <input id="bs-name" required value={f.business_name} onChange={(e) => setF({ ...f, business_name: e.target.value })} /></div>
-        <div><label htmlFor="bs-addr">Address on receipts</label>
-          <input id="bs-addr" value={f.business_address ?? ''} onChange={(e) => setF({ ...f, business_address: e.target.value })} /></div>
-        <div><label htmlFor="bs-email">Email on receipts</label>
-          <input id="bs-email" type="email" value={f.business_email ?? ''} onChange={(e) => setF({ ...f, business_email: e.target.value })} /></div>
-        <div><label htmlFor="bs-phone">Phone on receipts</label>
-          <input id="bs-phone" value={f.business_phone ?? ''} onChange={(e) => setF({ ...f, business_phone: e.target.value })} /></div>
-        <div style={{ gridColumn: '1 / -1' }}><label htmlFor="bs-note">Line at the bottom of receipts (optional)</label>
-          <input id="bs-note" value={f.receipt_note ?? ''} onChange={(e) => setF({ ...f, receipt_note: e.target.value })} /></div>
-      </div>
-      <p className="meta" style={{ marginTop: 10 }}>Owners are also told on the due date, the day after, and the day it goes read-only.</p>
-      <div className="row" style={{ marginTop: 12 }}>
-        <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save billing rules'}</button>
-        {msg && <span className="meta" style={{ marginTop: 0 }}>{msg}</span>}
-      </div>
-    </form>
   );
 }
 

@@ -107,3 +107,25 @@
 .spacer { flex: 1 1 0; min-width: 0; }
 /* Inside a popup the panel is already raised, so its figures sit one step higher. */
 .modal .gym-stat { background: var(--surface-high); border-color: var(--hairline); }
+
+/* ---- a link that looks like a ghost button (index.css styles only button.btn) ---- */
+a.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 15px;
+  border-radius: 10px; font-size: 13px; font-weight: 650; text-decoration: none; white-space: nowrap;
+  background: var(--warn); color: #111; border: 1px solid var(--warn); }
+a.btn.ghost { background: transparent; color: var(--accent-text); border-color: var(--hairline); }
+a.btn.ghost:hover { background: var(--accent-tint); border-color: #3B2566; color: #fff; }
+
+/* ---- tooltips (TooltipLayer) and the "?" beside a heading ---- */
+.tip { position: fixed; z-index: 120; max-width: 300px; padding: 8px 11px; border-radius: 10px; pointer-events: none;
+  background: #221D35; border: 1px solid #3B2566; color: var(--text); font-size: 12px; line-height: 1.45;
+  box-shadow: 0 14px 32px -10px rgba(0, 0, 0, 0.75); animation: tip-in 0.12s ease; white-space: pre-line; }
+.tip-top { transform: translate(-50%, -100%); }
+.tip-bottom { transform: translate(-50%, 0); }
+@keyframes tip-in { from { margin-top: 3px; } }
+.info-dot { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; margin-left: 2px;
+  border: 1px solid var(--hairline); color: var(--text-3); font-size: 10.5px; font-weight: 700; cursor: help;
+  text-transform: none; letter-spacing: 0; background: transparent; padding: 0; font-family: inherit; }
+.info-dot:hover, .info-dot:focus-visible { color: var(--accent-text); border-color: var(--accent); outline: none; }
+[data-tip] { cursor: help; }
+a[data-tip], button[data-tip], [role='button'][data-tip], .tile[data-tip] { cursor: pointer; }
+.tile.still[data-tip] { cursor: help; }

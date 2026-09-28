@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import InfoDot from '../components/InfoDot';
 import { Building2, EyeOff, History, Megaphone, Radio } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import {
@@ -50,7 +51,7 @@ export default function Announcements() {
       ]} />
       <div className="grid-2" style={{ marginTop: 0 }}>
         <section className="card">
-          <h2 className="section-title"><Megaphone size={14} /> Sent and live</h2>
+          <h2 className="section-title"><Megaphone size={14} /> Sent and live <InfoDot tip="A live announcement is a banner on every screen of the gyms' admin app, until its end date or until each person dismisses it." /></h2>
           {items.length === 0 && <p className="empty"><Megaphone size={22} className="empty-icon" />Nothing announced yet.</p>}
           {items.map((a) => (
             <div key={a.id} className="log" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -75,7 +76,7 @@ export default function Announcements() {
         </section>
 
         <form className="card" onSubmit={send}>
-          <h2 className="section-title"><Megaphone size={14} /> New announcement</h2>
+          <h2 className="section-title"><Megaphone size={14} /> New announcement <InfoDot tip="Owners and front desks see it; members never do. Warning is amber, info is violet." /></h2>
           <p className="meta" style={{ marginTop: -6 }}>Shown as a banner on every screen of the gyms' admin app. Owners and front desks see it; members never do.</p>
           <div className="fields">
             <div><label htmlFor="an-title">Title</label>

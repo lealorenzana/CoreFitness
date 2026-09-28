@@ -31,7 +31,7 @@ export default function Bell() {
   const total = items.reduce((n, i) => n + i.count, 0);
   return (
     <div ref={box} style={{ position: 'relative' }}>
-      <button className="btn ghost" aria-label={total ? `${total} things need you` : 'Nothing needs you'} onClick={() => setOpen((v) => !v)}
+      <button className="btn ghost" aria-label={total ? `${total} things need you` : 'Nothing needs you'} data-tip={total ? `${total} thing${total === 1 ? '' : 's'} need you — click to see` : 'Nothing needs you right now'} onClick={() => setOpen((v) => !v)}
         style={{ width: 40, padding: 0, position: 'relative' }}>
         <BellIcon size={17} />
         {total > 0 && <span className="count" style={{ position: 'absolute', top: -6, right: -6 }}>{total}</span>}

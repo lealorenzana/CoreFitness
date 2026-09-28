@@ -173,6 +173,117 @@
 .pf-12.notice { min-height: 0; }
 @media (max-width: 1100px) { .pf-7, .pf-5 { grid-column: 1 / -1; } }
 
+/* ---- Capacity as a bento (0140) ---- */
+/* One screen, like the Overview: the rows share the window and lists scroll inside their cards. */
+.page:has(> .cap) { min-height: 0; }
+.page > .cap { min-height: 0; }
+.cap > *, .cap-col > .card { min-height: 0; }
+.cap { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px;
+  grid-template-rows: auto minmax(300px, 1fr) minmax(320px, 1fr); }
+.cap > .card, .cap-col > .card { margin: 0; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.cap-meter { grid-column: span 4; gap: 10px; }
+.cap-8 { grid-column: span 8; } .cap-4 { grid-column: span 4; } .cap-3 { grid-column: span 3; } .cap-12 { grid-column: 1 / -1; }
+.cap-col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.cap-col > .side-fill { flex: 1; }
+@media (max-width: 1300px) { .cap { grid-template-rows: none; } .cap-3 { grid-column: span 6; } .cap-8, .cap-4 { grid-column: 1 / -1; } }
+@media (max-width: 800px) { .cap-meter, .cap-3 { grid-column: 1 / -1; } }
+.cap-meter .section-title { margin: 0; }
+.cap-big { display: flex; align-items: baseline; gap: 8px; }
+.cap-big b { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; }
+.cap-big span { font-size: 12.5px; color: var(--text-3); }
+.cap-meter .meter { height: 8px; margin: 0; }
+.cap-pace { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-2); }
+.cap-pace .warn { color: var(--warn); }
+.cap-sub { display: block; font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.cap .cap-row { grid-template-columns: 20px minmax(0, 1fr) auto; }
+.cap .ov-scroll { flex: 1; }
+.cap-limits { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; }
+.cap-limits li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); font-size: 12.5px; }
+.cap-limits li:last-child { border-bottom: 0; }
+.cap-limits b { font-weight: 600; }
+.cap-limits span { color: var(--text-2); }
+.cap-tips { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.cap-tips b { color: var(--text); }
+.cap-line-st { fill: none; stroke: #F59E0B; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
+.cap-hit { position: absolute; inset: 0; display: flex; }
+.cap-hit span { flex: 1; }
+.cap-hit span:hover { background: rgba(167, 139, 250, 0.08); }
+.cap .ov-axis span:nth-child(2) { text-align: center; }
+.cap .ov-axis span:first-child { text-align: left; }
+.cap .ov-axis span:last-child { text-align: right; }
+
+/* ---- Activity (0140) ---- */
+.act-filters { flex-wrap: wrap; }
+.act-card { display: flex; flex-direction: column; min-height: 0; }
+.act-list { flex: 1; }
+.act-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
+.act-row:last-child { border-bottom: 0; }
+.act-kind { justify-self: start; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 4px 9px; border-radius: 999px;
+  background: var(--surface-raised); border: 1px solid var(--hairline); color: var(--text-2); white-space: nowrap; }
+.act-kind.k-gym { background: var(--accent-tint); border-color: #3B2566; color: var(--accent-text); }
+.act-kind.k-billing, .act-kind.k-plan { background: var(--warn-tint); border-color: #5C3D0A; color: var(--warn); }
+.act-text { min-width: 0; }
+.act-summary { display: block; font-size: 13.5px; color: var(--text); }
+.act-summary em { color: var(--text-2); font-style: normal; }
+.act-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: var(--text-3); }
+.act-meta a, .act-meta span { display: inline-flex; align-items: center; gap: 5px; color: inherit; text-decoration: none; }
+.act-meta a:hover { color: var(--accent-text); }
+.act-row time { font-size: 12px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---- Usage: every gym, every feature (0140) ---- */
+.use-card { display: flex; flex-direction: column; min-height: 0; }
+.use-wrap { flex: 1; overflow: auto; margin: 0 -4px; }
+.use-table { width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.use-table th { font-size: 11px; font-weight: 700; color: var(--text-3); text-align: center; padding: 0 2px 6px; white-space: nowrap; }
+.use-table th button { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.use-table th button:hover, .use-table th button.on { color: var(--accent-text); background: var(--accent-tint); }
+.use-table td { text-align: center; padding: 9px 6px; border-radius: 8px; background: var(--surface-raised); color: var(--text); font-weight: 600; min-width: 64px; }
+.use-table td.zero { color: var(--text-3); font-weight: 400; background: transparent; border: 1px dashed var(--border-soft); }
+.use-table .use-gym { text-align: left; min-width: 200px; background: transparent; }
+.use-table td.use-gym a { display: flex; align-items: center; gap: 9px; color: var(--text); text-decoration: none; font-weight: 600; }
+.use-table td.use-gym a:hover span { color: var(--accent-text); }
+.use-breadth { display: flex; align-items: center; gap: 8px; min-width: 120px !important; background: transparent !important; }
+.use-breadth .meter { flex: 1; margin: 0; }
+.use-foot { margin: 12px 0 0; color: var(--warn); }
+
+/* ---- Settings ---- */
+.set { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; grid-auto-rows: minmax(0, 1fr); }
+.set > .card { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+.set-6 { grid-column: span 6; }
+@media (max-width: 1100px) { .set-6 { grid-column: 1 / -1; } .set { grid-auto-rows: auto; } }
+.set-actions { margin-top: auto; padding-top: 14px; gap: 10px; }
+.set-preview { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: #FFFFFF; color: #111827; }
+.set-preview b { display: block; font-size: 16px; }
+.set-preview span { display: block; font-size: 12px; color: #4B5563; margin-top: 2px; }
+.set-timeline { list-style: none; margin: 16px 0 0; padding: 0 0 0 14px; border-left: 2px solid var(--hairline); display: flex; flex-direction: column; gap: 10px; }
+.set-timeline li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.set-timeline li svg { color: var(--accent-text); }
+.set-timeline li b { color: var(--text); font-variant-numeric: tabular-nums; }
+.set-timeline li.warn, .set-timeline li.warn svg { color: var(--warn); }
+.set-admins { flex: 1; min-height: 0; overflow-y: auto; }
+.set-admin { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.set-admin:last-child { border-bottom: 0; }
+.set-facts { margin-top: 0; }
+.set-keys { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.set-keys li { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.set-keys span { margin-left: 8px; }
+.set-keys kbd { font: 600 11px/1 ui-monospace, monospace; padding: 5px 7px; border-radius: 6px; background: var(--surface-high); border: 1px solid var(--hairline); color: var(--text); }
+
+/* ---- a gym's export (0140) ---- */
+.exp-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.exp-cols > div { padding: 12px 14px; border-radius: 12px; background: var(--surface-high); border: 1px solid var(--hairline); font-size: 12.5px; }
+.exp-cols b { display: block; margin-bottom: 4px; }
+.exp-cols p { margin: 0; color: var(--text-2); line-height: 1.5; }
+.exp-warn { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 0; font-size: 12.5px; color: var(--warn); }
+.exp-warn svg { flex: none; margin-top: 2px; }
+.exp-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.exp-table { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--hairline);
+  background: var(--surface-high); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
+.exp-table:hover:not(:disabled) { border-color: var(--accent); }
+.exp-table:disabled { opacity: 0.45; cursor: default; }
+.exp-table span { flex: 1; }
+.exp-table svg { color: var(--accent-text); }
+
 /* ---- capacity rows: rank, name, size and share, then a thin bar under them ----
    (These were appended once and lost when the plans block was rewritten from its
    heading to the end of the file — add new blocks above this one, not after it.) */

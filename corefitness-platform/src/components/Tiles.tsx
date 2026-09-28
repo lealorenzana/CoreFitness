@@ -9,6 +9,8 @@ export interface Tile {
   /** A figure you can act on is a button; one you can only read is not. */
   onClick?: () => void;
   on?: boolean;
+  /** What the figure counts, shown on hover and focus. Defaults to the label, whole. */
+  tip?: string;
 }
 
 /** The admin dashboard's stat tiles — the bento row every screen opens with. */
@@ -28,9 +30,10 @@ export default function Tiles({ items }: { items: Tile[] }) {
           </>
         );
         const cls = `tile${t.act ? ' act' : ''}${t.on ? ' on' : ''}${t.onClick ? '' : ' still'}`;
+        const tip = t.tip ? `${t.label}: ${t.tip}` : t.label;
         return t.onClick
-          ? <button key={t.label} type="button" className={cls} onClick={t.onClick}>{body}</button>
-          : <div key={t.label} className={cls}>{body}</div>;
+          ? <button key={t.label} type="button" className={cls} onClick={t.onClick} data-tip={tip}>{body}</button>
+          : <div key={t.label} className={cls} data-tip={tip} tabIndex={0}>{body}</div>;
       })}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import InfoDot from '../components/InfoDot';
 import { Building2, Eye, Layers, Plus, Wallet } from 'lucide-react';
 import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
@@ -281,7 +282,7 @@ export default function Plans() {
             {plan.max_photos !== undefined && <span className="chip">{plan.max_photos === null ? 'Any number of photos' : `Up to ${plan.max_photos} photos`}</span>}
           </div>
           <div className="plan-unlocks">
-            <span className="section-title" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length}</span>
+            <span className="section-title" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length} <InfoDot tip="Tick what this plan includes. The database enforces it: a gym on this plan loses what is unticked, and the website follows." /></span>
             <div className="ticks">
               {features.map((f) => (
                 <label className="tick" key={f.key} title={f.description}>

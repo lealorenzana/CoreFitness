@@ -55,6 +55,14 @@ export default function Growth() {
   ] : [];
   const widest = Math.max(1, ...stages.map((s) => s.n));
 
+  const GROWTH_TIPS: Record<string, string> = {
+    MRR: 'Monthly recurring revenue: the monthly price of every gym whose paid time covers this month.',
+    ARR: 'Annual run rate — this month\'s MRR times twelve. A pace, not money in the bank.',
+    'Collected this month': 'Payments from gyms actually recorded this month, whatever period they cover.',
+    Gyms: 'Gyms on the service this month; suspended ones are counted as lost.',
+    Members: 'Active members across every gym at the end of the month — a floor, not a peak.',
+    'Gyms at risk': 'Scored from quiet check-ins, lapsed payments, trials ending unpaid and owners not signing in (0136).',
+  };
   const kpis = [
     { icon: Repeat, label: 'MRR', value: peso(mrr), foot: mrrChange === null ? 'monthly recurring revenue' : `${mrrChange >= 0 ? '+' : ''}${mrrChange}% vs last month` },
     { icon: TrendingUp, label: 'ARR', value: peso(mrr * 12), foot: 'MRR × 12' },
@@ -70,7 +78,7 @@ export default function Growth() {
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className={`kpi${k.act ? ' act' : ''}`}>
+            <div key={k.label} className={`kpi${k.act ? ' act' : ''}`} tabIndex={0} data-tip={GROWTH_TIPS[k.label]}>
               <span className="kpi-icon"><Icon size={18} /></span>
               <span className="kpi-label">{k.label}</span>
               <span className="kpi-value">{k.value}</span>

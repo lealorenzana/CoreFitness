@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import InfoDot from '../components/InfoDot';
+import { Link } from 'react-router-dom';
 import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import {
-  addAdmin, demoSummary, enterSupport, explain, getOverview, lastBackup, leaveSupport,
-  listAdmins, listCrashes, listEmails, listEvents, listSupportGrants, removeAdmin,
+  demoSummary, enterSupport, explain, getOverview, lastBackup, leaveSupport,
+  listAdmins, listCrashes, listEmails, listEvents, listSupportGrants,
   removeDemoData, resolveCrashes,
   type Backup, type CrashReport, type DemoSummary, type Overview, type PlatformAdmin,
   type PlatformEvent, type SentEmail, type SupportGrant,
@@ -32,7 +34,6 @@ export default function Platform() {
   const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [addingAdmin, setAddingAdmin] = useState('');
   const [backup, setBackup] = useState<Backup | null | undefined>(undefined);
   const [grants, setGrants] = useState<SupportGrant[]>([]);
   const [emails, setEmails] = useState<SentEmail[]>([]);
@@ -98,16 +99,6 @@ export default function Platform() {
     }
   };
 
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addAdmin(addingAdmin.trim());
-      setAddingAdmin('');
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add them');
-    }
-  };
 
   return (
     <>
@@ -255,7 +246,7 @@ export default function Platform() {
         <div className="row">
           <span className="grow">
             <span className="section-title" style={{ marginBottom: 4 }}><Bug size={14} />
-              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'}
+              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'} <InfoDot tip="Filed by the admin and member apps when a screen breaks. Grouped by message — marking one handled clears every copy." />
             </span>
             <span className="meta">Filed automatically by both apps when a screen breaks (0095).</span>
           </span>
@@ -292,7 +283,7 @@ export default function Platform() {
       <div className="pf-5 pf-col">
       {backup !== undefined && (
         <div className={'card pf-card' + (backup === null || backup.days_ago > 8 ? ' notice' : '')}>
-          <div className="section-title" style={{ marginBottom: 4 }}><DatabaseBackup size={14} /> Backups</div>
+          <div className="section-title" style={{ marginBottom: 4 }}><DatabaseBackup size={14} /> Backups <InfoDot tip="The weekly encrypted backup on GitHub Actions reports itself here. More than eight days of silence means a run did not happen." /></div>
           <div className="name">
             {backup === null ? 'No backup has ever reported itself'
               : backup.days_ago <= 1 ? 'The database was backed up today'
@@ -312,7 +303,7 @@ export default function Platform() {
       )}
 
       <div className="card pf-card side-fill">
-        <div className="section-title" style={{ marginBottom: 4 }}><GitBranch size={14} /> Migrations</div>
+        <div className="section-title" style={{ marginBottom: 4 }}><GitBranch size={14} /> Migrations <InfoDot tip="Pasted by hand, one at a time, in the Supabase SQL editor — never db push." /></div>
         <div className="meta">
           Which are live is asked of the database, never assumed:
           <code style={{ marginLeft: 6 }}>python scripts/probe-migrations.py</code>. Paste waiting ones
@@ -323,7 +314,7 @@ export default function Platform() {
       </div>
 
       <div className="card pf-card pf-7">
-        <div className="section-title" style={{ marginBottom: 4 }}><History size={14} /> What the platform did</div>
+        <div className="section-title" style={{ marginBottom: 4 }}><History size={14} /> What the platform did <InfoDot tip="The latest events. Activity has the whole log, with search and filters." /></div>
         <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
         <div className="ov-scroll" style={{ marginTop: 10 }}>
           {events === null && <p className="empty">Loading…</p>}
@@ -341,7 +332,7 @@ export default function Platform() {
       {/* Always drawn once loaded: it is half of its row, and an empty list is itself worth saying. */}
       {admins !== null && (
         <div className="card pf-card pf-5">
-          <div className="section-title" style={{ marginBottom: 4 }}><ShieldCheck size={14} /> Who can run the platform</div>
+          <div className="section-title" style={{ marginBottom: 4 }}><ShieldCheck size={14} /> Who can run the platform <InfoDot tip="Anyone here can let a gym in, suspend one and change what the service sells." /></div>
           <div className="meta">
             Anyone here can let a gym in, suspend one, and change what the service sells. The last one
             cannot be removed — there is no way back in if nobody holds the keys.
@@ -356,21 +347,13 @@ export default function Platform() {
                   {a.email && ` · ${a.email}`}
                   {a.is_me && ' · you'}
                 </span>
-                {!a.is_me && admins.length > 1 && (
-                  <button className="btn ghost" onClick={() => void (async () => {
-                    try { await removeAdmin(a.user_id); await load(); }
-                    catch (e) { setError(e instanceof Error ? e.message : 'Could not remove them'); }
-                  })()}>Remove</button>
-                )}
+
               </div>
             ))}
           </div>
-          <form className="row" style={{ marginTop: 'auto', paddingTop: 12 }} onSubmit={add}>
-            <input className="grow" type="email" required value={addingAdmin}
-              placeholder="their email — they need a Core Fitness account already"
-              onChange={(e) => setAddingAdmin(e.target.value)} />
-            <button className="btn" type="submit">Add</button>
-          </form>
+          <div className="row" style={{ marginTop: 'auto', paddingTop: 12 }}>
+            <Link to="/settings" className="btn ghost" style={{ textDecoration: 'none' }}>Add or remove in Settings</Link>
+          </div>
         </div>
       )}
 

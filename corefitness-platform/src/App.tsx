@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, Settings as SettingsIcon, TrendingUp, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -18,6 +18,10 @@ import Bell from './components/Bell';
 import Capacity from './pages/Capacity';
 import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
+import TooltipLayer from './components/TooltipLayer';
+import ActivityPage from './pages/Activity';
+import Usage from './pages/Usage';
+import Settings from './pages/Settings';
 
 /**
  * Core Fitness, the service — the platform owner's own app.
@@ -35,18 +39,21 @@ import ErrorBoundary from './components/ErrorBoundary';
  */
 type Gate = 'checking' | 'in' | 'out';
 
-interface Page { path: string; label: string; icon: LucideIcon; title: string; lede: string }
+interface Page { path: string; label: string; icon: LucideIcon; title: string; lede: string; group: 'The service' | 'Talk to gyms' | 'Run it' }
 const PAGES: Page[] = [
-  { path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance — and what needs you.' },
-  { path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
-  { path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
-  { path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
-  { path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
-  { path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
-  { path: '/capacity', label: 'Capacity', icon: HardDrive, title: 'Capacity', lede: 'How close the service is to the free tier — sizes only, never a gym\'s rows.' },
-  { path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
-  { path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
-  { path: '/platform', label: 'Platform', icon: Activity, title: 'Platform', lede: 'Health, crashes, backups, admins and support access.' },
+  { group: 'The service', path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance — and what needs you.' },
+  { group: 'The service', path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
+  { group: 'The service', path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
+  { group: 'The service', path: '/usage', label: 'Usage', icon: Grid3x3, title: 'Usage', lede: 'Every gym against every feature — who uses what, and what nobody has found.' },
+  { group: 'Talk to gyms', path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
+  { group: 'Talk to gyms', path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
+  { group: 'Talk to gyms', path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
+  { group: 'Run it', path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
+  { group: 'Run it', path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
+  { group: 'Run it', path: '/capacity', label: 'Capacity', icon: HardDrive, title: 'Capacity', lede: 'How close the service is to the free tier, how fast, and where the space goes.' },
+  { group: 'Run it', path: '/activity', label: 'Activity', icon: History, title: 'Activity', lede: 'Everything the platform did — searchable, by gym, action and day.' },
+  { group: 'Run it', path: '/platform', label: 'Platform', icon: Activity, title: 'Platform', lede: 'Health, crashes, backups and support access.' },
+  { group: 'Run it', path: '/settings', label: 'Settings', icon: SettingsIcon, title: 'Settings', lede: 'Receipts, billing rules and who can run the platform.' },
 ];
 
 export default function App() {
@@ -110,17 +117,19 @@ function Shell() {
           </span>
         </div>
 
-        <div className="nav-label">The service</div>
         <nav className="nav">
-          {PAGES.map((p) => {
+          {PAGES.map((p, i) => {
             const Icon = p.icon;
             return (
-              <NavLink key={p.path} to={p.path} className={({ isActive }) => (isActive ? 'on' : '')}>
+              <div key={p.path} style={{ display: 'contents' }}>
+              {(i === 0 || PAGES[i - 1].group !== p.group) && <div className="nav-label">{p.group}</div>}
+              <NavLink to={p.path} className={({ isActive }) => (isActive ? 'on' : '')} data-tip={p.lede}>
                 <Icon size={17} />
                 <span>{p.label}</span>
                 {p.path === '/applications' && waiting > 0 && <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span>}
                 {p.path === '/support' && supportWaiting > 0 && <span className="count" aria-label={`${supportWaiting} support waiting`}>{supportWaiting}</span>}
               </NavLink>
+              </div>
             );
           })}
         </nav>
@@ -145,11 +154,12 @@ function Shell() {
             <h1>{page.title}</h1>
             <p className="lede">{page.lede}</p>
           </div>
-          <button type="button" className="find" style={{ marginLeft: 'auto' }} onClick={() => window.dispatchEvent(new Event('platform:search'))}>
+          <button type="button" className="find" style={{ marginLeft: 'auto' }} data-tip="Jump to any gym, support ticket or screen" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
             <Search size={15} /> <span>Find anything</span> <kbd>Ctrl K</kbd>
           </button>
           <span><Bell /></span>
           <CommandPalette pages={PAGES} />
+          <TooltipLayer />
           <span className="today" style={{ marginLeft: 0 }}>
             <span className="local-badge">This computer only</span>
             <span style={{ display: 'block', marginTop: 6 }}>{today}</span>
@@ -170,6 +180,9 @@ function Shell() {
                 <Route path="/support" element={<Support />} />
                 <Route path="/announcements" element={<Announcements />} />
                 <Route path="/capacity" element={<Capacity />} />
+                <Route path="/activity" element={<ActivityPage />} />
+                <Route path="/usage" element={<Usage />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/platform" element={<Platform />} />
                 <Route path="*" element={<Navigate to="/overview" replace />} />
               </Routes>

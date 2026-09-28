@@ -92,6 +92,14 @@ export default function Overview() {
   const biggest = [...gyms].sort((a, b) => b.members - a.members).slice(0, 5);
   const mostMembers = Math.max(1, ...biggest.map((g) => g.members));
 
+  const OV_TIPS: Record<string, string> = {
+    'Gyms live': 'Gyms open for business: not suspended, not read-only. Click for every gym.',
+    Members: 'Active members across every gym. Coaches and desk staff are counted separately.',
+    'Revenue this month': 'What gyms paid Core Fitness this Manila month. Click for Money.',
+    'Check-ins, 30 days': 'Visits recorded at every gym\'s desk or kiosk in the last 30 days.',
+    Applications: 'Gyms that applied on the website and are waiting for your answer.',
+    'Overdue or locked': 'Gyms past their paid-until date, or suspended by you. Click to record a payment.',
+  };
   const kpis = [
     { icon: Building2, label: 'Gyms live', value: String(o.gyms_live), foot: `${o.gyms} in all${o.new_gyms_30d ? ` · ${o.new_gyms_30d} new this month` : ''}`, to: '/gyms' },
     { icon: Users, label: 'Members', value: o.members.toLocaleString('en-PH'), foot: `${o.trainers} coaches · ${o.staff} on desks`, to: '/gyms' },
@@ -106,7 +114,7 @@ export default function Overview() {
       {kpis.map((k) => {
         const Icon = k.icon;
         return (
-          <Link key={k.label} to={k.to} className={`kpi ov-kpi${k.act ? ' act' : ''}`}>
+          <Link key={k.label} to={k.to} className={`kpi ov-kpi${k.act ? ' act' : ''}`} data-tip={OV_TIPS[k.label]}>
             <span className="kpi-icon"><Icon size={18} /></span>
             <span className="kpi-label">{k.label}</span>
             <span className="kpi-value">{k.value}</span>
