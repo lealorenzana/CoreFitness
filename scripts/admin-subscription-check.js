@@ -28,6 +28,8 @@ async (page) => {
   const g = { gym_id: 'gym-a', gym_name: 'Ana Gymanigga', slug: 'ana-gym', short_name: 'anafitness', accent: 'violet' };
   const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
   const SWEEPS = { n: 0 };
+  // Flipped halfway: the same gym, never paid, five days before its free trial ends (0139).
+  const STATE = { trial: false };
   const PAYMENTS = [{ id: 'gp1', receipt_no: 'CF-2026-00012', amount: '999', paid_on: ymd(32), covers_from: ymd(32), covers_until: ymd(2), method: 'GCash', plan_name: 'Starter' }];
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
@@ -47,9 +49,9 @@ async (page) => {
         logo_url: null, accent: g.accent, accent_action: null, tagline: null, points_name: 'Points',
         points_name_short: 'points', welcome_message: null, vocabulary: {}, join_policy: 'open', join_code: null, modules: {} }]);
       if (fn === 'my_gym_billing') return json([{ plan_key: 'starter', plan_name: 'Starter', blurb: null, price_monthly: '999', price_yearly: null,
-        paid_until: ymd(2), days_left: -2, lock_reason: null, max_members: 100, members: 38, max_staff: 3, staff: 2, last_paid_on: ymd(32), last_amount: '999' }]);
-      if (fn === 'my_gym_subscription') return json([{ plan_name: 'Starter', price_monthly: '999', paid_until: ymd(2), days_left: -2, grace_days: 10,
-        read_only_on: ymd(-9), lock_reason: null, max_members: 100, members: 38, max_staff: 3, staff: 2 }]);
+        paid_until: STATE.trial ? ymd(-5) : ymd(2), days_left: STATE.trial ? 5 : -2, lock_reason: null, max_members: 100, members: 38, max_staff: 3, staff: 2, last_paid_on: ymd(32), last_amount: '999' }]);
+      if (fn === 'my_gym_subscription') return json([{ plan_name: 'Starter', price_monthly: '999', paid_until: STATE.trial ? ymd(-5) : ymd(2), days_left: STATE.trial ? 5 : -2, grace_days: 10,
+        read_only_on: STATE.trial ? ymd(-16) : ymd(-9), lock_reason: null, max_members: 100, members: 38, max_staff: 3, staff: 2, on_trial: STATE.trial }]);
       if (fn === 'my_gym_payments') return json(PAYMENTS);
       if (fn === 'billing_reminders_sweep') { SWEEPS.n++; return json(0); }
       if (fn === 'gym_payment_receipt') return json([{ ...PAYMENTS[0], reference: 'GC-8812', gym_name: g.gym_name, gym_address: 'Brgy Bunot',
@@ -94,5 +96,12 @@ async (page) => {
   const hidden = await page.evaluate(() => document.body.classList.contains('receipt-open'));
   out.push('printing hides the dashboard: ' + (hidden ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-receipt.png' });
+
+  STATE.trial = true;
+  await page.goto('http://localhost:5174/subscription', { waitUntil: 'domcontentloaded' });
+  await page.getByText('Free trial until').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(400);
+  t = await text();
+  out.push('a trial gym is told it is a trial: ' + (/Your free trial ends in 5 days/.test(t) && !/subscription runs out/.test(t) && /5 days left/.test(t) ? 'banner and page' : 'MISSING'));
   return out.join('\n');
 }

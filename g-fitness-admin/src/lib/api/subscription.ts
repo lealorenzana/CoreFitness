@@ -69,8 +69,14 @@ export function headroom(b: GymBilling | null): { used: number; cap: number; lef
  * nothing at all. A banner that is always there is furniture, and furniture
  * does not get read on the day it matters.
  */
-export function subscriptionWarning(b: GymBilling | null, graceDays = 7): { tone: 'warn' | 'info'; text: string } | null {
+export function subscriptionWarning(b: GymBilling | null, graceDays = 7, onTrial = false): { tone: 'warn' | 'info'; text: string } | null {
   if (!b) return null;
+  // 0139: a gym that has never paid is on its free trial, and is told so in those words.
+  if (onTrial && b.lock_reason === null && b.days_left !== null) {
+    const d = Math.abs(b.days_left), s = d === 1 ? '' : 's';
+    if (b.days_left < 0) return { tone: 'warn', text: `Your free trial ended ${d} day${s} ago. The gym goes read-only ${graceDays + 1 + b.days_left} day${graceDays + 1 + b.days_left === 1 ? '' : 's'} from now unless it moves to a paid plan.` };
+    if (b.days_left <= 7) return { tone: 'info', text: `Your free trial ends ${b.days_left === 0 ? 'today' : `in ${d} day${s}`}. Pay Core Fitness for a plan to keep everything running.` };
+  }
 
   if (b.lock_reason === 'suspended') {
     return { tone: 'warn', text: 'Core Fitness has suspended this gym, so the system is read-only. Contact us to sort it out.' };
@@ -111,6 +117,8 @@ export interface GymSubscription {
   members: number;
   max_staff: number | null;
   staff: number;
+  /** Never paid, on a plan with a free period (0139). Absent before 0139. */
+  on_trial?: boolean;
 }
 export interface GymReceiptRow {
   id: string; receipt_no: string; amount: string; paid_on: string; covers_from: string | null;

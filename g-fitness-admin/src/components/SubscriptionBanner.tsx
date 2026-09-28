@@ -25,7 +25,7 @@ export default function SubscriptionBanner() {
       sweepBillingReminders();
       const [billing, sub] = await Promise.all([getGymBilling(), getSubscription()]);
       // 0138 made the grace period the platform's setting; before it, seven.
-      if (alive) setWarning(subscriptionWarning(billing, sub?.grace_days ?? 7));
+      if (alive) setWarning(subscriptionWarning(billing, sub?.grace_days ?? 7, sub?.on_trial ?? false));
     })();
     return () => { alive = false; };
   }, []);

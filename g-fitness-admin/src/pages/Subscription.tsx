@@ -42,7 +42,7 @@ export default function Subscription() {
   const status = sub.lock_reason === 'overdue' ? 'Read-only until it is paid'
     : sub.lock_reason ? 'Read-only'
     : sub.days_left === null ? 'No paid-until date'
-    : sub.days_left < 0 ? `${-sub.days_left} day${sub.days_left === -1 ? '' : 's'} overdue`
+    : sub.days_left < 0 ? (sub.on_trial ? `Trial ended ${-sub.days_left} day${sub.days_left === -1 ? '' : 's'} ago` : `${-sub.days_left} day${sub.days_left === -1 ? '' : 's'} overdue`)
     : sub.days_left === 0 ? 'Runs out today' : `${sub.days_left} day${sub.days_left === 1 ? '' : 's'} left`;
   const meter = (label: string, used: number, cap: number | null) => (
     <div>
@@ -71,7 +71,7 @@ export default function Subscription() {
           <p className="text-xs mt-1" style={{ color: MUTED }}>{sub.price_monthly !== null ? `${peso(sub.price_monthly)} a month` : 'No price set'}</p>
         </Card>
         <Card className="!p-4">
-          <p className="text-xs" style={{ color: MUTED }}>Covered until</p>
+          <p className="text-xs" style={{ color: MUTED }}>{sub.on_trial ? 'Free trial until' : 'Covered until'}</p>
           <p className="text-lg font-bold text-white mt-1">{sub.paid_until ? day(sub.paid_until) : '—'}</p>
           <p className="text-xs mt-1" style={{ color: sub.days_left !== null && sub.days_left <= 7 ? 'var(--color-secondary)' : MUTED }}>{status}</p>
         </Card>
