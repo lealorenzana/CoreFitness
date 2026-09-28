@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LifeBuoy, Send } from 'lucide-react';
+import { Building2, CheckCircle2, Inbox, LifeBuoy, MessageSquareReply, Send } from 'lucide-react';
+import Tiles from '../components/Tiles';
 import {
   CHANGED, explain, listTickets, replyTicket, setTicketStatus, ticketThread, type PlatformTicket, type TicketMessage,
 } from '../lib/platform';
@@ -48,18 +49,18 @@ export default function Support() {
   return (
     <>
       {error && <p className="err">{error}</p>}
-      <div className="toolbar">
-        {(['waiting', 'all', 'closed'] as Filter[]).map((f) => (
-          <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>
-            {f === 'waiting' ? `Waiting for you (${tickets.filter((t) => t.status !== 'closed' && t.last_from === 'gym').length})`
-              : f === 'all' ? `All (${tickets.length})` : 'Closed'}
-          </button>
-        ))}
-      </div>
+      <Tiles items={[
+        { icon: Inbox, value: String(tickets.filter((t) => t.status !== 'closed' && t.last_from === 'gym').length), label: 'Waiting for you',
+          act: tickets.some((t) => t.status !== 'closed' && t.last_from === 'gym'), onClick: () => setFilter('waiting'), on: filter === 'waiting' },
+        { icon: MessageSquareReply, value: String(tickets.filter((t) => t.status !== 'closed' && t.last_from === 'platform').length), label: 'Answered, still open' },
+        { icon: CheckCircle2, value: String(tickets.filter((t) => t.status === 'closed').length), label: 'Closed', onClick: () => setFilter('closed'), on: filter === 'closed' },
+        { icon: Building2, value: String(tickets.length), label: `All tickets · ${new Set(tickets.map((t) => t.gym_id)).size} gyms`, onClick: () => setFilter('all'), on: filter === 'all' },
+      ]} />
+      {/* The tiles are the filter; a second row of buttons saying the same was clutter. */}
       <div className="grid-2" style={{ marginTop: 0, gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)' }}>
         <section className="card">
           <h2 className="section-title"><LifeBuoy size={14} /> Tickets</h2>
-          {shown.length === 0 && <p className="empty">{filter === 'waiting' ? 'Nothing waiting for you.' : 'None.'}</p>}
+          {shown.length === 0 && <p className="empty"><CheckCircle2 size={22} className="empty-icon" />{filter === 'waiting' ? 'Nothing waiting for you.' : 'None.'}</p>}
           {shown.map((t) => (
             <button key={t.id} type="button" className="linky" onClick={() => void show(t)}
               style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 6, border: `1px solid ${open?.id === t.id ? 'var(--accent)' : 'var(--border-soft)'}`, background: 'var(--surface-raised)' }}>
@@ -73,7 +74,7 @@ export default function Support() {
         </section>
 
         <section className="card">
-          {!open ? <p className="empty">Open a ticket to read and reply.</p> : (
+          {!open ? <p className="empty"><LifeBuoy size={22} className="empty-icon" />Open a ticket to read and reply.</p> : (
             <>
               <div className="row" style={{ marginBottom: 12 }}>
                 <span className="grow">

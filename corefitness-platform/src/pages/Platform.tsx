@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
+import Tiles from '../components/Tiles';
 import {
   addAdmin, demoSummary, enterSupport, explain, getOverview, lastBackup, leaveSupport,
   listAdmins, listCrashes, listEmails, listEvents, listSupportGrants, removeAdmin,
@@ -112,146 +114,35 @@ export default function Platform() {
       {error && <p className="err">{error}</p>}
 
       {overview && (
-        <div className="card">
-          <div className="name">Core Fitness, right now</div>
-          <div className="meta">
-            Counts and sums across every gym. No gym's own rows are read to build this.
-          </div>
-          <div className="stats">
-            <Stat n={overview.gyms} label="gyms" sub={`${overview.gyms_live} open for business`} />
-            <Stat n={overview.members} label="members" sub={`across every gym`} />
-            <Stat n={overview.checkins_30d} label="check-ins" sub="last 30 days" />
-            <Stat n={overview.staff + overview.trainers} label="staff and coaches" sub="signed in somewhere" />
-            <Stat text={peso(overview.revenue_this_month)} label="this month" sub={`${peso(overview.revenue_all_time)} in all`} />
-            <Stat n={overview.new_gyms_30d} label="new gyms" sub="last 30 days" />
-          </div>
+        <>
+          <Tiles items={[
+            { icon: Building2, value: overview.gyms.toLocaleString('en-PH'), label: `Gyms · ${overview.gyms_live} open` },
+            { icon: Users, value: overview.members.toLocaleString('en-PH'), label: 'Members' },
+            { icon: Activity, value: overview.checkins_30d.toLocaleString('en-PH'), label: 'Check-ins, 30 days' },
+            { icon: Wallet, value: peso(overview.revenue_this_month), label: 'This month' },
+            { icon: Bug, value: String(Object.values(grouped).filter((g) => !g.last.resolved_at).length), label: 'Crashes open',
+              act: Object.values(grouped).some((g) => !g.last.resolved_at) },
+            { icon: DatabaseBackup, value: backup === undefined ? '…' : backup === null ? 'Never' : backup.days_ago <= 1 ? 'Today' : `${backup.days_ago}d ago`,
+              label: 'Last backup', act: backup === null || (!!backup && backup.days_ago > 8) },
+          ]} />
           {(overview.applications_waiting > 0 || overview.gyms_unclaimed > 0
-            || overview.gyms_unset_up > 0 || overview.overdue_gyms > 0
-            || overview.gyms_suspended > 0) && (
-            <div className="meta" style={{ marginTop: 12 }}>
+            || overview.gyms_unset_up > 0 || overview.overdue_gyms > 0 || overview.gyms_suspended > 0) && (
+            <div className="chips" style={{ margin: '-4px 0 16px' }}>
               {[
                 overview.applications_waiting > 0 && `${overview.applications_waiting} application${overview.applications_waiting === 1 ? '' : 's'} waiting for an answer`,
                 overview.gyms_unclaimed > 0 && `${overview.gyms_unclaimed} gym${overview.gyms_unclaimed === 1 ? '' : 's'} nobody can sign into`,
                 overview.gyms_unset_up > 0 && `${overview.gyms_unset_up} not set up by their owner yet`,
                 overview.overdue_gyms > 0 && `${overview.overdue_gyms} past their paid-until date`,
                 overview.gyms_suspended > 0 && `${overview.gyms_suspended} suspended by you`,
-              ].filter(Boolean).join(' · ')}
+              ].filter(Boolean).map((t) => <span key={t as string} className="chip warn">{t}</span>)}
             </div>
           )}
-        </div>
+        </>
       )}
 
-      <div className="card">
-        <div className="row">
-          <span className="grow">
-            <span className="name">
-              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'}
-            </span>
-            <span className="meta">Filed automatically by both apps when a screen breaks (0095).</span>
-          </span>
-          <button className="btn ghost" onClick={() => setShowResolved((v) => !v)}>
-            {showResolved ? 'Open only' : 'Show handled too'}
-          </button>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          {crashes === null && <p className="empty">Loading…</p>}
-          {crashes?.length === 0 && (
-            <p className="empty">
-              {showResolved ? 'Nothing has crashed in the last 14 days.' : 'Nothing is outstanding.'}
-            </p>
-          )}
-          {Object.entries(grouped).map(([key, { n, last }]) => (
-            <div className="row log" key={key}>
-              <span className="grow">
-                <strong style={{ color: 'var(--text)' }}>{last.message.slice(0, 140)}</strong>
-                <br />
-                {last.app} · {last.gym_name ?? 'before sign-in'} · {last.route ?? 'no route'} ·{' '}
-                {n} time{n === 1 ? '' : 's'} · last {stamp(last.created_at)}
-                {last.resolved_at && ' · handled'}
-              </span>
-              {!last.resolved_at && (
-                <button className="btn ghost" onClick={() => void clear(last)}>
-                  {n === 1 ? 'Handled' : `Handled (all ${n})`}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="name">What the platform did</div>
-        <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
-        <div style={{ marginTop: 10 }}>
-          {events === null && <p className="empty">Loading…</p>}
-          {events?.length === 0 && <p className="empty">Nothing yet.</p>}
-          {events?.map((e) => (
-            <div className="log" key={e.id}>
-              {e.summary}
-              {typeof e.detail?.reason === 'string' && <> — “{e.detail.reason as string}”</>}
-              <span className="muted"> · {stamp(e.created_at)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {admins !== null && admins.length > 0 && (
-        <div className="card">
-          <div className="name">Who can run the platform</div>
-          <div className="meta">
-            Anyone here can let a gym in, suspend one, and change what the service sells. The last one
-            cannot be removed — there is no way back in if nobody holds the keys.
-          </div>
-          <div style={{ marginTop: 10 }}>
-            {admins.map((a) => (
-              <div className="row log" key={a.user_id}>
-                <span className="grow">
-                  <strong style={{ color: 'var(--text)' }}>
-                    {[a.first_name, a.last_name].filter(Boolean).join(' ') || a.email}
-                  </strong>
-                  {a.email && ` · ${a.email}`}
-                  {a.is_me && ' · you'}
-                </span>
-                {!a.is_me && admins.length > 1 && (
-                  <button className="btn ghost" onClick={() => void (async () => {
-                    try { await removeAdmin(a.user_id); await load(); }
-                    catch (e) { setError(e instanceof Error ? e.message : 'Could not remove them'); }
-                  })()}>Remove</button>
-                )}
-              </div>
-            ))}
-          </div>
-          <form className="row" style={{ marginTop: 12 }} onSubmit={add}>
-            <input className="grow" type="email" required value={addingAdmin}
-              placeholder="their email — they need a Core Fitness account already"
-              onChange={(e) => setAddingAdmin(e.target.value)} />
-            <button className="btn" type="submit">Add</button>
-          </form>
-        </div>
-      )}
-
-      {backup !== undefined && (
-        <div className={'card' + (backup === null || backup.days_ago > 8 ? ' notice' : '')}>
-          <div className="name">
-            {backup === null ? 'No backup has ever reported itself'
-              : backup.days_ago <= 1 ? 'The database was backed up today'
-              : `The database was backed up ${backup.days_ago} days ago`}
-          </div>
-          <div className="meta">
-            {backup === null
-              ? 'The weekly backup runs on GitHub (Actions → Weekly database backup). Nothing has '
-                + 'reported success here, which means either it has not run since this was added, or '
-                + 'it is not running at all. Silence is the thing worth checking.'
-              : backup.days_ago > 8
-                ? 'It runs weekly, so more than eight days is a run that did not happen. Check '
-                  + 'Actions → Weekly database backup on GitHub.'
-                : backup.summary}
-          </div>
-        </div>
-      )}
-
+      <div className="pf">
       {grants.length > 0 && (
-        <div className="card notice">
+        <div className="card notice pf-card pf-12">
           <div className="name">
             {grants.length === 1 ? 'A gym has asked for help' : `${grants.length} gyms have asked for help`}
           </div>
@@ -293,31 +184,6 @@ export default function Platform() {
         </div>
       )}
 
-      {emails.length > 0 && (
-        <div className="card">
-          <div className="name">Mail, last 30 days</div>
-          <div className="meta">
-            Who was told what, and whether it arrived. Never the message itself — an invitation or a
-            temporary password lives in there, and it was shown once already.
-          </div>
-          <div style={{ marginTop: 10 }}>
-            {emails.slice(0, 25).map((e) => (
-              <div className="log" key={e.id}>
-                <strong style={{ color: 'var(--text)' }}>{e.subject}</strong>
-                <br />
-                {e.to_email}{e.gym_name ? ` — ${e.gym_name}` : ''} — {e.kind.replace(/_/g, ' ')} —{' '}
-                <span style={{ color: e.status === 'sent' ? 'var(--text-2)' : 'var(--warn)' }}>
-                  {e.status === 'sent' ? `sent ${stamp(e.sent_at!)}`
-                    : e.status === 'not_configured' ? 'no mail provider set up — handed over by hand'
-                    : e.status === 'failed' ? `failed: ${e.error ?? 'no reason given'}`
-                    : 'queued'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ---- the demo data ---------------------------------------------------
           The removal SQL has existed since the seeds did. The problem was never
           the SQL, it was that its only interface was a 166-line paste into a
@@ -327,7 +193,7 @@ export default function Platform() {
           Drawn only while there is something to remove, so this card disappears
           for good the moment it has been used. */}
       {demo && demo.people > 0 && (
-        <div className="card notice">
+        <div className="card notice pf-card pf-12">
           <div className="name">Demo data is live on this deployment</div>
           <div className="meta">
             {demo.people} seeded people ({demo.coaches} of them coaches), {demo.payments} payments,
@@ -379,14 +245,74 @@ export default function Platform() {
       {/* The database's own sentence, not this app's — it counted what actually
           went, which is the number worth reading afterwards. */}
       {wiped && (
-        <div className="card">
+        <div className="card pf-card pf-12">
           <div className="name">Demo data removed</div>
           <div className="meta">{wiped}</div>
         </div>
       )}
 
-      <div className="card">
-        <div className="name">Migrations</div>
+      <div className="card pf-card pf-7">
+        <div className="row">
+          <span className="grow">
+            <span className="section-title" style={{ marginBottom: 4 }}><Bug size={14} />
+              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'}
+            </span>
+            <span className="meta">Filed automatically by both apps when a screen breaks (0095).</span>
+          </span>
+          <button className="btn ghost" onClick={() => setShowResolved((v) => !v)}>
+            {showResolved ? 'Open only' : 'Show handled too'}
+          </button>
+        </div>
+        <div className="ov-scroll" style={{ marginTop: 10 }}>
+          {crashes === null && <p className="empty">Loading…</p>}
+          {crashes?.length === 0 && (
+            <p className="empty">
+              {showResolved ? 'Nothing has crashed in the last 14 days.' : 'Nothing is outstanding.'}
+            </p>
+          )}
+          {Object.entries(grouped).map(([key, { n, last }]) => (
+            <div className="row log" key={key}>
+              <span className="grow">
+                <strong style={{ color: 'var(--text)' }}>{last.message.slice(0, 140)}</strong>
+                <br />
+                {last.app} · {last.gym_name ?? 'before sign-in'} · {last.route ?? 'no route'} ·{' '}
+                {n} time{n === 1 ? '' : 's'} · last {stamp(last.created_at)}
+                {last.resolved_at && ' · handled'}
+              </span>
+              {!last.resolved_at && (
+                <button className="btn ghost" onClick={() => void clear(last)}>
+                  {n === 1 ? 'Handled' : `Handled (all ${n})`}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pf-5 pf-col">
+      {backup !== undefined && (
+        <div className={'card pf-card' + (backup === null || backup.days_ago > 8 ? ' notice' : '')}>
+          <div className="section-title" style={{ marginBottom: 4 }}><DatabaseBackup size={14} /> Backups</div>
+          <div className="name">
+            {backup === null ? 'No backup has ever reported itself'
+              : backup.days_ago <= 1 ? 'The database was backed up today'
+              : `The database was backed up ${backup.days_ago} days ago`}
+          </div>
+          <div className="meta">
+            {backup === null
+              ? 'The weekly backup runs on GitHub (Actions → Weekly database backup). Nothing has '
+                + 'reported success here, which means either it has not run since this was added, or '
+                + 'it is not running at all. Silence is the thing worth checking.'
+              : backup.days_ago > 8
+                ? 'It runs weekly, so more than eight days is a run that did not happen. Check '
+                  + 'Actions → Weekly database backup on GitHub.'
+                : backup.summary}
+          </div>
+        </div>
+      )}
+
+      <div className="card pf-card side-fill">
+        <div className="section-title" style={{ marginBottom: 4 }}><GitBranch size={14} /> Migrations</div>
         <div className="meta">
           Which are live is asked of the database, never assumed:
           <code style={{ marginLeft: 6 }}>python scripts/probe-migrations.py</code>. Paste waiting ones
@@ -394,16 +320,86 @@ export default function Platform() {
           <code style={{ margin: '0 4px' }}>scripts/sql/verify/verifyNNNN.sql</code> after each.
         </div>
       </div>
-    </>
-  );
-}
+      </div>
 
-function Stat({ n, text, label, sub }: { n?: number; text?: string; label: string; sub?: string }) {
-  return (
-    <span className="stat">
-      <strong>{text ?? (n ?? 0).toLocaleString('en-PH')}</strong>
-      <span>{label}</span>
-      {sub && <span className="muted">{sub}</span>}
-    </span>
+      <div className="card pf-card pf-7">
+        <div className="section-title" style={{ marginBottom: 4 }}><History size={14} /> What the platform did</div>
+        <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
+        <div className="ov-scroll" style={{ marginTop: 10 }}>
+          {events === null && <p className="empty">Loading…</p>}
+          {events?.length === 0 && <p className="empty">Nothing yet.</p>}
+          {events?.map((e) => (
+            <div className="log" key={e.id}>
+              {e.summary}
+              {typeof e.detail?.reason === 'string' && <> — “{e.detail.reason as string}”</>}
+              <span className="muted"> · {stamp(e.created_at)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Always drawn once loaded: it is half of its row, and an empty list is itself worth saying. */}
+      {admins !== null && (
+        <div className="card pf-card pf-5">
+          <div className="section-title" style={{ marginBottom: 4 }}><ShieldCheck size={14} /> Who can run the platform</div>
+          <div className="meta">
+            Anyone here can let a gym in, suspend one, and change what the service sells. The last one
+            cannot be removed — there is no way back in if nobody holds the keys.
+          </div>
+          <div className="ov-scroll" style={{ marginTop: 10 }}>
+            {admins.map((a) => (
+              <div className="row log" key={a.user_id}>
+                <span className="grow">
+                  <strong style={{ color: 'var(--text)' }}>
+                    {[a.first_name, a.last_name].filter(Boolean).join(' ') || a.email}
+                  </strong>
+                  {a.email && ` · ${a.email}`}
+                  {a.is_me && ' · you'}
+                </span>
+                {!a.is_me && admins.length > 1 && (
+                  <button className="btn ghost" onClick={() => void (async () => {
+                    try { await removeAdmin(a.user_id); await load(); }
+                    catch (e) { setError(e instanceof Error ? e.message : 'Could not remove them'); }
+                  })()}>Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <form className="row" style={{ marginTop: 'auto', paddingTop: 12 }} onSubmit={add}>
+            <input className="grow" type="email" required value={addingAdmin}
+              placeholder="their email — they need a Core Fitness account already"
+              onChange={(e) => setAddingAdmin(e.target.value)} />
+            <button className="btn" type="submit">Add</button>
+          </form>
+        </div>
+      )}
+
+      {emails.length > 0 && (
+        <div className="card pf-card pf-12">
+          <div className="section-title" style={{ marginBottom: 4 }}><Mail size={14} /> Mail, last 30 days</div>
+          <div className="meta">
+            Who was told what, and whether it arrived. Never the message itself — an invitation or a
+            temporary password lives in there, and it was shown once already.
+          </div>
+          <div style={{ marginTop: 10 }}>
+            {emails.slice(0, 25).map((e) => (
+              <div className="log" key={e.id}>
+                <strong style={{ color: 'var(--text)' }}>{e.subject}</strong>
+                <br />
+                {e.to_email}{e.gym_name ? ` — ${e.gym_name}` : ''} — {e.kind.replace(/_/g, ' ')} —{' '}
+                <span style={{ color: e.status === 'sent' ? 'var(--text-2)' : 'var(--warn)' }}>
+                  {e.status === 'sent' ? `sent ${stamp(e.sent_at!)}`
+                    : e.status === 'not_configured' ? 'no mail provider set up — handed over by hand'
+                    : e.status === 'failed' ? `failed: ${e.error ?? 'no reason given'}`
+                    : 'queued'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      </div>
+    </>
   );
 }

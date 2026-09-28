@@ -38,12 +38,26 @@ export default function Capacity() {
       </section>
     );
   };
-  const list = (items: CapacityRow[], empty: string, link?: boolean) => items.length === 0 ? <p className="empty">{empty}</p> : items.map((r) => (
-    <div className="row log" key={r.kind + r.key}>
-      <span className="grow">{link ? <Link to={`/gyms/${r.key}`}>{r.label}</Link> : <code>{r.label}</code>}</span>
-      <strong style={{ color: 'var(--text)' }}>{size(r.used)}</strong>
-    </div>
-  ));
+  const list = (items: CapacityRow[], empty: string, link?: boolean) => {
+    if (items.length === 0) return <p className="empty"><HardDrive size={22} className="empty-icon" />{empty}</p>;
+    const most = Math.max(1, ...items.map((r) => r.used));
+    const total = items.reduce((n, r) => n + r.used, 0);
+    return (
+      <>
+        <div className="cap-list">
+          {items.map((r, i) => (
+            <div className="cap-row" key={r.kind + r.key}>
+              <span className="cap-rank">{i + 1}</span>
+              <span className="cap-name">{link ? <Link to={`/gyms/${r.key}`}>{r.label}</Link> : <code>{r.label}</code>}</span>
+              <span className="cap-size"><strong>{size(r.used)}</strong><small>{total ? Math.round((r.used / total) * 100) : 0}%</small></span>
+              <span className="cap-bar"><span style={{ width: `${Math.max(2, (r.used / most) * 100)}%` }} /></span>
+            </div>
+          ))}
+        </div>
+        <div className="cap-foot"><span>{items.length} listed</span><strong>{size(total)}</strong></div>
+      </>
+    );
+  };
 
   return (
     <>
@@ -54,9 +68,9 @@ export default function Capacity() {
         {big(of('users')[0], <Users size={14} />, (n) => n.toLocaleString('en-PH'))}
       </div>
       <div className="grid-3">
-        <section className="card"><h2 className="section-title">Biggest tables</h2>{list(of('table'), 'Nothing measured.')}</section>
-        <section className="card"><h2 className="section-title">Storage by bucket</h2>{list(of('bucket'), 'No files stored yet.')}</section>
-        <section className="card"><h2 className="section-title">Each gym's own files</h2>{list(of('gym'), 'No gym has uploaded anything yet.', true)}</section>
+        <section className="card"><h2 className="section-title"><Database size={14} /> Biggest tables</h2>{list(of('table'), 'Nothing measured.')}</section>
+        <section className="card"><h2 className="section-title"><HardDrive size={14} /> Storage by bucket</h2>{list(of('bucket'), 'No files stored yet.')}</section>
+        <section className="card"><h2 className="section-title"><Users size={14} /> Each gym's own files</h2>{list(of('gym'), 'No gym has uploaded anything yet.', true)}</section>
       </div>
     </>
   );

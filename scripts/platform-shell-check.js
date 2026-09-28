@@ -67,7 +67,8 @@ async (page) => {
       business_name: 'Core Fitness', business_address: 'San Jose, Occidental Mindoro', business_email: 'billing@corefitness.test', business_phone: null, receipt_note: 'Thank you.' }],
     platform_capacity: () => [
       { kind: 'database', key: 'postgres', label: 'Database', used: 44 * 1048576, cap: 500 * 1048576 },
-      { kind: 'table', key: 'workout_sets', label: 'workout_sets', used: 9 * 1048576, cap: null },
+      ...['attendance', 'notifications', 'point_ledger', 'achievement_unlocks', 'pt_sessions', 'event_registrations', 'payments', 'bookings']
+        .map((t, i) => ({ kind: 'table', key: t, label: t, used: Math.round((848 - i * 80) * 1024), cap: null })),
       { kind: 'bucket', key: 'media', label: 'media', used: 120 * 1048576, cap: null },
       { kind: 'storage', key: 'all', label: 'Storage, every bucket', used: 850 * 1048576, cap: 1024 * 1048576 },
       { kind: 'gym', key: 'g1', label: 'G Fitness', used: 80 * 1048576, cap: null },
@@ -84,6 +85,7 @@ async (page) => {
     platform_funnel: () => [{ applied: 6, let_in: 3, set_up: 3, active_30d: 2, paying: 2 }],
     platform_feature_adoption: () => [{ feature: 'checkins', label: 'Check-ins', gyms_30d: 3, gyms_total: 3 }, { feature: 'shop', label: 'Shop', gyms_30d: 1, gyms_total: 3 }],
     platform_gym_people: () => [],
+    list_platform_admins: () => [{ user_id: 'pa', email: 'owner@corefitness.test', first_name: 'Lea', last_name: 'Lorenzana', is_me: true }],
     platform_bell: () => [{ kind: 'applications', label: '2 gyms asking to join', count: 2, href: '/applications' },
       { kind: 'support', label: '1 support question waiting', count: 1, href: '/support' }],
     platform_support_tickets: () => TICKETS,
@@ -128,7 +130,18 @@ async (page) => {
       if (req.method() === 'POST') { const b = JSON.parse(req.postData() || '{}'); NOTES.unshift({ id: 'n' + NOTES.length, gym_id: b.gym_id, body: b.body, pinned: false, created_at: new Date().toISOString() }); return json([], 201); }
       return json(NOTES);
     }
-    if (path.endsWith('/platform_plans')) return json([{ key: 'premium', name: 'Premium', is_active: true, sort_order: 1 }]);
+    // The three plans a real service has (0108), with every column the screen reads.
+    if (path.endsWith('/platform_plans')) return json([
+      { key: 'trial', name: 'Free trial', blurb: 'Thirty days, the whole system, no card.', price_monthly: '0', price_yearly: null, trial_days: 30,
+        max_members: null, max_staff: null, max_photos: 100, is_public: true, is_active: true, sort_order: 1 },
+      { key: 'starter', name: 'Starter', blurb: 'One gym, everything it needs to run a day.', price_monthly: '999', price_yearly: '9990', trial_days: null,
+        max_members: 100, max_staff: 3, max_photos: 100, is_public: true, is_active: true, sort_order: 2 },
+      { key: 'premium', name: 'Premium', blurb: 'For a gym that wants the coaching side too.', price_monthly: null, price_yearly: null, trial_days: null,
+        max_members: null, max_staff: null, max_photos: null, is_public: true, is_active: true, sort_order: 3 }]);
+    if (path.endsWith('/platform_features')) return json(['The front desk', 'QR check-in and the kiosk', 'Classes and bookings', 'Coaches',
+      'Points, rewards and challenges', 'Progress and goals', 'The in-app assistant', 'Announcements and push', 'Analytics and retention']
+      .map((label, i) => ({ key: 'f' + i, label, description: label, sort_order: i })));
+    if (path.endsWith('/platform_plan_features')) return json([{ plan_key: 'trial', feature_key: 'f6', enabled: false }]);
     return json([]);
   });
 
@@ -175,6 +188,20 @@ async (page) => {
   await page.waitForTimeout(800);
   out.push('a private note: ' + (NOTES.length === 1 && /Owner prefers calls after 6pm/.test(await text()) ? 'saved' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gym-profile.png', fullPage: true });
+
+  await page.getByRole('link', { name: 'Plans' }).first().click();
+  await page.locator('.plan-card').first().waitFor({ timeout: 10000 });
+  await page.waitForTimeout(500);
+  const pl = await page.evaluate(() => {
+    const grid = document.querySelector('.plan-grid').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('.plan-card')].map((c) => c.getBoundingClientRect());
+    const text = document.querySelector('.plan-grid').innerText;
+    return { spare: Math.round(grid.right - Math.max(...cards.map((c) => c.right))), n: cards.length,
+      twice: /Talk to us[\s\S]*Price not decided/.test(text), foot: [...document.querySelectorAll('.plan-foot')].length };
+  });
+  out.push('plans fill the row, one price each, actions at the foot: ' + (pl.n === 3 && pl.spare < 4 && !pl.twice && pl.foot === 3 ? 'yes' : 'MISSING ' + JSON.stringify(pl)));
+  out.push('a plan without a price says so once: ' + (/Talk to us/.test(await text()) && /Unlocks 8 of 9/i.test(await text()) ? 'yes, and unlocks are counted' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-plans.png' });
 
   for (const [nav, shot, expect] of [['Growth', 'growth', /MRR/], ['Applications', 'apps', /Iron Temple/], ['Plans', 'plans', /Plans/], ['Money', 'money', /Money/], ['Platform', 'health', /Platform/]]) {
     await page.getByRole('link', { name: nav }).first().click();
@@ -233,6 +260,12 @@ async (page) => {
   await page.waitForTimeout(900);
   t = await text();
   out.push('capacity against the free tier: ' + (/44\.0 MB/.test(t) && /850\.0 MB/.test(t) && /83% used/.test(t) && /Past 80%/.test(t) && /G Fitness/.test(t) ? 'shown, storage flagged' : 'MISSING'));
+  // The rows once collapsed into one line of text over fat bars (their CSS was lost): a bar sits under its text, rows stay rows.
+  const cap = await page.evaluate(() => [...document.querySelectorAll('.cap-row')].map((r) => {
+    const name = r.querySelector('.cap-name').getBoundingClientRect(), bar = r.querySelector('.cap-bar').getBoundingClientRect();
+    return { under: bar.top >= name.bottom - 1, h: r.getBoundingClientRect().height, barH: bar.height };
+  }));
+  out.push('capacity rows laid out: ' + (cap.length === 10 && cap.every((c) => c.under && c.h < 60 && c.barH <= 8) ? '10 rows, bars under their names' : 'MISSING ' + JSON.stringify(cap.slice(0, 3))));
   await page.screenshot({ path: 'shots/platform-capacity.png' });
 
 
@@ -279,6 +312,34 @@ async (page) => {
   out.push('growth: MRR, ARR, the at-risk list: ' + (/₱2,998/.test(t) && /₱35,976/.test(t) && /9 days past its paid-until date/.test(t) ? 'shown' : 'MISSING'));
   out.push('growth: funnel and adoption: ' + (/Paying/.test(t) && /1 of 3 gyms/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-growth.png' });
+  // No dead space (2026-09-28): on every screen the lowest box reaches the bottom of the content area.
+  const dead = () => page.evaluate(() => {
+    const c = document.querySelector('.content');
+    const top = c.getBoundingClientRect().top - c.scrollTop;
+    const inner = c.scrollHeight - parseFloat(getComputedStyle(c).paddingBottom);
+    let max = 0;
+    const seen = (e) => {
+      if (/^(IMG|SVG|CANVAS|INPUT|SELECT|TEXTAREA|BUTTON)$/i.test(e.tagName)) return true;
+      if ([...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return true;
+      const s = getComputedStyle(e);
+      return (s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent') || s.backgroundImage !== 'none' || parseFloat(s.borderTopWidth) > 0;
+    };
+    for (const e of c.querySelectorAll('.page *')) { const r = e.getBoundingClientRect(); if (r.height > 0 && r.width > 0 && seen(e)) max = Math.max(max, r.bottom - top); }
+    return { gap: Math.round(inner - max), scrolls: c.scrollHeight > c.clientHeight + 1, wide: c.scrollWidth > c.clientWidth + 1 };
+  });
+  const gaps = [];
+  for (const [nav, path] of [['Overview', '/overview'], ['Gyms', '/gyms'], ['Growth', '/growth'], ['Applications', '/applications'], ['Support', '/support'],
+    ['Announcements', '/announcements'], ['Capacity', '/capacity'], ['Plans', '/plans'], ['Money', '/money'], ['Platform', '/platform'], ["a gym's page", '/gyms/g1']]) {
+    await page.goto('http://localhost:5175' + path, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1300);
+    const d = await dead();
+    if (d.gap > 24 || d.wide || (path === '/overview' && d.scrolls)) {
+      gaps.push(nav + ': ' + d.gap + 'px empty' + (d.wide ? ', scrolls sideways' : '') + (path === '/overview' && d.scrolls ? ', does not fit' : ''));
+    }
+    await page.screenshot({ path: 'shots/fill' + path.replace(/\//g, '-') + '.png' });
+  }
+  out.push('no dead space on any screen: ' + (gaps.length === 0 ? '11 screens filled' : 'MISSING ' + gaps.join('; ')));
+
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.evaluate(() => sessionStorage.setItem('out', '1'));
   await page.waitForTimeout(1200);

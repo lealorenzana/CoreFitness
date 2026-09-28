@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Megaphone } from 'lucide-react';
+import { Building2, EyeOff, History, Megaphone, Radio } from 'lucide-react';
+import Tiles from '../components/Tiles';
 import {
   endAnnouncement, explain, listAnnouncements, listPlatformPlans, saveAnnouncement,
   type PlatformAnnouncement, type PlatformPlan,
@@ -41,10 +42,16 @@ export default function Announcements() {
   return (
     <>
       {error && <p className="err">{error}</p>}
+      <Tiles items={[
+        { icon: Radio, value: String(items.filter((a) => a.live).length), label: 'Live now' },
+        { icon: Building2, value: String(items.filter((a) => a.live).reduce((n, a) => n + a.gyms_reached, 0)), label: 'Gyms reached, live' },
+        { icon: EyeOff, value: String(items.reduce((n, a) => n + a.dismissed, 0)), label: 'Dismissed' },
+        { icon: History, value: String(items.filter((a) => !a.live).length), label: 'Ended' },
+      ]} />
       <div className="grid-2" style={{ marginTop: 0 }}>
         <section className="card">
           <h2 className="section-title"><Megaphone size={14} /> Sent and live</h2>
-          {items.length === 0 && <p className="empty">Nothing announced yet.</p>}
+          {items.length === 0 && <p className="empty"><Megaphone size={22} className="empty-icon" />Nothing announced yet.</p>}
           {items.map((a) => (
             <div key={a.id} className="log" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <span style={{ flex: 1, minWidth: 0 }}>

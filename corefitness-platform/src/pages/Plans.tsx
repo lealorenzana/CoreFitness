@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Building2, Eye, Layers, Plus, Wallet } from 'lucide-react';
+import Modal from '../components/Modal';
+import Tiles from '../components/Tiles';
 import {
-  explain, listPlanFeatures, listPlatformFeatures, listPlatformPlans, retirePlan, savePlan, setPlanFeature,
+  explain, listGyms, listPlanFeatures, listPlatformFeatures, listPlatformPlans, retirePlan, savePlan, setPlanFeature,
   setPlanPhotoLimit,
-  type PlanFeatureCell, type PlatformFeature, type PlatformPlan,
+  type PlanFeatureCell, type PlatformFeature, type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 
 const peso = (n: string | null) =>
@@ -32,11 +35,14 @@ export default function Plans() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PlatformPlan | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Which gyms are on which plan — counts on the cards, never a gym's rows. */
+  const [gyms, setGyms] = useState<PlatformGym[]>([]);
 
   const load = useCallback(async () => {
     try {
       const [p, f, c] = await Promise.all([listPlatformPlans(), listPlatformFeatures(), listPlanFeatures()]);
       setPlans(p); setFeatures(f); setCells(c); setError(null);
+      setGyms(await listGyms().catch(() => []));
     } catch (e) {
       // Not null: null means "still loading", and leaving it there would spin
       // for ever behind an error that has already arrived.
@@ -117,18 +123,27 @@ export default function Plans() {
 
   return (
     <>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <span className="grow muted" style={{ fontSize: 13 }}>
-          {plans ? `${plans.length} plan${plans.length === 1 ? '' : 's'}` : 'Loading…'}
+      <Tiles items={[
+        { icon: Layers, value: plans ? String(plans.filter((p) => p.is_active).length) : '…', label: 'Plans on sale' },
+        { icon: Eye, value: plans ? String(plans.filter((p) => p.is_active && p.is_public).length) : '…', label: 'Shown on the website' },
+        { icon: Building2, value: String(gyms.filter((g) => Number(plans?.find((p) => p.key === g.plan)?.price_monthly ?? 0) > 0).length), label: 'Gyms on a paid plan' },
+        { icon: Wallet, value: peso(String(gyms.reduce((n, g) => n + Number(plans?.find((p) => p.key === g.plan)?.price_monthly ?? 0), 0))) ?? '₱0', label: 'A month, at list price' },
+      ]} />
+      <div className="toolbar">
+        <span className="muted" style={{ fontSize: 13 }}>
+          {plans ? `${plans.length} plan${plans.length === 1 ? '' : 's'} · tick what each one unlocks` : 'Loading…'}
         </span>
-        <button className="btn ghost" onClick={() => setEditing(blank((plans?.length ?? 0) + 1))}>
-          Add a plan
+        <span className="spacer" />
+        <button className="btn" onClick={() => setEditing(blank((plans?.length ?? 0) + 1))}>
+          <Plus size={15} /> Add a plan
         </button>
       </div>
 
       {error && <p className="err">{error}</p>}
 
-      {undecided.length > 0 && (
+      {(undecided.length > 0 || allSame) && (
+        <div className="notices">
+        {undecided.length > 0 && (
         <div className="card notice">
           <div className="name">
             {undecided.length === 1 ? 'One plan has no price' : `${undecided.length} plans have no price`}
@@ -140,7 +155,7 @@ export default function Plans() {
         </div>
       )}
 
-      {allSame && (
+        {allSame && (
         <div className="card notice">
           <div className="name">Every plan currently includes exactly the same things</div>
           <div className="meta">
@@ -150,6 +165,10 @@ export default function Plans() {
         </div>
       )}
 
+        </div>
+      )}
+
+      <Modal open={!!editing} onClose={() => setEditing(null)} size="lg" label="Plan">
       {editing && (
         <form className="card ask" onSubmit={save}>
           <div className="name">{editing.key && plans?.some((p) => p.key === editing.key) ? `Edit ${editing.name}` : 'A new plan'}</div>
@@ -235,46 +254,52 @@ export default function Plans() {
           </div>
         </form>
       )}
+      </Modal>
 
-      {plans?.map((plan) => (
-        <div className="card" key={plan.key}>
-          <div className="row">
-            <span className="grow">
-              <span className="name">
-                {plan.name}
-                {!plan.is_active && <span className="pill" style={{ marginLeft: 8 }}>Retired</span>}
-                {plan.is_active && !plan.is_public && <span className="pill" style={{ marginLeft: 8 }}>Not on the website</span>}
-              </span>
-              <span className="meta">
-                {peso(plan.price_monthly) ? `${peso(plan.price_monthly)} a month` : 'Price not decided'}
-                {plan.price_yearly !== null && ` · ${peso(plan.price_yearly)} a year`}
-                {plan.trial_days ? ` · ${plan.trial_days} free days` : ''}
-                {' · '}
-                {plan.max_members === null ? 'any number of members' : `up to ${plan.max_members} members`}
-                {plan.max_staff !== null && ` · up to ${plan.max_staff} on the desk`}
-                {plan.max_photos !== undefined && (plan.max_photos === null ? ' · any number of photos' : ` · up to ${plan.max_photos} photos`)}
-              </span>
-              {plan.blurb && <span className="meta muted">“{plan.blurb}”</span>}
-            </span>
-            <span className="actions">
-              <button className="btn ghost" onClick={() => setEditing(plan)}>Edit</button>
-              {plan.is_active && (
-                <button className="btn ghost" onClick={() => void retire(plan)}>Retire</button>
-              )}
-            </span>
+      <div className="plan-grid">
+      {plans?.map((plan) => {
+        const onIt = gyms.filter((g) => g.plan === plan.key).length;
+        const unlocked = features.filter((f) => on(plan.key, f.key)).length;
+        return (
+        <div className={`card plan-card${plan.is_active ? '' : ' retired'}`} key={plan.key}>
+          <div className="plan-top">
+            <span className="plan-name">{plan.name}</span>
+            {!plan.is_active && <span className="pill">Retired</span>}
+            {plan.is_active && !plan.is_public && <span className="pill">Not on the website</span>}
+            <span className="plan-gyms"><Building2 size={13} />{onIt} gym{onIt === 1 ? '' : 's'} on it</span>
           </div>
-
-          <div className="ticks">
-            {features.map((f) => (
-              <label className="tick" key={f.key} title={f.description}>
-                <input type="checkbox" checked={on(plan.key, f.key)}
-                  onChange={() => void toggle(plan.key, f.key)} />
-                <span>{f.label}</span>
-              </label>
-            ))}
+          <div className="plan-price">
+            {peso(plan.price_monthly)
+              ? <><b>{peso(plan.price_monthly)}</b><span>a month{plan.price_yearly !== null ? ` · ${peso(plan.price_yearly)} a year` : ''}</span></>
+              : <><b className="undecided">Talk to us</b><span>no price decided — the website says so</span></>}
+          </div>
+          {plan.blurb && <p className="plan-blurb">“{plan.blurb}”</p>}
+          <div className="plan-facts">
+            {plan.trial_days ? <span className="chip">{plan.trial_days} free days</span> : null}
+            <span className="chip">{plan.max_members === null ? 'Any number of members' : `Up to ${plan.max_members} members`}</span>
+            <span className="chip">{plan.max_staff === null ? 'Any number on the desk' : `Up to ${plan.max_staff} on the desk`}</span>
+            {plan.max_photos !== undefined && <span className="chip">{plan.max_photos === null ? 'Any number of photos' : `Up to ${plan.max_photos} photos`}</span>}
+          </div>
+          <div className="plan-unlocks">
+            <span className="section-title" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length}</span>
+            <div className="ticks">
+              {features.map((f) => (
+                <label className="tick" key={f.key} title={f.description}>
+                  <input type="checkbox" checked={on(plan.key, f.key)}
+                    onChange={() => void toggle(plan.key, f.key)} />
+                  <span>{f.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="plan-foot">
+            <button className="btn ghost" onClick={() => setEditing(plan)}>Edit the plan</button>
+            {plan.is_active && <button className="btn ghost" onClick={() => void retire(plan)}>Retire</button>}
           </div>
         </div>
-      ))}
+        );
+      })}
+      </div>
 
       {plans?.length === 0 && (
         <p className="empty">
