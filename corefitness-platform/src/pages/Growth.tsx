@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, BarChart3, Building2, CheckCircle2, Filter, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
+import { downloadCsv } from '../lib/csv';
+import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
 import GymMark from '../components/GymMark';
 import {
   adoption, explain, funnel, gymHealth, growth,
@@ -99,7 +100,13 @@ export default function Growth() {
 
       <div className="grid-2">
         <section className="card">
-          <h2 className="section-title"><BarChart3 size={14} /> MRR by month</h2>
+          <h2 className="section-title" style={{ display: 'flex' }}><BarChart3 size={14} /> MRR by month
+            <button className="btn ghost" style={{ marginLeft: 'auto', height: 30, fontSize: 12 }} disabled={months.length === 0}
+              onClick={() => downloadCsv('core-fitness-growth', months, [
+                ['Month', (m) => m.month.slice(0, 7)], ['Gyms', (m) => m.gyms], ['New gyms', (m) => m.new_gyms], ['Gyms lost', (m) => m.lost_gyms],
+                ['Members', (m) => m.members], ['MRR', (m) => Number(m.mrr)], ['Collected', (m) => Number(m.revenue)],
+              ])}><Download size={13} /> CSV</button>
+          </h2>
           <div className="bars">
             {months.map((m, i) => {
               const v = Number(m.mrr);

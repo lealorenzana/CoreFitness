@@ -39,7 +39,7 @@ create role anon; create role authenticated; create role service_role;
 create role supabase_admin; create role authenticator; create role supabase_auth_admin;
 create role supabase_storage_admin; create role dashboard_user;
 create schema auth;
-create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb);
+create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb, last_sign_in_at timestamptz);
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create or replace function auth.role() returns text language sql stable as $$

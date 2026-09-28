@@ -30,6 +30,7 @@ import Programs from './pages/Programs';
 import Rooms from './pages/Rooms';
 import Shop from './pages/Shop';
 import Support from './pages/Support';
+import Subscription from './pages/Subscription';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
 import Credentials from './pages/Credentials';
@@ -110,6 +111,8 @@ function App() {
             <Route path="rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
             <Route path="shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
             <Route path="support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+            {/* The gym's own Core Fitness bill (0138): owner only — my_gym_subscription() returns no row to the desk. */}
+            <Route path="subscription" element={<ProtectedRoute adminOnly><Subscription /></ProtectedRoute>} />
             {/* Staff can SEE the queue (RLS lets them), but approving commits the
                 gym to giving something away, so the page is admin-only. */}
             <Route path="rewards" element={<ProtectedRoute adminOnly><Rewards /></ProtectedRoute>} />

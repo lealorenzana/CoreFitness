@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CalendarClock, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarClock, Download, Plus, Search, UserCog, Users, Wallet } from 'lucide-react';
+import { downloadCsv } from '../lib/csv';
 import {
   createGym, gymHealth, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
   type PlatformGym, type PlatformPlan,
@@ -93,6 +94,9 @@ export default function Gyms() {
     }
   };
 
+  const shown = (gyms ?? []).filter((g) => !search.trim()
+    || (g.name + ' ' + g.slug).toLowerCase().includes(search.trim().toLowerCase()));
+
   return (
     <>
       <div className="toolbar">
@@ -105,6 +109,15 @@ export default function Gyms() {
           <Search size={15} />
           <input value={search} placeholder="Find a gym" onChange={(e) => setSearch(e.target.value)} />
         </label>
+        <button className="btn ghost" disabled={shown.length === 0} onClick={() => downloadCsv('core-fitness-gyms', shown, [
+          ['Gym', (g) => g.name], ['Address', (g) => g.slug], ['Status', (g) => g.lock_reason ? `read-only (${g.lock_reason})` : g.status],
+          ['Plan', (g) => g.plan_name ?? g.plan], ['Price a month', (g) => g.price_monthly], ['Paid until', (g) => g.paid_until],
+          ['Days left', (g) => g.days_left], ['Members', (g) => g.members], ['Member limit', (g) => g.max_members], ['Staff', (g) => g.staff],
+          ['Owners', (g) => g.owners], ['Set up', (g) => g.onboarded ? 'yes' : 'no'], ['Joined', (g) => g.created_at.slice(0, 10)],
+          ['Last activity', (g) => g.last_activity?.slice(0, 10)], ['Risk', (g) => risk.get(g.id)?.reasons.join('; ')],
+        ])}>
+          <Download size={15} /> Export CSV
+        </button>
         <button className="btn" onClick={() => setAdding((v) => !v)}>
           {adding ? 'Cancel' : <><Plus size={15} /> Add a gym</>}
         </button>
@@ -140,9 +153,7 @@ export default function Gyms() {
 
       {gyms?.length === 0 && <p className="empty">No gyms yet.</p>}
 
-      {gyms?.filter((g) => !search.trim()
-        || (g.name + ' ' + g.slug).toLowerCase().includes(search.trim().toLowerCase())
-      ).map((gym) => (
+      {shown.map((gym) => (
         <div key={gym.id}>
           <div className="card">
             <div className="row">

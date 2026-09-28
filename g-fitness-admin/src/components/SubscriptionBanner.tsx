@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Info } from 'lucide-react';
-import { getGymBilling, subscriptionWarning } from '../lib/api/subscription';
+import { Link } from 'react-router-dom';
+import { getGymBilling, getSubscription, subscriptionWarning, sweepBillingReminders } from '../lib/api/subscription';
 
 /**
  * The one line an owner needs about their own Core Fitness subscription.
@@ -21,8 +22,10 @@ export default function SubscriptionBanner() {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const billing = await getGymBilling();
-      if (alive) setWarning(subscriptionWarning(billing));
+      sweepBillingReminders();
+      const [billing, sub] = await Promise.all([getGymBilling(), getSubscription()]);
+      // 0138 made the grace period the platform's setting; before it, seven.
+      if (alive) setWarning(subscriptionWarning(billing, sub?.grace_days ?? 7));
     })();
     return () => { alive = false; };
   }, []);
@@ -45,7 +48,8 @@ export default function SubscriptionBanner() {
     >
       {bad ? <AlertTriangle size={16} className="mt-0.5 shrink-0" />
            : <Info size={16} className="mt-0.5 shrink-0" />}
-      <span>{warning.text}</span>
+      <span className="flex-1">{warning.text}</span>
+      <Link to="/subscription" className="text-xs font-semibold underline whitespace-nowrap">Your plan</Link>
     </div>
   );
 }

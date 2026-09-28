@@ -69,6 +69,8 @@ export interface PlanFeatureCell {
 
 export interface GymPayment {
   id: string;
+  /** CF-<year>-<00001>, issued by the database (0138). Absent before 0138. */
+  receipt_no?: string;
   gym_id: string;
   amount: string;
   paid_on: string;
@@ -573,3 +575,26 @@ export const setTicketStatus = (id: string, status: 'open' | 'closed') => call<v
 export const bell = () => call<BellItem[]>('platform_bell');
 /** Fired on window after a page changes something the sidebar badges or the bell count. */
 export const CHANGED = 'platform:changed';
+
+// ---- 0138: billing settings, receipts, reminders, capacity -----------------------------------
+export interface BillingSettings {
+  grace_days: number; reminder_days: number[]; business_name: string; business_address: string | null;
+  business_email: string | null; business_phone: string | null; receipt_note: string | null;
+}
+export interface Receipt {
+  receipt_no: string; amount: string; paid_on: string; covers_from: string | null; covers_until: string;
+  method: string | null; reference: string | null; plan_name: string | null; gym_name: string; gym_address: string | null;
+  business_name: string; business_address: string | null; business_email: string | null; business_phone: string | null;
+  receipt_note: string | null;
+}
+export interface CapacityRow { kind: 'database' | 'table' | 'bucket' | 'storage' | 'gym' | 'users'; key: string; label: string; used: number; cap: number | null }
+
+export const billingSettings = async () => (await call<BillingSettings[]>('billing_settings'))[0] ?? null;
+export const saveBillingSettings = (b: BillingSettings) => call<void>('set_billing_settings', {
+  p_grace_days: b.grace_days, p_reminder_days: b.reminder_days, p_business_name: b.business_name,
+  p_business_address: b.business_address, p_business_email: b.business_email, p_business_phone: b.business_phone,
+  p_receipt_note: b.receipt_note });
+export const paymentReceipt = async (id: string) => (await call<Receipt[]>('gym_payment_receipt', { p_payment: id }))[0] ?? null;
+export const capacity = async () => (await call<CapacityRow[]>('platform_capacity')).map((r) => ({ ...r, used: Number(r.used), cap: r.cap === null ? null : Number(r.cap) }));
+/** Reminders to every gym's owners before a lock (0138). Never throws; a sweep never breaks a page. */
+export const sweepBilling = () => { void supabase.rpc('billing_reminders_sweep').then(() => undefined, () => undefined); };

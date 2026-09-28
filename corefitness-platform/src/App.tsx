@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Inbox, Layers, LayoutDashboard, LifeBuoy, LogOut, Megaphone, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, TrendingUp, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
-import { CHANGED, isPlatformAdmin, listApplications, listTickets } from './lib/platform';
+import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
 import Overview from './pages/Overview';
 import Gyms from './pages/Gyms';
@@ -15,6 +15,8 @@ import Growth from './pages/Growth';
 import Support from './pages/Support';
 import Announcements from './pages/Announcements';
 import Bell from './components/Bell';
+import Capacity from './pages/Capacity';
+import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
 
 /**
@@ -41,6 +43,7 @@ const PAGES: Page[] = [
   { path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
   { path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
   { path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
+  { path: '/capacity', label: 'Capacity', icon: HardDrive, title: 'Capacity', lede: 'How close the service is to the free tier — sizes only, never a gym\'s rows.' },
   { path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
   { path: '/platform', label: 'Platform', icon: Activity, title: 'Platform', lede: 'Health, crashes, backups, admins and support access.' },
@@ -69,6 +72,8 @@ function Shell() {
   const [email, setEmail] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(0);
   const [supportWaiting, setSupportWaiting] = useState(0);
+  // Reminders to every gym's owners before a lock (0138): pg_cron is optional, so the platform's own visits sweep.
+  useEffect(() => { sweepBilling(); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -140,7 +145,11 @@ function Shell() {
             <h1>{page.title}</h1>
             <p className="lede">{page.lede}</p>
           </div>
-          <span style={{ marginLeft: 'auto' }}><Bell /></span>
+          <button type="button" className="find" style={{ marginLeft: 'auto' }} onClick={() => window.dispatchEvent(new Event('platform:search'))}>
+            <Search size={15} /> <span>Find anything</span> <kbd>Ctrl K</kbd>
+          </button>
+          <span><Bell /></span>
+          <CommandPalette pages={PAGES} />
           <span className="today" style={{ marginLeft: 0 }}>
             <span className="local-badge">This computer only</span>
             <span style={{ display: 'block', marginTop: 6 }}>{today}</span>
@@ -160,6 +169,7 @@ function Shell() {
                 <Route path="/growth" element={<Growth />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/announcements" element={<Announcements />} />
+                <Route path="/capacity" element={<Capacity />} />
                 <Route path="/platform" element={<Platform />} />
                 <Route path="*" element={<Navigate to="/overview" replace />} />
               </Routes>

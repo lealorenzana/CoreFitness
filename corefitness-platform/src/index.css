@@ -325,3 +325,34 @@ a.chip:hover { color: #fff; border-color: #3B2566; }
 .door-form { display: grid; place-items: center; padding: 40px; }
 .door-form form { width: 100%; max-width: 380px; }
 @media (max-width: 900px) { .door { grid-template-columns: 1fr; } .door-art { display: none; } }
+
+/* ---- a receipt (0138): portalled to <body>; printing hides the app ---- */
+.receipt-shade { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: rgba(0, 0, 0, 0.75); }
+.receipt-bar { position: sticky; top: 0; display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  background: var(--surface); border-bottom: 1px solid var(--border-soft); }
+.receipt-paper { max-width: 620px; margin: 24px auto; padding: 40px; background: #FFFFFF; color: #111827; font-size: 14px; }
+@media print {
+  body.receipt-open #root, body.receipt-open .receipt-bar { display: none !important; }
+  body.receipt-open { background: #FFFFFF; }
+  body.receipt-open .receipt-shade { position: static; background: none; overflow: visible; }
+  body.receipt-open .receipt-paper { margin: 0; }
+}
+
+/* ---- Ctrl+K: find anything ---- */
+.find { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 12px; border-radius: 10px;
+  border: 1px solid var(--hairline); background: var(--surface-raised); color: var(--text-3); font: inherit; font-size: 13px; cursor: pointer; }
+.find:hover { color: var(--text-2); border-color: var(--accent); }
+.find kbd, .palette kbd { font: 600 11px/1 ui-monospace, monospace; padding: 4px 6px; border-radius: 6px; background: var(--surface-high); color: var(--text-2); }
+.palette-shade { position: fixed; inset: 0; z-index: 70; background: rgba(5, 5, 12, 0.6); backdrop-filter: blur(2px);
+  display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
+.palette { width: min(620px, 100%); background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8); overflow: hidden; }
+.palette-input { border-bottom: 1px solid var(--border-soft); }
+.palette-input input { border: 0; border-radius: 0; background: transparent; height: 54px; font-size: 15px; }
+.palette-input input:focus { outline: none; box-shadow: none; }
+.palette-list { max-height: 50vh; overflow-y: auto; padding: 6px; }
+.palette-hit { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text-2); font: inherit; text-align: left; cursor: pointer; }
+.palette-hit.on { background: var(--accent-tint); color: var(--accent-text); }
+.palette-label { flex: 1; min-width: 0; color: var(--text); font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-hint { font-size: 12px; color: var(--text-3); white-space: nowrap; }

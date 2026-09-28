@@ -46,6 +46,9 @@ async (page) => {
     created_at: iso(1), updated_at: iso(1), last_from: 'gym', unread: true, messages: 1 }];
   const THREAD = [{ id: 'm0', author_name: 'Ana R', from_platform: false, body: 'The print button does nothing on the desk PC.', created_at: iso(1) }];
   const ANNS = [];
+  const BILLING = { grace_days: 10, reminder_days: [7, 3, 1], business_name: 'Core Fitness', business_address: 'San Jose, Occidental Mindoro',
+    business_email: 'billing@corefitness.test', business_phone: null, receipt_note: 'Thank you.' };
+  const SWEEPS = { n: 0 };
   const RPC = {
     platform_gym_contacts: () => [
       { user_id: 'o1', name: 'Gabby Owner', email: 'owner@gfitness.test', phone: '09171234567', role: 'admin', is_owner: true, status: 'active', last_sign_in_at: iso(2), joined_at: iso(200) },
@@ -55,7 +58,20 @@ async (page) => {
       { feature: 'checkins', label: 'Check-ins', last_30: 320, ever: 4100 }, { feature: 'rooms', label: 'Coaching room posts', last_30: 12, ever: 40 },
       { feature: 'shop', label: 'Shop sales', last_30: 0, ever: 0 }],
     platform_gym_events: () => [{ id: 9, gym_id: 'g1', action: 'gym.plan', summary: 'G Fitness moved to Premium', detail: null, created_at: iso(30) }],
-    platform_gym_payments: () => [{ id: 'gp1', gym_id: 'g1', amount: '1999', paid_on: iso(3).slice(0, 10), covers_from: null, covers_until: iso(-27).slice(0, 10), method: 'GCash', reference: 'R1', note: null, plan_key: 'premium', created_at: iso(3) }],
+    platform_gym_payments: () => [{ id: 'gp1', gym_id: 'g1', amount: '1999', paid_on: iso(3).slice(0, 10), covers_from: null, covers_until: iso(-27).slice(0, 10), method: 'GCash', reference: 'R1', note: null, plan_key: 'premium', created_at: iso(3), receipt_no: 'CF-2026-00007' }],
+    billing_settings: () => [BILLING],
+    set_billing_settings: (b) => { BILLING.grace_days = b.p_grace_days; BILLING.saved = true; return null; },
+    billing_reminders_sweep: () => { SWEEPS.n++; return 0; },
+    gym_payment_receipt: () => [{ receipt_no: 'CF-2026-00007', amount: '1999', paid_on: iso(3).slice(0, 10), covers_from: null,
+      covers_until: iso(-27).slice(0, 10), method: 'GCash', reference: 'R1', plan_name: 'Premium', gym_name: 'G Fitness', gym_address: 'Mamburao',
+      business_name: 'Core Fitness', business_address: 'San Jose, Occidental Mindoro', business_email: 'billing@corefitness.test', business_phone: null, receipt_note: 'Thank you.' }],
+    platform_capacity: () => [
+      { kind: 'database', key: 'postgres', label: 'Database', used: 44 * 1048576, cap: 500 * 1048576 },
+      { kind: 'table', key: 'workout_sets', label: 'workout_sets', used: 9 * 1048576, cap: null },
+      { kind: 'bucket', key: 'media', label: 'media', used: 120 * 1048576, cap: null },
+      { kind: 'storage', key: 'all', label: 'Storage, every bucket', used: 850 * 1048576, cap: 1024 * 1048576 },
+      { kind: 'gym', key: 'g1', label: 'G Fitness', used: 80 * 1048576, cap: null },
+      { kind: 'users', key: 'mau', label: 'People signed in, last 30 days', used: 164, cap: 50000 }],
     platform_gym_detail: () => [],
     platform_gym_health: () => [
       { gym_id: 'g3', name: 'Harbour Strength', logo_url: null, accent: 'teal', score: 70, level: 'high',
@@ -194,6 +210,67 @@ async (page) => {
   t = await text();
   out.push('an announcement: ' + (ANNS.length === 1 && ANNS[0].plan_key === 'premium' && ANNS[0].level === 'warning' && /Maintenance tonight/.test(t) && /Gyms on Premium · 3 reached/.test(t) ? 'sent to Premium gyms' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-announcements.png' });
+
+  // 0138: billing rules, receipts, capacity.
+  out.push('the platform sweeps reminders on load: ' + (SWEEPS.n >= 1 ? 'yes' : 'MISSING'));
+  await page.getByRole('link', { name: 'Money' }).click();
+  await page.getByText('Billing rules and receipts').waitFor({ timeout: 10000 });
+  t = await text();
+  out.push("Money uses the platform's grace period: " + (/read-only 10 days after its date/.test(t) && /read-only in 2 more/.test(t) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: 'Receipt' }).click();
+  await page.getByRole('document', { name: 'Receipt CF-2026-00007' }).waitFor({ timeout: 5000 });
+  t = await text();
+  out.push('a printable receipt: ' + (/San Jose, Occidental Mindoro/.test(t) && /₱1,999\.00/.test(t) && /Received from G Fitness/.test(t) ? 'CF-2026-00007' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-receipt.png' });
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByLabel('Days before read-only').fill('14');
+  await page.getByRole('button', { name: 'Save billing rules' }).click();
+  await page.waitForTimeout(600);
+  out.push('billing rules save: ' + (BILLING.saved && BILLING.grace_days === 14 ? 'grace 14' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-money.png', fullPage: true });
+  await page.getByRole('link', { name: 'Capacity' }).click();
+  await page.waitForTimeout(900);
+  t = await text();
+  out.push('capacity against the free tier: ' + (/44\.0 MB/.test(t) && /850\.0 MB/.test(t) && /83% used/.test(t) && /Past 80%/.test(t) && /G Fitness/.test(t) ? 'shown, storage flagged' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-capacity.png' });
+
+
+  // Ctrl+K: find anything.
+  await page.keyboard.press('Control+k');
+  await page.getByLabel('Search everything').waitFor({ timeout: 5000 });
+  await page.getByLabel('Search everything').fill('harb');
+  await page.waitForTimeout(400);
+  out.push('Ctrl+K finds a gym: ' + ((await page.getByRole('option', { name: /Harbour Strength/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  out.push('Enter opens its page: ' + (/\/gyms\/g3$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  await page.getByRole('button', { name: /Find anything/ }).click();
+  await page.getByLabel('Search everything').fill('receipts');
+  await page.waitForTimeout(400);
+  out.push('it finds a support ticket: ' + ((await page.getByRole('option', { name: /Receipts will not print/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.getByLabel('Search everything').fill('capac');
+  await page.waitForTimeout(200);
+  out.push('and a screen: ' + ((await page.getByRole('option', { name: /Capacity/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-palette.png' });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  out.push('Esc closes it: ' + ((await page.getByLabel('Search everything').count()) === 0 ? 'yes' : 'MISSING'));
+
+  // CSV: the file a click gives, and the rules that make it safe to open in Excel.
+  await page.getByRole('link', { name: 'Gyms', exact: true }).click();
+  await page.waitForTimeout(700);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV' }).click()]);
+  let csv = '';
+  for await (const chunk of await dl.createReadStream()) csv += chunk.toString('utf8');
+  const lines = csv.replace(/^\uFEFF/, '').trim().split(/\r\n/);
+  out.push('gyms CSV: ' + (/^core-fitness-gyms-\d{4}-\d{2}-\d{2}\.csv$/.test(dl.suggestedFilename()) && lines.length === 4
+    && lines[0].startsWith('Gym,Address,Status') && csv.charCodeAt(0) === 0xFEFF ? `${lines.length - 1} gyms` : 'MISSING ' + dl.suggestedFilename() + ' ' + lines.length));
+  const rules = await page.evaluate(async () => {
+    const { toCsv } = await import('/src/lib/csv.ts');
+    return toCsv([{ a: '=HYPERLINK("x")', b: 'Say "hi", ok', c: -5, d: null }],
+      [['A', (r) => r.a], ['B', (r) => r.b], ['C', (r) => r.c], ['D', (r) => r.d]]);
+  });
+  out.push('CSV rules: ' + (rules.includes(`"'=HYPERLINK(""x"")"`) && rules.includes('"Say ""hi"", ok"') && rules.includes(',-5,') ? 'formula guarded, quotes escaped, numbers kept' : 'MISSING ' + JSON.stringify(rules)));
 
   await page.getByRole('link', { name: 'Growth' }).click();
   await page.waitForTimeout(900);

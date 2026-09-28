@@ -287,6 +287,6 @@
    the page. Doing this with `print:hidden` on the sidebar, the header and the
    search bar would be three places to forget the next time one is added. */
 @media print {
-  body.poster-open #root { display: none !important; }
-  body.poster-open { background: #FFFFFF; }
+  body.poster-open #root, body.receipt-open #root { display: none !important; }
+  body.poster-open, body.receipt-open { background: #FFFFFF; }
 }

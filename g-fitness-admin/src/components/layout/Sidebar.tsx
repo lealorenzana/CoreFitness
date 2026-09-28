@@ -161,6 +161,8 @@ const NAV: Entry[] = [
 
   { label: 'Your app', path: '/gym-app', icon: Smartphone, adminOnly: true },
   { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true, alsoMatches: ['/system'] },
+  // What this gym pays Core Fitness, and its receipts (0138).
+  { label: 'Your plan', path: '/subscription', icon: CreditCard, adminOnly: true },
   // Talking to Core Fitness (0137): owner and desk.
   { label: 'Support', path: '/support', icon: LifeBuoy },
 ];

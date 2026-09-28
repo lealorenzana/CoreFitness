@@ -137,7 +137,10 @@ const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).r
 // gym table — it is Core Fitness's ledger *about* a gym, the way an invoice a
 // supplier sends you is theirs, not yours. It is RLS-on with no policy at all,
 // and the checks further down assert no gym can reach it.
-const GLOBAL = ['profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
+const GLOBAL = [
+  // 0138: the platform's billing settings and its receipt counter — no gym_id, the platform's alone.
+  'platform_billing', 'platform_receipt_counters',
+  'profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
   'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features',
   // 0113. Both carry a gym_id and neither is a gym table, for the same reason
