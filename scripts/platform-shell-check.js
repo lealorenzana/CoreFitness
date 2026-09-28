@@ -162,7 +162,8 @@ async (page) => {
   out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
-  await page.getByRole('button', { name: 'G Fitness' }).click();
+  await page.getByRole('button', { name: 'G Fitness, open' }).click();
+  await page.getByRole('button', { name: 'Open its full page' }).click();
   await page.waitForTimeout(1200);
   t = await text();
   out.push("a gym's own page: " + (/\/gyms\/g1$/.test(page.url()) && /Who runs it/i.test(t) && /What it uses/i.test(t) && /Payments to Core Fitness/i.test(t) ? 'opened' : 'MISSING ' + page.url()));

@@ -38,6 +38,7 @@
     { "file": "admin-shop-check.js", "app": "admin" },
     { "file": "admin-shop-desk-check.js", "app": "admin" },
     { "file": "platform-shell-check.js", "app": "platform" },
+    { "file": "platform-gyms-check.js", "app": "platform" },
     { "file": "admin-exercise-media-check.js", "app": "admin" },
     { "file": "admin-programs-check.js", "app": "admin" },
     { "file": "admin-season-check.js", "app": "admin" },
