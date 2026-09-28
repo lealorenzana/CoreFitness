@@ -166,7 +166,9 @@ export function StatTiles({ items }: { items: StatItem[] }) {
           <Tag
             key={s.label}
             onClick={s.onClick}
-            data-tip={s.tooltip}
+            // The label is truncated in the tile; the tip always says it whole, and what it counts.
+            data-tip={s.tooltip ? `${s.label}: ${s.tooltip}` : s.onClick ? `${s.label} — click to show them` : s.label}
+            tabIndex={s.onClick ? undefined : 0}
             className="flex items-center gap-2.5 pl-2.5 pr-4 py-2 rounded-xl text-left transition-colors"
             style={{
               background: SURFACE,
@@ -229,7 +231,7 @@ export function Section({ title, icon: Icon, count, hint, actions, children, cla
             </span>
           )}
           {hint && (
-            <span className="text-[10px] truncate hidden md:inline" style={{ color: TEXT_MUTED }}>· {hint}</span>
+            <span className="text-[10px] truncate hidden md:inline" style={{ color: TEXT_MUTED }} data-tip={hint}>· {hint}</span>
           )}
         </div>
         {actions && <div className="flex items-center gap-1.5 flex-shrink-0">{actions}</div>}

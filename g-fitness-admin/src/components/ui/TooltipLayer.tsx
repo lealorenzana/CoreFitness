@@ -1,50 +1,65 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { actionTip } from '../../lib/actionTips';
 
 /**
- * One tooltip for the whole admin app, driven by `data-tip`.
+ * One tooltip for the whole admin app.
  *
- * ## Why not the `title` attribute
+ * ## What it shows
  *
- * Dozens of controls already carried an explanation as `title="…"`. The browser
- * renders that in the operating system's own style — a light box on a dark
- * dashboard — after roughly a second, and never for anyone navigating by
- * keyboard. So the text existed and was, in practice, unreadable: too slow for
- * the person scanning, wrong-looking when it did appear, and absent for anyone
- * not using a mouse.
+ * - **`data-tip`** — the explicit explanation. Adding one anywhere is one attribute.
+ * - **`title`** — adopted on first hover (moved to `data-tip`). There were 200+
+ *   of these, rendered by the browser in the operating system's own style — a
+ *   light box on a dark dashboard, after a second, never for the keyboard. Now
+ *   they all read like the rest of the app, with no edit to the 200 places.
+ * - **An icon-only button or link's `aria-label`** — a bell, an X, a pencil has
+ *   a name for a screen reader and, until now, nothing for someone looking at
+ *   it. If the element has no visible text, its accessible name is its tip.
  *
- * ## Why not a wrapper component
+ * ## Why one listener and not a wrapper
  *
  * `<Tooltip>` around every control means touching every control, and a wrapper
- * that clones its child to attach handlers is the kind of thing that quietly
- * eats an `onClick` or a `ref`. This listens once, on the document, and finds
- * the nearest `[data-tip]` ancestor of whatever was hovered or focused. Adding
- * a tooltip anywhere in the app is then one attribute, and it works on elements
- * rendered by components this file has never heard of.
- *
- * `Tooltip.tsx` remains for the rarer case where the text is a React node
- * rather than a string.
+ * that clones its child to attach handlers quietly eats an `onClick` or a
+ * `ref`. This listens once, on the document, and finds the nearest candidate
+ * ancestor of whatever was hovered or focused.
  *
  * ## The rules it follows
  *
- * - **Focus shows it immediately, hover waits.** A keyboard user has already
- *   committed to the control; a mouse passing over one has not.
- * - **It never intercepts a click.** `pointer-events: none`, so it cannot come
- *   between you and the button it is describing.
- * - **It follows the element, not the pointer**, so it does not jitter.
- * - **Escape and scroll dismiss it**, because a tooltip anchored to something
- *   that has moved is worse than none.
+ * - Focus shows it immediately, hover waits a moment.
+ * - It never intercepts a click (`pointer-events: none`).
+ * - It follows the element, not the pointer, so it does not jitter.
+ * - Escape, scroll and resize dismiss it.
  */
 
 const LAYER = 500;
 const GAP = 8;
 const DELAY = 300;
+const CANDIDATE = '[data-tip],[title],button,a[aria-label],[role="button"][aria-label]';
 
-interface Tip {
-  text: string;
-  x: number;
-  y: number;
-  place: 'top' | 'bottom';
+interface Tip { text: string; x: number; y: number; place: 'top' | 'bottom' }
+
+/** The element to explain, adopting a `title` or a text-less control's name on the way. */
+function explainable(from: EventTarget | null): HTMLElement | null {
+  let el = (from as Element | null)?.closest?.(CANDIDATE) as HTMLElement | null;
+  while (el) {
+    const title = el.getAttribute('title');
+    if (title) {
+      el.setAttribute('data-tip', title);
+      el.removeAttribute('title');
+      if (!el.getAttribute('aria-label') && !el.textContent?.trim()) el.setAttribute('aria-label', title);
+    }
+    if (el.getAttribute('data-tip')) return el;
+    const label = el.getAttribute('aria-label');
+    // A labelled control that shows its own words needs no tooltip saying them again.
+    if (label && !el.textContent?.trim()) { el.setAttribute('data-tip', label); return el; }
+    // A button whose words say what it is, and a glossary sentence says what it does.
+    if (el.tagName === 'BUTTON') {
+      const said = actionTip(el.textContent ?? '');
+      if (said) { el.setAttribute('data-tip', said); return el; }
+    }
+    el = el.parentElement?.closest?.(CANDIDATE) as HTMLElement | null;
+  }
+  return null;
 }
 
 export default function TooltipLayer() {
@@ -58,72 +73,51 @@ export default function TooltipLayer() {
       const text = el.getAttribute('data-tip');
       if (!text) return null;
       const r = el.getBoundingClientRect();
-      // Nothing to point at — the element is scrolled out or display:none.
       if (r.width === 0 && r.height === 0) return null;
-      // Flip below when there is no room above. 46px is a two-line box plus gap.
       const place: 'top' | 'bottom' = r.top < 46 ? 'bottom' : 'top';
       return {
         text,
-        x: Math.min(Math.max(r.left + r.width / 2, 100), window.innerWidth - 100),
+        x: Math.min(Math.max(r.left + r.width / 2, 150), window.innerWidth - 150),
         y: place === 'top' ? r.top - GAP : r.bottom + GAP,
         place,
       };
     };
-
     const open = (el: HTMLElement, immediate: boolean) => {
       window.clearTimeout(timer);
       anchor = el;
-      const run = () => {
-        // Re-measure at fire time: the element may have moved during the delay.
-        const next = anchor ? measure(anchor) : null;
-        if (next) setTip(next);
-      };
-      if (immediate) run();
-      else timer = window.setTimeout(run, DELAY);
+      const run = () => { const next = anchor ? measure(anchor) : null; if (next) setTip(next); };
+      if (immediate) run(); else timer = window.setTimeout(run, DELAY);
     };
-
-    const close = () => {
-      window.clearTimeout(timer);
-      anchor = null;
-      setTip(null);
-    };
+    const close = () => { window.clearTimeout(timer); anchor = null; setTip(null); };
 
     const onOver = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest?.('[data-tip]') as HTMLElement | null;
+      const el = explainable(e.target);
       if (!el) { if (anchor) close(); return; }
-      if (el === anchor) return;
-      open(el, false);
+      if (el !== anchor) open(el, false);
     };
-
-    const onFocus = (e: FocusEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest?.('[data-tip]') as HTMLElement | null;
-      if (el) open(el, true);
+    const onOut = (e: MouseEvent) => {
+      const to = e.relatedTarget as Element | null;
+      if (!to || !anchor?.contains(to)) { if (!to?.closest?.(CANDIDATE)) close(); }
     };
+    const onFocus = (e: FocusEvent) => { const el = explainable(e.target); if (el) open(el, true); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
 
-    // A click means the control is doing its job; the explanation is spent, and
-    // leaving it hanging over the modal that just opened is litter.
     document.addEventListener('mouseover', onOver);
-    document.addEventListener('mouseout', (e) => {
-      const to = (e as MouseEvent).relatedTarget as HTMLElement | null;
-      if (!to?.closest?.('[data-tip]')) close();
-    });
+    document.addEventListener('mouseout', onOut);
     document.addEventListener('focusin', onFocus);
     document.addEventListener('focusout', close);
     document.addEventListener('click', close, true);
-    document.addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Escape') close();
-    });
-    // Capture phase: a tooltip anchored to a row that has scrolled away points
-    // at nothing, and inner scrollers do not bubble their scroll event.
+    document.addEventListener('keydown', onKey);
     document.addEventListener('scroll', close, true);
     window.addEventListener('resize', close);
-
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener('mouseover', onOver);
+      document.removeEventListener('mouseout', onOut);
       document.removeEventListener('focusin', onFocus);
       document.removeEventListener('focusout', close);
       document.removeEventListener('click', close, true);
+      document.removeEventListener('keydown', onKey);
       document.removeEventListener('scroll', close, true);
       window.removeEventListener('resize', close);
     };
@@ -140,15 +134,16 @@ export default function TooltipLayer() {
         left: tip.x,
         top: tip.y,
         transform: `translate(-50%, ${tip.place === 'top' ? '-100%' : '0'})`,
-        maxWidth: 280,
-        padding: '6px 9px',
-        borderRadius: 8,
+        maxWidth: 300,
+        padding: '7px 10px',
+        borderRadius: 9,
         background: 'var(--color-surface-high)',
-        border: '1px solid var(--color-border)',
-        boxShadow: '0 6px 20px rgba(0,0,0,0.55)',
-        color: 'var(--color-text-secondary)',
-        fontSize: 11,
+        border: '1px solid rgba(124,58,237,0.35)',
+        boxShadow: '0 10px 28px rgba(0,0,0,0.6)',
+        color: 'var(--color-text-primary, #fff)',
+        fontSize: 11.5,
         lineHeight: 1.45,
+        whiteSpace: 'pre-line',
       }}
     >
       {tip.text}

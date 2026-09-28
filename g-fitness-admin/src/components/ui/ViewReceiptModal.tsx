@@ -131,7 +131,7 @@ ${gymName}
                     <p className="text-gray-400 text-sm">Invoice #{payment.invoiceNumber}</p>
                   </div>
                 </div>
-                <button
+                <button aria-label="Close"
                   onClick={onClose}
                   className="text-gray-400 hover:text-white transition-colors"
                 >

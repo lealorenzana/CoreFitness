@@ -129,7 +129,7 @@ function Message({ text, onClose }: { text: string; onClose: () => void }) {
   return (
     <div className="flex-1 flex flex-col">
       <div className="p-5 flex justify-end">
-        <button onClick={onClose} style={{ color: 'var(--color-text-muted)' }}><X size={20} /></button>
+        <button aria-label="Close" onClick={onClose} style={{ color: 'var(--color-text-muted)' }}><X size={20} /></button>
       </div>
       <div className="flex-1 flex items-center justify-center px-8 text-center text-sm"
         style={{ color: 'var(--color-text-muted)' }}>
@@ -191,7 +191,7 @@ function Body({
             </div>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+        <button aria-label="Close" onClick={onClose} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
           <X size={20} />
         </button>
       </div>

@@ -104,6 +104,8 @@ export default function Header() {
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
+            aria-label={unreadCount ? `${unreadCount} alert${unreadCount === 1 ? '' : 's'}` : 'Alerts'}
+            data-tip={unreadCount ? `${unreadCount} thing${unreadCount === 1 ? '' : 's'} to look at — sign-ups, payments, bookings` : 'Alerts: nothing new'}
             className="relative w-10 h-10 rounded-full flex items-center justify-center transition-colors"
             style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}

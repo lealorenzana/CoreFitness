@@ -292,7 +292,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                     <p className="text-gray-400 text-sm">Position QR code within frame</p>
                   </div>
                 </div>
-                <button
+                <button aria-label="Close"
                   onClick={handleClose}
                   className="text-gray-400 hover:text-white transition-colors"
                 >

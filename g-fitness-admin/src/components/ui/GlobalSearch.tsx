@@ -175,6 +175,7 @@ export default function GlobalSearch() {
   const trigger = (
     <button
       onClick={() => setOpen(true)}
+      data-tip="Find a member, payment, class, coach or page — a letter is enough (Ctrl K)"
       className="flex items-center gap-2 h-10 pl-3 pr-2 rounded-full transition-colors w-full max-w-md"
       style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}

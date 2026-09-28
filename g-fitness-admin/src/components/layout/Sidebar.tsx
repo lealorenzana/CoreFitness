@@ -167,6 +167,46 @@ const NAV: Entry[] = [
   { label: 'Support', path: '/support', icon: LifeBuoy },
 ];
 
+/**
+ * One sentence per destination, shown on hover and focus (TooltipLayer) — in
+ * the expanded nav and the collapsed rail alike. It says what the page is *for*,
+ * so a new desk hire can find their way without asking.
+ */
+const NAV_TIPS: Record<string, string> = {
+  '/dashboard': 'Today at a glance: members, money, check-ins and what needs you',
+  '/attendance': "Check people in and see who is in today. History has every day before",
+  '/members': 'Everyone who belongs here: memberships, payments, approvals and archiving',
+  '/invitations': 'Invite owners, desk staff and coaches by email',
+  '/trainers': 'Your coaches: their hours, sessions, ratings and who they coach',
+  '/credentials': "Coaches' certificates, checked and kept on file",
+  '/schedule': 'The class timetable: create classes, rooms and coaches',
+  '/bookings': 'Every class booking and 1-on-1 session, with cancellations',
+  '/payments': 'Record a payment, print a receipt, close the cash drawer',
+  '/shop': 'What the gym sells at the counter, its stock, and the sales',
+  '/membership-plans': 'The plans members can buy: prices, lengths and what each unlocks',
+  '/revenue': 'Money in, by day, month and plan',
+  '/retention': 'Members drifting away, and the win-back messages that reach them',
+  '/activity': 'Everything staff did in the system, and when',
+  '/challenges': "Challenges members join for points: this month's and the weekly quests",
+  '/rewards': 'Rewards members can spend points on, and requests to approve',
+  '/achievements': 'Badges members earn, and the rules that award them',
+  '/notifications': 'Announcements and events: what the gym tells its members',
+  '/exercises': "The exercise library: your gym's own photos, cues and hidden exercises",
+  '/programs': "Multi-week programs members follow, built by you",
+  '/resources': 'Articles and videos saved for members',
+  '/rooms': "Coaches' rooms: their posts, classwork and members — read and moderate",
+  '/gym-app': "How the member app looks: your logo, colours, words and join poster",
+  '/settings': 'Gym details, hours, rules, waivers and the system status',
+  '/subscription': 'What this gym pays Core Fitness, until when, and the receipts',
+  '/support': 'Ask Core Fitness anything, and read the answers',
+  People: 'Members, invitations, coaches and their credentials',
+  Classes: 'The timetable and every booking',
+  Billing: 'Payments, the shop and membership plans',
+  Reports: 'Revenue, retention and the activity log',
+  Engagement: 'Challenges, rewards and badges',
+  Training: 'Exercises, programs, resources and coaches\' rooms',
+};
+
 /** The group a path lives in, or null for a top-level page. */
 function groupHolding(pathname: string): string | null {
   for (const e of NAV) {
@@ -314,7 +354,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const isActive = paths.includes(location.pathname);
               const title = isGroup(entry)
                 ? `${entry.label} — ${entry.children.map((c) => c.label).join(', ')}`
-                : entry.label;
+                : `${entry.label}${NAV_TIPS[entry.path] ? '\n' + NAV_TIPS[entry.path] : ''}`;
               return (
                 <button
                   key={entry.label}
@@ -414,6 +454,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <NavLink
                   key={entry.path}
                   to={entry.path}
+                  data-tip={NAV_TIPS[entry.path]}
                   className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
                   style={{
                     background: isActive ? PRIMARY_LIGHT : 'transparent',
@@ -438,6 +479,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <button
                   onClick={() => toggleGroup(entry.label)}
                   aria-expanded={expanded}
+                  data-tip={NAV_TIPS[entry.label]}
                   className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
                   style={{
                     background: holdsActive && !expanded ? PRIMARY_LIGHT : 'transparent',
@@ -468,6 +510,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <NavLink
                           key={child.path}
                           to={child.path}
+                          data-tip={NAV_TIPS[child.path]}
                           className="flex items-center gap-2 px-2.5 h-8 rounded-lg text-[12px] font-medium transition-colors"
                           style={{
                             background: isActive ? PRIMARY_LIGHT : 'transparent',

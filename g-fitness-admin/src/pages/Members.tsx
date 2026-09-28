@@ -1007,7 +1007,7 @@ export default function Members() {
                       <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Approve or reject member registrations</p>
                     </div>
                   </div>
-                  <button onClick={closePendingPanel} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-muted)' }}>
+                  <button aria-label="Close" onClick={closePendingPanel} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-muted)' }}>
                     <X size={18} />
                   </button>
                 </div>
@@ -1331,7 +1331,7 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
               <h2 className="text-lg font-bold text-white">{title}</h2>
               {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</p>}
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
+            <button aria-label="Close" onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
           </div>
           <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">{children}</div>
         </motion.div>

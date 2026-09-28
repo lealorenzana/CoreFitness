@@ -196,7 +196,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                     <p className="text-gray-400 text-sm">Add a new payment record</p>
                   </div>
                 </div>
-                <button
+                <button aria-label="Close"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
