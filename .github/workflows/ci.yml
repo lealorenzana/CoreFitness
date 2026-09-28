@@ -64,8 +64,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
-      - name: Every gym accent stays readable as text
-        run: node scripts/accent-contrast.mjs
+      - name: Every gym colour, preset or code, stays readable as text
+        run: node --experimental-strip-types scripts/accent-contrast.mjs
 
   sql:
     name: Migrations and SQL rules
@@ -86,7 +86,7 @@ jobs:
       - name: Rule checks
         working-directory: ${{ runner.temp }}/sql
         run: |
-          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation storage-tenancy content-media programs records-seasons squads-goals referrals exercise-library gym-additions rooms classwork retention chat photos shop platform-logos platform-profile platform-health platform-talk platform-billing trials-end platform-insight demo-removal; do
+          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation storage-tenancy content-media programs records-seasons squads-goals referrals exercise-library gym-additions rooms classwork retention chat photos shop platform-logos platform-profile platform-health platform-talk platform-billing trials-end platform-insight switches demo-removal; do
             echo "::group::$s"
             node "$GITHUB_WORKSPACE/scripts/sql/$s.mjs" "$GITHUB_WORKSPACE"
             echo "::endgroup::"

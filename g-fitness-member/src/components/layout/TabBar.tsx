@@ -3,7 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { DotsNine, QrCode } from '@phosphor-icons/react';
 import CheckInSheet from '../ui/CheckInSheet';
 import EverythingSheet from './EverythingSheet';
-import { TABS, tabForPath } from './memberNav';
+import { TABS, tabForPath, tabPath } from './memberNav';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 import { useT } from '../../lib/i18n';
 import { useLiveData } from '../../hooks/useLiveData';
 import { getCurrentMemberId } from '../../services/bookingService';
@@ -71,12 +73,16 @@ export default function TabBar() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkedIn, refreshCheckIn] = useCheckedInToday();
+  const app = useGymApp();
+  // A gym that does not scan codes (0110) gets no check-in block: a button that
+  // shows a code nobody will scan is a promise the desk cannot keep.
+  const scans = moduleOn(app, 'checkin');
 
   const active = tabForPath(location.pathname);
   // The bar marks a tab only on its root. On a pushed screen the tab still
   // colours its icon — you are inside it — but the underline mark means "this
   // screen", and it would be untrue two levels down.
-  const onRoot = TABS.some((t) => t.path === location.pathname);
+  const onRoot = TABS.some((t) => tabPath(t, app) === location.pathname);
 
   const blockColour = checkedIn ? 'var(--color-primary-400)' : 'var(--color-secondary)';
   const blockEdge = checkedIn ? 'var(--color-primary)' : 'var(--color-secondary)';
@@ -99,7 +105,7 @@ export default function TabBar() {
           return (
             <button
               key={tab.id}
-              onClick={() => { if (location.pathname !== tab.path) navigate(tab.path); }}
+              onClick={() => { const to = tabPath(tab, app); if (location.pathname !== to) navigate(to); }}
               aria-current={isActive && onRoot ? 'page' : undefined}
               className="flex-1 flex flex-col items-center justify-start noc-press"
               style={{
@@ -142,9 +148,9 @@ export default function TabBar() {
           <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{t('More')}</span>
         </button>
 
-        <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgba(233, 233, 237, 0.12)' }} />
+        {scans && <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgba(233, 233, 237, 0.12)' }} />}
 
-        <button
+        {scans && <button
           onClick={() => setSheetOpen(true)}
           aria-label={checkedIn ? 'Checked in today. Show my code' : 'Check in. Show my code'}
           // Breathes while there is a check-in to do; still once it is done.
@@ -164,7 +170,7 @@ export default function TabBar() {
             <QrCode size={21} weight={checkedIn ? 'regular' : 'bold'} />
           </span>
           <span style={{ fontSize: 12 }}>{t(checkedIn ? 'Checked in' : 'Check in')}</span>
-        </button>
+        </button>}
       </nav>
 
       <CheckInSheet open={sheetOpen} onClose={() => { setSheetOpen(false); refreshCheckIn(); }} />

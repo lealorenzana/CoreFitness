@@ -3,7 +3,7 @@ import { Check, LogOut } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { supabase } from '../lib/supabaseClient';
 import { showToast } from '../utils/toast';
-import { ACCENTS } from '../lib/accents';
+import ColourRolePicker from '../components/ColourRolePicker';
 import { clearGymContext, getGymContext } from '../lib/gymContext';
 import {
   finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
@@ -393,20 +393,9 @@ export default function Setup() {
               <p className="mt-5 text-xs" style={labelStyle}>
                 Your main colour — where you are, and what you have
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {ACCENTS.map((accent) => (
-                  <button key={accent.key} type="button"
-                    onClick={() => setGym({ ...gym, accent: accent.key })}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                    style={{
-                      borderColor: gym.accent === accent.key ? accent.swatch : 'var(--color-border)',
-                      background: 'var(--color-bg)', color: 'var(--color-text-primary)',
-                    }}>
-                    <span className="h-4 w-4 rounded-full" style={{ background: accent.swatch }} />
-                    {accent.label}
-                    {gym.accent === accent.key && <Check size={14} style={{ color: accent.swatch }} />}
-                  </button>
-                ))}
+              <div className="mt-2">
+                <ColourRolePicker idPrefix="setup-accent" value={gym.accent} fallback="violet"
+                  onChange={(v) => setGym({ ...gym, accent: v || 'violet' })} />
               </div>
 
               {/* The second role (0112). It used to be amber for every gym, so
@@ -416,33 +405,15 @@ export default function Setup() {
               <p className="mt-5 text-xs" style={labelStyle}>
                 Your action colour — the buttons that do the next thing: book, renew, save
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" onClick={() => setAction('')}
-                  className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: action === '' ? '#F59E0B' : 'var(--color-border)',
-                    background: 'var(--color-bg)', color: 'var(--color-text-primary)',
-                  }}>
-                  <span className="h-4 w-4 rounded-full" style={{ background: '#F59E0B' }} />
-                  Amber
-                  {action === '' && <Check size={14} style={{ color: '#F59E0B' }} />}
-                </button>
-                {ACCENTS.map((accent) => (
-                  <button key={accent.key} type="button" onClick={() => setAction(accent.key)}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                    style={{
-                      borderColor: action === accent.key ? accent.swatch : 'var(--color-border)',
-                      background: 'var(--color-bg)', color: 'var(--color-text-primary)',
-                    }}>
-                    <span className="h-4 w-4 rounded-full" style={{ background: accent.swatch }} />
-                    {accent.label}
-                    {action === accent.key && <Check size={14} style={{ color: accent.swatch }} />}
-                  </button>
-                ))}
+              <div className="mt-2">
+                <ColourRolePicker idPrefix="setup-action" value={action} fallback="amber"
+                  unsetLabel="Standard amber, the colour every gym started with"
+                  onChange={setAction} />
               </div>
               <p className="mt-2 text-xs" style={labelStyle}>
-                Pick the same colour twice for an app in one colour throughout. Every colour here is
-                checked to stay readable as text on the app's dark background.
+                Pick the same colour twice for an app in one colour throughout. Your own brand colour
+                works too — every colour, yours included, is adjusted to stay readable as text on the
+                app's dark background. You can change all of this later on Your app.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">

@@ -15,6 +15,9 @@ import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { loadLanguagePreference } from '../../lib/i18n';
 import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
+import ModuleGate from '../ModuleGate';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { useEffect } from 'react';
 
@@ -45,6 +48,10 @@ import { useEffect } from 'react';
  */
 function ChatheadGate({ pathname }: { pathname: string }) {
   const { features, loading, error } = useFeatures();
+  const app = useGymApp();
+  // The gym's own switch first (0110): a gym that turned the assistant off
+  // must not have it floating on every screen, whatever a member's plan says.
+  if (!moduleOn(app, 'assistant')) return null;
   if (pathname.startsWith('/member/chatbot')) return null;
   // A chat with a coach (0131) has its own Send button in that corner.
   if (pathname.startsWith('/member/messages/')) return null;
@@ -119,7 +126,7 @@ export default function Layout() {
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>
-            <Outlet />
+            <ModuleGate home="/member/home"><Outlet /></ModuleGate>
           </Suspense>
         </div>
       </main>

@@ -3,8 +3,8 @@ import {
   Barbell, Buildings,
   Bell, CalendarBlank, ChatsCircle, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
-import type { Destination, WordReader } from './memberNav';
-import { hasOwnWords, word, type GymApp } from '../../lib/gymApp';
+import { visibleDestinations, type Destination, type WordReader } from './memberNav';
+import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp } from '../../lib/gymApp';
 
 /**
  * The trainer app's navigation, in one place — the trainer counterpart of
@@ -31,14 +31,16 @@ export interface TrainerTab {
    * renamed nothing.
    */
   words?: (w: WordReader) => { label?: string; eyebrow?: string };
+  /** The switch this tab belongs to (0110/0141). A gym that does not run it gets no tab. */
+  module?: FeatureKey;
 }
 
 export const TRAINER_TABS: TrainerTab[] = [
   { id: 'home', label: 'Home', path: '/trainer/home', icon: House, eyebrow: 'Your coaching day' },
   // Rooms (0128): a Google Classroom per class, per 1-on-1 trainee and per
   // coaching group. The roster it replaced as a tab is "All my members" inside.
-  { id: 'rooms', label: 'Rooms', path: '/trainer/rooms', icon: UsersThree, eyebrow: 'Classwork and feedback' },
-  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours',
+  { id: 'rooms', label: 'Rooms', path: '/trainer/rooms', icon: UsersThree, eyebrow: 'Classwork and feedback', module: 'rooms' },
+  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours', module: 'classes',
     words: (w) => ({ eyebrow: w('classes', true) + ' and hours' }) },
   { id: 'bookings', label: 'Bookings', path: '/trainer/bookings', icon: Tray, eyebrow: 'Classes and 1-on-1',
     words: (w) => ({ eyebrow: w('classes', true) + ' and 1-on-1' }) },
@@ -81,15 +83,20 @@ export function trainerTabRootFor(pathname: string): TrainerTab | null {
   return TRAINER_TABS.find((t) => t.path === pathname) ?? null;
 }
 
+/** A tab's rail, filtered to what the gym runs. */
+export function trainerRail(id: TrainerTabId, app: GymApp | null): Destination[] {
+  return visibleDestinations(TRAINER_RAILS[id], app);
+}
+
 /** Each tab's rail: the screens under it the bar does not carry. Empty draws none. */
 export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
-    { label: 'Messages', path: '/trainer/messages', icon: ChatsCircle },
+    { label: 'Messages', path: '/trainer/messages', icon: ChatsCircle, module: 'chat' },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
-    { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
+    { label: 'Achievements', path: '/trainer/achievements', icon: Trophy, module: 'engagement' },
   ],
   rooms: [
     // The roster the Rooms tab replaced, unchanged.
@@ -101,7 +108,7 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   profile: [
     { label: 'Edit profile', path: '/trainer/profile/edit', icon: UserCircle },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
-    { label: 'Achievements', path: '/trainer/achievements', icon: Trophy },
+    { label: 'Achievements', path: '/trainer/achievements', icon: Trophy, module: 'engagement' },
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
     { label: 'Settings', path: '/trainer/settings', icon: GearSix },
     // Coaches work at more than one gym; this is how they switch.
@@ -117,8 +124,10 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
  * substitution that would change no characters.
  */
 export function trainerTabs(app: GymApp | null): TrainerTab[] {
-  if (!hasOwnWords(app)) return TRAINER_TABS;
-  return TRAINER_TABS.map((tab) => {
+  // A tab for something the gym does not run is not drawn (0110/0141).
+  const running = TRAINER_TABS.filter((tab) => moduleOn(app, tab.module));
+  if (!hasOwnWords(app)) return running;
+  return running.map((tab) => {
     if (!tab.words) return tab;
     const next = tab.words((k, title) => word(app, k, title));
     return { ...tab, ...(next.label ? { label: next.label } : {}),

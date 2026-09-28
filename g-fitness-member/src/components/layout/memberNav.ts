@@ -105,6 +105,16 @@ export function tabForPath(pathname: string): TabId | null {
   return bestTab;
 }
 
+/**
+ * Where a tab opens for this gym. Train opens Book a session — unless the gym
+ * does not run classes (0110), when it opens the free workout library, which
+ * is never switched off; landing on "not at this gym" from a tab would be a dead end.
+ */
+export function tabPath(tab: Tab, app: GymApp | null): string {
+  if (tab.id === 'train' && !moduleOn(app, 'classes')) return '/member/workouts';
+  return tab.path;
+}
+
 /** A tab root is a screen that shows the big header and the rail. */
 export function tabRootFor(pathname: string): Tab | null {
   return TABS.find((t) => t.path === pathname) ?? null;
@@ -152,13 +162,13 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching',
       words: (w) => w('trainers', true) },
     { label: 'Challenges', path: '/member/challenges', icon: Trophy , module: 'engagement' },
-    { label: 'Season', path: '/member/season', icon: Medal , module: 'engagement' },
-    { label: 'Squad', path: '/member/squad', icon: Users , module: 'engagement' },
-    { label: 'Rooms', path: '/member/rooms', icon: ChalkboardTeacher , module: 'coaching' },
-    { label: 'Messages', path: '/member/messages', icon: ChatsCircle , module: 'coaching' },
+    { label: 'Season', path: '/member/season', icon: Medal , module: 'seasons' },
+    { label: 'Squad', path: '/member/squad', icon: Users , module: 'squads' },
+    { label: 'Rooms', path: '/member/rooms', icon: ChalkboardTeacher , module: 'rooms' },
+    { label: 'Messages', path: '/member/messages', icon: ChatsCircle , module: 'chat' },
     { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
     { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
-    { label: 'Progress photos', path: '/member/progress-photos', icon: Camera , module: 'progress' },
+    { label: 'Progress photos', path: '/member/progress-photos', icon: Camera , module: 'photos' },
     { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress',
       words: (w) => w('trainer', true) + ' notes' },
   ],
@@ -167,8 +177,8 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Payments', path: '/member/payments', icon: Receipt },
     { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots },
     { label: 'Spend points', path: '/member/rewards', icon: Gift , module: 'engagement' },
-    { label: 'Shop', path: '/member/shop', icon: Storefront },
-    { label: 'Invite a friend', path: '/member/refer', icon: Users , module: 'engagement' },
+    { label: 'Shop', path: '/member/shop', icon: Storefront, module: 'shop' },
+    { label: 'Invite a friend', path: '/member/refer', icon: Users , module: 'referrals' },
     { label: 'Edit profile', path: '/member/profile/edit', icon: UserCircle },
     { label: 'Settings', path: '/member/settings', icon: GearSix },
   ],
@@ -203,10 +213,10 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
         words: (w) => w('trainers', true) },
       { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
-      { label: 'Season', path: '/member/season' , module: 'engagement' },
-      { label: 'Squad', path: '/member/squad' , module: 'engagement' },
-      { label: 'Rooms', path: '/member/rooms' , module: 'coaching' },
-      { label: 'Messages', path: '/member/messages' , module: 'coaching' },
+      { label: 'Season', path: '/member/season' , module: 'seasons' },
+      { label: 'Squad', path: '/member/squad' , module: 'squads' },
+      { label: 'Rooms', path: '/member/rooms' , module: 'rooms' },
+      { label: 'Messages', path: '/member/messages' , module: 'chat' },
     ],
   },
   {
@@ -214,7 +224,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
       { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
-      { label: 'Progress photos', path: '/member/progress-photos' , module: 'progress' },
+      { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
       { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
         words: (w) => w('trainer', true) + ' notes' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
@@ -225,13 +235,13 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Membership', path: '/member/membership' },
       { label: 'Renew', path: '/member/renew' },
-      { label: 'Pause or cancel', path: '/member/pause-or-cancel' },
+      { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests' },
       { label: 'Waiver', path: '/member/waiver' },
       { label: 'Payments', path: '/member/payments' },
       { label: 'Attendance', path: '/member/attendance-history' },
       { label: 'Spend points', path: '/member/rewards' , module: 'engagement' },
-      { label: 'Shop', path: '/member/shop' },
-      { label: 'Invite a friend', path: '/member/refer' , module: 'engagement' },
+      { label: 'Shop', path: '/member/shop', module: 'shop' },
+      { label: 'Invite a friend', path: '/member/refer' , module: 'referrals' },
       { label: 'Profile', path: '/member/profile' },
       { label: 'Edit profile', path: '/member/profile/edit' },
       { label: 'Settings', path: '/member/settings' },

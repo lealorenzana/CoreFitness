@@ -12,6 +12,8 @@ import type { BookingStatus } from '../../types/db';
 import { errorMessage } from '../../utils/errorMessage';
 import { Page } from '../../components/ui/page';
 import ReviewNudge from '../../components/rooms/ReviewNudge';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 import { Eyebrow, InlineStat, LineRow, NocButton, Panel, SectionHead, StatusPill } from '../../components/ui/noc';
 
 /**
@@ -59,6 +61,10 @@ function timeOf(iso: string | null): string {
 
 export default function TrainerHome() {
   const navigate = useNavigate();
+  // What this gym runs (0110/0141): no class panel or Schedule link without classes, no classwork nudge without rooms.
+  const gymApp = useGymApp();
+  const runsClasses = moduleOn(gymApp, 'classes');
+  const runsRooms = moduleOn(gymApp, 'rooms');
   // Shared with Trainer Profile — same query, two views. See lib/pageCache.ts.
   const cached = readCache<TrainerOverview>(TRAINER_OVERVIEW_CACHE_KEY);
   const [overview, setOverview] = useState<TrainerOverview | null>(cached ?? null);
@@ -97,7 +103,7 @@ export default function TrainerHome() {
     return (
       <Page>
         {/* Classwork waiting is its own read — the dashboard failing does not hide it. */}
-        <ReviewNudge />
+        {runsRooms && <ReviewNudge />}
         <div className="text-center" style={{ padding: '48px 24px' }}>
           <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>Couldn't load your dashboard</p>
           <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>{error}</p>
@@ -124,7 +130,7 @@ export default function TrainerHome() {
           What needs you, when something does (amber — something to do);
           otherwise today's next class (violet — what you have). */}
       <div className="flex flex-col" style={{ gap: 10 }}>
-        <ReviewNudge />
+        {runsRooms && <ReviewNudge />}
         {pending > 0 && (
           <Panel glow="action" onClick={() => navigate('/trainer/bookings')}>
             <Eyebrow tone="action">Needs you</Eyebrow>
@@ -145,7 +151,7 @@ export default function TrainerHome() {
           </Panel>
         )}
 
-        {nextClass ? (
+        {nextClass && runsClasses ? (
           <Panel glow={pending > 0 ? undefined : 'structure'} filled={pending > 0}
             onClick={() => navigate('/trainer/schedule')}>
             <Eyebrow>Next today · {timeOf(nextClass.scheduled_at)}</Eyebrow>
@@ -189,9 +195,9 @@ export default function TrainerHome() {
           Bare figures, no boxes. The old third figure was a hardcoded "96%
           attendance"; there is no per-trainer attendance source, so it stays gone. */}
       <section>
-        <SectionHead title="This week" meta={
+        <SectionHead title="This week" meta={runsClasses ? (
           <button onClick={() => navigate('/trainer/schedule')} style={{ color: 'var(--color-secondary)' }}>Schedule</button>
-        } />
+        ) : undefined} />
         <div className="grid grid-cols-3" style={{ gap: 12, marginTop: 14 }}>
           <InlineStat value={overview.sessionsThisWeek} label="Sessions" />
           <InlineStat value={overview.membersTrainedThisWeek} label="Members trained" />

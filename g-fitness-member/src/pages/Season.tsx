@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import { Trophy } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
@@ -30,6 +32,7 @@ const daysLeft = (end: string) =>
  * switch here is how. Your own rank and records are shown to you either way.
  */
 export default function Season() {
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const [season, setSeason] = useState<SeasonT | null | undefined>(undefined);
   const [tiers, setTiers] = useState<Tier[]>([]);
@@ -147,12 +150,14 @@ export default function Season() {
 
       <GymGoalStrip />
 
+      {moduleOn(gymApp, 'squads') && (
       <Panel onClick={() => navigate('/member/squad')} ariaLabel="Your squad">
         <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>Your squad</p>
         <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
           Train with friends: hit your weekly target together and everyone gets the points.
         </p>
       </Panel>
+      )}
 
       <Panel onClick={() => navigate('/member/challenges')} ariaLabel="This week's quests">
         <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>

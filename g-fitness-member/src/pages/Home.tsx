@@ -20,10 +20,11 @@ import { DAY_LABELS } from '../lib/api/gymPlans';
 import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/api/routines';
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import GymMark from '../components/ui/GymMark';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
 import DueStrip from '../components/rooms/DueStrip';
-import { ACCENTS, type AccentKey } from '../lib/gymTheme';
+import { rampFor } from '../lib/gymTheme';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -302,7 +303,7 @@ export default function Home() {
           <GymMark
             name={gymApp.gymName}
             logoUrl={gymApp.logoUrl}
-            accent={ACCENTS[(gymApp.accent ?? 'violet') as AccentKey]?.base}
+            accent={rampFor(gymApp.accent, 'violet').base}
             size={34}
           />
           <div className="min-w-0">
@@ -324,8 +325,9 @@ export default function Home() {
       )}
 
       {/* The gym-wide goal (0124) — nothing when the gym has none running. */}
-      <DueStrip />
-      <GymGoalStrip />
+      {/* Each follows its own switch (0141): classwork is Rooms, the gym goal is Squads. */}
+      {moduleOn(gymApp, 'rooms') && <DueStrip />}
+      {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
 
       {/* ── Month panel ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>

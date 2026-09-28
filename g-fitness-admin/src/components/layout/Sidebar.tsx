@@ -12,6 +12,7 @@ import { toast } from '../ui/sonner';
 import { useBranding } from '../../hooks/useBranding';
 import { DEFAULT_WORDS, title, useGymWords } from '../../hooks/useGymWords';
 import { supabase } from '../../lib/supabaseClient';
+import { moduleOn, useGymModules } from '../../hooks/useGymModules';
 
 const BG           = 'var(--color-bg)';
 const SURFACE      = 'var(--color-surface)';
@@ -47,6 +48,11 @@ interface Leaf {
    * nothing, which reads as "you have navigated out of the app".
    */
   alsoMatches?: string[];
+  /**
+   * The switch on Your app this page belongs to (0110/0141). Switched off, the
+   * row goes — Your app promises it disappears from this dashboard too.
+   */
+  module?: string;
 }
 
 interface Group {
@@ -104,8 +110,8 @@ const NAV: Entry[] = [
     label: 'Classes',
     icon: CalendarDays,
     children: [
-      { label: 'Schedule', path: '/schedule', icon: CalendarDays },
-      { label: 'Bookings', path: '/bookings', icon: Calendar },
+      { label: 'Schedule', path: '/schedule', icon: CalendarDays, module: 'classes' },
+      { label: 'Bookings', path: '/bookings', icon: Calendar, module: 'classes' },
     ],
   },
   {
@@ -114,7 +120,7 @@ const NAV: Entry[] = [
     children: [
       { label: 'Payments', path: '/payments', icon: CreditCard },
       // The counter (0133): the owner manages products, the desk sells.
-      { label: 'Shop', path: '/shop', icon: ShoppingBag },
+      { label: 'Shop', path: '/shop', icon: ShoppingBag, module: 'shop' },
       { label: 'Plans', path: '/membership-plans', icon: Banknote, adminOnly: true },
     ],
   },
@@ -123,7 +129,7 @@ const NAV: Entry[] = [
     icon: TrendingUp,
     children: [
       { label: 'Revenue', path: '/revenue', icon: Banknote },
-      { label: 'Retention', path: '/retention', icon: Target, alsoMatches: ['/retention/messages'] },
+      { label: 'Retention', path: '/retention', icon: Target, alsoMatches: ['/retention/messages'], module: 'analytics' },
       { label: 'Activity log', path: '/activity', icon: History, adminOnly: true },
     ],
   },
@@ -131,9 +137,9 @@ const NAV: Entry[] = [
     label: 'Engagement',
     icon: Trophy,
     children: [
-      { label: 'Challenges', path: '/challenges', icon: Flag, adminOnly: true },
-      { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true },
-      { label: 'Achievements', path: '/achievements', icon: Trophy, adminOnly: true },
+      { label: 'Challenges', path: '/challenges', icon: Flag, adminOnly: true, module: 'engagement' },
+      { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true, module: 'engagement' },
+      { label: 'Achievements', path: '/achievements', icon: Trophy, adminOnly: true, module: 'engagement' },
     ],
   },
   // Announcements and Events answered the same question — what has the gym told
@@ -146,16 +152,17 @@ const NAV: Entry[] = [
     path: '/notifications',
     icon: Bell,
     alsoMatches: ['/events'],
+    module: 'push',
   },
   {
     label: 'Training',
     icon: BookOpen,
     children: [
       { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
-      { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true },
+      { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true, module: 'programs' },
       { label: 'Resources', path: '/resources', icon: BookOpen },
       // The trainers' rooms (0128): the desk reads and moderates.
-      { label: 'Rooms', path: '/rooms', icon: MessagesSquare },
+      { label: 'Rooms', path: '/rooms', icon: MessagesSquare, module: 'rooms' },
     ],
   },
 
@@ -235,6 +242,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   // This gym's own nouns (0114). Defaults to the English words, so the nav
   // never flickers between two wordings while the read lands.
   const words = useGymWords();
+  // What this gym runs (0110/0141): a switched-off part leaves the nav too.
+  const modules = useGymModules();
 
   // Hide admin-only destinations from front-desk staff. Cosmetic only — the real
   // enforcement is ProtectedRoute's adminOnly guard plus RLS. Defaults to true so
@@ -253,7 +262,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
    * holding exactly one child flattened into that child.
    */
   const entries = useMemo<Entry[]>(() => {
-    const visible = (l: Leaf) => isAdmin || !l.adminOnly;
+    const visible = (l: Leaf) => (isAdmin || !l.adminOnly) && moduleOn(modules, l.module);
     // Renamed only where the gym actually chose a word — compared key by key
     // against the defaults, not by "did they rename anything".
     //
@@ -279,7 +288,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       out.push({ ...e, children });
     }
     return out;
-  }, [isAdmin, words]);
+  }, [isAdmin, words, modules]);
 
   /**
    * Which drawers are open — remembered, so the section you work in every day

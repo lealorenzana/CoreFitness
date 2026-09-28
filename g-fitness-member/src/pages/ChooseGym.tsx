@@ -12,7 +12,7 @@ import { logout } from '../utils/auth';
 import { useGymApp } from '../hooks/useGymApp';
 import { word } from '../lib/gymApp';
 import GymMark from '../components/ui/GymMark';
-import { ACCENTS, type AccentKey } from '../lib/gymTheme';
+import { rampFor } from '../lib/gymTheme';
 import { errorMessage } from '../utils/errorMessage';
 import { toast } from '../components/ui/Toast';
 
@@ -92,7 +92,7 @@ export default function ChooseGym() {
               // colour — never the Core Fitness mark, which would put the
               // platform's badge on somebody's gym.
               gutter={<GymMark name={gym.name} logoUrl={gym.logo_url}
-                accent={ACCENTS[(gym.accent ?? 'violet') as AccentKey]?.base} size={38} />}
+                accent={rampFor(gym.accent, 'violet').base} size={38} />}
               gutterWidth={50}
               title={gym.name}
               meta={label(gym)}

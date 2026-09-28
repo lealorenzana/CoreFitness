@@ -8,7 +8,9 @@ import {
   type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy,
   type SupportGrant,
 } from '../lib/api/gymApp';
-import { ACCENTS } from '../lib/accents';
+import { rampFor } from '../lib/gymTheme';
+import ColourRolePicker from '../components/ColourRolePicker';
+import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
 import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
@@ -87,10 +89,12 @@ export default function GymApp() {
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const toggle = async (m: GymModule) => {
-    if (m.state === 'not_sold') return;
+    if (m.state === 'not_sold' || m.state === 'parent_off') return;
     try {
       await setGymModule(m.feature_key, !m.enabled);
       await load();
+      // The sidebar follows at once, not on the next launch (useGymModules).
+      refreshGymModules();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
     }
@@ -190,8 +194,10 @@ export default function GymApp() {
   };
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div>
+    // Two columns on a wide screen, each card whole (never split across them):
+    // one 760px column left half of a 1700px window empty.
+    <div className="xl:columns-2 gap-4 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      <div className="[column-span:all]">
         <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Your app</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           What {app.gym_name}'s members see on their phones. Your gym's name, address and
@@ -207,7 +213,7 @@ export default function GymApp() {
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           Your members' app uses two colours, and they mean different things. Pick both — a gym
           that changes only the first gets its own colour for progress and somebody else's amber
-          on every button.
+          on every button. Your own brand colour works too: pick it, or type its code.
         </p>
 
         <div className="mt-4">
@@ -215,38 +221,18 @@ export default function GymApp() {
           <p className="mb-2 text-xs" style={labelStyle}>
             Selected tabs, progress bars, your points, anything showing state.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {ACCENTS.map((a) => (
-              <button key={a.key} type="button" title={a.label}
-                aria-label={a.label} aria-pressed={look.accent === a.key}
-                onClick={() => setLook({ ...look, accent: a.key })}
-                className="h-9 w-9 rounded-full border-2"
-                style={{
-                  background: a.swatch,
-                  borderColor: look.accent === a.key ? 'var(--color-text-primary)' : 'transparent',
-                }} />
-            ))}
-          </div>
+          <ColourRolePicker idPrefix="look-accent" value={look.accent} fallback="violet"
+            onChange={(v) => setLook((l) => ({ ...l, accent: v || 'violet' }))} />
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           <label className={label} style={labelStyle}>What you can do next</label>
           <p className="mb-2 text-xs" style={labelStyle}>
             Book, renew, save, send — every button that starts something.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {ACCENTS.map((a) => (
-              <button key={a.key} type="button" title={a.label}
-                aria-label={a.label} aria-pressed={(look.action || 'amber') === a.key}
-                onClick={() => setLook({ ...look, action: a.key })}
-                className="h-9 w-9 rounded-full border-2"
-                style={{
-                  background: a.swatch,
-                  borderColor: (look.action || 'amber') === a.key
-                    ? 'var(--color-text-primary)' : 'transparent',
-                }} />
-            ))}
-          </div>
+          <ColourRolePicker idPrefix="look-action" value={look.action} fallback="amber"
+            unsetLabel="Standard amber, the colour every gym started with"
+            onChange={(v) => setLook((l) => ({ ...l, action: v }))} />
           {!look.action && (
             <p className="mt-2 text-xs" style={labelStyle}>
               Not set, so your buttons are amber — the colour every gym started with.
@@ -381,39 +367,19 @@ export default function GymApp() {
           this dashboard — nothing is deleted, and switching it back on brings everything with it.
         </p>
         <div className="mt-4 space-y-2">
-          {modules.map((m) => {
-            const locked = m.state === 'not_sold';
-            return (
-              <button
-                key={m.feature_key}
-                type="button"
-                onClick={() => void toggle(m)}
-                disabled={locked}
-                className="w-full flex items-start gap-3 rounded-lg border px-3.5 py-3 text-left disabled:cursor-default"
-                style={{
-                  borderColor: m.enabled ? 'var(--color-primary)' : 'var(--color-border)',
-                  background: 'var(--color-bg)',
-                  opacity: locked ? 0.6 : 1,
-                }}
-              >
-                <span className="mt-0.5 shrink-0">
-                  {locked ? <Lock size={16} style={{ color: 'var(--color-text-muted)' }} />
-                    : m.enabled ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
-                    : <span className="block h-4 w-4 rounded border" style={{ borderColor: 'var(--color-border)' }} />}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                    {m.label}
-                  </span>
-                  <span className="block text-xs mt-0.5" style={labelStyle}>
-                    {locked
-                      ? 'Your Core Fitness plan does not include this. Ask us to move you to a plan that does.'
-                      : m.description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+          {modules.filter((m) => !m.parent_key).map((parent) => (
+            <div key={parent.feature_key} className="space-y-1.5">
+              <ModuleRow m={parent} onToggle={toggle} />
+              {modules.some((c) => c.parent_key === parent.feature_key) && (
+                <div className="ml-6 space-y-1.5 border-l pl-3" style={{ borderColor: 'var(--color-border)' }}>
+                  {modules.filter((c) => c.parent_key === parent.feature_key).map((child) => (
+                    <ModuleRow key={child.feature_key} m={child} parentLabel={parent.label}
+                      onToggle={toggle} small />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -606,10 +572,56 @@ export default function GymApp() {
           /* A listed gym has no code, so the poster leaves that half out rather
              than printing a blank box under "type this". */
           joinCode={app.join_policy === 'code' ? app.join_code : null}
-          accent={ACCENTS.find((a) => a.key === app.accent)?.swatch ?? '#7C3AED'}
+          accent={rampFor(app.accent, 'violet').base}
           onClose={() => setPoster(false)}
         />
       )}
     </div>
+  );
+}
+
+/**
+ * One switch. A child (0141) whose parent is off shows why and cannot be
+ * flipped — its own setting is kept, and returns with the parent.
+ */
+function ModuleRow({ m, onToggle, parentLabel, small }: {
+  m: GymModule; onToggle: (m: GymModule) => void; parentLabel?: string; small?: boolean;
+}) {
+  const locked = m.state === 'not_sold';
+  const held = m.state === 'parent_off';
+  const note = locked
+    ? 'Your Core Fitness plan does not include this. Ask us to move you to a plan that does.'
+    : held
+      ? `Off because ${parentLabel ?? 'the part it belongs to'} is off. Switch that on and this comes back as you left it.`
+      : m.description;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(m)}
+      disabled={locked || held}
+      aria-pressed={m.enabled}
+      data-tip={locked || held ? undefined : m.enabled ? `Switch off ${m.label}` : `Switch on ${m.label}`}
+      className={`w-full flex items-start gap-3 rounded-lg border text-left disabled:cursor-default ${small ? 'px-3 py-2' : 'px-3.5 py-3'}`}
+      style={{
+        borderColor: m.enabled ? 'var(--color-primary)' : 'var(--color-border)',
+        background: 'var(--color-bg)',
+        opacity: locked || held ? 0.6 : 1,
+      }}
+    >
+      <span className="mt-0.5 shrink-0">
+        {locked ? <Lock size={16} style={{ color: 'var(--color-text-muted)' }} />
+          : m.enabled ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
+          : <span className="block h-4 w-4 rounded border" style={{ borderColor: 'var(--color-border)' }} />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className={`block font-medium ${small ? 'text-[13px]' : 'text-sm'}`}
+          style={{ color: 'var(--color-text-primary)' }}>
+          {m.label}
+        </span>
+        <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+          {note}
+        </span>
+      </span>
+    </button>
   );
 }

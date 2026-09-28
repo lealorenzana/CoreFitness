@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ACCENTS } from '../lib/accents';
+import { rampFor } from '../lib/gymTheme';
 import { loadTv, type TvData } from '../lib/api/tv';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -36,7 +36,7 @@ export default function LobbyTv() {
     return () => { alive = false; window.clearInterval(refresh); window.clearInterval(tick); };
   }, []);
 
-  const accent = ACCENTS.find((a) => a.key === (data?.app?.accent ?? 'violet'))?.swatch ?? '#7C3AED';
+  const accent = rampFor(data?.app?.accent, 'violet').base;
 
   const panels = useMemo(() => {
     if (!data) return [] as { key: string; title: string; body: ReactNode }[];

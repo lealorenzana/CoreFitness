@@ -18,7 +18,8 @@ export default function GymMark({ name, logoUrl, accent, size = 42 }: {
   const [broken, setBroken] = useState(false);
   const words = name.trim().split(/\s+/).filter(Boolean);
   const initials = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? '?').slice(0, 2)).toUpperCase();
-  const colour = SWATCH[accent ?? 'violet'] ?? SWATCH.violet;
+  // A gym may use its own colour code (0141) rather than a preset key.
+  const colour = accent && /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : SWATCH[accent ?? 'violet'] ?? SWATCH.violet;
   const box = { width: size, height: size, borderRadius: size * 0.3, flex: 'none' as const };
 
   if (logoUrl && !broken) {

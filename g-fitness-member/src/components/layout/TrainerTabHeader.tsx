@@ -3,7 +3,7 @@ import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
 import { IconButton } from './TabHeader';
-import { TRAINER_RAILS, trainerTabs, type TrainerTab } from './trainerNav';
+import { trainerRail, trainerTabs, type TrainerTab } from './trainerNav';
 import { useGymApp } from '../../hooks/useGymApp';
 import { word } from '../../lib/gymApp';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
@@ -61,7 +61,7 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
   const named = trainerTabs(app).find((x) => x.id === tab.id) ?? tab;
   const [line1, line2] = titleFor(named, now, me?.fullName);
   const isHome = tab.id === 'home';
-  const rail = TRAINER_RAILS[tab.id];
+  const rail = trainerRail(tab.id, app);
 
   const actions = (
     <div className="flex items-center flex-none" style={{ gap: 12 }}>

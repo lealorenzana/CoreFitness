@@ -5,6 +5,8 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Eyebrow, Panel, ProgressBar, SeeAll, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import FeatureLock from '../components/ui/FeatureLock';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listChallenges, joinChallenge, leaveChallenge, type Challenge } from '../lib/api/challenges';
 import { errorMessage } from '../utils/errorMessage';
@@ -38,6 +40,7 @@ function daysLeft(endsOn: string): number {
  * stretching the screen; they are a record now, on their own page.
  */
 export default function Challenges({ completedOnly = false }: { completedOnly?: boolean }) {
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [items, setItems] = useState<Challenge[]>([]);
@@ -92,12 +95,15 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
    * gym decides what is featured, and re-sorting here would quietly override
    * that.
    */
-  const done = items.filter((c) => c.completedOn != null);
+  // Weekly quests and the season each have their own switch (0141).
+  const quests = moduleOn(gymApp, 'quests');
+  const seasons = moduleOn(gymApp, 'seasons');
+  const done = items.filter((c) => c.completedOn != null && (quests || !c.isQuest));
   const renderGroups = completedOnly
     ? [{ key: 'done', label: 'Completed', rows: done, collapsed: false }]
     : [
       // This week's quests (0123) lead: everyone is in them already.
-      { key: 'quests',    label: "This week's quests", rows: items.filter((c) => c.isQuest && c.completedOn == null), collapsed: false },
+      { key: 'quests',    label: "This week's quests", rows: quests ? items.filter((c) => c.isQuest && c.completedOn == null) : [], collapsed: false },
       { key: 'active',    label: 'In progress',  rows: items.filter((c) => !c.isQuest && c.joined && c.completedOn == null),  collapsed: false },
       { key: 'available', label: 'Open to join', rows: items.filter((c) => !c.isQuest && !c.joined && c.completedOn == null), collapsed: false },
       // Finished ones are a record, on their own page — a row here opens it.
@@ -120,7 +126,7 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
           of the two screens CLAUDE.md names for exactly that. */}
       <FeatureLock feature="challenges" context={null}>
         <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-          {!completedOnly && (
+          {!completedOnly && seasons && (
             <Panel onClick={() => navigate('/member/season')} ariaLabel="This month's season">
               <Eyebrow>This month's season</Eyebrow>
               <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>

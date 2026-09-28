@@ -18,7 +18,11 @@ import { supabase } from '../supabaseClient';
  * app behaves as it did. Same pattern as every other unpasted migration.
  */
 
-export type ModuleState = 'on' | 'off' | 'not_sold';
+/**
+ * 'parent_off' (0141): the gym's own switch for this is on, but the part it
+ * lives inside is off — so it is off too, and comes back as it was left.
+ */
+export type ModuleState = 'on' | 'off' | 'not_sold' | 'parent_off';
 
 export interface GymModule {
   feature_key: string;
@@ -27,6 +31,8 @@ export interface GymModule {
   state: ModuleState;
   enabled: boolean;
   sort_order: number;
+  /** The switch this one lives inside (0141); null for a top-level part. */
+  parent_key?: string | null;
 }
 
 export interface GymWords {

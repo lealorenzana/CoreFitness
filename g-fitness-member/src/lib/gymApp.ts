@@ -27,7 +27,10 @@ import { supabase } from './supabaseClient';
 
 export type FeatureKey =
   | 'front_desk' | 'checkin' | 'classes' | 'coaching'
-  | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics';
+  | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics'
+  // 0141: each lives inside a parent above, and is on only while it is.
+  | 'shop' | 'requests' | 'chat' | 'rooms' | 'programs' | 'photos'
+  | 'squads' | 'seasons' | 'quests' | 'referrals';
 
 /**
  * What this gym calls its people and its sessions (0114).
@@ -139,8 +142,20 @@ export function clearGymApp(): void {
  */
 export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boolean {
   if (!key) return true;
-  return app?.modules?.[key] ?? true;
+  const own = app?.modules?.[key];
+  if (own !== undefined) return own;
+  // A database without 0141 sends no answer for a child: it follows its parent,
+  // so a gym that switched Coaches off does not suddenly show Chat.
+  const parent = PARENT[key];
+  return parent ? moduleOn(app, parent) : true;
 }
+
+/** Each 0141 switch and the switch it lives inside (the same pairs as platform_features.parent_key). */
+export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
+  shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
+  programs: 'progress', photos: 'progress', squads: 'engagement', seasons: 'engagement',
+  quests: 'engagement', referrals: 'engagement',
+};
 
 /** The gym's word for its points, ready to drop into a sentence. */
 export function pointsWord(app: GymApp | null, sentence = false): string {

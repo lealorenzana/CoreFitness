@@ -11,6 +11,7 @@ import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
+import ModuleGate from '../ModuleGate';
 
 /**
  * The trainer shell — the member shell's structure (Nocturne), top to bottom:
@@ -60,7 +61,7 @@ export default function TrainerLayout() {
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>
-            <Outlet />
+            <ModuleGate home="/trainer/home"><Outlet /></ModuleGate>
           </Suspense>
         </div>
       </main>
