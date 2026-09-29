@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     });
   } catch { return json({ reason: 'busy', message: 'The coach is busy. Try again in a minute.' }, 503); }
   if (!claimed) {
-    return json({ reason: 'daily_limit', message: 'You have reached the coach's limit for now. Try again tomorrow.' }, 429);
+    return json({ reason: 'daily_limit', message: "You have reached the coach's limit for now. Try again tomorrow." }, 429);
   }
 
   const context = await rpc<Record<string, unknown> | null>('ai_coach_context', auth, ANON).catch(() => null);
@@ -83,8 +83,7 @@ Deno.serve(async (req) => {
   const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
   const model = Deno.env.get('COACH_MODEL') || 'claude-sonnet-5-5';
 
-  // deno-lint-ignore no-explicit-any
-  let upstream: any = null;
+  let upstream: ReturnType<typeof client.beta.messages.stream> | null = null;
   let cancelled = false;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
