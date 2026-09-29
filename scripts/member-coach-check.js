@@ -241,7 +241,7 @@ async (page) => {
   let t = await text();
   out.push('coach named honestly: ' + (/training help from the AI coach/.test(t) ? 'yes' : 'MISSING'));
   out.push('messages left shown: ' + (/3 of 30 coach messages today/.test(t) ? 'yes' : 'MISSING'));
-  await page.getByLabel('Your question').fill('How do I brace for a squat?');
+  await page.getByLabel('Your question').fill('How do I stay motivated on cold mornings?');
   await page.getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(1200);
   t = await text();
@@ -250,7 +250,7 @@ async (page) => {
   await page.waitForTimeout(2000);
   t = await text();
   out.push('consent saved: ' + (CALLS.set_ai_coach_consent?.p_reads_data === true ? 'yes' : 'MISSING'));
-  out.push('the question reached the coach once: ' + (COACH_POSTS.length === 1 && COACH_POSTS[0].question === 'How do I brace for a squat?' ? 'yes' : 'MISSING'));
+  out.push('the question reached the coach once: ' + (COACH_POSTS.length === 1 && COACH_POSTS[0].question === 'How do I stay motivated on cold mornings?' ? 'yes' : 'MISSING'));
   out.push('the streamed reply is shown whole: ' + (/Brace like you are about to be poked\./.test(t) ? 'yes' : 'MISSING'));
   out.push('saved as the coach\'s: ' + ((DB.assistant_messages ?? []).some((m) => m.source === 'coach') ? 'yes' : 'MISSING'));
   // Gym facts still come from the rules, never the model.
@@ -262,7 +262,7 @@ async (page) => {
   // At the limit: the rules' answer stands and the reason is said.
   COACH.allowed = false; COACH.reason = 'daily_limit'; COACH.used_today = 30;
   await go('/member/chatbot');
-  await page.getByLabel('Your question').fill('Why am I sore for three days?');
+  await page.getByLabel('Your question').fill('Why do I wake up tired after sleeping late?');
   await page.getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(1500);
   out.push('at the limit nothing is sent: ' + (COACH_POSTS.length === before ? 'yes' : 'NO, sent anyway'));
