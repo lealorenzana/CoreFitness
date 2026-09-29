@@ -1,0 +1,122 @@
+// The AI coach (spec: docs/superpowers/specs/2026-09-29-ai-coach-design.md).
+//
+// Every gate is asked of the database *as the member* — their own JWT goes to
+// PostgREST, so RLS and the definer functions decide, not this file. The
+// service-role key is used for exactly one call, ai_record_usage(), because a
+// member who could write their own count could reset their own limit.
+import Anthropic from 'npm:@anthropic-ai/sdk';
+import { buildRequest, sse, statusToHttp, SYSTEM_PROMPT, validQuestion, type CoachStatus, type Turn } from './core.ts';
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+const json = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
+const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+async function rpc<T>(fn: string, auth: string, key: string, body: unknown = {}): Promise<T> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { Authorization: auth, apikey: key, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${fn} ${res.status}`);
+  return (await res.json()) as T;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'POST') return json({ reason: 'method' }, 405);
+
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!apiKey) return json({ reason: 'not_configured', message: 'The coach is not set up at this gym yet.' }, 503);
+
+  const auth = req.headers.get('Authorization');
+  if (!auth) return json({ reason: 'signed_out' }, 401);
+  const who = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: auth, apikey: ANON } });
+  if (!who.ok) return json({ reason: 'signed_out' }, 401);
+  const member = (await who.json()) as { id: string };
+
+  let body: { question?: unknown; history?: unknown };
+  try { body = await req.json(); } catch { return json({ reason: 'bad_question' }, 400); }
+  if (!validQuestion(body.question)) return json({ reason: 'bad_question' }, 400);
+  // Keep only well-formed turns: a null or odd item must not throw inside buildRequest.
+  const history = (Array.isArray(body.history) ? body.history : []).filter(
+    (t): t is Turn => t !== null && typeof t === 'object'
+      && typeof (t as Turn).role === 'string' && typeof (t as Turn).content === 'string',
+  );
+
+  // Every gate, as the member. A failure to *ask* refuses: an outage must never
+  // become free model access (the gym pays per message).
+  let status: CoachStatus;
+  try { status = await rpc<CoachStatus>('ai_coach_status', auth, ANON); }
+  catch { return json({ reason: 'busy', message: 'The coach is busy. Try again in a minute.' }, 503); }
+  const refused = statusToHttp(status);
+  if (refused) return json(refused.body, refused.status);
+
+  const context = await rpc<Record<string, unknown> | null>('ai_coach_context', auth, ANON).catch(() => null);
+  const request = buildRequest(body.question, history, context);
+  const about = request.system.slice(SYSTEM_PROMPT.length).trim();
+
+  const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
+  const model = Deno.env.get('COACH_MODEL') || 'claude-sonnet-5-5';
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const enc = new TextEncoder();
+      const send = (s: string) => controller.enqueue(enc.encode(s));
+      let usageIn = 0, usageOut = 0, spoke = false;
+      try {
+        // deno-lint-ignore no-explicit-any
+        const params: any = {
+          model,
+          max_tokens: 2048,
+          system: [
+            { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: about },
+          ],
+          messages: request.messages,
+          output_config: { effort: 'low' },
+          betas: ['server-side-fallback-2026-07-01'],
+          fallbacks: 'default',
+        };
+        const s = client.beta.messages.stream(params);
+        for await (const event of s) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            spoke = true;
+            send(sse({ type: 'text', text: event.delta.text }));
+          }
+        }
+        const final = await s.finalMessage();
+        usageIn = (final.usage.input_tokens ?? 0) + (final.usage.cache_read_input_tokens ?? 0)
+          + (final.usage.cache_creation_input_tokens ?? 0);
+        usageOut = final.usage.output_tokens ?? 0;
+        if (final.stop_reason === 'refusal' && !spoke) {
+          send(sse({ type: 'error', reason: 'refusal', message: 'The coach cannot help with that one.' }));
+        } else {
+          send(sse({ type: 'done' }));
+        }
+      } catch (err) {
+        // Never the raw error: it can carry request details. Log for the gym.
+        console.error('ai-coach upstream', err instanceof Anthropic.APIError ? err.status : 'network');
+        send(sse({ type: 'error', reason: 'busy', message: 'The coach is busy. Try again in a minute.' }));
+      } finally {
+        // A message that reached the model counts, even a refused one.
+        if (usageIn || usageOut) {
+          await rpc('ai_record_usage', `Bearer ${SERVICE}`, SERVICE, {
+            p_gym: status.gym_id, p_member: member.id, p_in: usageIn, p_out: usageOut,
+          }).catch((e) => console.error('ai-coach usage', String(e)));
+        }
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: { ...cors, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+  });
+});
