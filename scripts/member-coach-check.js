@@ -257,13 +257,32 @@ async (page) => {
   await page.getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(1500);
   out.push('a gym fact is answered by the rules: ' + (COACH_POSTS.length === before ? 'yes' : 'NO, sent to the model'));
+  // The rules' personal answers must never ride along as history: consent covered
+  // the listed fields, not the check-in code, plan or points the rules quote.
+  await page.getByLabel('Your question').fill('What is my check-in code?');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(1500);
+  const codeMatch = /check-in code is ([A-Z0-9 -]+?)\. Tap/i.exec(await text());
+  out.push('the rules answer the check-in code from the fixture: ' + (codeMatch ? 'yes' : 'MISSING'));
+  const beforeHist = COACH_POSTS.length;
+  await page.getByLabel('Your question').fill('How do I stay motivated on rainy evenings?');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(2000);
+  const post = COACH_POSTS[beforeHist];
+  const hist = post?.history ?? [];
+  const histText = JSON.stringify(hist);
+  out.push('the second coach question was sent: ' + (post && post.question === 'How do I stay motivated on rainy evenings?' ? 'yes' : 'MISSING'));
+  out.push('history has no rules answer: ' + (codeMatch && !histText.includes(codeMatch[1]) && !/Your check-in code/i.test(histText) && !/We open|opening hours|Mamburao/i.test(histText) ? 'yes' : 'NO, a rules answer was sent'));
+  out.push('history is the coach exchange only: ' + (hist.length === 2 && hist[0].role === 'user' && hist[0].content === 'How do I stay motivated on cold mornings?' && hist[1].role === 'assistant' && /Brace like/.test(hist[1].content) ? 'yes' : 'NO ' + histText));
+  out.push('history omits the current question: ' + (!histText.includes('rainy evenings') ? 'yes' : 'NO, duplicated'));
+  const before2 = COACH_POSTS.length;
   // At the limit: the rules' answer stands and the reason is said.
   COACH.allowed = false; COACH.reason = 'daily_limit'; COACH.used_today = 30;
   await go('/member/chatbot');
   await page.getByLabel('Your question').fill('Why do I wake up tired after sleeping late?');
   await page.getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(1500);
-  out.push('at the limit nothing is sent: ' + (COACH_POSTS.length === before ? 'yes' : 'NO, sent anyway'));
+  out.push('at the limit nothing is sent: ' + (COACH_POSTS.length === before2 ? 'yes' : 'NO, sent anyway'));
   out.push('the limit is explained: ' + (/used today's 30 messages/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach.png' });
   // Over the limit with consent on, the switch stays so consent can be withdrawn.

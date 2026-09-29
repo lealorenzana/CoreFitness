@@ -54,7 +54,14 @@ export async function askCoach(
     });
     if (!res.ok || !res.body) {
       const body = await res.json().catch(() => null) as { reason?: string; message?: string } | null;
-      return { ok: false, reason: body?.reason ?? 'busy', message: body?.message ?? busy.message };
+      // Only the function's own reasons carry a message worth showing; Supabase's
+      // own 404/401 JSON has a `message` that means nothing to a member.
+      const KNOWN = ['not_configured', 'bad_question', 'signed_out', 'not_member', 'switched_off', 'no_plan',
+        'daily_limit', 'monthly_limit', 'busy', 'refusal'];
+      if (body?.reason && KNOWN.includes(body.reason)) {
+        return { ok: false, reason: body.reason, message: body.message ?? busy.message };
+      }
+      return { ok: false, reason: 'busy', message: busy.message };
     }
     const reader = res.body.getReader();
     const dec = new TextDecoder();

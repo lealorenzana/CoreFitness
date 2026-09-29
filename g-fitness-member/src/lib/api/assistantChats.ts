@@ -25,6 +25,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   body: string;
   createdAt: string;
+  /** Which side wrote an assistant reply; null on rows from before 0143. */
+  source: 'rules' | 'coach' | null;
 }
 
 interface ConversationRow {
@@ -38,6 +40,7 @@ interface MessageRow {
   role: string;
   body: string;
   created_at: string;
+  source?: string | null;
 }
 
 /** Most recently talked to first — `updated_at` is bumped by a trigger, not here. */
@@ -55,19 +58,23 @@ export async function listConversations(): Promise<Conversation[]> {
 }
 
 export async function listMessages(conversationId: string): Promise<ChatMessage[]> {
-  const { data, error } = await supabase
+  const read = (cols: string) => supabase
     .from('assistant_messages')
-    .select('id, role, body, created_at')
+    .select(cols)
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map((r: MessageRow) => ({
+  // `source` exists from 0143; before it is pasted the read falls back without it.
+  let res = await read('id, role, body, created_at, source');
+  if (res.error) res = await read('id, role, body, created_at');
+  if (res.error) throw res.error;
+  return ((res.data ?? []) as unknown as MessageRow[]).map((r) => ({
     id: r.id,
     // Narrowed rather than cast: the column has a CHECK, but a row that somehow
     // held anything else should read as the assistant, never as the member.
     role: r.role === 'user' ? 'user' : 'assistant',
     body: r.body,
     createdAt: r.created_at,
+    source: r.source === 'coach' ? 'coach' : null,
   }));
 }
 

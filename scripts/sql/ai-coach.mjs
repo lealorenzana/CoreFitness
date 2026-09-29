@@ -72,6 +72,27 @@ check('with consent: name, level and goals', ctx?.first_name === 'A' && ctx?.exp
   && ctx?.goals?.includes('Squat my bodyweight'), JSON.stringify(ctx));
 check('the context never carries health or payment keys',
   !/par_q|waiver|payment|amount|phone|email/i.test(JSON.stringify(ctx)), JSON.stringify(ctx));
+// ---- a member of two gyms: the context is this gym's only --------------------------------------
+{
+  const GYM2 = 'c0f1e55e-0000-4000-8000-000000000002';
+  await db.exec(`reset role;
+    insert into gyms (id, slug, name) values ('${GYM2}', 'coach-gym-2', 'Coach Gym 2') on conflict do nothing;
+    insert into gym_roles (gym_id, user_id, role, status) values ('${GYM2}', '${A}', 'member', 'active')
+      on conflict (gym_id, user_id) do update set status = 'active';
+    insert into member_profiles (profile_id, gym_id, qr_code, experience_level)
+      values ('${A}', '${GYM2}', 'QR-AI-A2', 'advanced') on conflict do nothing;
+    insert into fitness_goals (member_id, gym_id, title) values ('${A}', '${GYM2}', 'GYM2 secret goal');
+    insert into workout_routines (member_id, gym_id, name, position) values ('${A}', '${GYM2}', 'GYM2 secret routine', 0);
+    insert into workout_logs (member_id, gym_id, activity, completed_at) values ('${A}', '${GYM2}', 'GYM2 run', now());`);
+  await as(A);
+  const err = await tryExec(`select ai_coach_context()`);
+  check('a member of two gyms gets a context, not an error', err === null, String(err));
+  const c2 = (await one(`select ai_coach_context() as c`)).c;
+  const blob = JSON.stringify(c2);
+  check('the context carries no goal of another gym or routine', !!c2 && !/GYM2/.test(blob), blob);
+  check('the level comes from this gym only', c2?.experience_level === 'beginner', blob);
+  check('workouts of another gym are not counted', c2?.workouts_30d === 0, blob);
+}
 await db.exec(`select set_ai_coach_consent(false)`);
 check('withdrawing consent stops it at once', (await one(`select ai_coach_context() as c`)).c === null);
 

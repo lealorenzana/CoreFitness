@@ -26,7 +26,7 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
 Written 2026-09-15, answering the review's section 4. Read
 [CLAUDE.md](../CLAUDE.md)'s *Levels, achievements and what a trainer may see*
 first: the vocabulary rule there ("the AI features are deterministic and
-rule-based, not model calls") is the reason this document exists at all.
+rule-based, not model calls" — superseded by the AI coach, see above) is the reason this document exists at all.
 
 ## The finding
 

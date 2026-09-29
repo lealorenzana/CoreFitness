@@ -63,6 +63,8 @@ interface Message {
   id: string;
   text: string;
   sender: 'user' | 'bot';
+  /** Who wrote a bot bubble. Only 'coach' text is ever sent back to the coach. */
+  source?: 'rules' | 'coach';
 }
 
 const GREETING_ID = 'greeting';
@@ -117,6 +119,7 @@ function Assistant() {
     (c: AssistantContext): Message => ({
       id: GREETING_ID,
       sender: 'bot',
+      source: 'rules',
       text: c.firstName
         ? `Hi ${c.firstName}. Ask me about your membership, your check-in code, booking a session, prices or opening hours.`
         : 'Ask me about your membership, your check-in code, booking a session, prices or opening hours.',
@@ -265,13 +268,20 @@ function Assistant() {
           setIsTyping(false);
           return;
         }
-        const history = messagesRef.current
-          .filter((m) => m.id !== GREETING_ID)
-          .slice(-10)
-          .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
+        // Only what the coach itself said, and the questions it answered: the rules'
+        // answers carry personal data (plan, check-in code, points) that consent
+        // never covered. The current question goes separately, so it is not here.
+        const prior = messagesRef.current.filter((m) => m.id !== GREETING_ID);
+        const history: { role: 'user' | 'assistant'; content: string }[] = [];
+        prior.forEach((m, i) => {
+          if (m.sender === 'bot' && m.source === 'coach' && m.text.trim() && prior[i - 1]?.sender === 'user') {
+            history.push({ role: 'user', content: prior[i - 1].text }, { role: 'assistant', content: m.text });
+          }
+        });
+        history.splice(0, Math.max(0, history.length - 10));
         const botId = `${Date.now()}c`;
         let streamed = '';
-        setMessages((prev) => [...prev, { id: botId, text: '', sender: 'bot' }]);
+        setMessages((prev) => [...prev, { id: botId, text: '', sender: 'bot', source: 'coach' }]);
         setIsTyping(false);
         const result = await askCoach(trimmed, history, (chunk) => {
           streamed += chunk;
@@ -283,7 +293,7 @@ function Assistant() {
         } else {
           // The rules' answer stands, with the coach's reason under it when it has one.
           answer = result.ok ? answer : `${answer}\n\n${result.message}`;
-          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer } : m)));
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer, source: 'rules' } : m)));
         }
         updateCoach((c) => (c ? { ...c, used_today: c.used_today + (source === 'coach' ? 1 : 0) } : c));
         try { await persist(trimmed, answer, source); setSaveError(again?.note ?? null); }
@@ -297,7 +307,7 @@ function Assistant() {
           : `${answer}\n\nThe coach has reached this gym's limit for the month.`;
       }
 
-      setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: answer, sender: 'bot' }]);
+      setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: answer, sender: 'bot', source: 'rules' }]);
       setIsTyping(false);
       try {
         await persist(trimmed, answer, source);
@@ -336,7 +346,7 @@ function Assistant() {
       setConversationId(id);
       // No greeting on a reopened thread: it would claim to have been said at
       // the top of a conversation that never contained it.
-      setMessages(rows.map((r) => ({ id: r.id, text: r.body, sender: r.role === 'user' ? 'user' : 'bot' })));
+      setMessages(rows.map((r) => ({ id: r.id, text: r.body, sender: r.role === 'user' ? 'user' : 'bot', source: r.role === 'user' ? undefined : (r.source ?? 'rules') })));
       setSaveError(null);
     } catch (err) {
       setSaveError(errorMessage(err, 'Could not open that conversation.'));

@@ -35,8 +35,8 @@ Anthropic API, prepaid credit bought by the gym owner with a card at
 console.anthropic.com, pay per token, **monthly spend limit set in the
 console**. Members pay the gym for Premium as today; they never pay the AI
 provider. Sonnet 5.5 ($2 / $10 per million tokens) ≈ ₱0.90 a message, ≈ ₱35 a
-month for a member sending 40. Prompt caching on the system prompt and tool
-list lowers it. Model is a secret (`COACH_MODEL`, default `claude-sonnet-5-5`),
+month for a member sending 40. No caching saving is assumed: the system prompt
+(~350 tokens) is below the minimum cacheable prefix. Model is a secret (`COACH_MODEL`, default `claude-sonnet-5-5`),
 so moving to Haiku 4.5 or Opus 5.5 is a secret change.
 
 Two in-system limits, so the console cap is never the only brake:
@@ -57,7 +57,7 @@ member app ──(JWT)──▶ Edge Function `ai-coach` ──▶ Anthropic Mes
 
 - **New function `ai-coach`**, Anthropic TypeScript SDK (`npm:@anthropic-ai/sdk`
   in Deno), manual tool loop (so every tool call is checked and logged), adaptive
-  thinking at low effort, prompt caching on system + tools, streamed to the phone
+  thinking at low effort, streamed to the phone
   as server-sent events. `fitness-assistant` stays as it is (unused once the
   coach is on; removed in a later cleanup, not here).
 - **Every tool runs as the member.** The function forwards the member's own

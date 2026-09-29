@@ -123,13 +123,13 @@ begin
   end if;
   return jsonb_build_object(
     'first_name', (select pr.first_name from profiles pr where pr.id = v_me),
-    'experience_level', (select mp.experience_level from member_profiles mp where mp.profile_id = v_me),
+    'experience_level', (select mp.experience_level from member_profiles mp where mp.profile_id = v_me and mp.gym_id = v_gym),
     'goals', coalesce((select jsonb_agg(g.title order by g.created_at) from fitness_goals g
-                        where g.member_id = v_me and g.achieved_on is null), '[]'::jsonb),
+                        where g.member_id = v_me and g.gym_id = v_gym and g.achieved_on is null), '[]'::jsonb),
     'routines', coalesce((select jsonb_agg(r.name order by r.position) from workout_routines r
-                           where r.member_id = v_me), '[]'::jsonb),
+                           where r.member_id = v_me and r.gym_id = v_gym), '[]'::jsonb),
     'workouts_30d', (select count(*) from workout_logs l
-                      where l.member_id = v_me and l.completed_at >= now() - interval '30 days'));
+                      where l.member_id = v_me and l.gym_id = v_gym and l.completed_at >= now() - interval '30 days'));
 end;
 $$;
 

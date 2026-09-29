@@ -25,7 +25,10 @@ async function rpc<T>(fn: string, auth: string, key: string, body: unknown = {})
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${fn} ${res.status}`);
-  return (await res.json()) as T;
+  // ai_record_usage returns void: PostgREST answers 204 or an empty body.
+  if (res.status === 204) return null as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
 
 Deno.serve(async (req) => {
@@ -97,6 +100,7 @@ Deno.serve(async (req) => {
           model,
           max_tokens: 2048,
           system: [
+            // The prompt is below the minimum cacheable prefix today, so this saves nothing yet; harmless, and it starts to matter if the prompt grows.
             { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
             { type: 'text', text: about },
           ],
