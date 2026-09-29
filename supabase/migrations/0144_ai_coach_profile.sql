@@ -31,7 +31,7 @@ alter table ai_coach_profiles add constraint ai_coach_profiles_answers_check che
 
 create or replace function save_ai_coach_profile(p jsonb) returns void
 language plpgsql security definer set search_path = public as $$
-declare v_equipment text[];
+declare v_equipment text[]; v_days int; v_minutes int; v_injury boolean;
 begin
   if auth.uid() is null or current_gym_id() is null then
     raise exception 'Sign in first.' using errcode = '42501';
@@ -44,11 +44,26 @@ begin
     raise exception 'Choose the equipment you can use.';
   end if;
   select array_agg(e) into v_equipment from jsonb_array_elements_text(p -> 'equipment') e;
+  if v_equipment is null or cardinality(v_equipment) = 0 then
+    raise exception 'Choose the equipment you can use.';
+  end if;
+  -- a JSON null passes `?`, and a bad number would surface as a raw cast error
+  begin
+    v_days := (p ->> 'days_per_week')::int;
+    v_minutes := (p ->> 'minutes')::int;
+    v_injury := (p ->> 'has_injury')::boolean;
+  exception when others then
+    raise exception 'Please answer every question first.';
+  end;
+  if p ->> 'goal' is null or p ->> 'experience' is null
+     or v_days is null or v_minutes is null or v_injury is null then
+    raise exception 'Please answer every question first.';
+  end if;
   insert into ai_coach_profiles (gym_id, member_id, consent_reads_data, consented_at,
       goal, experience, days_per_week, minutes, equipment, likes, avoid, has_injury, onboarded_at)
   values (current_gym_id(), auth.uid(), false, now(),
-      p ->> 'goal', p ->> 'experience', (p ->> 'days_per_week')::int, (p ->> 'minutes')::int, v_equipment,
-      nullif(btrim(p ->> 'likes'), ''), nullif(btrim(p ->> 'avoid'), ''), (p ->> 'has_injury')::boolean, now())
+      p ->> 'goal', p ->> 'experience', v_days, v_minutes, v_equipment,
+      nullif(btrim(p ->> 'likes'), ''), nullif(btrim(p ->> 'avoid'), ''), v_injury, now())
   on conflict (gym_id, member_id) do update set
       goal = excluded.goal, experience = excluded.experience, days_per_week = excluded.days_per_week,
       minutes = excluded.minutes, equipment = excluded.equipment, likes = excluded.likes,

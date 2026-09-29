@@ -163,6 +163,12 @@ check('a bad goal is refused', !!(await tryExec(`select save_ai_coach_profile('{
 check('8 days a week is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":8,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`)));
 check('unknown equipment is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":["rocket"],"has_injury":false}'::jsonb)`)));
 check('a missing answer is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength"}'::jsonb)`)));
+check('empty equipment is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":[],"has_injury":false}'::jsonb)`)));
+check('null answers are refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":null,"experience":null,"days_per_week":null,"minutes":null,"equipment":["dumbbells"],"has_injury":null}'::jsonb)`)));
+{
+  const bad = await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":"abc","minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`);
+  check('a non-number is refused in plain words', !!bad && /answer every question/.test(bad), String(bad));
+}
 check('a 201-character note is refused', !!(await tryExec(`select save_ai_coach_profile(jsonb_build_object('goal','strength','experience','new','days_per_week',3,'minutes',45,'equipment',jsonb_build_array('dumbbells'),'has_injury',false,'likes',repeat('x',201)))`)));
 check('a good profile saves', !(await tryExec(`select save_ai_coach_profile('{"goal":"muscle","experience":"some","days_per_week":4,"minutes":60,"equipment":["full_gym","dumbbells"],"likes":"lifting","avoid":"running","has_injury":true}'::jsonb)`)));
 check('status says set up', (await status()).onboarded === true);
