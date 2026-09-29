@@ -21,6 +21,7 @@ import { BellRinging, DownloadSimple, Phone, EnvelopeSimple, SignOut } from '@ph
 import { exportMemberData, downloadExport } from '../lib/memberDataExport';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
+import { getCoachStatus, setCoachConsent } from '../lib/api/aiCoach';
 import { saveLanguagePreference, useLanguage, useT, type Lang } from '../lib/i18n';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
@@ -172,6 +173,8 @@ export default function Settings() {
   const [gym, setGym] = useState<GymSettingsRow | null>(null);
   /** Coaches you train with — the ones "What your trainer sees" applies to (0082). Null while unknown. */
   const [coaches, setCoaches] = useState<CoachCard[] | null>(null);
+  /** The AI coach's read-my-training consent; null until known, and the row is hidden unless the gym's plan allows the coach. */
+  const [coachOn, setCoachOn] = useState<boolean | null>(null);
   const [exporting, setExporting] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const support = pushSupport();
@@ -188,6 +191,7 @@ export default function Settings() {
       // Separate from the batch above: a failure here must not blank the
       // notification switches.
       getGymSettings().then((g) => { if (!cancelled) setGym(g); }).catch(() => {});
+      getCoachStatus().then((c) => { if (!cancelled) setCoachOn(c && c.allowed ? c.consent === true : null); }).catch(() => {});
       const id = await getCurrentMemberId().catch(() => null);
       if (!id || cancelled) return;
       const s = await getSharePrefs(id).catch(() => SHARE_ALL);
@@ -246,6 +250,19 @@ export default function Settings() {
     } catch { /* fall through to the in-app note */ }
     toast.success(pushOn ? 'Alerts are on — this device did not show a system notification'
       : 'Push is off on this device — alerts still arrive in Updates');
+  };
+
+  const toggleCoach = async () => {
+    if (coachOn === null) return;
+    setBusy('coach');
+    try {
+      await setCoachConsent(!coachOn);
+      setCoachOn(!coachOn);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not change that setting'));
+    } finally {
+      setBusy(null);
+    }
   };
 
   const downloadMyData = async () => {
@@ -426,6 +443,21 @@ export default function Settings() {
           These switches cover the personal logs you keep in Progress.
         </Footnote>
       </section>
+
+      {coachOn !== null && (
+        <section>
+          <SectionHead title={t('AI coach')} />
+          <SwitchRow
+            label="Let the coach read my training"
+            description="Your first name, goals, routines and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
+            on={coachOn}
+            busy={busy === 'coach'}
+            disabled={busy === 'coach'}
+            onToggle={() => void toggleCoach()}
+            last
+          />
+        </section>
+      )}
 
       {/* ── Your data (RA 10173) ── */}
       <section>

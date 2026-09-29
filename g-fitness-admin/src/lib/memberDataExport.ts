@@ -35,6 +35,8 @@ const TABLES: [string, string, string?][] = [
   ['trainer_feedback', 'member_id'],
   ['trainer_ratings', 'member_id'],
   ['member_share_prefs', 'member_id'],
+  ['ai_coach_profiles', 'member_id'],
+  ['ai_usage_days', 'member_id'],
   ['notification_prefs', 'user_id'],
   ['notifications', 'user_id'],
 ];
