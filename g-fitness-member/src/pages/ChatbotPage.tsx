@@ -19,8 +19,9 @@ import {
   deleteConversation, titleFrom, type Conversation,
 } from '../lib/api/assistantChats';
 import FeatureLock from '../components/ui/FeatureLock';
-import { askCoach, getCoachStatus, setCoachConsent, type CoachStatus } from '../lib/api/aiCoach';
+import { askCoach, getCoachStatus, setCoachConsent, saveCoachProfile, type CoachStatus, type CoachProfile } from '../lib/api/aiCoach';
 import CoachConsent from '../components/CoachConsent';
+import CoachSetup from '../components/CoachSetup';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
@@ -68,6 +69,8 @@ interface Message {
 }
 
 const GREETING_ID = 'greeting';
+const REFERRAL_NOTE = "Thanks for telling me. I won't plan around it — please have a coach at the gym or a physiotherapist look at it first. I can still help with everything else.";
+const WELCOME_QUESTION = "I've finished setting up. Give me a short welcome and one first step.";
 
 /**
  * The assistant is an entitlement (`ai_model`, 0049), so the route locks and
@@ -106,6 +109,10 @@ function Assistant() {
   const [askConsent, setAskConsent] = useState(false);
   // The question waiting for the consent answer, if the sheet opened on a send.
   const pending = useRef<string | null>(null);
+  // The guided setup (0144). Per visit only, so component state, never storage.
+  const [setupSkipped, setSetupSkipped] = useState(false);
+  const [redoSetup, setRedoSetup] = useState(false);
+  const [setupFailed, setSetupFailed] = useState(false);
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -206,7 +213,9 @@ function Assistant() {
   }, [messages, isTyping]);
 
   const stored = messages.filter((m) => m.id !== GREETING_ID);
-  const showSuggestions = stored.length === 0;
+  const setupOpen = !!coach?.allowed && coach.consent !== null && (
+    redoSetup || (coach.onboarded === false && !setupSkipped && stored.length === 0));
+  const showSuggestions = stored.length === 0 && !setupOpen;
 
   /**
    * Write both halves of the exchange.
@@ -331,6 +340,26 @@ function Assistant() {
     if (q) send(q, saved ? {} : { rulesOnly: true, note });
   };
 
+  const onSetupDone = async (p: CoachProfile) => {
+    setSetupFailed(false);
+    try {
+      await saveCoachProfile(p);
+    } catch (err) {
+      // The answers stay in the setup; Try again resends them.
+      setSetupFailed(true);
+      setSaveError(errorMessage(err, 'Your setup was not saved.'));
+      return;
+    }
+    setSaveError(null);
+    updateCoach((c) => (c ? { ...c, onboarded: true } : c));
+    setRedoSetup(false);
+    setSetupSkipped(true);
+    if (p.has_injury) {
+      setMessages((prev) => [...prev, { id: `${Date.now()}r`, text: REFERRAL_NOTE, sender: 'bot', source: 'rules' }]);
+    }
+    send(WELCOME_QUESTION);
+  };
+
   const startNew = () => {
     setConversationId(null);
     setMessages([greeting(ctx)]);
@@ -381,6 +410,10 @@ function Assistant() {
             style={{ height: 32, color: 'var(--color-primary-300)' }}>
             Saved chats{conversations.length > 0 ? ` · ${conversations.length}` : ''}
           </button>
+          {coach?.allowed && coach.onboarded && !setupOpen && (
+            <button onClick={() => { setSetupFailed(false); setRedoSetup(true); }}
+              style={{ height: 32, color: 'var(--color-text-secondary)' }}>Redo my setup</button>
+          )}
           {coach?.allowed && (
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} coach messages today</span>
           )}
@@ -435,6 +468,13 @@ function Assistant() {
                 style={{ width: 6, height: 6, background: 'var(--color-text-muted)', animationDelay: `${d}ms` }} />
             ))}
           </div>
+        )}
+        {setupOpen && (
+          <CoachSetup
+            failed={setupFailed}
+            onDone={(p) => void onSetupDone(p)}
+            onSkip={() => { setSetupSkipped(true); setRedoSetup(false); setSetupFailed(false); setSaveError(null); }}
+          />
         )}
         <div ref={endRef} />
       </div>

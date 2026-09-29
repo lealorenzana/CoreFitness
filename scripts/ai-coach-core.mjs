@@ -26,6 +26,7 @@ check('history never starts with an assistant turn',
 check('the rules are in the prompt', /never state this gym's prices/i.test(core.SYSTEM_PROMPT)
   && /calorie/i.test(core.SYSTEM_PROMPT) && /injur/i.test(core.SYSTEM_PROMPT));
 
+check('the profile injury rule is in the prompt', /has_injury is true/.test(core.SYSTEM_PROMPT));
 check('sse frames one JSON line', core.sse({ type: 'text', text: 'a\nb' }) === 'data: {"type":"text","text":"a\\nb"}\n\n');
 check('an empty question is refused', !core.validQuestion('   ') && !core.validQuestion(42));
 check('a 1001-character question is refused', !core.validQuestion('x'.repeat(1001)) && core.validQuestion('x'.repeat(1000)));

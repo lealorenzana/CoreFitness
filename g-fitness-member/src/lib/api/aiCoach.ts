@@ -13,6 +13,13 @@ export interface CoachStatus {
   reason: 'not_member' | 'no_plan' | 'switched_off' | 'daily_limit' | 'monthly_limit' | null;
   used_today: number; daily_limit: number; used_month: number; monthly_limit: number;
   consent: boolean | null;
+  /** Has the member finished the guided setup (0144)? */
+  onboarded: boolean;
+}
+
+export interface CoachProfile {
+  goal: string; experience: string; days_per_week: number; minutes: number;
+  equipment: string[]; likes: string | null; avoid: string | null; has_injury: boolean;
 }
 
 export interface Turn { role: 'user' | 'assistant'; content: string }
@@ -21,7 +28,14 @@ export interface Turn { role: 'user' | 'assistant'; content: string }
 export async function getCoachStatus(): Promise<CoachStatus | null> {
   const { data, error } = await supabase.rpc('ai_coach_status');
   if (error || !data) return null;
-  return data as CoachStatus;
+  // A database without 0144 sends no `onboarded`: treat it as done, never show the setup.
+  const s = data as Omit<CoachStatus, 'onboarded'> & { onboarded?: boolean };
+  return { ...s, onboarded: s.onboarded ?? true };
+}
+
+export async function saveCoachProfile(p: CoachProfile): Promise<void> {
+  const { error } = await supabase.rpc('save_ai_coach_profile', { p });
+  if (error) throw new Error(error.message);
 }
 
 export async function setCoachConsent(readsData: boolean): Promise<void> {

@@ -19,6 +19,7 @@
     { "file": "member-photos-check.js", "app": "member" },
     { "file": "member-shop-check.js", "app": "member" },
     { "file": "member-coach-check.js", "app": "member" },
+    { "file": "member-coach-setup-check.js", "app": "member" },
     { "file": "trainer-chat-check.js", "app": "member" },
     { "file": "season-check.js", "app": "member" },
     { "file": "squad-check.js", "app": "member" },
