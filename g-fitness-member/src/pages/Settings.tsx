@@ -173,7 +173,7 @@ export default function Settings() {
   const [gym, setGym] = useState<GymSettingsRow | null>(null);
   /** Coaches you train with — the ones "What your trainer sees" applies to (0082). Null while unknown. */
   const [coaches, setCoaches] = useState<CoachCard[] | null>(null);
-  /** The AI coach's read-my-training consent; null until known, and the row is hidden unless the gym's plan allows the coach. */
+  /** The AI coach's read-my-training consent; null until known, and the row is hidden unless the coach is allowed or consent is on, so it can always be withdrawn. */
   const [coachOn, setCoachOn] = useState<boolean | null>(null);
   const [exporting, setExporting] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -191,7 +191,7 @@ export default function Settings() {
       // Separate from the batch above: a failure here must not blank the
       // notification switches.
       getGymSettings().then((g) => { if (!cancelled) setGym(g); }).catch(() => {});
-      getCoachStatus().then((c) => { if (!cancelled) setCoachOn(c && c.allowed ? c.consent === true : null); }).catch(() => {});
+      getCoachStatus().then((c) => { if (!cancelled) setCoachOn(c && (c.allowed || c.consent === true) ? c.consent === true : null); }).catch(() => {});
       const id = await getCurrentMemberId().catch(() => null);
       if (!id || cancelled) return;
       const s = await getSharePrefs(id).catch(() => SHARE_ALL);
@@ -449,7 +449,7 @@ export default function Settings() {
           <SectionHead title={t('AI coach')} />
           <SwitchRow
             label="Let the coach read my training"
-            description="Your first name, goals, routines and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
+            description="Your first name, goals, experience level, routines and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
             on={coachOn}
             busy={busy === 'coach'}
             disabled={busy === 'coach'}

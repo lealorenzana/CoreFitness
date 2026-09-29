@@ -232,11 +232,9 @@ async (page) => {
     await page.waitForTimeout(1300);
   };
 
-
-
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
-
-
+  await go('/member/settings');
+  out.push('the coach switch is offered when allowed: ' + (/Let the coach read my training/.test(await text()) ? 'yes' : 'MISSING'));
   await go('/member/chatbot');
   let t = await text();
   out.push('coach named honestly: ' + (/training help from the AI coach/.test(t) ? 'yes' : 'MISSING'));
@@ -268,5 +266,8 @@ async (page) => {
   out.push('at the limit nothing is sent: ' + (COACH_POSTS.length === before ? 'yes' : 'NO, sent anyway'));
   out.push('the limit is explained: ' + (/used today's 30 messages/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach.png' });
+  // Over the limit with consent on, the switch stays so consent can be withdrawn.
+  await go('/member/settings');
+  out.push('the coach switch stays at the limit while consent is on: ' + (/Let the coach read my training/.test(await text()) ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

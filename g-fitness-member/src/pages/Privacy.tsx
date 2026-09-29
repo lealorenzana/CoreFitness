@@ -60,7 +60,7 @@ const sections: { title: string; body: string | string[] }[] = [
       'No advertising, and no advertising identifiers.',
       'No analytics or usage tracking, and no third-party tracking scripts.',
       'No payment processor — payment happens in cash, at the desk.',
-      'The in-app assistant answers questions about your membership, bookings and the gym from fixed rules, in the app. At gyms and on plans that include the AI coach, questions the rules cannot answer are sent to Anthropic, the company that runs the model, to be answered. The coach sees your first name, goals, routines and how often you have trained lately only if you say yes when it first asks (Settings changes it); it never sees health or waiver answers, payments, contact details, chats with coaches or photos. Your conversations are kept in the gym\'s database, visible only to you, and you can delete them.',
+      'The in-app assistant answers questions about your membership, bookings and the gym from fixed rules, in the app. At gyms and on plans that include the AI coach, questions the rules cannot answer are sent to Anthropic, the company that runs the model, to be answered. The coach sees your first name, goals, experience level, routines and how often you have trained lately only if you say yes when it first asks (Settings changes it); it never sees health or waiver answers, payments, contact details, chats with coaches or photos. Your conversations are kept in the gym\'s database, visible only to you, and you can delete them.',
     ],
   },
   {
