@@ -10,6 +10,13 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   answer, after the member consents. With the question goes the consented context: first
   name, experience level, open goals, routine names and the 30-day workout count. Nothing
   else leaves the system.
+- **The setup profile (0144, Phase 2).** The coach's first conversation is a guided
+  setup (`CoachSetup.tsx`); `save_ai_coach_profile()` stores the answers: goal,
+  experience, days a week, minutes, equipment, likes, avoid, and `has_injury` as a
+  **yes/no only** (the note itself is never stored). The profile is given to the coach
+  **without** the history consent, because the member typed it for the coach; the
+  workout history still needs the consent. An injury never changes an exercise: prompt
+  rule 6 makes the coach refer the member to a professional. The Privacy page says so.
 - **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
   month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
   before the model call, so a failed or abandoned call still counts.

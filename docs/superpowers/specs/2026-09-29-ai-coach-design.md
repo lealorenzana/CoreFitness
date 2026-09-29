@@ -162,7 +162,7 @@ since) → Apply says so and changes nothing.
 1. **Foundation** — 0143 tables/functions, `ai-coach` function with no tools,
    streamed chat, consent screen, limits, usage. *Live with a key: a Premium
    member chats.*
-2. **Onboarding** — the profile, the guided first conversation.
+2. **Onboarding** — the profile, the guided first conversation. *Done 2026-09-29 (0144, `CoachSetup.tsx`); not yet live until 0144 is pasted.*
 3. **Training tools** — read tools, routine/schedule/goal proposals,
    Apply/Undo, the "Built with the coach" mark, trainer sheet.
 4. **Meals** — `meals.set`, the Meals section, the regex.
