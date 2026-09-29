@@ -42,7 +42,13 @@ Deno.serve(async (req) => {
   const member = (await who.json()) as { id: string };
 
   let body: { question?: unknown; history?: unknown };
-  try { body = await req.json(); } catch { return json({ reason: 'bad_question' }, 400); }
+  try {
+    const parsed = await req.json();
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return json({ reason: 'bad_question' }, 400);
+    }
+    body = parsed;
+  } catch { return json({ reason: 'bad_question' }, 400); }
   if (!validQuestion(body.question)) return json({ reason: 'bad_question' }, 400);
   // Keep only well-formed turns: a null or odd item must not throw inside buildRequest.
   const history = (Array.isArray(body.history) ? body.history : []).filter(
@@ -58,6 +64,18 @@ Deno.serve(async (req) => {
   const refused = statusToHttp(status);
   if (refused) return json(refused.body, refused.status);
 
+  // Claim the message before the model is called, atomically with the limit check, so parallel
+  // requests cannot all slip under the limit. Never call the model unclaimed.
+  let claimed: boolean;
+  try {
+    claimed = await rpc<boolean>('ai_claim_message', `Bearer ${SERVICE}`, SERVICE, {
+      p_gym: status.gym_id, p_member: member.id,
+    });
+  } catch { return json({ reason: 'busy', message: 'The coach is busy. Try again in a minute.' }, 503); }
+  if (!claimed) {
+    return json({ reason: 'daily_limit', message: 'You have reached the coach's limit for now. Try again tomorrow.' }, 429);
+  }
+
   const context = await rpc<Record<string, unknown> | null>('ai_coach_context', auth, ANON).catch(() => null);
   const request = buildRequest(body.question, history, context);
   const about = request.system.slice(SYSTEM_PROMPT.length).trim();
@@ -65,10 +83,14 @@ Deno.serve(async (req) => {
   const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
   const model = Deno.env.get('COACH_MODEL') || 'claude-sonnet-5-5';
 
+  // deno-lint-ignore no-explicit-any
+  let upstream: any = null;
+  let cancelled = false;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const enc = new TextEncoder();
-      const send = (s: string) => controller.enqueue(enc.encode(s));
+      // Once the client has gone, enqueue/close throw; that must never escape start().
+      const send = (s: string) => { try { controller.enqueue(enc.encode(s)); } catch { /* client gone */ } };
       let usageIn = 0, usageOut = 0, spoke = false;
       try {
         // deno-lint-ignore no-explicit-any
@@ -85,7 +107,16 @@ Deno.serve(async (req) => {
           fallbacks: 'default',
         };
         const s = client.beta.messages.stream(params);
+        upstream = s;
         for await (const event of s) {
+          // Count tokens as they arrive, so a stream that dies midway is still billed.
+          if (event.type === 'message_start') {
+            const u = event.message.usage;
+            usageIn = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+            usageOut = u.output_tokens ?? 0;
+          } else if (event.type === 'message_delta' && event.usage?.output_tokens != null) {
+            usageOut = event.usage.output_tokens;
+          }
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             spoke = true;
             send(sse({ type: 'text', text: event.delta.text }));
@@ -94,7 +125,7 @@ Deno.serve(async (req) => {
         const final = await s.finalMessage();
         usageIn = (final.usage.input_tokens ?? 0) + (final.usage.cache_read_input_tokens ?? 0)
           + (final.usage.cache_creation_input_tokens ?? 0);
-        usageOut = final.usage.output_tokens ?? 0;
+        usageOut = final.usage.output_tokens ?? usageOut;
         if (final.stop_reason === 'refusal' && !spoke) {
           send(sse({ type: 'error', reason: 'refusal', message: 'The coach cannot help with that one.' }));
         } else {
@@ -102,17 +133,23 @@ Deno.serve(async (req) => {
         }
       } catch (err) {
         // Never the raw error: it can carry request details. Log for the gym.
-        console.error('ai-coach upstream', err instanceof Anthropic.APIError ? err.status : 'network');
+        if (!cancelled) {
+          console.error('ai-coach upstream', err instanceof Anthropic.APIError ? err.status : 'network');
+        }
         send(sse({ type: 'error', reason: 'busy', message: 'The coach is busy. Try again in a minute.' }));
       } finally {
-        // A message that reached the model counts, even a refused one.
+        // The message was counted at the claim; this adds the tokens, even for a stream cut short.
         if (usageIn || usageOut) {
           await rpc('ai_record_usage', `Bearer ${SERVICE}`, SERVICE, {
             p_gym: status.gym_id, p_member: member.id, p_in: usageIn, p_out: usageOut,
           }).catch((e) => console.error('ai-coach usage', String(e)));
         }
-        controller.close();
+        try { controller.close(); } catch { /* already closed or cancelled */ }
       }
+    },
+    cancel() {
+      cancelled = true;
+      try { upstream?.abort(); } catch { /* nothing to abort */ }
     },
   });
 

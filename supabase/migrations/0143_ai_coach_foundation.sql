@@ -134,13 +134,35 @@ end;
 $$;
 
 -- ---- usage: the service role only ---------------------------------------------------------------
+-- A message is *claimed* before the model is called, under a per-gym lock, so N parallel requests
+-- from a member one under the limit cannot all pass: the check and the count are one step.
+create or replace function ai_claim_message(p_gym uuid, p_member uuid) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_daily int; v_monthly int; v_today int; v_month int;
+begin
+  perform pg_advisory_xact_lock(hashtext('ai_claim:' || p_gym::text));
+  select coalesce(s.ai_daily_messages, 30), coalesce(s.ai_monthly_messages, 1500)
+    into v_daily, v_monthly from gym_settings s where s.gym_id = p_gym;
+  v_daily := coalesce(v_daily, 30); v_monthly := coalesce(v_monthly, 1500);
+  select coalesce(sum(u.messages), 0) into v_today from ai_usage_days u
+   where u.gym_id = p_gym and u.member_id = p_member and u.day = manila_today();
+  select coalesce(sum(u.messages), 0) into v_month from ai_usage_days u
+   where u.gym_id = p_gym and u.day >= date_trunc('month', manila_today())::date;
+  if v_today >= v_daily or v_month >= v_monthly then return false; end if;
+  insert into ai_usage_days (gym_id, member_id, day, messages)
+  values (p_gym, p_member, manila_today(), 1)
+  on conflict (gym_id, member_id, day) do update set messages = ai_usage_days.messages + 1;
+  return true;
+end;
+$$;
+
+-- Tokens only: the message was already counted by ai_claim_message().
 create or replace function ai_record_usage(p_gym uuid, p_member uuid, p_in int, p_out int) returns void
 language sql security definer set search_path = public as $$
   insert into ai_usage_days (gym_id, member_id, day, messages, tokens_in, tokens_out)
-  values (p_gym, p_member, manila_today(), 1, greatest(coalesce(p_in, 0), 0), greatest(coalesce(p_out, 0), 0))
+  values (p_gym, p_member, manila_today(), 0, greatest(coalesce(p_in, 0), 0), greatest(coalesce(p_out, 0), 0))
   on conflict (gym_id, member_id, day) do update
-    set messages = ai_usage_days.messages + 1,
-        tokens_in = ai_usage_days.tokens_in + excluded.tokens_in,
+    set tokens_in = ai_usage_days.tokens_in + excluded.tokens_in,
         tokens_out = ai_usage_days.tokens_out + excluded.tokens_out;
 $$;
 
@@ -150,6 +172,8 @@ grant execute on function ai_coach_status(), set_ai_coach_consent(boolean), ai_c
   to authenticated;
 revoke all on function ai_record_usage(uuid, uuid, int, int) from public, anon, authenticated;
 grant execute on function ai_record_usage(uuid, uuid, int, int) to service_role;
+revoke all on function ai_claim_message(uuid, uuid) from public, anon, authenticated;
+grant execute on function ai_claim_message(uuid, uuid) to service_role;
 
 -- ---- tenancy: both tables are the gym's --------------------------------------------------------
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$

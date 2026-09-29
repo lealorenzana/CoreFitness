@@ -78,14 +78,27 @@ check('withdrawing consent stops it at once', (await one(`select ai_coach_contex
 // ---- usage: only the service role writes it, and the limits bite -------------------------------
 await as(A);
 check('a member cannot record usage', !!(await tryExec(`select ai_record_usage('${GYM}', '${A}', 10, 10)`)));
+check('a member cannot claim a message', !!(await tryExec(`select ai_claim_message('${GYM}', '${A}')`)));
 check('a member cannot write the usage table', !!(await tryExec(
   `insert into ai_usage_days (gym_id, member_id, day, messages) values ('${GYM}', '${A}', manila_today(), -100)`))
   || (await one(`select count(*)::int as n from ai_usage_days where messages < 0`)).n === 0);
 
-await db.exec(`reset role; set role service_role;`);
-check('the service role records usage', !(await tryExec(`select ai_record_usage('${GYM}', '${A}', 1200, 300)`)));
-await db.exec(`reset role; update gym_settings set ai_daily_messages = 2 where gym_id = '${GYM}';
-  set role service_role; select ai_record_usage('${GYM}', '${A}', 1000, 200);`);
+await db.exec(`reset role; update gym_settings set ai_daily_messages = 2 where gym_id = '${GYM}'; set role service_role;`);
+const claim = async (m) => (await one(`select ai_claim_message('${GYM}', '${m}') as ok`)).ok;
+check('claim 1 of 2 passes', (await claim(A)) === true);
+check('claim 2 of 2 passes', (await claim(A)) === true);
+check('claim 3 is refused exactly at the daily limit', (await claim(A)) === false);
+await db.exec(`reset role;`);
+check('a refused claim does not increment past the limit',
+  (await one(`select messages from ai_usage_days where member_id = '${A}' and day = manila_today()`)).messages === 2);
+await db.exec(`set role service_role;`);
+check('the service role records tokens', !(await tryExec(`select ai_record_usage('${GYM}', '${A}', 1200, 300)`)));
+await db.exec(`reset role;`);
+{
+  const r = await one(`select messages, tokens_in::int as ti, tokens_out::int as to_ from ai_usage_days
+    where member_id = '${A}' and day = manila_today()`);
+  check('recording adds tokens without changing messages', r.messages === 2 && r.ti === 1200 && r.to_ === 300, JSON.stringify(r));
+}
 await as(A);
 s = await status();
 check('the daily limit closes it at the boundary', s.used_today === 2 && s.reason === 'daily_limit', JSON.stringify(s));
@@ -97,6 +110,11 @@ check('another member reads none of A\'s usage',
 await db.exec(`reset role; update gym_settings set ai_daily_messages = 30, ai_monthly_messages = 2 where gym_id = '${GYM}';`);
 await as(B);
 check('the gym\'s monthly limit closes it for everyone', (await status()).reason === 'monthly_limit');
+await db.exec(`reset role; set role service_role;`);
+const refusedB = (await claim(B)) === false;
+await db.exec(`reset role;`);
+check('the monthly limit refuses a claim, without counting it', refusedB
+  && (await one(`select count(*)::int as n from ai_usage_days where member_id = '${B}'`)).n === 0);
 await db.exec(`reset role; update gym_settings set ai_monthly_messages = 1500 where gym_id = '${GYM}';`);
 
 // ---- limits are bounded; the message source is checked -----------------------------------------
