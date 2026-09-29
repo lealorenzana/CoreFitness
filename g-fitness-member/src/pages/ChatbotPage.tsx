@@ -223,11 +223,18 @@ function Assistant() {
     await refreshList();
   };
 
-  const send = (text: string) => {
+  /**
+   * `again` re-runs a question whose bubble is already on screen (the one that
+   * opened the consent sheet): no second bubble is added, `rulesOnly` skips the
+   * coach, and `note` is the banner to keep after the exchange is saved.
+   */
+  const send = (text: string, again?: { rulesOnly?: boolean; note?: string }) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setMessages((prev) => [...prev, { id: Date.now().toString(), text: trimmed, sender: 'user' }]);
-    setInput('');
+    if (!again) {
+      setMessages((prev) => [...prev, { id: Date.now().toString(), text: trimmed, sender: 'user' }]);
+      setInput('');
+    }
     setIsTyping(true);
 
     // The answer is computed synchronously — the delay is presentation, not
@@ -247,10 +254,10 @@ function Assistant() {
       // said so outlived it.)
       // `coachRef`, not `coach`: this closure runs after a timeout, and right
       // after consent the state it captured is still the old one.
-      const coach = coachRef.current;
+      const live = again?.rulesOnly ? null : coachRef.current;
       let source: 'rules' | 'coach' = 'rules';
-      if (isRuleFallback(answer) && mayUseModel && coach?.allowed) {
-        if (coach.consent === null) {
+      if (isRuleFallback(answer) && mayUseModel && live?.allowed) {
+        if (live.consent === null) {
           // First time: ask before anything leaves the phone. The question is sent
           // once they answer (see onConsent).
           pending.current = trimmed;
@@ -279,14 +286,14 @@ function Assistant() {
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer } : m)));
         }
         updateCoach((c) => (c ? { ...c, used_today: c.used_today + (source === 'coach' ? 1 : 0) } : c));
-        try { await persist(trimmed, answer, source); setSaveError(null); }
+        try { await persist(trimmed, answer, source); setSaveError(again?.note ?? null); }
         catch (err) { setSaveError(errorMessage(err, 'This conversation is not being saved.')); }
         return;
       }
-      if (isRuleFallback(answer) && mayUseModel && coach && !coach.allowed
-          && (coach.reason === 'daily_limit' || coach.reason === 'monthly_limit')) {
-        answer = coach.reason === 'daily_limit'
-          ? `${answer}\n\nYou have used today's ${coach.daily_limit} messages with the coach. It opens again tomorrow.`
+      if (isRuleFallback(answer) && mayUseModel && live && !live.allowed
+          && (live.reason === 'daily_limit' || live.reason === 'monthly_limit')) {
+        answer = live.reason === 'daily_limit'
+          ? `${answer}\n\nYou have used today's ${live.daily_limit} messages with the coach. It opens again tomorrow.`
           : `${answer}\n\nThe coach has reached this gym's limit for the month.`;
       }
 
@@ -294,7 +301,7 @@ function Assistant() {
       setIsTyping(false);
       try {
         await persist(trimmed, answer, source);
-        setSaveError(null);
+        setSaveError(again?.note ?? null);
       } catch (err) {
         setSaveError(errorMessage(err, 'This conversation is not being saved.'));
       }
@@ -303,10 +310,15 @@ function Assistant() {
 
   const onConsent = async (yes: boolean) => {
     setAskConsent(false);
-    try { await setCoachConsent(yes); updateCoach((c) => (c ? { ...c, consent: yes } : c)); }
-    catch (err) { setSaveError(errorMessage(err, 'Your choice was not saved.')); return; }
     const q = pending.current; pending.current = null;
-    if (q) { setMessages((prev) => prev.filter((m) => m.text !== q || m.sender !== 'user')); send(q); }
+    let note: string | undefined;
+    let saved = true;
+    try { await setCoachConsent(yes); updateCoach((c) => (c ? { ...c, consent: yes } : c)); }
+    catch (err) { saved = false; note = errorMessage(err, 'Your choice was not saved.'); }
+    if (!saved) setSaveError(note ?? null);
+    // Always answer the waiting question, on its existing bubble. If the choice
+    // could not be saved, the rules answer it and the banner says why.
+    if (q) send(q, saved ? {} : { rulesOnly: true, note });
   };
 
   const startNew = () => {

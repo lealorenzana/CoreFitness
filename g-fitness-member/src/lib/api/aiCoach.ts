@@ -59,6 +59,15 @@ export async function askCoach(
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
+    // One frame at a time; null means keep reading.
+    const handle = (frame: string): { ok: true } | { ok: false; reason: string; message: string } | null => {
+      if (!frame.startsWith('data: ')) return null;
+      const ev = JSON.parse(frame.slice(6)) as { type: string; text?: string; reason?: string; message?: string };
+      if (ev.type === 'text' && ev.text) onText(ev.text);
+      if (ev.type === 'error') return { ok: false, reason: ev.reason ?? 'busy', message: ev.message ?? busy.message };
+      if (ev.type === 'done') return { ok: true };
+      return null;
+    };
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -66,13 +75,14 @@ export async function askCoach(
       let cut: number;
       while ((cut = buf.indexOf('\n\n')) !== -1) {
         const frame = buf.slice(0, cut); buf = buf.slice(cut + 2);
-        if (!frame.startsWith('data: ')) continue;
-        const ev = JSON.parse(frame.slice(6)) as { type: string; text?: string; reason?: string; message?: string };
-        if (ev.type === 'text' && ev.text) onText(ev.text);
-        if (ev.type === 'error') return { ok: false, reason: ev.reason ?? 'busy', message: ev.message ?? busy.message };
-        if (ev.type === 'done') return { ok: true };
+        const out = handle(frame);
+        if (out) return out;
       }
     }
+    // A last frame may arrive without its blank line.
+    buf += dec.decode();
+    const last = buf.trim() ? handle(buf.trim()) : null;
+    if (last) return last;
     return busy;
   } catch {
     return busy;
