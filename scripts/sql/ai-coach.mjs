@@ -156,13 +156,46 @@ await db.exec('reset role;');
 check('both tables are tenant tables',
   (await one(`select tenancy_gym_tables() @> array['ai_coach_profiles','ai_usage_days'] as ok`)).ok);
 
+// ---- 0144: the coaching profile ----------------------------------------------------------------
+await as(A);
+check('status says not set up yet', (await status()).onboarded === false);
+check('a bad goal is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"get huge","experience":"new","days_per_week":3,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`)));
+check('8 days a week is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":8,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`)));
+check('unknown equipment is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":["rocket"],"has_injury":false}'::jsonb)`)));
+check('a missing answer is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength"}'::jsonb)`)));
+check('a 201-character note is refused', !!(await tryExec(`select save_ai_coach_profile(jsonb_build_object('goal','strength','experience','new','days_per_week',3,'minutes',45,'equipment',jsonb_build_array('dumbbells'),'has_injury',false,'likes',repeat('x',201)))`)));
+check('a good profile saves', !(await tryExec(`select save_ai_coach_profile('{"goal":"muscle","experience":"some","days_per_week":4,"minutes":60,"equipment":["full_gym","dumbbells"],"likes":"lifting","avoid":"running","has_injury":true}'::jsonb)`)));
+check('status says set up', (await status()).onboarded === true);
+await db.exec(`select set_ai_coach_consent(false)`);
+let c = (await one(`select ai_coach_context() as c`)).c;
+check('without consent: the profile only', c?.profile?.goal === 'muscle' && c?.profile?.has_injury === true
+  && c.goals === undefined && c.routines === undefined && c.experience_level === undefined, JSON.stringify(c));
+check('the injury is a yes/no, never text', !/injur.*[a-z]{4,}/i.test(JSON.stringify(c?.profile ?? {}).replace('"has_injury":true', '')));
+await db.exec(`select set_ai_coach_consent(true)`);
+c = (await one(`select ai_coach_context() as c`)).c;
+check('with consent: profile and history', c?.profile?.goal === 'muscle' && Array.isArray(c?.goals), JSON.stringify(c));
+// An extra "injury_details" key is ignored: the words are stored nowhere and never reach the coach.
+check('a profile with an injury_details key still saves', !(await tryExec(`select save_ai_coach_profile('{"goal":"muscle","experience":"some","days_per_week":4,"minutes":60,"equipment":["full_gym","dumbbells"],"likes":"lifting","avoid":"running","has_injury":true,"injury_details":"left knee"}'::jsonb)`)));
+c = (await one(`select ai_coach_context() as c`)).c;
+check('injury_details never reaches the coach', !JSON.stringify(c).includes('left knee'), JSON.stringify(c));
+await db.exec('reset role;');
+check('injury_details is stored nowhere in the profile row',
+  !(await one(`select row_to_json(p)::text as t from ai_coach_profiles p where member_id = '${A}'`)).t.includes('left knee'));
+await as(B);
+check('another member sees none of A\'s profile',
+  (await one(`select count(*)::int as n from ai_coach_profiles where member_id = '${A}'`)).n === 0);
+check('a member with nothing set up gets no context', (await one(`select ai_coach_context() as c`)).c === null);
+
 // The paste-after report, on this same replay.
 {
   const { readFileSync } = await import('node:fs');
   await db.exec('reset role;');
   const report = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0143.sql`, 'utf8'))) ?? '';
   check('verify0143.sql reports OK', /REPORT 0143/.test(report) && !/NOT OK/.test(report), report);
+  await db.exec('reset role;');
+  const report44 = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0144.sql`, 'utf8'))) ?? '';
+  check('verify0144.sql reports OK', /REPORT 0144/.test(report44) && !/NOT OK/.test(report44), report44);
 }
 
-console.log(failures ? `\n${failures} FAILED` : '\nall 0143 checks passed');
+console.log(failures ? `\n${failures} FAILED` : '\nall 0143/0144 checks passed');
 process.exit(failures ? 1 : 0);
