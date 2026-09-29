@@ -4,7 +4,7 @@
 // PostgREST, so RLS and the definer functions decide, not this file. The
 // service-role key is used for exactly one call, ai_record_usage(), because a
 // member who could write their own count could reset their own limit.
-import Anthropic from 'npm:@anthropic-ai/sdk';
+import Anthropic from 'npm:@anthropic-ai/sdk@0.129.0';
 import { buildRequest, sse, statusToHttp, SYSTEM_PROMPT, validQuestion, type CoachStatus, type Turn } from './core.ts';
 
 const cors = {

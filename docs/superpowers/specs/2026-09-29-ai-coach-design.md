@@ -78,7 +78,7 @@ member app ──(JWT)──▶ Edge Function `ai-coach` ──▶ Anthropic Mes
 | Table | Holds | Who reads | Who writes |
 |---|---|---|---|
 | `ai_coach_profiles` | one row per member per gym: `consent_reads_data`, `consented_at`, onboarding answers (`goal`, `experience`, `days_per_week`, `minutes`, `equipment[]`, `likes`, `avoid`, `injury_note_present bool`) | the member | the member (via `save_ai_coach_profile()`) |
-| `ai_conversations` / `ai_messages` | the chat, per member; role, text, tool calls, token counts | **the member only** — not trainer, desk or owner (like coach chat, 0131) | the function, as the member |
+| `assistant_conversations` / `assistant_messages` (0046, reused; 0143 adds a `source` column, no new `ai_conversations`/`ai_messages` tables) | the chat, per member; role, text, tool calls, token counts. `ai_claim_message()` counts a message against the limits when it is claimed, before the model call | **the member only** — not trainer, desk or owner (like coach chat, 0131) | the function, as the member |
 | `ai_proposals` | kind, payload, status (`pending`/`applied`/`discarded`/`undone`), `undo` snapshot, timestamps | the member; trainer sees *that* a routine came from the coach | proposals via `create_ai_proposal()`; status only via apply/undo/discard functions |
 | `ai_meal_guides` | the member's current meal guidance (text sections) | the member | only `apply_ai_proposal()` |
 | `ai_usage_days` | per member per Manila day: messages, input/output tokens | the member (own), owner (gym totals via a function) | **service role only** — no policy for any role |

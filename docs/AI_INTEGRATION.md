@@ -1,5 +1,28 @@
 # AI in this system — what exists, what it costs, and what is left to do
 
+## Update 2026-09-29 — the AI coach supersedes `fitness-assistant`
+
+For members, the **AI coach** (`supabase/functions/ai-coach/`, migration 0143) now
+replaces `fitness-assistant`. It is a real Claude model (Claude Sonnet 5.5), not a rule
+set, and it is gated in SQL. The rest of this document is kept below as history.
+
+- **What is sent to Anthropic, and when.** Only questions the assistant's rules cannot
+  answer, after the member consents. With the question goes the consented context: first
+  name, experience level, open goals, routine names and the 30-day workout count. Nothing
+  else leaves the system.
+- **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
+  month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
+  before the model call, so a failed or abandoned call still counts.
+- **Cost.** About PHP 0.90 a message on Claude Sonnet 5.5, so a full gym month at the
+  1500 limit is roughly PHP 1,350.
+- **The key and the function are the owner's to set up**: an Anthropic account with a
+  spend limit, the `ANTHROPIC_API_KEY` secret, and deploying `ai-coach`. Until then the
+  app falls back to the rules' answers.
+
+---
+
+## History — written 2026-09-15
+
 Written 2026-09-15, answering the review's section 4. Read
 [CLAUDE.md](../CLAUDE.md)'s *Levels, achievements and what a trainer may see*
 first: the vocabulary rule there ("the AI features are deterministic and
