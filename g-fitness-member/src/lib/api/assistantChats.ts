@@ -92,11 +92,12 @@ export async function createConversation(title: string | null = null): Promise<s
 export async function appendMessage(
   conversationId: string,
   role: 'user' | 'assistant',
-  body: string
+  body: string,
+  source?: 'rules' | 'coach'
 ): Promise<void> {
   const { error } = await supabase
     .from('assistant_messages')
-    .insert({ conversation_id: conversationId, role, body });
+    .insert({ conversation_id: conversationId, role, body, ...(source ? { source } : {}) });
   if (error) throw error;
 }
 

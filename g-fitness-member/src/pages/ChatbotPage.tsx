@@ -19,7 +19,8 @@ import {
   deleteConversation, titleFrom, type Conversation,
 } from '../lib/api/assistantChats';
 import FeatureLock from '../components/ui/FeatureLock';
-import { askFitnessAssistant } from '../lib/api/fitnessAssistant';
+import { askCoach, getCoachStatus, setCoachConsent, type CoachStatus } from '../lib/api/aiCoach';
+import CoachConsent from '../components/CoachConsent';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
@@ -91,6 +92,18 @@ function Assistant() {
   const messagesRef = useRef<Message[]>([]);
   const { features } = useFeatures();
   const mayUseModel = isEnabled(features, 'ai_model');
+  const [coach, setCoach] = useState<CoachStatus | null>(null);
+  // `send` does its work inside a setTimeout closure, which would read a stale
+  // `coach` right after consent. The ref is set in the same place as the state.
+  const coachRef = useRef<CoachStatus | null>(null);
+  const updateCoach = useCallback((next: CoachStatus | null | ((c: CoachStatus | null) => CoachStatus | null)) => {
+    const value = typeof next === 'function' ? next(coachRef.current) : next;
+    coachRef.current = value;
+    setCoach(value);
+  }, []);
+  const [askConsent, setAskConsent] = useState(false);
+  // The question waiting for the consent answer, if the sheet opened on a send.
+  const pending = useRef<string | null>(null);
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -179,9 +192,10 @@ function Assistant() {
       setCtx(next);
       setMessages([greeting(next)]);
       refreshList();
+      getCoachStatus().then((s) => { if (!cancelled) updateCoach(s); });
     })();
     return () => { cancelled = true; };
-  }, [greeting, refreshList]);
+  }, [greeting, refreshList, updateCoach]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -198,14 +212,14 @@ function Assistant() {
    * firing them together can land the answer on the same millisecond as the
    * question, which reads back as the assistant replying before it was asked.
    */
-  const persist = async (question: string, answer: string) => {
+  const persist = async (question: string, answer: string, source: 'rules' | 'coach') => {
     let id = conversationId;
     if (!id) {
       id = await createConversation(titleFrom(question));
       setConversationId(id);
     }
     await appendMessage(id, 'user', question);
-    await appendMessage(id, 'assistant', answer);
+    await appendMessage(id, 'assistant', answer, source);
     await refreshList();
   };
 
@@ -231,30 +245,68 @@ function Assistant() {
       // Function checks the same entitlement, because this is an optimisation
       // and not the boundary. (0049 had gated only the model — the comment that
       // said so outlived it.)
-      if (isRuleFallback(answer) && mayUseModel) {
-        // The last few turns, so "and for legs?" still makes sense. The typing
-        // indicator deliberately stays up across this: the member is waiting on
-        // a real request, and hiding it would look like the app had stopped.
+      // `coachRef`, not `coach`: this closure runs after a timeout, and right
+      // after consent the state it captured is still the old one.
+      const coach = coachRef.current;
+      let source: 'rules' | 'coach' = 'rules';
+      if (isRuleFallback(answer) && mayUseModel && coach?.allowed) {
+        if (coach.consent === null) {
+          // First time: ask before anything leaves the phone. The question is sent
+          // once they answer (see onConsent).
+          pending.current = trimmed;
+          setAskConsent(true);
+          setIsTyping(false);
+          return;
+        }
         const history = messagesRef.current
           .filter((m) => m.id !== GREETING_ID)
-          .slice(-6)
+          .slice(-10)
           .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
-        const fromModel = await askFitnessAssistant(trimmed, history);
-        // null covers not-configured, offline, rate-limited and timed out. In
-        // every one of them the member gets the message they got before this
-        // existed, which is why adding this cannot make the assistant worse.
-        if (fromModel) answer = fromModel;
+        const botId = `${Date.now()}c`;
+        let streamed = '';
+        setMessages((prev) => [...prev, { id: botId, text: '', sender: 'bot' }]);
+        setIsTyping(false);
+        const result = await askCoach(trimmed, history, (chunk) => {
+          streamed += chunk;
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: streamed } : m)));
+        });
+        if (result.ok && streamed.trim()) {
+          answer = streamed;
+          source = 'coach';
+        } else {
+          // The rules' answer stands, with the coach's reason under it when it has one.
+          answer = result.ok ? answer : `${answer}\n\n${result.message}`;
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer } : m)));
+        }
+        updateCoach((c) => (c ? { ...c, used_today: c.used_today + (source === 'coach' ? 1 : 0) } : c));
+        try { await persist(trimmed, answer, source); setSaveError(null); }
+        catch (err) { setSaveError(errorMessage(err, 'This conversation is not being saved.')); }
+        return;
+      }
+      if (isRuleFallback(answer) && mayUseModel && coach && !coach.allowed
+          && (coach.reason === 'daily_limit' || coach.reason === 'monthly_limit')) {
+        answer = coach.reason === 'daily_limit'
+          ? `${answer}\n\nYou have used today's ${coach.daily_limit} messages with the coach. It opens again tomorrow.`
+          : `${answer}\n\nThe coach has reached this gym's limit for the month.`;
       }
 
       setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: answer, sender: 'bot' }]);
       setIsTyping(false);
       try {
-        await persist(trimmed, answer);
+        await persist(trimmed, answer, source);
         setSaveError(null);
       } catch (err) {
         setSaveError(errorMessage(err, 'This conversation is not being saved.'));
       }
     }, 600);
+  };
+
+  const onConsent = async (yes: boolean) => {
+    setAskConsent(false);
+    try { await setCoachConsent(yes); updateCoach((c) => (c ? { ...c, consent: yes } : c)); }
+    catch (err) { setSaveError(errorMessage(err, 'Your choice was not saved.')); return; }
+    const q = pending.current; pending.current = null;
+    if (q) { setMessages((prev) => prev.filter((m) => m.text !== q || m.sender !== 'user')); send(q); }
   };
 
   const startNew = () => {
@@ -299,13 +351,17 @@ function Assistant() {
       <div className="flex-shrink-0" style={{ paddingBottom: 10 }}>
         {/* Rule-based first, and says so: it answers from a fixed set of topics
             plus your own membership data — calling that "AI" oversells it. */}
-        <PageTitle back title="Assistant" subtitle="Answers about your account and the gym" />
+        <PageTitle back title="Assistant"
+          subtitle={coach?.allowed ? 'Gym answers from the app · training help from the AI coach' : 'Answers about your account and the gym'} />
         <div className="flex items-center" style={{ gap: 18, marginTop: 10, fontSize: 13 }}>
           <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}>New chat</button>
           <button onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
             style={{ height: 32, color: 'var(--color-primary-300)' }}>
             Saved chats{conversations.length > 0 ? ` · ${conversations.length}` : ''}
           </button>
+          {coach?.allowed && (
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} coach messages today</span>
+          )}
         </div>
         <div className="rule" style={{ marginTop: 8 }} />
       </div>
@@ -504,6 +560,7 @@ function Assistant() {
           )}
         </AnimatePresence>
       </div>
+      <CoachConsent open={askConsent} onChoose={(yes) => void onConsent(yes)} />
     </div>
   );
 }
