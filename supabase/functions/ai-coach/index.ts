@@ -5,7 +5,13 @@
 // service-role key is used for exactly one call, ai_record_usage(), because a
 // member who could write their own count could reset their own limit.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.129.0';
-import { buildRequest, sse, statusToHttp, SYSTEM_PROMPT, validQuestion, type CoachStatus, type Turn } from './core.ts';
+import {
+  buildRequest, MAX_ROUNDS, sse, statusToHttp, SYSTEM_PROMPT, TOOLS, toolCall, toolResultText, validQuestion,
+  type CoachStatus, type Turn,
+} from './core.ts';
+
+type BetaMessageParam = Anthropic.Beta.Messages.BetaMessageParam;
+type BetaToolResultBlockParam = Anthropic.Beta.Messages.BetaToolResultBlockParam;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +35,33 @@ async function rpc<T>(fn: string, auth: string, key: string, body: unknown = {})
   if (res.status === 204) return null as T;
   const text = await res.text();
   return (text ? JSON.parse(text) : null) as T;
+}
+
+// A tool's call, as the member. The database's refusals (raise exception, errcode P0001, and the
+// 42501 sign-in/role refusals) are written for people, so they go back to the model word for word;
+// anything else is a generic line — never a raw error, which can carry query details.
+async function toolRpc(fn: string, auth: string, args: Record<string, unknown>):
+  Promise<{ ok: true; data: unknown } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { Authorization: auth, apikey: ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      let body: { code?: unknown; message?: unknown } = {};
+      try { body = JSON.parse(text); } catch { /* not JSON */ }
+      if ((body.code === 'P0001' || body.code === '42501') && typeof body.message === 'string') {
+        return { ok: false, message: body.message };
+      }
+      console.error('ai-coach tool', fn, res.status, typeof body.code === 'string' ? body.code : '');
+      return { ok: false, message: 'That did not work this time. Carry on without it.' };
+    }
+    return { ok: true, data: text ? JSON.parse(text) : null };
+  } catch {
+    return { ok: false, message: 'That did not work this time. Carry on without it.' };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -93,45 +126,99 @@ Deno.serve(async (req) => {
       const enc = new TextEncoder();
       // Once the client has gone, enqueue/close throw; that must never escape start().
       const send = (s: string) => { try { controller.enqueue(enc.encode(s)); } catch { /* client gone */ } };
-      let usageIn = 0, usageOut = 0, spoke = false;
-      try {
-        // deno-lint-ignore no-explicit-any
-        const params: any = {
-          model,
-          max_tokens: 2048,
-          system: [
-            // The prompt is below the minimum cacheable prefix today, so this saves nothing yet; harmless, and it starts to matter if the prompt grows.
-            { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: about },
-          ],
-          messages: request.messages,
-          output_config: { effort: 'low' },
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default',
-        };
-        const s = client.beta.messages.stream(params);
-        upstream = s;
-        for await (const event of s) {
-          // Count tokens as they arrive, so a stream that dies midway is still billed.
-          if (event.type === 'message_start') {
-            const u = event.message.usage;
-            usageIn = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
-            usageOut = u.output_tokens ?? 0;
-          } else if (event.type === 'message_delta' && event.usage?.output_tokens != null) {
-            usageOut = event.usage.output_tokens;
-          }
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            spoke = true;
-            send(sse({ type: 'text', text: event.delta.text }));
-          }
+      // Tokens of finished rounds, plus the round in flight (so a stream that dies midway is still billed).
+      let doneIn = 0, doneOut = 0, roundIn = 0, roundOut = 0, spoke = false;
+      // The conversation grows append-only: each assistant turn goes back exactly as it came
+      // (thinking blocks are bound to it and must not be edited or dropped).
+      const messages: BetaMessageParam[] = request.messages.map((t) => ({ role: t.role, content: t.content }));
+
+      // One tool use → one SQL call as the member (their JWT, the anon key: RLS and the definer
+      // functions decide). Never throws: a failure becomes an is_error result with a plain message.
+      const runTool = async (id: string, name: string, input: unknown): Promise<BetaToolResultBlockParam> => {
+        const fail = (message: string): BetaToolResultBlockParam =>
+          ({ type: 'tool_result', tool_use_id: id, is_error: true, content: message });
+        if (cancelled) return fail('The member left before this ran.');
+        const call = toolCall(name, input);
+        if ('error' in call) return fail(call.error);
+        const res = await toolRpc(call.rpc, auth, call.args);
+        if (!res.ok) return fail(res.message);
+        if (call.rpc === 'create_ai_proposal') {
+          if (typeof res.data !== 'string') return fail('That change could not be saved. Try again.');
+          send(sse({
+            type: 'proposal', id: res.data, kind: String(call.args.p_kind),
+            summary: String(call.args.p_summary), payload: call.args.p_payload,
+          }));
         }
-        const final = await s.finalMessage();
-        usageIn = (final.usage.input_tokens ?? 0) + (final.usage.cache_read_input_tokens ?? 0)
-          + (final.usage.cache_creation_input_tokens ?? 0);
-        usageOut = final.usage.output_tokens ?? usageOut;
-        if (final.stop_reason === 'refusal' && !spoke) {
-          send(sse({ type: 'error', reason: 'refusal', message: 'The coach cannot help with that one.' }));
-        } else {
+        return { type: 'tool_result', tool_use_id: id, content: toolResultText(call.rpc, res.data) };
+      };
+      try {
+        let finished = false;
+        for (let round = 0; round < MAX_ROUNDS && !cancelled; round++) {
+          // deno-lint-ignore no-explicit-any
+          const params: any = {
+            model,
+            max_tokens: 2048,
+            system: [
+              // The prompt is below the minimum cacheable prefix today, so this saves nothing yet; harmless, and it starts to matter if the prompt grows.
+              { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+              { type: 'text', text: about },
+            ],
+            messages,
+            tools: TOOLS,
+            // Sonnet 5.5 refuses a forced tool_choice; strict tools keep the inputs schema-valid.
+            tool_choice: { type: 'auto' },
+            output_config: { effort: 'low' },
+            betas: ['server-side-fallback-2026-07-01'],
+            fallbacks: 'default',
+          };
+          const s = client.beta.messages.stream(params);
+          upstream = s;
+          roundIn = 0; roundOut = 0;
+          let gap = spoke; // text after a tool round starts a new paragraph, not mid-sentence
+          for await (const event of s) {
+            if (event.type === 'message_start') {
+              const u = event.message.usage;
+              roundIn = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+              roundOut = u.output_tokens ?? 0;
+            } else if (event.type === 'message_delta' && event.usage?.output_tokens != null) {
+              roundOut = event.usage.output_tokens;
+            }
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              if (gap) { send(sse({ type: 'text', text: '\n\n' })); gap = false; }
+              spoke = true;
+              send(sse({ type: 'text', text: event.delta.text }));
+            }
+          }
+          const final = await s.finalMessage();
+          roundIn = (final.usage.input_tokens ?? 0) + (final.usage.cache_read_input_tokens ?? 0)
+            + (final.usage.cache_creation_input_tokens ?? 0);
+          roundOut = final.usage.output_tokens ?? roundOut;
+          doneIn += roundIn; doneOut += roundOut; roundIn = 0; roundOut = 0;
+
+          if (final.stop_reason !== 'tool_use') {
+            if (final.stop_reason === 'refusal' && !spoke) {
+              send(sse({ type: 'error', reason: 'refusal', message: 'The coach cannot help with that one.' }));
+            } else {
+              send(sse({ type: 'done' }));
+            }
+            finished = true;
+            break;
+          }
+          // Out of rounds: nothing more runs, not even this round's tools (the model could not report on them).
+          if (round === MAX_ROUNDS - 1) break;
+
+          messages.push({ role: 'assistant', content: final.content });
+          const results: BetaToolResultBlockParam[] = [];
+          for (const block of final.content) {
+            if (block.type !== 'tool_use') continue;
+            results.push(await runTool(block.id, block.name, block.input));
+          }
+          if (cancelled) break;
+          // Every result of the turn goes back in one user message.
+          messages.push({ role: 'user', content: results });
+        }
+        if (!finished && !cancelled) {
+          send(sse({ type: 'text', text: `${spoke ? '\n\n' : ''}I've stopped here — tell me if you'd like me to carry on.` }));
           send(sse({ type: 'done' }));
         }
       } catch (err) {
@@ -142,6 +229,8 @@ Deno.serve(async (req) => {
         send(sse({ type: 'error', reason: 'busy', message: 'The coach is busy. Try again in a minute.' }));
       } finally {
         // The message was counted at the claim; this adds the tokens, even for a stream cut short.
+        // Recorded once, summed over every round.
+        const usageIn = doneIn + roundIn, usageOut = doneOut + roundOut;
         if (usageIn || usageOut) {
           await rpc('ai_record_usage', `Bearer ${SERVICE}`, SERVICE, {
             p_gym: status.gym_id, p_member: member.id, p_in: usageIn, p_out: usageOut,
