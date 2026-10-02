@@ -39,7 +39,7 @@ const STEPS: Step[] = [
   { kind: 'yesno', ask: 'Does anything hurt at the moment, or do you have an injury?' },
 ];
 
-const REFERRAL = "Thanks for telling me. I won't plan around it — please have a coach at the gym or a physiotherapist look at it first. I can still help with everything else.";
+export const REFERRAL = "Thanks for telling me. I won't plan around it — please have a coach at the gym or a physiotherapist look at it first. I can still help with everything else.";
 
 interface Answer { label: string; value: unknown }
 
@@ -158,7 +158,7 @@ export default function CoachSetup({ onDone, onSkip, failed }: {
           <Field label="I enjoy">
             <TextInput value={likes} maxLength={200} onChange={(e) => setLikes(e.target.value)} />
           </Field>
-          <Field label="I'd rather avoid">
+          <Field label="I'd rather avoid" hint="Injuries: the next question covers that.">
             <TextInput value={avoid} maxLength={200} onChange={(e) => setAvoid(e.target.value)} />
           </Field>
           <NocButton variant="fill" onClick={() => answer({ label: 'Next', value: { likes, avoid } })}>Next</NocButton>

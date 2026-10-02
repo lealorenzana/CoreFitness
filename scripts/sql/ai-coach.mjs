@@ -157,10 +157,27 @@ check('both tables are tenant tables',
   (await one(`select tenancy_gym_tables() @> array['ai_coach_profiles','ai_usage_days'] as ok`)).ok);
 
 // ---- 0144: the coaching profile ----------------------------------------------------------------
+// Refused before the write, in plain sentences (the messages, not a constraint name).
+await as(DESK);
+{
+  const e = await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`);
+  check('a desk account cannot save a coach profile', !!e && /Only members/.test(e), String(e));
+}
+await as(B);
+{
+  const e = await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`);
+  check('a member with no consent row is refused: first question first', !!e && /first question first/.test(e), String(e));
+  await db.exec('reset role;');
+  check('and no row was made, so no consent was recorded for them',
+    (await one(`select count(*)::int as n from ai_coach_profiles where member_id = '${B}'`)).n === 0);
+}
 await as(A);
 check('status says not set up yet', (await status()).onboarded === false);
 check('a bad goal is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"get huge","experience":"new","days_per_week":3,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`)));
-check('8 days a week is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":8,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`)));
+{
+  const e = await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":8,"minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`);
+  check('8 days a week is refused in plain words', !!e && /between 1 and 7/.test(e), String(e));
+}
 check('unknown equipment is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":["rocket"],"has_injury":false}'::jsonb)`)));
 check('a missing answer is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength"}'::jsonb)`)));
 check('empty equipment is refused', !!(await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":3,"minutes":45,"equipment":[],"has_injury":false}'::jsonb)`)));
@@ -169,7 +186,10 @@ check('null answers are refused', !!(await tryExec(`select save_ai_coach_profile
   const bad = await tryExec(`select save_ai_coach_profile('{"goal":"strength","experience":"new","days_per_week":"abc","minutes":45,"equipment":["dumbbells"],"has_injury":false}'::jsonb)`);
   check('a non-number is refused in plain words', !!bad && /answer every question/.test(bad), String(bad));
 }
-check('a 201-character note is refused', !!(await tryExec(`select save_ai_coach_profile(jsonb_build_object('goal','strength','experience','new','days_per_week',3,'minutes',45,'equipment',jsonb_build_array('dumbbells'),'has_injury',false,'likes',repeat('x',201)))`)));
+{
+  const e = await tryExec(`select save_ai_coach_profile(jsonb_build_object('goal','strength','experience','new','days_per_week',3,'minutes',45,'equipment',jsonb_build_array('dumbbells'),'has_injury',false,'likes',repeat('x',201)))`);
+  check('a 201-character note is refused in plain words', !!e && /200 characters/.test(e), String(e));
+}
 check('a good profile saves', !(await tryExec(`select save_ai_coach_profile('{"goal":"muscle","experience":"some","days_per_week":4,"minutes":60,"equipment":["full_gym","dumbbells"],"likes":"lifting","avoid":"running","has_injury":true}'::jsonb)`)));
 check('status says set up', (await status()).onboarded === true);
 await db.exec(`select set_ai_coach_consent(false)`);

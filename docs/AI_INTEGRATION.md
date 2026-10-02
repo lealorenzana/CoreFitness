@@ -7,13 +7,15 @@ replaces `fitness-assistant`. It is a real Claude model (Claude Sonnet 5.5), not
 set, and it is gated in SQL. The rest of this document is kept below as history.
 
 - **What is sent to Anthropic, and when.** Only questions the assistant's rules cannot
-  answer, after the member consents. With the question goes the consented context: first
-  name, experience level, open goals, routine names and the 30-day workout count. Nothing
-  else leaves the system.
+  answer. With the question goes the member's setup answers (goal, experience, days a
+  week, minutes, equipment, likes, avoid, and an injury yes/no), whether or not they let
+  the coach read their training. If they said yes to that, the question also carries
+  first name, experience level, open goals, routine names and the 30-day workout count.
+  Nothing else leaves the system.
 - **The setup profile (0144, Phase 2).** The coach's first conversation is a guided
   setup (`CoachSetup.tsx`); `save_ai_coach_profile()` stores the answers: goal,
   experience, days a week, minutes, equipment, likes, avoid, and `has_injury` as a
-  **yes/no only** (the note itself is never stored). The profile is given to the coach
+  **yes/no only** (no injury details are ever asked for or stored). The profile is given to the coach
   **without** the history consent, because the member typed it for the coach; the
   workout history still needs the consent. An injury never changes an exercise: prompt
   rule 6 makes the coach refer the member to a professional. The Privacy page says so.

@@ -18,6 +18,12 @@ check('no context → the prompt says it knows nothing about them', /do not know
 const withCtx = core.buildRequest('Plan my week', [{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }],
   { first_name: 'Lea', goals: ['Squat my bodyweight'] });
 check('context is included when given', /Lea/.test(withCtx.system) && /Squat my bodyweight/.test(withCtx.system));
+const profOnly = core.buildRequest('Plan my week', [], { profile: { goal: 'muscle' } });
+check('a profile-only context is labelled as what they told the coach, not as shared training',
+  /WHEN SETTING UP/.test(profOnly.system) && /muscle/.test(profOnly.system) && !/agreed to share/.test(profOnly.system));
+const both = core.buildRequest('q', [], { profile: { goal: 'muscle' }, goals: ['Squat'] });
+check('profile plus history gets both labels, history with the consent note',
+  /WHEN SETTING UP/.test(both.system) && /FROM THEIR TRAINING \(they agreed to share it\)/.test(both.system) && /Squat/.test(both.system));
 check('history keeps order and is capped at 10 turns',
   core.buildRequest('q', Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: String(i) })), null)
     .messages.length <= 11);

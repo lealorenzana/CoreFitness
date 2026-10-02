@@ -249,6 +249,7 @@ async (page) => {
   await tap('Dumbbells');
   await tap('Full gym');
   await tap('Done');
+  const hintText = await text();
   await page.getByLabel("I'd rather avoid").fill('running');
   await page.screenshot({ path: 'shots/member-coach-setup.png' });
   await tap('Next');
@@ -266,6 +267,14 @@ async (page) => {
     && p.minutes === 60 && eq === 'dumbbells,full_gym' && p.avoid === 'running' && p.likes === null && p.has_injury === true ? 'yes' : 'MISSING ' + JSON.stringify(SAVED)));
   out.push('exactly one message reached the coach, the welcome: ' + (COACH_POSTS.length === 1 && /finished setting up/.test(COACH_POSTS[0].question) ? 'yes' : 'NO ' + JSON.stringify(COACH_POSTS.map((c) => c.question))));
   t = await text();
+  out.push('no bubble carries the question the member never typed: ' + (!/finished setting up/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('the "Setup finished" note shows: ' + (/Setup finished/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the note is not a member bubble: ' + (await page.locator('p', { hasText: /^Setup finished$/ }).count() === 1 ? 'yes' : 'NO, not rendered as a note'));
+  const convs = DB.assistant_conversations ?? [];
+  out.push('the saved thread is titled "Coach setup": ' + (convs.length === 1 && convs[0].title === 'Coach setup' ? 'yes' : 'NO ' + JSON.stringify(convs.map((c) => c.title))));
+  const rows = (DB.assistant_messages ?? []).filter((r) => r.role === 'user');
+  out.push('the saved member row is "Setup finished", not the synthetic question: ' + (rows.length === 1 && rows[0].body === 'Setup finished' ? 'yes' : 'NO ' + JSON.stringify(rows.map((r) => r.body))));
+  out.push('the "avoid" field points injuries at the next question: ' + (/Injuries: the next question covers that\./.test(hintText) ? 'yes' : 'MISSING'));
   out.push('the setup is gone once done: ' + (!/Skip for now/.test(t) ? 'yes' : 'STILL SHOWN'));
   out.push('Redo is offered once set up: ' + (/Redo my setup/.test(t) ? 'yes' : 'MISSING'));
 

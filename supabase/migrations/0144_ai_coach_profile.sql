@@ -32,9 +32,20 @@ alter table ai_coach_profiles add constraint ai_coach_profiles_answers_check che
 create or replace function save_ai_coach_profile(p jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare v_equipment text[]; v_days int; v_minutes int; v_injury boolean;
+        v_goal text; v_exp text; v_likes text; v_avoid text; v_gym uuid := current_gym_id();
 begin
-  if auth.uid() is null or current_gym_id() is null then
+  if auth.uid() is null or v_gym is null then
     raise exception 'Sign in first.' using errcode = '42501';
+  end if;
+  -- Members only: a desk account has no coach to set up.
+  if not exists (select 1 from gym_roles r where r.gym_id = v_gym and r.user_id = auth.uid()
+                    and r.role = 'member' and r.status = 'active') then
+    raise exception 'Only members can set up the coach.' using errcode = '42501';
+  end if;
+  -- The row is made by the consent choice. Saving before it would record a consent
+  -- the member was never asked for, so refuse until it exists.
+  if not exists (select 1 from ai_coach_profiles where gym_id = v_gym and member_id = auth.uid()) then
+    raise exception 'Answer the coach''s first question first.';
   end if;
   if p is null or not (p ? 'goal' and p ? 'experience' and p ? 'days_per_week' and p ? 'minutes'
                        and p ? 'equipment' and p ? 'has_injury') then
@@ -55,19 +66,37 @@ begin
   exception when others then
     raise exception 'Please answer every question first.';
   end;
-  if p ->> 'goal' is null or p ->> 'experience' is null
-     or v_days is null or v_minutes is null or v_injury is null then
+  v_goal := p ->> 'goal'; v_exp := p ->> 'experience';
+  if v_goal is null or v_exp is null or v_days is null or v_minutes is null or v_injury is null then
     raise exception 'Please answer every question first.';
   end if;
-  insert into ai_coach_profiles (gym_id, member_id, consent_reads_data, consented_at,
-      goal, experience, days_per_week, minutes, equipment, likes, avoid, has_injury, onboarded_at)
-  values (current_gym_id(), auth.uid(), false, now(),
-      p ->> 'goal', p ->> 'experience', v_days, v_minutes, v_equipment,
-      nullif(btrim(p ->> 'likes'), ''), nullif(btrim(p ->> 'avoid'), ''), v_injury, now())
-  on conflict (gym_id, member_id) do update set
-      goal = excluded.goal, experience = excluded.experience, days_per_week = excluded.days_per_week,
-      minutes = excluded.minutes, equipment = excluded.equipment, likes = excluded.likes,
-      avoid = excluded.avoid, has_injury = excluded.has_injury, onboarded_at = now();
+  -- Plain sentences for out-of-range values, before the table's check would speak.
+  if v_goal not in ('strength','muscle','fat_loss','fitness','sport','health') then
+    raise exception 'Choose one of the goals listed.';
+  end if;
+  if v_exp not in ('new','some','experienced') then
+    raise exception 'Choose how long you have been training from the list.';
+  end if;
+  if v_days not between 1 and 7 then
+    raise exception 'Training days a week must be between 1 and 7.';
+  end if;
+  if v_minutes not between 15 and 180 then
+    raise exception 'A session must be between 15 and 180 minutes.';
+  end if;
+  if cardinality(v_equipment) > 6
+     or not (v_equipment <@ array['full_gym','machines','barbell','dumbbells','bodyweight','cardio']) then
+    raise exception 'Choose equipment from the list (up to 6 items).';
+  end if;
+  v_likes := nullif(btrim(p ->> 'likes'), ''); v_avoid := nullif(btrim(p ->> 'avoid'), '');
+  if char_length(coalesce(v_likes, '')) > 200 or char_length(coalesce(v_avoid, '')) > 200 then
+    raise exception 'Keep what you enjoy and what you avoid to 200 characters each.';
+  end if;
+  -- UPDATE only: the consent choice made this row, and this must never write a consent.
+  update ai_coach_profiles set
+      goal = v_goal, experience = v_exp, days_per_week = v_days, minutes = v_minutes,
+      equipment = v_equipment, likes = v_likes, avoid = v_avoid, has_injury = v_injury,
+      onboarded_at = now()
+   where gym_id = v_gym and member_id = auth.uid();
 end;
 $$;
 revoke all on function save_ai_coach_profile(jsonb) from public, anon;

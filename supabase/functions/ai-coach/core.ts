@@ -44,8 +44,16 @@ export function validQuestion(q: unknown): q is string {
 export function buildRequest(
   question: string, history: Turn[], context: Record<string, unknown> | null,
 ): { system: string; messages: Turn[] } {
-  const about = context
-    ? `WHAT YOU KNOW ABOUT THIS MEMBER (they agreed to share it)\n${JSON.stringify(context)}`
+  // The profile is what they told the coach at setup; every other key is their
+  // training history, shared only with their consent. Label each for what it is.
+  const { profile, ...shared } = (context ?? {}) as Record<string, unknown>;
+  const parts: string[] = [];
+  if (profile) parts.push(`WHAT THIS MEMBER TOLD YOU WHEN SETTING UP\n${JSON.stringify(profile)}`);
+  if (Object.keys(shared).length) {
+    parts.push(`WHAT YOU KNOW FROM THEIR TRAINING (they agreed to share it)\n${JSON.stringify(shared)}`);
+  }
+  const about = parts.length
+    ? parts.join('\n\n')
     : 'You do not know anything about this member beyond this conversation. Ask what you need.';
   // The last ten turns, cleaned, starting on a user turn (the API requires it).
   let turns = history

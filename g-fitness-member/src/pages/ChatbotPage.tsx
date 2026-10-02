@@ -11,7 +11,7 @@ import { getGymSettings } from '../lib/api/settings';
 import { getCurrentPlan } from '../lib/api/workoutPlans';
 import { getBalance } from '../lib/api/points';
 import {
-  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback,
+  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback, RULE_FALLBACK,
   type AssistantContext,
 } from '../data/memberAssistant';
 import {
@@ -21,7 +21,7 @@ import {
 import FeatureLock from '../components/ui/FeatureLock';
 import { askCoach, getCoachStatus, setCoachConsent, saveCoachProfile, type CoachStatus, type CoachProfile } from '../lib/api/aiCoach';
 import CoachConsent from '../components/CoachConsent';
-import CoachSetup from '../components/CoachSetup';
+import CoachSetup, { REFERRAL } from '../components/CoachSetup';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
@@ -69,8 +69,20 @@ interface Message {
 }
 
 const GREETING_ID = 'greeting';
-const REFERRAL_NOTE = "Thanks for telling me. I won't plan around it — please have a coach at the gym or a physiotherapist look at it first. I can still help with everything else.";
+// The coach is sent WELCOME_QUESTION, but the member never typed it: on screen and in
+// the saved thread their row is the fixed note SETUP_DONE, and the thread has a fixed title.
 const WELCOME_QUESTION = "I've finished setting up. Give me a short welcome and one first step.";
+const SETUP_DONE = 'Setup finished';
+const SETUP_TITLE = 'Coach setup';
+type SendOptions = {
+  rulesOnly?: boolean; note?: string;
+  /** What the member's row says, when it is not what the coach is sent. */
+  displayAs?: string;
+  /** A fixed thread title instead of one made from the question. */
+  title?: string;
+  /** Skip the rules: this question is the coach's alone, so no keyword can answer it. */
+  coachOnly?: boolean;
+};
 
 /**
  * The assistant is an entitlement (`ai_model`, 0049), so the route locks and
@@ -224,10 +236,10 @@ function Assistant() {
    * firing them together can land the answer on the same millisecond as the
    * question, which reads back as the assistant replying before it was asked.
    */
-  const persist = async (question: string, answer: string, source: 'rules' | 'coach') => {
+  const persist = async (question: string, answer: string, source: 'rules' | 'coach', title?: string) => {
     let id = conversationId;
     if (!id) {
-      id = await createConversation(titleFrom(question));
+      id = await createConversation(title ?? titleFrom(question));
       setConversationId(id);
     }
     await appendMessage(id, 'user', question);
@@ -240,12 +252,14 @@ function Assistant() {
    * opened the consent sheet): no second bubble is added, `rulesOnly` skips the
    * coach, and `note` is the banner to keep after the exchange is saved.
    */
-  const send = (text: string, again?: { rulesOnly?: boolean; note?: string }) => {
+  const send = (text: string, again?: SendOptions) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    if (!again) {
-      setMessages((prev) => [...prev, { id: Date.now().toString(), text: trimmed, sender: 'user' }]);
-      setInput('');
+    // What the member sees and what is saved as their row; the coach gets `trimmed`.
+    const shown = again?.displayAs ?? trimmed;
+    if (!again || again.displayAs) {
+      setMessages((prev) => [...prev, { id: Date.now().toString(), text: shown, sender: 'user' }]);
+      if (!again) setInput('');
     }
     setIsTyping(true);
 
@@ -256,7 +270,7 @@ function Assistant() {
       // Rules first, always. They own every fact about this gym — prices,
       // hours, your membership — so the model is never in a position to state
       // one. It only ever sees a question the table could not answer.
-      let answer = answerFor(trimmed, ctx);
+      let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, ctx);
 
       // Since 0059 the whole assistant is the paid feature, so this screen is
       // already behind `FeatureLock` and `mayUseModel` is true whenever it
@@ -305,7 +319,7 @@ function Assistant() {
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer, source: 'rules' } : m)));
         }
         updateCoach((c) => (c ? { ...c, used_today: c.used_today + (source === 'coach' ? 1 : 0) } : c));
-        try { await persist(trimmed, answer, source); setSaveError(again?.note ?? null); }
+        try { await persist(shown, answer, source, again?.title); setSaveError(again?.note ?? null); }
         catch (err) { setSaveError(errorMessage(err, 'This conversation is not being saved.')); }
         return;
       }
@@ -319,7 +333,7 @@ function Assistant() {
       setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: answer, sender: 'bot', source: 'rules' }]);
       setIsTyping(false);
       try {
-        await persist(trimmed, answer, source);
+        await persist(shown, answer, source, again?.title);
         setSaveError(again?.note ?? null);
       } catch (err) {
         setSaveError(errorMessage(err, 'This conversation is not being saved.'));
@@ -355,9 +369,9 @@ function Assistant() {
     setRedoSetup(false);
     setSetupSkipped(true);
     if (p.has_injury) {
-      setMessages((prev) => [...prev, { id: `${Date.now()}r`, text: REFERRAL_NOTE, sender: 'bot', source: 'rules' }]);
+      setMessages((prev) => [...prev, { id: `${Date.now()}r`, text: REFERRAL, sender: 'bot', source: 'rules' }]);
     }
-    send(WELCOME_QUESTION);
+    send(WELCOME_QUESTION, { displayAs: SETUP_DONE, title: SETUP_TITLE, coachOnly: true });
   };
 
   const startNew = () => {
@@ -438,7 +452,10 @@ function Assistant() {
               animate={{ opacity: 1, y: 0 }}
               className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {m.sender === 'bot' ? (
+              {m.sender === 'user' && m.text === SETUP_DONE ? (
+                // Not something the member said: a small note that setup ended.
+                <p className="w-full text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{m.text}</p>
+              ) : m.sender === 'bot' ? (
                 // The assistant's side is text on the page with a violet rule —
                 // a reply to read, not a second card.
                 <div className="max-w-[88%]" style={{

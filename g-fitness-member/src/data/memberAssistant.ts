@@ -601,6 +601,8 @@ const FALLBACK =
  * Compared against the constant rather than sniffing for a phrase, so editing
  * the fallback's wording cannot silently stop the model fallback from firing.
  */
+export const RULE_FALLBACK = FALLBACK;
+
 export function isRuleFallback(answer: string): boolean {
   return answer === FALLBACK;
 }

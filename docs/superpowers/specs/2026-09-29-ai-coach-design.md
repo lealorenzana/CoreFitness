@@ -1,7 +1,7 @@
 # The AI Coach — design
 
 2026-09-29. Approved in conversation: diet option B, Claude Sonnet 5.5 first,
-injury → referral kept, the coach reads a member's data only after they opt in,
+injury → referral kept, the coach reads a member's data only after they opt in (apart from what they tell it during setup),
 nothing changes without **Apply**, everything can be undone.
 
 ## What it is
@@ -73,11 +73,11 @@ member app ──(JWT)──▶ Edge Function `ai-coach` ──▶ Anthropic Mes
   before/after); **Apply** runs `apply_ai_proposal(id)`, which re-validates,
   snapshots what it replaces, and writes; **Undo** restores the snapshot.
 
-## Data — migration 0143 (and 0144 if Phase 5 needs it)
+## Data — migration 0143 (Phase 2 adds 0144, the setup profile)
 
 | Table | Holds | Who reads | Who writes |
 |---|---|---|---|
-| `ai_coach_profiles` | one row per member per gym: `consent_reads_data`, `consented_at`, onboarding answers (`goal`, `experience`, `days_per_week`, `minutes`, `equipment[]`, `likes`, `avoid`, `injury_note_present bool`) | the member | the member (via `save_ai_coach_profile()`) |
+| `ai_coach_profiles` | one row per member per gym: `consent_reads_data`, `consented_at`, onboarding answers (`goal`, `experience`, `days_per_week`, `minutes`, `equipment[]`, `likes`, `avoid`, `has_injury bool`) | the member | the member (via `save_ai_coach_profile()`) |
 | `assistant_conversations` / `assistant_messages` (0046, reused; 0143 adds a `source` column, no new `ai_conversations`/`ai_messages` tables) | the chat, per member; role, text, tool calls, token counts. `ai_claim_message()` counts a message against the limits when it is claimed, before the model call | **the member only** — not trainer, desk or owner (like coach chat, 0131) | the function, as the member |
 | `ai_proposals` | kind, payload, status (`pending`/`applied`/`discarded`/`undone`), `undo` snapshot, timestamps | the member; trainer sees *that* a routine came from the coach | proposals via `create_ai_proposal()`; status only via apply/undo/discard functions |
 | `ai_meal_guides` | the member's current meal guidance (text sections) | the member | only `apply_ai_proposal()` |
