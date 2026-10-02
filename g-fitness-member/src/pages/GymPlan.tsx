@@ -103,6 +103,10 @@ export default function GymPlan() {
   );
   const today = todayDow();
   const routines = view?.routines ?? null;
+  // A day the coach set (0145), while the draft still matches what was saved.
+  const coachSet = (d: number) => view != null && view.coachDays.includes(d) && days.includes(d)
+    && (routineByDay[d] ?? null) === (view.routineByDay[d] ?? null);
+  const perDayRows = days.length > 0 && !!view?.routinesSupported && !!routines && routines.length > 0;
   const samePreset = (p: number[]) => p.length === days.length && p.every((d) => days.includes(d));
 
   // This week against the plan *as saved* — the draft has not happened yet.
@@ -202,6 +206,11 @@ export default function GymPlan() {
                 );
               })}
             </div>
+            {!perDayRows && days.some(coachSet) && (
+              <p style={{ fontSize: 12, marginTop: 10, color: 'var(--color-primary-300)' }}>
+                Set by the coach: {days.filter(coachSet).map((d) => DAY_LABELS[d]).join(' · ')}
+              </p>
+            )}
             {days.length === 0 && dirty && (
               <p style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
                 No days chosen. Saving now turns reminders off completely.
@@ -221,8 +230,13 @@ export default function GymPlan() {
                         gap: 12, padding: '10px 0',
                         borderBottom: i === days.length - 1 ? 'none' : '1px solid var(--color-separator)',
                       }}>
-                        <span style={{ width: 92, flex: 'none', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                        <span style={{ width: 104, flex: 'none', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                           {DAY_FULL[d]}
+                          {coachSet(d) && (
+                            <span className="block" style={{ fontSize: 12, fontWeight: 500, marginTop: 1, color: 'var(--color-primary-300)' }}>
+                              Set by the coach
+                            </span>
+                          )}
                         </span>
                         <Select
                           aria-label={`Workout on ${DAY_FULL[d]}`}

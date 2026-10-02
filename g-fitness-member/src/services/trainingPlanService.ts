@@ -23,6 +23,8 @@ export interface TrainingPlanView {
   days: number[];
   remindAt: string;
   routineByDay: Record<number, string | null>;
+  /** 0145: the saved days the coach set (an applied proposal). Empty before 0145. */
+  coachDays: number[];
   /** Null when they could not be read — not the same as having none. */
   routines: Routine[] | null;
   routinesSupported: boolean;
@@ -99,6 +101,7 @@ export async function loadTrainingPlan(memberId: string): Promise<TrainingPlanVi
     days,
     remindAt: active[0] ? toTimeInput(active[0].remind_at) : rows[0] ? toTimeInput(rows[0].remind_at) : DEFAULT_REMIND_AT,
     routineByDay,
+    coachDays: active.filter((r) => r.source === 'coach').map((r) => r.day_of_week),
     routines,
     routinesSupported: supported,
     weekCheckIns,

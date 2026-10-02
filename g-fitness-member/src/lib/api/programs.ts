@@ -121,7 +121,7 @@ export async function getGymWorkoutRoutine(workoutId: string): Promise<Routine |
       exercises: { name: string; is_timed: boolean; muscle_group: string | null; equipment: string | null } | null }[];
   };
   return {
-    id: w.id, name: w.name, notes: w.notes, position: 0, updatedAt: w.updated_at,
+    id: w.id, name: w.name, notes: w.notes, position: 0, updatedAt: w.updated_at, source: 'member',
     exercises: [...w.gym_workout_items].sort((a, b) => a.position - b.position).map((i) => ({
       id: i.id, exerciseId: i.exercise_id, customName: null,
       name: i.exercises?.name ?? 'Exercise', isTimed: i.exercises?.is_timed ?? false,

@@ -35,10 +35,13 @@ export interface Routine {
   position: number;
   exercises: RoutineExercise[];
   updatedAt: string;
+  /** 0145: 'coach' when the member applied the coach's proposal. 'member' before 0145. */
+  source: 'member' | 'coach';
 }
 
 interface RoutineRow {
   id: string; name: string; notes: string | null; position: number; updated_at: string;
+  source?: string | null;
   workout_routine_exercises: {
     id: string; position: number; exercise_id: string | null; custom_name: string | null;
     target_sets: number; target_reps: number | null; target_weight_kg: string | number | null;
@@ -47,9 +50,11 @@ interface RoutineRow {
   }[];
 }
 
-const SELECT = `id, name, notes, position, updated_at,
+const BASE_SELECT = `id, name, notes, position, updated_at,
   workout_routine_exercises (id, position, exercise_id, custom_name, target_sets, target_reps,
     target_weight_kg, target_seconds, rest_seconds, exercises (name, is_timed, muscle_group, equipment))`;
+// 0145's `source` first; before 0145 the column does not exist and the routine is the member's.
+const SELECT = `source, ${BASE_SELECT}`;
 
 function toRoutine(r: RoutineRow): Routine {
   return {
@@ -58,6 +63,7 @@ function toRoutine(r: RoutineRow): Routine {
     notes: r.notes,
     position: r.position,
     updatedAt: r.updated_at,
+    source: r.source === 'coach' ? 'coach' : 'member',
     exercises: [...(r.workout_routine_exercises ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((e) => ({
@@ -78,22 +84,22 @@ function toRoutine(r: RoutineRow): Routine {
 }
 
 export async function listRoutines(memberId: string): Promise<Routine[]> {
-  const { data, error } = await supabase
+  const q = (cols: string) => supabase
     .from('workout_routines')
-    .select(SELECT)
+    .select(cols)
     .eq('member_id', memberId)
     .order('position')
     .order('created_at');
+  const full = await q(SELECT);
+  const { data, error } = !full.error ? full : await q(BASE_SELECT);
   if (error) throw error;
   return ((data ?? []) as unknown as RoutineRow[]).map(toRoutine);
 }
 
 export async function getRoutine(id: string): Promise<Routine | null> {
-  const { data, error } = await supabase
-    .from('workout_routines')
-    .select(SELECT)
-    .eq('id', id)
-    .maybeSingle();
+  const q = (cols: string) => supabase.from('workout_routines').select(cols).eq('id', id).maybeSingle();
+  const full = await q(SELECT);
+  const { data, error } = !full.error ? full : await q(BASE_SELECT);
   if (error) throw error;
   return data ? toRoutine(data as unknown as RoutineRow) : null;
 }

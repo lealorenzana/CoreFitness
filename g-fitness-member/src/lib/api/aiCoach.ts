@@ -24,6 +24,9 @@ export interface CoachProfile {
 
 export interface Turn { role: 'user' | 'assistant'; content: string }
 
+/** A change the coach proposed during a reply (0145). Nothing has changed until Apply. */
+export interface ProposalFrame { id: string; kind: string; summary: string; payload: unknown }
+
 /** Null when unknown — before 0143 is pasted, or offline. Never a guess. */
 export async function getCoachStatus(): Promise<CoachStatus | null> {
   const { data, error } = await supabase.rpc('ai_coach_status');
@@ -52,6 +55,7 @@ export async function setCoachConsent(readsData: boolean): Promise<void> {
  */
 export async function askCoach(
   question: string, history: Turn[], onText: (chunk: string) => void,
+  onProposal?: (p: ProposalFrame) => void,
 ): Promise<{ ok: true } | { ok: false; reason: string; message: string }> {
   const busy = { ok: false as const, reason: 'busy', message: 'The coach is busy. Try again in a minute.' };
   try {
@@ -83,8 +87,14 @@ export async function askCoach(
     // One frame at a time; null means keep reading.
     const handle = (frame: string): { ok: true } | { ok: false; reason: string; message: string } | null => {
       if (!frame.startsWith('data: ')) return null;
-      const ev = JSON.parse(frame.slice(6)) as { type: string; text?: string; reason?: string; message?: string };
+      const ev = JSON.parse(frame.slice(6)) as {
+        type: string; text?: string; reason?: string; message?: string;
+        id?: string; kind?: string; summary?: string; payload?: unknown;
+      };
       if (ev.type === 'text' && ev.text) onText(ev.text);
+      if (ev.type === 'proposal' && ev.id && ev.kind) {
+        onProposal?.({ id: ev.id, kind: ev.kind, summary: ev.summary ?? '', payload: ev.payload ?? {} });
+      }
       if (ev.type === 'error') return { ok: false, reason: ev.reason ?? 'busy', message: ev.message ?? busy.message };
       if (ev.type === 'done') return { ok: true };
       return null;

@@ -88,6 +88,8 @@ export interface GymPlanRow {
   last_reminded_on: string | null;
   /** 0089: the routine planned for this day, if any. Absent before 0089. */
   routine_id?: string | null;
+  /** 0145: 'coach' when this day came from the coach's proposal. Absent before 0145. */
+  source?: string | null;
   created_at: string;
 }
 

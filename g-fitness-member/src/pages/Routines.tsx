@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Barbell, CaretRight, Lightning, PencilSimple, Play, Plus } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page, PageTitle } from '../components/ui/page';
-import { Eyebrow, NocButton, Panel, SectionHead } from '../components/ui/noc';
+import { Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import FeatureLock from '../components/ui/FeatureLock';
 import { toast } from '../components/ui/Toast';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -121,6 +121,10 @@ export default function Routines() {
                             <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
                               {r.exercises.length === 0 ? 'No exercises yet — tap to add' : routineSummary(r)}
                             </span>
+                            {/* Applied from the coach's proposal (0145); editing it keeps it yours to change. */}
+                            {r.source === 'coach' && (
+                              <span className="block" style={{ marginTop: 5 }}><StatusPill label="Built with the coach" /></span>
+                            )}
                           </span>
                         </button>
                         {r.exercises.length > 0 ? (

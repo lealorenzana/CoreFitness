@@ -511,9 +511,14 @@ export default function TrainerMembers() {
                     emptyText="No routines saved."
                   >
                     {detail?.routines.map((r) => (
-                      <p key={r.id} className="truncate" style={line}>
-                        {r.name}<span style={muted}> — {r.exerciseCount} {r.exerciseCount === 1 ? 'exercise' : 'exercises'}</span>
-                      </p>
+                      <div key={r.id} className="flex items-center" style={{ gap: 8 }}>
+                        <p className="truncate min-w-0" style={line}>
+                          {r.name}<span style={muted}> — {r.exerciseCount} {r.exerciseCount === 1 ? 'exercise' : 'exercises'}</span>
+                        </p>
+                        {/* The member applied the coach's proposal (0145) — so a trainer
+                            knows whose plan this is before changing it. */}
+                        {r.source === 'coach' && <span className="flex-none"><StatusPill tone="muted" label="Built with the coach" /></span>}
+                      </div>
                     ))}
                   </SharedBlock>
 

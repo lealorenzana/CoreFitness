@@ -79,7 +79,7 @@ export interface MemberDetailForTrainer {
    *  Null when it could not be read; days empty when they have none. */
   plan: { days: number[]; remindAt: string | null; routineByDay: Record<number, string | null> } | null;
   /** Saved routines (0086) — under "workouts" sharing, like the logs they produce. */
-  routines: { id: string; name: string; exerciseCount: number }[];
+  routines: { id: string; name: string; exerciseCount: number; source: 'member' | 'coach' }[];
   /** Goal id → current value from `goal_current_value` (0087), the number the
    *  member's own Goals tab shows. Null where the database gives none. */
   goalValues: Record<string, number | null>;
@@ -181,7 +181,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
       remindAt: active[0]?.remind_at ?? null,
       routineByDay: Object.fromEntries(active.map((r) => [r.day_of_week, r.routine_id ?? null])),
     },
-    routines: routines.map((r) => ({ id: r.id, name: r.name, exerciseCount: r.exercises.length })),
+    routines: routines.map((r) => ({ id: r.id, name: r.name, exerciseCount: r.exercises.length, source: r.source })),
     // listMeasurements is oldest-first so the charts read left to right.
     latestMeasurement: measurements.length ? measurements[measurements.length - 1] : null,
     recentWorkouts: workouts.slice(0, 5),

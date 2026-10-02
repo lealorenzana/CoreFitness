@@ -22,6 +22,10 @@ import FeatureLock from '../components/ui/FeatureLock';
 import { askCoach, getCoachStatus, setCoachConsent, saveCoachProfile, type CoachStatus, type CoachProfile } from '../lib/api/aiCoach';
 import CoachConsent from '../components/CoachConsent';
 import CoachSetup, { REFERRAL } from '../components/CoachSetup';
+import ProposalCard from '../components/ProposalCard';
+import CoachChanges from '../components/CoachChanges';
+import { loadProposalNames, NO_NAMES, type ProposalNames, type ProposalStatus } from '../lib/api/aiProposals';
+import type { ProposalFrame } from '../lib/api/aiCoach';
 import { errorMessage } from '../utils/errorMessage';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
@@ -125,6 +129,22 @@ function Assistant() {
   const [setupSkipped, setSetupSkipped] = useState(false);
   const [redoSetup, setRedoSetup] = useState(false);
   const [setupFailed, setSetupFailed] = useState(false);
+  // The coach's proposals (0145), under the reply they arrived with. Keyed by that
+  // message's id and never part of `messages`, so they are never sent back as history.
+  const [cards, setCards] = useState<Record<string, ProposalFrame[]>>({});
+  // What was tapped this visit, by proposal id — one truth for the chat and the sheet.
+  const [decided, setDecided] = useState<Record<string, ProposalStatus>>({});
+  const [changesOpen, setChangesOpen] = useState(false);
+  const [names, setNames] = useState<ProposalNames>(NO_NAMES);
+  const memberIdRef = useRef<string | null>(null);
+  const refreshNames = useCallback(() => {
+    void loadProposalNames(memberIdRef.current).then(setNames);
+  }, []);
+  const onDecided = useCallback((id: string, next: ProposalStatus) => {
+    setDecided((d) => ({ ...d, [id]: next }));
+    // An applied or undone routine changes the names a card reads.
+    refreshNames();
+  }, [refreshNames]);
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -213,11 +233,13 @@ function Assistant() {
 
       setCtx(next);
       setMessages([greeting(next)]);
+      memberIdRef.current = home?.memberId ?? await getCurrentMemberId().catch(() => null);
+      if (!cancelled) refreshNames();
       refreshList();
       getCoachStatus().then((s) => { if (!cancelled) updateCoach(s); });
     })();
     return () => { cancelled = true; };
-  }, [greeting, refreshList, updateCoach]);
+  }, [greeting, refreshList, updateCoach, refreshNames]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -309,6 +331,8 @@ function Assistant() {
         const result = await askCoach(trimmed, history, (chunk) => {
           streamed += chunk;
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: streamed } : m)));
+        }, (proposal) => {
+          setCards((c) => ({ ...c, [botId]: [...(c[botId] ?? []), proposal] }));
         });
         if (result.ok && streamed.trim()) {
           answer = streamed;
@@ -418,7 +442,7 @@ function Assistant() {
             plus your own membership data — calling that "AI" oversells it. */}
         <PageTitle back title="Assistant"
           subtitle={coach?.allowed ? 'Gym answers from the app · training help from the AI coach' : 'Answers about your account and the gym'} />
-        <div className="flex items-center" style={{ gap: 18, marginTop: 10, fontSize: 13 }}>
+        <div className="flex flex-wrap items-center" style={{ columnGap: 18, rowGap: 0, marginTop: 10, fontSize: 13 }}>
           <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}>New chat</button>
           <button onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
             style={{ height: 32, color: 'var(--color-primary-300)' }}>
@@ -427,6 +451,10 @@ function Assistant() {
           {coach?.allowed && coach.onboarded && !setupOpen && (
             <button onClick={() => { setSetupFailed(false); setRedoSetup(true); }}
               style={{ height: 32, color: 'var(--color-text-secondary)' }}>Redo my setup</button>
+          )}
+          {coach?.allowed && (
+            <button onClick={() => setChangesOpen(true)}
+              style={{ height: 32, color: 'var(--color-primary-300)' }}>Changes from the coach</button>
           )}
           {coach?.allowed && (
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} coach messages today</span>
@@ -457,12 +485,21 @@ function Assistant() {
                 <p className="w-full text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{m.text}</p>
               ) : m.sender === 'bot' ? (
                 // The assistant's side is text on the page with a violet rule —
-                // a reply to read, not a second card.
-                <div className="max-w-[88%]" style={{
-                  paddingLeft: 12, fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)',
-                  borderLeft: '2px solid var(--color-primary)',
-                }}>
-                  <RichText text={m.text} />
+                // a reply to read, not a second card. A proposal the coach made in
+                // this reply sits under it as the one card: something to decide.
+                <div className="w-full flex flex-col items-start" style={{ gap: 10 }}>
+                  {m.text && (
+                    <div className="max-w-[88%]" style={{
+                      paddingLeft: 12, fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid var(--color-primary)',
+                    }}>
+                      <RichText text={m.text} />
+                    </div>
+                  )}
+                  {(cards[m.id] ?? []).map((p) => (
+                    <ProposalCard key={p.id} id={p.id} kind={p.kind} summary={p.summary} payload={p.payload}
+                      status={decided[p.id] ?? 'pending'} names={names} onStatus={onDecided} />
+                  ))}
                 </div>
               ) : (
                 <div className="max-w-[80%]" style={{
@@ -639,6 +676,8 @@ function Assistant() {
           )}
         </AnimatePresence>
       </div>
+      <CoachChanges open={changesOpen} onClose={() => setChangesOpen(false)}
+        names={names} decided={decided} onStatus={onDecided} />
       <CoachConsent open={askConsent} onChoose={(yes) => void onConsent(yes)} />
     </div>
   );
