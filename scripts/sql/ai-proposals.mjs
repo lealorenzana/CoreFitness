@@ -341,6 +341,73 @@ await as(A);
 }
 await db.exec(`reset role; update gym_settings set ai_daily_messages = 30 where gym_id = '${GYM}';`);
 
+// Fix round 1 ---------------------------------------------------------------------------------
+// 18. A waiting change stays listed however old: it still counts toward the 10.
+await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+await as(A);
+{
+  const old = await propose('goal.create', { title: 'Old but waiting', metric: 'custom' });
+  const decided = await propose('goal.create', { title: 'Old and decided', metric: 'custom' });
+  await db.exec(`select discard_ai_proposal('${decided}')`);
+  await db.exec(`reset role; update ai_proposals set created_at = now() - interval '40 days' where id in ('${old}', '${decided}');`);
+  await as(A);
+  const ids = (await rows(`select id from my_ai_proposals()`)).map((r) => r.id);
+  check('18. a pending proposal from 40 days ago is still listed; a decided one that old is not',
+    ids.includes(old) && !ids.includes(decided), JSON.stringify({ old, decided, n: ids.length }));
+}
+// 19. 9999.995 rounds to 10000.00 and would overflow numeric(6,2): refused in plain words at create.
+await as(A);
+{
+  const e = await tryPropose('goal.create', { title: 'Huge', metric: 'custom', target_value: 9999.995 });
+  const ok = await tryPropose('goal.create', { title: 'Just fits', metric: 'custom', target_value: 9999.99 });
+  check('19. a goal value of 9999.995 is refused in plain words; 9999.99 is accepted',
+    !!e && /under 10,000/.test(e) && ok === null, JSON.stringify({ e, ok }));
+}
+await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+// 20. Undoing an older schedule while a newer one is applied is refused; newest-first works.
+await as(A);
+{
+  const before = await daysOfA();
+  await as(A);
+  const s1 = await propose('schedule.set', { days: [{ day_of_week: 2 }] });
+  await db.exec(`select apply_ai_proposal('${s1}')`);
+  const s2 = await propose('schedule.set', { days: [{ day_of_week: 6 }] });
+  await db.exec(`select apply_ai_proposal('${s2}')`);
+  const e = await tryExec(`select undo_ai_proposal('${s1}')`);
+  const mid = await daysOfA();
+  await as(A);
+  const e2 = await tryExec(`select undo_ai_proposal('${s2}')`);
+  const e3 = await tryExec(`select undo_ai_proposal('${s1}')`);
+  const after = await daysOfA();
+  check('20. undoing an older schedule under a newer one is refused; newest first restores the original',
+    !!e && /newer change from the coach/.test(e) && mid.map((d) => d.day_of_week).join() === '6'
+      && e2 === null && e3 === null && JSON.stringify(after) === JSON.stringify(before),
+    JSON.stringify({ e, mid, e2, e3, before, after }));
+}
+// 21. The same for two rewrites of one routine; a rewrite of a different routine does not block.
+await as(A);
+{
+  const before = await routineOf(R6);
+  await as(A);
+  const r1 = await propose('routine.replace', { routine_id: R6, name: 'Rewrite one', exercises: [ex(E1)] });
+  await db.exec(`select apply_ai_proposal('${r1}')`);
+  const other = await propose('routine.replace', { routine_id: R5, name: 'Other routine', exercises: [ex(E2)] });
+  await db.exec(`select apply_ai_proposal('${other}')`);
+  const r2 = await propose('routine.replace', { routine_id: R6, name: 'Rewrite two', exercises: [ex(E2)] });
+  await db.exec(`select apply_ai_proposal('${r2}')`);
+  const e = await tryExec(`select undo_ai_proposal('${r1}')`);
+  const mid = await routineOf(R6);
+  await as(A);
+  const eo = await tryExec(`select undo_ai_proposal('${other}')`);
+  const e2 = await tryExec(`select undo_ai_proposal('${r2}')`);
+  const e3 = await tryExec(`select undo_ai_proposal('${r1}')`);
+  const after = await routineOf(R6);
+  check('21. undoing an older rewrite of the same routine is refused; another routine\'s does not block',
+    !!e && /newer change from the coach/.test(e) && mid.name === 'Rewrite two' && eo === null
+      && e2 === null && e3 === null && JSON.stringify(after) === JSON.stringify(before),
+    JSON.stringify({ e, mid: mid.name, eo, e2, e3, before, after }));
+}
+
 // 16 ------------------------------------------------------------------------------------------
 await owner();
 {

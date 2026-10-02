@@ -194,7 +194,9 @@ begin
     exception when others then
       raise exception 'A goal''s numbers must be written as numbers.';
     end;
-    if (v_start is not null and abs(v_start) >= 10000) or (v_target is not null and abs(v_target) >= 10000) then
+    -- Compared after rounding to the column's two places: 9999.995 would store as 10000.00 and overflow.
+    if (v_start is not null and abs(round(v_start, 2)) > 9999.99)
+       or (v_target is not null and abs(round(v_target, 2)) > 9999.99) then
       raise exception 'A goal''s numbers must be under 10,000.';
     end if;
     begin
@@ -367,6 +369,16 @@ begin
   if p.status <> 'applied' then
     raise exception 'Only an applied change can be undone.';
   end if;
+  -- Undoing an older schedule (or an older rewrite of the same routine) would silently throw
+  -- away a newer one that is still in place: that one must be undone first.
+  if p.kind in ('schedule.set', 'routine.replace') and exists (
+       select 1 from ai_proposals n
+        where n.gym_id = v_gym and n.member_id = v_me and n.id <> p.id
+          and n.kind = p.kind and n.status = 'applied'
+          and (n.decided_at, n.created_at) > (p.decided_at, p.created_at)
+          and (p.kind = 'schedule.set' or n.payload ->> 'routine_id' = p.payload ->> 'routine_id')) then
+    raise exception 'A newer change from the coach replaced this one — undo that first.';
+  end if;
 
   if p.kind = 'routine.create' then
     v_routine := (p.undo ->> 'routine_id')::uuid;
@@ -445,7 +457,8 @@ create or replace function my_ai_proposals() returns setof ai_proposals
 language sql stable security definer set search_path = public as $$
   select * from ai_proposals p
    where p.member_id = auth.uid() and p.gym_id = current_gym_id()
-     and p.created_at >= now() - interval '30 days'
+     -- Every waiting change, however old (they count toward the 10), plus the last 30 days of decided ones.
+     and (p.status = 'pending' or p.created_at >= now() - interval '30 days')
    order by p.created_at desc;
 $$;
 
