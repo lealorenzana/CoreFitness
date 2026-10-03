@@ -41,6 +41,21 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   **every waiting change plus 30 days of decided ones**, and stays reachable at the
   message limits and without the plan (apply/undo do not spend messages); the cards
   in the conversation show for the current visit.
+- **Meal guides (0146, Phase 4).** The coach has a seventh tool, `propose_meals`: a
+  guide is a short summary plus sections of meal ideas and portions **by hand**
+  ("a palm of chicken, a fist of rice, half a plate of vegetables"), applied from a
+  card like any other proposal and undoable. **A guide never carries a number
+  target.** `meal_text_ok()` refuses, in the database, at create and again at apply:
+  any calorie, kcal or kJ word; "macro" or "macros"; a nutrient followed by a figure
+  ("Protein: 150"); and any amount by weight or share ("150g", "1 kg", "40%", "40
+  percent"). A count of things is fine: "2 eggs", "1 cup of rice". The card carries a
+  fixed line that this is general guidance, not a diet prescription. The member
+  reads their guide under **Progress → Meals**. **Who sees it:** the member; and their
+  own trainer, read-only and compact with a coach pill, only while the member shares
+  goals with trainers (`trainee_meal_guide()`). The desk and the owner never see it
+  (`trainer_may_see` alone would let them through, so the policy asks for the trainer
+  role first). A gym that switched progress off cannot apply one. The Privacy page
+  says so.
 - **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
   month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
   before the model call, so a failed or abandoned call still counts.

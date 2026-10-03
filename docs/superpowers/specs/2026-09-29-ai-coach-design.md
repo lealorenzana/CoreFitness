@@ -165,7 +165,7 @@ since) → Apply says so and changes nothing.
 2. **Onboarding** — the profile, the guided first conversation. *Done 2026-09-29 (0144, `CoachSetup.tsx`); not yet live until 0144 is pasted.*
 3. **Training tools** — read tools, routine/schedule/goal proposals,
    Apply/Undo, the "Built with the coach" mark, trainer sheet. *Done 2026-10-03 (0145, six tools, a tool loop, proposal cards, the Changes sheet; not yet live until 0145 is pasted). The cards in the conversation show for the current visit; the Changes sheet keeps them.*
-4. **Meals** — `meals.set`, the Meals section, the regex.
+4. **Meals** — `meals.set`, the Meals section, the regex. *Done 2026-10-03 (0146, `propose_meals`, a Meals tab under Progress, the trainer's compact read-only guide; not yet live until 0146 is pasted).*
 5. **Owner and platform** — Your app limits and usage, platform Usage row.
 
 ## What the owner does (things only they can do)
