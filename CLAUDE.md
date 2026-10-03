@@ -8,13 +8,13 @@ monorepo (run `npm` from inside each): **`g-fitness-admin/`** (`:5174`, Vercel) 
 front desk's dashboard; **`g-fitness-member/`** (`:5173`, PWA → Android TWA) is the phone app and hosts
 the **trainer** role too; **`corefitness-platform/`** (`:5175`, **localhost only**) is the platform
 owner's; **`corefitness-site/`** (`:5176`) is the public website. The folder names are pre-rename
-legacy — deliberately left alone. `supabase/` holds 142 migrations, RLS policies and eight Edge
+legacy — deliberately left alone. `supabase/` holds 149 migrations, RLS policies and nine Edge
 Functions — [supabase/README.md](supabase/README.md) covers setup and secrets.
 
 ## Commands
 `npm install && npm run dev` **from inside each app directory**; all four build clean. Every tsconfig sets
 `noUnusedLocals`/`noUnusedParameters`, so **an unused import fails the build** though `npm run dev` is happy.
-`npm run lint` · `check:achievements` (member). No test framework — see *Verifying work*. Each app needs `.env.local`.
+`npm run lint` · `check:achievements` (member). **The site has no lint script** — `npm run build` is its only check. No test framework — see *Verifying work*. Each app needs `.env.local`.
 
 ## Data honesty — read this before touching a page
 **Full audit: [docs/MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md).** Every page is Supabase-backed. **"No mock data
@@ -145,6 +145,9 @@ withheld below three ratings, the admin's is not**), `invoice_counters`, `plan_f
 workout logs/sets and `workout_plans` in RLS, not the UI — audit it by resolving each function to its **last** definition (0039 missed this; 0048 fixed it). **The plan builder and the assistant's rules are rule-based; the AI coach is a real Claude model** behind `ai-coach`, gated in SQL, **member-only** — keep that honest in the UI; `planBuilder.ts` returns **data, never prose** and `planRender.ts` words it. No
 calorie or macro targets; a stated injury yields a **referral, never a changed exercise**. **Test regexes by running them** — all four shipped broken (`\bplan\b` never
 matched "plans").
+
+### Public site — `corefitness-site/` (Vercel: corefitness-site.vercel.app)
+One page, no router, no Tailwind: React + plain CSS (`src/index.css`, Nocturne tokens on `:root` — violet/amber roles as in the member app). `App.tsx` is the whole marketing page plus the gym-owner **apply form**; the price list comes from `platform_price_list()` and the gym list from `list_gyms()` — **never typed in**; a price of `null` reads "Talk to us" (`pricing.ts`). `#status/<token>` (hash, so any static host works) renders `Status.tsx` via the anon-callable `application_status()`/`application_reply()` (0148). Without `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, `supabase` is null and every section must still render honestly. Links out to the member app (`corefitness-gym.vercel.app`) and admin (`corefitness-admin.vercel.app`).
 
 ### Admin shell
 `Sidebar.tsx` is **grouped**: nine rows, Attendance first; a one-child group **flattens**, and the open
