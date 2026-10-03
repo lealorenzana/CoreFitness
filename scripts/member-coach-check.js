@@ -295,5 +295,18 @@ async (page) => {
   // Over the limit with consent on, the switch stays so consent can be withdrawn.
   await go('/member/settings');
   out.push('the coach switch stays at the limit while consent is on: ' + (/Let the coach read my training/.test(await text()) ? 'yes' : 'MISSING'));
+  // Allowed in the database but the function is not deployed: the assistant is what it was before the coach.
+  FN_DEPLOYED = false; COACH.allowed = true; COACH.reason = null; COACH.used_today = 3; COACH.consent = null;
+  await go('/member/chatbot');
+  t = await text();
+  out.push('undeployed: no coach subtitle: ' + (!/AI coach/.test(t) && /Answers about your account and the gym/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('undeployed: no count line: ' + (!/coach messages today/.test(t) ? 'yes' : 'STILL SHOWN'));
+  await page.getByLabel('Your question').fill('Why do I wake up tired after sleeping late?');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(2000);
+  t = await text();
+  out.push('undeployed: no consent sheet: ' + (!/Before the coach answers/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('undeployed: no busy text on the rules answer: ' + (!/coach is busy|Try again in a minute/i.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('undeployed: no Changes button: ' + (!/Changes from the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
   return out.join('\n');
 }
