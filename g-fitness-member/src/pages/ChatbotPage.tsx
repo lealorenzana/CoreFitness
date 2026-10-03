@@ -19,7 +19,7 @@ import {
   deleteConversation, titleFrom, type Conversation,
 } from '../lib/api/assistantChats';
 import FeatureLock from '../components/ui/FeatureLock';
-import { askCoach, getCoachStatus, setCoachConsent, saveCoachProfile, type CoachStatus, type CoachProfile } from '../lib/api/aiCoach';
+import { askCoach, coachReady, getCoachStatus, setCoachConsent, saveCoachProfile, type CoachStatus, type CoachProfile } from '../lib/api/aiCoach';
 import CoachConsent from '../components/CoachConsent';
 import CoachSetup, { REFERRAL } from '../components/CoachSetup';
 import ProposalCard from '../components/ProposalCard';
@@ -242,7 +242,8 @@ function Assistant() {
       memberIdRef.current = home?.memberId ?? await getCurrentMemberId().catch(() => null);
       if (!cancelled) refreshNames();
       refreshList();
-      getCoachStatus().then((s) => { if (!cancelled) updateCoach(s); });
+      // Until the function really answers, the assistant is exactly what it was before the coach.
+      Promise.all([getCoachStatus(), coachReady()]).then(([s, ready]) => { if (!cancelled) updateCoach(ready ? s : null); });
     })();
     return () => { cancelled = true; };
   }, [greeting, refreshList, updateCoach, refreshNames]);

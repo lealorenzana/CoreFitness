@@ -159,7 +159,11 @@ async (page) => {
     if (path.startsWith('/functions/v1/ai-coach')) {
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
-      COACH_POSTS.push(JSON.parse(req.postData() || '{}'));
+      const posted = JSON.parse(req.postData() || '{}');
+      // The readiness probe (an empty body) is answered as the deployed, configured function does.
+      if (!posted.question) return route.fulfill({ status: 400, contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"reason":"bad_question"}' });
+      COACH_POSTS.push(posted);
       return route.fulfill({ status: 200, contentType: 'text/event-stream',
         headers: { 'Access-Control-Allow-Origin': '*' },
         body: 'data: {"type":"text","text":"Brace like "}\n\ndata: {"type":"text","text":"you are about to be poked."}\n\ndata: {"type":"done"}\n\n' });

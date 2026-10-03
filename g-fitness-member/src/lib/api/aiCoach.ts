@@ -36,6 +36,40 @@ export async function getCoachStatus(): Promise<CoachStatus | null> {
   return { ...s, onboarded: s.onboarded ?? true };
 }
 
+let readyAnswer: Promise<boolean> | null = null;
+
+/**
+ * Is the `ai-coach` function deployed AND configured? The database says a Premium
+ * member may use the coach long before that is true, so the chat asks the function.
+ * An empty body is refused with 400 `bad_question` only after the key and the
+ * sign-in check, and before any status, claim or model call — so it costs nothing.
+ * Anything else (404 not deployed, 503 not_configured, offline) is "not ready".
+ * Remembered for the life of the page only.
+ */
+export function coachReady(): Promise<boolean> {
+  if (!readyAnswer) {
+    readyAnswer = (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return false;
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-coach`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: '{}',
+        });
+        if (res.status !== 400) return false;
+        const body = await res.json().catch(() => null) as { reason?: string } | null;
+        return body?.reason === 'bad_question';
+      } catch { return false; }
+    })();
+  }
+  return readyAnswer;
+}
+
 export async function saveCoachProfile(p: CoachProfile): Promise<void> {
   const { error } = await supabase.rpc('save_ai_coach_profile', { p });
   if (error) throw new Error(error.message);
