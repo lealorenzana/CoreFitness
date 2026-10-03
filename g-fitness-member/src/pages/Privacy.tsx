@@ -95,7 +95,7 @@ const sections: LegalSection[] = [
 const glance: GlanceItem[] = [
   { icon: EyeOff, label: 'Never sold', detail: 'The gym does not sell, rent or trade any of it.', to: 'who' },
   { icon: UserCheck, label: 'Trainers see what you allow', detail: 'A rule in the database, not a hidden screen.', to: 'who' },
-  { icon: Ban, label: 'No ads, no tracking', detail: 'No analytics and no third-party scripts.', to: 'not' },
+  { icon: Ban, label: 'No ads, no tracking', detail: 'No analytics and no third-party tracking scripts.', to: 'not' },
   { icon: Download, label: 'A copy is yours', detail: 'Settings → Your data downloads all of it.', to: 'rights' },
 ];
 
@@ -104,7 +104,7 @@ export default function Privacy() {
     <LegalPage
       title="Privacy Policy"
       icon={Shield}
-      updated="19 September 2026"
+      updated="3 October 2026"
       framework="RA 10173"
       intro="This describes what the gym actually holds and who can actually reach it — not a list of things a policy is expected to say. Written to the Data Privacy Act of 2012 (RA 10173)."
       glance={glance}
