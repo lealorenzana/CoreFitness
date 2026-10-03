@@ -109,6 +109,9 @@ header.top nav a:hover, .link-quiet:hover { color: var(--text); background: colo
 header.top .grow { flex: 1; }
 header.top .cta { margin: 0; height: 38px; padding: 0 16px; font-size: 13.5px; }
 @media (max-width: 860px) { header.top nav, header.top .hide-sm { display: none; } }
+/* The header's sign-in reads "Gym sign in" where there is room and "Sign in" on a phone. */
+header.top .only-sm { display: none; }
+@media (max-width: 860px) { header.top .only-sm { display: inline; } }
 
 /* ---- buttons ----------------------------------------------------------------------------- */
 .cta { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 22px; height: 52px;

@@ -10,7 +10,7 @@ import { reducedMotion, useChapter } from './motion';
  * phone or the front desk. Each scene is an *illustration* with sample data,
  * and says so — but every behaviour in it is one the system has (copy is a
  * claim): QR check-in and the kiosk, receipt numbers the database issues,
- * the waitlist offering a freed seat, personal records found by a trigger,
+ * the waitlist telling everyone a seat freed, personal records found by a trigger,
  * the cash day summary and the retention list.
  */
 
@@ -69,7 +69,7 @@ const CHAPTERS: Chapter[] = [
         <div className="printer"><span /></div>
         <div className="paper">
           <b>Your gym</b>
-          <small>Receipt · No. 000142</small>
+          <small>Receipt · INV-2026-0142</small>
           <hr />
           <div className="row"><span>Monthly membership</span><span>₱1,000</span></div>
           <div className="row"><span>Paid in</span><span>Cash</span></div>
@@ -83,14 +83,14 @@ const CHAPTERS: Chapter[] = [
   {
     time: '12:00 PM', at: 720, who: "A member's phone", device: 'phone', icon: 'calendar',
     title: 'Classes fill up — and refill.',
-    body: 'A timetable that generates itself, coaches who accept their own bookings, and a waitlist that offers a freed seat to the next member in line.',
+    body: 'A timetable that generates itself, coaches who accept their own bookings, and a waitlist that tells everyone waiting the moment a seat frees.',
     scene: (
       <div className="scene s-classes">
         <div className="sc-top"><span>Today</span><small>Your classes</small></div>
         <div className="cls"><i style={{ background: 'var(--violet)' }} /><div><b>Morning HIIT</b><small>6:00 AM · booked</small></div><Icon name="check" /></div>
         <div className="cls full"><i style={{ background: 'var(--amber)' }} /><div><b>Boxing Basics</b><small>6:00 PM · full · waitlist #1</small></div></div>
         <div className="cls"><i style={{ background: 'var(--violet-text)' }} /><div><b>Spin</b><small>7:00 PM · 3 seats</small></div></div>
-        <div className="push"><Icon name="bell" /><div><b>A seat opened</b><small>Boxing Basics, 6:00 PM — it’s yours if you want it.</small></div></div>
+        <div className="push"><Icon name="bell" /><div><b>A seat opened</b><small>Boxing Basics, 6:00 PM — book it before someone else does.</small></div></div>
       </div>
     ),
   },
@@ -106,7 +106,7 @@ const CHAPTERS: Chapter[] = [
         <div className="set pr"><span>Lat pulldown</span><b>3 × 10 · 55 kg</b><em>New record</em></div>
         <div className="badge-pop">
           <div className="medal"><Icon name="star" /></div>
-          <b>Badge unlocked</b><small>Regular — twenty five check-ins</small>
+          <b>Badge unlocked</b><small>Regular — 25 training days</small>
           {Array.from({ length: 12 }, (_, i) => <i key={i} className="confetti" style={{ ['--i' as string]: i }} />)}
         </div>
       </div>
