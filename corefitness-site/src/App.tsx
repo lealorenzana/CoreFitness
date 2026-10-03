@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
+import Story from './Story';
+import { useCountUp, useMotionEngine } from './motion';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
@@ -25,30 +27,108 @@ const statusToken = () => /^#status\/([a-f0-9]{32,})$/i.exec(window.location.has
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
 
-const FEATURES: { icon: IconName; title: string; body: string }[] = [
-  { icon: 'desk', title: 'The front desk', body: 'Members and memberships, cash payments with a receipt number, QR check-in and a kiosk members use themselves. Freezes, renewals and refunds follow rules you set.' },
-  { icon: 'calendar', title: 'Classes and coaches', body: 'A weekly timetable that generates itself, bookings your coaches accept, a waitlist that offers the next member a freed seat, and one-to-one sessions with clash checks.' },
-  { icon: 'phone', title: "The member's app", body: "Installs like an app on Android. Their membership, bookings, check-in code, workouts, goals, progress and the gym's announcements — in English or Filipino." },
-  { icon: 'star', title: 'Points that keep them coming', body: 'Points for turning up, badges for milestones, rewards they redeem at your desk and challenges between members. The rules are yours to set.' },
-  { icon: 'brush', title: 'Your gym, your look', body: "Your name, your logo and your colour in your members' app. Your plans, your prices, your cancellation reasons and your refund policy." },
-  { icon: 'shield', title: 'Your data stays yours', body: "One gym can never see another's members — the database enforces it, and every change is checked automatically. You are the data controller; we only process it for you." },
+const FEATURES: { icon: IconName; title: string; body: string; tag: string }[] = [
+  { icon: 'desk', tag: 'Desk', title: 'The front desk', body: 'Members and memberships, cash payments with a receipt number, QR check-in and a kiosk members use themselves. Freezes, renewals and refunds follow rules you set.' },
+  { icon: 'calendar', tag: 'Floor', title: 'Classes and coaches', body: 'A weekly timetable that generates itself, bookings your coaches accept, a waitlist that offers the next member a freed seat, and one-to-one sessions with clash checks.' },
+  { icon: 'phone', tag: 'Phone', title: "The member's app", body: "Installs like an app on Android. Their membership, bookings, check-in code, workouts, goals, progress and the gym's announcements — in English or Filipino." },
+  { icon: 'star', tag: 'Loyalty', title: 'Points that keep them coming', body: 'Points for turning up, badges for milestones, rewards they redeem at your desk and challenges between members. The rules are yours to set.' },
+  { icon: 'brush', tag: 'Brand', title: 'Your gym, your look', body: "Your name, your logo and your colour in your members' app. Your plans, your prices, your cancellation reasons and your refund policy." },
+  { icon: 'shield', tag: 'Privacy', title: 'Your data stays yours', body: "One gym can never see another's members — the database enforces it, and every change is checked automatically. You are the data controller; we only process it for you." },
+  { icon: 'toggle', tag: 'Fit', title: 'Switch off what you don’t run', body: 'No classes? No shop? Turn whole parts of the system off, and your members’ app and your menus simply stop showing them.' },
 ];
 
+const TICKER = ['QR check-in', 'Cash receipts', 'Class timetable', 'Waitlists', 'Coaches', 'Points', 'Badges', 'Rewards', 'Challenges', 'Workout logs', 'Personal records', 'Freeze & renew', 'English · Filipino', 'Your logo, your colour'];
+
+const NAV: [string, string][] = [['top', 'Start'], ['day', 'A day'], ['features', 'Features'], ['floor', 'The floor'], ['how', 'How'], ['pricing', 'Pricing'], ['apply', 'Apply']];
+
+/** Splits a line into words that rise one after another (CSS staggers by --w). */
+const Words = ({ text, from = 0 }: { text: string; from?: number }) => (
+  <>
+    {text.split(' ').map((w, i) => (
+      <span key={i}><span className="word" style={{ ['--w' as string]: i + from }}><span>{w}</span></span>{' '}</span>
+    ))}
+  </>
+);
+
+function Stat({ to, suffix = '', label, sub }: { to: number | null; suffix?: string; label: string; sub: string }) {
+  const [ref, shown] = useCountUp(to);
+  return (
+    <div className="stat tilt" data-reveal>
+      <b ref={ref}>{shown === null ? '—' : shown.toLocaleString('en-PH')}{suffix}</b>
+      <span>{label}</span>
+      <small>{sub}</small>
+    </div>
+  );
+}
+
+/** Features as a horizontal track, pinned while vertical scroll drives it sideways. On a phone it is a swipeable row. */
+function FeatureTrack() {
+  const sec = useRef<HTMLElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const measure = () => {
+      if (!sec.current || !track.current) return;
+      const dist = Math.max(0, track.current.scrollWidth - window.innerWidth);
+      sec.current.style.setProperty('--dist', `${dist}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (track.current) ro.observe(track.current);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+  return (
+    <section className="htrack" id="features" ref={sec} data-pin>
+      <div className="htrack-stage">
+        <div className="wrap htrack-head">
+          <span className="eyebrow">What you get</span>
+          <h2 className="big">Seven parts.<br /><span className="dim">One system.</span></h2>
+          <p className="section-lede">Everything here is in the system today, not on a roadmap.</p>
+        </div>
+        <div className="htrack-track" ref={track}>
+          {FEATURES.map((f, i) => (
+            <article className="fcard tilt" key={f.title}>
+              <span className="fnum">{String(i + 1).padStart(2, '0')}</span>
+              <div className="fglyph"><Icon name={f.icon} /></div>
+              <span className="ftag">{f.tag}</span>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+            </article>
+          ))}
+          <div className="fcard fend">
+            <h3>Want to see it with your own gym in it?</h3>
+            <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
+          </div>
+        </div>
+        <div className="htrack-bar" aria-hidden="true"><span /></div>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
+  useMotionEngine();
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
   const [token, setToken] = useState(statusToken);
   /** The plan a tier card's "Choose" put into the form. */
   const [chosen, setChosen] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [yearly, setYearly] = useState(false);
+  const [section, setSection] = useState('top');
   useEffect(() => {
     const on = () => setToken(statusToken());
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('hashchange', on);
     window.addEventListener('scroll', onScroll, { passive: true });
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) setSection(e.target.id); });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    NAV.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => {
       window.removeEventListener('hashchange', on);
       window.removeEventListener('scroll', onScroll);
+      io.disconnect();
     };
   }, []);
   /** null while loading; [] when the price list cannot be read at all. */
@@ -71,166 +151,242 @@ export default function App() {
     })();
   }, []);
 
+  const trial = tiers?.find((t) => t.trialDays)?.trialDays ?? null;
+  const anyYearly = !!tiers?.some((t) => t.yearly !== null && t.yearly > 0);
+
   return (
     <>
+      <div className="progress" aria-hidden="true"><span /></div>
+      <div className="cursor-glow" aria-hidden="true" />
+      <div className="grain" aria-hidden="true" />
+
       <header className={`top${scrolled ? ' scrolled' : ''}`}>
         <div className="wrap">
           <a className="brand" href="#top" aria-label="Core Fitness, back to top">
-            <img src="/logo.png" alt="" width={34} height={34} />
+            <img src="/logo-320.webp" alt="" width={34} height={34} />
             <span>Core Fitness</span>
           </a>
           <nav aria-label="Sections">
+            <a href="#day">A day</a>
             <a href="#features">Features</a>
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
-            <a href="#gyms">Gyms</a>
           </nav>
           <span className="grow" />
           <a className="link-quiet hide-sm" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
           <a className="link-quiet" href={ADMIN_APP}>Sign in</a>
-          <a className="cta" href="#apply">Register</a>
+          <a className="cta magnetic" href="#apply">Register</a>
         </div>
       </header>
 
-      <main className="wrap" id="top">
-        {token && <StatusPage token={token} />}
+      <nav className="dots" aria-label="Jump to section">
+        {NAV.map(([id, label]) => (
+          <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}><span>{label}</span></a>
+        ))}
+      </nav>
 
-        <section className="hero">
-          <div>
-            <span className="eyebrow">Gym software, made in Occidental Mindoro</span>
-            <h1 style={{ marginTop: 18 }}>Run your gym, and <em>give your members an app.</em></h1>
-            <p className="lede">
-              Memberships, cash payments, QR check-in, classes and coaches — with a phone app your
-              members actually install. Built for a real gym in Mamburao, and open to yours.
-            </p>
-            <div className="cta-row">
-              <a className="cta" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
-              <a className="cta ghost" href={MEMBER_APP}>See the member app</a>
+      <main id="top">
+        {token && <div className="wrap status-wrap"><StatusPage token={token} /></div>}
+
+        <section className="hero" data-scroll>
+          <div className="hero-bg" aria-hidden="true">
+            <img src="/gfit-floor.webp" alt="" />
+          </div>
+          <div className="hero-grid" aria-hidden="true" />
+          <div className="blob b1" aria-hidden="true" />
+          <div className="blob b2" aria-hidden="true" />
+          <div className="wrap hero-inner">
+            <div className="hero-copy">
+              <span className="eyebrow">Gym software, made in Occidental Mindoro</span>
+              <h1>
+                <Words text="Run your gym," />
+                <br />
+                <em><Words text="give your members an app." from={3} /></em>
+              </h1>
+              <p className="lede">
+                Memberships, cash payments, QR check-in, classes and coaches — with a phone app your
+                members actually install. Built for a real gym in Mamburao, and open to yours.
+              </p>
+              <div className="cta-row">
+                <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
+                <a className="cta ghost magnetic" href="#day">See a day in it</a>
+              </div>
+            </div>
+            <div className="hero-visual" aria-hidden="true">
+              <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
+              <img src="/logo-320.webp" alt="" width={320} height={320} />
+              <span className="orbit o1"><Icon name="qr" /> QR check-in</span>
+              <span className="orbit o2"><Icon name="cash" /> Cash, with receipts</span>
+              <span className="orbit o3"><Icon name="globe" /> English · Filipino</span>
+              <span className="orbit o4"><Icon name="phone" /> Android app</span>
             </div>
           </div>
-          <div className="hero-visual" aria-hidden="true">
-            <span className="ring" />
-            <span className="ring inner" />
-            <img src="/logo.png" alt="" width={420} height={420} />
-            <span className="orbit o1"><Icon name="qr" /> QR check-in</span>
-            <span className="orbit o2"><Icon name="cash" /> Cash, with receipts</span>
-            <span className="orbit o3"><Icon name="globe" /> English · Filipino</span>
-            <span className="orbit o4"><Icon name="phone" /> Android app</span>
+          <a className="scroll-cue" href="#day" aria-label="Scroll to the story"><Icon name="mouse" /><span>Scroll</span></a>
+          <p className="photo-credit">Photo: G Fitness, Mamburao</p>
+        </section>
+
+        <div className="ticker" aria-hidden="true">
+          <div className="ticker-row">
+            {[0, 1].map((k) => <span key={k}>{TICKER.map((t) => <b key={t}>{t}<i>✦</i></b>)}</span>)}
+          </div>
+          <div className="ticker-row rev">
+            {[0, 1].map((k) => <span key={k}>{[...TICKER].reverse().map((t) => <b key={t}>{t}<i>✦</i></b>)}</span>)}
+          </div>
+        </div>
+
+        <Story />
+
+        <FeatureTrack />
+
+        <section className="photo-band" id="floor" data-scroll>
+          <div className="pb-img" aria-hidden="true"><img src="/gfit-coaches.webp" alt="" loading="lazy" /></div>
+          <div className="wrap pb-inner">
+            <span className="eyebrow">Built on a real gym floor</span>
+            <h2 className="big">Coaches carry <br />the app too.</h2>
+            <p className="lede">
+              Trainers sign in to the same phone app. They run their own classes, decide their own bookings,
+              and see only the members they train — and only what those members choose to share.
+            </p>
+          </div>
+          <p className="photo-credit">Photo: the coaches of G Fitness, Mamburao</p>
+        </section>
+
+        <section className="stats-sec">
+          <div className="wrap">
+            <div className="stats">
+              <Stat to={229} label="exercises" sub="in the shared library, each with cues and steps" />
+              <Stat to={19} label="switches" sub="to turn off the parts your gym does not run" />
+              <Stat to={2} label="languages" sub="English and Filipino in the member app" />
+              <Stat to={gymsFailed ? null : gyms?.length ?? null} label={gyms?.length === 1 ? 'gym on it now' : 'gyms on it now'} sub="read live from the system" />
+            </div>
           </div>
         </section>
 
-        <section id="features">
-          <span className="eyebrow">What you get</span>
-          <h2>The desk, the floor and the phone</h2>
-          <p className="section-lede">Everything below is in the system today, not on a roadmap.</p>
-          <div className="grid">
-            {FEATURES.map((f) => (
-              <div className="card feature" key={f.title}>
-                <div className="tile"><Icon name={f.icon} /></div>
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
-              </div>
-            ))}
+        <section className="how" id="how" data-scroll>
+          <div className="wrap">
+            <span className="eyebrow">How it works</span>
+            <h2 className="big">From this page<br /><span className="dim">to your first member.</span></h2>
+            <div className="how-path">
+              <svg className="how-line" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M20 60 C 200 -10, 300 130, 500 60 S 800 -10, 980 60" pathLength={1} />
+              </svg>
+              <ol className="steps">
+                <li data-reveal style={{ ['--d' as string]: 0 }}>
+                  <span className="node"><Icon name="sparkle" /></span>
+                  <h3>Apply</h3>
+                  <p>Pick a plan and tell us about your gym. You get a private link to your application’s own page.</p>
+                </li>
+                <li data-reveal style={{ ['--d' as string]: 1 }}>
+                  <span className="node"><Icon name="message" /></span>
+                  <h3>Talk it through</h3>
+                  <p>We read every application ourselves. Our answer and our messages arrive on your link — write back there any time.</p>
+                </li>
+                <li data-reveal style={{ ['--d' as string]: 2 }}>
+                  <span className="node"><Icon name="users" /></span>
+                  <h3>Set up and go</h3>
+                  <p>Sign in to the gym app, add your name, logo, colour and plans, then print your join poster for members to scan.</p>
+                </li>
+              </ol>
+            </div>
           </div>
-        </section>
-
-        <section id="how">
-          <span className="eyebrow">How it works</span>
-          <h2>From this page to your first member</h2>
-          <ol className="steps">
-            <li>
-              <h3>Apply</h3>
-              <p>Pick a plan and tell us about your gym. You get a private link to your application's own page.</p>
-            </li>
-            <li>
-              <h3>Talk it through</h3>
-              <p>We read every application ourselves. Our answer and our messages arrive on your link — write back there any time.</p>
-            </li>
-            <li>
-              <h3>Set up and go</h3>
-              <p>Sign in to the gym app, add your name, logo, colour and plans, then print your join poster for members to scan.</p>
-            </li>
-          </ol>
         </section>
 
         <section id="pricing">
-          <span className="eyebrow">Pricing</span>
-          <h2>
-            {tiers === null ? 'What it costs'
-              : tiers.length === 0 ? 'Ask us what it costs'
-              : tiers.some((t) => t.trialDays) ? `Start free for ${tiers.find((t) => t.trialDays)!.trialDays} days`
-              : 'What it costs'}
-          </h2>
-          <p className="section-lede">Paid from wherever your gym is — send the reference from the gym app and we confirm it. Cancel by telling us.</p>
-          <div className="pay-note">
-            {['GCash', 'Maya', 'Bank transfer'].map((m) => <span className="pill" key={m}><Icon name="cash" /> {m}</span>)}
-          </div>
-          {tiers?.length === 0 && (
-            <p className="note bad" style={{ marginTop: 24 }}>
-              <Icon name="alert" /> Our price list is not loading right now. Send the form below and we will answer with it.
-            </p>
-          )}
-          <div className="grid">
-            {tiers === null && [0, 1, 2].map((i) => <div className="skeleton" key={i} aria-hidden="true" />)}
-            {tiers?.map((t) => (
-              <div className={`card tier${t.trialDays ? ' has-trial' : ''}`} key={t.key}>
-                {t.trialDays ? <span className="badge">{t.trialDays} days free</span> : null}
-                <h3>{t.name}</h3>
-                <div className="price">
-                  {t.monthly === 0 ? 'Free' : t.monthly === null ? 'Talk to us' : peso(t.monthly)}
-                  {t.monthly ? <small> / month</small> : null}
+          <div className="wrap">
+            <span className="eyebrow">Pricing</span>
+            <div className="price-head">
+              <h2 className="big">
+                {tiers === null ? 'What it costs'
+                  : tiers.length === 0 ? 'Ask us what it costs'
+                  : trial ? <>Start free for <span className="hl">{trial} days.</span></>
+                  : 'What it costs'}
+              </h2>
+              {anyYearly && (
+                <div className="switch" role="group" aria-label="Show prices">
+                  <button type="button" className={!yearly ? 'on' : ''} aria-pressed={!yearly} onClick={() => setYearly(false)}>Monthly</button>
+                  <button type="button" className={yearly ? 'on' : ''} aria-pressed={yearly} onClick={() => setYearly(true)}>Yearly</button>
+                  <span className="knob" style={{ transform: yearly ? 'translateX(100%)' : 'none' }} />
                 </div>
-                {t.yearly !== null && t.yearly > 0 && (
-                  <p className="yearly">or {peso(t.yearly)} a year</p>
-                )}
-                <p className="line">{t.line}</p>
-                {(t.maxMembers !== null || t.includes.length > 0) && (
-                  <ul>
-                    {t.maxMembers !== null && <li><Icon name="check" /> Up to {t.maxMembers.toLocaleString('en-PH')} members</li>}
-                    {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
-                  </ul>
-                )}
-                <div className="choose-wrap">
-                  <a className={`cta${t.trialDays ? '' : ' ghost'} choose`} href="#apply" onClick={() => setChosen(t.key)}>Choose {t.name}</a>
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
+            <p className="section-lede">Paid from wherever your gym is — send the reference from the gym app and we confirm it. Cancel by telling us.</p>
+            <div className="pay-note">
+              {['GCash', 'Maya', 'Bank transfer'].map((m) => <span className="pill" key={m}><Icon name="cash" /> {m}</span>)}
+            </div>
+            {tiers?.length === 0 && (
+              <p className="note bad" style={{ marginTop: 24 }}>
+                <Icon name="alert" /> Our price list is not loading right now. Send the form below and we will answer with it.
+              </p>
+            )}
+            <div className="grid tiers">
+              {tiers === null && [0, 1, 2].map((i) => <div className="skeleton" key={i} aria-hidden="true" />)}
+              {tiers?.map((t, i) => {
+                const showYear = yearly && t.yearly !== null && t.yearly > 0;
+                return (
+                  <div className={`card tier tilt${t.trialDays ? ' has-trial' : ''}`} key={t.key} data-reveal style={{ ['--d' as string]: i }}>
+                    {t.trialDays ? <span className="badge">{t.trialDays} days free</span> : null}
+                    <h3>{t.name}</h3>
+                    <div className="price" key={showYear ? 'y' : 'm'}>
+                      {showYear ? <>{peso(t.yearly!)}<small> / year</small></>
+                        : <>{t.monthly === 0 ? 'Free' : t.monthly === null ? 'Talk to us' : peso(t.monthly)}{t.monthly ? <small> / month</small> : null}</>}
+                    </div>
+                    {!showYear && t.yearly !== null && t.yearly > 0 && <p className="yearly">or {peso(t.yearly)} a year</p>}
+                    {yearly && !showYear && t.monthly !== 0 && t.monthly !== null && <p className="yearly">Monthly only</p>}
+                    <p className="line">{t.line}</p>
+                    {(t.maxMembers !== null || t.includes.length > 0) && (
+                      <ul>
+                        {t.maxMembers !== null && <li><Icon name="check" /> Up to {t.maxMembers.toLocaleString('en-PH')} members</li>}
+                        {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
+                      </ul>
+                    )}
+                    <div className="choose-wrap">
+                      <a className={`cta${t.trialDays ? '' : ' ghost'} choose`} href="#apply"
+                        onClick={() => setChosen(t.key)}>Choose {t.name}</a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
         <section id="gyms">
-          <span className="eyebrow">Already on Core Fitness</span>
-          <h2>{gyms === null ? 'Gyms on Core Fitness'
-            : gymsFailed ? 'Gyms on Core Fitness'
-            : gyms.length === 1 ? 'One gym, so far' : `${gyms.length} gyms`}</h2>
-          <p className="section-lede">
-            {gymsFailed ? 'The list of gyms is not loading right now.' : 'Members of these gyms sign in with the same app. Tap one to join it.'}
-          </p>
-          <div className="gyms">
-            {gyms?.map((g) => (
-              <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`}>
-                <span className="mono" aria-hidden="true">{initials(g.name)}</span>
-                {g.name}
-                <Icon name="arrow" />
-              </a>
-            ))}
+          <div className="wrap">
+            <span className="eyebrow">Already on Core Fitness</span>
+            <h2>{gyms === null || gymsFailed ? 'Gyms on Core Fitness'
+              : gyms.length === 1 ? 'One gym, so far' : `${gyms.length} gyms`}</h2>
+            <p className="section-lede">
+              {gymsFailed ? 'The list of gyms is not loading right now.' : 'Members of these gyms sign in with the same app. Tap one to join it.'}
+            </p>
+            <div className="gyms">
+              {gyms?.map((g, i) => (
+                <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`} data-reveal style={{ ['--d' as string]: i }}>
+                  <span className="mono" aria-hidden="true">{initials(g.name)}</span>
+                  {g.name}
+                  <Icon name="arrow" />
+                </a>
+              ))}
+            </div>
           </div>
         </section>
 
-        <ApplySection tiers={tiers ?? []} chosen={chosen} />
+        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} /></div>
 
         <footer>
-          <a className="brand" href="#top">
-            <img src="/logo.png" alt="" width={26} height={26} />
-            <span>Core Fitness</span>
-          </a>
-          <span>Mamburao, Occidental Mindoro</span>
-          <span className="grow" />
-          <span className="links">
-            <a href={`${MEMBER_APP}/terms`}>Terms</a>
-            <a href={`${MEMBER_APP}/privacy`}>Privacy</a>
-            <a href={ADMIN_APP}>Gym sign in</a>
-          </span>
+          <div className="wrap foot-row">
+            <a className="brand" href="#top">
+              <img src="/logo-320.webp" alt="" width={26} height={26} />
+              <span>Core Fitness</span>
+            </a>
+            <span>Mamburao, Occidental Mindoro</span>
+            <span className="grow" />
+            <span className="links">
+              <a href={`${MEMBER_APP}/terms`}>Terms</a>
+              <a href={`${MEMBER_APP}/privacy`}>Privacy</a>
+              <a href={ADMIN_APP}>Gym sign in</a>
+            </span>
+          </div>
+          <div className="mega" aria-hidden="true">CORE FITNESS</div>
         </footer>
       </main>
     </>
@@ -267,6 +423,9 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (chosen) setForm((f) => ({ ...f, plan: chosen }));
   }, [chosen]);
   const plan = tiers.find((t) => t.key === form.plan) ?? null;
+
+  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone];
+  const done = needed.filter((v) => v.trim() !== '').length;
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm({ ...form, [k]: e.target.value });
@@ -339,7 +498,11 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
       <h2>Tell us about your gym</h2>
       <p className="section-lede">No card, no commitment. Pick a plan, tell us who you are, and we will talk it through with you before anything is paid.</p>
 
-      <div className="apply-panel">
+      <div className="apply-panel tilt-soft" data-reveal>
+        <div className="meter" aria-live="polite">
+          <div className="meter-bar"><span style={{ width: `${(done / needed.length) * 100}%` }} /></div>
+          <small>{done === needed.length ? 'Ready to send' : `${done} of ${needed.length} required answers`}</small>
+        </div>
         <form className="apply" onSubmit={submit}>
           {tiers.length > 0 && (
             <fieldset>
