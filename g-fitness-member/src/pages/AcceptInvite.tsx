@@ -5,6 +5,7 @@ import { clearGymContext } from '../lib/gymContext';
 import { clearGymApp } from '../lib/gymApp';
 import { Page, PageTitle } from '../components/ui/page';
 import { NocButton } from '../components/ui/noc';
+import { logout } from '../utils/auth';
 
 interface Peek {
   gym_id: string;
@@ -37,6 +38,7 @@ export default function AcceptInvite() {
   const navigate = useNavigate();
   const [peek, setPeek] = useState<Peek | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [myEmail, setMyEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -45,6 +47,7 @@ export default function AcceptInvite() {
     void (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSignedIn(!!session);
+      setMyEmail(session?.user.email ?? null);
 
       const { data, error: peekError } = await supabase.rpc('peek_invitation', { p_token: token });
       if (peekError || !Array.isArray(data) || !data[0]) {
@@ -70,6 +73,17 @@ export default function AcceptInvite() {
       setError(e instanceof Error ? e.message : 'That did not work');
       setBusy(false);
     }
+  };
+
+  /**
+   * Signed in as somebody else — usually the gym's own owner testing the link,
+   * or a shared phone. The database refuses the wrong address (0111), so offer
+   * the way out instead of a dead end: sign out, then come straight back here.
+   */
+  const switchAccount = async () => {
+    setBusy(true);
+    await logout();
+    window.location.assign(`/invite/${token}`);
   };
 
   const body = () => {
@@ -157,9 +171,19 @@ export default function AcceptInvite() {
         )}
 
         {signedIn ? (
-          <NocButton onClick={() => void accept()} disabled={busy}>
-            {busy ? 'Joining…' : `Join ${peek.gym_name}`}
-          </NocButton>
+          <div className="space-y-2.5">
+            {myEmail && (
+              <p className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                Signed in as <span style={{ color: 'var(--color-text-primary)' }}>{myEmail}</span>
+              </p>
+            )}
+            <NocButton className="w-full" onClick={() => void accept()} disabled={busy}>
+              {busy ? 'Joining…' : `Join ${peek.gym_name}`}
+            </NocButton>
+            <NocButton className="w-full" variant="structure" onClick={() => void switchAccount()} disabled={busy}>
+              {error ? 'Sign out and use the invited email' : 'Not you? Use another account'}
+            </NocButton>
+          </div>
         ) : (
           <div className="space-y-2.5">
             <p className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -167,10 +191,10 @@ export default function AcceptInvite() {
             </p>
             {/* The token rides along so they land back here afterwards rather
                 than on a home screen, wondering what happened to the link. */}
-            <NocButton onClick={() => navigate(`/register?invite=${token}`)}>
+            <NocButton className="w-full" onClick={() => navigate(`/register?invite=${token}`)}>
               Create my account
             </NocButton>
-            <NocButton variant="structure" onClick={() => navigate(`/login?invite=${token}`)}>
+            <NocButton className="w-full" variant="structure" onClick={() => navigate(`/login?invite=${token}`)}>
               I already have one
             </NocButton>
           </div>
@@ -196,7 +220,7 @@ function Message({ title, text, action, navigate }: {
     <div className="space-y-4 text-center">
       <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h2>
       <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{text}</p>
-      <NocButton onClick={() => navigate(action.to)}>{action.label}</NocButton>
+      <NocButton className="w-full" onClick={() => navigate(action.to)}>{action.label}</NocButton>
     </div>
   );
 }
