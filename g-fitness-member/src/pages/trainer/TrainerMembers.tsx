@@ -539,11 +539,10 @@ export default function TrainerMembers() {
                         gap: 7, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-primary-300)',
                       }}>
                         <ForkKnife size={14} /> Meal guide
+                        {/* The same mark as a routine the member applied from the coach (0145). */}
+                        <span className="flex-none" style={{ marginLeft: 'auto' }}><StatusPill tone="muted" label="Built with the coach" /></span>
                       </p>
-                      <p style={{ fontSize: 12, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                        From their AI coach, applied by them. Read-only.
-                      </p>
-                      <MealGuide sections={detail.mealGuide} />
+                      <MealGuide sections={detail.mealGuide} compact />
                     </div>
                   )}
 

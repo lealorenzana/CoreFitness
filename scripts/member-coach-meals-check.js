@@ -355,6 +355,29 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('the empty state links to the assistant: ' + (new URL(page.url()).pathname === '/member/chatbot' ? 'yes' : 'MISSING ' + page.url()));
 
+  // ── With the coach not ready (function answers 404), the empty state promises nothing ──
+  // coachReady() is remembered for the page's life, so this is a fresh load.
+  await page.route('**/functions/v1/ai-coach', (route) => route.fulfill({ status: 404, contentType: 'application/json',
+    headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"Function not found"}' }));
+  await go('/member/progress?tab=meals');
+  t = await text();
+  out.push('coach not ready: the tab still says no guide yet: ' + (/No meal guide yet\./.test(t) ? 'yes' : 'MISSING'));
+  out.push('coach not ready: no Ask the coach: ' + (await page.getByRole('button', { name: 'Ask the coach' }).count() === 0
+    && !/Ask the coach for one|The coach suggests/.test(t) ? 'yes' : 'STILL SHOWN'));
+  await page.unroute('**/functions/v1/ai-coach');
+
+  // ── The coach switched off for this member: the same ──
+  Object.assign(COACH, { allowed: false, reason: 'switched_off' });
+  await go('/member/progress?tab=meals');
+  t = await text();
+  out.push('coach switched off: no Ask the coach: ' + (await page.getByRole('button', { name: 'Ask the coach' }).count() === 0
+    && /No meal guide yet\./.test(t) ? 'yes' : 'STILL SHOWN'));
+  // At a message limit the coach is still theirs (the chat shows it), so the link stays.
+  Object.assign(COACH, { reason: 'daily_limit', used_today: 30 });
+  await go('/member/progress?tab=meals');
+  out.push('at the daily limit the link stays: ' + (await page.getByRole('button', { name: 'Ask the coach' }).count() === 1 ? 'yes' : 'MISSING'));
+  Object.assign(COACH, { allowed: true, reason: null, used_today: 3 });
+
   // ── A failed read says so, never "no guide" ──
   await page.route('**/rest/v1/rpc/my_meal_guide', (route) => route.fulfill({ status: 500, contentType: 'application/json',
     headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ code: 'XX000', message: 'Server error' }) }));

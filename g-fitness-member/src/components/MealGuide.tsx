@@ -6,7 +6,8 @@ import { useT } from '../lib/i18n';
 /**
  * A meal guide from the coach (0146), read-only: each section's title, its meal
  * ideas as rows on the page (never a card per row), and the fixed line under it.
- * The same rows for the member's Meals tab and the trainer's member sheet.
+ * The same rows for the member's Meals tab and the trainer's member sheet —
+ * `compact` there, 13px rows like the sheet's other blocks.
  *
  * The meal ideas are the member's applied guide, shown as written — the database
  * already refused any calorie, gram, macro or percentage figure. The fixed line
@@ -25,16 +26,16 @@ export function MealGuidanceNote({ style }: { style?: CSSProperties }) {
   );
 }
 
-export default function MealGuide({ sections }: { sections: MealSection[] }) {
+export default function MealGuide({ sections, compact }: { sections: MealSection[]; compact?: boolean }) {
   return (
-    <div className="flex flex-col" style={{ gap: 18 }} data-meal-guide>
+    <div className="flex flex-col" style={{ gap: compact ? 12 : 18 }} data-meal-guide>
       {sections.map((s, si) => (
         <section key={si} aria-label={s.title}>
           <Eyebrow mark>{s.title}</Eyebrow>
           <div style={{ marginTop: 4 }}>
             {s.items.map((item, i) => (
               <div key={i}>
-                <p data-meal-item style={{ padding: '11px 0', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-primary)' }}>{item}</p>
+                <p data-meal-item style={{ padding: compact ? '6px 0' : '11px 0', fontSize: compact ? 13 : 14, lineHeight: 1.5, color: 'var(--color-text-primary)' }}>{item}</p>
                 {i < s.items.length - 1 && <div className="hair" />}
               </div>
             ))}

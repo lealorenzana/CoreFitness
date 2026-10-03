@@ -261,8 +261,12 @@ async (page) => {
   await page.waitForTimeout(1500);
   let t = await text();
   out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  const marks = (t.match(/Built with the coach/g) || []).length;
+  // 0146: the meal guide carries the same mark, so the routines' count excludes its block —
+  // still exactly one routine mark, and exactly one on the guide.
+  const mealMarks = ((await page.locator('[data-trainee-meals]').innerText().catch(() => '')) || '').match(/Built with the coach/gi)?.length ?? 0;
+  const marks = (t.match(/Built with the coach/g) || []).length - mealMarks;
   out.push('the coach routine is marked, once: ' + (marks === 1 ? 'yes' : marks === 0 ? 'MISSING' : 'NO, ' + marks + ' marks'));
+  out.push('the meal guide carries the coach mark, once: ' + (mealMarks === 1 ? 'yes' : mealMarks === 0 ? 'MISSING' : 'NO, ' + mealMarks + ' marks'));
   // The mark sits on the coach's routine's row, not the member's.
   const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
   out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
@@ -280,6 +284,8 @@ async (page) => {
   out.push('the meal guide shows when shared: ' + (/Meal guide/.test(meals) && /Breakfast/i.test(meals) && meals.includes('2 eggs for protein, a fist of rice')
     && /Dinner/i.test(meals) && meals.includes('A palm of chicken, two cupped hands of vegetables') ? 'yes' : 'MISSING ' + meals));
   out.push('the meal guide carries the fixed line: ' + (meals.includes(FIXED) ? 'yes' : 'MISSING'));
+  const itemSize = await page.locator('[data-trainee-meals] [data-meal-item]').first().evaluate((e) => getComputedStyle(e).fontSize).catch(() => '');
+  out.push('the meal rows are compact (13px, like the sheet rows): ' + (itemSize === '13px' ? 'yes' : 'NO ' + itemSize));
   out.push('the meal guide is read-only: ' + (await page.locator('[data-trainee-meals] button, [data-trainee-meals] input, [data-trainee-meals] textarea').count() === 0 ? 'yes' : 'NO, it has controls'));
   await page.locator('[data-trainee-meals]').scrollIntoViewIfNeeded().catch(() => {});
   await page.screenshot({ path: 'shots/trainer-meal-guide.png' });
