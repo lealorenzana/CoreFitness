@@ -34,7 +34,7 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
 - **The legal pages are part of the system.** Terms/Privacy were boilerplate that *contradicted* it —
   "non-refundable" against 0073's pro-rata payout, a payment processor in a cash-only gym, deletion
   where members are archived. Rewritten 2026-09-14: **change them in the commit that changes the rule**,
-  and contact details come from `gym_settings`, never typed in.
+  and contact details come from `gym_settings`, never typed in. Both render through `components/legal/LegalPage.tsx` (contents that follow the scroll, `/terms#refunds` deep links, print); **the clause text lives only in `Terms.tsx`/`Privacy.tsx`**, and a glance card or table there restates a clause, never adds one.
 - **A zero-row `UPDATE`/`DELETE` reports success.** Five bugs so far. `assertWrote()` in `lib/api/mutate.ts`; `python
   scripts/audit-writes.py` counts them (109 writes, 86 guarded); also run **`audit-dead-code.py`** and
   **`audit-routes.py`** (why: MIGRATION_STATUS → *Audits*). **Guard `.update(`/`.delete(` only** —
