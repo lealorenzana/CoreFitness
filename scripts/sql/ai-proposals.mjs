@@ -590,8 +590,11 @@ const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 await guarded('M1. meal_text_ok', async () => {
   await owner();
   const ok = async (s) => (await db.query('select meal_text_ok($1) as ok', [s])).rows[0].ok;
-  const bad = ['1800 kcal a day', '150g protein', 'track your macros', '40% carbs', '2,000 calories', '500 kJ'];
-  const good = ['a palm of chicken', '2 eggs and toast', '1 cup of rice', 'a fist of vegetables'];
+  const bad = ['1800 kcal a day', '2,000 calories', '500 kJ', '150g protein', '150 grams', 'track your macros',
+    '40% carbs', 'Calories: 1800 a day', 'aim for calories around 1800', 'Protein: 150', 'protein = 150',
+    '40 percent carbs', '50 gr rice', '1 kg chicken', '1.5 g', "Calories don't matter here"];
+  const good = ['a palm of chicken', '2 eggs and toast', '1 cup of rice', 'eggs and 1 glass of milk',
+    '2 slices of bread', 'a fist of vegetables', 'fat-free milk is fine'];
   const b = await Promise.all(bad.map(ok));
   const g = await Promise.all(good.map(ok));
   const n = (await one(`select meal_text_ok(null) as ok`)).ok;
@@ -619,6 +622,22 @@ await guarded('M2. meals.set refusals', async () => {
   check('M2. a numbers item or title is refused with the plain sentence; a bad shape says the guide is not complete; nothing made',
     is(nums, NUM) && is(title, NUM) && [empty, seven, nine, long, blank, notStr].every((e) => is(e, SHAPE)) && made === 0,
     JSON.stringify({ nums, title, empty, seven, nine, long, blank, notStr, made }));
+});
+
+// M11 (fix round 1) -------------------------------------------------------------------------------
+await guarded('M11. a meal guide\'s summary obeys the no-numbers rule', async () => {
+  await as(A);
+  const e = await tryPropose('meals.set', meals1, 'Eat 1800 kcal a day');
+  const ok = await tryPropose('meals.set', meals1, 'Three easy meals');
+  // Only a meal guide's summary is held to it: a routine summary may still say "3 sets of 10".
+  const r = await tryPropose('goal.create', { title: 'Summary numbers', metric: 'custom' }, 'Protein: 150');
+  await owner();
+  const made = (await one(`select count(*)::int as n from ai_proposals where summary = 'Eat 1800 kcal a day'`)).n;
+  await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+  check('M11. a meals.set whose summary carries a number target is refused with the plain sentence; others are not',
+    !!e && e.includes("Meal guidance can't include calorie, gram, macro or percentage targets.") && made === 0
+      && ok === null && r === null,
+    JSON.stringify({ e, ok, r, made }));
 });
 
 // M3–M5 ---------------------------------------------------------------------------------------

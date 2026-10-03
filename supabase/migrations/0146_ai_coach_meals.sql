@@ -8,9 +8,10 @@
 -- the member taps Apply, and Undo puts back the guide it replaced (or none).
 --
 --   * meal_text_ok(text) — the rule that a guide carries no number targets: no
---     calorie/kcal/kJ figure, no "macro(s)", no gram figure, no percentage.
---     Counts of things are fine ("2 eggs", "1 cup of rice"). Enforced in the
---     database, on every title and item, at create and again at apply.
+--     calorie/kcal/kJ word at all, no "macro(s)", no nutrient followed by a
+--     figure ("Protein: 150"), no weight (g/gr/grams/kg/mg) or share (%/percent)
+--     figure. Counts of things are fine ("2 eggs", "1 cup of rice"). Enforced in
+--     the database on the summary and every title and item, at create and apply.
 --     (Postgres regex: \b is a backspace, not a word boundary — \M ends a word.)
 --   * ai_meal_guides — one current guide per member per gym. RLS on, no write
 --     policy for any role: only apply_ai_proposal()/undo_ai_proposal() write it.
@@ -22,17 +23,24 @@
 --   * my_meal_guide(), trainee_meal_guide(member) — the two reads the apps use.
 --   * ai_proposal_check / apply_ai_proposal / undo_ai_proposal — 0145's bodies,
 --     unchanged, plus a meals.set branch each (gated by the gym's progress
---     switch, as goal.create is). Grants are 0145's: create or replace keeps them.
+--     switch, as goal.create is); create_ai_proposal — 0145's body plus one
+--     check, since a meal guide's summary is shown on its card. Grants are
+--     0145's: create or replace keeps them.
 -- ============================================================================
 
 -- ---- the no-numbers rule ----------------------------------------------------------------------
 create or replace function meal_text_ok(p text) returns boolean
 language sql immutable set search_path = public as $$
   select p is null or not (
-       p ~* '\d[\d,.]*\s*(k?cal|kcals?|kilocalories?|calories?|kj)\M'
+       -- an energy word at all: "Calories: 1800" and "calories around 1800" carry the target after it
+       p ~* '\m(calories?|kcals?|kilocalories?|kj)\M'
     or p ~* '\mmacros?\M'
-    or p ~* '\d[\d,.]*\s*(g|grams?)\M'
-    or p ~* '\d+\s*%');
+    -- a nutrient followed by a figure: "Protein: 150", "protein = 150" ("fat-free" is fine)
+    or p ~* '\m(protein|carbs?|carbohydrates?|fats?|sugar)\s*[:=]?\s*\d'
+    -- an amount by weight or by share: "150g", "50 gr", "1 kg", "40%", "40 percent"
+    or p ~* '\d[\d,.]*\s*(g|gr|grams?|kg|mg)\M'
+    or p ~* '\d[\d,.]*\s*%'
+    or p ~* '\d[\d,.]*\s*(percent|per cent)\M');
 $$;
 revoke all on function meal_text_ok(text) from public, anon;
 grant execute on function meal_text_ok(text) to authenticated;
@@ -254,6 +262,39 @@ begin
 end;
 $$;
 revoke all on function ai_proposal_check(text, jsonb, uuid, uuid) from public, anon, authenticated;
+
+-- ---- create (0145 + a meal guide's summary obeys the rule: the card shows it) ---------------
+create or replace function create_ai_proposal(p_kind text, p_payload jsonb, p_summary text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := ai_proposal_member(); v_gym uuid := current_gym_id(); v_status jsonb; v_id uuid;
+begin
+  -- Every gate of 0143 except the message limits: the reply proposing this was
+  -- already counted (ai_claim_message), and may have been the day's last.
+  v_status := ai_coach_status();
+  if not ((v_status ->> 'allowed')::boolean
+          or v_status ->> 'reason' in ('daily_limit', 'monthly_limit')) then
+    raise exception 'The coach is not available to you right now.';
+  end if;
+  if char_length(btrim(coalesce(p_summary, ''))) not between 1 and 200 then
+    raise exception 'A change needs a short summary of up to 200 characters.';
+  end if;
+  -- 0146: a meal guide's summary is shown on its card, so it carries no number target either.
+  if p_kind = 'meals.set' and not meal_text_ok(p_summary) then
+    raise exception 'Meal guidance can''t include calorie, gram, macro or percentage targets.';
+  end if;
+  perform ai_proposal_check(p_kind, p_payload, v_me, v_gym);
+  -- Serialise one member's creates so two at once cannot both be the tenth.
+  perform pg_advisory_xact_lock(hashtext('ai_proposal:' || v_me::text));
+  if (select count(*) from ai_proposals p
+       where p.gym_id = v_gym and p.member_id = v_me and p.status = 'pending') >= 10 then
+    raise exception 'You have 10 changes waiting — apply or discard some first.';
+  end if;
+  insert into ai_proposals (gym_id, member_id, kind, payload, summary)
+  values (v_gym, v_me, p_kind, p_payload, btrim(p_summary))
+  returning id into v_id;
+  return v_id;
+end;
+$$;
 
 -- ---- apply (0145 + meals.set) ---------------------------------------------------------------
 create or replace function apply_ai_proposal(p_id uuid) returns jsonb

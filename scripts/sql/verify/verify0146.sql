@@ -12,9 +12,11 @@ begin
    and proname in ('meal_text_ok','my_meal_guide','trainee_meal_guide');
   select exists (select 1 from pg_constraint where conname = 'ai_proposals_kind_check'
                   and pg_get_constraintdef(oid) like '%meals.set%') into v_kind;
-  -- The rule itself, on three it must refuse and one it must allow.
+  -- The rule itself, on five it must refuse and two it must allow.
   select not meal_text_ok('1800 kcal a day') and not meal_text_ok('150g protein')
-     and not meal_text_ok('40% carbs') and meal_text_ok('2 eggs and a fist of rice') into v_rule;
+     and not meal_text_ok('40% carbs') and not meal_text_ok('Calories: 1800 a day')
+     and not meal_text_ok('Protein: 150')
+     and meal_text_ok('2 eggs and a fist of rice') and meal_text_ok('1 cup of rice') into v_rule;
   select exists (select 1 from pg_policies where tablename = 'ai_meal_guides' and cmd = 'SELECT'
                   and permissive = 'PERMISSIVE' and qual like '%is_my_trainee%' and qual like '%trainer%') into v_trainer_rule;
   select has_table_privilege('anon', 'public.ai_meal_guides', 'select') into v_anon;
