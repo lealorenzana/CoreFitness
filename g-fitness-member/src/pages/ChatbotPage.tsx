@@ -109,7 +109,10 @@ function Assistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  /** The transcript — the one thing on this screen that scrolls. */
+  const listRef = useRef<HTMLDivElement>(null);
+  /** Whether the member is at (or near) the newest message; reading back up turns following off. */
+  const atBottom = useRef(true);
   // The model call is awaited, so `messages` inside that closure would be stale
   // by the time it resolves. The ref always reads current.
   const messagesRef = useRef<Message[]>([]);
@@ -250,7 +253,14 @@ function Assistant() {
 
   useEffect(() => {
     messagesRef.current = messages;
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Scroll the transcript itself — scrollIntoView also moves every scrolling
+    // ancestor, which dragged the whole page and stranded the composer. And only
+    // while the member is already at the bottom, so a streaming reply does not
+    // yank them back down while they read an older message.
+    const el = listRef.current;
+    // Instant, not smooth: a smooth scroll fires scroll events on the way down,
+    // which read as "the member scrolled up" and switched following off.
+    if (el && atBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages, isTyping]);
 
   const stored = messages.filter((m) => m.id !== GREETING_ID);
@@ -286,6 +296,8 @@ function Assistant() {
     if (!trimmed) return;
     // What the member sees and what is saved as their row; the coach gets `trimmed`.
     const shown = again?.displayAs ?? trimmed;
+    // Sending always brings the newest message into view, even after reading back.
+    atBottom.current = true;
     if (!again || again.displayAs) {
       setMessages((prev) => [...prev, { id: Date.now().toString(), text: shown, sender: 'user' }]);
       if (!again) setInput('');
@@ -429,6 +441,7 @@ function Assistant() {
       setConversationId(id);
       // No greeting on a reopened thread: it would claim to have been said at
       // the top of a conversation that never contained it.
+      atBottom.current = true;
       setMessages(rows.map((r) => ({ id: r.id, text: r.body, sender: r.role === 'user' ? 'user' : 'bot', source: r.role === 'user' ? undefined : (r.source ?? 'rules') })));
       setSaveError(null);
     } catch (err) {
@@ -490,7 +503,11 @@ function Assistant() {
         </p>
       )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col" style={{ gap: 12, padding: '4px 0' }}>
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col" style={{ gap: 12, padding: '4px 0' }}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}>
         <AnimatePresence initial={false}>
           {messages.map((m) => (
             <motion.div
@@ -549,7 +566,6 @@ function Assistant() {
             onSkip={() => { setSetupSkipped(true); setRedoSetup(false); setSetupFailed(false); setSaveError(null); }}
           />
         )}
-        <div ref={endRef} />
       </div>
 
       <div className="flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 12 }}>

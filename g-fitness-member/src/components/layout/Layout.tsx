@@ -61,6 +61,13 @@ function ChatheadGate({ pathname }: { pathname: string }) {
 
 /** Screens that draw their own full-screen chrome. */
 const IMMERSIVE = /^\/member\/track\/session\//;
+/**
+ * Screens that fill the page area exactly and scroll inside themselves — the
+ * assistant, whose transcript scrolls and whose composer sits on the bar
+ * (2026-10-04). With `min-h-full` the page grew with every reply, so <main>
+ * scrolled the whole thing and pushed the composer off the bottom.
+ */
+const FILLS = /^\/member\/chatbot\/?$/;
 
 export default function Layout() {
   const location = useLocation();
@@ -70,6 +77,7 @@ export default function Layout() {
   // head, no gutter — the page draws its own chrome, and its way out is its own
   // close button (the session stays open and Today offers to resume it).
   const immersive = IMMERSIVE.test(location.pathname);
+  const fills = FILLS.test(location.pathname);
 
   // Was `mainRef.current.scrollTo(0, 0)` on every pathname change — a deliberate
   // reset that sent the member back to the top of Home every time they came
@@ -104,7 +112,7 @@ export default function Layout() {
           assistant's composer) opt out of it. */}
       <main
         ref={mainRef}
-        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive || fills ? 'overflow-hidden' : 'overflow-y-auto'}`}
         style={{
           backgroundColor: 'var(--color-bg)',
           paddingLeft: immersive ? 0 : 'var(--gutter)',
@@ -122,7 +130,7 @@ export default function Layout() {
             the framer fade this replaced: framer's `initial={{ opacity: 0 }}`
             is driven by rAF, and on a page that is not compositing it stays at
             zero — the trap CLAUDE.md names. */}
-        <div key={location.pathname} className="min-h-full flex flex-col noc-screen">
+        <div key={location.pathname} className={`${fills ? 'h-full' : 'min-h-full'} flex flex-col noc-screen`}>
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>
