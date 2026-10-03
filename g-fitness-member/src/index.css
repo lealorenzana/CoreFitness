@@ -123,7 +123,7 @@
     --brand-yellow:          var(--color-secondary);
     --brand-yellow-dark:     var(--color-secondary-hover);
     --brand-violet:          var(--color-primary);
-    --brand-violet-light:    #9B6BFF;
+    --brand-violet-light:    var(--color-primary-lift);
     --brand-violet-dark:     var(--color-primary-hover);
 
     --gold-yellow:           var(--color-secondary);
@@ -142,7 +142,7 @@
     --muted-foreground:               var(--color-text-muted);
     --card:                           var(--color-surface);
     --border:                         var(--color-border);
-    --secondary:                      rgba(124,58,237,0.1);
+    --secondary:                      color-mix(in srgb, var(--color-primary) 10%, transparent);
     --accent-foreground:              var(--color-primary);
   }
 
@@ -262,7 +262,7 @@
   .field-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.25);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
   }
   /* A field that follows the surrounding role accent instead of the app's
      primary. Used on the login screen, where the whole surface re-tints between
@@ -284,7 +284,7 @@
   }
   .field-input.field-role:focus {
     border-color: var(--role, var(--color-primary));
-    box-shadow: 0 0 0 3px var(--role-ring, rgba(124, 58, 237, 0.25));
+    box-shadow: 0 0 0 3px var(--role-ring, color-mix(in srgb, var(--color-primary) 25%, transparent));
   }
 
   .field-input::placeholder { color: var(--color-text-muted); }
@@ -335,23 +335,23 @@
   }
 
   /* Borders */
-  .gold-border        { border: 1px solid rgba(245,158,11,0.25); }
-  .gold-border-strong { border: 1px solid rgba(245,158,11,0.40); }
-  .gold-border-hover:hover { border-color: rgba(245,158,11,0.55); }
+  .gold-border        { border: 1px solid color-mix(in srgb, var(--color-secondary) 25%, transparent); }
+  .gold-border-strong { border: 1px solid color-mix(in srgb, var(--color-secondary) 40%, transparent); }
+  .gold-border-hover:hover { border-color: color-mix(in srgb, var(--color-secondary) 55%, transparent); }
 
-  .purple-border        { border: 1px solid rgba(124,58,237,0.25); }
-  .purple-border-hover:hover { border-color: rgba(124,58,237,0.55); }
+  .purple-border        { border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent); }
+  .purple-border-hover:hover { border-color: color-mix(in srgb, var(--color-primary) 55%, transparent); }
 
   /* Pills */
   .gold-pill {
     background: var(--color-secondary-light);
-    border: 1px solid rgba(245,158,11,0.30);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 30%, transparent);
     color: var(--color-secondary);
   }
 
   .purple-pill {
     background: var(--color-primary-light);
-    border: 1px solid rgba(124,58,237,0.30);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
     color: var(--color-primary);
   }
 
@@ -472,7 +472,7 @@ input[type='number'] {
 }
 .bignum-panel:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 /* ─── Text selection ────────────────────────────────────────────────────────
@@ -679,18 +679,18 @@ html, body {
    Core: the same glass as the sheets, darker so the sparkle carries.
    Halo: a soft violet ring that breathes out now and then while idle. */
 .ai-orb {
-  filter: drop-shadow(0 8px 22px rgba(124, 58, 237, 0.45));
+  filter: drop-shadow(0 8px 22px color-mix(in srgb, var(--color-primary) 45%, transparent));
 }
 .ai-orb__ring {
-  background: conic-gradient(from 0deg, #7c3aed, #c4b5fd, #f59e0b, #7c3aed);
+  background: conic-gradient(from 0deg, var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary));
 }
 .ai-orb__core {
-  background: radial-gradient(120% 120% at 30% 20%, rgba(124, 58, 237, 0.55) 0%, rgba(22, 20, 38, 0.92) 62%);
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--color-primary) 55%, transparent) 0%, rgba(22, 20, 38, 0.92) 62%);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.35);
 }
-.ai-orb__halo { inset: -4px; border: 1.5px solid rgba(167, 139, 250, 0.55); opacity: 0; }
+.ai-orb__halo { inset: -4px; border: 1.5px solid color-mix(in srgb, var(--color-primary-400) 55%, transparent); opacity: 0; }
 
 @keyframes ai-orb-spin { to { transform: rotate(360deg); } }
 @keyframes ai-orb-halo {
@@ -729,32 +729,32 @@ html, body {
   transition: box-shadow 0.25s ease, transform 0.16s var(--ease-out-soft, ease);
 }
 .orb-cell--busy {
-  border-color: rgba(196, 181, 253, 0.2);
-  background: radial-gradient(130% 120% at 30% 10%, rgba(196, 181, 253, 0.2) 0%, rgba(124, 58, 237, 0.08) 65%);
+  border-color: color-mix(in srgb, var(--color-primary-300) 20%, transparent);
+  background: radial-gradient(130% 120% at 30% 10%, color-mix(in srgb, var(--color-primary-300) 20%, transparent) 0%, color-mix(in srgb, var(--color-primary) 8%, transparent) 65%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .orb-cell--on {
   border: 1.5px solid transparent;
   background:
-    radial-gradient(120% 120% at 30% 12%, #a78bfa 0%, #6d28d9 48%, #2e1065 100%) padding-box,
-    conic-gradient(from var(--orb-a), #7c3aed, #c4b5fd, #f59e0b, #7c3aed) border-box;
-  box-shadow: 0 8px 20px -10px rgba(124, 58, 237, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    radial-gradient(120% 120% at 30% 12%, var(--color-primary-400) 0%, var(--color-primary-700) 48%, var(--color-primary-900) 100%) padding-box,
+    conic-gradient(from var(--orb-a), var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary)) border-box;
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-primary) 95%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   color: #fff;
 }
 .orb-cell--ring {
   border: 1.5px solid transparent;
   background:
     radial-gradient(130% 120% at 30% 10%, #2a1c52 0%, #0e0c18 70%) padding-box,
-    conic-gradient(from var(--orb-a), #7c3aed, #c4b5fd, #f59e0b, #7c3aed) border-box;
-  box-shadow: 0 6px 18px -12px rgba(124, 58, 237, 0.9);
+    conic-gradient(from var(--orb-a), var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary)) border-box;
+  box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--color-primary) 90%, transparent);
 }
 .orb-cell--planned {
-  border: 1px dashed rgba(196, 181, 253, 0.42);
+  border: 1px dashed color-mix(in srgb, var(--color-primary-300) 42%, transparent);
 }
 .orb-dot {
   border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, #fff 0%, #c4b5fd 35%, #7c3aed 100%);
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.95);
+  background: radial-gradient(circle at 35% 30%, #fff 0%, var(--color-primary-300) 35%, var(--color-primary) 100%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary-400) 95%, transparent);
 }
 @keyframes orb-turn { to { --orb-a: 560deg; } }
 
@@ -768,8 +768,8 @@ html, body {
   to   { opacity: 1; transform: none; }
 }
 @keyframes cal-visited-in {
-  0%   { opacity: 0; transform: scale(0.6); box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
-  60%  { opacity: 1; transform: scale(1.08); box-shadow: 0 0 22px 2px rgba(167, 139, 250, 0.55); }
+  0%   { opacity: 0; transform: scale(0.6); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent); }
+  60%  { opacity: 1; transform: scale(1.08); box-shadow: 0 0 22px 2px color-mix(in srgb, var(--color-primary-400) 55%, transparent); }
   100% { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -804,8 +804,8 @@ html, body {
   to   { opacity: 1; transform: none; }
 }
 @keyframes noc-gw-ring-out {
-  from { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.55); }
-  to   { box-shadow: 0 0 0 16px rgba(139, 92, 246, 0); }
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary-lift) 55%, transparent); }
+  to   { box-shadow: 0 0 0 16px color-mix(in srgb, var(--color-primary-lift) 0%, transparent); }
 }
 @keyframes noc-gw-dot {
   0%, 100% { opacity: 1; transform: scale(1); }

@@ -82,7 +82,7 @@ export default function GlassSheet({
         </div>
         <div aria-hidden style={{
           height: 1, margin: '0 var(--gutter)',
-          background: 'linear-gradient(90deg, transparent, #7c3aed 25%, #c4b5fd 55%, #f59e0b 85%, transparent)', opacity: 0.55,
+          background: 'linear-gradient(90deg, transparent, var(--color-primary) 25%, var(--color-primary-300) 55%, var(--color-secondary) 85%, transparent)', opacity: 0.55,
         }} />
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ padding: '14px var(--gutter) 18px' }}>
           {children}

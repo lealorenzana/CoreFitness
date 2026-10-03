@@ -7,7 +7,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
-import { gymBySlug, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
+import { cleanSlug, gymByCode, gymBySlug, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
 import { claimReferral, refFromUrl } from '../lib/api/referrals';
 import { getGymContext, myGyms } from '../lib/gymContext';
 import { supabase } from '../lib/supabaseClient';
@@ -22,8 +22,13 @@ import { supabase } from '../lib/supabaseClient';
  */
 export default function JoinGym() {
   const navigate = useNavigate();
-  const { slug } = useParams();
+  const { slug: rawSlug } = useParams();
+  const slug = rawSlug ? cleanSlug(rawSlug) : undefined;
   const [search, setSearch] = useState('');
+  /** A join code: typed here, or carried in by `?code=` on a link. */
+  const [code, setCode] = useState(() => new URLSearchParams(window.location.search).get('code') ?? '');
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [gyms, setGyms] = useState<PublicGym[] | null>(null);
   const [mine, setMine] = useState<Set<string>>(new Set());
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -66,12 +71,35 @@ export default function JoinGym() {
     return () => clearTimeout(t);
   }, [search, slug, load]);
 
+  const findByCode = async () => {
+    setCodeBusy(true);
+    setCodeError(null);
+    try {
+      const gym = await gymByCode(code);
+      if (!gym) { setCodeError('No gym has that code. Check it with your gym — codes can be changed.'); return; }
+      // Its own address, which finds it whether or not it is listed.
+      navigate(`/join/${gym.slug}${window.location.search.includes('ref=') ? `?ref=${new URLSearchParams(window.location.search).get('ref')}` : ''}`);
+    } catch (e) {
+      setCodeError(errorMessage(e));
+    } finally {
+      setCodeBusy(false);
+    }
+  };
+
+  // A `?code=` link finds its gym straight away.
+  useEffect(() => {
+    if (!slug && new URLSearchParams(window.location.search).get('code')) void (async () => { await findByCode(); })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const join = async (gym: PublicGym) => {
     // A friend's code rides along from `/join/<slug>?ref=CODE` (0125).
     const ref = refFromUrl();
     if (!signedIn) {
       // No account yet: sign up into this gym, keeping the friend's code.
-      navigate(`/register?gym=${encodeURIComponent(gym.id)}${ref ? `&ref=${ref}` : ''}`);
+      // The slug rides along: a gym joined by link or code is not in the
+      // public list Register would otherwise look it up in.
+      navigate(`/register?gym=${encodeURIComponent(gym.id)}&join=${encodeURIComponent(gym.slug)}${ref ? `&ref=${ref}` : ''}`);
       return;
     }
     setBusy(gym.id);
@@ -94,6 +122,24 @@ export default function JoinGym() {
     <Page>
       <PageTitle title="Find your gym" subtitle="Every gym on Core Fitness" back fallback="/choose-gym" />
 
+      {/* A gym that is not listed — "only with your link or code" — is found
+          here. Members who have the installed app and no link need this. */}
+      {!slug && <form className="mb-4" onSubmit={(e) => { e.preventDefault(); void findByCode(); }}>
+        <SectionHead title="Have a join code?" />
+        <div className="flex gap-2 items-stretch">
+          <TextInput className="flex-1 min-w-0"
+            value={code}
+            onChange={(e) => { setCode(e.target.value.toUpperCase()); setCodeError(null); }}
+            placeholder="e.g. PPDSSJ"
+            aria-label="Join code"
+            autoCapitalize="characters"
+            maxLength={12}
+          />
+          <NocButton type="submit" className="shrink-0" style={{ width: 96 }} disabled={!code.trim() || codeBusy}>{codeBusy ? 'Finding…' : 'Find'}</NocButton>
+        </div>
+        {codeError && <p className="mt-2 text-sm" style={{ color: 'var(--color-secondary)' }}>{codeError}</p>}
+      </form>}
+
       {!slug && (
         <TextInput
           value={search}
@@ -107,7 +153,7 @@ export default function JoinGym() {
         <EmptyState
           icon={Building2}
           title="No gym by that name"
-          message="Check the spelling, or ask your gym for their join link."
+          message={slug ? "Check the spelling, or ask your gym for their join link." : "Check the spelling, or type your gym’s join code above."}
         />
       )}
 
@@ -145,6 +191,7 @@ export default function JoinGym() {
       {signedIn === false && (
         <NocButton variant="ghost" onClick={() => navigate('/login')}>I already have an account</NocButton>
       )}
+      <NocButton variant="ghost" onClick={() => navigate('/get-app')}>Install the app on your phone</NocButton>
     </Page>
   );
 }

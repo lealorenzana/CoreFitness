@@ -9,6 +9,7 @@ import Layout from './components/layout/Layout';
 import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
 const Register = lazyPage(() => import('./pages/Register'));
+const GetApp = lazyPage(() => import('./pages/GetApp'));
 const Onboarding = lazyPage(() => import('./pages/Onboarding'));
 const Terms = lazyPage(() => import('./pages/Terms'));
 const Privacy = lazyPage(() => import('./pages/Privacy'));
@@ -191,6 +192,8 @@ function App() {
             session whose email matches the invitation. */}
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/register" element={<Register />} />
+        {/* The page a gym sends members to: the Android download and how to join. */}
+        <Route path="/get-app" element={<GetApp />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

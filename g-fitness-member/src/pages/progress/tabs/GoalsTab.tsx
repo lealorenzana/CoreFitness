@@ -79,9 +79,9 @@ function Ring({ pct, size = 96, children }: { pct: number | null; size?: number;
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }} aria-hidden>
         <defs>
           <linearGradient id="goal-ring" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7c3aed" />
-            <stop offset="60%" stopColor="#c4b5fd" />
-            <stop offset="100%" stopColor="#f59e0b" />
+            <stop offset="0%" style={{ stopColor: 'var(--color-primary)' }} />
+            <stop offset="60%" style={{ stopColor: 'var(--color-primary-300)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--color-secondary)' }} />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(233,233,237,0.08)" strokeWidth={8} />

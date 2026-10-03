@@ -146,6 +146,16 @@ function Footnote({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * A number a phone can dial: digits and a leading +, nothing else. Gyms type
+ * "0917 123 4567", "(043) 123-4567" or "+63 917…"; brackets and dashes inside a
+ * tel: link make some dialers refuse it.
+ */
+const dialable = (phone: string) => {
+  const t = phone.trim();
+  return (t.startsWith('+') ? '+' : '') + t.replace(/[^0-9]/g, '');
+};
+
 export default function Settings() {
   // The test alert is shown by this gym's app, so it carries this gym's name.
   const gymApp = useGymApp();
@@ -516,7 +526,14 @@ export default function Settings() {
         {(gym?.phone || gym?.email) && (
           <div className="flex" style={{ gap: 9, marginTop: 12 }}>
             {gym?.phone && (
-              <a href={`tel:${gym.phone.replace(/\s+/g, '')}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}>
+              <a href={`tel:${dialable(gym.phone)}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}
+                onClick={() => {
+                  // A computer or a browser with nothing to dial with ignores a
+                  // tel: link silently, which reads as a broken button. The
+                  // number goes on the clipboard and on screen either way.
+                  void navigator.clipboard?.writeText(gym.phone ?? '').catch(() => undefined);
+                  toast.info(`Calling ${gym.phone} — the number is copied too.`);
+                }}>
                 <Phone size={15} aria-hidden /> Call the gym
               </a>
             )}
@@ -526,6 +543,11 @@ export default function Settings() {
               </a>
             )}
           </div>
+        )}
+        {gym?.phone && (
+          <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+            {gym.phone}{gym.email ? ` · ${gym.email}` : ''}
+          </p>
         )}
       </section>
 

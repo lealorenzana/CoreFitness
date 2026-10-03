@@ -572,11 +572,11 @@ function WorkoutRun() {
               aria-label={`${e.name}: ${n} of ${e.targetSets} sets${i === idx ? ', current' : ''}`} style={{ height: 20 }}>
               <span className="relative block overflow-hidden" style={{
                 height: i === idx ? 6 : 4, borderRadius: 3, background: 'rgba(233, 233, 237, 0.12)',
-                boxShadow: i === idx ? '0 0 0 1px rgba(196, 181, 253, 0.45)' : undefined, transition: 'height 0.25s ease',
+                boxShadow: i === idx ? '0 0 0 1px color-mix(in srgb, var(--color-primary-300) 45%, transparent)' : undefined, transition: 'height 0.25s ease',
               }}>
                 <span className="absolute inset-y-0 left-0" style={{
-                  width: `${frac * 100}%`, background: 'linear-gradient(90deg, #7C3AED, #C4B5FD)',
-                  boxShadow: '0 0 10px rgba(124, 58, 237, 0.9)', transition: 'width 0.5s var(--ease-out-soft)',
+                  width: `${frac * 100}%`, background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-300))',
+                  boxShadow: '0 0 10px color-mix(in srgb, var(--color-primary) 90%, transparent)', transition: 'width 0.5s var(--ease-out-soft)',
                 }} />
               </span>
             </button>
@@ -757,7 +757,7 @@ function WorkoutRun() {
             <Timer size={17} style={{ color: 'var(--color-primary-300)' }} />
             <span className="tabular-nums" style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)' }}>{clock(restLeft)}</span>
             <span className="flex-1 overflow-hidden" style={{ height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.12)' }}>
-              <span className="block" style={{ height: '100%', width: `${restTotal > 0 ? (restLeft / restTotal) * 100 : 0}%`, background: '#8B5CF6', transition: 'width 0.3s linear' }} />
+              <span className="block" style={{ height: '100%', width: `${restTotal > 0 ? (restLeft / restTotal) * 100 : 0}%`, background: 'var(--color-primary-lift)', transition: 'width 0.3s linear' }} />
             </span>
             <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>Rest</span>
           </button>
@@ -814,10 +814,10 @@ function WorkoutRun() {
                 className="flex items-center text-left noc-press-soft"
                 style={{
                   gap: 12, padding: '10px 12px', borderRadius: 14,
-                  background: i === idx ? 'rgba(124, 58, 237, 0.16)' : 'rgba(255, 255, 255, 0.03)',
-                  border: `1px solid ${i === idx ? 'rgba(196, 181, 253, 0.4)' : 'rgba(233, 233, 237, 0.08)'}`,
+                  background: i === idx ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${i === idx ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgba(233, 233, 237, 0.08)'}`,
                 }}>
-                <span className="grid place-items-center" style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', background: 'rgba(124, 58, 237, 0.18)', color: 'var(--color-primary-300)' }}>
+                <span className="grid place-items-center" style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', background: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', color: 'var(--color-primary-300)' }}>
                   <Glyph size={19} weight="duotone" />
                 </span>
                 <span className="flex-1 min-w-0">
@@ -875,8 +875,8 @@ function StatusChip({ status }: { status: string }) {
     <span className="inline-flex items-center" style={{
       gap: 7, height: 26, padding: '0 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 700,
       letterSpacing: '0.1em', textTransform: 'uppercase', color,
-      background: next ? 'rgba(245, 158, 11, 0.10)' : 'rgba(124, 58, 237, 0.14)',
-      border: `1px solid ${next ? 'rgba(245, 158, 11, 0.35)' : 'rgba(196, 181, 253, 0.3)'}`,
+      background: next ? 'color-mix(in srgb, var(--color-secondary) 10%, transparent)' : 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
+      border: `1px solid ${next ? 'color-mix(in srgb, var(--color-secondary) 35%, transparent)' : 'color-mix(in srgb, var(--color-primary-300) 30%, transparent)'}`,
     }}>
       <span className={live ? 'noc-gw-dot' : undefined} style={{ width: 6, height: 6, borderRadius: 999, background: color }} />
       {status}
@@ -913,8 +913,8 @@ function SetRow({
   return (
     <div className={`flex items-center ${flashing ? 'noc-gw-ring-out' : ''}`} style={{
       gap: 10, padding: '8px 8px 8px 10px', borderRadius: 16,
-      background: logged ? 'rgba(124, 58, 237, 0.14)' : 'rgba(18, 17, 28, 0.55)',
-      border: `1px solid ${focused ? 'rgba(245, 158, 11, 0.55)' : logged ? 'rgba(196, 181, 253, 0.28)' : 'rgba(233, 233, 237, 0.08)'}`,
+      background: logged ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'rgba(18, 17, 28, 0.55)',
+      border: `1px solid ${focused ? 'color-mix(in srgb, var(--color-secondary) 55%, transparent)' : logged ? 'color-mix(in srgb, var(--color-primary-300) 28%, transparent)' : 'rgba(233, 233, 237, 0.08)'}`,
       backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
       transition: 'border-color 0.25s ease, background-color 0.25s ease',
     }}>
@@ -922,7 +922,7 @@ function SetRow({
         className="flex-1 min-w-0 flex items-center justify-start text-left" style={{ gap: 12 }}>
         <span className="grid place-items-center tabular-nums" style={{
           width: 30, height: 30, borderRadius: 999, flex: 'none', fontSize: 13, fontWeight: 700,
-          background: logged ? 'linear-gradient(135deg, #7C3AED, #A78BFA)' : 'rgba(255, 255, 255, 0.06)',
+          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-400))' : 'rgba(255, 255, 255, 0.06)',
           color: logged ? '#fff' : focused ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
         }}>{n}</span>
         <span className="min-w-0">
@@ -931,7 +931,7 @@ function SetRow({
               {logged ? describeSet(logged) : planned}
             </span>
             {beat && (
-              <span className="inline-flex items-center noc-pop" style={{ gap: 3, fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 999, flex: 'none', color: 'var(--color-primary-300)', background: 'rgba(124, 58, 237, 0.22)' }}>
+              <span className="inline-flex items-center noc-pop" style={{ gap: 3, fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 999, flex: 'none', color: 'var(--color-primary-300)', background: 'color-mix(in srgb, var(--color-primary) 22%, transparent)' }}>
                 <TrendUp size={11} weight="bold" /> Beat last time
               </span>
             )}
@@ -946,9 +946,9 @@ function SetRow({
         className="grid place-items-center noc-press disabled:opacity-50"
         style={{
           width: 44, height: 44, borderRadius: 13, flex: 'none',
-          background: logged ? 'linear-gradient(135deg, #7C3AED, #8B5CF6)' : 'rgba(255, 255, 255, 0.04)',
-          border: logged ? '1px solid rgba(196, 181, 253, 0.5)' : '1px solid rgba(233, 233, 237, 0.16)',
-          boxShadow: logged ? '0 0 18px -4px rgba(124, 58, 237, 0.8)' : undefined,
+          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-lift))' : 'rgba(255, 255, 255, 0.04)',
+          border: logged ? '1px solid color-mix(in srgb, var(--color-primary-300) 50%, transparent)' : '1px solid rgba(233, 233, 237, 0.16)',
+          boxShadow: logged ? '0 0 18px -4px color-mix(in srgb, var(--color-primary) 80%, transparent)' : undefined,
           color: logged ? '#fff' : 'var(--color-text-secondary)',
         }}>
         <Check size={18} weight="bold" />
@@ -1028,12 +1028,12 @@ function FinishView({
     <div className="relative flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ padding: '28px var(--gutter) 20px' }}>
       <div className="flex flex-col items-center text-center">
         <div className="relative grid place-items-center" style={{ width: 132, height: 132 }}>
-          <span aria-hidden className="absolute rounded-full noc-gw-burst" style={{ inset: 18, border: '2px solid rgba(196, 181, 253, 0.6)' }} />
-          <span aria-hidden className="absolute rounded-full noc-gw-burst noc-gw-burst--late" style={{ inset: 18, border: '2px solid rgba(245, 158, 11, 0.5)' }} />
+          <span aria-hidden className="absolute rounded-full noc-gw-burst" style={{ inset: 18, border: '2px solid color-mix(in srgb, var(--color-primary-300) 60%, transparent)' }} />
+          <span aria-hidden className="absolute rounded-full noc-gw-burst noc-gw-burst--late" style={{ inset: 18, border: '2px solid color-mix(in srgb, var(--color-secondary) 50%, transparent)' }} />
           <span className="grid place-items-center noc-pop" style={{
             width: 96, height: 96, borderRadius: 999, color: '#fff',
-            background: 'radial-gradient(120% 120% at 30% 20%, #A78BFA 0%, #7C3AED 55%, #4C1D95 100%)',
-            boxShadow: '0 0 60px -8px rgba(124, 58, 237, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+            background: 'radial-gradient(120% 120% at 30% 20%, var(--color-primary-400) 0%, var(--color-primary) 55%, var(--color-primary-900) 100%)',
+            boxShadow: '0 0 60px -8px color-mix(in srgb, var(--color-primary) 90%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
           }}>
             <Trophy size={46} weight="fill" />
           </span>
@@ -1089,7 +1089,7 @@ function FinishView({
 
 function BigStat({ value, label, highlight = false }: { value: ReactNode; label: string; highlight?: boolean }) {
   return (
-    <div style={{ ...glassCard, padding: '14px 16px', border: `1px solid ${highlight ? 'rgba(196, 181, 253, 0.4)' : 'rgba(233, 233, 237, 0.10)'}` }}>
+    <div style={{ ...glassCard, padding: '14px 16px', border: `1px solid ${highlight ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgba(233, 233, 237, 0.10)'}` }}>
       <p className="tabular-nums" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: highlight ? 'var(--color-primary-300)' : 'var(--color-text-primary)' }}>
         {value}
       </p>

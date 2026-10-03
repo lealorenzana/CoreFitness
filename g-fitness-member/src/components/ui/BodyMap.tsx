@@ -112,16 +112,14 @@ function pathsFor(view: BodyView, key: BodyRegionKey): readonly string[] {
 }
 
 /* ── Colour ────────────────────────────────────────────────────────────────
-   Mixed in JS rather than with CSS `color-mix()`: the value goes into an SVG
-   `fill` attribute and is also read back for the summary swatches. Both tokens
-   are duplicated as literals because `getComputedStyle` is not available while
-   building an attribute string. They match --color-primary / --color-secondary. */
-const VIOLET = [124, 58, 237] as const;
-const AMBER = [245, 158, 11] as const;
-
+   The gym's two colours, mixed by the browser: the value is set as the path's
+   `fill` *style* (a style accepts var() and color-mix(); an SVG attribute does
+   not), and the summary swatches use the same string as a background. It was
+   Core Fitness's violet and amber as numbers, so a gym in emerald and lime got
+   a violet-to-amber body map. */
 function mix(t: number): string {
-  const c = VIOLET.map((v, i) => Math.round(v + (AMBER[i] - v) * t));
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+  const pct = Math.round(Math.max(0, Math.min(1, t)) * 100);
+  return `color-mix(in srgb, var(--color-secondary) ${pct}%, var(--color-primary))`;
 }
 
 interface RegionState {
@@ -298,8 +296,7 @@ export default function BodyMap({
                     // `screen` adds light instead of covering, so the muscle's
                     // own shading survives the tint. A flat alpha fill over art
                     // this dark turns amber into mud.
-                    style={{ mixBlendMode: s.empty ? 'normal' : 'screen' }}
-                    fill={s.empty ? (isSel ? '#FFFFFF' : 'transparent') : s.fill}
+                    style={{ mixBlendMode: s.empty ? 'normal' : 'screen', fill: s.empty ? (isSel ? '#FFFFFF' : 'transparent') : s.fill }}
                     fillOpacity={s.empty ? (isSel ? 0.14 : 0) : s.opacity * (dimmed ? 0.25 : 1)}
                     stroke={isSel ? '#FFFFFF' : s.empty ? 'rgba(255,255,255,0.20)' : 'none'}
                     strokeWidth={isSel ? 3 : 1.5}

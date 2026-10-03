@@ -312,8 +312,8 @@ export function TextTabs<T extends string>({
             <span aria-hidden className="noc-underline absolute left-0 right-0 bottom-0" style={{
               height: 2, borderRadius: 1,
               // The orb's gradient, so the selection mark belongs to the same family.
-              background: 'linear-gradient(90deg, #7c3aed, #c4b5fd 60%, #f59e0b)',
-              boxShadow: on ? '0 0 10px rgba(124, 58, 237, 0.8)' : 'none',
+              background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-300) 60%, var(--color-secondary))',
+              boxShadow: on ? '0 0 10px color-mix(in srgb, var(--color-primary) 80%, transparent)' : 'none',
               transform: on ? 'scaleX(1)' : 'scaleX(0)', opacity: on ? 1 : 0,
             }} />
           </button>
@@ -380,7 +380,10 @@ export function Panel({
   style?: CSSProperties;
   ariaLabel?: string;
 }) {
-  const hue = glow === 'action' ? '245, 158, 11' : '124, 58, 237';
+  // The gym's own two colours (applyAccent), never Core Fitness's violet and
+  // amber written in as numbers — that is how an emerald-and-lime gym still had
+  // a violet glow on every Today card.
+  const hue = glow === 'action' ? 'var(--color-secondary)' : 'var(--color-primary)';
   const css: CSSProperties = {
     position: 'relative',
     overflow: 'hidden',
@@ -388,14 +391,14 @@ export function Panel({
     boxShadow: 'var(--shadow-panel)',
     padding: 'var(--card-pad)',
     background: glow
-      ? `radial-gradient(150% 120% at 8% 0%, rgba(${hue}, 0.22) 0%, transparent 66%)${filled ? ', var(--color-surface)' : ''}`
+      ? `radial-gradient(150% 120% at 8% 0%, color-mix(in srgb, ${hue} 22%, transparent) 0%, transparent 66%)${filled ? ', var(--color-surface)' : ''}`
       : filled ? 'var(--color-surface)' : 'transparent',
     ...style,
   };
   const topLine = glow ? (
     <span aria-hidden className="noc-sweep" style={{
       position: 'absolute', top: 0, left: 16, right: 16, height: 1,
-      background: `linear-gradient(to right, rgb(${hue}), transparent)`,
+      background: `linear-gradient(to right, ${hue}, transparent)`,
     }} />
   ) : null;
 

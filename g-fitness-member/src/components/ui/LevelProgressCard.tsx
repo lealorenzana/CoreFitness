@@ -269,7 +269,7 @@ export default function LevelProgressCard({
         {canAdopt && (
           <div
             className="p-3 rounded-xl flex items-start gap-2.5"
-            style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}
+            style={{ background: 'var(--color-secondary-light)', border: '1px solid color-mix(in srgb, var(--color-secondary) 30%, transparent)' }}
           >
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white leading-snug">

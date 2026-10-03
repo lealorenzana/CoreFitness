@@ -16,29 +16,29 @@ export function WorkoutBackdrop({ icon: Glyph, cue }: { icon: Icon; cue: string 
     <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
       <div className="absolute inset-0" style={{
         background:
-          'radial-gradient(120% 70% at 100% 0%, rgba(124, 58, 237, 0.34) 0%, transparent 60%),'
-          + 'radial-gradient(90% 60% at 0% 100%, rgba(245, 158, 11, 0.14) 0%, transparent 60%),'
+          'radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--color-primary) 34%, transparent) 0%, transparent 60%),'
+          + 'radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--color-secondary) 14%, transparent) 0%, transparent 60%),'
           + 'var(--color-bg)',
       }} />
       <div key={cue} className="absolute noc-gw-icon-in" style={{ top: '-4%', right: '-30%', width: 460, height: 460 }}>
-        <div className="noc-gw-drift" style={{ color: '#7C3AED', opacity: 0.55, filter: 'blur(44px)' }}>
+        <div className="noc-gw-drift" style={{ color: 'var(--color-primary)', opacity: 0.55, filter: 'blur(44px)' }}>
           <Glyph size={460} weight="fill" />
         </div>
       </div>
       {/* The icon itself, softly out of focus — recognisable, never sharp enough to compete with the text. */}
       <div key={cue + ':a'} className="absolute noc-gw-icon-in" style={{ top: '2%', right: '-22%', width: 380, height: 380, animationDelay: '40ms' }}>
-        <div className="noc-gw-drift" style={{ color: '#A78BFA', opacity: 0.42, filter: 'blur(9px)' }}>
+        <div className="noc-gw-drift" style={{ color: 'var(--color-primary-400)', opacity: 0.42, filter: 'blur(9px)' }}>
           <Glyph size={380} weight="duotone" />
         </div>
       </div>
       <div key={cue + ':b'} className="absolute noc-gw-icon-in" style={{ bottom: '6%', left: '-26%', width: 300, height: 300, animationDelay: '120ms' }}>
-        <div className="noc-gw-drift noc-gw-drift--slow" style={{ color: '#F59E0B', opacity: 0.22, filter: 'blur(38px)' }}>
+        <div className="noc-gw-drift noc-gw-drift--slow" style={{ color: 'var(--color-secondary)', opacity: 0.22, filter: 'blur(38px)' }}>
           <Glyph size={300} weight="fill" />
         </div>
       </div>
       {/* A crisp hairline copy over the blur — the depth that reads as "premium". */}
       <div key={cue + ':c'} className="absolute noc-gw-icon-in" style={{ top: '2%', right: '-22%', width: 380, height: 380, animationDelay: '60ms' }}>
-        <div className="noc-gw-drift" style={{ color: 'rgba(196, 181, 253, 0.16)' }}>
+        <div className="noc-gw-drift" style={{ color: 'color-mix(in srgb, var(--color-primary-300) 16%, transparent)' }}>
           <Glyph size={380} weight="thin" />
         </div>
       </div>
@@ -66,14 +66,14 @@ export function CountRing({
   const r = (size - stroke) / 2;
   const len = 2 * Math.PI * r;
   const f = Math.max(0, Math.min(1, fraction));
-  const [a, b] = tone === 'action' ? ['#FBBF24', '#F59E0B'] : ['#C4B5FD', '#7C3AED'];
+  const [a, b] = tone === 'action' ? ['var(--color-secondary-300)', 'var(--color-secondary)'] : ['var(--color-primary-300)', 'var(--color-primary)'];
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', overflow: 'visible' }} aria-hidden>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={a} />
-            <stop offset="100%" stopColor={b} />
+            <stop offset="0%" style={{ stopColor: a }} />
+            <stop offset="100%" style={{ stopColor: b }} />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(233, 233, 237, 0.08)" strokeWidth={stroke} />
@@ -134,7 +134,7 @@ export function Stepper({
 
 /** Falling confetti for the finish screen. Deterministic, so it looks the same on every render. */
 export function Confetti({ count = 26 }: { count?: number }) {
-  const colors = ['#7C3AED', '#C4B5FD', '#F59E0B', '#FBBF24', '#A78BFA'];
+  const colors = ['var(--color-primary)', 'var(--color-primary-300)', 'var(--color-secondary)', 'var(--color-secondary-300)', 'var(--color-primary-400)'];
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
       {Array.from({ length: count }, (_, i) => {

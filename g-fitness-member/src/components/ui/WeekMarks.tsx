@@ -52,7 +52,7 @@ export default function WeekMarks({
                 day, a faint moon for rest. */}
             <div aria-hidden className={`${cls} grid place-items-center`} style={{ animationDelay: trained && !isNow ? `${120 + i * 55}ms` : undefined, height: 34 }}>
               {trained ? <Check size={15} weight="bold" style={{ color: '#fff', filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.6))' }} />
-                : isNow ? <Lightning size={15} weight="fill" style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.7))' }} />
+                : isNow ? <Lightning size={15} weight="fill" style={{ color: 'var(--color-secondary-300)', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-secondary) 70%, transparent))' }} />
                 : isPlanned ? <CalendarCheck size={14} style={{ color: 'var(--color-primary-300)', opacity: 0.8 }} />
                 : <MoonStars size={13} style={{ color: 'var(--color-text-muted)', opacity: 0.45 }} />}
             </div>

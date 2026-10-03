@@ -37,7 +37,7 @@ function MiniOrb({ size }: { size: number }) {
       <span className="ai-orb__ring absolute inset-0 rounded-full" />
       <span className="ai-orb__core absolute rounded-full" style={{ inset: Math.max(1.5, size / 27) }} />
       <Sparkle size={Math.round(size * 0.42)} weight="fill" className="relative"
-        style={{ color: '#e9e3ff', filter: 'drop-shadow(0 0 5px rgba(196, 181, 253, 0.85))' }} />
+        style={{ color: '#e9e3ff', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary-300) 85%, transparent))' }} />
     </span>
   );
 }
@@ -187,7 +187,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 <div className="min-w-0">
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>AI Assistant</p>
                   <p className="flex items-center gap-1.5 whitespace-nowrap" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    <span className="inline-block rounded-full flex-shrink-0" style={{ width: 6, height: 6, background: 'linear-gradient(135deg, #a78bfa, #f59e0b)' }} />
+                    <span className="inline-block rounded-full flex-shrink-0" style={{ width: 6, height: 6, background: 'linear-gradient(135deg, var(--color-primary-400), var(--color-secondary))' }} />
                     From the gym's own info
                   </p>
                 </div>
@@ -198,7 +198,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 <button
                   onClick={() => { onClose(); navigate('/member/chatbot'); }}
                   className="h-9 px-3 rounded-full flex items-center gap-1.5 noc-press"
-                  style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', border: '1px solid rgba(196, 181, 253, 0.28)', background: 'rgba(124, 58, 237, 0.12)' }}
+                  style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', border: '1px solid color-mix(in srgb, var(--color-primary-300) 28%, transparent)', background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}
                 >
                   <ClockCounterClockwise size={15} /> Saved chats
                 </button>
@@ -212,7 +212,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 </button>
               </div>
               <span aria-hidden className="absolute left-0 right-0 bottom-0" style={{
-                height: 1, background: 'linear-gradient(90deg, transparent, #7c3aed 25%, #c4b5fd 55%, #f59e0b 85%, transparent)', opacity: 0.7,
+                height: 1, background: 'linear-gradient(90deg, transparent, var(--color-primary) 25%, var(--color-primary-300) 55%, var(--color-secondary) 85%, transparent)', opacity: 0.7,
               }} />
             </div>
 
@@ -234,13 +234,13 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                       fontSize: 13.5, lineHeight: 1.55, color: '#fff',
                       // Your own messages carry the orb's violet, deepening
                       // toward its core — amber stays the app's action colour.
-                      background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-                      boxShadow: '0 6px 18px -8px rgba(124, 58, 237, 0.8)',
+                      background: 'linear-gradient(135deg, var(--color-primary-lift) 0%, var(--color-primary-700) 100%)',
+                      boxShadow: '0 6px 18px -8px color-mix(in srgb, var(--color-primary) 80%, transparent)',
                       borderRadius: '18px 18px 4px 18px',
                     } : {
                       fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)',
                       background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(196, 181, 253, 0.16)',
+                      border: '1px solid color-mix(in srgb, var(--color-primary-300) 16%, transparent)',
                       borderRadius: '18px 18px 18px 4px',
                     }}
                   >
@@ -251,11 +251,11 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
               {isTyping && (
                 <div className="flex gap-2 items-end">
                   <MiniOrb size={26} />
-                  <div className="px-3.5 py-3" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(196, 181, 253, 0.16)', borderRadius: '18px 18px 18px 4px' }}>
+                  <div className="px-3.5 py-3" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid color-mix(in srgb, var(--color-primary-300) 16%, transparent)', borderRadius: '18px 18px 18px 4px' }}>
                     <div className="flex gap-1">
                       {[0, 150, 300].map(d => (
                         <div key={d} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                          style={{ background: '#c4b5fd', animationDelay: `${d}ms` }} />
+                          style={{ background: 'var(--color-primary-300)', animationDelay: `${d}ms` }} />
                       ))}
                     </div>
                   </div>
@@ -270,7 +270,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 {['Hours', 'Pricing', 'Trainers', 'Book a class'].map(q => (
                   <button key={q} onClick={() => { setInput(q); }}
                     className="px-3 py-1.5 rounded-full noc-press"
-                    style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', background: 'rgba(124, 58, 237, 0.12)', border: '1px solid rgba(196, 181, 253, 0.26)' }}>
+                    style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)', background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary-300) 26%, transparent)' }}>
                     {q}
                   </button>
                 ))}
@@ -287,7 +287,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                   placeholder="Ask me anything…"
                   aria-label="Your question"
                   className="field-input flex-1"
-                  style={{ borderRadius: 999, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(196, 181, 253, 0.2)' }}
+                  style={{ borderRadius: 999, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid color-mix(in srgb, var(--color-primary-300) 20%, transparent)' }}
                 />
                 {/* The orb's ring, as the send button: the one control here that
                     does something, in the gradient that means "assistant". */}
@@ -297,8 +297,8 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                   className="grid place-items-center rounded-full flex-shrink-0 disabled:opacity-40 noc-press"
                   style={{
                     width: 46, height: 46,
-                    background: 'conic-gradient(from 210deg, #7c3aed, #c4b5fd, #f59e0b, #7c3aed)',
-                    boxShadow: '0 6px 18px -6px rgba(124, 58, 237, 0.75)',
+                    background: 'conic-gradient(from 210deg, var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary))',
+                    boxShadow: '0 6px 18px -6px color-mix(in srgb, var(--color-primary) 75%, transparent)',
                     color: '#fff',
                   }}
                   aria-label="Send"

@@ -10,7 +10,7 @@ export default function ErrorState({ message = 'Something went wrong while loadi
   return (
     <div
       className="rounded-2xl p-6 text-center"
-      style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}
+      style={{ background: 'var(--color-secondary-light)', border: '1px solid color-mix(in srgb, var(--color-secondary) 30%, transparent)' }}
     >
       <div
         className="w-12 h-12 mx-auto mb-3 rounded-2xl flex items-center justify-center"

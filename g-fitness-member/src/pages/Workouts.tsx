@@ -62,7 +62,7 @@ function Thumb({ r }: { r: WorkoutResourceRow }) {
   }
   return (
     <span className="grid place-items-center" aria-hidden style={{
-      ...box, color: 'var(--color-primary-300)', background: 'rgba(124, 58, 237, 0.12)',
+      ...box, color: 'var(--color-primary-300)', background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
       boxShadow: 'inset 0 0 0 1px var(--color-hairline)',
     }}>
       <Globe size={20} />

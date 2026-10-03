@@ -184,7 +184,7 @@ export default function RoutineEditor() {
                     <div className="flex items-center" style={{ gap: 10 }}>
                       <span className="flex-none grid place-items-center" style={{
                         width: 26, height: 26, borderRadius: 8, fontSize: 12.5, fontWeight: 700,
-                        color: 'var(--color-primary-300)', background: 'rgba(124, 58, 237, 0.18)',
+                        color: 'var(--color-primary-300)', background: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
                       }}>{i + 1}</span>
                       <p className="flex-1 min-w-0 truncate" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{e.name}</p>
                       <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${e.name} up`}

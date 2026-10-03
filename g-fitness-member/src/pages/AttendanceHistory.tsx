@@ -263,7 +263,7 @@ export default function AttendanceHistory() {
                         style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.7))' }} />
                     ) : isToday ? (
                       <Lightning aria-hidden size={12} weight="fill"
-                        style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.7))' }} />
+                        style={{ color: 'var(--color-secondary-300)', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-secondary) 70%, transparent))' }} />
                     ) : null}
                     <span style={{
                       fontSize: attended || isToday ? 11 : 12.5, lineHeight: 1,

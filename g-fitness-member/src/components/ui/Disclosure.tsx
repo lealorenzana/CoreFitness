@@ -36,7 +36,7 @@ export default function Disclosure({
         {icon && (
           <span aria-hidden className="flex-none grid place-items-center" style={{
             width: 32, height: 32, borderRadius: 10, color: 'var(--color-primary-300)',
-            background: 'rgba(124, 58, 237, 0.16)',
+            background: 'color-mix(in srgb, var(--color-primary) 16%, transparent)',
           }}>
             {icon}
           </span>

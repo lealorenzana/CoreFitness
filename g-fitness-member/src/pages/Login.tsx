@@ -62,6 +62,17 @@ export default function Login() {
       return;
     }
 
+    // Signing in to accept an invitation: back to it before anything else
+    // here can turn them away — the invitation is what makes them active, so a
+    // `pending_approval` (or no role at this gym yet) is expected, not an error.
+    const invite = new URLSearchParams(window.location.search).get('invite');
+    if (invite) {
+      localStorage.setItem('isLoggedIn', 'true');
+      setIsLoading(false);
+      navigate(`/invite/${invite}`, { replace: true });
+      return;
+    }
+
     // More than one gym to sign in to (or this one is closed to them but
     // another is open): they choose. The picker routes by the role in the gym
     // they pick, so the Member/Coach toggle does not apply.
@@ -538,6 +549,10 @@ export default function Login() {
               <span className="mx-1.5">•</span>
               <button onClick={() => navigate('/privacy')} className="hover:text-white/40">
                 Privacy Policy
+              </button>
+              <span className="mx-1.5">•</span>
+              <button onClick={() => navigate('/get-app')} className="hover:text-white/40">
+                Get the app
               </button>
             </p>
           </div>

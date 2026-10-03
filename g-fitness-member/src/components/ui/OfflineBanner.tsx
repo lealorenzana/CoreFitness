@@ -25,7 +25,7 @@ export default function OfflineBanner() {
   return (
     <div
       className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold"
-      style={{ background: 'rgba(245,158,11,0.15)', borderBottom: '1px solid rgba(245,158,11,0.35)', color: 'var(--color-secondary)' }}
+      style={{ background: 'color-mix(in srgb, var(--color-secondary) 15%, transparent)', borderBottom: '1px solid color-mix(in srgb, var(--color-secondary) 35%, transparent)', color: 'var(--color-secondary)' }}
     >
       <WifiOff size={12} />
       No internet connection — showing limited features

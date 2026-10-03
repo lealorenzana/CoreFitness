@@ -279,7 +279,7 @@ export default function TrainerEditProfile() {
             focus_areas: toList(form.focusAreas), certifications: toList(form.certifications),
           });
           return (
-            <div style={{ padding: 14, borderRadius: 14, background: 'rgba(124, 58, 237, 0.08)', border: '1px solid var(--color-hairline)' }}>
+            <div style={{ padding: 14, borderRadius: 14, background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', border: '1px solid var(--color-hairline)' }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>How members find you</p>
               <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
                 {found.length === 0

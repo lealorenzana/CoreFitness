@@ -10,7 +10,8 @@ import MobileFrame from '../components/layout/MobileFrame';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { showErrorToast } from '../utils/errorHandler';
 import { registerMember, isEmailTaken, isPhoneTaken } from '../lib/api/members';
-import { listGyms, type PublicGym } from '../lib/api/gyms';
+import { gymBySlug, listGyms, type PublicGym } from '../lib/api/gyms';
+import { supabase } from '../lib/supabaseClient';
 import { listPlans, publicPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 import BirthDateField from '../components/ui/BirthDateField';
@@ -144,12 +145,27 @@ export default function Register() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const wanted = new URLSearchParams(window.location.search).get('gym');
+      const params = new URLSearchParams(window.location.search);
+      const wanted = params.get('gym');
       let chosen: PublicGym | null = null;
       try {
-        const all = await listGyms();
-        chosen = wanted ? all.find((g) => g.id === wanted) ?? null : all.length === 1 ? all[0] : null;
-        if (!cancelled && !chosen && all.length > 1) { navigate('/join', { replace: true }); return; }
+        // An invitation or a join link names its gym by address, which finds
+        // a gym that is not in the public list ("only with your link or code").
+        // Looking those up in listGyms() — open gyms only — found nothing and
+        // sent the person to /join, which is how an invitation's "Create my
+        // account" ended up on the gym search instead of the sign-up form.
+        const invite = params.get('invite');
+        let slug = params.get('join');
+        if (invite && !slug) {
+          const { data } = await supabase.rpc('peek_invitation', { p_token: invite });
+          slug = Array.isArray(data) && data[0] ? (data[0] as { slug: string }).slug : null;
+        }
+        if (slug) chosen = await gymBySlug(slug);
+        if (!chosen) {
+          const all = await listGyms();
+          chosen = wanted ? all.find((g) => g.id === wanted) ?? null : all.length === 1 ? all[0] : null;
+          if (!cancelled && !chosen && all.length > 1) { navigate('/join', { replace: true }); return; }
+        }
       } catch {
         /* pre-0097: one gym, and the plans below load the old way */
       }
@@ -284,15 +300,18 @@ export default function Register() {
       // not "log in anyway" — it's telling them to check their inbox, because
       // onboarding writes `experience_level` against their member row and has
       // nothing to write to without a session.
+      // Back to the invitation, which accepts it: an invited person is active
+      // straight away, not queued for the desk's approval.
+      const invite = new URLSearchParams(window.location.search).get('invite');
       if (signedIn) {
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.removeItem('trainerMode');
-        navigate('/onboarding', { replace: true });
+        navigate(invite ? `/invite/${invite}` : '/onboarding', { replace: true });
         return;
       }
 
       setShowSuccess(true);
-      setTimeout(() => navigate('/login', { replace: true }), 3500);
+      setTimeout(() => navigate(invite ? `/login?invite=${invite}` : '/login', { replace: true }), 3500);
     } catch (err) {
       setIsLoading(false);
       const message = err instanceof Error ? err.message : 'Registration failed';
