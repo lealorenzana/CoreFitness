@@ -56,7 +56,9 @@ await db.exec(`reset role;
     select '${MEM(0)}', '${G.dead}', now() - (g || ' days')::interval from generate_series(20, 60, 3) g;
   -- Prices are the platform owner's to set (NULL until then); give Premium one.
   update platform_plans set price_monthly = 1999 where key = 'premium';
-  insert into gym_payments (gym_id, amount, paid_on, covers_from, covers_until) values ('${G.fine}', 1999, current_date - 5, current_date - 5, current_date + 25);`);
+  -- Payments are bucketed by Manila month, so the payment must be dated today in Manila
+  -- or the check fails in the first days of a month.
+  insert into gym_payments (gym_id, amount, paid_on, covers_from, covers_until) values ('${G.fine}', 1999, manila_today(), current_date - 5, current_date + 25);`);
 
 await as(PA);
 const h = await all(`select * from platform_gym_health()`);
