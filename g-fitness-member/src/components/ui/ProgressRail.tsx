@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { getProgression, type Progression } from '../../lib/api/achievements';
+import { myStreak } from '../../lib/api/streak';
 import { Skeleton } from './Skeleton';
 import { InlineStat, Panel } from './noc';
 
@@ -9,8 +10,9 @@ import { InlineStat, Panel } from './noc';
  *
  * ## The unit is weeks, and it says so
  *
- * `member_progression()` counts **consecutive weeks containing a workout** —
- * `current_week_streak` — and there is no day-level streak anywhere in the
+ * `member_progression()` counts **consecutive weeks reaching the member's own
+ * target of training days** (0151, default 2) — `current_week_streak` — and there
+ * is no day-level streak in the
  * schema. The obvious card to copy from a workout-tracker screenshot says
  * "6 DAYS"; printing that over a week count would be a straight lie, and a
  * flattering one, which is the kind that survives review. Weeks is also the
@@ -43,11 +45,15 @@ function daysSince(isoDate: string | null): string {
 
 export default function ProgressRail() {
   const [prog, setProg] = useState<Progression | null>(null);
+  /** The member's own weekly target (0151); 2 — the rule before targets — until it loads. */
+  const [target, setTarget] = useState(2);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      setProg(await getProgression());
+      const [p, s] = await Promise.all([getProgression(), myStreak()]);
+      setProg(p);
+      if (s) setTarget(s.target);
     } catch {
       // A missing progression hides the section rather than showing zeroes
       // that would read as a real record of never having trained.
@@ -70,7 +76,7 @@ export default function ProgressRail() {
   return (
     <div className="flex flex-col" style={{ gap: 16 }}>
       <Panel glow={live ? 'structure' : undefined}>
-        <p className="eyebrow">Workout streak</p>
+        <p className="eyebrow">Gym streak</p>
         <p className="flex items-baseline" style={{ gap: 8, marginTop: 8 }}>
           <span style={{
             fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1, letterSpacing: 'var(--tracking-hero)',
@@ -83,9 +89,12 @@ export default function ProgressRail() {
           </span>
         </p>
         <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          {/* The rule as it is (0151): the member's own target of training days —
+              a check-in or a logged workout — in every one of those weeks. It said
+              "train once" and "one workout"; it has always taken two or more. */}
           {current === 0
-            ? 'Train once this week to start a streak.'
-            : 'At least one workout in each of those weeks.'}
+            ? `Train ${target} days in a week to start a streak.`
+            : `${target} or more training days — check-ins or logged workouts — in each of those weeks.`}
           {prog.bestWeekStreak > current && ` Your best is ${prog.bestWeekStreak}.`}
         </p>
       </Panel>

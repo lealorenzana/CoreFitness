@@ -13,6 +13,7 @@ import DetailSheet from '../components/ui/DetailSheet';
 import { loadBookingQueue } from '../services/bookingQueueService';
 import { sweepStaleRequests } from '../lib/api/bookings';
 import { winbackSweep } from '../lib/api/retention';
+import { streakNudgeSweep } from '../lib/api/streak';
 import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
@@ -210,6 +211,8 @@ export default function Dashboard() {
     // Win-back messages the owner switched on (0130): the dashboard is opened
     // daily, so it is the sweep that runs. Never throws.
     void winbackSweep();
+    // The weekly "keep your streak" message (0151), on the same daily open.
+    void streakNudgeSweep();
     // The same sweep the Bookings page runs first (0071), so a request it would
     // expire on opening is not counted here as still waiting. Never throws.
     (async () => {

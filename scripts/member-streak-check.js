@@ -1,13 +1,9 @@
 /**
- * 0145, the trainer's side: a trainee's routine that came from the AI coach's
- * proposal says so on the trainee sheet ("Built with the coach"), and one the
- * member made does not. On a database without 0145 the routines still list.
+ * The gym streak on Today (0151): the run, what this week still needs, the
+ * member's own target and reminder, a milestone celebrated once, and nothing
+ * drawn when there is no streak at this gym.
  *
- * 0146: the trainee's meal guide shows, read-only with the fixed line, when
- * trainee_meal_guide returns sections (their trainer, goals shared) — and
- * nothing at all when it returns null.
- *
- * Setup copied from trainer-assign-check.js.
+ * Setup copied from squad-check.js. Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -28,7 +24,7 @@ async (page) => {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 
   const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
-    role: 'trainer', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
+    role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
   const session = {
     access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'm1', role: 'authenticated', exp })}.sig`,
     refresh_token: 'r', token_type: 'bearer', expires_at: exp,
@@ -36,7 +32,7 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => {
     localStorage.setItem(k, JSON.stringify(s));
-    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'trainer' }));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
   }, [KEY, session]);
 
   const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
@@ -60,10 +56,7 @@ async (page) => {
     exercises: EX,
     attendance: [-1, -3, -7, -8, -9, -14, -15, -16].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d, 18, 20 + i), method: 'qr', activity: 'Gym floor' })),
     workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0) },
-      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) },
-      // The trainee's own: one built with the coach (0145), one they made themselves.
-      { id: 'rc', member_id: 'mb1', name: 'Coach push day', notes: null, position: 0, updated_at: iso(-1, 9, 0), source: 'coach' },
-      { id: 'rm', member_id: 'mb1', name: 'My pull day', notes: null, position: 1, updated_at: iso(-1, 9, 0), source: 'member' }],
+      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) }],
     workout_routine_exercises: [
       { id: 'x1', routine_id: 'r1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 3,
         target_reps: 8, target_weight_kg: 60, target_seconds: null, rest_seconds: 90 },
@@ -74,13 +67,7 @@ async (page) => {
     workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
       completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
     workout_sets: [],
-    gym_plans: [
-      // The trainee's week: Monday is theirs, Wednesday the coach set (0145).
-      { id: 'gt1', member_id: 'mb1', day_of_week: 1, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rm', created_at: iso(-5, 9, 0), source: 'member' },
-      { id: 'gt3', member_id: 'mb1', day_of_week: 3, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rc', created_at: iso(-5, 9, 0), source: 'coach' },
-      { id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
       { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
@@ -90,15 +77,6 @@ async (page) => {
       { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
     ],
     saved_resources: [],
-    // The coach's roster (0082): one trainee.
-    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
-      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
-    gym_programs: [
-      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
-        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
-      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
-        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
-    ],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
       activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
@@ -130,28 +108,34 @@ async (page) => {
     return true;
   }));
 
-  let BEFORE_0145 = false;
-  // 0146: what trainee_meal_guide returns — sections, or null (not shared / none).
-  const MEALS = [{ title: 'Breakfast', items: ['2 eggs for protein, a fist of rice'] },
-    { title: 'Dinner', items: ['A palm of chicken, two cupped hands of vegetables'] }];
-  let MEAL_GUIDE = MEALS;
-  const MEAL_ASKS = [];
-  let refusedSource = 0;
   const CALLS = {};
-  let assigned = null;
+  let inSquad = false;
+  // The streak card's data, as my_streak() returns it (0151). Mutable: Save changes it.
+  let STREAK = { target: 3, current: 4, best: 6, days_this_week: 2, needed: 1, days_left: 1,
+    week: [true, false, true, false, false, false, false], today_index: 6, frozen: false,
+    at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true };
+  let settled = false;
   const FN = {
-    trainee_meal_guide: (b) => { MEAL_ASKS.push(b.p_member); return b.p_member === 'mb1' ? MEAL_GUIDE : null; },
-    assign_program: (b) => { assigned = b.p_program; return 'en1'; },
-    // The trainee's gym streak (0151): at risk this week.
-    member_streak: (b) => b.p_member !== 'mb1' ? null : { target: 3, current: 5, best: 7, days_this_week: 1, needed: 2,
-      days_left: 2, week: [true, false, false, false, false, false, false], today_index: 5, frozen: false,
-      at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true },
-    member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
-    member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
-      { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
-    program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({
-      program_id: assigned, program_name: 'Starter Strength', day_id: 'd' + d, week: 1, day: d,
-      workout_id: 'gw1', workout_name: 'Leg Day A', done: false })),
+    my_streak: () => STREAK,
+    settle_my_streak: () => { if (settled) return []; settled = true; return [4]; },
+    set_streak_target: (b) => { STREAK = { ...STREAK, target: b.p_target, nudges: b.p_nudges,
+      needed: Math.max(0, b.p_target - STREAK.days_this_week) }; return null; },
+    settle_squads: () => 0,
+    settle_gym_goals: () => 0,
+    join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
+    create_squad: () => { inSquad = true; return 'sq1'; },
+    leave_squad: () => { inSquad = false; return null; },
+    my_squad: () => !inSquad ? [] : [
+      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
+        member_id: 'm2', first_name: 'Ana', days_this_week: 3, is_me: false },
+      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
+        member_id: 'm1', first_name: 'Lea', days_this_week: 1, is_me: true },
+      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
+        member_id: 'm3', first_name: 'Joy', days_this_week: 0, is_me: false }],
+    squad_board: () => [{ squad_name: 'Iron Barkada', members: 3, days: 4, weekly_target: 9, reached: false, is_mine: inSquad },
+      { squad_name: 'Morning Crew', members: 4, days: 12, weekly_target: 10, reached: true, is_mine: false }],
+    current_gym_goal: () => [{ id: 'g1', title: '1,000 training days in October', metric: 'training_days', target: 1000,
+      starts_on: dstr(-5), ends_on: dstr(20), reward_points: 50, reached: false, progress: 412, contributors: 88, mine: 2 }],
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
       const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
       DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
@@ -214,11 +198,6 @@ async (page) => {
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
     if (!path.startsWith('/rest/v1/')) return json([]);
-    // A database without 0145: naming `source` is a 400, as PostgREST answers an unknown column.
-    if (BEFORE_0145 && path.endsWith('/workout_routines') && params.some(([k, v]) => k === 'select' && /(^|,)\s*source\b/.test(v))) {
-      refusedSource++;
-      return json({ code: '42703', message: 'column workout_routines.source does not exist' }, 400);
-    }
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
     const method = req.method();
@@ -244,9 +223,7 @@ async (page) => {
       if (t === 'workout_routines') DB.workout_routine_exercises = DB.workout_routine_exercises.filter((x) => !hit.some((h) => h.id === x.routine_id));
       return json(hit);
     }
-    // Without 0145 the column is not there to come back either.
-    const rows = match(DB[t], params).map((r) => embed(t, r))
-      .map((r) => (BEFORE_0145 && (t === 'workout_routines' || t === 'gym_plans') ? (({ source: _s, ...rest }) => rest)(r) : r));
+    const rows = match(DB[t], params).map((r) => embed(t, r));
     return json(one ? rows[0] ?? null : rows);
   });
 
@@ -258,59 +235,50 @@ async (page) => {
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1300);
   };
-  const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+
+
+  const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+
+  // A toast lasts 2.6 s — shorter than a page settling — so every text that
+  // appears is recorded as it appears, rather than read off the screen later.
+  await page.addInitScript(() => {
+    window.__seen = [];
+    new MutationObserver(() => {
+      const t = document.body?.innerText ?? '';
+      if (/Milestone reached/.test(t) && !window.__seen.includes('milestone')) window.__seen.push('milestone');
+    }).observe(document, { childList: true, subtree: true, characterData: true });
+  });
+
+  // 1 - the streak on Today: the run, what this week needs, the target.
+  await go('/member/home');
+  await page.getByText('4-week streak').waitFor({ timeout: 10000 });
   let t = await text();
-  out.push("the trainee's gym streak, and that it is at risk: " + (/Gym streak/.test(t) && /5 weeks running/.test(t)
-    && /needs 2 more — every day left/.test(t) && /aims for 3 days a week · best 7 weeks/.test(t) ? 'yes' : 'MISSING'));
-  out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  // 0146: the meal guide carries the same mark, so the routines' count excludes its block —
-  // still exactly one routine mark, and exactly one on the guide.
-  const mealMarks = ((await page.locator('[data-trainee-meals]').innerText().catch(() => '')) || '').match(/Built with the coach/gi)?.length ?? 0;
-  const marks = (t.match(/Built with the coach/g) || []).length - mealMarks;
-  out.push('the coach routine is marked, once: ' + (marks === 1 ? 'yes' : marks === 0 ? 'MISSING' : 'NO, ' + marks + ' marks'));
-  out.push('the meal guide carries the coach mark, once: ' + (mealMarks === 1 ? 'yes' : mealMarks === 0 ? 'MISSING' : 'NO, ' + mealMarks + ' marks'));
-  // The mark sits on the coach's routine's row, not the member's.
-  const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
-  out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
-  const planMarks = (t.match(/Set by the coach/g) || []).length;
-  out.push('the training plan marks the coach day, once: ' + (planMarks === 1 ? 'yes' : planMarks === 0 ? 'MISSING' : 'NO, ' + planMarks + ' marks'));
-  const planRow = await page.locator('div', { hasText: 'Set by the coach' }).filter({ hasText: 'Wed: Coach push day' }).filter({ hasNotText: 'Mon: My pull day' }).count();
-  out.push('the plan mark is on Wednesday: ' + (planRow > 0 ? 'yes' : 'MISSING'));
-  await page.getByText('Coach push day').first().scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: 'shots/trainer-coach-mark.png' });
+  out.push('the streak on Today: ' + (/4-week streak/.test(t) ? '4 weeks' : 'MISSING'));
+  out.push('at risk says what to do: ' + (/Train today to keep your streak\./.test(t) ? 'train today' : 'MISSING'));
+  out.push('this week against the target: ' + (/2 of 3/.test(t) ? '2 of 3' : 'MISSING'));
+  out.push('best and the next milestone: ' + (/Best 6 weeks · next milestone at 12 weeks/.test(t) ? 'shown' : 'MISSING'));
+  out.push('a milestone reached is celebrated: ' + ('settle_my_streak' in CALLS && (await page.evaluate(() => window.__seen)).includes('milestone') ? 'yes' : 'MISSING'));
+  await shot('streak-today');
 
-  // ── 0146: the meal guide, when the database hands it over ──
-  const FIXED = 'This is general guidance, not a diet plan. For anything medical — diabetes, pregnancy, allergies, an eating disorder — see a doctor or a registered nutritionist-dietitian.';
-  const meals = ((await page.locator('[data-trainee-meals]').innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
-  out.push('the sheet asks trainee_meal_guide for this trainee: ' + (MEAL_ASKS.includes('mb1') ? 'yes' : 'MISSING'));
-  out.push('the meal guide shows when shared: ' + (/Meal guide/.test(meals) && /Breakfast/i.test(meals) && meals.includes('2 eggs for protein, a fist of rice')
-    && /Dinner/i.test(meals) && meals.includes('A palm of chicken, two cupped hands of vegetables') ? 'yes' : 'MISSING ' + meals));
-  out.push('the meal guide carries the fixed line: ' + (meals.includes(FIXED) ? 'yes' : 'MISSING'));
-  const itemSize = await page.locator('[data-trainee-meals] [data-meal-item]').first().evaluate((e) => getComputedStyle(e).fontSize).catch(() => '');
-  out.push('the meal rows are compact (13px, like the sheet rows): ' + (itemSize === '13px' ? 'yes' : 'NO ' + itemSize));
-  out.push('the meal guide is read-only: ' + (await page.locator('[data-trainee-meals] button, [data-trainee-meals] input, [data-trainee-meals] textarea').count() === 0 ? 'yes' : 'NO, it has controls'));
-  await page.locator('[data-trainee-meals]').scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: 'shots/trainer-meal-guide.png' });
-
-  MEAL_GUIDE = null;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+  // 2 - changing the target and the reminder.
+  await page.getByRole('button', { name: /3 days a week · Change/ }).click();
+  await page.getByText('Your weekly target').waitFor({ timeout: 5000 });
+  const sheet = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  out.push('the sheet says what counts: ' + (/check in or log a workout/.test(sheet) && /neither does a week your membership is frozen/.test(sheet) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: '4 days' }).click();
+  await page.getByLabel(/Remind me before it breaks/).uncheck();
+  await shot('streak-sheet');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(1200);
+  out.push('saved: target and reminder sent: ' + (CALLS.set_streak_target?.p_target === 4 && CALLS.set_streak_target?.p_nudges === false ? '4, reminder off' : 'MISSING ' + JSON.stringify(CALLS.set_streak_target)));
   t = await text();
-  out.push('no meal guide when trainee_meal_guide is null: ' + (await page.locator('[data-trainee-meals]').count() === 0 && !/Meal guide|Breakfast/i.test(t) ? 'yes' : 'STILL SHOWN'));
-  out.push('…and the rest of the sheet is unchanged: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the card follows: ' + (/4 days a week · Change/.test(t) && /2 of 4/.test(t) ? '4 days a week' : 'MISSING'));
 
-  BEFORE_0145 = true;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+  // 3 - no streak here (Progress switched off, or before 0151): nothing drawn.
+  STREAK = null;
+  await go('/member/home');
   t = await text();
-  out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
-  out.push('before 0145 nothing is marked: ' + (!/Built with the coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('no streak, no card: ' + (!/week streak|No streak yet/.test(t) ? 'nothing drawn' : 'MISSING'));
   return out.join('\n');
 }
