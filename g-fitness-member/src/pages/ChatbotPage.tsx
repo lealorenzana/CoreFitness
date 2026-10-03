@@ -298,8 +298,15 @@ function Assistant() {
     setTimeout(async () => {
       // Rules first, always. They own every fact about this gym — prices,
       // hours, your membership — so the model is never in a position to state
-      // one. It only ever sees a question the table could not answer.
-      let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, ctx);
+      // one. It only ever sees a question the table could not answer — except
+      // that, while the coach can actually take this message, a request to make
+      // or change something (a plan, a schedule, a goal, meals) and the general
+      // form/eating tips go to the coach instead of a keyword's canned reply.
+      // `coachRef`, not `coach`: this closure runs after a timeout, and right
+      // after consent the state it captured is still the old one.
+      const live = again?.rulesOnly ? null : coachRef.current;
+      const coachUsable = mayUseModel && !!live?.allowed;
+      let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, ctx, { coach: coachUsable });
 
       // Since 0059 the whole assistant is the paid feature, so this screen is
       // already behind `FeatureLock` and `mayUseModel` is true whenever it
@@ -307,9 +314,6 @@ function Assistant() {
       // Function checks the same entitlement, because this is an optimisation
       // and not the boundary. (0049 had gated only the model — the comment that
       // said so outlived it.)
-      // `coachRef`, not `coach`: this closure runs after a timeout, and right
-      // after consent the state it captured is still the old one.
-      const live = again?.rulesOnly ? null : coachRef.current;
       let source: 'rules' | 'coach' = 'rules';
       if (isRuleFallback(answer) && mayUseModel && live?.allowed) {
         if (live.consent === null) {
