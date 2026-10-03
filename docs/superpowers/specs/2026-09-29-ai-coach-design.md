@@ -166,7 +166,9 @@ since) → Apply says so and changes nothing.
 3. **Training tools** — read tools, routine/schedule/goal proposals,
    Apply/Undo, the "Built with the coach" mark, trainer sheet. *Done 2026-10-03 (0145, six tools, a tool loop, proposal cards, the Changes sheet; not yet live until 0145 is pasted). The cards in the conversation show for the current visit; the Changes sheet keeps them.*
 4. **Meals** — `meals.set`, the Meals section, the regex. *Done 2026-10-03 (0146, `propose_meals`, a Meals tab under Progress, the trainer's compact read-only guide; not yet live until 0146 is pasted).*
-5. **Owner and platform** — Your app limits and usage, platform Usage row.
+5. **Owner and platform** — Your app limits and usage, platform Usage row. *Done 2026-10-03 (0147: the owner sets the two limits and sees this month's totals and an estimated cost on Your app; the platform sees a coach column and a spend tile on Usage; not yet live until 0147 is pasted).*
+
+**The AI coach is complete** (Phases 1-5). What remains is the owner's: the Anthropic key, deploying `ai-coach`, and pasting 0146 and 0147.
 
 ## What the owner does (things only they can do)
 

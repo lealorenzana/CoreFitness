@@ -67,6 +67,16 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
 - **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
   month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
   before the model call, so a failed or abandoned call still counts.
+- **Owner and platform (0147, Phase 5).** On admin **Your app** the owner (only the owner;
+  the desk sees the figures without a Save) sets the two limits, 1 to 500 a day per
+  member and 1 to 100,000 a month for the gym, in the same plain sentences the
+  database uses, and sees this Manila month's **totals**: messages, how many members
+  used it, today's messages, a bar per day, and an **estimated cost**. **Totals only
+  — never who asked, never what.** The platform's **Usage** page gains an AI coach
+  column (messages per gym) and a spend tile with the top gyms. Cost is in **US
+  dollars, at Claude Sonnet 5.5's list price times the tokens counted — an estimate,
+  not a bill**; the real bill is on console.anthropic.com. Before 0147 is pasted both
+  places say so and show nothing, rather than a zero.
 - **Cost.** About PHP 0.90 a message on Claude Sonnet 5.5, so a full gym month at the
   1500 limit is roughly PHP 1,350.
 - **The key and the function are the owner's to set up**: an Anthropic account with a
