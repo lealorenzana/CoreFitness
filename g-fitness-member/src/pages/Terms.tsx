@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Archive, Banknote, CalendarX, FileText, Snowflake } from 'lucide-react';
 import LegalPage, { type GlanceItem, type LegalSection } from '../components/legal/LegalPage';
+import { describeWindow, getRefundTerms, type RefundTermsState } from '../lib/api/refundTerms';
 
 /**
  * The terms the gym actually operates by.
@@ -16,34 +18,62 @@ import LegalPage, { type GlanceItem, type LegalSection } from '../components/leg
  * So every clause below is now traceable to something that runs:
  *
  *   Freezing            0057, 0070      — twice a month, reason required
- *   Refunds             0070, 0073      — the tiers, and RA 7394's pro-rata floor
+ *   Refunds             0070, 0073      — the gym's own tiers, and RA 7394's pro-rata floor
  *   Cancel a booking    0016, 0071      — any time before it starts, no forfeit
  *   Account status      0069, 0078      — archived, never deleted; reasons kept
  *
  * The full reasoning, including the sources behind the numbers, is in
  * docs/MEMBERSHIP_POLICY.md. **If that document and this page ever disagree,
  * this page is the one members read** — fix it here first, then there.
+ *
+ * **The numbers a gym sets are read, never typed** (lib/api/refundTerms.ts):
+ * the refund tiers come from the member's gym's `refund_rules`, the processing
+ * fee and its reason and the yearly freeze guideline from its `gym_settings`.
+ * A reader who is not signed in has no gym, so they are told each gym sets its
+ * own and shown the one rule every gym shares: never less than pro-rata.
  */
-/**
- * Section 3's five tiers, drawn as a table. The same five statements the list
- * used to make, word for word in meaning — a picture of the rule, not a new one.
- * The bar is the share refunded; the two rows without a fixed share have none.
- */
-const TIERS: { when: string; get: string; share: number | null }[] = [
-  { when: 'Within 7 days, and you have not checked in once', get: '100% refunded', share: 100 },
-  { when: 'Within 7 days, and you have checked in', get: '50%', share: 50 },
-  { when: 'Between 8 and 30 days', get: '25%', share: 25 },
-  { when: 'After 30 days', get: 'The unused part of your term, calculated pro-rata', share: null },
-  { when: 'Medical, with documentation', get: 'Decided by an admin, any amount, with the reason recorded', share: null },
-];
+const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { maximumFractionDigits: 2 });
+const pct = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2)}%`;
 
-function RefundTiers() {
+/**
+ * Section 3's tiers, drawn as a table from the gym's own `refund_rules` — the
+ * rows `refund_quote()` reads, in the order it reads them. Two rows are the
+ * same for every gym and sit beneath: pro-rata at any time (0073's floor) and
+ * the medical case an admin decides.
+ */
+function RefundTiers({ state }: { state: RefundTermsState }) {
+  const rows: { when: string; get: string; share: number | null }[] = [];
+  if (state.kind === 'ready') {
+    for (const r of state.terms.rules) {
+      rows.push({
+        when: describeWindow(r),
+        get: r.percent >= 100 ? '100% refunded' : r.percent > 0 ? `At least ${pct(r.percent)}` : 'No minimum — pro-rata applies',
+        share: r.percent > 0 ? Math.min(100, r.percent) : null,
+      });
+    }
+  }
+  rows.push({ when: 'Any time', get: 'The unused part of your term, calculated pro-rata — if that is higher, it is what you are paid', share: null });
+  rows.push({ when: 'Medical, with documentation', get: 'Decided by an admin, any amount, with the reason recorded', share: null });
+
   return (
     <div className="legal-table" role="table" aria-label="Refund tiers">
+      {state.kind === 'ready' && (
+        <p className="legal-table-cap">
+          {state.terms.gymName ? `${state.terms.gymName}'s` : 'Your gym’s'} current minimums
+          {state.terms.rules.length === 0 && ' — none are set, so your refund is pro-rata'}
+        </p>
+      )}
+      {state.kind === 'guest' && (
+        <p className="legal-table-cap">Each gym sets its own minimum percentages. Sign in and your gym’s appear here.</p>
+      )}
+      {state.kind === 'failed' && (
+        <p className="legal-table-cap">Your gym’s minimum percentages could not be loaded just now. The desk can show you them, and the rule below holds whatever they are.</p>
+      )}
+      {state.kind === 'loading' && <p className="legal-table-cap">Loading your gym’s minimums…</p>}
       <div className="legal-tr legal-th" role="row">
         <span role="columnheader">When you cancel</span><span role="columnheader">What you get back</span>
       </div>
-      {TIERS.map((t, i) => (
+      {rows.map((t, i) => (
         <div className="legal-tr" role="row" key={t.when} style={{ ['--i' as string]: i }}>
           <span role="cell">{t.when}</span>
           <span role="cell" className="legal-get">
@@ -52,12 +82,25 @@ function RefundTiers() {
           </span>
         </div>
       ))}
-      <p className="legal-table-note">Where pro-rata for the unused term comes out higher, you are paid the higher figure — section 4.</p>
+      <p className="legal-table-note">You are paid the higher of your gym’s minimum and pro-rata for the unused term — section 4.</p>
     </div>
   );
 }
 
-const sections: LegalSection[] = [
+function feeLine(state: RefundTermsState): string {
+  const tail = 'The exact amount, and the rule that produced it, is shown to you before you confirm.';
+  if (state.kind !== 'ready') return `A documented processing fee may be deducted. ${tail}`;
+  const { fee, feeReason } = state.terms;
+  if (fee <= 0) return `Your gym deducts no processing fee. ${tail}`;
+  return `A processing fee of ${peso(fee)} is deducted${feeReason ? ` (${feeReason})` : ''}. ${tail}`;
+}
+
+function freezeLine(state: RefundTermsState): string {
+  const n = state.kind === 'ready' ? state.terms.maxFreezeDaysPerYear : null;
+  return `The desk is shown how many frozen days you have used this year (${n !== null ? `${n} is your gym’s guideline` : 'your gym sets the guideline'}). Anything beyond the usual limits is an admin decision, made on the record.`;
+}
+
+const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'membership',
     title: '1. Your membership',
@@ -70,23 +113,23 @@ const sections: LegalSection[] = [
       'You may freeze twice in a calendar month. A reason is required.',
       'While frozen you cannot check in or book — a freeze pauses the membership, not attendance alone.',
       'Frozen days are added back to your expiry date, so you are not charged for days you were denied access.',
-      'The desk is shown how many frozen days you have used this year (60 is the guideline). Anything beyond the usual limits is an admin decision, made on the record.',
+      freezeLine(state),
     ],
   },
   {
     id: 'refunds',
     title: '3. Cancelling, and what you get back',
-    lead: <RefundTiers />,
+    lead: <RefundTiers state={state} />,
     body: [
       'Days are counted from the start date of your membership, in Manila time — not from the day you paid.',
-      'A documented processing fee may be deducted. The exact amount, and the rule that produced it, is shown to you before you confirm.',
+      feeLine(state),
       'Refunds are paid in cash at the desk.',
     ],
   },
   {
     id: 'floor',
     title: '4. Why those percentages are a floor',
-    body: 'Republic Act 7394, the Consumer Act of the Philippines, expects the unused portion of something you prepaid to come back to you. The tiers above are the minimum the gym pays; where a pro-rata calculation comes out higher, you are paid the higher figure. Lowering a tier cannot reduce a payout below what the law expects.',
+    body: 'Republic Act 7394, the Consumer Act of the Philippines, expects the unused portion of something you prepaid to come back to you. The percentages above are the minimum the gym pays; where a pro-rata calculation comes out higher, you are paid the higher figure. Lowering a tier cannot reduce a payout below what the law expects.',
   },
   {
     id: 'classes',
@@ -138,6 +181,22 @@ const glance: GlanceItem[] = [
 ];
 
 export default function Terms() {
+  const [state, setState] = useState<RefundTermsState>({ kind: 'loading' });
+  useEffect(() => {
+    let alive = true;
+    // Wrapped, so the set-state-in-effect rule does not follow the call into setState.
+    (async () => {
+      try {
+        const next = await getRefundTerms();
+        if (alive) setState(next);
+      } catch {
+        if (alive) setState({ kind: 'failed' });
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const sections = useMemo(() => buildSections(state), [state]);
+
   return (
     <LegalPage
       title="Terms of Service"
