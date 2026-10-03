@@ -1,7 +1,22 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Sparkle } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import ChatbotPopup from './ChatbotPopup';
+import { coachReady, getCoachStatus } from '../../lib/api/aiCoach';
+
+/**
+ * Whether this member gets the AI coach: the same conditions as the Assistant
+ * screen (ChatbotPage) — the coach function is deployed and configured, and the
+ * member is allowed or merely at a message limit (Apply/Undo still work then).
+ * The small popup answers from the rules only, so a member with the coach is
+ * sent to the full screen, where the coach, consent, setup and change cards live.
+ */
+async function coachAvailable(): Promise<boolean> {
+  const [status, ready] = await Promise.all([getCoachStatus().catch(() => null), coachReady().catch(() => false)]);
+  if (!ready || !status) return false;
+  return status.allowed || status.reason === 'daily_limit' || status.reason === 'monthly_limit';
+}
 
 /**
  * Draggable floating chathead — like Messenger's chat bubble.
@@ -21,6 +36,10 @@ export default function FloatingChathead() {
   const [chatOpen, setChatOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const constraintsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  // Asked once when the bubble appears, so a tap never waits on the network.
+  const hasCoach = useRef<Promise<boolean> | null>(null);
+  useEffect(() => { hasCoach.current = coachAvailable(); }, []);
 
   // Track position for edge-snapping
   const x = useMotionValue(0);
@@ -70,9 +89,12 @@ export default function FloatingChathead() {
   }, [x, containerWidth]);
 
   const handleTap = () => {
-    if (!isDragging) {
-      setChatOpen(true);
-    }
+    if (isDragging) return;
+    void (async () => {
+      const coach = await (hasCoach.current ?? coachAvailable()).catch(() => false);
+      if (coach) navigate('/member/chatbot');
+      else setChatOpen(true);
+    })();
   };
 
   // Scale effect while dragging
