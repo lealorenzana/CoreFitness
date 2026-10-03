@@ -360,7 +360,15 @@ function credentialsAnswer(): string {
   return "Coaches can upload their certificates for the gym to check, and the gym marks them verified once it has seen the document.\n\nThe certificates themselves aren't shown in the app — you'll see what a coach lists on their profile in **Book → Trainers**. Ask the front desk if you want to know more about a coach's qualifications.";
 }
 
-const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
+/**
+ * What a rule answers, for routing while the AI coach can take the message.
+ * `fact` (the default) — this gym, this member, where a screen is: always the rules' call.
+ * `general` — fitness advice the coach answers better; skipped while it can talk.
+ * `injury` — the referral; checked before anything else while it can talk.
+ */
+type RuleKind = 'fact' | 'general' | 'injury';
+
+const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: RuleKind }[] = [
   {
     // Points before the generic membership rule: "how do I earn points" is not
     // a question about the subscription.
@@ -380,6 +388,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
   {
     match: /\b(?:preset goals?|ready-?made goals?|set a goal|my goals?|goal progress)\b/,
     reply: goalsAnswer,
+    kind: 'general',
   },
   {
     match: /\b(?:why (?:is|are) (?:this|it|that) locked|locked|upgrade|what (?:does|do) my plan (?:include|cover)|bakit naka-?lock)\b/,
@@ -529,16 +538,19 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string }[] = [
     // Safety first, and consistent with planBuilder.ts: a stated injury gets a
     // referral, never advice. This is not a topic a keyword table should answer.
     match: /\b(?:injur\w*|hurt\w*|pain\w*|sore|sprain\w*|masakit|sakit)\b/,
+    kind: 'injury',
     reply: () =>
       'If something hurts — sharp pain rather than normal effort — stop that movement and speak to a trainer before your next session. For anything persistent, please see a doctor or physiotherapist. This app is not the right place for that advice.',
   },
   {
     match: /\b(?:how do i do|form|technique|proper way|posture|squat|deadlift|bench|push ?-?up)\b/,
+    kind: 'general',
     reply: () =>
       '**Learning a movement**\n\n• **Profile → Free workouts** has routines and videos the gym recommends\n• A 1-on-1 session is the fastest way to have your form watched — book one under **Book a Session**\n\nHaving the main lifts checked once is worth more than reading about them.',
   },
   {
     match: /\b(?:eat|diet|nutrition|food|protein|meal|calorie|kain|pagkain)s?\b/,
+    kind: 'general',
     reply: () =>
       'General practice: get protein into every main meal, eat something with carbohydrate an hour or two before training, and drink water across the day. For anything specific to you, your health or your medication, please ask a coach or a qualified professional rather than an app.',
   },
@@ -607,8 +619,41 @@ export function isRuleFallback(answer: string): boolean {
   return answer === FALLBACK;
 }
 
-export function answerFor(question: string, ctx: AssistantContext): string {
+/**
+ * A request for the coach to make or change something: a request verb, then a
+ * training or eating object. "Propose a Mon/Wed/Fri schedule", "set a goal to
+ * work out 3 times a week", "make me a meal plan" were each caught by a keyword
+ * (`schedul`, `set a goal`, `plan`, `meal`) and answered with a canned help
+ * text. The verb must come before the object, so in "how much is the premium
+ * plan" `plan` cannot be both; the membership plans are refused as objects.
+ */
+const COACH_REQUEST =
+  /\b(?:propose|suggest|recommend|make|create|build|design|plan|set(?: up)?|change|update|adjust|swap|give me|help me|can you|could you|write|add)\b.*?\b(?:routines?|workouts?|programs?|programmes?|(?<!(?:premium|free|membership|trial|gym) )plans?|schedules?|weeks?|days|split|goals?|meals?|diet|food|eating|nutrition|exercises?|training|reminders?)\b/;
+
+/**
+ * `opts.coach`: the AI coach can take this message. Only then does a request
+ * to make or change something, or a general form/eating/goals question, fall
+ * through to the coach — every fact stays the rules'. Without it (the popup,
+ * a member without the coach, a coach at its limit) nothing changes.
+ */
+export function answerFor(
+  question: string,
+  ctx: AssistantContext,
+  opts?: { coach?: boolean },
+): string {
   const q = question.toLowerCase();
+  if (opts?.coach) {
+    // The referral always wins: a stated injury is never the coach's to plan around.
+    for (const rule of RULES) {
+      if (rule.kind === 'injury' && rule.match.test(q)) return rule.reply(ctx);
+    }
+    if (COACH_REQUEST.test(q)) return FALLBACK;
+    for (const rule of RULES) {
+      if (rule.kind === 'general' || rule.kind === 'injury') continue;
+      if (rule.match.test(q)) return rule.reply(ctx);
+    }
+    return FALLBACK;
+  }
   for (const rule of RULES) {
     if (rule.match.test(q)) return rule.reply(ctx);
   }

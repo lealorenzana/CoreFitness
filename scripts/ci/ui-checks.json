@@ -22,6 +22,7 @@
     { "file": "member-coach-setup-check.js", "app": "member" },
     { "file": "member-coach-tools-check.js", "app": "member" },
     { "file": "member-coach-meals-check.js", "app": "member" },
+    { "file": "assistant-routing-check.js", "app": "member" },
     { "file": "trainer-coach-mark-check.js", "app": "member" },
     { "file": "trainer-chat-check.js", "app": "member" },
     { "file": "season-check.js", "app": "member" },
