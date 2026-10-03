@@ -1027,3 +1027,19 @@ html, body {
   .legal-sec { opacity: 1 !important; transform: none !important; break-inside: avoid-page; }
   .legal-p, .legal-list, .legal-table { margin-left: 0 !important; }
 }
+
+/* the reader's agreement to this version (0151) — components/legal/AgreementBlock.tsx */
+.legal-agree { scroll-margin-top: 120px; display: grid; gap: 12px; padding: 18px 20px; border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-secondary) 7%, var(--color-surface-raised)); }
+.legal-agree p { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--color-text-secondary); }
+.legal-agree b { color: var(--color-text-primary); }
+.legal-agree-btn { justify-self: start; height: 44px; padding: 0 20px; border-radius: 999px; border: 0; font-size: 14.5px; font-weight: 700;
+  color: #1a1205; background: var(--color-secondary); }
+.legal-agree-btn:disabled { opacity: .6; }
+.legal-agree-error { color: var(--color-secondary) !important; }
+.legal-agree.is-done { display: flex; align-items: center; gap: 12px;
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-raised)); }
+.legal-agree-mark { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--color-primary); }
+@media print { .legal-agree { display: none !important; } }

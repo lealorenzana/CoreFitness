@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, Clock, Link2, Printer, Scale, type LucideIcon } from 'lucide-react';
 import PhoneChassis from '../layout/PhoneChassis';
 import GymContact from '../ui/GymContact';
+import AgreementBlock from './AgreementBlock';
+import type { LegalDocument } from '../../lib/legalVersions';
 
 /**
  * The layout both legal pages share: a document, not a stack of cards.
@@ -50,6 +52,8 @@ interface Props {
   sections: LegalSection[];
   contactLead: string;
   other: { to: string; label: string; blurb: string };
+  /** Which member document this is — shows where the reader stands with this version (0151). */
+  agreement?: LegalDocument;
 }
 
 const BAR = 60;
@@ -59,7 +63,7 @@ const splitTitle = (t: string) => {
 };
 const still = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export default function LegalPage({ title, icon: DocIcon, updated, framework, intro, glance, sections, contactLead, other }: Props) {
+export default function LegalPage({ title, icon: DocIcon, updated, framework, intro, glance, sections, contactLead, other, agreement }: Props) {
   const navigate = useNavigate();
   const scroller = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
@@ -132,9 +136,20 @@ export default function LegalPage({ title, icon: DocIcon, updated, framework, in
   // Arriving on /terms#refunds: go straight there.
   useEffect(() => {
     const id = window.location.hash.slice(1);
+    // `#agreement` is the Today strip's link to the end of the page; it appears once the agreement has loaded.
     if (id && sections.some((s) => s.id === id)) {
       const t = setTimeout(() => jump(id, false), 60);
       return () => clearTimeout(t);
+    }
+    // `#agreement` is the Today strip's link to the end of the page. The block appears only once the
+    // member's agreements have loaded, so wait for it — a few seconds at most, then stay at the top.
+    if (id === 'agreement') {
+      let tries = 0;
+      const t = setInterval(() => {
+        if (document.getElementById(id)) { clearInterval(t); jump(id, false); }
+        else if (++tries > 30) clearInterval(t);
+      }, 100);
+      return () => clearInterval(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -256,6 +271,7 @@ export default function LegalPage({ title, icon: DocIcon, updated, framework, in
             })}
 
             <div className="legal-end">
+              {agreement && <AgreementBlock document={agreement} />}
               <div className="legal-contact"><GymContact lead={contactLead} accent="var(--color-primary-300)" /></div>
               <Link to={other.to} className="legal-next legal-hide-print">
                 <span>

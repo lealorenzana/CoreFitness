@@ -1,5 +1,6 @@
 import { Ban, Download, EyeOff, Shield, UserCheck } from 'lucide-react';
 import LegalPage, { type GlanceItem, type LegalSection } from '../components/legal/LegalPage';
+import { prettyVersion, PRIVACY_VERSION } from '../lib/legalVersions';
 
 /**
  * What the gym holds, who can see it, and what it does not do.
@@ -104,7 +105,8 @@ export default function Privacy() {
     <LegalPage
       title="Privacy Policy"
       icon={Shield}
-      updated="19 September 2026"
+      updated={prettyVersion(PRIVACY_VERSION)}
+      agreement="member_privacy"
       framework="RA 10173"
       intro="This describes what the gym actually holds and who can actually reach it — not a list of things a policy is expected to say. Written to the Data Privacy Act of 2012 (RA 10173)."
       glance={glance}

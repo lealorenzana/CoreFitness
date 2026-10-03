@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Archive, Banknote, CalendarX, FileText, Snowflake } from 'lucide-react';
 import LegalPage, { type GlanceItem, type LegalSection } from '../components/legal/LegalPage';
 import { describeWindow, getRefundTerms, type RefundTermsState } from '../lib/api/refundTerms';
+import { prettyVersion, TERMS_VERSION } from '../lib/legalVersions';
 
 /**
  * The terms the gym actually operates by.
@@ -201,7 +202,8 @@ export default function Terms() {
     <LegalPage
       title="Terms of Service"
       icon={FileText}
-      updated="14 September 2026"
+      updated={prettyVersion(TERMS_VERSION)}
+      agreement="member_terms"
       framework="RA 7394"
       intro="By using the gym and this app you agree to these terms. They describe what the system actually does — every rule below is one the app or the database enforces, and nothing here is a rule you will find out about only after it costs you money."
       glance={glance}

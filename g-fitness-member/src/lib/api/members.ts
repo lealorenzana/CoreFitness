@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import type { ProfileRow, MemberProfileRow } from '../../types/db';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../legalVersions';
 
 export interface MemberWithProfile {
   profile: ProfileRow;
@@ -158,6 +159,10 @@ export async function registerMember(input: {
         // exactly 'true'. A string, because metadata reaches the trigger as
         // text either way and `meta->>'terms_accepted'` compares against one.
         terms_accepted: input.termsAccepted ? 'true' : 'false',
+        // Which words they agreed to (0151): the dates the two pages carry. Read by
+        // trg_member_terms_from_signup() beside 0079's stamp; ignored before 0151.
+        terms_version: TERMS_VERSION,
+        privacy_version: PRIVACY_VERSION,
         // Read by 0125's trigger on gym_roles. A bad code never blocks sign-up.
         referral_code: input.referralCode ?? '',
       },

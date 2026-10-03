@@ -33,6 +33,7 @@ import { showToast } from '../../utils/toast';
 import { supabase } from '../../lib/supabaseClient';
 import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
+import { memberAgreements, type Agreement, type MemberAgreements } from '../../lib/api/termsAcceptance';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 
 /**
@@ -363,6 +364,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
             value={member.terms_accepted_at ? formatDate(member.terms_accepted_at) : null}
             className="col-span-2"
           />
+          <AgreedVersionsCell profileId={profile.id} />
         </div>
       </Section>
 
@@ -1455,6 +1457,32 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </h3>
       {children}
     </div>
+  );
+}
+
+/**
+ * Which words the member agreed to (0151), not only when. 'unversioned' is an
+ * agreement from before versions were kept — real, but nobody can say to which
+ * text, and the cell says exactly that. Nothing recorded, or 0151 not pasted:
+ * the cell is left out rather than shown as a refusal (same rule as 0079's).
+ */
+function AgreedVersionsCell({ profileId }: { profileId: string }) {
+  const [a, setA] = useState<MemberAgreements | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => { const r = await memberAgreements(profileId); if (alive) setA(r); })();
+    return () => { alive = false; };
+  }, [profileId]);
+  if (!a || (!a.member_terms && !a.member_privacy)) return null;
+  // A version is a calendar date ('2026-10-03'), never parsed through Date — that reads it as UTC
+  // midnight and shows the day before anywhere west of Greenwich. Same MM/DD/YYYY as formatDate.
+  const day = (v: string) => { const [y, m, d] = v.split('-'); return `${m}/${d}/${y}`; };
+  const say = (label: string, x: Agreement | null) => !x ? `${label}: none recorded`
+    : x.version === 'unversioned' ? `${label}: before versions were kept`
+    : `${label}: version of ${day(x.version)}${x.source === 'in_app' ? ` (agreed ${formatDate(x.accepted_at)} in the app)` : ''}`;
+  return (
+    <InfoCell icon={FileCheck} label="Versions agreed" className="col-span-2"
+      value={`${say('Terms', a.member_terms)} · ${say('Privacy', a.member_privacy)}`} />
   );
 }
 
