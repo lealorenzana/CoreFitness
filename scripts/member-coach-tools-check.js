@@ -137,10 +137,10 @@ async (page) => {
   const REPLIES = [
     { text: 'Here is a push day to start with.', proposal: PROP('P1', 'routine.create', 'A push day with squats and planks',
       { name: 'Push day', exercises: [
-        { exercise_id: 'e1', target_sets: 3, target_reps: 10, rest_seconds: 90 },
+        { exercise_id: 'e1', target_sets: 3, target_reps: 10, target_weight_kg: 40, rest_seconds: 90 },
         { exercise_id: 'e3', target_sets: 3, target_seconds: 30, rest_seconds: 60 }] }, 'pending', 0) },
     { text: 'Two days a week suits you.', proposal: PROP('P2', 'schedule.set', 'Train Monday and Thursday',
-      { days: [{ day_of_week: 1, routine_id: 'r1' }, { day_of_week: 4 }] }, 'pending', 0) },
+      { days: [{ day_of_week: 1, routine_id: 'r1', remind_at: '06:30' }, { day_of_week: 4 }] }, 'pending', 0) },
     { text: 'A goal keeps you honest.', proposal: PROP('P3', 'goal.create', 'Squat your bodyweight by December',
       { title: 'Squat 70 kg', metric: 'weight_kg', target_value: 70, target_date: '2026-12-01' }, 'pending', 0) },
     // A proposal and no words at all: still the coach's reply.
@@ -298,7 +298,7 @@ async (page) => {
   out.push('the reply text is shown: ' + (/Here is a push day to start with\./.test(await text()) ? 'yes' : 'MISSING'));
   out.push('the card shows the summary: ' + (/A push day with squats and planks/.test(c) ? 'yes' : 'MISSING'));
   out.push('the card names the routine: ' + (/Push day/.test(c) ? 'yes' : 'MISSING'));
-  out.push('the card lists a reps exercise: ' + (c.includes('Barbell Squat — 3 × 10, rest 90 s') ? 'yes' : 'MISSING ' + c));
+  out.push('the card lists a reps exercise: ' + (c.includes('Barbell Squat — 3 × 10 at 40 kg, rest 90 s') ? 'yes' : 'MISSING ' + c));
   out.push('the card lists a timed exercise: ' + (c.includes('Plank — 3 × 30 s, rest 60 s') ? 'yes' : 'MISSING ' + c));
   // Directly under it: the element before the card is that reply's text.
   const above = await card('P1').evaluate((el) => el.previousElementSibling?.textContent ?? '').catch(() => '');
@@ -322,6 +322,9 @@ async (page) => {
   out.push('no proposal card in history: ' + (!/squats and planks|Barbell Squat|Applied|Undone/.test(histText) ? 'yes' : 'NO, a card was sent'));
   c = await cardText('P2');
   out.push('a schedule card names each day: ' + (c.includes('Mon — Leg day') && c.includes('Thu — Any workout') && c.includes('Sun — Rest') ? 'yes' : 'MISSING ' + c));
+  // What apply stores is what the card shows: the coach's time, or 17:00 when it named none.
+  out.push('a schedule card shows every day\'s reminder, 5:00 PM when none was named: '
+    + (c.includes('Mon — Leg day · reminder 6:30 AM') && c.includes('Thu — Any workout · reminder 5:00 PM') ? 'yes' : 'MISSING ' + c));
   await tap('P2', 'Discard');
   c = await cardText('P2');
   out.push('Discard sends discard_ai_proposal: ' + (RPC_CALLS.some((x) => x.fn === 'discard' && x.p_id === 'P2') ? 'yes' : 'MISSING'));
@@ -386,8 +389,22 @@ async (page) => {
   t = await text();
   out.push('Training plan marks the day the coach set: ' + ((t.match(/Set by the coach/g) || []).length === 1 ? 'yes' : 'MISSING ' + (t.match(/Set by the coach/g) || []).length));
 
+  // ── At a message limit the changes stay reachable; a gym without the coach has none ──
+  Object.assign(COACH, { allowed: false, reason: 'daily_limit', used_today: 30 });
+  await go('/member/chatbot');
+  out.push('at the daily limit the changes button still shows: '
+    + (await page.getByRole('button', { name: 'Changes from the coach' }).count() === 1 ? 'yes' : 'MISSING'));
+  Object.assign(COACH, { reason: 'switched_off', used_today: 0 });
+  await go('/member/chatbot');
+  out.push('with the coach switched off there is no changes button: '
+    + (await page.getByRole('button', { name: 'Changes from the coach' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
+  Object.assign(COACH, { allowed: true, reason: null, used_today: 3 });
+
   // The Privacy page says what the coach may change.
   await go('/privacy');
   out.push('Privacy says nothing changes until Apply: ' + (/nothing changes until you tap Apply, and you can undo a change afterwards\./.test(await text()) ? 'yes' : 'MISSING'));
+  out.push('Privacy says the coach reads the weekly plan, and staff see only the mark: '
+    + (/routines, your weekly plan and how often/.test(await text())
+      && /can see which of your routines and plan days were made by the coach \(a small mark on them\), never your conversation\./.test(await text()) ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

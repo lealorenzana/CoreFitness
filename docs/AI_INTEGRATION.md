@@ -24,14 +24,23 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   and `propose_routine`, `propose_schedule`, `propose_goal`. **Nothing changes
   without the member's Apply**: a proposal is a row in `ai_proposals`, written by
   SQL, and only `apply` touches routines, schedule or goals. A member can discard a
-  proposal or **undo** an applied one, except when they have already trained it
-  ("already trained") or a newer change touches the same thing ("a newer change... undo
-  that first"); at most 10 proposals wait at once. The tool loop runs up to 6 rounds
-  and is **one counted message per member question**, however many tool rounds it
-  takes. Routines and schedules it made carry "Built with the coach" / "Set by the
-  coach" in the member app, the trainer's member sheet and the admin member drawer.
-  The "Changes from the coach" sheet keeps every proposal; the cards in the
-  conversation show for the current visit.
+  proposal or **undo** an applied one. Undo **never overwrites anything real**, and
+  refuses in a plain sentence when: they have already trained with the routine
+  ("already trained"); a newer coach change is in the way ("a newer change... undo
+  that first"); they have **changed it themselves since** — a routine edited after
+  the coach's last write to it (its `updated_at`, which 0145 also moves on any
+  exercise edit), or plan days that are no longer exactly the set apply wrote; a
+  goal they reached ("it stays"); or a routine they deleted since. A goal is refused
+  outright at a gym that switched progress off. At most 10 proposals wait at once.
+  The tool loop runs up to 6 rounds and is **one counted message per member
+  question**, however many tool rounds it takes — so **one counted message may use
+  up to 6 model calls** (the cost below is per call on a plain answer; a message
+  that builds a routine costs a few times that). Routines and schedules it made
+  carry "Built with the coach" / "Set by the coach" in the member app, the trainer's
+  member sheet and the admin member drawer. The "Changes from the coach" sheet keeps
+  **every waiting change plus 30 days of decided ones**, and stays reachable at the
+  message limits and without the plan (apply/undo do not spend messages); the cards
+  in the conversation show for the current visit.
 - **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
   month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
   before the model call, so a failed or abandoned call still counts.

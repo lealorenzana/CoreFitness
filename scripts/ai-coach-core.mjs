@@ -57,6 +57,23 @@ const closed = (s) => {
 check('every tool is strict, closed, and requires every property',
   tools.length === 6 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
+// Nullable values are anyOf [{ type }, { type: 'null' }] — never a type array, anywhere.
+const typeArrays = [];
+const nullables = [];
+const walk = (s, at) => {
+  if (!s || typeof s !== 'object') return;
+  if (Array.isArray(s.type)) typeArrays.push(at);
+  if (Array.isArray(s.anyOf) && s.anyOf.some((b) => b.type === 'null')) nullables.push(at);
+  for (const [k, v] of Object.entries(s)) if (v && typeof v === 'object') walk(v, `${at}.${k}`);
+};
+for (const t of tools) walk(t.input_schema, t.name);
+check('no schema uses a type array; nullables are anyOf with a null branch',
+  typeArrays.length === 0 && nullables.length >= 12, JSON.stringify({ typeArrays, n: nullables.length }));
+check('an anyOf-nullable still refuses the wrong type (a number for a string id)',
+  typeof core.toolCall('find_exercises', { muscle_group: 7, equipment: null }).error === 'string'
+  && typeof core.toolCall('find_exercises', { equipment: null }).error === 'string');
+check('the prompt says a proposed routine has no id until applied',
+  core.SYSTEM_PROMPT.includes('A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it.'));
 
 const ex = { exercise_id: '11111111-1111-4111-8111-111111111111', custom_name: null, target_sets: 3, target_reps: 10,
   target_weight_kg: null, target_seconds: null, rest_seconds: 90 };

@@ -24,7 +24,7 @@ HOW YOU WRITE
 Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so.
 
 HOW YOU CHANGE THINGS
-You can look up exercises this gym has, and — if the member let you read their training — their routines and weekly schedule. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.`;
+You can look up exercises this gym has, and — if the member let you read their training — their routines and weekly schedule. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.`;
 
 // ---- the tools ------------------------------------------------------------------------------
 // Each is strict: every object closes its properties and requires all of them, and an optional
@@ -33,9 +33,11 @@ You can look up exercises this gym has, and — if the member let you read their
 export const MAX_ROUNDS = 6;
 
 const str = (description: string) => ({ type: 'string', description });
-const strOrNull = (description: string) => ({ type: ['string', 'null'], description });
-const intOrNull = (description: string) => ({ type: ['integer', 'null'], description });
-const numOrNull = (description: string) => ({ type: ['number', 'null'], description });
+// Nullable as anyOf with a null branch, never a type array: the shape strict tool use documents.
+const orNull = (type: string, description: string) => ({ anyOf: [{ type }, { type: 'null' }], description });
+const strOrNull = (description: string) => orNull('string', description);
+const intOrNull = (description: string) => orNull('integer', description);
+const numOrNull = (description: string) => orNull('number', description);
 const obj = (properties: Record<string, unknown>) => ({
   type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
 });
@@ -128,6 +130,12 @@ const isObj = (v: unknown): v is Obj => v !== null && typeof v === 'object' && !
 // Checks one value against its schema (types and required only) — the model's input is
 // untrusted even with strict on. Returns a plain message, or null when it fits.
 function mismatch(schema: Obj, v: unknown, at: string): string | null {
+  // A nullable value is anyOf [{ type }, { type: 'null' }]: it fits when any branch does.
+  if (Array.isArray(schema.anyOf)) {
+    const misses = (schema.anyOf as Obj[]).map((branch) => mismatch(branch, v, at));
+    if (misses.some((m) => m === null)) return null;
+    return v === null ? `${at} is missing.` : misses.find((m) => m !== `${at} is missing.`) ?? `${at} has the wrong type.`;
+  }
   const types = ([] as unknown[]).concat(schema.type);
   if (v === null) return types.includes('null') ? null : `${at} is missing.`;
   if (Array.isArray(v)) {

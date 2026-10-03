@@ -15,7 +15,8 @@
 --     function would otherwise bypass), writes, and stores what undo needs.
 --   * undo_ai_proposal()   — puts it back, or refuses in plain words when that
 --     would destroy something real (a routine already trained with, a goal
---     already reached).
+--     already reached, a newer coach change in the way, a routine or plan the
+--     member has changed themselves since, a routine deleted since).
 --   * discard_ai_proposal(), my_ai_proposals().
 --   * ai_coach_exercises() / ai_coach_routines() / ai_coach_schedule() — what
 --     the coach reads to make a proposal. The catalogue is not personal and is
@@ -33,6 +34,28 @@ alter table workout_routines add constraint workout_routines_source_check check 
 alter table gym_plans add column if not exists source text not null default 'member';
 alter table gym_plans drop constraint if exists gym_plans_source_check;
 alter table gym_plans add constraint gym_plans_source_check check (source in ('member', 'coach'));
+
+-- ---- a routine's updated_at moves when its exercises do -------------------------------------
+-- 0086 bumps updated_at on an update of the routine row only. Undo compares it with the
+-- coach's last write to tell "the member changed this since" — so an edit to the exercise
+-- list alone (a reorder, a set count) must move it too. Definer: the member's own exercise
+-- write already passed RLS; the parent touch is bookkeeping, not a second permission check.
+create or replace function workout_routine_exercises_touch_routine() returns trigger
+language plpgsql security definer set search_path = public as $fn$
+begin
+  update workout_routines set updated_at = now()
+   where id = case when tg_op = 'DELETE' then old.routine_id else new.routine_id end
+     and updated_at is distinct from now();
+  if tg_op = 'UPDATE' and old.routine_id is distinct from new.routine_id then
+    update workout_routines set updated_at = now() where id = old.routine_id and updated_at is distinct from now();
+  end if;
+  return null;
+end;
+$fn$;
+revoke all on function workout_routine_exercises_touch_routine() from public, anon, authenticated;
+drop trigger if exists workout_routine_exercises_touch on workout_routine_exercises;
+create trigger workout_routine_exercises_touch after insert or update or delete on workout_routine_exercises
+  for each row execute function workout_routine_exercises_touch_routine();
 
 -- ---- the proposals ---------------------------------------------------------------------------
 create table if not exists ai_proposals (
@@ -180,6 +203,10 @@ begin
     end loop;
 
   elsif p_kind = 'goal.create' then
+    -- A gym that switched progress off has no goals screen: a goal made here would be invisible.
+    if not gym_module_on(p_gym, 'progress') then
+      raise exception 'Your gym doesn''t use goals in the app.';
+    end if;
     v_title := btrim(coalesce(p_payload ->> 'title', ''));
     if char_length(v_title) not between 1 and 80 then
       raise exception 'Give the goal a title of 1 to 80 characters.';
@@ -359,7 +386,7 @@ create or replace function undo_ai_proposal(p_id uuid) returns void
 language plpgsql security definer set search_path = public as $$
 declare
   v_me uuid := ai_proposal_member(); v_gym uuid := current_gym_id();
-  p ai_proposals%rowtype; v_routine uuid; v_goal uuid; v_reached date;
+  p ai_proposals%rowtype; v_routine uuid; v_goal uuid; v_reached date; v_touched timestamptz;
 begin
   select * into p from ai_proposals
    where id = p_id and member_id = v_me and gym_id = v_gym for update;
@@ -379,12 +406,58 @@ begin
           and (p.kind = 'schedule.set' or n.payload ->> 'routine_id' = p.payload ->> 'routine_id')) then
     raise exception 'A newer change from the coach replaced this one — undo that first.';
   end if;
+  -- The same for a routine the coach made and later rewrote: deleting it would lose the rewrite too.
+  if p.kind = 'routine.create' and exists (
+       select 1 from ai_proposals n
+        where n.gym_id = v_gym and n.member_id = v_me and n.id <> p.id
+          and n.kind = 'routine.replace' and n.status = 'applied'
+          and n.payload ->> 'routine_id' = p.undo ->> 'routine_id') then
+    raise exception 'A newer change from the coach replaced this one — undo that first.';
+  end if;
+
+  -- Undo must never overwrite the member's own later edits. A routine: its updated_at (moved
+  -- by 0086's trigger and, above, by any exercise write) is compared with the coach's last
+  -- write to it — this proposal's or a later one's apply/undo, each of which sets decided_at
+  -- = now() in the same transaction as its writes, so the coach's own writes never trip it.
+  if p.kind in ('routine.create', 'routine.replace') then
+    v_routine := (p.undo ->> 'routine_id')::uuid;
+    select r.updated_at into v_touched from workout_routines r
+     where r.id = v_routine and r.member_id = v_me and r.gym_id = v_gym;
+    if p.kind = 'routine.create' and exists (select 1 from workout_logs l where l.routine_id = v_routine) then
+      raise exception 'You have already trained with this routine. Delete it yourself from My routines if you want it gone.';
+    end if;
+    if v_touched is not null and v_touched > (
+         select max(n.decided_at) from ai_proposals n
+          where n.gym_id = v_gym and n.member_id = v_me
+            and n.kind in ('routine.create', 'routine.replace') and n.status in ('applied', 'undone')
+            and n.undo ->> 'routine_id' = v_routine::text) then
+      raise exception 'You''ve changed this yourself since — undo isn''t safe now. Edit it directly instead.';
+    end if;
+  -- A schedule: the member's plan days here must still be exactly the set apply wrote (a
+  -- routine deleted since reads as "any workout", as gym_plans' on-delete-set-null made it).
+  elsif p.kind = 'schedule.set' then
+    if exists (
+         (select g.day_of_week, g.routine_id, g.remind_at, g.active, g.source
+            from gym_plans g where g.member_id = v_me and g.gym_id = v_gym)
+         except
+         (select (d ->> 'day_of_week')::int,
+                 (select r.id from workout_routines r where r.id = (d ->> 'routine_id')::uuid),
+                 coalesce((d ->> 'remind_at')::time, '17:00'::time), true, 'coach'
+            from jsonb_array_elements(p.payload -> 'days') d))
+       or exists (
+         (select (d ->> 'day_of_week')::int,
+                 (select r.id from workout_routines r where r.id = (d ->> 'routine_id')::uuid),
+                 coalesce((d ->> 'remind_at')::time, '17:00'::time), true, 'coach'
+            from jsonb_array_elements(p.payload -> 'days') d)
+         except
+         (select g.day_of_week, g.routine_id, g.remind_at, g.active, g.source
+            from gym_plans g where g.member_id = v_me and g.gym_id = v_gym)) then
+      raise exception 'You''ve changed this yourself since — undo isn''t safe now. Edit it directly instead.';
+    end if;
+  end if;
 
   if p.kind = 'routine.create' then
     v_routine := (p.undo ->> 'routine_id')::uuid;
-    if exists (select 1 from workout_logs l where l.routine_id = v_routine) then
-      raise exception 'You have already trained with this routine. Delete it yourself from My routines if you want it gone.';
-    end if;
     -- Already deleted by the member: there is nothing left to take away.
     delete from workout_routines where id = v_routine and member_id = v_me and gym_id = v_gym;
 

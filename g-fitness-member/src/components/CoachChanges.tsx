@@ -4,6 +4,7 @@ import { Eyebrow } from './ui/noc';
 import ProposalCard from './ProposalCard';
 import { listProposals, type Proposal, type ProposalNames, type ProposalStatus } from '../lib/api/aiProposals';
 import { errorMessage } from '../utils/errorMessage';
+import { useT } from '../lib/i18n';
 
 /**
  * Every change the coach has proposed — waiting ones, and the last 30 days of
@@ -35,6 +36,7 @@ export default function CoachChanges({
 }) {
   const [rows, setRows] = useState<Proposal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -45,24 +47,24 @@ export default function CoachChanges({
         const list = await listProposals();
         if (alive) { setRows(list); onLoaded(list); }
       } catch (err) {
-        if (alive) { setRows(null); setError(errorMessage(err, 'The coach\'s changes could not be loaded.')); }
+        if (alive) { setRows(null); setError(errorMessage(err, t('The coach\'s changes could not be loaded.'))); }
       }
     })();
     return () => { alive = false; };
-  }, [open, onLoaded]);
+  }, [open, onLoaded, t]);
 
   const statusOf = (p: Proposal): ProposalStatus => decided[p.id] ?? p.status;
 
   return (
-    <GlassSheet open={open} onClose={onClose} title="Changes from the coach"
-      subtitle="Nothing changes until you tap Apply">
+    <GlassSheet open={open} onClose={onClose} title={t('Changes from the coach')}
+      subtitle={t('Nothing changes until you tap Apply')}>
       {error ? (
         <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
       ) : rows === null ? (
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Loading…')}</p>
       ) : rows.length === 0 ? (
         <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
-          Nothing from the coach yet. Ask it to build you a routine or plan your week, and its suggestion shows up here.
+          {t('Nothing from the coach yet. Ask it to build you a routine or plan your week, and its suggestion shows up here.')}
         </p>
       ) : (
         <div className="flex flex-col" style={{ gap: 18 }}>
@@ -71,7 +73,7 @@ export default function CoachChanges({
             if (list.length === 0) return null;
             return (
               <section key={g.title} aria-label={g.title}>
-                <Eyebrow>{g.title} · {list.length}</Eyebrow>
+                <Eyebrow>{t(g.title)} · {list.length}</Eyebrow>
                 <div className="flex flex-col" style={{ gap: 10, marginTop: 10 }}>
                   {list.map((p) => (
                     <ProposalCard key={p.id} id={p.id} kind={p.kind} summary={p.summary} payload={p.payload}

@@ -463,7 +463,10 @@ function Assistant() {
             <button onClick={() => { setSetupFailed(false); setRedoSetup(true); }}
               style={{ height: 32, color: 'var(--color-text-secondary)' }}>Redo my setup</button>
           )}
-          {coach?.allowed && (
+          {/* Not only while the coach can talk: at a message limit (or without the plan) the
+              member can still apply, undo or discard what it already proposed. Only a
+              non-member or a gym with the coach switched off has nothing here. */}
+          {coach && coach.reason !== 'not_member' && coach.reason !== 'switched_off' && (
             <button onClick={() => setChangesOpen(true)}
               style={{ height: 32, color: 'var(--color-primary-300)' }}>Changes from the coach</button>
           )}

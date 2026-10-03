@@ -408,6 +408,100 @@ await as(A);
     JSON.stringify({ e, mid: mid.name, eo, e2, e3, before, after }));
 }
 
+// Final review --------------------------------------------------------------------------------
+// The member's own edits are separate transactions; pglite's clock can be millisecond-coarse, so
+// a short pause keeps "later" strictly later, as it always is between two real requests.
+const pause = () => new Promise((r) => setTimeout(r, 15));
+await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+// 22. A coach routine the member edited since (exercise list only, then the name) cannot be undone.
+await as(A);
+{
+  const pc = await propose('routine.create', { ...leg, name: 'Edited later' });
+  const R = (await one(`select apply_ai_proposal('${pc}') as r`)).r.routine_id;
+  await pause();
+  await as(A);
+  await db.exec(`update workout_routine_exercises set target_sets = 5 where routine_id = '${R}' and position = 0`);
+  const e = await tryExec(`select undo_ai_proposal('${pc}')`);
+  const kept = await routineOf(R);
+  const st = (await proposalRow(pc)).status;
+  // A header edit alone is caught too.
+  await as(A);
+  const pr = await propose('routine.replace', { routine_id: R6, name: 'Coach rename', exercises: [ex(E1)] });
+  await db.exec(`select apply_ai_proposal('${pr}')`);
+  await pause();
+  await as(A);
+  await db.exec(`update workout_routines set name = 'My own name' where id = '${R6}'`);
+  const e2 = await tryExec(`select undo_ai_proposal('${pr}')`);
+  const r6 = await routineOf(R6);
+  check('22. undo is refused once the member edited the coach routine (exercises, or name); nothing is overwritten',
+    !!e && /changed this yourself since/.test(e) && kept?.exercises[0].target_sets === 5 && st === 'applied'
+      && !!e2 && /changed this yourself since/.test(e2) && r6.name === 'My own name'
+      && (await proposalRow(pr)).status === 'applied',
+    JSON.stringify({ e, kept: kept?.exercises?.[0], st, e2, name: r6.name }));
+}
+// 23. A schedule the member changed since cannot be undone.
+await as(A);
+{
+  const ps = await propose('schedule.set', { days: [{ day_of_week: 4 }] });
+  await db.exec(`select apply_ai_proposal('${ps}')`);
+  await pause();
+  await as(A);
+  await db.exec(`update gym_plans set remind_at = '06:00' where member_id = '${A}' and day_of_week = 4`);
+  const e = await tryExec(`select undo_ai_proposal('${ps}')`);
+  const days = await daysOfA();
+  check('23. undo of a schedule is refused once the member changed a day; their change stays',
+    !!e && /changed this yourself since/.test(e) && days.length === 1 && days[0].at === '06:00:00'
+      && (await proposalRow(ps)).status === 'applied',
+    JSON.stringify({ e, days }));
+}
+// 24. Untouched, undo still works — including after a later coach rewrite of that routine was itself undone,
+// and a schedule whose routine the coach's undo deleted.
+await as(A);
+{
+  const pc = await propose('routine.create', { ...leg, name: 'Untouched day' });
+  const R = (await one(`select apply_ai_proposal('${pc}') as r`)).r.routine_id;
+  await pause();
+  await as(A);
+  const pr = await propose('routine.replace', { routine_id: R, name: 'Untouched rewrite', exercises: [ex(E2)] });
+  await db.exec(`select apply_ai_proposal('${pr}')`);
+  const blocked = await tryExec(`select undo_ai_proposal('${pc}')`);
+  await pause();
+  await as(A);
+  const er = await tryExec(`select undo_ai_proposal('${pr}')`);
+  await pause();
+  await as(A);
+  const ps = await propose('schedule.set', { days: [{ day_of_week: 2, remind_at: '07:15', routine_id: R }, { day_of_week: 5 }] });
+  await db.exec(`select apply_ai_proposal('${ps}')`);
+  await pause();
+  await as(A);
+  const ec = await tryExec(`select undo_ai_proposal('${pc}')`);
+  const gone = await routineOf(R);
+  await pause();
+  await as(A);
+  const es = await tryExec(`select undo_ai_proposal('${ps}')`);
+  check('24. untouched: routine undo works after a later coach rewrite was undone; schedule undo works',
+    !!blocked && /newer change from the coach/.test(blocked) && er === null && ec === null && gone === null && es === null,
+    JSON.stringify({ blocked, er, ec, gone: !!gone, es }));
+}
+// 25. A gym with progress switched off takes no goals: refused at apply (made while on) and at create.
+await as(A);
+{
+  const pg = await propose('goal.create', { title: 'Progress off', metric: 'custom' });
+  await db.exec(`reset role; insert into gym_modules (gym_id, feature_key, enabled) values ('${GYM}', 'progress', false)
+    on conflict (gym_id, feature_key) do update set enabled = false;`);
+  await as(A);
+  const e = await tryExec(`select apply_ai_proposal('${pg}')`);
+  const ec = await tryPropose('goal.create', { title: 'Progress off 2', metric: 'custom' });
+  await owner();
+  const goals = (await one(`select count(*)::int as n from fitness_goals where title like 'Progress off%'`)).n;
+  const st = (await proposalRow(pg)).status;
+  await db.exec(`reset role; update gym_modules set enabled = true where gym_id = '${GYM}' and feature_key = 'progress';`);
+  check('25. with progress switched off a goal is refused ("doesn\'t use goals") at apply and create; nothing written',
+    !!e && /doesn't use goals in the app/.test(e) && !!ec && /doesn't use goals/.test(ec) && goals === 0 && st === 'pending',
+    JSON.stringify({ e, ec, goals, st }));
+}
+await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+
 // 16 ------------------------------------------------------------------------------------------
 await owner();
 {
