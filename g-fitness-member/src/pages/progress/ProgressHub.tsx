@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChartLineUp, ChatCircleText, Ruler, Target, Trophy } from '@phosphor-icons/react';
+import { ChartLineUp, ChatCircleText, ForkKnife, Ruler, Target, Trophy } from '@phosphor-icons/react';
 
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, TextTabs } from '../../components/ui/noc';
@@ -9,9 +9,10 @@ import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
 import GoalsTab            from './tabs/GoalsTab';
 import TrainerFeedbackTab  from './tabs/TrainerFeedbackTab';
+import MealsTab            from './tabs/MealsTab';
 
 /**
- * Progress — four tabs: Overview · Body · Goals · Coach (cleaned up 2026-09-18).
+ * Progress — five tabs: Overview · Body · Goals · Coach · Meals (cleaned up 2026-09-18; Meals 2026-10-03).
  *
  * It had five, and two of them said the same thing twice: "Workouts" and
  * "Charts" each counted this month's training in their own words, Charts added
@@ -25,6 +26,7 @@ import TrainerFeedbackTab  from './tabs/TrainerFeedbackTab';
  *              training lives in My routines
  *   Goals      unchanged
  *   Coach      unchanged
+ *   Meals      the meal guide applied from the AI coach (0146, added 2026-10-03)
  *
  * The tab lives in the URL (`?tab=`) and is **read on every render**, not copied
  * into state once, so a rail tap that only changes the search string still
@@ -38,6 +40,7 @@ const tabs = [
   { id: 'body',     label: 'Body',     icon: <Ruler size={15} weight="bold" /> },
   { id: 'goals',    label: 'Goals',    icon: <Target size={15} weight="bold" /> },
   { id: 'feedback', label: 'Coach',    icon: <ChatCircleText size={15} weight="bold" /> },
+  { id: 'meals',    label: 'Meals',    icon: <ForkKnife size={15} weight="bold" /> },
 ] as const;
 
 type TabId = typeof tabs[number]['id'];
@@ -91,6 +94,7 @@ export default function ProgressHub() {
         {active === 'body' && <BodyProgressTab />}
         {active === 'goals' && <GoalsTab />}
         {active === 'feedback' && <TrainerFeedbackTab />}
+        {active === 'meals' && <MealsTab />}
       </div>
     </Page>
   );

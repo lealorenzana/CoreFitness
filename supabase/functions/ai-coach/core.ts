@@ -24,7 +24,11 @@ HOW YOU WRITE
 Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so.
 
 HOW YOU CHANGE THINGS
-You can look up exercises this gym has, and — if the member let you read their training — their routines and weekly schedule. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.`;
+You can look up exercises this gym has, and — if the member let you read their training — their routines and weekly schedule. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.
+
+MEALS
+You can propose a meal guide with propose_meals: everyday Filipino-friendly meal ideas with portions by hand size — a palm of protein, a fist of rice or carbs, two cupped hands of vegetables, a thumb of fats. Never write a calorie, kcal, macro, gram or percentage figure; the app refuses them. If the member mentions a medical condition, pregnancy, an allergy or an eating disorder, do not give meal advice — say a doctor or a registered nutritionist-dietitian should guide them.
+Put the food first and its role after it — "2 eggs for protein", never "protein: 2 eggs" — or the app refuses the guide.`;
 
 // ---- the tools ------------------------------------------------------------------------------
 // Each is strict: every object closes its properties and requires all of them, and an optional
@@ -122,6 +126,26 @@ export const TOOLS = [
       target_date: strOrNull('A date YYYY-MM-DD between today and two years from now, or null.'),
     }),
   },
+  {
+    name: 'propose_meals',
+    description: "Proposes the member's meal guide (it replaces their current one when applied): everyday meal ideas with portions by hand size, never a calorie, gram, macro or percentage figure. Nothing changes until the member taps Apply on the card.",
+    strict: true,
+    input_schema: obj({
+      summary: SUMMARY,
+      sections: {
+        type: 'array',
+        description: '1 to 6 sections, e.g. Breakfast, Lunch, Dinner, Snacks.',
+        items: obj({
+          title: str('The section title, 1 to 40 characters, e.g. "Breakfast".'),
+          items: {
+            type: 'array',
+            description: '1 to 8 meal ideas, each 1 to 200 characters, food first: "2 eggs for protein, a fist of rice".',
+            items: { type: 'string' },
+          },
+        }),
+      },
+    }),
+  },
 ] as const;
 
 type Obj = Record<string, unknown>;
@@ -209,6 +233,8 @@ export function toolCall(name: string, input: unknown): ToolCall {
       const { summary: _s, ...rest } = input;
       return proposal('goal.create', rest);
     }
+    case 'propose_meals':
+      return proposal('meals.set', { sections: input.sections });
   }
   return { error: `There is no tool called ${name}.` };
 }

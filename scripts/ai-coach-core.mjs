@@ -40,8 +40,8 @@ check('a 1001-character question is refused', !core.validQuestion('x'.repeat(100
 // ---- Phase 3: the tools ----
 const tools = core.TOOLS ?? [];
 const names = tools.map((t) => t.name).sort().join(',');
-check('the six tools are defined',
-  names === 'find_exercises,get_my_routines,get_my_schedule,propose_goal,propose_routine,propose_schedule', names);
+check('the seven tools are defined',
+  names === 'find_exercises,get_my_routines,get_my_schedule,propose_goal,propose_meals,propose_routine,propose_schedule', names);
 // Every object in a strict schema must close its properties and require every one of them.
 const closed = (s) => {
   if (!s || typeof s !== 'object') return true;
@@ -55,7 +55,7 @@ const closed = (s) => {
   return true;
 };
 check('every tool is strict, closed, and requires every property',
-  tools.length === 6 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+  tools.length === 7 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
 // Nullable values are anyOf [{ type }, { type: 'null' }] — never a type array, anywhere.
 const typeArrays = [];
@@ -118,6 +118,37 @@ check('the prompt keeps the injury rule for proposals', /Never propose a change 
 check('sse frames a proposal as one JSON line',
   core.sse({ type: 'proposal', id: 'p1', kind: 'goal.create', summary: 's', payload: { title: 't' } })
     === 'data: {"type":"proposal","id":"p1","kind":"goal.create","summary":"s","payload":{"title":"t"}}\n\n');
+
+// ---- Phase 4: meals ----
+const mealsTool = tools.find((t) => t.name === 'propose_meals');
+check('propose_meals is strict and closed, with summary and sections (each a title and string items)',
+  mealsTool?.strict === true && closed(mealsTool.input_schema)
+  && Object.keys(mealsTool.input_schema.properties).sort().join(',') === 'sections,summary'
+  && mealsTool.input_schema.properties.sections.type === 'array'
+  && Object.keys(mealsTool.input_schema.properties.sections.items.properties).sort().join(',') === 'items,title'
+  && mealsTool.input_schema.properties.sections.items.properties.items.items.type === 'string', JSON.stringify(mealsTool?.input_schema));
+const mealTypeArrays = [];
+const walkMeals = (s, at) => {
+  if (!s || typeof s !== 'object') return;
+  if (Array.isArray(s.type)) mealTypeArrays.push(at);
+  for (const [k, v] of Object.entries(s)) if (v && typeof v === 'object') walkMeals(v, `${at}.${k}`);
+};
+walkMeals(mealsTool?.input_schema, 'propose_meals');
+check('propose_meals has no type arrays', Boolean(mealsTool) && mealTypeArrays.length === 0, JSON.stringify(mealTypeArrays));
+const sections = [{ title: 'Breakfast', items: ['2 eggs for protein, a fist of rice', 'A banana'] }, { title: 'Dinner', items: ['A palm of chicken, two cupped hands of vegetables'] }];
+const mc = core.toolCall('propose_meals', { summary: 'Simple meals for your week.', sections });
+check('propose_meals → create_ai_proposal, kind meals.set, payload { sections } only',
+  mc.rpc === 'create_ai_proposal' && mc.args.p_kind === 'meals.set' && mc.args.p_summary === 'Simple meals for your week.'
+  && Object.keys(mc.args.p_payload).join(',') === 'sections' && JSON.stringify(mc.args.p_payload.sections) === JSON.stringify(sections), JSON.stringify(mc));
+check('a malformed meal guide → an error, never an rpc',
+  typeof core.toolCall('propose_meals', { summary: 'x', sections: [{ title: 'Lunch', items: [3] }] }).error === 'string'
+  && typeof core.toolCall('propose_meals', { summary: 'x', sections: [{ title: 'Lunch' }] }).error === 'string'
+  && typeof core.toolCall('propose_meals', { summary: 'x', sections: 'rice' }).error === 'string'
+  && typeof core.toolCall('propose_meals', { summary: ' ', sections }).error === 'string');
+check('the MEALS prompt text is present, verbatim',
+  core.SYSTEM_PROMPT.includes('MEALS\nYou can propose a meal guide with propose_meals: everyday Filipino-friendly meal ideas with portions by hand size — a palm of protein, a fist of rice or carbs, two cupped hands of vegetables, a thumb of fats. Never write a calorie, kcal, macro, gram or percentage figure; the app refuses them. If the member mentions a medical condition, pregnancy, an allergy or an eating disorder, do not give meal advice — say a doctor or a registered nutritionist-dietitian should guide them.'));
+check('the prompt says food first, its role after',
+  core.SYSTEM_PROMPT.includes('Put the food first and its role after it — "2 eggs for protein", never "protein: 2 eggs" — or the app refuses the guide.'));
 
 console.log(failed ? `\n${failed} FAILED` : '\nai-coach core: all checks passed');
 process.exit(failed ? 1 : 0);

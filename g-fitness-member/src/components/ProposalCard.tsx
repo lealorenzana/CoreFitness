@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Eyebrow, NocButton, Panel, StatusPill } from './ui/noc';
+import { MealGuidanceNote } from './MealGuide';
 import {
-  applyProposal, discardProposal, undoProposal,
+  applyProposal, discardProposal, mealSections, undoProposal,
   type GoalPayload, type ProposalNames, type ProposalStatus, type RoutinePayload, type SchedulePayload,
 } from '../lib/api/aiProposals';
 import { formatRemindAt } from '../lib/api/gymPlans';
@@ -18,7 +19,9 @@ import { dateLocale, useLanguage, useT } from '../lib/i18n';
  *
  * Everything the database will write is on the card — weights, and each day's
  * reminder time (17:00 when the coach named none, as apply stores it) — so what
- * is applied is what was shown. Copy goes through `t()` (lib/i18n.ts).
+ * is applied is what was shown. Copy goes through `t()` (lib/i18n.ts). A meal
+ * guide (0146) shows every section and meal idea, then the fixed general-guidance
+ * line — the app's, never stored, so no guide is shown without it.
  */
 
 type T = (text: string) => string;
@@ -28,6 +31,7 @@ const KIND_LABEL: Record<string, string> = {
   'routine.replace': 'Change a routine',
   'schedule.set': 'Weekly plan',
   'goal.create': 'New goal',
+  'meals.set': 'Meal guide',
 };
 
 // Monday first: the order a training week is read in.
@@ -111,6 +115,7 @@ export default function ProposalCard({
   const t = useT();
   const lang = useLanguage();
   const { lead, lines } = detailLines(kind, payload, names, t, dateLocale(lang));
+  const meals = kind === 'meals.set' ? mealSections(obj(payload).sections) : [];
 
   const run = async (act: () => Promise<unknown>, next: ProposalStatus) => {
     setBusy(true);
@@ -136,6 +141,17 @@ export default function ProposalCard({
           <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
             {lead && <p style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{lead}</p>}
             {lines.map((l, i) => <p key={i}>{l}</p>)}
+          </div>
+        )}
+        {kind === 'meals.set' && (
+          <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
+            {meals.map((sec, si) => (
+              <div key={si} data-meal-section style={{ marginTop: si ? 8 : 0 }}>
+                <p style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{sec.title}</p>
+                {sec.items.map((item, i) => <p key={i}>{item}</p>)}
+              </div>
+            ))}
+            <MealGuidanceNote style={{ marginTop: 10 }} />
           </div>
         )}
 

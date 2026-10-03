@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 import { CaretRight } from '@phosphor-icons/react';
 
@@ -257,6 +257,10 @@ export function StatusPill({ label, tone = 'structure' }: { label: string; tone?
 /**
  * Text tabs with an underline: the Train filter, the Progress rail.
  * Selection is structure, so the underline is violet.
+ *
+ * A row wider than the screen scrolls sideways, and the selected tab is
+ * scrolled into the row's view — only the row, never the page — so a tab
+ * opened by link (Progress → Meals, the fifth) is not left cut off at the edge.
  */
 export function TextTabs<T extends string>({
   tabs,
@@ -272,8 +276,18 @@ export function TextTabs<T extends string>({
   label: string;
   gap?: number;
 }) {
+  const row = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = row.current;
+    const on = el?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!el || !on) return;
+    const box = el.getBoundingClientRect();
+    const tab = on.getBoundingClientRect();
+    if (tab.right > box.right) el.scrollLeft += tab.right - box.right + 8;
+    else if (tab.left < box.left) el.scrollLeft -= box.left - tab.left + 8;
+  }, [active]);
   return (
-    <div role="tablist" aria-label={label} className="flex overflow-x-auto scrollbar-hide" style={{ gap, fontSize: 12.5 }}>
+    <div ref={row} role="tablist" aria-label={label} className="flex overflow-x-auto scrollbar-hide" style={{ gap, fontSize: 12.5 }}>
       {tabs.map((t) => {
         const on = t.id === active;
         return (

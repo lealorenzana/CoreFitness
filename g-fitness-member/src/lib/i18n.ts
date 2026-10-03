@@ -55,6 +55,7 @@ const FIL: Record<string, string> = {
   'Goals': 'Mga layunin',
   'Body': 'Katawan',
   'Coach notes': 'Mga tala ng coach',
+  'Meals': 'Mga pagkain',
   'Account': 'Account',
   'Membership': 'Membership',
   'Renew': 'Mag-renew',

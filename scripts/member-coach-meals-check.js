@@ -1,13 +1,11 @@
 /**
- * 0145, the trainer's side: a trainee's routine that came from the AI coach's
- * proposal says so on the trainee sheet ("Built with the coach"), and one the
- * member made does not. On a database without 0145 the routines still list.
+ * 0146 in the member app: a meal guide the coach proposes arrives as a card
+ * that lists every section and meal idea with the fixed general-guidance line
+ * under it; Apply sends apply_ai_proposal; Progress → Meals shows the applied
+ * guide (my_meal_guide) as rows with "Built with the coach" and the same line,
+ * and with no guide says so and points at the coach. Privacy says who sees it.
  *
- * 0146: the trainee's meal guide shows, read-only with the fixed line, when
- * trainee_meal_guide returns sections (their trainer, goals shared) — and
- * nothing at all when it returns null.
- *
- * Setup copied from trainer-assign-check.js.
+ * Setup copied from member-coach-tools-check.js.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -28,7 +26,7 @@ async (page) => {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 
   const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
-    role: 'trainer', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
+    role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
   const session = {
     access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'm1', role: 'authenticated', exp })}.sig`,
     refresh_token: 'r', token_type: 'bearer', expires_at: exp,
@@ -36,7 +34,7 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => {
     localStorage.setItem(k, JSON.stringify(s));
-    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'trainer' }));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
   }, [KEY, session]);
 
   const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
@@ -59,11 +57,9 @@ async (page) => {
       never_expires: false, frozen_at: null, created_at: iso(-10, 9, 0), membership_plans: PREMIUM }],
     exercises: EX,
     attendance: [-1, -3, -7, -8, -9, -14, -15, -16].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d, 18, 20 + i), method: 'qr', activity: 'Gym floor' })),
-    workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0) },
-      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) },
-      // The trainee's own: one built with the coach (0145), one they made themselves.
-      { id: 'rc', member_id: 'mb1', name: 'Coach push day', notes: null, position: 0, updated_at: iso(-1, 9, 0), source: 'coach' },
-      { id: 'rm', member_id: 'mb1', name: 'My pull day', notes: null, position: 1, updated_at: iso(-1, 9, 0), source: 'member' }],
+    // Arms day came from an applied proposal (0145); Leg day is the member's own.
+    workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0), source: 'member' },
+      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0), source: 'coach' }],
     workout_routine_exercises: [
       { id: 'x1', routine_id: 'r1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 3,
         target_reps: 8, target_weight_kg: 60, target_seconds: null, rest_seconds: 90 },
@@ -74,16 +70,11 @@ async (page) => {
     workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
       completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
     workout_sets: [],
-    gym_plans: [
-      // The trainee's week: Monday is theirs, Wednesday the coach set (0145).
-      { id: 'gt1', member_id: 'mb1', day_of_week: 1, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rm', created_at: iso(-5, 9, 0), source: 'member' },
-      { id: 'gt3', member_id: 'mb1', day_of_week: 3, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rc', created_at: iso(-5, 9, 0), source: 'coach' },
-      { id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
-      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
+    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0), source: 'member' },
+      // The coach set this day (an applied schedule proposal).
       { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
-      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
+      last_reminded_on: null, routine_id: 'r1', created_at: iso(-5, 9, 0), source: 'coach' }],
     workout_resources: [
       { id: 'w1', title: 'Yoga With Adriene', provider: 'YouTube', url: 'https://youtube.com/x', image_url: null, description: 'Yoga', category: 'Follow-along', level: 'all_levels', is_active: true, sort_order: 1 },
       { id: 'w2', title: 'Bodyweight workouts', provider: 'Darebee', url: 'https://darebee.com', image_url: null, description: 'No equipment', category: 'Bodyweight', level: 'beginner', is_active: true, sort_order: 2 },
@@ -130,36 +121,55 @@ async (page) => {
     return true;
   }));
 
-  let BEFORE_0145 = false;
-  // 0146: what trainee_meal_guide returns — sections, or null (not shared / none).
-  const MEALS = [{ title: 'Breakfast', items: ['2 eggs for protein, a fist of rice'] },
-    { title: 'Dinner', items: ['A palm of chicken, two cupped hands of vegetables'] }];
-  let MEAL_GUIDE = MEALS;
-  const MEAL_ASKS = [];
-  let refusedSource = 0;
   const CALLS = {};
-  let assigned = null;
+  const COACH_POSTS = [];
+  // Consent already given, setup done (no `onboarded` reads as done): straight to the coach.
+  const COACH = { gym_id: 'gym-1', allowed: true, reason: null, used_today: 3, daily_limit: 30,
+    used_month: 40, monthly_limit: 1500, consent: true };
+
+  // ── 0145: the proposals, in memory, as my_ai_proposals() would return them ──
+  const PROP = (id, kind, summary, payload, status, minsAgo) => ({ id, gym_id: 'gym-1', member_id: 'm1', kind, payload, summary,
+    status, undo: null, created_at: new Date(Date.now() - minsAgo * 60000).toISOString(), decided_at: status === 'pending' ? null : new Date().toISOString() });
+  const PROPOSALS = [];
+  // 0146: the coach proposes a meal guide — portions by hand, never numbers.
+  const SECTIONS = [
+    { title: 'Breakfast', items: ['2 eggs for protein, a fist of rice', 'A banana or a cup of papaya'] },
+    { title: 'Lunch', items: ['A palm of grilled bangus, two cupped hands of pinakbet'] },
+    { title: 'Snacks', items: ['A thumb of peanuts'] },
+  ];
+  const REPLIES = [
+    { text: 'Here are simple meals for your week.', proposal: PROP('P5', 'meals.set', 'Everyday meals for your training days',
+      { sections: SECTIONS }, 'pending', 0) },
+  ];
+  // What my_meal_guide() returns: the applied guide's sections, or null for none.
+  let MEAL_GUIDE = null;
+  const RPC_CALLS = [];
+  let APPLY_REFUSAL = null;
+  const decide = (b, from, to) => {
+    RPC_CALLS.push(b);
+    const p = PROPOSALS.find((x) => x.id === b.p_id && x.status === from);
+    if (p) { p.status = to; p.decided_at = new Date().toISOString(); }
+    return p;
+  };
+
   const FN = {
-    trainee_meal_guide: (b) => { MEAL_ASKS.push(b.p_member); return b.p_member === 'mb1' ? MEAL_GUIDE : null; },
-    assign_program: (b) => { assigned = b.p_program; return 'en1'; },
-    member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
-    member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
-      { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
-    program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({
-      program_id: assigned, program_name: 'Starter Strength', day_id: 'd' + d, week: 1, day: d,
-      workout_id: 'gw1', workout_name: 'Leg Day A', done: false })),
-    request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
-      const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
-      DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
-        created_at: new Date().toISOString(), closed_at: null, close_note: null, membership_plans: { name: plan.name, price: plan.price } });
-      return 'rr' + n; },
-    withdraw_renewal_request: () => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; }); return null; },
+    my_ai_proposals: () => PROPOSALS,
+    my_meal_guide: () => MEAL_GUIDE,
+    apply_ai_proposal: (b) => { const p = decide({ fn: 'apply', ...b }, 'pending', 'applied'); return { kind: p?.kind, routine_id: 'rNew' }; },
+    undo_ai_proposal: (b) => { decide({ fn: 'undo', ...b }, 'applied', 'undone'); return null; },
+    discard_ai_proposal: (b) => { decide({ fn: 'discard', ...b }, 'pending', 'discarded'); return null; },
+    shop_catalog: () => [
+      { id: 'p1', name: 'Water 500ml', category: 'Drinks', description: null, price: 20, photo_url: null, availability: 'in_stock' },
+      { id: 'p2', name: 'Whey scoop', category: 'Supplements', description: 'Chocolate', price: 60, photo_url: null, availability: 'low' },
+      { id: 'p4', name: 'Pre-workout', category: 'Supplements', description: null, price: 80, photo_url: null, availability: 'sold_out' },
+    ],
   };
   const RPC = {
     refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
       has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
     gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
       ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
+    ai_coach_status: () => COACH,
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
@@ -180,6 +190,24 @@ async (page) => {
     const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
 
+    if (path.startsWith('/functions/v1/ai-coach')) {
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
+      const posted = JSON.parse(req.postData() || '{}');
+      // The readiness probe (an empty body) is answered as the deployed, configured function does.
+      if (!posted.question) return route.fulfill({ status: 400, contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"reason":"bad_question"}' });
+      COACH_POSTS.push(posted);
+      // The function stores the proposal (create_ai_proposal) and streams it beside the text.
+      const r = REPLIES[Math.min(COACH_POSTS.length, REPLIES.length) - 1];
+      PROPOSALS.push(r.proposal);
+      const frame = (o) => `data: ${JSON.stringify(o)}\n\n`;
+      return route.fulfill({ status: 200, contentType: 'text/event-stream',
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: (r.text ? frame({ type: 'text', text: r.text }) : '')
+          + frame({ type: 'proposal', id: r.proposal.id, kind: r.proposal.kind, summary: r.proposal.summary, payload: r.proposal.payload })
+          + frame({ type: 'done' }) });
+    }
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
     if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
       // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
@@ -207,14 +235,15 @@ async (page) => {
           role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
           accent: 'violet', gym_count: 1 }] : []);
       }
+      // A refusal from apply_ai_proposal: PostgREST's shape for a raised exception.
+      if (fn === 'apply_ai_proposal' && APPLY_REFUSAL) {
+        const b = JSON.parse(req.postData() || '{}'); RPC_CALLS.push({ fn: 'apply', refused: true, ...b });
+        return json({ code: 'P0001', message: APPLY_REFUSAL, details: null, hint: null }, 400);
+      }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
-      return json(fn in RPC ? RPC[fn] : null); }
+      if (fn === 'set_ai_coach_consent') { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; COACH.consent = b.p_reads_data; return json(null); }
+      const r = RPC[fn]; return json(typeof r === 'function' ? r() : fn in RPC ? r : null); }
     if (!path.startsWith('/rest/v1/')) return json([]);
-    // A database without 0145: naming `source` is a 400, as PostgREST answers an unknown column.
-    if (BEFORE_0145 && path.endsWith('/workout_routines') && params.some(([k, v]) => k === 'select' && /(^|,)\s*source\b/.test(v))) {
-      refusedSource++;
-      return json({ code: '42703', message: 'column workout_routines.source does not exist' }, 400);
-    }
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
     const method = req.method();
@@ -240,9 +269,7 @@ async (page) => {
       if (t === 'workout_routines') DB.workout_routine_exercises = DB.workout_routine_exercises.filter((x) => !hit.some((h) => h.id === x.routine_id));
       return json(hit);
     }
-    // Without 0145 the column is not there to come back either.
-    const rows = match(DB[t], params).map((r) => embed(t, r))
-      .map((r) => (BEFORE_0145 && (t === 'workout_routines' || t === 'gym_plans') ? (({ source: _s, ...rest }) => rest)(r) : r));
+    const rows = match(DB[t], params).map((r) => embed(t, r));
     return json(one ? rows[0] ?? null : rows);
   });
 
@@ -254,51 +281,101 @@ async (page) => {
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1300);
   };
+
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  const card = (id) => page.locator(`[data-proposal="${id}"]`).first();
+  const cardText = async (id) => ((await card(id).innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+  const ask = async (q) => {
+    await page.getByLabel('Your question').fill(q);
+    await page.getByRole('button', { name: 'Send' }).click();
+    await page.waitForTimeout(2200);
+  };
+  const tap = async (id, name) => { await card(id).getByRole('button', { name, exact: true }).click(); await page.waitForTimeout(900); };
 
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
-  let t = await text();
-  out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  const marks = (t.match(/Built with the coach/g) || []).length;
-  out.push('the coach routine is marked, once: ' + (marks === 1 ? 'yes' : marks === 0 ? 'MISSING' : 'NO, ' + marks + ' marks'));
-  // The mark sits on the coach's routine's row, not the member's.
-  const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
-  out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
-  const planMarks = (t.match(/Set by the coach/g) || []).length;
-  out.push('the training plan marks the coach day, once: ' + (planMarks === 1 ? 'yes' : planMarks === 0 ? 'MISSING' : 'NO, ' + planMarks + ' marks'));
-  const planRow = await page.locator('div', { hasText: 'Set by the coach' }).filter({ hasText: 'Wed: Coach push day' }).filter({ hasNotText: 'Mon: My pull day' }).count();
-  out.push('the plan mark is on Wednesday: ' + (planRow > 0 ? 'yes' : 'MISSING'));
-  await page.getByText('Coach push day').first().scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: 'shots/trainer-coach-mark.png' });
-
-  // ── 0146: the meal guide, when the database hands it over ──
   const FIXED = 'This is general guidance, not a diet plan. For anything medical — diabetes, pregnancy, allergies, an eating disorder — see a doctor or a registered nutritionist-dietitian.';
-  const meals = ((await page.locator('[data-trainee-meals]').innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
-  out.push('the sheet asks trainee_meal_guide for this trainee: ' + (MEAL_ASKS.includes('mb1') ? 'yes' : 'MISSING'));
-  out.push('the meal guide shows when shared: ' + (/Meal guide/.test(meals) && /Breakfast/i.test(meals) && meals.includes('2 eggs for protein, a fist of rice')
-    && /Dinner/i.test(meals) && meals.includes('A palm of chicken, two cupped hands of vegetables') ? 'yes' : 'MISSING ' + meals));
-  out.push('the meal guide carries the fixed line: ' + (meals.includes(FIXED) ? 'yes' : 'MISSING'));
-  out.push('the meal guide is read-only: ' + (await page.locator('[data-trainee-meals] button, [data-trainee-meals] input, [data-trainee-meals] textarea').count() === 0 ? 'yes' : 'NO, it has controls'));
-  await page.locator('[data-trainee-meals]').scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: 'shots/trainer-meal-guide.png' });
 
+  // ── The card ──
+  await go('/member/chatbot');
+  // Worded so the app's own rules pass it to the coach (an eating question is answered by the rules).
+  await ask('Can you build me a weekly guide?');
+  let c = await cardText('P5');
+  out.push('the meals card shows the summary: ' + (/Everyday meals for your training days/.test(c) ? 'yes' : 'MISSING ' + c));
+  out.push('the meals card is labelled a meal guide: ' + (/Meal guide/i.test(c) ? 'yes' : 'MISSING ' + c));
+  out.push('the meals card shows every section title: ' + (['Breakfast', 'Lunch', 'Snacks'].every((s) => c.toLowerCase().includes(s.toLowerCase())) ? 'yes' : 'MISSING ' + c));
+  out.push('the meals card shows every item: ' + (SECTIONS.every((s) => s.items.every((i) => c.includes(i))) ? 'yes' : 'MISSING ' + c));
+  // Each item sits under its own section.
+  const firstSection = ((await card('P5').locator('[data-meal-section]').first().innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+  out.push('items sit under their section: ' + (/Breakfast/i.test(firstSection) && firstSection.includes('2 eggs for protein') && !firstSection.includes('bangus') ? 'yes' : 'MISSING ' + firstSection));
+  out.push('the meals card shows the fixed line: ' + (c.includes(FIXED) ? 'yes' : 'MISSING ' + c));
+  await card('P5').scrollIntoViewIfNeeded().catch(() => {});
+  await page.screenshot({ path: 'shots/member-coach-meals-card.png' });
+
+  await tap('P5', 'Apply');
+  c = await cardText('P5');
+  out.push('Apply sends apply_ai_proposal with the id: ' + (RPC_CALLS.some((x) => x.fn === 'apply' && x.p_id === 'P5') ? 'yes' : 'MISSING'));
+  out.push('the card then says Applied, with Undo: ' + (/Applied/.test(c) && /Undo/.test(c) ? 'yes' : 'MISSING ' + c));
+  out.push('the fixed line stays after Apply: ' + (c.includes(FIXED) ? 'yes' : 'MISSING'));
+
+  // ── Progress → Meals with a guide ──
+  MEAL_GUIDE = SECTIONS;
+  await go('/member/progress?tab=meals');
+  let t = await text();
+  out.push('Progress has a Meals tab, selected: ' + (await page.getByRole('tab', { name: 'Meals', selected: true }).count() === 1 ? 'yes' : 'MISSING'));
+  // The fifth tab overflows a phone's row: opened by link it must be scrolled into view, not cut off.
+  const tabBox = await page.getByRole('tab', { name: 'Meals' }).boundingBox();
+  out.push('the Meals tab is fully on screen at 393px: ' + (tabBox && tabBox.x >= 0 && tabBox.x + tabBox.width <= 393 ? 'yes' : 'NO ' + JSON.stringify(tabBox)));
+  out.push('the Meals tab says Built with the coach: ' + (/Built with the coach/i.test(t) ? 'yes' : 'MISSING'));
+  out.push('the Meals tab shows every section and item: ' + (SECTIONS.every((s) => t.toLowerCase().includes(s.title.toLowerCase()) && s.items.every((i) => t.includes(i))) ? 'yes' : 'MISSING ' + t.slice(0, 400)));
+  out.push('the Meals tab shows the fixed line: ' + (t.includes(FIXED) ? 'yes' : 'MISSING'));
+  out.push('the Meals tab shows no empty state: ' + (!/No meal guide yet/.test(t) ? 'yes' : 'STILL SHOWN'));
+  // Rows on the page, not a card per row: four items, four rows, none inside a card of its own.
+  const rows = await page.locator('[data-meal-guide] [data-meal-item]').count();
+  out.push('items are rows on the page: ' + (rows === 4 ? 'yes' : 'NO, ' + rows + ' rows'));
+  // A card is a filled or bordered box: walk from each item up to the guide and count any.
+  const carded = await page.locator('[data-meal-guide] [data-meal-item]').evaluateAll((els) => els.filter((e) => {
+    for (let n = e; n && !n.hasAttribute('data-meal-guide'); n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      const filled = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent';
+      const boxed = parseFloat(cs.borderTopWidth) > 0 && parseFloat(cs.borderBottomWidth) > 0;
+      if (filled || boxed) return true;
+    }
+    return false;
+  }).length);
+  out.push('no item sits in a card: ' + (carded === 0 ? 'yes' : 'NO, ' + carded + ' carded'));
+  await page.screenshot({ path: 'shots/member-meals-tab.png', fullPage: true });
+
+  // ── Progress → Meals with none ──
   MEAL_GUIDE = null;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+  await go('/member/progress?tab=meals');
   t = await text();
-  out.push('no meal guide when trainee_meal_guide is null: ' + (await page.locator('[data-trainee-meals]').count() === 0 && !/Meal guide|Breakfast/i.test(t) ? 'yes' : 'STILL SHOWN'));
-  out.push('…and the rest of the sheet is unchanged: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
+  out.push('with no guide the tab says so: ' + (/No meal guide yet\. Ask the coach for one\./.test(t) ? 'yes' : 'MISSING'));
+  out.push('with no guide nothing is invented: ' + (!/Breakfast|Built with the coach/i.test(t) ? 'yes' : 'STILL SHOWN'));
+  await page.screenshot({ path: 'shots/member-meals-empty.png' });
+  await page.getByRole('button', { name: 'Ask the coach' }).click();
+  await page.waitForTimeout(1200);
+  out.push('the empty state links to the assistant: ' + (new URL(page.url()).pathname === '/member/chatbot' ? 'yes' : 'MISSING ' + page.url()));
 
-  BEFORE_0145 = true;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+  // ── A failed read says so, never "no guide" ──
+  await page.route('**/rest/v1/rpc/my_meal_guide', (route) => route.fulfill({ status: 500, contentType: 'application/json',
+    headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ code: 'XX000', message: 'Server error' }) }));
+  await go('/member/progress?tab=meals');
   t = await text();
-  out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
-  out.push('before 0145 nothing is marked: ' + (!/Built with the coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('a failed read is not shown as no guide: ' + (!/No meal guide yet/.test(t) && /Server error|could not be loaded/i.test(t) ? 'yes' : 'NO ' + t.slice(0, 300)));
+  await page.unroute('**/rest/v1/rpc/my_meal_guide');
+
+  // ── The More sheet lists Meals among Progress's links ──
+  await go('/member/home');
+  MEAL_GUIDE = SECTIONS;
+  await page.getByRole('button', { name: 'More', exact: true }).first().click().catch(() => {});
+  await page.waitForTimeout(900);
+  const moreMeals = page.getByRole('button', { name: 'Meals', exact: true });
+  out.push('the More sheet links Meals: ' + (await moreMeals.count() === 1 ? 'yes' : 'MISSING'));
+  await moreMeals.click().catch(() => {});
+  await page.waitForTimeout(1200);
+  out.push('…and it opens Progress → Meals: ' + (/\/member\/progress\?tab=meals$/.test(page.url()) && /Built with the coach/i.test(await text()) ? 'yes' : 'MISSING ' + page.url()));
+
+  // ── Privacy says whose it is ──
+  await go('/privacy');
+  out.push('Privacy says who sees a meal guide: ' + ((await text()).includes("If you apply a meal guide from the coach, it is yours: coaches you train with see it only if you share your goals with them, and the gym's desk and owner never see it.") ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

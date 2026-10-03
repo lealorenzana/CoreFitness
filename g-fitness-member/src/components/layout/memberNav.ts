@@ -227,6 +227,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
       { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
         words: (w) => w('trainer', true) + ' notes' },
+      { label: 'Meals', path: '/member/progress?tab=meals' , module: 'progress' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
     ],
   },
