@@ -1,8 +1,5 @@
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield } from 'lucide-react';
-import MobileFrame from '../components/layout/MobileFrame';
-import GymContact from '../components/ui/GymContact';
+import { Ban, Download, EyeOff, Shield, UserCheck } from 'lucide-react';
+import LegalPage, { type GlanceItem, type LegalSection } from '../components/legal/LegalPage';
 
 /**
  * What the gym holds, who can see it, and what it does not do.
@@ -24,8 +21,9 @@ import GymContact from '../components/ui/GymContact';
  * Framed against RA 10173, the Data Privacy Act of 2012, the way
  * docs/MEMBERSHIP_POLICY.md is framed against RA 7394.
  */
-const sections: { title: string; body: string | string[] }[] = [
+const sections: LegalSection[] = [
   {
+    id: 'holds',
     title: '1. What the gym holds about you',
     body: [
       'Your name, email, phone, address and date of birth, and an emergency contact.',
@@ -37,6 +35,7 @@ const sections: { title: string; body: string | string[] }[] = [
     ],
   },
   {
+    id: 'who',
     title: '2. Who can see it',
     body: [
       'You.',
@@ -47,14 +46,17 @@ const sections: { title: string; body: string | string[] }[] = [
     ],
   },
   {
+    id: 'ratings',
     title: '3. Ratings you give a coach are anonymous to them',
     body: 'A coach sees their scores and what was written, with no name attached — the database gives them a view that does not contain who wrote it. The gym can see the name, because a complaint nobody can follow up is not something a gym can act on, and one member quietly rating every coach one star is something it should be able to notice.',
   },
   {
+    id: 'where',
     title: '4. Where it is kept',
     body: 'In a hosted PostgreSQL database (Supabase, Singapore region) reached over HTTPS, with the app itself served from Vercel. Access is enforced per row in the database, so a screen that forgets to filter still cannot show you somebody else\'s records. Your password is never stored by the gym — it is held, hashed, by the authentication service.',
   },
   {
+    id: 'not',
     title: '5. What this app does not do',
     body: [
       'No advertising, and no advertising identifiers.',
@@ -64,6 +66,7 @@ const sections: { title: string; body: string | string[] }[] = [
     ],
   },
   {
+    id: 'rights',
     title: '6. Your rights under RA 10173',
     body: [
       'See what is held about you: Settings → Your data downloads a copy of all of it as one file, and the front desk can give you the same file. Have anything wrong corrected — most details you can change yourself in Edit profile; ask at the desk for the rest and it is fixed the same day.',
@@ -73,82 +76,41 @@ const sections: { title: string; body: string | string[] }[] = [
     ],
   },
   {
+    id: 'kept',
     title: '7. How long it is kept',
     body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back.',
   },
   {
+    id: 'minors',
     title: '8. Under 18',
     body: 'A member under 18 needs a parent or guardian to sign them up and to agree to this policy at the desk.',
   },
   {
+    id: 'changes',
     title: '9. Changes to this policy',
     body: 'If this changes in a way that matters, it is announced in the app and the date above changes with it.',
   },
 ];
 
+const glance: GlanceItem[] = [
+  { icon: EyeOff, label: 'Never sold', detail: 'The gym does not sell, rent or trade any of it.', to: 'who' },
+  { icon: UserCheck, label: 'Trainers see what you allow', detail: 'A rule in the database, not a hidden screen.', to: 'who' },
+  { icon: Ban, label: 'No ads, no tracking', detail: 'No analytics and no third-party scripts.', to: 'not' },
+  { icon: Download, label: 'A copy is yours', detail: 'Settings → Your data downloads all of it.', to: 'rights' },
+];
+
 export default function Privacy() {
-  const navigate = useNavigate();
-
   return (
-    <MobileFrame>
-      <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
-        <div className="flex-1 flex flex-col px-6 py-6 overflow-hidden">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="flex-1 flex flex-col min-h-0">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-6 flex-shrink-0">
-              <button onClick={() => navigate(-1)}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                <ArrowLeft size={18} />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ background: 'var(--color-primary)' }}>
-                  <Shield size={20} className="text-white" />
-                </div>
-                <h1 className="text-2xl font-bold text-white">Privacy Policy</h1>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3"
-              style={{ color: 'var(--color-text-secondary)' }}>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Last updated: 19 September 2026</p>
-                <p className="text-sm leading-relaxed">
-                  This describes what the gym actually holds and who can actually reach it — not a
-                  list of things a policy is expected to say. Written to the Data Privacy Act of
-                  2012 (RA 10173).
-                </p>
-              </div>
-
-              {sections.map((s) => (
-                <div key={s.title} className="rounded-xl p-4"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                  <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-secondary)' }} />
-                    {s.title}
-                  </h2>
-                  {Array.isArray(s.body) ? (
-                    <ul className="text-sm space-y-1.5">
-                      {s.body.map((item) => (
-                        <li key={item} className="flex items-start gap-2">
-                          <span className="mt-1" style={{ color: 'var(--color-secondary)' }}>•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm leading-relaxed">{s.body}</p>
-                  )}
-                </div>
-              ))}
-
-              <GymContact lead="Something to correct, or to complain about?" accent="var(--color-primary)" />
-              <div className="h-6" />
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </MobileFrame>
+    <LegalPage
+      title="Privacy Policy"
+      icon={Shield}
+      updated="19 September 2026"
+      framework="RA 10173"
+      intro="This describes what the gym actually holds and who can actually reach it — not a list of things a policy is expected to say. Written to the Data Privacy Act of 2012 (RA 10173)."
+      glance={glance}
+      sections={sections}
+      contactLead="Something to correct, or to complain about?"
+      other={{ to: '/terms', label: 'Terms of Service', blurb: 'Freezing, refunds, bookings and your account.' }}
+    />
   );
 }
