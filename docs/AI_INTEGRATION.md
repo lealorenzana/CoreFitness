@@ -10,8 +10,8 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   answer. With the question goes the member's setup answers (goal, experience, days a
   week, minutes, equipment, likes, avoid, and an injury yes/no), whether or not they let
   the coach read their training. If they said yes to that, the question also carries
-  first name, experience level, open goals, routine names and the 30-day workout count.
-  Nothing else leaves the system.
+  first name, experience level, open goals, routine names, the 30-day workout count
+  and their current meal guide (0146). Nothing else leaves the system.
 - **The setup profile (0144, Phase 2).** The coach's first conversation is a guided
   setup (`CoachSetup.tsx`); `save_ai_coach_profile()` stores the answers: goal,
   experience, days a week, minutes, equipment, likes, avoid, and `has_injury` as a
@@ -46,9 +46,17 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   ("a palm of chicken, a fist of rice, half a plate of vegetables"), applied from a
   card like any other proposal and undoable. **A guide never carries a number
   target.** `meal_text_ok()` refuses, in the database, at create and again at apply:
-  any calorie, kcal or kJ word; "macro" or "macros"; a nutrient followed by a figure
-  ("Protein: 150"); and any amount by weight or share ("150g", "1 kg", "40%", "40
-  percent"). A count of things is fine: "2 eggs", "1 cup of rice". The card carries a
+  any calorie, kcal, kJ or kilojoule word, and an energy unit straight after a figure
+  ("1800 cal", "2000kcal"); "macro" or "macros"; a nutrient beside a figure on either
+  side ("Protein: 150", "150 protein a day", "150 grams of protein"); and any amount
+  by weight or share ("150g", "1 kg", "6 oz", "1 lb", "40%", "40 percent"). A count of
+  things is fine: "2 eggs", "1 cup of rice", "2 eggs for protein". **What the rule
+  binds:** the stored guide (every section title and item) and the card's summary.
+  **The coach's chat reply is not checked by the database** — it relies on the
+  prompt alone (rule 3 and the MEALS block, which forbid the figures and say food
+  first, role after). With the history consent the coach also reads the member's
+  current guide (`ai_coach_context()`'s `meal_guide`). Progress → Meals and its More
+  link show only when the member has a guide or the coach is theirs. The card carries a
   fixed line that this is general guidance, not a diet prescription. The member
   reads their guide under **Progress → Meals**. **Who sees it:** the member; and their
   own trainer, read-only and compact with a coach pill, only while the member shares

@@ -592,9 +592,12 @@ await guarded('M1. meal_text_ok', async () => {
   const ok = async (s) => (await db.query('select meal_text_ok($1) as ok', [s])).rows[0].ok;
   const bad = ['1800 kcal a day', '2,000 calories', '500 kJ', '150g protein', '150 grams', 'track your macros',
     '40% carbs', 'Calories: 1800 a day', 'aim for calories around 1800', 'Protein: 150', 'protein = 150',
-    '40 percent carbs', '50 gr rice', '1 kg chicken', '1.5 g', "Calories don't matter here"];
+    '40 percent carbs', '50 gr rice', '1 kg chicken', '1.5 g', "Calories don't matter here",
+    // the final review's gaps: an energy unit after a figure, imperial weights, a figure before a nutrient
+    '1800 cal', '1800 cals', '1,800 Cal per day', '2000kcal a day', '2000 kilojoules', '6 oz chicken',
+    '1 lb of beef', '150 protein a day', '150 grams of protein'];
   const good = ['a palm of chicken', '2 eggs and toast', '1 cup of rice', 'eggs and 1 glass of milk',
-    '2 slices of bread', 'a fist of vegetables', 'fat-free milk is fine'];
+    '2 slices of bread', 'a fist of vegetables', 'fat-free milk is fine', '2 eggs for protein'];
   const b = await Promise.all(bad.map(ok));
   const g = await Promise.all(good.map(ok));
   const n = (await one(`select meal_text_ok(null) as ok`)).ok;
@@ -751,6 +754,18 @@ await guarded('M8. nobody writes the table directly', async () => {
   check('M8. no write policy on ai_meal_guides; a direct insert/update/delete changes nothing',
     pol.length === 0 && !!ins && forged === 0 && same(kept, meals1.sections),
     JSON.stringify({ pol, ins, forged, kept }));
+});
+
+// M12 -----------------------------------------------------------------------------------------
+await guarded('M12. the coach reads the current guide only with consent', async () => {
+  await as(A);
+  await db.exec(`select set_ai_coach_consent(false)`);
+  const off = (await one(`select ai_coach_context() as c`)).c;
+  await db.exec(`select set_ai_coach_consent(true)`);
+  const on = (await one(`select ai_coach_context() as c`)).c;
+  check('M12. ai_coach_context(): no meal_guide without the history consent; with it, A\'s current sections',
+    !(off && 'meal_guide' in off) && same(on?.meal_guide, meals1.sections),
+    JSON.stringify({ off, on }));
 });
 
 // M9 ------------------------------------------------------------------------------------------

@@ -449,7 +449,7 @@ export default function Settings() {
           <SectionHead title={t('AI coach')} />
           <SwitchRow
             label="Let the coach read my training"
-            description="Your first name, goals, experience level, routines, weekly plan and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
+            description="Your first name, goals, experience level, routines, weekly plan, meal guide and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
             on={coachOn}
             busy={busy === 'coach'}
             disabled={busy === 'coach'}

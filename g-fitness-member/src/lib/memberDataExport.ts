@@ -37,6 +37,8 @@ const TABLES: [string, string, string?][] = [
   ['member_share_prefs', 'member_id'],
   ['ai_coach_profiles', 'member_id'],
   ['ai_usage_days', 'member_id'],
+  ['ai_meal_guides', 'member_id'],
+  ['ai_proposals', 'member_id'],
   ['notification_prefs', 'user_id'],
   ['notifications', 'user_id'],
 ];

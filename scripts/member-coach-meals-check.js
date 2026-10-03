@@ -4,6 +4,8 @@
  * under it; Apply sends apply_ai_proposal; Progress → Meals shows the applied
  * guide (my_meal_guide) as rows with "Built with the coach" and the same line,
  * and with no guide says so and points at the coach. Privacy says who sees it.
+ * The Meals tab and its More link are drawn only when the member has a guide or
+ * the coach is theirs; a deep link with neither lands on the gated empty state.
  *
  * Setup copied from member-coach-tools-check.js.
  */
@@ -351,6 +353,10 @@ async (page) => {
   out.push('with no guide the tab says so: ' + (/No meal guide yet\. Ask the coach for one\./.test(t) ? 'yes' : 'MISSING'));
   out.push('with no guide nothing is invented: ' + (!/Breakfast|Built with the coach/i.test(t) ? 'yes' : 'STILL SHOWN'));
   await page.screenshot({ path: 'shots/member-meals-empty.png' });
+  // No guide, but the coach is theirs: Meals is offered on Progress's own row of tabs.
+  await go('/member/progress');
+  out.push('no guide, coach offered: Progress shows a Meals tab: ' + (await page.getByRole('tab', { name: 'Meals' }).count() === 1 ? 'yes' : 'MISSING'));
+  await go('/member/progress?tab=meals');
   await page.getByRole('button', { name: 'Ask the coach' }).click();
   await page.waitForTimeout(1200);
   out.push('the empty state links to the assistant: ' + (new URL(page.url()).pathname === '/member/chatbot' ? 'yes' : 'MISSING ' + page.url()));
@@ -364,6 +370,23 @@ async (page) => {
   out.push('coach not ready: the tab still says no guide yet: ' + (/No meal guide yet\./.test(t) ? 'yes' : 'MISSING'));
   out.push('coach not ready: no Ask the coach: ' + (await page.getByRole('button', { name: 'Ask the coach' }).count() === 0
     && !/Ask the coach for one|The coach suggests/.test(t) ? 'yes' : 'STILL SHOWN'));
+  // Neither a guide nor the coach: Meals is not offered — no tab on Progress, no link in More.
+  await go('/member/progress');
+  const tabsNow = await page.getByRole('tab').count();
+  out.push('no guide, coach not ready: no Meals tab: ' + (tabsNow === 0 ? 'MISSING the Progress tabs'
+    : await page.getByRole('tab', { name: 'Meals' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
+  await go('/member/home');
+  await page.getByRole('button', { name: 'More', exact: true }).first().click().catch(() => {});
+  await page.waitForTimeout(1300);
+  // The sheet must be open (its Goals link drawn) for "no Meals link" to mean anything.
+  const sheetOpen = await page.getByRole('button', { name: 'Goals', exact: true }).count() === 1;
+  out.push('no guide, coach not ready: no Meals in the More sheet: ' + (!sheetOpen ? 'MISSING the More sheet'
+    : await page.getByRole('button', { name: 'Meals', exact: true }).count() === 0 ? 'yes' : 'STILL SHOWN'));
+  // A guide alone brings it back, with the coach still not ready.
+  MEAL_GUIDE = SECTIONS;
+  await go('/member/progress');
+  out.push('a guide alone shows the Meals tab: ' + (await page.getByRole('tab', { name: 'Meals' }).count() === 1 ? 'yes' : 'MISSING'));
+  MEAL_GUIDE = null;
   await page.unroute('**/functions/v1/ai-coach');
 
   // ── The coach switched off for this member: the same ──
@@ -372,6 +395,9 @@ async (page) => {
   t = await text();
   out.push('coach switched off: no Ask the coach: ' + (await page.getByRole('button', { name: 'Ask the coach' }).count() === 0
     && /No meal guide yet\./.test(t) ? 'yes' : 'STILL SHOWN'));
+  await go('/member/progress');
+  out.push('coach switched off, no guide: no Meals tab: ' + (await page.getByRole('tab').count() === 0 ? 'MISSING the Progress tabs'
+    : await page.getByRole('tab', { name: 'Meals' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
   // At a message limit the coach is still theirs (the chat shows it), so the link stays.
   Object.assign(COACH, { reason: 'daily_limit', used_today: 30 });
   await go('/member/progress?tab=meals');

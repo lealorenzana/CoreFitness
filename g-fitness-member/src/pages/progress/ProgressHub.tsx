@@ -10,6 +10,7 @@ import VisualDashboardTab  from './tabs/VisualDashboardTab';
 import GoalsTab            from './tabs/GoalsTab';
 import TrainerFeedbackTab  from './tabs/TrainerFeedbackTab';
 import MealsTab            from './tabs/MealsTab';
+import { useMealsShown }   from '../../hooks/useMealsShown';
 
 /**
  * Progress — five tabs: Overview · Body · Goals · Coach · Meals (cleaned up 2026-09-18; Meals 2026-10-03).
@@ -26,7 +27,11 @@ import MealsTab            from './tabs/MealsTab';
  *              training lives in My routines
  *   Goals      unchanged
  *   Coach      unchanged
- *   Meals      the meal guide applied from the AI coach (0146, added 2026-10-03)
+ *   Meals      the meal guide applied from the AI coach (0146, added 2026-10-03) —
+ *              drawn only when it can hold something: the member has a guide, or
+ *              the coach that writes one is theirs (useMealsShown). A link
+ *              straight to `?tab=meals` still opens it, on MealsTab's empty
+ *              state, which promises nothing it cannot keep.
  *
  * The tab lives in the URL (`?tab=`) and is **read on every render**, not copied
  * into state once, so a rail tap that only changes the search string still
@@ -60,12 +65,15 @@ export default function ProgressHub() {
   const active = resolveTab(params.get('tab'));
 
   const select = (id: TabId) => setParams({ tab: id }, { replace: true });
+  const mealsShown = useMealsShown();
+  // Meals is listed while it can be filled, or while it is the open tab (a deep link).
+  const visibleTabs = tabs.filter((t) => t.id !== 'meals' || mealsShown || active === 'meals');
 
   return (
     <Page>
       <PageTitle back title="Progress" subtitle="How your training, your body and your goals are going" />
 
-      <TextTabs<TabId> label="Progress" tabs={[...tabs]} active={active} onChange={select} gap={20} />
+      <TextTabs<TabId> label="Progress" tabs={visibleTabs} active={active} onChange={select} gap={20} />
 
       <div key={active} className="flex flex-col noc-stack" style={{ gap: 'var(--stack)' }}>
         {active === 'overview' && (

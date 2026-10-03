@@ -70,6 +70,19 @@ export function coachReady(): Promise<boolean> {
   return readyAnswer;
 }
 
+/**
+ * Would the chat show this member the coach? Its own conditions (ChatbotPage): the
+ * function is ready, and the coach is theirs — allowed, or only at a message limit.
+ * The gym's `assistant` switch is the caller's to check. Never throws: unknown is no.
+ */
+export async function coachOffered(): Promise<boolean> {
+  try {
+    const [status, ready] = await Promise.all([getCoachStatus(), coachReady()]);
+    return ready && !!status
+      && (status.allowed || status.reason === 'daily_limit' || status.reason === 'monthly_limit');
+  } catch { return false; }
+}
+
 export async function saveCoachProfile(p: CoachProfile): Promise<void> {
   const { error } = await supabase.rpc('save_ai_coach_profile', { p });
   if (error) throw new Error(error.message);

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, X } from '@phosphor-icons/react';
 import { EVERYTHING, visibleDestinations } from './memberNav';
 import { useGymApp } from '../../hooks/useGymApp';
+import { useMealsShown } from '../../hooks/useMealsShown';
 import { GLASS } from '../ui/glass';
 import { useT } from '../../lib/i18n';
 
@@ -24,6 +25,8 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
   const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
+  // Asked each time the sheet opens: a guide applied a minute ago brings Meals in.
+  const mealsShown = useMealsShown(open);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +74,8 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
         {EVERYTHING
           // A group whose every item belongs to something this gym does not
           // run disappears with them, rather than leaving an empty heading.
-          .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp) }))
+          .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp)
+            .filter((d) => d.onlyWhen !== 'meals' || mealsShown) }))
           .filter(({ items }) => items.length > 0)
           .map(({ group, items }) => (
           <section key={group} style={{ marginBottom: 24 }}>

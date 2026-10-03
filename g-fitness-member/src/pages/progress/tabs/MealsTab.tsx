@@ -5,7 +5,7 @@ import MealGuide from '../../../components/MealGuide';
 import { Eyebrow, NocButton, Panel } from '../../../components/ui/noc';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { myMealGuide, type MealSection } from '../../../lib/api/aiProposals';
-import { coachReady, getCoachStatus } from '../../../lib/api/aiCoach';
+import { coachOffered } from '../../../lib/api/aiCoach';
 import { useGymApp } from '../../../hooks/useGymApp';
 import { moduleOn } from '../../../lib/gymApp';
 import { errorMessage } from '../../../utils/errorMessage';
@@ -21,14 +21,9 @@ import { useT } from '../../../lib/i18n';
  * the function is deployed and configured (coachReady), and the coach is theirs
  * (allowed, or only at a message limit). Otherwise it says "No meal guide yet."
  * and promises nothing. A failed read says so, rather than reading as "no guide yet".
+ * Progress shows this tab only when one of the two holds (useMealsShown); a link
+ * straight to it otherwise lands here, on "No meal guide yet." with no button.
  */
-
-/** The chat's own conditions for showing the coach (ChatbotPage), read once. */
-async function coachOffered(): Promise<boolean> {
-  const [status, ready] = await Promise.all([getCoachStatus(), coachReady()]);
-  return ready && !!status
-    && (status.allowed || status.reason === 'daily_limit' || status.reason === 'monthly_limit');
-}
 
 type State =
   | { status: 'loading' }
@@ -47,7 +42,7 @@ export default function MealsTab() {
     if (!assistantOn) return;
     let alive = true;
     void (async () => {
-      const offered = await coachOffered().catch(() => false);
+      const offered = await coachOffered();
       if (alive) setCanAsk(offered);
     })();
     return () => { alive = false; };

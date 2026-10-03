@@ -139,6 +139,12 @@ export interface Destination {
    * byte-for-byte what it saw before.
    */
   words?: (w: WordReader) => string;
+  /**
+   * Drawn only while this holds for the member, on top of `module`. `'meals'`:
+   * Progress → Meals can be filled — they have a guide, or the coach is theirs
+   * (hooks/useMealsShown). The sheet that draws the list asks.
+   */
+  onlyWhen?: 'meals';
 }
 
 /**
@@ -227,7 +233,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
       { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
         words: (w) => w('trainer', true) + ' notes' },
-      { label: 'Meals', path: '/member/progress?tab=meals' , module: 'progress' },
+      { label: 'Meals', path: '/member/progress?tab=meals' , module: 'progress', onlyWhen: 'meals' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
     ],
   },

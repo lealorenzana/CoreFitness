@@ -8,10 +8,14 @@
 -- the member taps Apply, and Undo puts back the guide it replaced (or none).
 --
 --   * meal_text_ok(text) — the rule that a guide carries no number targets: no
---     calorie/kcal/kJ word at all, no "macro(s)", no nutrient followed by a
---     figure ("Protein: 150"), no weight (g/gr/grams/kg/mg) or share (%/percent)
---     figure. Counts of things are fine ("2 eggs", "1 cup of rice"). Enforced in
---     the database on the summary and every title and item, at create and apply.
+--     calorie/kcal/kJ/kilojoule word at all, no energy unit after a figure
+--     ("1800 cal", "2000kcal"), no "macro(s)", no nutrient beside a figure on
+--     either side ("Protein: 150", "150 protein", "150 grams of protein"), no
+--     weight (g/gr/grams/kg/mg/oz/lb/pounds) or share (%/percent) figure.
+--     Counts of things are fine ("2 eggs", "1 cup of rice", "2 eggs for
+--     protein"). Enforced in the database on the summary and every title and
+--     item, at create and apply — not on the coach's chat reply, which rests on
+--     the prompt alone.
 --     (Postgres regex: \b is a backspace, not a word boundary — \M ends a word.)
 --   * ai_meal_guides — one current guide per member per gym. RLS on, no write
 --     policy for any role: only apply_ai_proposal()/undo_ai_proposal() write it.
@@ -26,6 +30,8 @@
 --     switch, as goal.create is); create_ai_proposal — 0145's body plus one
 --     check, since a meal guide's summary is shown on its card. Grants are
 --     0145's: create or replace keeps them.
+--   * ai_coach_context() — 0144's body, plus 'meal_guide' (the member's current
+--     sections) among the consented history fields only; no consent, no guide.
 -- ============================================================================
 
 -- ---- the no-numbers rule ----------------------------------------------------------------------
@@ -33,12 +39,17 @@ create or replace function meal_text_ok(p text) returns boolean
 language sql immutable set search_path = public as $$
   select p is null or not (
        -- an energy word at all: "Calories: 1800" and "calories around 1800" carry the target after it
-       p ~* '\m(calories?|kcals?|kilocalories?|kj)\M'
+       p ~* '\m(calories?|kcals?|kilocalories?|kilojoules?|kj)\M'
+    -- an energy unit, a word or straight after a figure: "1800 cal", "1,800 Cal per day", "2000kcal"
+    or p ~* '(\m|\d)(k?cals?|kcals?|kilocalories?|kilojoules?|kj)\M'
     or p ~* '\mmacros?\M'
     -- a nutrient followed by a figure: "Protein: 150", "protein = 150" ("fat-free" is fine)
     or p ~* '\m(protein|carbs?|carbohydrates?|fats?|sugar)\s*[:=]?\s*\d'
-    -- an amount by weight or by share: "150g", "50 gr", "1 kg", "40%", "40 percent"
-    or p ~* '\d[\d,.]*\s*(g|gr|grams?|kg|mg)\M'
+    -- a figure followed by a nutrient: "150 protein a day", "150 grams of protein"
+    -- ("2 eggs for protein" is fine: the figure counts eggs)
+    or p ~* '\d[\d,.]*\s*(grams?\s+of\s+)?(protein|carbs?|carbohydrates?|fats?|sugar)\M'
+    -- an amount by weight or by share: "150g", "50 gr", "1 kg", "6 oz", "1 lb", "40%", "40 percent"
+    or p ~* '\d[\d,.]*\s*(g|gr|grams?|kg|mg|oz|ounces?|lbs?|pounds?)\M'
     or p ~* '\d[\d,.]*\s*%'
     or p ~* '\d[\d,.]*\s*(percent|per cent)\M');
 $$;
@@ -576,6 +587,36 @@ $$;
 
 revoke all on function my_meal_guide(), trainee_meal_guide(uuid) from public, anon;
 grant execute on function my_meal_guide(), trainee_meal_guide(uuid) to authenticated;
+
+-- ---- the coach sees the current guide — with consent only ---------------------------------
+-- 0144's ai_coach_context() exactly, plus 'meal_guide' inside the consented fields: without the
+-- history consent the coach gets the setup profile alone, as before.
+create or replace function ai_coach_context() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare v_me uuid := auth.uid(); v_gym uuid := current_gym_id(); p ai_coach_profiles%rowtype; v_profile jsonb;
+begin
+  select * into p from ai_coach_profiles where gym_id = v_gym and member_id = v_me;
+  if p.onboarded_at is not null then
+    v_profile := jsonb_build_object('goal', p.goal, 'experience', p.experience, 'days_per_week', p.days_per_week,
+      'minutes', p.minutes, 'equipment', to_jsonb(p.equipment), 'likes', p.likes, 'avoid', p.avoid,
+      'has_injury', p.has_injury);
+  end if;
+  if not coalesce(p.consent_reads_data, false) then
+    return case when v_profile is null then null else jsonb_build_object('profile', v_profile) end;
+  end if;
+  return jsonb_build_object(
+    'profile', v_profile,
+    'first_name', (select pr.first_name from profiles pr where pr.id = v_me),
+    'experience_level', (select mp.experience_level from member_profiles mp where mp.profile_id = v_me and mp.gym_id = v_gym),
+    'goals', coalesce((select jsonb_agg(g.title order by g.created_at) from fitness_goals g
+                        where g.member_id = v_me and g.gym_id = v_gym and g.achieved_on is null), '[]'::jsonb),
+    'routines', coalesce((select jsonb_agg(r.name order by r.position) from workout_routines r
+                           where r.member_id = v_me and r.gym_id = v_gym), '[]'::jsonb),
+    'workouts_30d', (select count(*) from workout_logs l
+                      where l.member_id = v_me and l.gym_id = v_gym and l.completed_at >= now() - interval '30 days'),
+    'meal_guide', (select m.sections from ai_meal_guides m where m.gym_id = v_gym and m.member_id = v_me));
+end;
+$$;
 
 -- ---- tenancy: the guides are the gym's ------------------------------------------------------
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$
