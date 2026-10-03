@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ClipboardList, Clock, Copy, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
 import {
   createGym, listApplications, rejectApplication, setGymPlan, slugFor, splitName, statusLink, type Application,
 } from '../lib/platform';
@@ -90,6 +90,14 @@ export default function Applications() {
                         {app.plan_name && <span className="chip"><Layers size={12} /> Wants {app.plan_name}{app.billing === 'yearly' ? ', yearly' : ''}</span>}
                         {app.heard_from && <span className="chip"><Sparkles size={12} /> Heard from {app.heard_from}</span>}
                         {app.contact_pref && <span className="chip"><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
+                      </span>
+                    )}
+                    {/* 0150: which version of the gym documents they agreed to. Before 0150 the field is absent — say nothing. */}
+                    {app.terms_version !== undefined && (
+                      <span className="chips">
+                        {app.terms_version
+                          ? <span className="chip" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}><FileCheck2 size={12} /> Agreed to gym terms (version of {app.terms_version})</span>
+                          : <span className="chip muted" data-tip="Applied before the gym documents were in effect, or the agreement did not reach us"><FileQuestion size={12} /> No agreement to the gym terms recorded</span>}
                       </span>
                     )}
                     <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />

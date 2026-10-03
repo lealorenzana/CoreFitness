@@ -39,6 +39,7 @@ node <path-to>/scripts/sql/booking-conflicts.mjs "<path-to-repo>"
 | `reasons-and-limits.mjs` | 0057, 0069 + 0074 | 24 |
 | `demo-removal.mjs` | 0117 | `remove_demo_data()` against **both real seeds**: the demo goes, a real member beside it keeps their payment and their auth row, nothing is left pointing at a deleted person, and a second run is safe. Irreversible in production, so the proof comes before the button |
 | `onboarding-payments.mjs` | 0148 + 0149 | an application with a plan and a status link (anon), the conversation, payment methods, a gym's payment claim (owner only, once per reference, allowed while overdue) and the platform's verify/reject; the check-in drill-down, AI per gym, support access only while granted (and never an invitation's token), the password reset's refusals |
+| `gym-terms.mjs` | 0150 | an applicant agrees to a dated version of the gym documents by their status token, once (a second call cannot move it; a wrong token is a plain "no"); malformed and future versions refused; anon can neither read nor write the columns; the platform sees it, a gym member sees no applications; `platform_public_terms()` gives a stranger the grace/reminder/contact facts and nothing else |
 | `tenancy-isolation.mjs` | 0097–0103, on **every** real migration + both demo seeds | two gyms, every role, every table, every definer function: nothing crosses |
 
 `lib/live-db.mjs` builds the real schema (every migration, Supabase's stubs and grants) and is

@@ -4,6 +4,8 @@ import { toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
+import Legal, { parseLegalHash } from './Legal';
+import { IN_EFFECT, VERSION } from './legal';
 import { useCountUp, useMotionEngine } from './motion';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -106,6 +108,42 @@ function FeatureTrack() {
   );
 }
 
+/**
+ * The footer, with the documents split by who they are for: a gym's agreement
+ * with Core Fitness lives here; a member's Terms and Privacy are the gym's,
+ * in the member app. The footer used to send a gym owner to the member Terms.
+ */
+function SiteFooter() {
+  return (
+    <footer>
+      <div className="wrap foot-row">
+        <a className="brand" href="#top">
+          <img src="/logo-320.webp" alt="" width={26} height={26} />
+          <span>Core Fitness</span>
+        </a>
+        <span>Mamburao, Occidental Mindoro</span>
+        <span className="grow" />
+        <a href={ADMIN_APP}>Gym sign in</a>
+      </div>
+      <div className="wrap foot-legal">
+        <div>
+          <b>For gyms</b>
+          <a href="#legal/terms">Terms of Service</a>
+          <a href="#legal/dpa">Data Processing Agreement</a>
+          <a href="#legal/privacy">Privacy Policy</a>
+        </div>
+        <div>
+          <b>For members</b>
+          <a href={`${MEMBER_APP}/terms`}>Member Terms</a>
+          <a href={`${MEMBER_APP}/privacy`}>Member Privacy</a>
+          <a href={`${MEMBER_APP}/get-app`}>Get the member app</a>
+        </div>
+      </div>
+      <div className="mega" aria-hidden="true">CORE FITNESS</div>
+    </footer>
+  );
+}
+
 export default function App() {
   useMotionEngine();
   const [gyms, setGyms] = useState<Gym[] | null>(null);
@@ -116,21 +154,31 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [yearly, setYearly] = useState(false);
   const [section, setSection] = useState('top');
+  /** `#legal/<doc>[/<section>]`: one of the gym documents instead of the page. */
+  const [legal, setLegal] = useState(() => parseLegalHash(window.location.hash));
   useEffect(() => {
-    const on = () => setToken(statusToken());
+    const on = () => { setToken(statusToken()); setLegal(parseLegalHash(window.location.hash)); };
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('hashchange', on);
     window.addEventListener('scroll', onScroll, { passive: true });
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) setSection(e.target.id); });
-    }, { rootMargin: '-45% 0px -50% 0px' });
-    NAV.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => {
       window.removeEventListener('hashchange', on);
       window.removeEventListener('scroll', onScroll);
-      io.disconnect();
     };
   }, []);
+  // The section dots watch the page's sections — re-attached when the page comes back from a document,
+  // and the header's "#pricing" from a document lands on Pricing once the page has rendered.
+  useEffect(() => {
+    if (legal) return;
+    const id = window.location.hash.slice(1);
+    const target = id && !id.includes('/') ? document.getElementById(id) : null;
+    if (target) target.scrollIntoView({ block: 'start' });
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) setSection(e.target.id); });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    NAV.forEach(([nid]) => { const el = document.getElementById(nid); if (el) io.observe(el); });
+    return () => io.disconnect();
+  }, [legal]);
   /** null while loading; [] when the price list cannot be read at all. */
   const [tiers, setTiers] = useState<Tier[] | null>(null);
 
@@ -179,13 +227,14 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="dots" aria-label="Jump to section">
+      <nav className="dots" aria-label="Jump to section" hidden={!!legal}>
         {NAV.map(([id, label]) => (
           <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}><span>{label}</span></a>
         ))}
       </nav>
 
       <main id="top">
+        {legal ? <><Legal doc={legal.doc} section={legal.section} /><SiteFooter /></> : <>
         {token && <div className="wrap status-wrap"><StatusPage token={token} /></div>}
 
         <section className="hero" data-scroll>
@@ -372,22 +421,8 @@ export default function App() {
 
         <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} /></div>
 
-        <footer>
-          <div className="wrap foot-row">
-            <a className="brand" href="#top">
-              <img src="/logo-320.webp" alt="" width={26} height={26} />
-              <span>Core Fitness</span>
-            </a>
-            <span>Mamburao, Occidental Mindoro</span>
-            <span className="grow" />
-            <span className="links">
-              <a href={`${MEMBER_APP}/terms`}>Terms</a>
-              <a href={`${MEMBER_APP}/privacy`}>Privacy</a>
-              <a href={ADMIN_APP}>Gym sign in</a>
-            </span>
-          </div>
-          <div className="mega" aria-hidden="true">CORE FITNESS</div>
-        </footer>
+        <SiteFooter />
+        </>}
       </main>
     </>
   );
@@ -417,6 +452,8 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** Left empty by people, filled by bots. A real person never sees it. */
   const [trap, setTrap] = useState('');
   const [copied, setCopied] = useState(false);
+  /** Agreement to the gym documents (0150) — asked only once they are in effect. */
+  const [agreed, setAgreed] = useState(false);
 
   // A tier card's "Choose" fills the plan; so does there being only one.
   useEffect(() => {
@@ -435,6 +472,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (trap) return;                       // quietly ignored
     if (!supabase) { setError('This page cannot reach Core Fitness right now. Please email us instead.'); return; }
     if (tiers.length > 0 && !form.plan) { setError('Choose a plan first — you can change it later.'); return; }
+    if (IN_EFFECT && !agreed) { setError('Tick the box to agree to the terms for gyms before sending.'); return; }
     setState('sending');
     setError(null);
     const heard = form.heard_from === 'Other' ? form.heard_other.trim() || 'Other' : form.heard_from;
@@ -459,7 +497,13 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
       return;
     }
     if (rpcError) { setError(rpcError.message); setState('idle'); return; }
-    setToken(typeof data === 'string' ? data : null);
+    const newToken = typeof data === 'string' ? data : null;
+    // The agreement is recorded against the private status token (0150). Before 0150 is pasted this call
+    // fails; the application still went in, and the platform simply sees no acceptance — never a false one.
+    if (IN_EFFECT && newToken) {
+      try { await supabase.rpc('accept_gym_terms', { p_token: newToken, p_version: VERSION }); } catch { /* see above */ }
+    }
+    setToken(newToken);
     setState('sent');
   };
 
@@ -595,6 +639,21 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             <label htmlFor="website">Leave this empty</label>
             <input id="website" tabIndex={-1} autoComplete="off" value={trap} onChange={(e) => setTrap(e.target.value)} />
           </div>
+
+          {IN_EFFECT ? (
+            <label className="agree">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                For my gym, I have read and agree to the <a href="#legal/terms" target="_blank" rel="noopener">Terms of Service for gyms</a>,
+                the <a href="#legal/dpa" target="_blank" rel="noopener">Data Processing Agreement</a> and
+                the <a href="#legal/privacy" target="_blank" rel="noopener">Privacy Policy</a> (version of {VERSION}).
+              </span>
+            </label>
+          ) : (
+            <p className="note">
+              Our terms for gyms are being finalised — you can read the <a href="#legal/terms" target="_blank" rel="noopener">draft</a>.
+            </p>
+          )}
 
           {error && <p className="note bad" role="alert"><Icon name="alert" /> {error}</p>}
 

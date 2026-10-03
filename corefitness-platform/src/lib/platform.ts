@@ -138,6 +138,9 @@ export interface Application {
   messages?: number;
   unread?: number;
   last_message_at?: string | null;
+  /** 0150: the version of the gym documents the applicant agreed to, and when. Absent before 0150. */
+  terms_version?: string | null;
+  terms_accepted_at?: string | null;
 }
 
 export interface PlatformEvent {
