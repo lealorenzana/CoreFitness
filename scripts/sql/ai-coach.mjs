@@ -18,6 +18,7 @@ const check = (label, ok, detail = '') => {
   if (!ok) failures++;
 };
 const one = async (sql) => (await db.query(sql)).rows[0];
+const all = async (sql) => (await db.query(sql)).rows;
 const tryExec = async (sql) => { try { await db.exec(sql); return null; } catch (e) { return describe(e); } };
 async function as(uid) {
   await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated;`);
@@ -223,5 +224,138 @@ check('a member with nothing set up gets no context', (await one(`select ai_coac
   check('verify0144.sql reports OK', /REPORT 0144/.test(report44) && !/NOT OK/.test(report44), report44);
 }
 
-console.log(failures ? `\n${failures} FAILED` : '\nall 0143/0144 checks passed');
+// ---- 0147: the owner sets the limits and sees totals; the platform sees spend per gym ----------
+{
+  const { readFileSync } = await import('node:fs');
+  const OWNER = 'a1430000-0000-4000-8000-00000000000e';
+  const PA = 'a1430000-0000-4000-8000-00000000000f';
+  await db.exec(`reset role;
+    ${[['owner', OWNER], ['pa', PA]].map(([k, id]) => `
+      insert into auth.users (id, email, raw_user_meta_data) values ('${id}', '${k}@coach-test.com', '{}');
+      insert into profiles (id, first_name, last_name, email, status, role)
+        values ('${id}', '${k.toUpperCase()}', 'T', '${k}@coach-test.com', 'active', 'member')
+        on conflict (id) do update set status = 'active';`).join('\n')}
+    insert into gym_roles (gym_id, user_id, role, status) values ('${GYM}', '${OWNER}', 'admin', 'active')
+      on conflict (gym_id, user_id) do update set role = 'admin', status = 'active';
+    insert into platform_admins (user_id) values ('${PA}') on conflict do nothing;
+    update profiles set active_gym_id = '${GYM}' where id in ('${OWNER}', '${PA}');`);
+  const limits = async () => one(`select ai_daily_messages as d, ai_monthly_messages as m from gym_settings where gym_id = '${GYM}'`);
+
+  // -- the limits: the owner only, in plain sentences --
+  await as(OWNER);
+  const set = await tryExec(`select set_ai_coach_limits(20, 900)`);
+  check('the owner sets the coach\'s limits', set === null, String(set));
+  await as(A);
+  s = await status();
+  check('the member\'s status reports the owner\'s limits', s.daily_limit === 20 && s.monthly_limit === 900, JSON.stringify(s));
+  await as(DESK);
+  {
+    const e = await tryExec(`select set_ai_coach_limits(5, 50)`);
+    await db.exec('reset role;');
+    const l = await limits();
+    check('the desk cannot change the limits, in a plain sentence', !!e && /Only the gym's owner can change the coach's limits\./.test(e), String(e));
+    check('and the desk\'s attempt changed nothing', l.d === 20 && l.m === 900, JSON.stringify(l));
+  }
+  await as(A);
+  {
+    const e = await tryExec(`select set_ai_coach_limits(5, 50)`);
+    await db.exec('reset role;');
+    const l = await limits();
+    check('a member cannot change the limits', !!e && /Only the gym's owner/.test(e) && l.d === 20 && l.m === 900, String(e) + JSON.stringify(l));
+  }
+  await as(OWNER);
+  for (const [d, m, re, label] of [
+    [0, 900, /A daily limit is 1 to 500 messages\./, 'a daily limit of 0'],
+    [501, 900, /A daily limit is 1 to 500 messages\./, 'a daily limit of 501'],
+    ['null', 900, /A daily limit is 1 to 500 messages\./, 'no daily limit'],
+    [20, 0, /A monthly limit is 1 to 100,000 messages\./, 'a monthly limit of 0'],
+    [20, 100001, /A monthly limit is 1 to 100,000 messages\./, 'a monthly limit of 100,001'],
+  ]) {
+    const e = await tryExec(`select set_ai_coach_limits(${d}, ${m})`);
+    check(`${label} is refused in a plain sentence`, !!e && re.test(e), String(e));
+  }
+  await db.exec('reset role;');
+  {
+    const l = await limits();
+    check('refused limits changed nothing', l.d === 20 && l.m === 900, JSON.stringify(l));
+  }
+
+  // -- usage: A has 2 messages today (1200 in / 300 out) from above. One more for A, two for B. --
+  await db.exec(`reset role; set role service_role;
+    select ai_claim_message('${GYM}', '${A}'); select ai_record_usage('${GYM}', '${A}', 800, 200);
+    select ai_claim_message('${GYM}', '${B}'); select ai_claim_message('${GYM}', '${B}');
+    select ai_record_usage('${GYM}', '${B}', 1000, 500);`);
+  await db.exec('reset role;');
+  const { ms, td } = await one(`select date_trunc('month', manila_today())::date::text as ms, manila_today()::text as td`);
+  // Last month never counts; earlier this month does (when today is not the 1st).
+  await db.exec(`insert into ai_usage_days (gym_id, member_id, day, messages, tokens_in, tokens_out)
+    values ('${GYM}', '${A}', date_trunc('month', manila_today())::date - 1, 100, 99999, 99999)`);
+  const earlier = ms !== td;
+  if (earlier) {
+    await db.exec(`insert into ai_usage_days (gym_id, member_id, day, messages, tokens_in, tokens_out)
+      values ('${GYM}', '${B}', date_trunc('month', manila_today())::date, 4, 1000, 1000)`);
+  }
+  const expIn = 3000 + (earlier ? 1000 : 0), expOut = 1000 + (earlier ? 1000 : 0), expMonth = 5 + (earlier ? 4 : 0);
+  const expDays = (await one(`select (manila_today() - date_trunc('month', manila_today())::date + 1)::int as n`)).n;
+
+  await as(OWNER);
+  const u = (await one(`select gym_ai_usage() as u`)).u;
+  const blob = JSON.stringify(u);
+  check('the owner sees this month\'s totals', u?.messages_month === expMonth && Number(u?.tokens_in_month) === expIn
+    && Number(u?.tokens_out_month) === expOut && u?.month_start === ms, blob);
+  check('today\'s count', u?.messages_today === 5, blob);
+  check('the limits come with it', u?.daily_limit === 20 && u?.monthly_limit === 900, blob);
+  check('members using it is a count: 2', u?.members_using_month === 2, blob);
+  {
+    const want = Math.round((expIn * 2 / 1e6 + expOut * 10 / 1e6) * 1e4) / 1e4;
+    check('the estimated cost is $2 per million in, $10 per million out', Number(u?.est_cost_usd_month) === want,
+      `${u?.est_cost_usd_month} vs ${want}`);
+  }
+  {
+    const days = u?.days ?? [];
+    const consecutive = days.every((d, i) => i === 0 || (new Date(d.day) - new Date(days[i - 1].day)) === 86400000);
+    check('every day of the month up to today, zero-filled', days.length === expDays && days[0]?.day === ms
+      && days[days.length - 1]?.day === td && consecutive && days.every((d) => typeof d.messages === 'number')
+      && days.reduce((n, d) => n + d.messages, 0) === expMonth, JSON.stringify(days));
+    if (expDays >= 3) check('a day nobody used it reads 0', days.some((d) => d.messages === 0), JSON.stringify(days));
+  }
+  check('the totals name no member', ![A, B, OWNER, DESK].some((id) => blob.includes(id)), blob);
+  await as(DESK);
+  {
+    const d = (await one(`select gym_ai_usage() as u`)).u;
+    check('the desk reads the same totals', d?.messages_month === expMonth && d?.members_using_month === 2, JSON.stringify(d));
+  }
+  await as(A);
+  {
+    const e = await tryExec(`select gym_ai_usage()`);
+    let got = null;
+    if (!e) got = (await one(`select gym_ai_usage() as u`)).u;
+    check('a member gets no totals', !!e || got === null, String(e) + JSON.stringify(got));
+  }
+
+  // -- the platform: per gym, last N Manila days --
+  await as(PA);
+  {
+    const p1 = await all(`select * from platform_ai_usage(1)`);
+    const r = p1.find((x) => x.gym_id === GYM);
+    check('the platform sees today\'s coach use per gym', !!r && Number(r.messages) === 5 && Number(r.tokens_in) === 3000
+      && Number(r.tokens_out) === 1000 && Number(r.est_cost_usd) === 0.016, JSON.stringify(p1));
+    const p30 = await all(`select * from platform_ai_usage()`);
+    const r30 = p30.find((x) => x.gym_id === GYM);
+    check('a wider window sees more', !!r30 && Number(r30.messages) >= expMonth, JSON.stringify(p30));
+    const g = await all(`select * from platform_gym_usage(1)`);
+    check('platform_gym_usage counts the coach', g.some((x) => x.gym_id === GYM && x.feature === 'coach' && Number(x.n) === 5), JSON.stringify(g));
+  }
+  await as(OWNER);
+  check('an owner gets no platform rows', (await all(`select * from platform_ai_usage()`)).length === 0);
+  check('nor platform usage', (await all(`select * from platform_gym_usage()`)).length === 0);
+
+  await db.exec('reset role;');
+  const { existsSync } = await import('node:fs');
+  const v47 = `${REPO}/scripts/sql/verify/verify0147.sql`;
+  const report47 = existsSync(v47) ? ((await tryExec(readFileSync(v47, 'utf8'))) ?? '') : 'verify0147.sql is missing';
+  check('verify0147.sql reports OK', /REPORT 0147/.test(report47) && !/NOT OK/.test(report47), report47);
+}
+
+console.log(failures ? `\n${failures} FAILED` : '\nall 0143/0144/0147 checks passed');
 process.exit(failures ? 1 : 0);
