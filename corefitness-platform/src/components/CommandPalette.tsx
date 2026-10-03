@@ -200,7 +200,7 @@ export default function CommandPalette({ pages }: { pages: { path: string; label
       <div className="palette" role="dialog" aria-label="Search" onMouseDown={(e) => e.stopPropagation()}>
         <label className="search palette-input">
           <Search size={16} />
-          <input ref={input} value={q} placeholder="Search gyms, applicants, payments, tickets, the log — or type what you want to do"
+          <input ref={input} autoFocus value={q} placeholder="Search gyms, applicants, payments, tickets, the log — or type what you want to do"
             aria-label="Search everything" onChange={(e) => { setQ(e.target.value); setSel(0); }} onKeyDown={onKey} />
         </label>
         <div className="palette-list" role="listbox" ref={list}>
