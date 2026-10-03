@@ -77,7 +77,11 @@ export interface MemberDetailForTrainer {
   recentWorkouts: WorkoutLogRow[];
   /** Their training plan (0030/0089): days, reminder time, routine per day.
    *  Null when it could not be read; days empty when they have none. */
-  plan: { days: number[]; remindAt: string | null; routineByDay: Record<number, string | null> } | null;
+  plan: {
+    days: number[]; remindAt: string | null; routineByDay: Record<number, string | null>;
+    /** 0145: the days the member's AI coach set. Empty before 0145. */
+    coachDays: number[];
+  } | null;
   /** Saved routines (0086) — under "workouts" sharing, like the logs they produce. */
   routines: { id: string; name: string; exerciseCount: number; source: 'member' | 'coach' }[];
   /** Goal id → current value from `goal_current_value` (0087), the number the
@@ -180,6 +184,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
       days: active.map((r) => r.day_of_week).sort((a, b) => a - b),
       remindAt: active[0]?.remind_at ?? null,
       routineByDay: Object.fromEntries(active.map((r) => [r.day_of_week, r.routine_id ?? null])),
+      coachDays: active.filter((r) => r.source === 'coach').map((r) => r.day_of_week),
     },
     routines: routines.map((r) => ({ id: r.id, name: r.name, exerciseCount: r.exercises.length, source: r.source })),
     // listMeasurements is oldest-first so the charts read left to right.

@@ -491,12 +491,19 @@ export default function TrainerMembers() {
                           {detail.plan.days.map((d) => DAY_LABELS[d]).join(' · ')}
                           {detail.plan.remindAt && <span style={muted}> — reminder {formatRemindAt(detail.plan.remindAt)}</span>}
                         </p>
-                        {detail.plan.days.filter((d) => detail.plan!.routineByDay[d]).map((d) => {
-                          const r = detail.routines.find((x) => x.id === detail.plan!.routineByDay[d]);
+                        {detail.plan.days.filter((d) => detail.plan!.routineByDay[d] || detail.plan!.coachDays.includes(d)).map((d) => {
+                          const id = detail.plan!.routineByDay[d];
+                          const r = id ? detail.routines.find((x) => x.id === id) : null;
                           return (
-                            <p key={d} className="truncate" style={muted}>
-                              {DAY_LABELS[d]}: {r ? r.name : 'a routine (workouts not shared)'}
-                            </p>
+                            <div key={d} className="flex items-center" style={{ gap: 8 }}>
+                              <p className="truncate min-w-0" style={muted}>
+                                {DAY_LABELS[d]}: {!id ? 'any workout' : r ? r.name : 'a routine (workouts not shared)'}
+                              </p>
+                              {/* The member's AI coach set this day (0145). */}
+                              {detail.plan!.coachDays.includes(d) && (
+                                <span className="flex-none"><StatusPill tone="muted" label="Set by the coach" /></span>
+                              )}
+                            </div>
                           );
                         })}
                       </>

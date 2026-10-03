@@ -972,8 +972,11 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
           <div className="space-y-1.5">
             <Row title={plan.days.map((d) => DAY_SHORT[d]).join(' · ')}
               subtitle={`${plan.days.length} day${plan.days.length === 1 ? '' : 's'} a week${plan.remindAt ? ` · reminder ${clock(plan.remindAt)}` : ''}`} />
-            {plan.days.filter((d) => plan.routineByDay[d]).map((d) => (
-              <Row key={d} title={`${DAY_SHORT[d]} — ${plan.routineByDay[d]}`} subtitle="Planned routine" />
+            {/* A routine day, or any day the AI coach set (0145) — so the desk can tell whose plan it is. */}
+            {plan.days.filter((d) => plan.routineByDay[d] || plan.coachDays.includes(d)).map((d) => (
+              <Row key={d} title={`${DAY_SHORT[d]} — ${plan.routineByDay[d] ?? 'Any workout'}`}
+                subtitle={plan.routineByDay[d] ? 'Planned routine' : 'Training day'}
+                right={plan.coachDays.includes(d) ? <Badge variant="violet">Set by the coach</Badge> : undefined} />
             ))}
           </div>
         )}
@@ -992,7 +995,8 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
           <div className="space-y-1.5">
             {routines.map((r) => (
               <Row key={r.id} title={r.name}
-                subtitle={`${r.exerciseCount} exercise${r.exerciseCount === 1 ? '' : 's'} · updated ${formatDate(r.updatedAt)}`} />
+                subtitle={`${r.exerciseCount} exercise${r.exerciseCount === 1 ? '' : 's'} · updated ${formatDate(r.updatedAt)}`}
+                right={r.source === 'coach' ? <Badge variant="violet">Built with the coach</Badge> : undefined} />
             ))}
           </div>
         )}

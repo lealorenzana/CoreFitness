@@ -78,6 +78,8 @@ const GREETING_ID = 'greeting';
 const WELCOME_QUESTION = "I've finished setting up. Give me a short welcome and one first step.";
 const SETUP_DONE = 'Setup finished';
 const SETUP_TITLE = 'Coach setup';
+// The coach's reply when it proposed a change and said nothing else (0145).
+const PROPOSAL_ONLY = "Here's a suggestion — nothing changes until you tap Apply.";
 type SendOptions = {
   rulesOnly?: boolean; note?: string;
   /** What the member's row says, when it is not what the coach is sent. */
@@ -145,6 +147,10 @@ function Assistant() {
     // An applied or undone routine changes the names a card reads.
     refreshNames();
   }, [refreshNames]);
+  // The changes sheet read the server: its statuses replace what was tapped here.
+  const onProposalsLoaded = useCallback((rows: { id: string; status: ProposalStatus }[]) => {
+    setDecided((d) => ({ ...d, ...Object.fromEntries(rows.map((p) => [p.id, p.status])) }));
+  }, []);
 
   // ── Persistence ───────────────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -326,17 +332,22 @@ function Assistant() {
         history.splice(0, Math.max(0, history.length - 10));
         const botId = `${Date.now()}c`;
         let streamed = '';
+        let proposed = 0;
         setMessages((prev) => [...prev, { id: botId, text: '', sender: 'bot', source: 'coach' }]);
         setIsTyping(false);
         const result = await askCoach(trimmed, history, (chunk) => {
           streamed += chunk;
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: streamed } : m)));
         }, (proposal) => {
+          proposed += 1;
           setCards((c) => ({ ...c, [botId]: [...(c[botId] ?? []), proposal] }));
         });
-        if (result.ok && streamed.trim()) {
-          answer = streamed;
+        if ((result.ok && streamed.trim()) || proposed > 0) {
+          // A reply that proposed a change is the coach's, even with no text or a
+          // stream that broke after the proposal: its card sits under this reply.
+          answer = streamed.trim() ? streamed : PROPOSAL_ONLY;
           source = 'coach';
+          if (!streamed.trim()) setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer } : m)));
         } else {
           // The rules' answer stands, with the coach's reason under it when it has one.
           answer = result.ok ? answer : `${answer}\n\n${result.message}`;
@@ -677,7 +688,7 @@ function Assistant() {
         </AnimatePresence>
       </div>
       <CoachChanges open={changesOpen} onClose={() => setChangesOpen(false)}
-        names={names} decided={decided} onStatus={onDecided} />
+        names={names} decided={decided} onStatus={onDecided} onLoaded={onProposalsLoaded} />
       <CoachConsent open={askConsent} onChoose={(yes) => void onConsent(yes)} />
     </div>
   );

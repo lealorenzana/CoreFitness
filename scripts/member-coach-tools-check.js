@@ -143,6 +143,9 @@ async (page) => {
       { days: [{ day_of_week: 1, routine_id: 'r1' }, { day_of_week: 4 }] }, 'pending', 0) },
     { text: 'A goal keeps you honest.', proposal: PROP('P3', 'goal.create', 'Squat your bodyweight by December',
       { title: 'Squat 70 kg', metric: 'weight_kg', target_value: 70, target_date: '2026-12-01' }, 'pending', 0) },
+    // A proposal and no words at all: still the coach's reply.
+    { text: '', proposal: PROP('P4', 'goal.create', 'Train three times a week',
+      { title: 'Three a week', metric: 'workouts_per_week', target_value: 3 }, 'pending', 0) },
   ];
   const RPC_CALLS = [];
   let APPLY_REFUSAL = null;
@@ -200,7 +203,7 @@ async (page) => {
       const frame = (o) => `data: ${JSON.stringify(o)}\n\n`;
       return route.fulfill({ status: 200, contentType: 'text/event-stream',
         headers: { 'Access-Control-Allow-Origin': '*' },
-        body: frame({ type: 'text', text: r.text })
+        body: (r.text ? frame({ type: 'text', text: r.text }) : '')
           + frame({ type: 'proposal', id: r.proposal.id, kind: r.proposal.kind, summary: r.proposal.summary, payload: r.proposal.payload })
           + frame({ type: 'done' }) });
     }
@@ -352,6 +355,27 @@ async (page) => {
   out.push('Apply from the sheet moves it to Applied: ' + (RPC_CALLS.some((x) => x.fn === 'apply' && x.p_id === 'P3' && !x.refused)
     && /Squat your bodyweight/.test(await group('Applied')) ? 'yes' : 'MISSING'));
   await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  // ── Once the sheet reads the server, the server's status wins over a local tap ──
+  PROPOSALS.find((p) => p.id === 'P3').status = 'undone';   // undone on another phone
+  await page.getByRole('button', { name: 'Changes from the coach' }).click();
+  await page.waitForTimeout(1200);
+  out.push('the sheet takes the server status over the local tap: ' + (/Squat your bodyweight/.test(await group('Undone or discarded'))
+    && !/Squat your bodyweight/.test(await group('Applied')) ? 'yes' : 'NO, the local status stuck'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  out.push('the chat card follows the server too: ' + (/Undone/.test(await cardText('P3')) ? 'yes' : 'NO ' + await cardText('P3')));
+
+  // ── A reply that is only a proposal is the coach's, with its own line ──
+  const savedBefore = (DB.assistant_messages ?? []).length;
+  await ask('How do I stay motivated after a bad week?');
+  const line = "Here's a suggestion — nothing changes until you tap Apply.";
+  const above4 = await card('P4').evaluate((el) => el.previousElementSibling?.textContent ?? '').catch(() => '');
+  out.push('a proposal with no text shows the coach line above its card: ' + (above4.includes(line) ? 'yes' : 'MISSING ' + above4));
+  out.push('no rules fallback for it: ' + (!/I'm not sure|I don't have an answer/i.test(above4) ? 'yes' : 'NO ' + above4));
+  const saved4 = (DB.assistant_messages ?? []).slice(savedBefore).find((m) => m.role === 'assistant');
+  out.push('it is saved as the coach reply: ' + (saved4 && saved4.source === 'coach' && saved4.body === line ? 'yes' : 'MISSING ' + JSON.stringify(saved4)));
 
   // ── The coach's mark on the member's own screens ──
   await go('/member/track');

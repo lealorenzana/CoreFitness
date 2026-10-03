@@ -20,6 +20,8 @@ export interface MemberPlan {
   remindAt: string | null;
   /** day → routine name; a day missing from the map is "any workout". */
   routineByDay: Record<number, string>;
+  /** 0145: the days the coach set (an applied proposal). Empty before 0145. */
+  coachDays: number[];
 }
 
 export async function getMemberPlan(memberId: string): Promise<MemberPlan | null> {
@@ -27,7 +29,7 @@ export async function getMemberPlan(memberId: string): Promise<MemberPlan | null
     .from('gym_plans').select('*').eq('member_id', memberId).eq('active', true)
     .order('day_of_week');
   if (error) return null;
-  const rows = (data ?? []) as { day_of_week: number; remind_at: string; routine_id?: string | null }[];
+  const rows = (data ?? []) as { day_of_week: number; remind_at: string; routine_id?: string | null; source?: string | null }[];
   const ids = [...new Set(rows.map((r) => r.routine_id).filter((x): x is string => !!x))];
   const names = new Map<string, string>();
   if (ids.length) {
@@ -36,20 +38,35 @@ export async function getMemberPlan(memberId: string): Promise<MemberPlan | null
   }
   const routineByDay: Record<number, string> = {};
   for (const r of rows) if (r.routine_id && names.has(r.routine_id)) routineByDay[r.day_of_week] = names.get(r.routine_id)!;
-  return { days: rows.map((r) => r.day_of_week), remindAt: rows[0]?.remind_at ?? null, routineByDay };
+  return {
+    days: rows.map((r) => r.day_of_week), remindAt: rows[0]?.remind_at ?? null, routineByDay,
+    coachDays: rows.filter((r) => r.source === 'coach').map((r) => r.day_of_week),
+  };
 }
 
-export interface MemberRoutine { id: string; name: string; exerciseCount: number; updatedAt: string }
+export interface MemberRoutine {
+  id: string; name: string; exerciseCount: number; updatedAt: string;
+  /** 0145: 'coach' when the member applied the AI coach's proposal; 'member' before 0145. */
+  source: 'member' | 'coach';
+}
 
 export async function listMemberRoutines(memberId: string): Promise<MemberRoutine[] | null> {
-  const { data, error } = await supabase
+  const BASE = 'id, name, updated_at, workout_routine_exercises (id)';
+  const q = (cols: string) => supabase
     .from('workout_routines')
-    .select('id, name, updated_at, workout_routine_exercises (id)')
+    .select(cols)
     .eq('member_id', memberId)
     .order('position');
+  // 0145's `source` first; before 0145 the column does not exist.
+  const full = await q(`source, ${BASE}`);
+  const { data, error } = !full.error ? full : await q(BASE);
   if (error) return null;
-  return ((data ?? []) as { id: string; name: string; updated_at: string; workout_routine_exercises: { id: string }[] }[])
-    .map((r) => ({ id: r.id, name: r.name, updatedAt: r.updated_at, exerciseCount: r.workout_routine_exercises?.length ?? 0 }));
+  return ((data ?? []) as unknown as {
+    id: string; name: string; updated_at: string; source?: string | null; workout_routine_exercises: { id: string }[];
+  }[]).map((r) => ({
+    id: r.id, name: r.name, updatedAt: r.updated_at, exerciseCount: r.workout_routine_exercises?.length ?? 0,
+    source: r.source === 'coach' ? 'coach' : 'member',
+  }));
 }
 
 export interface CoachNoteRecord {

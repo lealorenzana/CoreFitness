@@ -70,7 +70,13 @@ async (page) => {
     workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
       completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
     workout_sets: [],
-    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+    gym_plans: [
+      // The trainee's week: Monday is theirs, Wednesday the coach set (0145).
+      { id: 'gt1', member_id: 'mb1', day_of_week: 1, remind_at: '18:00:00', active: true, last_reminded_on: null,
+        routine_id: 'rm', created_at: iso(-5, 9, 0), source: 'member' },
+      { id: 'gt3', member_id: 'mb1', day_of_week: 3, remind_at: '18:00:00', active: true, last_reminded_on: null,
+        routine_id: 'rc', created_at: iso(-5, 9, 0), source: 'coach' },
+      { id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
       { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
@@ -226,7 +232,7 @@ async (page) => {
     }
     // Without 0145 the column is not there to come back either.
     const rows = match(DB[t], params).map((r) => embed(t, r))
-      .map((r) => (BEFORE_0145 && t === 'workout_routines' ? (({ source: _s, ...rest }) => rest)(r) : r));
+      .map((r) => (BEFORE_0145 && (t === 'workout_routines' || t === 'gym_plans') ? (({ source: _s, ...rest }) => rest)(r) : r));
     return json(one ? rows[0] ?? null : rows);
   });
 
@@ -250,6 +256,10 @@ async (page) => {
   // The mark sits on the coach's routine's row, not the member's.
   const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
   out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
+  const planMarks = (t.match(/Set by the coach/g) || []).length;
+  out.push('the training plan marks the coach day, once: ' + (planMarks === 1 ? 'yes' : planMarks === 0 ? 'MISSING' : 'NO, ' + planMarks + ' marks'));
+  const planRow = await page.locator('div', { hasText: 'Set by the coach' }).filter({ hasText: 'Wed: Coach push day' }).filter({ hasNotText: 'Mon: My pull day' }).count();
+  out.push('the plan mark is on Wednesday: ' + (planRow > 0 ? 'yes' : 'MISSING'));
   await page.getByText('Coach push day').first().scrollIntoViewIfNeeded().catch(() => {});
   await page.screenshot({ path: 'shots/trainer-coach-mark.png' });
 
@@ -260,6 +270,6 @@ async (page) => {
   t = await text();
   out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
   out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
-  out.push('before 0145 nothing is marked: ' + (!/Built with the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('before 0145 nothing is marked: ' + (!/Built with the coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
   return out.join('\n');
 }

@@ -11,7 +11,9 @@ import { errorMessage } from '../utils/errorMessage';
  * A proposal made in a conversation the member has left is still here.
  *
  * `decided` is the chat's record of what was tapped this visit, so a card
- * applied in the chat reads Applied here before the list is read again.
+ * tapped in the chat reads right here too. Each read hands the server's statuses
+ * back through `onLoaded`, which replaces those local entries: once the list
+ * lands, the database's word wins (a change undone on another phone reads Undone).
  */
 
 const GROUPS: { title: string; has: (s: ProposalStatus) => boolean }[] = [
@@ -21,13 +23,15 @@ const GROUPS: { title: string; has: (s: ProposalStatus) => boolean }[] = [
 ];
 
 export default function CoachChanges({
-  open, onClose, names, decided, onStatus,
+  open, onClose, names, decided, onStatus, onLoaded,
 }: {
   open: boolean;
   onClose: () => void;
   names: ProposalNames;
   decided: Record<string, ProposalStatus>;
   onStatus: (id: string, next: ProposalStatus) => void;
+  /** The list as read, so the caller can take the server's status over its own. */
+  onLoaded: (rows: Proposal[]) => void;
 }) {
   const [rows, setRows] = useState<Proposal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,13 +43,13 @@ export default function CoachChanges({
       setError(null);
       try {
         const list = await listProposals();
-        if (alive) setRows(list);
+        if (alive) { setRows(list); onLoaded(list); }
       } catch (err) {
         if (alive) { setRows(null); setError(errorMessage(err, 'The coach\'s changes could not be loaded.')); }
       }
     })();
     return () => { alive = false; };
-  }, [open]);
+  }, [open, onLoaded]);
 
   const statusOf = (p: Proposal): ProposalStatus => decided[p.id] ?? p.status;
 
