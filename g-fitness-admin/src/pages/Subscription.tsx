@@ -3,6 +3,7 @@ import { CreditCard, Receipt } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import GymReceiptSheet from '../components/GymReceiptSheet';
+import PayCoreFitness from '../components/PayCoreFitness';
 import { showToast } from '../utils/toast';
 import {
   getSubscription, gymReceipt, myGymPayments, type GymReceipt, type GymReceiptRow, type GymSubscription,
@@ -81,6 +82,7 @@ export default function Subscription() {
           <p className="text-xs mt-1" style={{ color: MUTED }}>{sub.grace_days} day{sub.grace_days === 1 ? '' : 's'} after the due date. Nothing is deleted.</p>
         </Card>
       </div>
+      <PayCoreFitness priceMonthly={sub.price_monthly} />
       <Card className="!p-4 space-y-3">
         <p className="text-xs font-semibold text-white">How full your plan is</p>
         {meter('Active members', sub.members, sub.max_members)}

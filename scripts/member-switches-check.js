@@ -271,6 +271,20 @@ async (page) => {
     + (colours.action && colours.action.toUpperCase() !== '#FFEE00' && colours.actionRatio >= 4.5
       ? colours.action + ', text ' + colours.actionRatio.toFixed(1) + ':1' : 'MISSING (' + colours.action + ')'));
   await page.screenshot({ path: 'shots/member-switches-home.png' });
+  // 2026-10-03: a gym that chose its colours still showed violet and amber in
+  // every glow, ring and gradient, because those were hard-coded. Nothing on
+  // Today may still paint Core Fitness's own two colours.
+  const leaks = await page.evaluate(() => {
+    const bad = /rgba?\(124, 58, 237|rgba?\(245, 158, 11|rgba?\(139, 92, 246|rgba?\(196, 181, 253|rgba?\(167, 139, 250/;
+    const props = ['color', 'backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'fill', 'stroke', 'outlineColor'];
+    const hits = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      for (const p of props) if (bad.test(cs[p])) { hits.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)} ${p} ${cs[p].slice(0, 160)} [${(el.getAttribute('style') || '').slice(0, 160)}]`); break; }
+    }
+    return hits;
+  });
+  out.push('no Core Fitness violet or amber left on Today: ' + (leaks.length === 0 ? 'yes' : 'STILL SHOWN ' + leaks.slice(0, 6).join(' | ')));
 
   // The More sheet.
   await page.getByRole('button', { name: /^More/ }).first().click();

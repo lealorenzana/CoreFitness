@@ -15,6 +15,7 @@ import { uploadMedia } from '../lib/api/media';
 import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
 import AiCoachCard from '../components/AiCoachCard';
+import ThemePreview from '../components/ThemePreview';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -56,7 +57,7 @@ export default function GymApp() {
   const [poster, setPoster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'code' | 'message' | null>(null);
   /** A live invitation to Core Fitness to look at this gym (0113). */
   const [support, setSupport] = useState<SupportGrant | null>(null);
   /** The reason box, open. window.prompt() does nothing in an embedded browser
@@ -241,6 +242,9 @@ export default function GymApp() {
             </p>
           )}
         </div>
+
+        <ThemePreview accent={look.accent} action={look.action}
+          onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
 
         <div className="mt-5">
           <label className={label} style={labelStyle}>Your logo</label>
@@ -542,12 +546,27 @@ export default function GymApp() {
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
+              {/* The link alone, so it pastes cleanly into a browser or a chat —
+                  copying "link + newline + Join code" made a pasted address read
+                  /join/your-gym%20Join%20code:%20ABC123, which finds no gym. */}
               <Button variant="ghost" onClick={() => {
-                void navigator.clipboard.writeText(
-                  app.join_code ? `${joinLink}\nJoin code: ${app.join_code}` : joinLink
-                ).then(() => setCopied(true));
+                void navigator.clipboard.writeText(joinLink).then(() => setCopied('link'));
               }}>
-                <Copy size={14} className="mr-1.5" /> {copied ? 'Copied' : 'Copy'}
+                <Copy size={14} className="mr-1.5" /> {copied === 'link' ? 'Link copied' : 'Copy link'}
+              </Button>
+              {app.join_code && (
+                <Button variant="ghost" onClick={() => {
+                  void navigator.clipboard.writeText(app.join_code ?? '').then(() => setCopied('code'));
+                }}>
+                  <Copy size={14} className="mr-1.5" /> {copied === 'code' ? 'Code copied' : 'Copy code'}
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => {
+                const text = `Join ${app.gym_name} on our app: ${joinLink}`
+                  + (app.join_code ? `\nAlready have the app? Tap "Have a join code?" and type ${app.join_code}` : '');
+                void navigator.clipboard.writeText(text).then(() => setCopied('message'));
+              }}>
+                <Copy size={14} className="mr-1.5" /> {copied === 'message' ? 'Message copied' : 'Copy a message to send'}
               </Button>
               {/* The link and the code have been copyable since 0110, and the
                   thing a gym actually needs is a piece of paper for its door.

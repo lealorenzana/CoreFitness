@@ -14,12 +14,13 @@ import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import MembershipActionDialog from '../components/ui/MembershipActionDialog';
 import MemberDetailDrawer from '../components/ui/MemberDetailDrawer';
+import InviteMembersPanel from '../components/InviteMembersPanel';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import DatePicker from '../components/ui/DatePicker';
 import { formatDate, formatPhoneNumber } from '../utils/formatters';
 import { formatCheckInCode } from '../utils/checkInCode';
 import { exportMembersToCSV } from '../utils/exportUtils';
-import { Search, UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, EyeOff, Pause, Play, Ban, ArrowUp, ArrowDown, AlertTriangle, UserX, UserCheck } from 'lucide-react';
+import { Search, UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, EyeOff, Pause, Play, Ban, ArrowUp, ArrowDown, AlertTriangle, UserX, UserCheck, Link2 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listMembers,
@@ -203,6 +204,7 @@ export default function Members() {
   // with the queue already open — read once, in the initialiser, not an effect.
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPendingPanel, setShowPendingPanel] = useState(() => searchParams.get('pending') === '1');
+  const [showInvite, setShowInvite] = useState(() => searchParams.get('invite') === '1');
   /** Closes the panel and drops the flag, so a reload does not reopen it. */
   const closePendingPanel = () => {
     setShowPendingPanel(false);
@@ -574,6 +576,8 @@ export default function Members() {
         </div>
       )}
 
+      {showInvite && <InviteMembersPanel onClose={() => setShowInvite(false)} />}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
@@ -585,6 +589,9 @@ export default function Members() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}>
             {showArchived ? <><Eye size={14} /> Active Roster</> : <><EyeOff size={14} /> Archived</>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowInvite(true)}>
+            <Link2 size={14} /> Invite link
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowPendingPanel(true)}>
             <Clock size={14} /> Pending

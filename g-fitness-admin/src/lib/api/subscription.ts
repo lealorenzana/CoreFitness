@@ -151,3 +151,36 @@ export async function gymReceipt(id: string): Promise<GymReceipt | null> {
 export function sweepBillingReminders(): void {
   void supabase.rpc('billing_reminders_sweep').then(() => undefined, () => undefined);
 }
+
+// ---- 0148: paying Core Fitness from anywhere ---------------------------------------------------
+export interface PayOption {
+  id: string; kind: 'gcash' | 'maya' | 'bank' | 'other'; label: string; account_name: string | null;
+  account_number: string | null; qr_image: string | null; instructions: string | null;
+}
+export interface PaymentClaim {
+  id: string; amount: string; paid_on: string; method_label: string; reference: string; months: number;
+  status: 'pending' | 'verified' | 'rejected'; reason: string | null; created_at: string; decided_at: string | null;
+}
+
+/** undefined = 0148 not live. */
+export async function payOptions(): Promise<PayOption[] | undefined> {
+  const { data, error } = await supabase.rpc('platform_payment_options');
+  if (error) return undefined;
+  return (data ?? []) as PayOption[];
+}
+export async function myPaymentClaims(): Promise<PaymentClaim[]> {
+  const { data, error } = await supabase.rpc('my_gym_payment_claims');
+  if (error) return [];
+  return (data ?? []) as PaymentClaim[];
+}
+/** The owner tells Core Fitness they paid; the platform checks it against its own history. */
+export async function claimPayment(c: {
+  amount: number; paidOn: string; method: string; reference: string; proof: string | null; months: number; note: string | null;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc('submit_gym_payment', {
+    p_amount: c.amount, p_paid_on: c.paidOn, p_method: c.method, p_reference: c.reference,
+    p_proof: c.proof, p_months: c.months, p_note: c.note,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
