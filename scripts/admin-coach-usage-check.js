@@ -148,6 +148,19 @@ async (page) => {
   out.push('Save sends both numbers: ' + (CALLS.set_ai_coach_limits?.p_daily === 20 && CALLS.set_ai_coach_limits?.p_monthly === 900 ? '20 / 900' : 'MISSING ' + JSON.stringify(CALLS.set_ai_coach_limits)));
   out.push('the saved limits come back: ' + ((await page.locator(`${CARD} #ai-daily`).inputValue()) === '20' ? 'yes' : 'MISSING'));
 
+  // A figure the database would refuse is said in its own sentence, and nothing is sent.
+  delete CALLS.set_ai_coach_limits;
+  out.push('the inputs step by whole messages: ' + ((await page.locator(`${CARD} #ai-daily`).getAttribute('step')) === '1' ? 'yes' : 'MISSING'));
+  await page.locator(`${CARD} #ai-daily`).fill('2.5');
+  await page.locator(CARD).getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(600);
+  out.push('2.5 a day shows the sentence and sends nothing: ' + (/A daily limit is 1 to 500 messages\./.test(await page.evaluate(() => document.body.innerText)) && !CALLS.set_ai_coach_limits ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.set_ai_coach_limits)));
+  await page.locator(`${CARD} #ai-daily`).fill('20');
+  await page.locator(`${CARD} #ai-monthly`).fill('100001');
+  await page.locator(CARD).getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(600);
+  out.push('100001 a month shows the sentence and sends nothing: ' + (/A monthly limit is 1 to 100,000 messages\./.test(await page.evaluate(() => document.body.innerText)) && !CALLS.set_ai_coach_limits ? 'yes' : 'MISSING'));
+
   // ---- a sub-cent month -----------------------------------------------------------------------
   STATE.cost = 0.0042;
   await open();

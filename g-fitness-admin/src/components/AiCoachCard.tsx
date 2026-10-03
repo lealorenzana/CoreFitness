@@ -47,9 +47,13 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const save = async () => {
+    // The same sentences SQL uses, so a typo never costs a round trip (2.5 would otherwise be cast or refused).
+    const d = Number(daily), m = Number(monthly);
+    if (!Number.isInteger(d) || d < 1 || d > 500) { showToast('A daily limit is 1 to 500 messages.', 'error'); return; }
+    if (!Number.isInteger(m) || m < 1 || m > 100000) { showToast('A monthly limit is 1 to 100,000 messages.', 'error'); return; }
     setSaving(true);
     try {
-      await setAiLimits(Number(daily), Number(monthly));
+      await setAiLimits(d, m);
       await load();
       showToast('Saved. The new limits apply to the next message.', 'success');
     } catch (e) {
@@ -91,7 +95,7 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <FormField label="Messages per member per day" hint={owner ? '1 to 500' : null}>
               {owner ? (
-                <input id="ai-daily" type="number" min={1} max={500} className={input} style={inputStyle}
+                <input id="ai-daily" type="number" min={1} max={500} step={1} className={input} style={inputStyle}
                   value={daily} onChange={(e) => setDaily(e.target.value)} />
               ) : (
                 <p id="ai-daily" className="text-sm font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
@@ -101,7 +105,7 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
             </FormField>
             <FormField label="Messages for the whole gym per month" hint={owner ? '1 to 100,000' : null}>
               {owner ? (
-                <input id="ai-monthly" type="number" min={1} max={100000} className={input} style={inputStyle}
+                <input id="ai-monthly" type="number" min={1} max={100000} step={1} className={input} style={inputStyle}
                   value={monthly} onChange={(e) => setMonthly(e.target.value)} />
               ) : (
                 <p id="ai-monthly" className="text-sm font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>

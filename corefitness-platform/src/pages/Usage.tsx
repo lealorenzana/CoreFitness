@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, Building2, DollarSign, Download, Grid3x3, Sparkles, TrendingDown } from 'lucide-react';
 import { listGyms, type PlatformGym } from '../lib/platform';
-import { aiUsage, gymUsage, usd, USAGE_FEATURES, type GymAiUse, type GymUse } from '../lib/insight';
+import { aiUsage, gymUsage, isMissingFunction, usd, USAGE_FEATURES, type GymAiUse, type GymUse } from '../lib/insight';
 import { downloadCsv } from '../lib/csv';
 import GymMark from '../components/GymMark';
 import Tiles from '../components/Tiles';
@@ -28,6 +28,7 @@ export default function Usage() {
   /** Null until loaded, or when 0147 is not pasted — the tile then says which. */
   const [ai, setAi] = useState<GymAiUse[] | null>(null);
   const [aiMissing, setAiMissing] = useState(false);
+  const [aiFailed, setAiFailed] = useState(false);
 
   useEffect(() => { void (async () => setGyms(await listGyms().catch(() => [])))(); }, []);
   useEffect(() => {
@@ -36,8 +37,8 @@ export default function Usage() {
       catch { setUse([]); setError('Paste migration 0140 to see what each gym uses.'); }
     })();
     void (async () => {
-      try { setAi(await aiUsage(days)); setAiMissing(false); }
-      catch { setAi(null); setAiMissing(true); }
+      try { setAi(await aiUsage(days)); setAiMissing(false); setAiFailed(false); }
+      catch (e) { setAi(null); const m = isMissingFunction(e); setAiMissing(m); setAiFailed(!m); }
     })();
   }, [days]);
 
@@ -55,6 +56,7 @@ export default function Usage() {
   const topSpend = (ai ?? []).filter((a) => a.est_cost_usd > 0)
     .sort((a, b) => b.est_cost_usd - a.est_cost_usd).slice(0, 5);
   const spendTip = aiMissing ? 'Paste migration 0147 to see what the coach costs.'
+    : aiFailed ? "Couldn't load the coach's spend."
     : "Estimated at Claude Sonnet 5.5's list price; the real bill is on console.anthropic.com.\n"
       + (topSpend.length ? topSpend.map((a) => `${nameOf(a.gym_id)}: ${usd(a.est_cost_usd)}`).join('\n') : 'No gym used the coach.');
 
@@ -65,7 +67,7 @@ export default function Usage() {
         { icon: Activity, value: use ? gyms.reduce((s, g) => s + total(g.id), 0).toLocaleString('en-PH') : '…', label: `Things done, ${days} days`, tip: 'Every counted action across every gym and feature' },
         { icon: Sparkles, value: use ? `${USAGE_FEATURES.length - unused.length}/${USAGE_FEATURES.length}` : '…', label: 'Features in use', tip: unused.length ? `Nobody used: ${unused.map((f) => f.label).join(', ')}` : 'Every feature is used somewhere' },
         { icon: TrendingDown, value: use ? String(quiet.length) : '…', label: 'Open gyms doing nothing', act: quiet.length > 0, tip: quiet.map((g) => g.name).join('\n') || 'None' },
-        { icon: DollarSign, value: ai ? usd(spend) : aiMissing ? '—' : '…', label: `AI coach spend (${days} days)`, tip: spendTip },
+        { icon: DollarSign, value: ai ? usd(spend) : aiMissing || aiFailed ? '—' : '…', label: `AI coach spend (${days} days)`, tip: spendTip },
       ]} />
       <div className="toolbar">
         <div className="filters">

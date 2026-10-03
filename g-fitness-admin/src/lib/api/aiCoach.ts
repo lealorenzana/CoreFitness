@@ -73,8 +73,8 @@ export async function setAiLimits(daily: number, monthly: number): Promise<void>
   if (error) throw new Error(error.message);
 }
 
-/** `$0.12`, or `<$0.01` for a real but sub-cent figure. Zero is `$0.00`. */
+/** `$1,234.56`, or `<$0.01` for a real but sub-cent figure. Zero is `$0.00`. */
 export function formatUsd(v: number): string {
   if (v > 0 && v < 0.01) return '<$0.01';
-  return '$' + v.toFixed(2);
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

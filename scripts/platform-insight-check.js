@@ -83,6 +83,7 @@ async (page) => {
       tables: { people: [{ user_id: 'u1', first_name: 'Maria', email: 'm@x.test', role: 'member' }], payments: [{ id: 'p1', amount: 999 }], attendance: [] } }; },
   };
 
+  const AI_FAIL = { on: false };
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -92,6 +93,9 @@ async (page) => {
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
+      // What PostgREST answers when the function exists but fails (not the schema-cache miss PGRST202).
+      if (fn === 'platform_ai_usage' && AI_FAIL.on) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: 'XX000', message: 'boom' }),
+        headers: { 'Access-Control-Allow-Origin': '*' } });
       return json(fn in RPC ? RPC[fn](JSON.parse(req.postData() || '{}')) : []);
     }
     return json([]);
@@ -194,6 +198,16 @@ async (page) => {
   const coachTip = coachCol < 0 ? '' : await tipAfterHover(page.locator('.use-table tbody tr', { hasText: 'G Fitness' }).locator('td').nth(coachCol));
   out.push("a gym's coach cell gives its spend: " + (/G Fitness: 96 coach messages in 30 days, about \$1\.23 at list price \(an estimate\)/.test(coachTip) ? 'yes' : 'MISSING ' + coachTip));
   await page.screenshot({ path: 'shots/platform-usage.png' });
+  // Thousands separators on a big spend.
+  out.push('money has thousands separators: ' + (await page.evaluate(async () => (await import('/src/lib/insight.ts')).usd(1234.5)) === '$1,234.50' ? '$1,234.50' : 'MISSING'));
+  // A failure that is not a missing function must not say "paste the migration".
+  AI_FAIL.on = true;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.use-table tbody tr').first().waitFor({ timeout: 10000 });
+  await page.waitForTimeout(500);
+  const failTip = await tipAfterHover(page.locator('.tile', { hasText: 'AI coach spend' }));
+  out.push('a real failure is not "paste the migration": ' + (/Couldn't load the coach's spend\./.test(failTip) && !/Paste migration 0147/.test(failTip) ? 'yes' : 'MISSING ' + failTip));
+  AI_FAIL.on = false;
 
   // ---- Settings ------------------------------------------------------------------------------
   await page.getByRole('link', { name: 'Settings' }).click();

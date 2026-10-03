@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient';
 
 const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return data as T;
 };
 /** bigint columns arrive as strings; the screens do arithmetic on them. */
@@ -52,8 +52,11 @@ export const gymUsage = async (days = 30) => nums(await call<GymUse[]>('platform
 export interface GymAiUse { gym_id: string; messages: number; tokens_in: number; tokens_out: number; est_cost_usd: number }
 export const aiUsage = async (days = 30) =>
   nums(await call<GymAiUse[]>('platform_ai_usage', { p_days: days }), ['messages', 'tokens_in', 'tokens_out', 'est_cost_usd']);
-/** `$1.23`, or `<$0.01` for a real but sub-cent figure. */
-export const usd = (v: number) => (v > 0 && v < 0.01 ? '<$0.01' : '$' + v.toFixed(2));
+/** `$1,234.56`, or `<$0.01` for a real but sub-cent figure. */
+export const usd = (v: number) => (v > 0 && v < 0.01 ? '<$0.01'
+  : '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+/** PostgREST's "not in the schema cache" and Postgres's "undefined function" — a migration not yet pasted. */
+export const isMissingFunction = (e: unknown) => ['PGRST202', '42883'].includes((e as { code?: string })?.code ?? '');
 
 /** Null when export is open for this gym; otherwise the database's sentence saying why not. */
 export const exportAllowed = (gym: string) => call<string | null>('gym_export_allowed', { p_gym: gym });
