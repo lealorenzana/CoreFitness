@@ -155,7 +155,12 @@ const GLOBAL = [
   // 0137. The platform talking to gyms: announcements (and who dismissed them),
   // and support tickets between one gym and the platform. RLS on, no policy;
   // every read is a definer function (platform-talk.mjs).
-  'platform_announcements', 'announcement_dismissals', 'support_tickets', 'support_messages'];
+  'platform_announcements', 'announcement_dismissals', 'support_tickets', 'support_messages',
+  // 0148. The platform's own conversation with applicants, how gyms pay it, and
+  // a gym's "we paid" claim to the platform (like gym_payments, the platform's
+  // ledger about a gym, not the gym's own data). RLS on, no policy; every read
+  // and write is a definer function (onboarding-payments.mjs).
+  'application_messages', 'platform_payment_methods', 'gym_payment_claims'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
