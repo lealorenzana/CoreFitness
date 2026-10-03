@@ -19,6 +19,19 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   **without** the history consent, because the member typed it for the coach; the
   workout history still needs the consent. An injury never changes an exercise: prompt
   rule 6 makes the coach refer the member to a professional. The Privacy page says so.
+- **Training tools (0145, Phase 3).** The coach has six tools: `find_exercises`,
+  `get_my_routines` and `get_my_schedule` (the last two need the history consent),
+  and `propose_routine`, `propose_schedule`, `propose_goal`. **Nothing changes
+  without the member's Apply**: a proposal is a row in `ai_proposals`, written by
+  SQL, and only `apply` touches routines, schedule or goals. A member can discard a
+  proposal or **undo** an applied one, except when they have already trained it
+  ("already trained") or a newer change touches the same thing ("a newer change... undo
+  that first"); at most 10 proposals wait at once. The tool loop runs up to 6 rounds
+  and is **one counted message per member question**, however many tool rounds it
+  takes. Routines and schedules it made carry "Built with the coach" / "Set by the
+  coach" in the member app, the trainer's member sheet and the admin member drawer.
+  The "Changes from the coach" sheet keeps every proposal; the cards in the
+  conversation show for the current visit.
 - **Two limits**, both set in `gym_settings`: 30 messages a day per member and 1500 a
   month per gym. A message is counted when it is **claimed** (`ai_claim_message()`),
   before the model call, so a failed or abandoned call still counts.
