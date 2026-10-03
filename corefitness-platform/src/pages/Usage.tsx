@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Building2, Download, Grid3x3, Sparkles, TrendingDown } from 'lucide-react';
+import { Activity, Building2, DollarSign, Download, Grid3x3, Sparkles, TrendingDown } from 'lucide-react';
 import { listGyms, type PlatformGym } from '../lib/platform';
-import { gymUsage, USAGE_FEATURES, type GymUse } from '../lib/insight';
+import { aiUsage, gymUsage, usd, USAGE_FEATURES, type GymAiUse, type GymUse } from '../lib/insight';
 import { downloadCsv } from '../lib/csv';
 import GymMark from '../components/GymMark';
 import Tiles from '../components/Tiles';
@@ -14,6 +14,10 @@ import InfoDot from '../components/InfoDot';
  * to the busiest gym for it — so an empty column is a feature nobody has
  * found, and an empty row is a gym that is paying for less than it could use.
  * Counts only; chat and photos are counted, never read or seen.
+ *
+ * The AI coach (0147) is the one feature that costs money per use, so it also
+ * gets an estimated spend: tokens at the coach model's list price, in US
+ * dollars, labelled as an estimate — the real bill is on console.anthropic.com.
  */
 export default function Usage() {
   const [days, setDays] = useState(30);
@@ -21,12 +25,19 @@ export default function Usage() {
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
   const [sort, setSort] = useState<string>('total');
   const [error, setError] = useState<string | null>(null);
+  /** Null until loaded, or when 0147 is not pasted — the tile then says which. */
+  const [ai, setAi] = useState<GymAiUse[] | null>(null);
+  const [aiMissing, setAiMissing] = useState(false);
 
   useEffect(() => { void (async () => setGyms(await listGyms().catch(() => [])))(); }, []);
   useEffect(() => {
     void (async () => {
       try { setUse(await gymUsage(days)); setError(null); }
       catch { setUse([]); setError('Paste migration 0140 to see what each gym uses.'); }
+    })();
+    void (async () => {
+      try { setAi(await aiUsage(days)); setAiMissing(false); }
+      catch { setAi(null); setAiMissing(true); }
     })();
   }, [days]);
 
@@ -38,6 +49,14 @@ export default function Usage() {
     : sort === 'breadth' ? breadth(b.id) - breadth(a.id) : n(b.id, sort) - n(a.id, sort));
   const unused = USAGE_FEATURES.filter((f) => gyms.every((g) => n(g.id, f.key) === 0));
   const quiet = gyms.filter((g) => total(g.id) === 0 && !g.lock_reason);
+  const spendOf = (gym: string) => ai?.find((a) => a.gym_id === gym)?.est_cost_usd ?? 0;
+  const spend = (ai ?? []).reduce((s, a) => s + a.est_cost_usd, 0);
+  const nameOf = (gym: string) => gyms.find((g) => g.id === gym)?.name ?? 'A gym no longer listed';
+  const topSpend = (ai ?? []).filter((a) => a.est_cost_usd > 0)
+    .sort((a, b) => b.est_cost_usd - a.est_cost_usd).slice(0, 5);
+  const spendTip = aiMissing ? 'Paste migration 0147 to see what the coach costs.'
+    : "Estimated at Claude Sonnet 5.5's list price; the real bill is on console.anthropic.com.\n"
+      + (topSpend.length ? topSpend.map((a) => `${nameOf(a.gym_id)}: ${usd(a.est_cost_usd)}`).join('\n') : 'No gym used the coach.');
 
   return (
     <>
@@ -46,6 +65,7 @@ export default function Usage() {
         { icon: Activity, value: use ? gyms.reduce((s, g) => s + total(g.id), 0).toLocaleString('en-PH') : '…', label: `Things done, ${days} days`, tip: 'Every counted action across every gym and feature' },
         { icon: Sparkles, value: use ? `${USAGE_FEATURES.length - unused.length}/${USAGE_FEATURES.length}` : '…', label: 'Features in use', tip: unused.length ? `Nobody used: ${unused.map((f) => f.label).join(', ')}` : 'Every feature is used somewhere' },
         { icon: TrendingDown, value: use ? String(quiet.length) : '…', label: 'Open gyms doing nothing', act: quiet.length > 0, tip: quiet.map((g) => g.name).join('\n') || 'None' },
+        { icon: DollarSign, value: ai ? usd(spend) : aiMissing ? '—' : '…', label: `AI coach spend (${days} days)`, tip: spendTip },
       ]} />
       <div className="toolbar">
         <div className="filters">
@@ -85,7 +105,10 @@ export default function Usage() {
                     const a = v ? 0.12 + (v / most(f.key)) * 0.72 : 0;
                     return (
                       <td key={f.key} className={v ? '' : 'zero'} style={v ? { background: `rgba(124, 58, 237, ${a.toFixed(2)})` } : undefined}
-                        data-tip={`${g.name}: ${v.toLocaleString('en-PH')} ${f.label.toLowerCase()} in ${days} days`}>
+                        data-tip={f.key === 'coach'
+                          ? `${g.name}: ${v.toLocaleString('en-PH')} coach messages in ${days} days`
+                            + (ai ? `, about ${usd(spendOf(g.id))} at list price (an estimate)` : '')
+                          : `${g.name}: ${v.toLocaleString('en-PH')} ${f.label.toLowerCase()} in ${days} days`}>
                         {v ? v.toLocaleString('en-PH') : '·'}
                       </td>
                     );

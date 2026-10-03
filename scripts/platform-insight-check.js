@@ -69,7 +69,11 @@ async (page) => {
     platform_event_actions: () => ['gym.paid', 'gym.plan', 'billing.settings', 'gym.suspended'].map((a) => ({ action: a, n: 15 })),
     platform_gym_usage: () => [
       { gym_id: 'g1', feature: 'checkins', n: 1420 }, { gym_id: 'g1', feature: 'classes', n: 210 }, { gym_id: 'g1', feature: 'shop', n: 44 },
-      { gym_id: 'g1', feature: 'rooms', n: 18 }, { gym_id: 'g3', feature: 'checkins', n: 362 }, { gym_id: 'g3', feature: 'payments', n: 20 }],
+      { gym_id: 'g1', feature: 'rooms', n: 18 }, { gym_id: 'g3', feature: 'checkins', n: 362 }, { gym_id: 'g3', feature: 'payments', n: 20 },
+      { gym_id: 'g1', feature: 'coach', n: 96 }, { gym_id: 'g3', feature: 'coach', n: 3 }],
+    // 0147: per gym, never per member. g3's spend is under a cent.
+    platform_ai_usage: () => [{ gym_id: 'g1', messages: '96', tokens_in: '400000', tokens_out: '43450', est_cost_usd: 1.2345 },
+      { gym_id: 'g3', messages: '3', tokens_in: '1500', tokens_out: '100', est_cost_usd: 0.004 }],
     billing_settings: () => [BILLING],
     set_billing_settings: (b) => { CALLS.push(['billing', b]); Object.assign(BILLING, { grace_days: b.p_grace_days, business_name: b.p_business_name }); return null; },
     list_platform_admins: () => [{ user_id: 'pa', email: 'owner@corefitness.test', first_name: 'Lea', last_name: 'Lorenzana', is_me: true }],
@@ -180,6 +184,15 @@ async (page) => {
   out.push('features nobody used, said: ' + (/Nobody used/.test(t) && /squads/.test(t) ? 'yes' : 'MISSING'));
   const cellTip = await tipAfterHover(page.locator('.use-table tbody tr').first().locator('td').nth(1));
   out.push('a cell in words, on hover: ' + (/G Fitness: 1,420 check-ins in 30 days/.test(cellTip) ? 'yes' : 'MISSING ' + cellTip));
+  // ---- the AI coach on Usage (0147) ----
+  const heads = await page.locator('.use-table thead th').allInnerTexts();
+  out.push('the AI coach column: ' + (heads.map((h) => h.trim()).includes('AI coach') ? 'yes' : 'MISSING ' + heads.join('|')));
+  out.push('the coach spend tile: ' + (/\$1\.24\s*AI coach spend \(30 days\)/.test(t) ? '$1.24 over 30 days' : 'MISSING'));
+  const spendTip = await tipAfterHover(page.locator('.tile', { hasText: 'AI coach spend' }));
+  out.push('the spend tile names the top gyms, as an estimate: ' + (/G Fitness: \$1\.23/.test(spendTip) && /Harbour Strength: <\$0\.01/.test(spendTip) && /list price/.test(spendTip) && /console\.anthropic\.com/.test(spendTip) ? 'yes' : 'MISSING ' + spendTip));
+  const coachCol = heads.map((h) => h.trim()).indexOf('AI coach');
+  const coachTip = coachCol < 0 ? '' : await tipAfterHover(page.locator('.use-table tbody tr', { hasText: 'G Fitness' }).locator('td').nth(coachCol));
+  out.push("a gym's coach cell gives its spend: " + (/G Fitness: 96 coach messages in 30 days, about \$1\.23 at list price \(an estimate\)/.test(coachTip) ? 'yes' : 'MISSING ' + coachTip));
   await page.screenshot({ path: 'shots/platform-usage.png' });
 
   // ---- Settings ------------------------------------------------------------------------------

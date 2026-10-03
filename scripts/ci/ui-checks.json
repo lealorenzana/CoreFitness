@@ -54,6 +54,7 @@
     { "file": "admin-tooltips-check.js", "app": "admin" },
     { "file": "member-switches-check.js", "app": "member" },
     { "file": "admin-coach-mark-check.js", "app": "admin" },
-    { "file": "admin-switches-check.js", "app": "admin" }
+    { "file": "admin-switches-check.js", "app": "admin" },
+    { "file": "admin-coach-usage-check.js", "app": "admin" }
   ]
 }

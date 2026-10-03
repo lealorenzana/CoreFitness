@@ -14,6 +14,7 @@ import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
 import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
+import AiCoachCard from '../components/AiCoachCard';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -183,6 +184,7 @@ export default function GymApp() {
   }
 
   const joinLink = `${MEMBER_APP}/join/${app.slug}`;
+  const coach = modules.find((m) => m.feature_key === 'assistant');
   const card = 'rounded-xl border p-5';
   const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color-surface)' };
   const label = 'block text-xs mb-1';
@@ -382,6 +384,11 @@ export default function GymApp() {
           ))}
         </div>
       </div>
+
+      {/* ---- the AI coach (0147) ---------------------------------------------- */}
+      {/* Only where the gym's plan sells the assistant: a gym that cannot run the
+          coach has no limits to set and no usage to read (the gym's plan hides). */}
+      {coach && coach.state !== 'not_sold' && <AiCoachCard switchedOff={!coach.enabled} />}
 
       {/* ---- letting us look -------------------------------------------------- */}
       <div className={card} style={cardStyle}>

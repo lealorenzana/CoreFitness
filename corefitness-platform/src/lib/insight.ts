@@ -44,6 +44,17 @@ export const eventActions = async () => nums(await call<{ action: string; n: num
 
 export const gymUsage = async (days = 30) => nums(await call<GymUse[]>('platform_gym_usage', { p_days: days }), ['n']);
 
+/**
+ * The AI coach per gym (0147): messages, tokens, and an estimated spend at the
+ * coach model's list price, in US dollars. Counts only — nothing per member,
+ * never a word of any conversation.
+ */
+export interface GymAiUse { gym_id: string; messages: number; tokens_in: number; tokens_out: number; est_cost_usd: number }
+export const aiUsage = async (days = 30) =>
+  nums(await call<GymAiUse[]>('platform_ai_usage', { p_days: days }), ['messages', 'tokens_in', 'tokens_out', 'est_cost_usd']);
+/** `$1.23`, or `<$0.01` for a real but sub-cent figure. */
+export const usd = (v: number) => (v > 0 && v < 0.01 ? '<$0.01' : '$' + v.toFixed(2));
+
 /** Null when export is open for this gym; otherwise the database's sentence saying why not. */
 export const exportAllowed = (gym: string) => call<string | null>('gym_export_allowed', { p_gym: gym });
 export const exportGym = (gym: string) => call<GymExport>('platform_export_gym', { p_gym: gym });
@@ -63,4 +74,5 @@ export const USAGE_FEATURES: { key: string; label: string; tip: string }[] = [
   { key: 'referrals', label: 'Referrals', tip: 'Friends referred by members' },
   { key: 'photos', label: 'Photos', tip: 'Progress photos members took — counted, never seen' },
   { key: 'payments', label: 'Payments', tip: 'Member payments the desk recorded' },
+  { key: 'coach', label: 'AI coach', tip: 'Messages members sent the AI coach — counted, never read' },
 ];
