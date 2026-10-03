@@ -88,7 +88,7 @@ jobs:
       - name: Rule checks
         working-directory: ${{ runner.temp }}/sql
         run: |
-          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation storage-tenancy content-media programs records-seasons squads-goals referrals exercise-library gym-additions rooms classwork retention chat photos shop platform-logos platform-profile platform-health platform-talk platform-billing trials-end platform-insight switches demo-removal ai-coach ai-proposals onboarding-payments; do
+          for s in booking-conflicts trainer-decisions reasons-and-limits cancellation-and-visibility tenancy-isolation storage-tenancy content-media programs records-seasons squads-goals referrals exercise-library gym-additions rooms classwork retention chat photos shop platform-logos platform-profile platform-health platform-talk platform-billing trials-end platform-insight switches demo-removal ai-coach ai-proposals onboarding-payments own-exercise-hides-shared; do
             echo "::group::$s"
             node "$GITHUB_WORKSPACE/scripts/sql/$s.mjs" "$GITHUB_WORKSPACE"
             echo "::endgroup::"

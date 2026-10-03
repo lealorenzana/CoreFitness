@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Upload, X } from 'lucide-react';
+import { Copy, Mail, Upload, X } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import { getGymContext } from '../lib/gymContext';
 import {
-  importInvites, inviteLink, inviteToGym, listInvitations, parseList, revokeInvitation,
+  emailInvitation, importInvites, inviteLink, inviteToGym, listInvitations, parseList, revokeInvitation,
   type ImportResult, type Invitation, type InviteRole, type ParsedRow,
 } from '../lib/api/invitations';
 
@@ -24,8 +24,8 @@ const when = (iso: string) =>
  * with the address it was sent to, so a link that gets forwarded cannot be used
  * by whoever received it (0111).
  *
- * Nothing here sends email. The gym hands out the link the way it already talks
- * to its members, and the screen says so rather than implying an inbox.
+ * The gym hands out the link the way it already talks to its members, or presses
+ * "Email it" — which says whether it went, and never implies an inbox it did not reach.
  */
 export default function Invitations() {
   const [rows, setRows] = useState<Invitation[] | null>(null);
@@ -38,12 +38,16 @@ export default function Invitations() {
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [gym, setGym] = useState<{ id: string; name: string } | null>(null);
+  const [mailing, setMailing] = useState<string | null>(null);
+  const [mailed, setMailed] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
       const [list, ctx] = await Promise.all([listInvitations(showDone), getGymContext()]);
       setRows(list);
       setIsAdmin(ctx?.role === 'admin');
+      setGym(ctx?.gymId && ctx.gymName ? { id: ctx.gymId, name: ctx.gymName } : null);
     } catch (e) {
       setRows([]);
       showToast(e instanceof Error ? e.message : 'Could not load invitations', 'error');
@@ -90,6 +94,27 @@ export default function Invitations() {
       setCopied(key);
       setTimeout(() => setCopied(null), 1500);
     });
+  };
+
+  /** Email one invitation. Says plainly whether it went, and keeps Copy link either way. */
+  const mail = async (r: Invitation) => {
+    if (!gym) return;
+    setMailing(r.id);
+    try {
+      const res = await emailInvitation(r, gym);
+      if (res.status === 'sent') {
+        setMailed((m) => ({ ...m, [r.id]: 'Emailed' }));
+        showToast(`Emailed to ${r.email}.`, 'success');
+      } else if (res.status === 'not_configured') {
+        showToast('Email is not set up on Core Fitness yet, so nothing was sent. Copy the link and send it yourself.', 'error');
+      } else {
+        showToast(`The email did not go through${res.error ? ': ' + res.error.slice(0, 140) : ''}. Copy the link instead.`, 'error');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not email it', 'error');
+    } finally {
+      setMailing(null);
+    }
   };
 
   const card = 'rounded-xl border p-5';
@@ -289,6 +314,9 @@ export default function Invitations() {
                 <>
                   <Button variant="ghost" onClick={() => copy(inviteLink(r.token), r.id)}>
                     <Copy size={14} className="mr-1.5" /> {copied === r.id ? 'Copied' : 'Copy link'}
+                  </Button>
+                  <Button variant="ghost" disabled={!gym || mailing === r.id} onClick={() => void mail(r)}>
+                    <Mail size={14} className="mr-1.5" /> {mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'}
                   </Button>
                   <Button variant="ghost" onClick={() => void (async () => {
                     try { await revokeInvitation(r.id); await load(); }

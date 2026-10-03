@@ -3,6 +3,7 @@ import {
   explain, gymDetail, gymPeople, renameGym, resetGymPassword,
   type GymDetail as Detail, type GymPerson, type PlatformGym,
 } from '../lib/platform';
+import EmailIt from './EmailIt';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -162,9 +163,9 @@ export default function GymDetail({ gym, onChanged, onClose }: {
           <div className="card handover" style={{ marginTop: 12 }}>
             <div className="name">A new password for {reset.who}</div>
             <div className="meta">
-              Their old one stopped working the moment you pressed the button. Read this out or send
-              it however you normally reach them — nothing here sends email — and they will be asked
-              to choose their own when they sign in.
+              Their old one stopped working the moment you pressed the button. Email it, or read it
+              out or send it however you normally reach them; they will be asked to choose their own
+              when they sign in.
             </div>
             <pre className="handover-box">
 {`${gym.name} — sign in
@@ -172,6 +173,15 @@ Where: https://corefitness-admin.vercel.app
 Email: ${reset.email ?? '(no email on file)'}
 Temporary password: ${reset.password}`}
             </pre>
+            <div style={{ height: 10 }} />
+            <EmailIt to={reset.email} toName={reset.who} subject={`${gym.name} — your new Core Fitness password`}
+              body={`${gym.name} — sign in
+Where: https://corefitness-admin.vercel.app
+Email: ${reset.email}
+Temporary password: ${reset.password}
+
+You will be asked to choose your own password when you sign in.`}
+              kind="password_reset" gymId={gym.id} />
             <div style={{ height: 12 }} />
             <button className="btn" onClick={() => setReset(null)}>I have passed it on</button>
           </div>
