@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { downloadCsv } from '../lib/csv';
 import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
 import GymMark from '../components/GymMark';
+import DemoNotice from '../components/DemoNotice';
 import {
   adoption, explain, funnel, gymHealth, growth,
   type Adoption, type Funnel, type GrowthMonth, type GymHealth,
@@ -59,7 +60,7 @@ export default function Growth() {
     MRR: 'Monthly recurring revenue: the monthly price of every gym whose paid time covers this month.',
     ARR: 'Annual run rate — this month\'s MRR times twelve. A pace, not money in the bank.',
     'Collected this month': 'Payments from gyms actually recorded this month, whatever period they cover.',
-    Gyms: 'Gyms on the service this month; suspended ones are counted as lost.',
+    Gyms: 'Gyms created by the end of this month, suspended ones included; the foot counts the new ones and those suspended this month.',
     Members: 'Active members across every gym at the end of the month — a floor, not a peak.',
     'Gyms at risk': 'Scored from quiet check-ins, lapsed payments, trials ending unpaid and owners not signing in (0136).',
   };
@@ -74,6 +75,7 @@ export default function Growth() {
 
   return (
     <>
+      <DemoNotice />
       <div className="kpis">
         {kpis.map((k) => {
           const Icon = k.icon;

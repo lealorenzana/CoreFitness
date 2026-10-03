@@ -78,4 +78,5 @@ export const USAGE_FEATURES: { key: string; label: string; tip: string }[] = [
   { key: 'photos', label: 'Photos', tip: 'Progress photos members took — counted, never seen' },
   { key: 'payments', label: 'Payments', tip: 'Member payments the desk recorded' },
   { key: 'coach', label: 'AI coach', tip: 'Messages members sent the AI coach — counted, never read' },
+  { key: 'assistant', label: 'Assistant', tip: 'Questions members asked the in-app assistant (0149) — counted, never read' },
 ];

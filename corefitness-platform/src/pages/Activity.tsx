@@ -7,6 +7,8 @@ import { downloadCsv } from '../lib/csv';
 import Tiles from '../components/Tiles';
 import Pagination from '../components/Pagination';
 import InfoDot from '../components/InfoDot';
+import Modal from '../components/Modal';
+import EventDetail from '../components/EventDetail';
 
 const PER_PAGE = 25;
 const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -28,6 +30,7 @@ export default function Activity() {
   const [actions, setActions] = useState<{ action: string; n: number }[]>([]);
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<LoggedEvent | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -105,7 +108,9 @@ export default function Activity() {
         ) : (
           <div className="act-list">
             {rows.map((e) => (
-              <div key={e.id} className="act-row">
+              <div key={e.id} className="act-row clickable" role="button" tabIndex={0} data-tip="Open the details"
+                onClick={(ev) => { if (!(ev.target as HTMLElement).closest('a')) setOpen(e); }}
+                onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setOpen(e); } }}>
                 <span className={`act-kind k-${family(e.action)}`} data-tip={e.action}>{say(family(e.action))}</span>
                 <span className="act-text">
                   <span className="act-summary">{e.summary}{typeof e.detail?.reason === 'string' && <em> — “{e.detail.reason as string}”</em>}</span>
@@ -121,6 +126,11 @@ export default function Activity() {
         )}
         <Pagination page={page} perPage={PER_PAGE} total={total} noun={total === 1 ? 'event' : 'events'} onPage={setPage} />
       </section>
+
+      <Modal open={!!open} onClose={() => setOpen(null)} size="md" title={open ? say(open.action) : ''}
+        subtitle={open ? (open.gym_name ?? 'The platform') : undefined}>
+        {open && <EventDetail event={open} />}
+      </Modal>
     </>
   );
 }

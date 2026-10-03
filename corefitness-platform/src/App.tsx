@@ -22,6 +22,7 @@ import TooltipLayer from './components/TooltipLayer';
 import ActivityPage from './pages/Activity';
 import Usage from './pages/Usage';
 import Settings from './pages/Settings';
+import SupportView from './pages/SupportView';
 
 /**
  * Core Fitness, the service — the platform owner's own app.
@@ -154,7 +155,7 @@ function Shell() {
             <h1>{page.title}</h1>
             <p className="lede">{page.lede}</p>
           </div>
-          <button type="button" className="find" style={{ marginLeft: 'auto' }} data-tip="Jump to any gym, support ticket or screen" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
+          <button type="button" className="find" style={{ marginLeft: 'auto' }} data-tip="Find any gym, applicant, payment reference, ticket, log entry or screen — Ctrl K or /" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
             <Search size={15} /> <span>Find anything</span> <kbd>Ctrl K</kbd>
           </button>
           <span><Bell /></span>
@@ -178,6 +179,7 @@ function Shell() {
                 <Route path="/money" element={<Money />} />
                 <Route path="/growth" element={<Growth />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/support-access/:gymId" element={<SupportView />} />
                 <Route path="/announcements" element={<Announcements />} />
                 <Route path="/capacity" element={<Capacity />} />
                 <Route path="/activity" element={<ActivityPage />} />

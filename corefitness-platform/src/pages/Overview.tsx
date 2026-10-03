@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Activity, AlertTriangle, Building2, Bug, CalendarClock, CheckCircle2, Clock, Filter, HeartPulse, Inbox, TrendingUp,
+  Activity, AlertTriangle, Building2, Bug, CalendarClock, CheckCircle2, Clock, DoorOpen, Filter, HeartPulse, Inbox, TrendingUp,
   UserX, Users, Wallet,
 } from 'lucide-react';
 import {
   funnel as getFunnel, getOverview, growth as getGrowth, gymHealth, listDue, listEvents, listGyms, listRevenue,
+  listSupportGrants, paymentClaims, type PaymentClaim, type SupportGrant,
   type Funnel, type GrowthMonth, type GymDue, type GymHealth, type Overview as O, type PlatformEvent, type PlatformGym,
   type RevenueMonth,
 } from '../lib/platform';
 import GymMark from '../components/GymMark';
+import Modal from '../components/Modal';
+import CheckinsBreakdown from '../components/CheckinsBreakdown';
+import EventDetail from '../components/EventDetail';
+import DemoNotice from '../components/DemoNotice';
 
 const peso = (v: string | number | null | undefined) => `₱${Number(v ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : String(Math.round(v)));
@@ -44,6 +49,10 @@ export default function Overview() {
   const [grow, setGrow] = useState<GrowthMonth[] | null>(null);
   const [fun, setFun] = useState<Funnel | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [why, setWhy] = useState(false);
+  const [ev, setEv] = useState<PlatformEvent | null>(null);
+  const [grants, setGrants] = useState<SupportGrant[]>([]);
+  const [claims, setClaims] = useState<PaymentClaim[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -58,6 +67,9 @@ export default function Overview() {
         // 0136's statistics; before it is pasted each card says so rather than showing zeros.
         const [h, g, f] = await Promise.all([gymHealth().catch(() => null), getGrowth(12).catch(() => null), getFunnel().catch(() => null)]);
         if (alive) { setHealth(h); setGrow(g); setFun(f); }
+        // 0113 / 0148: a gym waiting for you to look, and money waiting to be checked.
+        const [sg, pc] = await Promise.all([listSupportGrants().catch(() => []), paymentClaims('pending').catch(() => [])]);
+        if (alive) { setGrants(sg); setClaims(pc); }
       } catch (err) {
         if (alive) { setError(err instanceof Error ? err.message : 'The overview could not load'); setO(null); }
       }
@@ -81,6 +93,8 @@ export default function Overview() {
   // ---- needs you ----
   const risky = (health ?? []).filter((x) => x.level === 'high');
   const todo: { icon: typeof Inbox; text: string; sub: string; to: string }[] = [];
+  for (const g of grants) todo.push({ icon: DoorOpen, text: `${g.gym_name} opened its doors to you`, sub: g.reason ? `“${g.reason}” — look inside, read-only` : 'Look inside, read-only', to: `/support-access/${g.gym_id}` });
+  if (claims.length > 0) todo.push({ icon: Wallet, text: `${claims.length} payment${claims.length === 1 ? '' : 's'} to verify`, sub: claims.slice(0, 2).map((c) => `${c.gym_name} · ref ${c.reference}`).join(' · '), to: '/money' });
   if (o.applications_waiting > 0) todo.push({ icon: Inbox, text: `${o.applications_waiting} gym${o.applications_waiting === 1 ? '' : 's'} asking to join`, sub: 'Let them in or say why not', to: '/applications' });
   for (const g of due.filter((d) => d.days_left < 0).slice(0, 3)) todo.push({ icon: Wallet, text: `${g.name} is ${-g.days_left} days overdue`, sub: `${g.plan} · record a payment or suspend`, to: '/money' });
   for (const g of due.filter((d) => d.days_left >= 0).slice(0, 3)) todo.push({ icon: CalendarClock, text: `${g.name} is due in ${g.days_left} day${g.days_left === 1 ? '' : 's'}`, sub: `${g.plan} · paid to ${new Date(g.paid_until).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}`, to: '/money' });
@@ -96,7 +110,7 @@ export default function Overview() {
     'Gyms live': 'Gyms open for business: not suspended, not read-only. Click for every gym.',
     Members: 'Active members across every gym. Coaches and desk staff are counted separately.',
     'Revenue this month': 'What gyms paid Core Fitness this Manila month. Click for Money.',
-    'Check-ins, 30 days': 'Visits recorded at every gym\'s desk or kiosk in the last 30 days.',
+    'Check-ins, 30 days': 'Visits recorded at every gym\'s desk or kiosk in the last 30 days. Click to see which gyms and which days.',
     Applications: 'Gyms that applied on the website and are waiting for your answer.',
     'Overdue or locked': 'Gyms past their paid-until date, or suspended by you. Click to record a payment.',
   };
@@ -104,17 +118,20 @@ export default function Overview() {
     { icon: Building2, label: 'Gyms live', value: String(o.gyms_live), foot: `${o.gyms} in all${o.new_gyms_30d ? ` · ${o.new_gyms_30d} new this month` : ''}`, to: '/gyms' },
     { icon: Users, label: 'Members', value: o.members.toLocaleString('en-PH'), foot: `${o.trainers} coaches · ${o.staff} on desks`, to: '/gyms' },
     { icon: TrendingUp, label: 'Revenue this month', value: peso(o.revenue_this_month), foot: `${peso(o.revenue_all_time)} all time`, to: '/money' },
-    { icon: Activity, label: 'Check-ins, 30 days', value: o.checkins_30d.toLocaleString('en-PH'), foot: o.gyms_live ? `≈ ${Math.round(o.checkins_30d / Math.max(1, o.gyms_live) / 30).toLocaleString('en-PH')} a day per live gym` : 'Across every gym', to: '/gyms' },
+    { icon: Activity, label: 'Check-ins, 30 days', value: o.checkins_30d.toLocaleString('en-PH'), foot: o.gyms_live ? `≈ ${Math.round(o.checkins_30d / Math.max(1, o.gyms_live) / 30).toLocaleString('en-PH')} a day per live gym · why?` : 'Across every gym', to: '/gyms', open: () => setWhy(true) },
     { icon: Inbox, label: 'Applications', value: String(o.applications_waiting), foot: o.applications_waiting ? 'Waiting for you' : 'None waiting', to: '/applications', act: o.applications_waiting > 0 },
     { icon: AlertTriangle, label: 'Overdue or locked', value: String(o.overdue_gyms + o.gyms_suspended), foot: `${o.overdue_gyms} overdue · ${o.gyms_suspended} suspended`, to: '/money', act: o.overdue_gyms + o.gyms_suspended > 0 },
   ];
 
   return (
+    <>
+    <DemoNotice />
     <div className="ov">
       {kpis.map((k) => {
         const Icon = k.icon;
         return (
-          <Link key={k.label} to={k.to} className={`kpi ov-kpi${k.act ? ' act' : ''}`} data-tip={OV_TIPS[k.label]}>
+          <Link key={k.label} to={k.to} className={`kpi ov-kpi${k.act ? ' act' : ''}`} data-tip={OV_TIPS[k.label]}
+            onClick={'open' in k && k.open ? (e) => { e.preventDefault(); k.open!(); } : undefined}>
             <span className="kpi-icon"><Icon size={18} /></span>
             <span className="kpi-label">{k.label}</span>
             <span className="kpi-value">{k.value}</span>
@@ -213,17 +230,27 @@ export default function Overview() {
       </section>
 
       <section className="card ov-card ov-3">
-        <div className="ov-head"><h2 className="section-title"><Activity size={14} /> Recent activity</h2></div>
+        <div className="ov-head"><h2 className="section-title"><Activity size={14} /> Recent activity</h2>
+          <Link to="/activity" className="ov-more">All →</Link></div>
         <div className="ov-scroll">
           {events.length === 0 ? <p className="empty">Nothing yet.</p> : events.map((e) => (
-            <div key={e.id} className="ov-event">
+            <button key={e.id} type="button" className="ov-event" onClick={() => setEv(e)} data-tip="Open the details"
+              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
               <span className="ov-dot" />
               <span className="ov-event-text">{e.summary}<small>{ago(e.created_at)}</small></span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
+      <Modal open={!!ev} onClose={() => setEv(null)} size="md" title={ev ? ev.action.replace(/[._]/g, ' ').replace(/^./, (c) => c.toUpperCase()) : ''}>
+        {ev && <EventDetail event={{ ...ev, gym_name: gyms.find((g) => g.id === ev.gym_id)?.name ?? null, actor_name: null, total: 0 }} />}
+      </Modal>
+      <Modal open={why} onClose={() => setWhy(false)} size="lg" title="Check-ins, last 30 days"
+        subtitle="Where the number on the Overview comes from — per gym, per day and how they checked in.">
+        {why && <CheckinsBreakdown days={30} />}
+      </Modal>
     </div>
+    </>
   );
 }
 

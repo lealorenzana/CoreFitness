@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import {
-  demoSummary, enterSupport, explain, getOverview, lastBackup, leaveSupport,
+  demoSummary, explain, getOverview, lastBackup,
   listAdmins, listCrashes, listEmails, listEvents, listSupportGrants,
   removeDemoData, resolveCrashes,
   type Backup, type CrashReport, type DemoSummary, type Overview, type PlatformAdmin,
@@ -37,7 +37,6 @@ export default function Platform() {
   const [backup, setBackup] = useState<Backup | null | undefined>(undefined);
   const [grants, setGrants] = useState<SupportGrant[]>([]);
   const [emails, setEmails] = useState<SentEmail[]>([]);
-  const [inside, setInside] = useState<string | null>(null);
   /** Seeded rows (0117). Null on a database without it, which draws nothing. */
   const [demo, setDemo] = useState<DemoSummary | null>(null);
   /** The typed confirmation, open. Only this action has one D it is the only
@@ -152,26 +151,13 @@ export default function Platform() {
                   until {stamp(g.expires_at)}
                   {g.first_used_at ? ' — already visited' : ' — not looked at yet'}
                 </span>
-                <button className="btn" onClick={() => void (async () => {
-                  try {
-                    const name = await enterSupport(g.gym_id);
-                    setInside(name ?? g.gym_name);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : 'Could not enter');
-                  }
-                })()}>Look</button>
+                {/* 0149: the read-only view. enter_support_session() set a session
+                    setting that no later request could read (each is its own
+                    pooled transaction), so "Look" used to open nothing. */}
+                <Link className="btn" to={`/support-access/${g.gym_id}`}>Look inside</Link>
               </div>
             ))}
           </div>
-          {inside && (
-            <div className="meta" style={{ marginTop: 10, color: 'var(--warn)' }}>
-              You are looking at <strong>{inside}</strong>. Nothing you do can change it.{' '}
-              <button className="btn ghost" style={{ marginLeft: 8 }}
-                onClick={() => void (async () => { await leaveSupport(); setInside(null); })()}>
-                Stop looking
-              </button>
-            </div>
-          )}
         </div>
       )}
 

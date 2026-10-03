@@ -5,6 +5,7 @@ import {
   type BillingSettings, type PlatformAdmin,
 } from '../lib/platform';
 import InfoDot from '../components/InfoDot';
+import PaymentMethods from '../components/PaymentMethods';
 
 const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -118,6 +119,8 @@ export default function Settings() {
         {said('admins')}
       </section>
 
+      <PaymentMethods />
+
       <section className="card set-6">
         <h2 className="section-title"><Monitor size={14} /> This installation</h2>
         <dl className="qv-rows set-facts">
@@ -128,7 +131,8 @@ export default function Settings() {
         </dl>
         <h2 className="section-title" style={{ marginTop: 18 }}><Keyboard size={14} /> Shortcuts</h2>
         <ul className="set-keys">
-          <li><kbd>Ctrl</kbd><kbd>K</kbd><span>Find a gym, a ticket or a screen</span></li>
+          <li><kbd>Ctrl</kbd><kbd>K</kbd><span>Find a gym, an applicant, a payment reference, a ticket, a log entry or a screen</span></li>
+          <li><kbd>/</kbd><span>The same search, from anywhere outside a text box</span></li>
           <li><kbd>Esc</kbd><span>Close a popup, the search or a tooltip</span></li>
           <li><kbd>↑</kbd><kbd>↓</kbd><kbd>Enter</kbd><span>Move through search results and open one</span></li>
         </ul>

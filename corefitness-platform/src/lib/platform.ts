@@ -126,6 +126,18 @@ export interface Application {
   duplicates?: number;
   /** That address already owns a gym here — an existing customer, not a new one. */
   already_a_gym?: boolean;
+  /** 0148: what the website's form now asks. Absent before 0148. */
+  plan_key?: string | null;
+  plan_name?: string | null;
+  billing?: 'monthly' | 'yearly' | null;
+  heard_from?: string | null;
+  contact_pref?: 'call' | 'sms' | 'viber' | 'messenger' | 'whatsapp' | 'email' | null;
+  contact_handle?: string | null;
+  /** The applicant's private status link (0148). */
+  status_token?: string | null;
+  messages?: number;
+  unread?: number;
+  last_message_at?: string | null;
 }
 
 export interface PlatformEvent {
@@ -289,6 +301,10 @@ export async function inviteOwner(
   });
   // An Edge Function's own error message lives in the response body, not in
   // `error.message` — which only ever says "non-2xx status code".
+  if (error && (/Failed to send a request/i.test(error.message) || (error as { context?: Response }).context?.status === 404)) {
+    throw new Error('The approve-gym Edge Function is not deployed, so no login can be made for the owner. '
+      + 'Deploy it once (npx supabase functions deploy approve-gym — see supabase/README.md), then try again.');
+  }
   if (error) {
     const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(body?.error ?? error.message);
@@ -401,10 +417,37 @@ export async function resetGymPassword(gymId: string, userId: string):
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
   if (error) {
+    // "Failed to send a request to the Edge Function" (FunctionsFetchError), a
+    // relay error, or a 404 all mean the function is not deployed or not
+    // reachable — not that the reset is refused. 0149 does the same reset in
+    // SQL with the same rules, so support does not wait for a deploy.
+    const status = (error as { context?: Response }).context?.status;
+    const unreachable = /FunctionsFetchError|FunctionsRelayError/.test(error.name)
+      || /Failed to send a request/i.test(error.message) || status === 404;
+    if (unreachable) {
+      const password = temporaryPassword();
+      try {
+        const r = await resetGymPasswordSql(gymId, userId, password);
+        return { email: r?.email ?? null, isOwner: !!r?.is_owner, password };
+      } catch (e) {
+        throw new Error(explain(e, '0149').startsWith('This screen needs')
+          ? 'The reset-gym-password Edge Function is not deployed, and migration 0149 (the SQL fallback) is not pasted. '
+            + 'Paste 0149, or run: npx supabase functions deploy reset-gym-password'
+          : (e as Error).message);
+      }
+    }
     const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(body?.error ?? error.message);
   }
   return data as { email: string | null; isOwner: boolean; password: string };
+}
+
+/** Read down a phone line and typed once: no 0/O, 1/l/I. crypto, never Math.random — the Edge Function's alphabet. */
+function temporaryPassword(): string {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(14);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
 }
 
 /** When the weekly backup last reported itself (0111). Null = it never has. */
@@ -598,3 +641,81 @@ export const paymentReceipt = async (id: string) => (await call<Receipt[]>('gym_
 export const capacity = async () => (await call<CapacityRow[]>('platform_capacity')).map((r) => ({ ...r, used: Number(r.used), cap: r.cap === null ? null : Number(r.cap) }));
 /** Reminders to every gym's owners before a lock (0138). Never throws; a sweep never breaks a page. */
 export const sweepBilling = () => { void supabase.rpc('billing_reminders_sweep').then(() => undefined, () => undefined); };
+
+// ---- 0148: applicants we talk to, and gyms that pay from anywhere ----------------------------
+export interface ApplicationMessage { id: string; from_platform: boolean; body: string; author_name: string | null; created_at: string }
+export interface PaymentMethod {
+  id: string; kind: 'gcash' | 'maya' | 'bank' | 'other'; label: string; account_name: string | null;
+  account_number: string | null; qr_image: string | null; instructions: string | null; sort_order: number; active: boolean;
+}
+export interface PaymentClaim {
+  id: string; gym_id: string; gym_name: string; plan_key: string | null; plan_name: string | null;
+  price_monthly: string | null; paid_until: string | null; amount: string; paid_on: string; method_label: string;
+  reference: string; months: number; proof_image: string | null; note: string | null;
+  status: 'pending' | 'verified' | 'rejected'; reason: string | null; submitted_by_name: string | null;
+  created_at: string; decided_at: string | null; payment_id: string | null;
+}
+
+/** The applicant's private status page on the website. */
+export const SITE = 'https://corefitness-site.vercel.app';
+export const statusLink = (token: string) => `${SITE}/#status/${token}`;
+
+export const applicationThread = (id: string) => call<ApplicationMessage[]>('platform_application_thread', { p_id: id });
+export const replyApplication = (id: string, body: string) => call<void>('platform_application_reply', { p_id: id, p_body: body });
+
+export const paymentMethods = () => call<PaymentMethod[]>('platform_payment_options');
+export const savePaymentMethod = (m: Omit<PaymentMethod, 'id'> & { id?: string | null }) => call<string>('save_payment_method', {
+  p_id: m.id ?? null, p_kind: m.kind, p_label: m.label, p_account_name: m.account_name, p_account_number: m.account_number,
+  p_qr_image: m.qr_image, p_instructions: m.instructions, p_sort: m.sort_order, p_active: m.active });
+export const removePaymentMethod = (id: string) => call<void>('remove_payment_method', { p_id: id });
+
+export const paymentClaims = (status: 'pending' | 'verified' | 'rejected' | null = 'pending') =>
+  call<PaymentClaim[]>('platform_payment_claims', { p_status: status });
+export const verifyPayment = (claim: string, coversUntil: string, amount?: number) =>
+  call<string>('verify_gym_payment', { p_claim: claim, p_covers_until: coversUntil, p_amount: amount ?? null });
+export const rejectPayment = (claim: string, reason: string) => call<void>('reject_gym_payment', { p_claim: claim, p_reason: reason });
+
+// ---- 0149: numbers that explain themselves, support access that shows the gym -----------------
+export interface CheckinGym {
+  gym_id: string; name: string; logo_url: string | null; accent: string; checkins: number; demo: number;
+  people: number; last_at: string | null; by_method: Record<string, number>;
+}
+export interface CheckinDay { day: string; checkins: number; demo: number }
+export interface AiGym {
+  gym_id: string; name: string; coach_messages: number; coach_members: number; tokens_in: number;
+  tokens_out: number; est_cost_usd: number; assistant_messages: number; assistant_members: number;
+}
+const toNum = <T,>(rows: T[], keys: (keyof T)[]): T[] => (rows ?? []).map((r) => {
+  const o = { ...r } as Record<string, unknown>;
+  for (const k of keys) o[k as string] = Number(o[k as string] ?? 0);
+  return o as T;
+});
+export const checkinsBreakdown = async (days = 30) =>
+  toNum(await call<CheckinGym[]>('platform_checkins_breakdown', { p_days: days }), ['checkins', 'demo', 'people']);
+export const checkinsDaily = async (days = 30) =>
+  toNum(await call<CheckinDay[]>('platform_checkins_daily', { p_days: days }), ['checkins', 'demo']);
+export const aiOverview = async (days = 30) => toNum(await call<AiGym[]>('platform_ai_overview', { p_days: days }),
+  ['coach_messages', 'coach_members', 'tokens_in', 'tokens_out', 'est_cost_usd', 'assistant_messages', 'assistant_members']);
+
+/** The whole gym as one read-only document, while its grant is live. Logged in both logs. */
+export interface SupportSnapshot {
+  grant: { reason: string | null; expires_at: string; granted_by: string | null };
+  gym: { id: string; name: string; slug: string; status: string; plan: string; paid_until: string | null;
+         created_at: string; onboarded_at: string | null; lock_reason: string | null };
+  settings: { phone: string | null; email: string | null; address: string | null; join_policy: string;
+              join_code: string | null; accent: string | null; accent_action: string | null; logo_url: string | null } | null;
+  counts: Record<string, number> | null;
+  staff: { name: string | null; email: string | null; role: string; status: string; last_sign_in_at: string | null }[];
+  members: { name: string | null; email: string | null; status: string; joined: string | null; last_sign_in_at: string | null }[];
+  invitations: { email: string; name: string | null; role: string; created_at: string; expires_at: string;
+                 accepted_at: string | null; revoked_at: string | null; state: string; has_account: boolean }[];
+  pending_registrations: number;
+  activity: { at: string; action: string; summary: string; by: string | null }[];
+  errors: { at: string; app: string; route: string | null; message: string }[];
+  plans: { name: string; price: string | null; active: string | null }[];
+}
+export const supportSnapshot = (gym: string) => call<SupportSnapshot>('platform_support_snapshot', { p_gym: gym });
+
+/** The SQL path for a password reset (0149), used when the Edge Function cannot be reached. */
+export const resetGymPasswordSql = async (gym: string, user: string, password: string) =>
+  (await call<{ email: string | null; is_owner: boolean }[]>('platform_reset_gym_password', { p_gym: gym, p_user: user, p_password: password }))[0];

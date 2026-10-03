@@ -6,6 +6,7 @@ import {
 import GymMark from '../components/GymMark';
 import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
+import SupportDoor from '../components/SupportDoor';
 import {
   addGymNote, deleteGymNote, explain, gymContacts, gymEvents, gymFeatures, gymNotes, gymWeeks, listGyms, listPayments,
   setNotePinned,
@@ -92,6 +93,7 @@ export default function GymProfile() {
           {gym.lock_reason
             ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}</span>
             : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
+          <SupportDoor gymId={gym.id} />
           <ExportGym gymId={gym.id} gymName={gym.name} />
         </div>
       </section>

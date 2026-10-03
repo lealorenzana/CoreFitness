@@ -3,6 +3,7 @@ import InfoDot from '../components/InfoDot';
 import { Link } from 'react-router-dom';
 import { Building2, CheckCircle2, Inbox, LifeBuoy, MessageSquareReply, Send } from 'lucide-react';
 import Tiles from '../components/Tiles';
+import SupportGrants from '../components/SupportGrants';
 import {
   CHANGED, explain, listTickets, replyTicket, setTicketStatus, ticketThread, type PlatformTicket, type TicketMessage,
 } from '../lib/platform';
@@ -50,6 +51,7 @@ export default function Support() {
   return (
     <>
       {error && <p className="err">{error}</p>}
+      <SupportGrants />
       <Tiles items={[
         { icon: Inbox, value: String(tickets.filter((t) => t.status !== 'closed' && t.last_from === 'gym').length), label: 'Waiting for you',
           act: tickets.some((t) => t.status !== 'closed' && t.last_from === 'gym'), onClick: () => setFilter('waiting'), on: filter === 'waiting' },

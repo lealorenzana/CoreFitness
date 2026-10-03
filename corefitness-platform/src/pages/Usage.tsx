@@ -7,6 +7,7 @@ import { downloadCsv } from '../lib/csv';
 import GymMark from '../components/GymMark';
 import Tiles from '../components/Tiles';
 import InfoDot from '../components/InfoDot';
+import AiUsage from '../components/AiUsage';
 
 /**
  * What each gym uses (0140): every gym against every feature, counted over the
@@ -85,6 +86,8 @@ export default function Usage() {
         ])}><Download size={15} /> Export CSV</button>
       </div>
       {error && <p className="err">{error}</p>}
+
+      <AiUsage days={days} />
 
       <section className="card use-card">
         <h2 className="section-title"><Grid3x3 size={14} /> Every gym, every feature, last {days} days

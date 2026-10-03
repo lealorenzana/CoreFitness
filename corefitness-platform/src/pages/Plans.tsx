@@ -118,7 +118,21 @@ export default function Plans() {
     }
   };
 
-  const undecided = plans?.filter((p) => p.price_monthly === null && p.is_active) ?? [];
+  /**
+   * A starting split, offered only while every plan is identical: the trial
+   * and Premium get everything; Standard keeps running the gym (desk, check-in,
+   * classes, progress, announcements) and leaves out the coaching side and the
+   * extras — what 0108's own Premium blurb promises ("the coaching side too").
+   * Asked first, every box stays editable afterwards.
+   */
+  const suggest = async () => {
+    const standard = plans?.find((p) => p.key === 'standard');
+    if (!standard) return;
+    const off = features.filter((f) => !STANDARD_KEEPS.includes(f.key));
+    if (!window.confirm(`Standard would no longer include: ${off.map((f) => f.label).join(', ')}.\n\nFree trial and Premium keep everything. Gyms on Standard lose those parts straight away. Go ahead?`)) return;
+    for (const f of off) await toggle('standard', f.key);
+  };
+
   const allSame = plans !== null && plans.length > 1 && features.length > 0
     && features.every((f) => plans.every((p) => on(p.key, f.key) === on(plans[0].key, f.key)));
 
@@ -142,32 +156,8 @@ export default function Plans() {
 
       {error && <p className="err">{error}</p>}
 
-      {(undecided.length > 0 || allSame) && (
-        <div className="notices">
-        {undecided.length > 0 && (
-        <div className="card notice">
-          <div className="name">
-            {undecided.length === 1 ? 'One plan has no price' : `${undecided.length} plans have no price`}
-          </div>
-          <div className="meta">
-            {undecided.map((p) => p.name).join(', ')} — the website says “Talk to us” for these rather
-            than printing a number nobody decided. Set one and it appears there.
-          </div>
-        </div>
-      )}
-
-        {allSame && (
-        <div className="card notice">
-          <div className="name">Every plan currently includes exactly the same things</div>
-          <div className="meta">
-            That is the honest starting state, not a mistake: pasting 0108 took nothing away from any
-            gym. Untick what a cheaper tier does not get, and the website and the gyms both follow.
-          </div>
-        </div>
-      )}
-
-        </div>
-      )}
+      <ComparePlans plans={(plans ?? []).filter((p) => p.is_active)} features={features} on={on}
+        onSuggest={allSame ? () => void suggest() : undefined} />
 
       <Modal open={!!editing} onClose={() => setEditing(null)} size="lg" label="Plan">
       {editing && (
@@ -308,5 +298,52 @@ export default function Plans() {
         </p>
       )}
     </>
+  );
+}
+
+/** What Standard keeps under the suggested split: running the gym day to day. */
+const STANDARD_KEEPS = ['front_desk', 'checkin', 'classes', 'progress', 'push', 'requests', 'shop'];
+
+/**
+ * Every active plan side by side: price, limits, and each feature ticked or
+ * not, with the rows that differ marked — the answer to "what is the
+ * difference between them?" in one look.
+ */
+function ComparePlans({ plans, features, on, onSuggest }: {
+  plans: PlatformPlan[]; features: PlatformFeature[]; on: (plan: string, feature: string) => boolean; onSuggest?: () => void;
+}) {
+  if (plans.length < 2) return null;
+  const differs = (f: string) => new Set(plans.map((p) => on(p.key, f))).size > 1;
+  const money = (p: PlatformPlan) => (p.price_monthly === null ? 'No price yet' : Number(p.price_monthly) === 0 ? 'Free' : `${peso(p.price_monthly)}/mo`);
+  const nDiff = features.filter((f) => differs(f.key)).length;
+  return (
+    <section className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ gap: 10 }}>
+        <h2 className="section-title grow" style={{ margin: 0 }}><Layers size={14} /> What each plan gets</h2>
+        <span className="muted" style={{ fontSize: 12.5 }}>{nDiff === 0 ? 'No feature differs between plans yet' : `${nDiff} feature${nDiff === 1 ? ' differs' : 's differ'}`}</span>
+        {onSuggest && <button className="btn ghost" onClick={onSuggest}>Use a suggested split</button>}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="compare" style={{ marginTop: 10 }}>
+          <thead>
+            <tr><th></th>{plans.map((p) => <th key={p.key}>{p.name}</th>)}</tr>
+          </thead>
+          <tbody>
+            <tr><td>Price</td>{plans.map((p) => <td key={p.key}>{money(p)}</td>)}</tr>
+            <tr><td>Free days</td>{plans.map((p) => <td key={p.key}>{p.trial_days ?? '—'}</td>)}</tr>
+            <tr><td>Members</td>{plans.map((p) => <td key={p.key}>{p.max_members ?? 'Any'}</td>)}</tr>
+            <tr><td>Desk accounts</td>{plans.map((p) => <td key={p.key}>{p.max_staff ?? 'Any'}</td>)}</tr>
+            {features.map((f) => (
+              <tr key={f.key} className={differs(f.key) ? 'diff' : ''}>
+                <td title={f.description}>{f.label}</td>
+                {plans.map((p) => on(p.key, f.key)
+                  ? <td key={p.key} className="yes" aria-label="Included">✓</td>
+                  : <td key={p.key} className="no" aria-label="Not included">—</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

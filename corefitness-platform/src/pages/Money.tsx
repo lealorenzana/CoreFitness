@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Download, Receipt as ReceiptIcon } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import ReceiptSheet from '../components/ReceiptSheet';
+import PaymentClaims from '../components/PaymentClaims';
 import {
   billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
@@ -75,6 +76,8 @@ export default function Money() {
     <>
       {error && <p className="err">{error}</p>}
       {receipt && <ReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
+
+      <PaymentClaims onChanged={() => void load()} />
 
       {recording && (
         <RecordPayment

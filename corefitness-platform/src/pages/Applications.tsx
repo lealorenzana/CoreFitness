@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ClipboardList, Clock, Inbox, KeyRound, Link2, Mail, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Clock, Copy, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
 import {
-  createGym, listApplications, rejectApplication, slugFor, splitName, type Application,
+  createGym, listApplications, rejectApplication, setGymPlan, slugFor, splitName, statusLink, type Application,
 } from '../lib/platform';
+import ApplicationThread from '../components/ApplicationThread';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
@@ -14,7 +15,7 @@ const when = (iso: string) =>
 const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 
 type Show = 'pending' | 'approved' | 'rejected' | 'all';
-type Dialog = { kind: 'in' | 'down'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
+type Dialog = { kind: 'in' | 'down' | 'talk'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
 
 /**
  * Gyms asking to join, from the website — in the admin app's layout
@@ -48,7 +49,8 @@ export default function Applications() {
         { icon: Inbox, value: apps ? String(waiting.length) : '…', label: 'Waiting for you', act: waiting.length > 0, onClick: () => pick('pending'), on: show === 'pending' },
         { icon: CheckCircle2, value: apps ? String(of('approved').length) : '…', label: 'Let in', onClick: () => pick('approved'), on: show === 'approved' },
         { icon: XCircle, value: apps ? String(of('rejected').length) : '…', label: 'Turned down', onClick: () => pick('rejected'), on: show === 'rejected' },
-        { icon: Users, value: apps ? waiting.reduce((n, a) => n + (a.member_estimate ?? 0), 0).toLocaleString('en-PH') : '…', label: 'Members they would bring' },
+        { icon: Users, value: apps ? waiting.reduce((n, a) => n + (a.member_estimate ?? 0), 0).toLocaleString('en-PH') : '…', label: 'Members they say they have',
+          tip: 'Each waiting gym\'s own answer to "Roughly how many members?" on the website, added up — the members those gyms would bring onto Core Fitness if you let them in. Their estimate, not a count.' },
         { icon: Clock, value: oldest ? `${daysSince(oldest.created_at)}d` : '—', label: oldest ? `Oldest: ${oldest.gym_name}` : 'Nobody waiting', act: !!oldest && daysSince(oldest.created_at) >= 3 },
       ]} />
 
@@ -80,9 +82,17 @@ export default function Applications() {
                       <span><Mail size={12} />{app.email}</span>
                       {app.phone && <span><Phone size={12} />{app.phone}</span>}
                       {app.address && <span>{app.address}</span>}
-                      {app.member_estimate != null && <span>about {app.member_estimate} members</span>}
+                      {app.member_estimate != null && <span data-tip="Their own estimate of how many members the gym has">about {app.member_estimate} members</span>}
                       <span className="muted">Applied {when(app.created_at)}</span>
                     </span>
+                    {(app.plan_name || app.heard_from) && (
+                      <span className="chips">
+                        {app.plan_name && <span className="chip"><Layers size={12} /> Wants {app.plan_name}{app.billing === 'yearly' ? ', yearly' : ''}</span>}
+                        {app.heard_from && <span className="chip"><Sparkles size={12} /> Heard from {app.heard_from}</span>}
+                        {app.contact_pref && <span className="chip"><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
+                      </span>
+                    )}
+                    <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
                     {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
                     {app.already_a_gym && <span className="meta" style={{ color: 'var(--warn)' }}>This email already owns a gym here. Letting them in again makes a second one.</span>}
                     {!!app.duplicates && app.duplicates > 0 && <span className="meta" style={{ color: 'var(--warn)' }}>Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
@@ -109,11 +119,20 @@ export default function Applications() {
               <li><KeyRound size={15} /><span><b>You name the owner</b>They get a temporary password, shown to you once.</span></li>
               <li><Settings2 size={15} /><span><b>They set the gym up</b>Name, logo and colours at /admin/setup — none of Core Fitness's.</span></li>
               <li><Clock size={15} /><span><b>Their free trial runs</b>It ends on its own date; reminders go before it does.</span></li>
+              <li><Copy size={15} /><span><b>They pay from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
             </ol>
           </section>
           <section className="card side-fill">
             <h2 className="section-title"><Inbox size={14} /> Where they come from</h2>
-            <p className="meta" style={{ marginTop: 0 }}>The Apply form on the Core Fitness website. Each answer is recorded — a gym turned down is shown the reason you give.</p>
+            {all.length === 0 ? (
+              <p className="meta" style={{ marginTop: 0 }}>Nobody has applied yet. Applications arrive from the Register your gym form on the website.</p>
+            ) : (
+              <>
+                <Breakdown title="How they heard of us" icon={Sparkles} rows={tally(all, (a) => a.heard_from)} total={all.length} />
+                <Breakdown title="Where the gym is" icon={MapPin} rows={tally(all, (a) => place(a.address))} total={all.length} />
+                <Breakdown title="Plan they asked for" icon={Layers} rows={tally(all, (a) => a.plan_name)} total={all.length} />
+              </>
+            )}
             <div className="mini-figs">
               <span><b>{all.length}</b>applied, ever</span>
               <span><b>{all.length ? `${Math.round((of('approved').length / all.length) * 100)}%` : '—'}</b>let in</span>
@@ -127,12 +146,21 @@ export default function Applications() {
           <Ask
             title={`Let ${dialog.app.gym_name} in?`}
             blurb="The link name is what their members type — …/join/…  Small letters, numbers and dashes, and it cannot be changed casually afterwards."
-            fields={[{ key: 'slug', label: 'Link name', required: true, initial: slugFor(dialog.app.gym_name) }]}
+            fields={[
+              { key: 'slug', label: 'Link name', required: true, initial: slugFor(dialog.app.gym_name) },
+              ...(dialog.app.plan_key && dialog.app.plan_key !== 'trial' && dialog.app.plan_name ? [{
+                key: 'start', label: 'Start them on',
+                options: [TRIAL_FIRST, `${dialog.app.plan_name} straight away`],
+              }] : []),
+            ]}
             confirmLabel="Create the gym"
             onCancel={close}
             onConfirm={async (v) => {
               const app = dialog.app;
               const gymId = await createGym(app.gym_name, v.slug.trim(), app.id);
+              // Every gym starts on the free trial (0106); the plan they asked
+              // for is one more step, only if you choose it here.
+              if (v.start && v.start !== TRIAL_FIRST && app.plan_key) await setGymPlan(gymId, app.plan_key, null);
               await load();
               // The gym exists; it has nobody in it. Straight on to the owner.
               setDialog({ kind: 'owner', gymId, app });
@@ -154,6 +182,12 @@ export default function Applications() {
         )}
       </Modal>
 
+      <Modal open={dialog?.kind === 'talk'} onClose={() => { close(); void load(); }} size="md"
+        title={dialog?.kind === 'talk' ? `Messages with ${dialog.app.gym_name}` : ''}
+        subtitle={dialog?.kind === 'talk' ? `${dialog.app.owner_name} · ${dialog.app.email}` : undefined}>
+        {dialog?.kind === 'talk' && <ApplicationThread app={dialog.app} />}
+      </Modal>
+
       <Modal open={dialog?.kind === 'owner'} onClose={close} size="md" label="Name the owner">
         {dialog?.kind === 'owner' && (
           <InviteOwner gymId={dialog.gymId} gymName={dialog.app.gym_name}
@@ -162,5 +196,76 @@ export default function Applications() {
         )}
       </Modal>
     </>
+  );
+}
+
+const TRIAL_FIRST = 'Free trial first (recommended)';
+const CONTACT: Record<string, string> = { call: 'a call', sms: 'SMS', viber: 'Viber', messenger: 'Messenger', whatsapp: 'WhatsApp', email: 'email' };
+
+/** "Purok 2, Mamburao, Occidental Mindoro" → "Occidental Mindoro": the province, or the last part they typed. */
+function place(address: string | null): string | null {
+  const parts = (address ?? '').split(',').map((p) => p.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : null;
+}
+
+function tally(apps: Application[], key: (a: Application) => string | null | undefined): [string, number][] {
+  const m = new Map<string, number>();
+  for (const a of apps) {
+    const k = key(a)?.trim() || 'Not said';
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] === 'Not said' ? 1 : b[0] === 'Not said' ? -1 : b[1] - a[1])).slice(0, 6);
+}
+
+function Breakdown({ title, icon: Icon, rows, total }: { title: string; icon: typeof Inbox; rows: [string, number][]; total: number }) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className="meta" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Icon size={13} /> {title}</div>
+      <div className="source-list">
+        {rows.map(([k, n]) => (
+          <div key={k}>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="grow" style={{ color: k === 'Not said' ? 'var(--text-3)' : undefined }}>{k}</span>
+              <b>{n}</b>
+            </div>
+            <div className="meter"><span style={{ width: `${(n / total) * 100}%` }} /></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Every way to reach an applicant, as they asked to be reached first. */
+function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const digits = app.phone.replace(/[^0-9+]/g, '');
+  const intl = digits.startsWith('+') ? digits : digits.startsWith('0') ? `+63${digits.slice(1)}` : digits;
+  const handle = app.contact_handle?.trim() || null;
+  const greet = encodeURIComponent(`Hi ${app.owner_name.split(' ')[0]}, this is Core Fitness about ${app.gym_name}'s application.`);
+  return (
+    <span className="reach">
+      <button type="button" onClick={onTalk}>
+        <MessageSquare size={13} /> Messages{app.messages ? ` (${app.messages})` : ''}
+        {!!app.unread && <span className="unread">{app.unread}</span>}
+      </button>
+      <a href={`tel:${intl}`}><Phone size={13} /> Call</a>
+      <a href={`sms:${intl}?body=${greet}`}><MessageCircle size={13} /> SMS</a>
+      <a href={`viber://chat?number=${encodeURIComponent(intl)}`}>Viber</a>
+      <a href={`https://wa.me/${intl.replace('+', '')}?text=${greet}`} target="_blank" rel="noreferrer">WhatsApp</a>
+      {app.contact_pref === 'messenger' && handle && (
+        <a href={`https://m.me/${encodeURIComponent(handle.replace(/^https?:\/\/(www\.)?(m\.me|facebook\.com)\//, ''))}`} target="_blank" rel="noreferrer">Messenger</a>
+      )}
+      <a href={`mailto:${app.email}?subject=${encodeURIComponent(`Your Core Fitness application — ${app.gym_name}`)}&body=${encodeURIComponent(
+        `Hi ${app.owner_name.split(' ')[0]},\n\n` + (app.status_token ? `You can follow your application and write to us here:\n${statusLink(app.status_token)}\n\n` : '') + '— Core Fitness')}`}>
+        <Mail size={13} /> Email
+      </a>
+      {app.status_token && (
+        <button type="button" onClick={() => void navigator.clipboard.writeText(statusLink(app.status_token!)).then(() => setCopied(true))}
+          data-tip="Their private page: where the application stands, your messages, and how to pay once they are in">
+          <Copy size={13} /> {copied ? 'Status link copied' : 'Status link'}
+        </button>
+      )}
+    </span>
   );
 }
