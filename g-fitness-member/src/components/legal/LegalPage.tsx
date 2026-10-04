@@ -141,9 +141,9 @@ export default function LegalPage({ title, icon: DocIcon, updated, framework, in
       const t = setTimeout(() => jump(id, false), 60);
       return () => clearTimeout(t);
     }
-    // `#agreement` is the Today strip's link to the end of the page. The block appears only once the
-    // member's agreements have loaded, so wait for it — a few seconds at most, then stay at the top.
-    if (id === 'agreement') {
+    // `#agreement` and `#house-rules` are the Today strip's links. Those blocks appear only once the
+    // member's agreements have loaded, so wait for them — a few seconds at most, then stay at the top.
+    if (id === 'agreement' || id === 'house-rules') {
       let tries = 0;
       const t = setInterval(() => {
         if (document.getElementById(id)) { clearInterval(t); jump(id, false); }

@@ -34,6 +34,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
 import { memberAgreements, type Agreement, type MemberAgreements } from '../../lib/api/termsAcceptance';
+import { memberHouseRulesVersion } from '../../lib/api/houseRules';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 
 /**
@@ -1468,12 +1469,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  */
 function AgreedVersionsCell({ profileId }: { profileId: string }) {
   const [a, setA] = useState<MemberAgreements | null>(null);
+  const [rules, setRules] = useState<{ version: number; accepted_at: string } | null>(null);
   useEffect(() => {
     let alive = true;
-    void (async () => { const r = await memberAgreements(profileId); if (alive) setA(r); })();
+    void (async () => {
+      const [r, h] = await Promise.all([memberAgreements(profileId), memberHouseRulesVersion(profileId)]);
+      if (alive) { setA(r); setRules(h); }
+    })();
     return () => { alive = false; };
   }, [profileId]);
-  if (!a || (!a.member_terms && !a.member_privacy)) return null;
+  if ((!a || (!a.member_terms && !a.member_privacy)) && !rules) return null;
   // A version is a calendar date ('2026-10-03'), never parsed through Date — that reads it as UTC
   // midnight and shows the day before anywhere west of Greenwich. Same MM/DD/YYYY as formatDate.
   const day = (v: string) => { const [y, m, d] = v.split('-'); return `${m}/${d}/${y}`; };
@@ -1482,7 +1487,8 @@ function AgreedVersionsCell({ profileId }: { profileId: string }) {
     : `${label}: version of ${day(x.version)}${x.source === 'in_app' ? ` (agreed ${formatDate(x.accepted_at)} in the app)` : ''}`;
   return (
     <InfoCell icon={FileCheck} label="Versions agreed" className="col-span-2"
-      value={`${say('Terms', a.member_terms)} · ${say('Privacy', a.member_privacy)}`} />
+      value={[a && `${say('Terms', a.member_terms)} · ${say('Privacy', a.member_privacy)}`,
+        rules && `House rules: version ${rules.version} (agreed ${formatDate(rules.accepted_at)})`].filter(Boolean).join(' · ')} />
   );
 }
 

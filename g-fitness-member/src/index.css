@@ -1043,3 +1043,19 @@ html, body {
   background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-raised)); }
 .legal-agree-mark { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--color-primary); }
 @media print { .legal-agree { display: none !important; } }
+
+/* the gym's own house rules inside Terms §6 (0153) — components/legal/HouseRulesBlock.tsx */
+.legal-house { scroll-margin-top: 120px; margin: 16px 0 6px 48px; max-width: 68ch; border-radius: 16px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border)); background: var(--color-surface-raised); }
+@media (max-width: 560px) { .legal-house { margin-left: 0; } }
+.legal-house-head { margin: 0; padding: 12px 16px; font-size: 13.5px; font-weight: 700; color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent); border-bottom: 1px solid var(--color-border);
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+.legal-house-head span { font-weight: 600; font-size: 12.5px; color: var(--color-primary-300); }
+.legal-house-body { padding: 14px 16px; white-space: pre-wrap; font-size: 15px; line-height: 1.7; color: var(--color-text-secondary); }
+.legal-house-ask { display: grid; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-secondary) 6%, transparent); }
+.legal-house-ask p { margin: 0; font-size: 14px; color: var(--color-text-secondary); }
+.legal-house-done { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 16px; border-top: 1px solid var(--color-border);
+  font-size: 14px; color: var(--color-primary-300); }
+@media print { .legal-house-ask { display: none !important; } }

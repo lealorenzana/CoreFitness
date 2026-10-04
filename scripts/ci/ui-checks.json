@@ -61,6 +61,8 @@
     { "file": "admin-switches-check.js", "app": "admin" },
     { "file": "admin-coach-usage-check.js", "app": "admin" },
     { "file": "member-terms-check.js", "app": "member" },
-    { "file": "admin-gym-terms-check.js", "app": "admin" }
+    { "file": "admin-gym-terms-check.js", "app": "admin" },
+    { "file": "member-house-rules-check.js", "app": "member" },
+    { "file": "admin-house-rules-check.js", "app": "admin" }
   ]
 }

@@ -3,6 +3,7 @@ import { Archive, Banknote, CalendarX, FileText, Snowflake } from 'lucide-react'
 import LegalPage, { type GlanceItem, type LegalSection } from '../components/legal/LegalPage';
 import { describeWindow, getRefundTerms, type RefundTermsState } from '../lib/api/refundTerms';
 import { prettyVersion, TERMS_VERSION } from '../lib/legalVersions';
+import HouseRulesBlock from '../components/legal/HouseRulesBlock';
 
 /**
  * The terms the gym actually operates by.
@@ -145,11 +146,13 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'using',
     title: '6. Using the gym',
+    lead: <HouseRulesBlock />,
     body: [
       'Proper gym attire and footwear are required.',
       'Return equipment to where you found it.',
       'Respect other members and keep the space clean.',
       'No photography or video of other people without their permission.',
+      'Your gym may add house rules of its own. They are shown here, dated and numbered, and you are asked to agree to each new version. They can never be changed after they are published — a change is a new version.',
     ],
   },
   {

@@ -4,9 +4,10 @@ import { LineRow, SectionHead } from '../ui/noc';
 import { getGymContext } from '../../lib/gymContext';
 import { behind, CURRENT, getMyAgreements } from '../../lib/api/termsAcceptance';
 import { prettyVersion } from '../../lib/legalVersions';
+import { getMyHouseRules, houseRulesDue } from '../../lib/api/houseRules';
 
 /**
- * Today's "Terms updated" (0151): shown to a member whose newest agreement is
+ * Today's "Terms updated" (0151, and 0153's house rules): shown to a member whose newest agreement is
  * older than the version the page now carries — or who has none recorded (the
  * desk created their account, or they joined before versions existed). A row
  * that opens the document, where they read it and agree; never a wall in front
@@ -18,14 +19,18 @@ export default function TermsUpdateStrip() {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const [ctx, mine] = await Promise.all([getGymContext(), getMyAgreements()]);
-      if (!alive || !mine || ctx?.role !== 'member') return;
+      const [ctx, mine, rules] = await Promise.all([getGymContext(), getMyAgreements(), getMyHouseRules()]);
+      if (!alive || ctx?.role !== 'member') return;
       const rows = [];
-      if (behind(mine.member_terms, CURRENT.member_terms)) {
+      if (mine && behind(mine.member_terms, CURRENT.member_terms)) {
         rows.push({ path: '/terms#agreement', title: 'Terms of Service', meta: `Updated ${prettyVersion(CURRENT.member_terms)} — read and agree` });
       }
-      if (behind(mine.member_privacy, CURRENT.member_privacy)) {
+      if (mine && behind(mine.member_privacy, CURRENT.member_privacy)) {
         rows.push({ path: '/privacy#agreement', title: 'Privacy Policy', meta: `Updated ${prettyVersion(CURRENT.member_privacy)} — read and agree` });
+      }
+      // The gym's own rules (0153), when it has some in effect that this member has not agreed to.
+      if (rules && houseRulesDue(rules)) {
+        rows.push({ path: '/terms#house-rules', title: 'Your gym’s house rules', meta: `Version ${rules.version} — read and agree` });
       }
       setDue(rows);
     })();

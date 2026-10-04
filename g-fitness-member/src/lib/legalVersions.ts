@@ -7,7 +7,7 @@
  * here, in the same commit** — the old wording stays in git history under the
  * old date, which is what makes an agreement to it mean something.
  */
-export const TERMS_VERSION = '2026-10-03';
+export const TERMS_VERSION = '2026-10-04';
 export const PRIVACY_VERSION = '2026-09-19';
 
 export type LegalDocument = 'member_terms' | 'member_privacy';
