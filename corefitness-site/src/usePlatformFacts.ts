@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { FALLBACK_FACTS, type Facts } from './legal';
+import { FALLBACK_FACTS, type Facts } from './legalText';
 
 /**
  * What the gym documents quote from the platform's settings, and which version

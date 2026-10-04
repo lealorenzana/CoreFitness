@@ -5,7 +5,7 @@ import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
 import Legal, { parseLegalHash } from './Legal';
-import { inEffect, VERSION } from './legal';
+import { inEffect, VERSION } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
 import { useCountUp, useMotionEngine } from './motion';
 

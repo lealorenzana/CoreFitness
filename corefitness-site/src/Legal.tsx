@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
-import { buildDocs, DOC_ORDER, inEffect, VERSION, type DocKey } from './legal';
+import { buildDocs, DOC_ORDER, inEffect, VERSION, type DocKey } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -20,7 +20,7 @@ const splitTitle = (t: string) => {
 };
 
 /**
- * The gym-facing documents (src/legal.ts), as a page of the site.
+ * The gym-facing documents (src/legalText.ts), as a page of the site.
  *
  * The numbers a setting decides are read from `platform_public_terms()` (0154).
  * Before that migration is pasted — or if the read fails — the documents fall
