@@ -1,12 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Check, Eye, EyeSlash } from '@phosphor-icons/react';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { supabase } from '../lib/supabaseClient';
 import { errorMessage } from '../utils/errorMessage';
 import { Page, PageTitle } from '../components/ui/page';
 import { Field } from '../components/ui/Field';
 import { Eyebrow, NocButton } from '../components/ui/noc';
+import { PasswordInput, PasswordStrength } from '../components/auth/PasswordFields';
 
 /**
  * Change password — against real Supabase Auth (Nocturne redesign).
@@ -30,53 +30,6 @@ import { Eyebrow, NocButton } from '../components/ui/noc';
  * it stronger, under the one thing that is required.
  */
 
-function strengthOf(password: string): { score: number; label: string } {
-  if (!password) return { score: 0, label: '' };
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
-  const label = score <= 2 ? 'Weak' : score === 3 ? 'Fair' : score === 4 ? 'Good' : 'Strong';
-  return { score, label };
-}
-
-/** A password input with a show/hide toggle inside its right edge. */
-function PasswordInput({
-  value, onChange, shown, onToggle, placeholder, autoComplete,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  shown: boolean;
-  onToggle: () => void;
-  placeholder: string;
-  autoComplete: string;
-}) {
-  return (
-    <span className="relative block">
-      <input
-        type={shown ? 'text' : 'password'}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        className="field-input"
-        style={{ paddingRight: 48 }}
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={shown ? 'Hide password' : 'Show password'}
-        className="absolute top-0 right-0 grid place-items-center"
-        style={{ width: 46, height: 46, color: 'var(--color-text-muted)' }}
-      >
-        {shown ? <EyeSlash size={18} /> : <Eye size={18} />}
-      </button>
-    </span>
-  );
-}
-
 export default function ChangePassword() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -92,14 +45,6 @@ export default function ChangePassword() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const strength = strengthOf(newPassword);
-  const longEnough = newPassword.length >= 8;
-  const stronger = [
-    { label: '12 characters or more', met: newPassword.length >= 12 },
-    { label: 'Upper and lower case', met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
-    { label: 'A number', met: /\d/.test(newPassword) },
-    { label: 'A symbol', met: /[^a-zA-Z0-9]/.test(newPassword) },
-  ];
   const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,42 +111,7 @@ export default function ChangePassword() {
             onToggle={() => setShowNew((v) => !v)} placeholder="Choose a new one" autoComplete="new-password" />
         </Field>
 
-        {newPassword && (
-          <section>
-            <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
-              <Eyebrow>Strength</Eyebrow>
-              <span style={{ fontSize: 12.5, color: strength.score >= 4 ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
-                {strength.label}
-              </span>
-            </div>
-            {/* Five segments, one per point the checker awards. */}
-            <div className="flex" style={{ gap: 4, marginTop: 8 }} aria-hidden>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} className="flex-1" style={{
-                  height: 4, borderRadius: 2,
-                  background: i < strength.score
-                    ? (strength.score >= 4 ? 'var(--color-primary)' : 'var(--color-secondary)')
-                    : 'var(--color-surface-high)',
-                }} />
-              ))}
-            </div>
-
-            <ul className="flex flex-col" style={{ gap: 7, marginTop: 14 }}>
-              <li className="flex items-center" style={{ gap: 8, fontSize: 12.5,
-                color: longEnough ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
-                <Check size={14} weight="bold" style={{ opacity: longEnough ? 1 : 0.35 }} />
-                Required: at least 8 characters
-              </li>
-              {stronger.map((r) => (
-                <li key={r.label} className="flex items-center" style={{ gap: 8, fontSize: 12.5,
-                  color: r.met ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
-                  <Check size={14} weight="bold" style={{ opacity: r.met ? 1 : 0.35 }} />
-                  Stronger with: {r.label.toLowerCase()}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <PasswordStrength password={newPassword} />
 
         <Field label="Confirm new password" as="div">
           <PasswordInput value={confirmPassword} onChange={setConfirmPassword} shown={showConfirm}

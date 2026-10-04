@@ -28,6 +28,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * token expires after an hour, and `autoRefreshToken` silently exchanges the
  * stored refresh token for a new one when the app comes back to the foreground.
  */
+/**
+ * A password-reset link (ForgotPassword → email → /reset-password) arrives as
+ * `#access_token=…&type=recovery`, and the client below reads and clears that
+ * hash as it starts. So whether this tab was opened by a reset link is noted
+ * *before* the client exists, and again when Auth says PASSWORD_RECOVERY — the
+ * reset page sets a password without asking for the old one only then, never
+ * for an ordinary signed-in session (that is Change password, which checks it).
+ * Per tab and short-lived, like the link: sessionStorage, not localStorage.
+ */
+const RECOVERY = 'cf-password-recovery';
+const markRecovery = () => { try { sessionStorage.setItem(RECOVERY, String(Date.now())); } catch { /* private mode */ } };
+if (/type=recovery/.test(window.location.hash)) markRecovery();
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -35,3 +48,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: localStorage,
   },
 });
+supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') markRecovery(); });
+
+/** True for an hour after this tab was opened by a password-reset link. */
+export function openedByResetLink(): boolean {
+  try {
+    const at = Number(sessionStorage.getItem(RECOVERY));
+    return at > 0 && Date.now() - at < 3600_000;
+  } catch { return false; }
+}
+export function clearResetLink(): void {
+  try { sessionStorage.removeItem(RECOVERY); } catch { /* private mode */ }
+}

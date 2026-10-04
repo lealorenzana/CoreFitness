@@ -474,6 +474,13 @@ export default function Login() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {/* The email typed so far goes with it, so it is not typed twice. */}
+                <div className="flex justify-end mt-2">
+                  <button type="button" onClick={() => navigate('/forgot-password', { state: { email } })}
+                    className="text-xs font-semibold py-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               <motion.button

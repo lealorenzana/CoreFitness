@@ -10,6 +10,8 @@ import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
 const Register = lazyPage(() => import('./pages/Register'));
 const GetApp = lazyPage(() => import('./pages/GetApp'));
+const ForgotPassword = lazyPage(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazyPage(() => import('./pages/ResetPassword'));
 import StandalonePage from './components/layout/StandalonePage';
 const Onboarding = lazyPage(() => import('./pages/Onboarding'));
 const Terms = lazyPage(() => import('./pages/Terms'));
@@ -192,6 +194,9 @@ function App() {
             reveals only which gym invited them. Accepting still needs a
             session whose email matches the invitation. */}
         <Route path="/invite/:token" element={<StandalonePage><AcceptInvite /></StandalonePage>} />
+        {/* Forgot password: the link is emailed by Supabase Auth and lands on /reset-password. */}
+        <Route path="/forgot-password" element={<StandalonePage><ForgotPassword /></StandalonePage>} />
+        <Route path="/reset-password" element={<StandalonePage><ResetPassword /></StandalonePage>} />
         <Route path="/register" element={<Register />} />
         {/* The page a gym sends members to: the Android download and how to join. */}
         <Route path="/get-app" element={<StandalonePage><GetApp /></StandalonePage>} />
