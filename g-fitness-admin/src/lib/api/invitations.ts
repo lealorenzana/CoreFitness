@@ -3,10 +3,10 @@ import { supabase } from '../supabaseClient';
 /**
  * Invitations — how a gym brings in the members it already has (0111).
  *
- * An invitation is a row, not an email. Nothing in this project sends mail, so
- * the gym hands out the link the way it already talks to its members: printed
- * at the desk, sent over Messenger, read down a phone. That is honest about
- * what the system does rather than implying an inbox somewhere.
+ * An invitation is a row, not an email. The gym hands out the link the way it
+ * already talks to its members (printed, Messenger, read down a phone), or
+ * emails it with `emailInvitation()` once the platform has a mail provider —
+ * the screen says which happened, never implying an inbox that was not reached.
  *
  * The token is a credential. `gym_invitations` has RLS on and **no permissive
  * policy at all**, so nothing here reads the table directly — every call below
@@ -69,6 +69,41 @@ export async function revokeInvitation(id: string): Promise<void> {
 /** The link a member opens. The member app reads the token and joins them. */
 export const inviteLink = (token: string) =>
   `https://corefitness-gym.vercel.app/invite/${token}`;
+
+/**
+ * Email an invitation's link through `send-email` (0113). The function records
+ * the message first and always; with no mail provider configured it sends
+ * nothing and says `configured: false`, and the screen keeps the copy button.
+ * `record_email` lets only this gym's owner or desk send in its name.
+ */
+export async function emailInvitation(inv: Invitation, gym: { id: string; name: string }): Promise<{
+  configured: boolean; status: 'sent' | 'failed' | 'not_configured'; error?: string;
+}> {
+  const name = [inv.first_name, inv.last_name].filter(Boolean).join(' ') || null;
+  const role = inv.role === 'member' ? 'a member' : inv.role === 'trainer' ? 'a coach' : 'front desk staff';
+  const { data, error } = await supabase.functions.invoke('send-email', {
+    body: {
+      to: inv.email,
+      toName: name,
+      kind: 'invitation',
+      gymId: gym.id,
+      subject: `${gym.name} invited you to Core Fitness`,
+      body: [
+        `Hi${name ? ' ' + name.split(' ')[0] : ''},`,
+        `${gym.name} has invited you to join as ${role} on Core Fitness, the app the gym runs on.`,
+        `Open this link on your phone to make your account (use this email address, ${inv.email}):\n${inviteLink(inv.token)}`,
+        `The link is yours alone and stops working on ${new Date(inv.expires_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+      ].join('\n\n'),
+    },
+  });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? (error.message.includes('Failed to send')
+      ? 'The email service is not reachable. Copy the link and send it yourself.'
+      : error.message));
+  }
+  return data as { configured: boolean; status: 'sent' | 'failed' | 'not_configured'; error?: string };
+}
 
 // ---- bringing in a list ------------------------------------------------------------
 

@@ -1,12 +1,10 @@
 /**
- * 0124 in the member app: squads and the gym-wide goal.
+ * The gym streak on Today (0151/0152): the flame and its number, the orb's
+ * segments, the hourglass when every day left is needed, the ignite on a
+ * milestone; tapped, the last twelve weeks as tokens, the milestone road, and the
+ * member's own target and reminder. Nothing drawn when there is no streak.
  *
- *   - no squad: join with a code (typed in any case) or start one;
- *   - in a squad: the week's days against the target, who has not trained yet,
- *     the invite code, the board of squads, and leaving;
- *   - the gym goal on Today with the member's own contribution.
- *
- * Setup copied from workout-run-check.js. Member dev server on :5173.
+ * Setup copied from squad-check.js. Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -113,14 +111,24 @@ async (page) => {
 
   const CALLS = {};
   let inSquad = false;
+  // The streak card's data, as my_streak() returns it (0151). Mutable: Save changes it.
+  let STREAK = { target: 3, current: 4, best: 6, days_this_week: 2, needed: 1, days_left: 1,
+    week: [true, false, true, false, false, false, false], today_index: 6, frozen: false,
+    at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true,
+    // 0153: a four-day training plan, and a gym closed on Sundays.
+    plan_days: 4, closed_days: [0],
+    // The last twelve weeks (0152), oldest first: two before joining, a missed week,
+    // a frozen week, four reached, and this week in progress.
+    history: ['before', 'before', 'hit', 'miss', 'hit', 'frozen', 'hit', 'hit', 'hit', 'hit', 'hit', 'current'].map((state, i) => ({
+      week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10),
+      days: state === 'hit' ? 3 : state === 'current' ? 2 : state === 'miss' ? 1 : 0, state })) };
+  let settled = false;
   const FN = {
+    my_streak: () => STREAK,
+    settle_my_streak: () => { if (settled) return []; settled = true; return [4]; },
+    set_streak_target: (b) => { STREAK = { ...STREAK, target: b.p_target, nudges: b.p_nudges,
+      needed: Math.max(0, b.p_target - STREAK.days_this_week) }; return null; },
     settle_squads: () => 0,
-    // The squad streak (0153): 3 weeks running, short of the target on the last open day.
-    my_squad_streak: () => !inSquad ? null : { squad_id: 'sq1', name: 'Iron Barkada', target: 9, current: 3, best: 5,
-      days_this_week: 4, needed: 5, days_left: 1, members: 3, at_risk: true, out_of_reach: false,
-      history: ['before', 'before', 'before', 'hit', 'hit', 'miss', 'hit', 'hit', 'miss', 'hit', 'hit', 'current'].map((state, i) => ({
-        week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10), days: state === 'hit' ? 10 : 4, state })) },
-    squad_streaks: () => [{ squad_name: 'Iron Barkada', current_streak: 3, is_mine: inSquad }, { squad_name: 'Morning Crew', current_streak: 7, is_mine: false }],
     settle_gym_goals: () => 0,
     join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
     create_squad: () => { inSquad = true; return 'sq1'; },
@@ -240,38 +248,81 @@ async (page) => {
 
   const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 
-  // 1 - no squad yet: join with a code.
-  await go('/member/squad');
-  let t = await text();
-  out.push('join and start offered: ' + (/Join a friend's squad/i.test(t) && /Or start one/i.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Squad code').fill('abcdef');
-  out.push('code typed in capitals: ' + ((await page.getByLabel('Squad code').inputValue()) === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await page.waitForTimeout(1500);
-  out.push('join sent: ' + (CALLS.join_squad?.p_code === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  t = await text();
-  out.push("the squad's streak: " + (/3\s*week squad streak/.test(t) && /Ends tonight/.test(t) ? '3 weeks, ends tonight' : 'MISSING'));
-  out.push("the squad's week: " + (/4\s*\/ 9 days this week/.test(t) && /5 more between you today keeps the squad streak alive/.test(t) ? '4 of 9, 5 more today' : 'MISSING'));
-  out.push("the squad's twelve weeks: " + ((await page.locator('.streak-week').count()) === 12 && (await page.locator('.streak-week--hit').count()) === 6 ? '6 reached' : 'MISSING'));
-  out.push("the board shows each squad's streak: " + (/Morning Crew/.test(t) && /🔥 7-week streak/.test(t) && /🔥 3-week streak/.test(t) ? 'yes' : 'MISSING'));
-  out.push('who has not trained yet: ' + (/Joy Not in yet this week/.test(t) ? 'Joy' : 'MISSING'));
-  out.push('invite code shown: ' + (/ABCDEF/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the squad board: ' + (/Morning Crew/.test(t) && /Target hit/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the gym goal on the squad page: ' + (/1,000 training days in October/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad.png', fullPage: true });
+  // A toast lasts 2.6 s — shorter than a page settling — so every text that
+  // appears is recorded as it appears, rather than read off the screen later.
+  await page.addInitScript(() => {
+    window.__seen = [];
+    new MutationObserver(() => {
+      const t = document.body?.innerText ?? '';
+      if (/Milestone reached/.test(t) && !window.__seen.includes('milestone')) window.__seen.push('milestone');
+      if (document.querySelector('.streak-orb--ignite') && !window.__seen.includes('ignite')) window.__seen.push('ignite');
+    }).observe(document, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+  });
 
-  // 2 - the gym goal on Today, with the member's own part.
+  // 1 - the streak on Today: the flame and its number, what this week needs, the hourglass.
+  await go('/member/home');
+  const hero = page.getByRole('button', { name: /Your gym streak: 4 weeks/ });
+  await hero.waitFor({ timeout: 10000 });
+  let t = await text();
+  out.push('the number with its flame: ' + (/4\s*week streak/.test(t) ? '4 week streak' : 'MISSING'));
+  out.push('the hourglass when it needs every day left: ' + (/Ends tonight/.test(t) ? 'Ends tonight' : 'MISSING'));
+  out.push('at risk says what to do: ' + (/Train today to keep your streak\./.test(t) ? 'train today' : 'MISSING'));
+  out.push('this week against the target: ' + (/2 of 3 this week/.test(t) ? '2 of 3' : 'MISSING'));
+  out.push('the road to the next milestone: ' + (/8 to 12w/.test(t) ? '8 to 12' : 'MISSING'));
+  const segs = await page.locator('.streak-hero .streak-seg').count();
+  const on = await page.locator('.streak-hero .streak-seg--on').count();
+  const nextSeg = await page.locator('.streak-hero .streak-seg--next').count();
+  out.push('the orb: one segment per target day, filled for each day, the next one lit: ' + (segs === 3 && on === 2 && nextSeg === 1 ? '3 / 2 / 1' : `MISSING ${segs}/${on}/${nextSeg}`));
+  const centred = await page.evaluate(() => {
+    const o = document.querySelector('.streak-hero .streak-orb').getBoundingClientRect();
+    const f = document.querySelector('.streak-hero .streak-orb__flame svg').getBoundingClientRect();
+    return Math.abs((o.x + o.width / 2) - (f.x + f.width / 2)) < 3 && Math.abs((o.y + o.height / 2) - (f.y + f.height / 2)) < 4;
+  });
+  out.push('the flame sits in the middle of the ring: ' + (centred ? 'yes' : 'OFF CENTRE'));
+  out.push('the flame tier: ' + ((await page.locator('.streak-orb--flame').count()) === 1 ? 'flame (4 weeks)' : 'MISSING'));
+  out.push('a milestone reached is celebrated: ' + ('settle_my_streak' in CALLS && (await page.evaluate(() => window.__seen)).includes('milestone') ? 'yes' : 'MISSING'));
+  out.push('…and the orb ignites: ' + ((await page.evaluate(() => window.__seen)).includes('ignite') ? 'yes' : 'MISSING'));
+  await shot('streak-today');
+
+  // 2 - tap it: the streak's story.
+  await hero.click();
+  await page.getByText('Your gym streak', { exact: true }).waitFor({ timeout: 5000 });
+  const sheetText = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  let st = await sheetText();
+  out.push('the sheet: the flame large, the run and the tier: ' + (/weeks in a row · Flame/.test(st) && /Best 6 weeks/.test(st) ? 'yes' : 'MISSING'));
+  const tokens = page.getByRole('listitem').filter({ has: page.locator('svg, span') });
+  const weekButtons = page.locator('.streak-week');
+  out.push('twelve week tokens, drawn by state: ' + ((await weekButtons.count()) === 12
+    && (await page.locator('.streak-week--hit').count()) === 7 && (await page.locator('.streak-week--frozen').count()) === 1
+    && (await page.locator('.streak-week--miss').count()) === 1 && (await page.locator('.streak-week--current').count()) === 1 ? '7 / 1 frozen / 1 missed / now' : 'MISSING'));
+  out.push('the tokens are visible without their animation: ' + (await page.locator('.streak-week--hit').first().evaluate((el) => getComputedStyle(el).opacity === '1' && el.getBoundingClientRect().width > 10) ? 'yes' : 'HIDDEN'));
+  await page.locator('.streak-week--frozen').click();
+  st = await sheetText();
+  out.push('tapping a week says what happened: ' + (/Frozen — it did not break the streak/.test(st) && /0 training days/.test(st) ? 'frozen week explained' : 'MISSING'));
+  out.push('the milestone road: ' + (/6 more weeks to 12 weeks — 4 already reached/.test(st)
+    && (await page.locator('.streak-road__stop.is-done').count()) === 1 && (await page.locator('.streak-road__stop.is-next').count()) === 1 ? '4 done, 12 next' : 'MISSING'));
+  out.push('the sheet says what counts: ' + (/check in or log a workout/.test(st) && /neither does a week your membership is frozen/.test(st) ? 'yes' : 'MISSING'));
+  await shot('streak-sheet');
+
+  out.push('the plan is offered, never applied: ' + (/Your training plan has 4 days a week — use 4/.test(st) ? 'offered' : 'MISSING'));
+  out.push('closed days are explained: ' + (/The gym is closed on Sun, so those days never count as days left/.test(st) ? 'yes' : 'MISSING'));
+
+  // 3 - matching the plan, then the reminder.
+  await page.getByRole('button', { name: /Your training plan has 4 days a week/ }).click();
+  out.push('one tap matches the plan: ' + ((await page.getByRole('button', { name: '4 days' }).getAttribute('aria-pressed')) === 'true'
+    && (await page.getByRole('button', { name: /Your training plan has/ }).count()) === 0 ? '4 days chosen' : 'MISSING'));
+  await page.getByLabel(/Remind me before it breaks/).uncheck();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(1200);
+  out.push('saved: target and reminder sent: ' + (CALLS.set_streak_target?.p_target === 4 && CALLS.set_streak_target?.p_nudges === false ? '4, reminder off' : 'MISSING ' + JSON.stringify(CALLS.set_streak_target)));
+  t = await text();
+  out.push('the orb follows: four segments: ' + ((await page.locator('.streak-hero .streak-seg').count()) === 4 && /2 of 4 this week/.test(t) ? 'yes' : 'MISSING'));
+  void tokens;
+
+  // 4 - no streak here (Progress switched off, or before 0151): nothing drawn.
+  STREAK = null;
   await go('/member/home');
   t = await text();
-  out.push('gym goal on Today: ' + (/The whole gym/.test(t) && /412 of 1,000 training days/.test(t) ? 'shown' : 'MISSING'));
-  out.push('own contribution: ' + (/You added 2 — you get 50 points when it is reached/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad-goal-today.png' });
-
-  // 3 - leaving.
-  await go('/member/squad');
-  await page.getByRole('button', { name: 'Leave the squad' }).click();
-  await page.waitForTimeout(1200);
-  out.push('leave sent: ' + ('leave_squad' in CALLS ? 'yes' : 'MISSING'));
-
+  out.push('no streak, no card: ' + (!/week streak|No streak yet/.test(t) && (await page.locator('.streak-hero').count()) === 0 ? 'nothing drawn' : 'MISSING'));
   return out.join('\n');
 }

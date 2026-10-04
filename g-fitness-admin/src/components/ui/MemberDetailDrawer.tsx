@@ -19,6 +19,7 @@ import { recordPayment } from '../../lib/api/payments';
 import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
 import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/season';
 import { memberRoomsSummary } from '../../lib/api/rooms';
+import { memberStreak, type MemberStreak } from '../../lib/api/streak';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
   freezesThisMonth, type MembershipActionDetail,
@@ -902,6 +903,8 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
         </Section>
       )}
 
+      <StreakSection memberId={detail.identity.profile.id} />
+
       <Section title={latest ? `Latest measurements — ${formatDate(latest.measured_on)}` : 'Measurements'}>
         {!latest ? (
           <Empty text="No body measurements recorded. Members enter these themselves in the phone app." />
@@ -1511,6 +1514,36 @@ function InfoCell({
         {value || 'not on file'}
       </p>
     </div>
+  );
+}
+
+/**
+ * The member's gym streak (0151): their own weekly target, the run, and whether
+ * this week is about to break it — so the desk can say a word when they walk in.
+ * Nothing before 0151 or when Progress is switched off.
+ */
+function StreakSection({ memberId }: { memberId: string }) {
+  const [s, setS] = useState<MemberStreak | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => { const r = await memberStreak(memberId); if (alive) setS(r); })();
+    return () => { alive = false; };
+  }, [memberId]);
+  if (!s) return null;
+  const week = s.frozen ? 'Frozen — paused'
+    : s.needed === 0 ? 'Reached'
+    : s.atRisk ? `Needs ${s.needed} — every day left`
+    : s.outOfReach ? 'Out of reach'
+    : `${s.daysThisWeek} of ${s.target}`;
+  return (
+    <Section title="Gym streak">
+      <div className="grid grid-cols-4 gap-2">
+        <MiniStat label="Current" value={`${s.current} ${s.current === 1 ? 'week' : 'weeks'}`} />
+        <MiniStat label="Best" value={`${s.best} ${s.best === 1 ? 'week' : 'weeks'}`} />
+        <MiniStat label="Target" value={`${s.target} days`} sub="a week, their choice" />
+        <MiniStat label="This week" value={week} />
+      </div>
+    </Section>
   );
 }
 

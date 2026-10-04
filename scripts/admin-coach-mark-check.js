@@ -145,6 +145,9 @@ async (page) => {
           role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
           accent: 'violet', gym_count: 1 }] : []);
       }
+      // The member's gym streak (0151), for the drawer's Progress tab.
+      if (fn === 'member_streak') return json({ target: 3, current: 6, best: 9, days_this_week: 3, needed: 0,
+        days_left: 2, week: [], today_index: 5, frozen: false, at_risk: false, out_of_reach: false, next_milestone: 12, nudges: true });
       return json(fn in RPC ? RPC[fn] : []);
     }
     if (pathname.startsWith('/rest/v1/')) {
@@ -184,6 +187,7 @@ async (page) => {
   await openProgress();
   let t = await text();
   out.push('drawer routines: ' + grab(t, 'Saved routines', 140));
+  out.push('the gym streak in the drawer: ' + (/Gym streak/i.test(t) && /6 weeks/.test(t) && /9 weeks/.test(t) && /3 days/.test(t) && /Reached/.test(t) ? 'yes' : 'MISSING'));
   out.push('drawer plan: ' + grab(t, 'Training plan', 160));
   out.push('the coach routine is tagged: ' + (await rowWith('Coach push day', 'Built with the coach').count() > 0 ? 'yes' : 'MISSING'));
   out.push('the member routine is not: ' + (await rowWith('Leg day', 'Built with the coach').count() === 0 ? 'yes' : 'NO, tagged'));

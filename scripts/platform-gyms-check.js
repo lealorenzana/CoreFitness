@@ -37,6 +37,7 @@ async (page) => {
     ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => base(i)),
   ];
   const CALLS = [];
+  const MAIL = [];
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -45,6 +46,11 @@ async (page) => {
     const json = (b) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
+    if (path === '/functions/v1/reset-gym-password') return json({ email: 'ana@alpha.test', isOwner: true, password: 'Tmp-4821-xyz' });
+    if (path === '/functions/v1/send-email') {
+      MAIL.push(JSON.parse(req.postData() || '{}'));
+      return json({ id: 'e1', configured: false, status: 'not_configured' });
+    }
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
       const b = JSON.parse(req.postData() || '{}');
@@ -55,6 +61,8 @@ async (page) => {
       if (fn === 'platform_plans_list' || fn === 'list_platform_plans') return json([]);
       if (fn === 'set_gym_status') { CALLS.push([fn, b]); return json(null); }
       if (fn === 'create_gym') { CALLS.push([fn, b]); return json('g99'); }
+      if (fn === 'platform_gym_people') return json([{ user_id: 'u9', first_name: 'Ana', last_name: 'Reyes', email: 'ana@alpha.test',
+        role: 'admin', status: 'active', is_owner: true }]);
       return json([]);
     }
     if (path.endsWith('/platform_plans')) return json([{ key: 'starter', name: 'Starter', is_active: true, sort_order: 1 }]);
@@ -133,5 +141,17 @@ async (page) => {
   await page.getByRole('button', { name: 'Open its full page' }).click();
   await page.waitForTimeout(500);
   out.push('the full page is one more click: ' + (/\/gyms\/g1$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+
+  // A new password can be emailed; with no mail provider it says nothing was sent.
+  await page.getByRole('button', { name: 'New password' }).first().click();
+  await page.getByText('A new password for Ana Reyes').waitFor({ timeout: 8000 });
+  await page.getByRole('button', { name: 'Email it to ana@alpha.test' }).click();
+  await page.waitForTimeout(600);
+  t = await text();
+  const mail = MAIL[0] ?? {};
+  out.push('a new password can be emailed: ' + (mail.kind === 'password_reset' && mail.to === 'ana@alpha.test' && mail.gymId === 'g1'
+    && /Tmp-4821-xyz/.test(mail.body ?? '') ? 'sent to send-email' : 'MISSING ' + JSON.stringify(mail).slice(0, 160)));
+  out.push('…and says so when email is not set up: ' + (/Email is not set up yet/.test(t) && /Tmp-4821-xyz/.test(t) ? 'yes, the password still shown' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-reset-email.png' });
   return out.join('\n');
 }

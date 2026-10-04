@@ -102,6 +102,8 @@ export default function Settings() {
   const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '' });
 
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
+  /** Days the gym is closed (0153), 0 = Sunday; null until loaded, or before 0153. */
+  const [closedDays, setClosedDays] = useState<number[] | null>(null);
   const [newActivity, setNewActivity] = useState('');
   const [gymForm, setGymForm] = useState({
     gym_name: '', address: '', phone: '', email: '', opening_time: '', closing_time: '',
@@ -153,6 +155,7 @@ export default function Settings() {
           tagline: gym.tagline ?? '',
           logo_url: gym.logo_url ?? '',
         });
+        setClosedDays(Array.isArray(gym.closed_days) ? gym.closed_days : null);
         setActivityOptions(gym.activity_options ?? []);
         setGymAudit({ at: gym.updated_at, by: gym.updated_by });
       }
@@ -204,6 +207,9 @@ export default function Settings() {
         email: gymForm.email.trim() || null,
         opening_time: gymForm.opening_time.trim() || null,
         closing_time: gymForm.closing_time.trim() || null,
+        // Only once 0153 is live (the column came back with the row); otherwise the
+        // update would name a column that does not exist and fail the whole save.
+        ...(closedDays !== null ? { closed_days: closedDays } : {}),
         short_name: gymForm.short_name.trim() || null,
         tagline: gymForm.tagline.trim() || null,
         logo_url: gymForm.logo_url.trim() || null,
@@ -543,6 +549,30 @@ export default function Settings() {
                 <p className="text-[10px] -mt-1" style={{ color: TEXT_MUTED }}>
                   Opening hours flag classes scheduled outside them on the Schedule page.
                 </p>
+                {closedDays !== null && (
+                  <FormField label="Closed on">
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days the gym is closed">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, k) => {
+                        const d = (k + 1) % 7;   // 0 = Sunday, as the database stores it
+                        const on = closedDays.includes(d);
+                        return (
+                          <button key={label} type="button" aria-pressed={on}
+                            disabled={!on && closedDays.length >= 6}
+                            onClick={() => setClosedDays(on ? closedDays.filter((x) => x !== d) : [...closedDays, d])}
+                            className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                            style={on
+                              ? { background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }
+                              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>
+                      Members' streaks never count a closed day as a day left to train, so nobody is told to come in when you are shut.
+                    </p>
+                  </FormField>
+                )}
                 {/* The check-in activity list. Pre-defined at the door so the
                     data can be aggregated, but defined here rather than in code
                     so it describes this gym rather than the one it was built for. */}

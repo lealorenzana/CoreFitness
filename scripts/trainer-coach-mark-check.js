@@ -142,6 +142,10 @@ async (page) => {
   const FN = {
     trainee_meal_guide: (b) => { MEAL_ASKS.push(b.p_member); return b.p_member === 'mb1' ? MEAL_GUIDE : null; },
     assign_program: (b) => { assigned = b.p_program; return 'en1'; },
+    // The trainee's gym streak (0151): at risk this week.
+    member_streak: (b) => b.p_member !== 'mb1' ? null : { target: 3, current: 5, best: 7, days_this_week: 1, needed: 2,
+      days_left: 2, week: [true, false, false, false, false, false, false], today_index: 5, frozen: false,
+      at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true },
     member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
     member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
       { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
@@ -260,6 +264,8 @@ async (page) => {
   await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
   await page.waitForTimeout(1500);
   let t = await text();
+  out.push("the trainee's gym streak, and that it is at risk: " + (/Gym streak/.test(t) && /5 weeks running/.test(t)
+    && /needs 2 more — every day left/.test(t) && /aims for 3 days a week · best 7 weeks/.test(t) ? 'yes' : 'MISSING'));
   out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
   // 0146: the meal guide carries the same mark, so the routines' count excludes its block —
   // still exactly one routine mark, and exactly one on the guide.

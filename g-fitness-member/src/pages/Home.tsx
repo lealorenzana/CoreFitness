@@ -6,6 +6,7 @@ import { Page } from '../components/ui/page';
 import { Eyebrow, NocButton, Panel, ProgressBar, StatusPill } from '../components/ui/noc';
 import CheckInSheet from '../components/ui/CheckInSheet';
 import WeekMarks from '../components/ui/WeekMarks';
+import StreakStrip from '../components/ui/StreakStrip';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { useLiveData } from '../hooks/useLiveData';
@@ -431,6 +432,10 @@ export default function Home() {
           ) : null}
         </div>
       </section>
+
+      {/* The gym streak (0151): what the week's days add up to. Its own switch is
+          Progress (0141); the card also renders nothing when there is no streak. */}
+      {moduleOn(gymApp, 'progress') && <StreakStrip />}
 
       {/* ── Agenda ── */}
       <section aria-label="Your day" className="noc-rows">

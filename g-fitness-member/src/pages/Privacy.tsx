@@ -96,7 +96,7 @@ const sections: LegalSection[] = [
 const glance: GlanceItem[] = [
   { icon: EyeOff, label: 'Never sold', detail: 'The gym does not sell, rent or trade any of it.', to: 'who' },
   { icon: UserCheck, label: 'Trainers see what you allow', detail: 'A rule in the database, not a hidden screen.', to: 'who' },
-  { icon: Ban, label: 'No ads, no tracking', detail: 'No analytics and no third-party scripts.', to: 'not' },
+  { icon: Ban, label: 'No ads, no tracking', detail: 'No analytics and no third-party tracking scripts.', to: 'not' },
   { icon: Download, label: 'A copy is yours', detail: 'Settings → Your data downloads all of it.', to: 'rights' },
 ];
 

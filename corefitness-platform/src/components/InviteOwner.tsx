@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { inviteOwner, type OwnerInvited } from '../lib/platform';
+import EmailIt from './EmailIt';
 
 interface Props {
   gymId: string;
@@ -18,8 +19,8 @@ interface Props {
  * credentials — which are shown once and stored nowhere, because the temporary
  * password exists in readable form only in this reply.
  *
- * No email is sent. Nothing in this project sends mail, so the screen says
- * "pass these on" rather than implying an invitation is already in their inbox.
+ * Nothing is emailed until the platform owner presses "Email it" (EmailIt), which
+ * says whether it went; the copy box stays either way.
  */
 export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel }: Props) {
   const [form, setForm] = useState({
@@ -73,7 +74,7 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
         ) : (
           <>
             <div className="meta">
-              Pass these on yourself — nothing here sends email. This password is shown once and is
+              Email it to them or pass it on yourself. This password is shown once and is
               stored nowhere; it stops working as soon as they choose their own.
             </div>
             <pre className="handover-box">{lines}</pre>
@@ -81,6 +82,10 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
               onClick={() => { void navigator.clipboard.writeText(lines).then(() => setCopied(true)); }}>
               {copied ? 'Copied' : 'Copy'}
             </button>
+            <div style={{ height: 10 }} />
+            <EmailIt to={result.email} toName={`${form.firstName} ${form.lastName}`.trim() || null}
+              subject={`${result.gym} — your Core Fitness sign-in`} body={lines}
+              kind="owner_credentials" gymId={gymId} />
           </>
         )}
         <div style={{ height: 12 }} />

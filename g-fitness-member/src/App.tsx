@@ -10,6 +10,7 @@ import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
 const Register = lazyPage(() => import('./pages/Register'));
 const GetApp = lazyPage(() => import('./pages/GetApp'));
+import StandalonePage from './components/layout/StandalonePage';
 const Onboarding = lazyPage(() => import('./pages/Onboarding'));
 const Terms = lazyPage(() => import('./pages/Terms'));
 const Privacy = lazyPage(() => import('./pages/Privacy'));
@@ -183,17 +184,17 @@ function App() {
         <Route path="/login" element={<LoginRoute />} />
         {/* Which gym am I using, and joining another. Outside both shells: a
             person here has not picked a gym yet, so no tab bar applies. */}
-        <Route path="/choose-gym" element={<ChooseGym />} />
-        <Route path="/join" element={<JoinGym />} />
-        <Route path="/join/:slug" element={<JoinGym />} />
+        <Route path="/choose-gym" element={<StandalonePage><ChooseGym /></StandalonePage>} />
+        <Route path="/join" element={<StandalonePage><JoinGym /></StandalonePage>} />
+        <Route path="/join/:slug" element={<StandalonePage><JoinGym /></StandalonePage>} />
         {/* An invitation from a gym (0111). Public on purpose: it is usually
             opened before the person has an account, and `peek_invitation`
             reveals only which gym invited them. Accepting still needs a
             session whose email matches the invitation. */}
-        <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/invite/:token" element={<StandalonePage><AcceptInvite /></StandalonePage>} />
         <Route path="/register" element={<Register />} />
         {/* The page a gym sends members to: the Android download and how to join. */}
-        <Route path="/get-app" element={<GetApp />} />
+        <Route path="/get-app" element={<StandalonePage><GetApp /></StandalonePage>} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

@@ -1,12 +1,10 @@
 /**
- * 0124 in the member app: squads and the gym-wide goal.
+ * The assistant screen scrolls like a chat (2026-10-04): with many long replies
+ * only the transcript scrolls, the page itself does not, the question box stays
+ * on screen, scrolling back down reaches the newest message, and sending from
+ * higher up brings the newest message into view.
  *
- *   - no squad: join with a code (typed in any case) or start one;
- *   - in a squad: the week's days against the target, who has not trained yet,
- *     the invite code, the board of squads, and leaving;
- *   - the gym goal on Today with the member's own contribution.
- *
- * Setup copied from workout-run-check.js. Member dev server on :5173.
+ * Setup copied from member-coach-check.js (consent already given).
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -80,6 +78,15 @@ async (page) => {
       { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
     ],
     saved_resources: [],
+    // The coach's roster (0082): one trainee.
+    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
+      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
+    gym_programs: [
+      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
+        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
+      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
+        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
+    ],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
       activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
@@ -112,42 +119,23 @@ async (page) => {
   }));
 
   const CALLS = {};
-  let inSquad = false;
+  const COACH_POSTS = [];
+  let FN_DEPLOYED = true;
+  const COACH = { gym_id: 'gym-1', allowed: true, reason: null, used_today: 3, daily_limit: 30,
+    used_month: 40, monthly_limit: 1500, consent: true };
   const FN = {
-    settle_squads: () => 0,
-    // The squad streak (0153): 3 weeks running, short of the target on the last open day.
-    my_squad_streak: () => !inSquad ? null : { squad_id: 'sq1', name: 'Iron Barkada', target: 9, current: 3, best: 5,
-      days_this_week: 4, needed: 5, days_left: 1, members: 3, at_risk: true, out_of_reach: false,
-      history: ['before', 'before', 'before', 'hit', 'hit', 'miss', 'hit', 'hit', 'miss', 'hit', 'hit', 'current'].map((state, i) => ({
-        week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10), days: state === 'hit' ? 10 : 4, state })) },
-    squad_streaks: () => [{ squad_name: 'Iron Barkada', current_streak: 3, is_mine: inSquad }, { squad_name: 'Morning Crew', current_streak: 7, is_mine: false }],
-    settle_gym_goals: () => 0,
-    join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
-    create_squad: () => { inSquad = true; return 'sq1'; },
-    leave_squad: () => { inSquad = false; return null; },
-    my_squad: () => !inSquad ? [] : [
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm2', first_name: 'Ana', days_this_week: 3, is_me: false },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm1', first_name: 'Lea', days_this_week: 1, is_me: true },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm3', first_name: 'Joy', days_this_week: 0, is_me: false }],
-    squad_board: () => [{ squad_name: 'Iron Barkada', members: 3, days: 4, weekly_target: 9, reached: false, is_mine: inSquad },
-      { squad_name: 'Morning Crew', members: 4, days: 12, weekly_target: 10, reached: true, is_mine: false }],
-    current_gym_goal: () => [{ id: 'g1', title: '1,000 training days in October', metric: 'training_days', target: 1000,
-      starts_on: dstr(-5), ends_on: dstr(20), reward_points: 50, reached: false, progress: 412, contributors: 88, mine: 2 }],
-    request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
-      const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
-      DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
-        created_at: new Date().toISOString(), closed_at: null, close_note: null, membership_plans: { name: plan.name, price: plan.price } });
-      return 'rr' + n; },
-    withdraw_renewal_request: () => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; }); return null; },
+    shop_catalog: () => [
+      { id: 'p1', name: 'Water 500ml', category: 'Drinks', description: null, price: 20, photo_url: null, availability: 'in_stock' },
+      { id: 'p2', name: 'Whey scoop', category: 'Supplements', description: 'Chocolate', price: 60, photo_url: null, availability: 'low' },
+      { id: 'p4', name: 'Pre-workout', category: 'Supplements', description: null, price: 80, photo_url: null, availability: 'sold_out' },
+    ],
   };
   const RPC = {
     refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
       has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
     gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
       ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
+    ai_coach_status: () => COACH,
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
@@ -168,6 +156,20 @@ async (page) => {
     const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
 
+    if (path.startsWith('/functions/v1/ai-coach')) {
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
+      if (!FN_DEPLOYED) return route.fulfill({ status: 404, contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"Requested function was not found"}' });
+      const posted = JSON.parse(req.postData() || '{}');
+      // The readiness probe (an empty body) is answered as the deployed, configured function does.
+      if (!posted.question) return route.fulfill({ status: 400, contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"reason":"bad_question"}' });
+      COACH_POSTS.push(posted);
+      return route.fulfill({ status: 200, contentType: 'text/event-stream',
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: 'data: ' + JSON.stringify({ type: 'text', text: 'Here is a longer answer. '.repeat(40) }) + '\n\ndata: {"type":"done"}\n\n' });
+    }
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
     if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
       // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
@@ -196,7 +198,8 @@ async (page) => {
           accent: 'violet', gym_count: 1 }] : []);
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
-      return json(fn in RPC ? RPC[fn] : null); }
+      if (fn === 'set_ai_coach_consent') { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; COACH.consent = b.p_reads_data; return json(null); }
+      const r = RPC[fn]; return json(typeof r === 'function' ? r() : fn in RPC ? r : null); }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
@@ -236,42 +239,49 @@ async (page) => {
     await page.waitForTimeout(1300);
   };
 
+  // How the screen sits: the transcript scrolls, the page does not, the composer stays on screen.
+  const geo = () => page.evaluate(() => {
+    const input = document.querySelector('[aria-label="Your question"]');
+    const main = document.querySelector('main');
+    const list = [...document.querySelectorAll('main div')].find((d) => getComputedStyle(d).overflowY === 'auto' && d.scrollHeight > d.clientHeight + 5);
+    const r = input?.getBoundingClientRect();
+    return {
+      inputVisible: !!r && r.top >= 0 && r.bottom <= window.innerHeight,
+      mainScrolls: main.scrollHeight > main.clientHeight + 2,
+      listScrolls: !!list,
+      fromBottom: list ? Math.round(list.scrollHeight - list.scrollTop - list.clientHeight) : null,
+    };
+  });
+  const ask = async (q) => {
+    await page.getByLabel('Your question').fill(q);
+    await page.getByRole('button', { name: 'Send' }).click();
+    await page.waitForTimeout(1600);
+  };
 
+  await go('/member/chatbot');
+  for (let i = 1; i <= 5; i++) await ask(`How should I train my legs, question ${i}?`);
+  let g = await geo();
+  out.push('five long replies: the messages scroll, the page does not: ' + (g.listScrolls && !g.mainScrolls ? 'yes' : 'MISSING ' + JSON.stringify(g)));
+  out.push('the question box is still on screen: ' + (g.inputVisible ? 'yes' : 'MISSING'));
+  out.push('…and the newest message is in view: ' + (g.fromBottom !== null && g.fromBottom < 80 ? 'yes' : 'MISSING ' + g.fromBottom));
+  await shot('chat-scroll-filled');
 
-  const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+  // Read back to the top, then down again by hand: it reaches the bottom.
+  await page.mouse.move(196, 400);
+  await page.mouse.wheel(0, -20000);
+  await page.waitForTimeout(500);
+  g = await geo();
+  out.push('scrolled to the top, the question box stays: ' + (g.fromBottom > 300 && g.inputVisible ? 'yes' : 'MISSING ' + JSON.stringify(g)));
+  await page.mouse.wheel(0, 20000);
+  await page.waitForTimeout(500);
+  g = await geo();
+  out.push('scrolled back down, it reaches the newest message: ' + (g.fromBottom < 5 ? 'yes' : 'MISSING ' + g.fromBottom));
 
-  // 1 - no squad yet: join with a code.
-  await go('/member/squad');
-  let t = await text();
-  out.push('join and start offered: ' + (/Join a friend's squad/i.test(t) && /Or start one/i.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Squad code').fill('abcdef');
-  out.push('code typed in capitals: ' + ((await page.getByLabel('Squad code').inputValue()) === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await page.waitForTimeout(1500);
-  out.push('join sent: ' + (CALLS.join_squad?.p_code === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  t = await text();
-  out.push("the squad's streak: " + (/3\s*week squad streak/.test(t) && /Ends tonight/.test(t) ? '3 weeks, ends tonight' : 'MISSING'));
-  out.push("the squad's week: " + (/4\s*\/ 9 days this week/.test(t) && /5 more between you today keeps the squad streak alive/.test(t) ? '4 of 9, 5 more today' : 'MISSING'));
-  out.push("the squad's twelve weeks: " + ((await page.locator('.streak-week').count()) === 12 && (await page.locator('.streak-week--hit').count()) === 6 ? '6 reached' : 'MISSING'));
-  out.push("the board shows each squad's streak: " + (/Morning Crew/.test(t) && /🔥 7-week streak/.test(t) && /🔥 3-week streak/.test(t) ? 'yes' : 'MISSING'));
-  out.push('who has not trained yet: ' + (/Joy Not in yet this week/.test(t) ? 'Joy' : 'MISSING'));
-  out.push('invite code shown: ' + (/ABCDEF/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the squad board: ' + (/Morning Crew/.test(t) && /Target hit/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the gym goal on the squad page: ' + (/1,000 training days in October/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad.png', fullPage: true });
-
-  // 2 - the gym goal on Today, with the member's own part.
-  await go('/member/home');
-  t = await text();
-  out.push('gym goal on Today: ' + (/The whole gym/.test(t) && /412 of 1,000 training days/.test(t) ? 'shown' : 'MISSING'));
-  out.push('own contribution: ' + (/You added 2 — you get 50 points when it is reached/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad-goal-today.png' });
-
-  // 3 - leaving.
-  await go('/member/squad');
-  await page.getByRole('button', { name: 'Leave the squad' }).click();
-  await page.waitForTimeout(1200);
-  out.push('leave sent: ' + ('leave_squad' in CALLS ? 'yes' : 'MISSING'));
-
+  // Sending from higher up brings the newest message into view.
+  await page.mouse.wheel(0, -20000);
+  await page.waitForTimeout(300);
+  await ask('How should I train my legs, question 6?');
+  g = await geo();
+  out.push('sending from higher up brings the newest message into view: ' + (g.fromBottom < 80 && g.inputVisible ? 'yes' : 'MISSING ' + JSON.stringify(g)));
   return out.join('\n');
 }

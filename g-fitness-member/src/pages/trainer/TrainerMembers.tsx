@@ -8,6 +8,7 @@ import GlassSheet from '../../components/ui/GlassSheet';
 import TraineeProgram from '../../components/trainer/TraineeProgram';
 import TraineeRecords from '../../components/trainer/TraineeRecords';
 import TraineeSquad from '../../components/trainer/TraineeSquad';
+import TraineeStreak from '../../components/trainer/TraineeStreak';
 import TraineePhotos from '../../components/trainer/TraineePhotos';
 import MealGuide from '../../components/MealGuide';
 import { TextArea, TextInput } from '../../components/ui/Field';
@@ -361,6 +362,7 @@ export default function TrainerMembers() {
             <TraineeRecords memberId={selectedMember.id} />
             {/* Their squad this week (0124) — name and figures, never its code. */}
             <TraineeSquad memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
+            <TraineeStreak memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
             <TraineePhotos memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
 
             {/* Notes already sent, newest first, with the member's side of it. */}
