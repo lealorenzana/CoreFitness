@@ -48,7 +48,11 @@ export default defineConfig({
         navigateFallback: 'index.html',
         // Never serve a cached response for Supabase — a stale membership status
         // or QR payload would be worse than an honest offline error.
-        navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
+        // ...and never answer for a real file a browser navigates to: the Android
+        // package (get-app's download) and /.well-known (the TWA's assetlinks).
+        // Serving the app shell for /core-fitness.apk opened the app at an
+        // unknown path, which bounced a signed-in member to Today — no download.
+        navigateFallbackDenylist: [/^\/api/, /supabase\.co/, /\.apk$/, /^\/\.well-known\//],
         runtimeCaching: [],
       },
     }),

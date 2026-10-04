@@ -23,6 +23,7 @@ export default function GetApp() {
   const navigate = useNavigate();
   const [apk, setApk] = useState<boolean | null>(null);
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -36,13 +37,47 @@ export default function GetApp() {
 
   const android = /android/i.test(navigator.userAgent);
 
+  /**
+   * Fetch the package and hand it to the browser as a file, rather than
+   * navigating to it. A navigation is answered by the service worker's app
+   * shell (an older installed copy may not yet skip .apk), which opened the app
+   * at an unknown path and sent a signed-in member to Today. A fetch is never
+   * a navigation, so it always reaches the real file.
+   */
+  const download = async () => {
+    setDownloading(true);
+    try {
+      const r = await fetch(APK, { cache: 'no-store' });
+      const type = r.headers.get('content-type') ?? '';
+      if (!r.ok || type.includes('text/html')) throw new Error('not the package');
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'core-fitness.apk';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      // Last resort: a plain link with download, which most browsers fetch directly.
+      const a = document.createElement('a');
+      a.href = APK;
+      a.download = 'core-fitness.apk';
+      a.click();
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <Page>
       <PageTitle title="Get the app" subtitle="For members of every gym on Core Fitness" back fallback="/" />
 
       <SectionHead title="1. Install it" />
       {apk && (
-        <NocButton variant="fill" onClick={() => window.location.assign(APK)}>Download for Android</NocButton>
+        <NocButton variant="fill" onClick={() => void download()} disabled={downloading}>
+          {downloading ? 'Downloading…' : 'Download for Android'}
+        </NocButton>
       )}
       {apk && (
         <p className="mt-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>
