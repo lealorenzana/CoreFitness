@@ -36,6 +36,8 @@ import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
 import { memberAgreements, type Agreement, type MemberAgreements } from '../../lib/api/termsAcceptance';
 import { memberHouseRulesVersion } from '../../lib/api/houseRules';
+import { memberPurchases, type Sale } from '../../lib/api/shop';
+import { moduleOn, useGymModules } from '../../hooks/useGymModules';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 
 /**
@@ -620,6 +622,8 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
         )}
       </Section>
 
+      <ShopPurchasesSection memberId={detail.identity.profile.id} />
+
       {history.length > 0 && (
         <Section title="Previous memberships">
           <div className="space-y-1.5">
@@ -1151,6 +1155,48 @@ function NotesTab({ detail }: { detail: MemberDetail }) {
  * — but a member who has genuinely never been suspended does not need a panel
  * saying so, and the drawer is already six tabs deep.
  */
+/**
+ * What this member bought at the counter (0133) — the "Who is buying?" link on
+ * the till, read back. Hidden when the gym does not run the shop; a failed read
+ * says so rather than reading as "bought nothing".
+ */
+function ShopPurchasesSection({ memberId }: { memberId: string }) {
+  const modules = useGymModules();
+  const [sales, setSales] = useState<Sale[] | null | undefined>(undefined);
+  const on = moduleOn(modules, 'shop');
+  useEffect(() => {
+    if (!on) return;
+    let alive = true;
+    void memberPurchases(memberId).then((s) => { if (alive) setSales(s); });
+    return () => { alive = false; };
+  }, [memberId, on]);
+  if (!on || sales === undefined) return null;
+  if (sales === null) {
+    return (
+      <Section title="Shop purchases">
+        <p className="text-xs" style={{ color: 'var(--color-secondary)' }}>Could not load this member's shop purchases.</p>
+      </Section>
+    );
+  }
+  const spent = sales.filter((s) => !s.voidedAt).reduce((n, s) => n + s.total, 0);
+  return (
+    <Section title={`Shop purchases${sales.length ? ` (₱${spent.toLocaleString('en-PH')})` : ''}`}>
+      {sales.length === 0 ? <Empty text="Nothing bought at the counter under this member's name." /> : (
+        <div className="space-y-1.5">
+          {sales.slice(0, 8).map((s) => (
+            <Row key={s.id}
+              title={`₱${s.total.toLocaleString('en-PH')}${s.voidedAt ? ' · voided' : ''}`}
+              subtitle={`${formatDate(s.saleDay)} · ${s.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}`}
+              note={s.voidedAt ? s.voidReason : null}
+            />
+          ))}
+          {sales.length > 8 && <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{sales.length - 8} older purchases are under Billing → Shop → Sales.</p>}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function AccountHistorySection({ profileId }: { profileId: string }) {
   const [events, setEvents] = useState<AccountStatusEvent[] | null>(null);
   const [failed, setFailed] = useState(false);

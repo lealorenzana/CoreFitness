@@ -289,4 +289,6 @@
 @media print {
   body.poster-open #root, body.receipt-open #root { display: none !important; }
   body.poster-open, body.receipt-open { background: #FFFFFF; }
+  .receipt-sheet { background: #FFFFFF !important; }
+  .receipt-paper { border-radius: 0 !important; padding: 0 !important; }
 }

@@ -4,9 +4,12 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import Button from '../components/ui/Button';
 import { PageHeader, StatTiles, Section, EmptyState, OpenChevron } from '../components/ui/kit';
 import {
-  Banknote, TrendingUp, Clock, Calendar, Download, ArrowRight, CreditCard,
+  Banknote, TrendingUp, Clock, Calendar, Download, ArrowRight, CreditCard, ShoppingBag,
   ChartPie as PieIcon,
 } from 'lucide-react';
+import { moduleOn, useGymModules } from '../hooks/useGymModules';
+import { salesBetween, shopReport, type ReportRow, type Sale } from '../lib/api/shop';
+import { todayKey } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
 import { showToast } from '../utils/toast';
 import { formatCurrency } from '../utils/formatters';
@@ -39,6 +42,20 @@ export default function Revenue() {
   const [byTier, setByTier] = useState<TierRevenue[]>([]);
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Counter sales (0133), when the gym runs the shop: their own line, never
+  // folded into membership figures, and voids never counted.
+  const shopOn = moduleOn(useGymModules(), 'shop');
+  const [shopYear, setShopYear] = useState<Sale[] | null>(null);
+  const [shopAll, setShopAll] = useState<ReportRow[] | null>(null);
+  useEffect(() => {
+    if (!shopOn) return;
+    let alive = true;
+    void (async () => {
+      const [y, all] = await Promise.all([salesBetween(`${year}-01-01`, `${year}-12-31`), shopReport('2000-01-01', todayKey())]);
+      if (alive) { setShopYear(y.filter((x) => !x.voidedAt)); setShopAll(all); }
+    })();
+    return () => { alive = false; };
+  }, [shopOn, year]);
 
   // `loading` starts true and this runs once, so there is nothing to set first.
   useEffect(() => {
@@ -79,18 +96,30 @@ export default function Revenue() {
     return () => { alive = false; };
   }, []);
 
+  const monthStart = `${todayKey().slice(0, 8)}01`;
+  const shop = shopOn && shopAll && shopYear ? {
+    all: shopAll.reduce((n, r) => n + r.revenue, 0),
+    thisMonth: (todayKey().slice(0, 4) === year ? shopYear : []).filter((x) => x.saleDay >= monthStart).reduce((n, x) => n + x.total, 0),
+    byMonth: Array.from({ length: 12 }, (_, i) => shopYear.filter((x) => Number(x.saleDay.slice(5, 7)) - 1 === i).reduce((n, x) => n + x.total, 0)),
+  } : null;
+  const top = [...(shopAll ?? [])].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
   const stats = [
-    { label: 'Total Revenue', value: summary ? formatCurrency(summary.totalRevenue) : '—', icon: Banknote },
-    { label: 'This Month', value: summary ? formatCurrency(summary.thisMonth) : '—', icon: Calendar },
-    { label: 'Avg per Paying Member', value: summary ? formatCurrency(summary.avgPerPayingMember) : '—', icon: TrendingUp },
+    { label: 'Total Revenue', value: summary ? formatCurrency(summary.totalRevenue + (shop?.all ?? 0)) : '—', icon: Banknote,
+      tooltip: shop && summary ? `Memberships ${formatCurrency(summary.totalRevenue)} + shop ${formatCurrency(shop.all)}` : 'Completed membership payments' },
+    { label: 'This Month', value: summary ? formatCurrency(summary.thisMonth + (shop?.thisMonth ?? 0)) : '—', icon: Calendar,
+      tooltip: shop && summary ? `Memberships ${formatCurrency(summary.thisMonth)} + shop ${formatCurrency(shop.thisMonth)}` : undefined },
+    ...(shop ? [{ label: 'Shop (all time)', value: formatCurrency(shop.all), icon: ShoppingBag, tooltip: 'Counter sales, voids left out' }] : []),
+    { label: 'Avg per Paying Member', value: summary ? formatCurrency(summary.avgPerPayingMember) : '—', icon: TrendingUp, tooltip: 'Memberships only' },
     { label: 'Pending Payments', value: summary ? formatCurrency(summary.pendingAmount) : '—', icon: Clock },
   ];
 
-  const exportRows = monthly.map((m) => ({
+  const exportRows = monthly.map((m, i) => ({
     Month: m.month,
     'New Members': m.newMembers,
     Payments: m.payments,
-    Revenue: m.revenue,
+    'Membership revenue': m.revenue,
+    ...(shop ? { 'Shop revenue': shop.byMonth[i], 'Total revenue': m.revenue + shop.byMonth[i] } : {}),
   }));
 
   // On a desktop the page is exactly the window's height (header 4rem +
@@ -101,7 +130,7 @@ export default function Revenue() {
     <div className="flex flex-col gap-4 lg:h-[calc(100vh-7rem)]">
       <PageHeader
         title="Revenue"
-        subtitle="Financial performance from recorded cash payments"
+        subtitle={shop ? 'Memberships and counter sales, from recorded cash' : 'Financial performance from recorded cash payments'}
         actions={
           <Button variant="outline" size="sm" onClick={() => exportToCSV(exportRows, `revenue-${year}`)}>
             <Download size={14} /> Export {year}
@@ -119,6 +148,7 @@ export default function Revenue() {
         icon: s.icon,
         // Money owed is the one figure here that is a task, not a result.
         tone: s.label === 'Pending Payments' ? 'secondary' : 'primary',
+        tooltip: s.tooltip,
       }))} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:flex-1 lg:min-h-0">
@@ -199,8 +229,10 @@ export default function Revenue() {
               <EmptyState compact icon={Calendar} title={`Nothing recorded in ${year}`}
                 hint="Pick another year, or record a payment to start the ledger." />
             ) : (() => {
-              const peak = Math.max(...monthly.map((m) => m.revenue), 1);
+              const shopAt = (i: number) => shop?.byMonth[i] ?? 0;
+              const peak = Math.max(...monthly.map((m, i) => m.revenue + shopAt(i)), 1);
               const totalRev = monthly.reduce((s, m) => s + m.revenue, 0);
+              const totalShop = shop ? shop.byMonth.reduce((a, b) => a + b, 0) : 0;
               const totalNew = monthly.reduce((s, m) => s + m.newMembers, 0);
               const totalPay = monthly.reduce((s, m) => s + m.payments, 0);
               return (
@@ -210,19 +242,26 @@ export default function Revenue() {
                       plot area — so the tallest month reaches the top however
                       tall the window is. */}
                   <div className="flex items-stretch gap-1.5 flex-1" style={{ minHeight: 110 }}>
-                    {monthly.map((row) => {
-                      const active = row.revenue > 0 || row.newMembers > 0 || row.payments > 0;
+                    {monthly.map((row, i) => {
+                      const sold = shopAt(i);
+                      const both = row.revenue + sold;
+                      const active = both > 0 || row.newMembers > 0 || row.payments > 0;
                       return (
                         <div key={row.month} className="flex-1 flex flex-col items-center gap-1.5"
-                          data-tip={`${row.month} — ₱${row.revenue.toLocaleString()} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
+                          data-tip={`${row.month} — memberships ₱${row.revenue.toLocaleString()}${shop ? ` · shop ₱${sold.toLocaleString()}` : ''} · ${row.payments} payment${row.payments === 1 ? '' : 's'} · ${row.newMembers} new member${row.newMembers === 1 ? '' : 's'}`}>
                           <div className="flex-1 w-full flex flex-col items-center justify-end gap-1.5 min-h-0">
                             {/* The amount sits above its own bar, so a reader
                                 never has to match a column to a legend. */}
                             <span className="text-[9px] font-semibold tabular-nums"
                               style={{ color: active ? 'var(--color-secondary)' : 'transparent' }}>
-                              {active ? `₱${row.revenue.toLocaleString()}` : '·'}
+                              {active ? `₱${both.toLocaleString()}` : '·'}
                             </span>
-                            <div className="w-full rounded-t"
+                            {/* Shop on top of memberships: one column, two colours, the legend below. */}
+                            {sold > 0 && (
+                              <div className="w-full rounded-t" data-part="shop"
+                                style={{ height: `max(4px, ${(sold / peak) * 85}%)`, background: 'var(--color-primary)', marginBottom: '-0.375rem' }} />
+                            )}
+                            <div className={sold > 0 ? 'w-full' : 'w-full rounded-t'}
                               style={{
                                 // A month with activity but no revenue still gets a
                                 // visible stub, or "3 new members, ₱0" looks like
@@ -230,9 +269,9 @@ export default function Revenue() {
                                 // over the tallest bar still has room.
                                 height: row.revenue > 0
                                   ? `max(6px, ${(row.revenue / peak) * 85}%)`
-                                  : `${active ? 3 : 2}px`,
+                                  : `${active && sold === 0 ? 3 : 2}px`,
                                 background: row.revenue > 0 ? 'var(--color-secondary)'
-                                  : active ? 'var(--color-primary)' : 'var(--color-border)',
+                                  : active && sold === 0 ? 'var(--color-primary)' : 'var(--color-border)',
                               }} />
                           </div>
                           <span className="text-[9px]"
@@ -247,7 +286,11 @@ export default function Revenue() {
                   <div className="flex flex-wrap gap-2 mt-4 pt-3"
                     style={{ borderTop: '1px solid var(--color-border)' }}>
                     {[
-                      { label: `${year} revenue`, value: `₱${totalRev.toLocaleString()}`, tone: 'var(--color-secondary)' },
+                      ...(shop ? [
+                        { label: `${year} total`, value: `₱${(totalRev + totalShop).toLocaleString()}`, tone: 'var(--color-text-primary)' },
+                        { label: '■ Memberships', value: `₱${totalRev.toLocaleString()}`, tone: 'var(--color-secondary)' },
+                        { label: '■ Shop', value: `₱${totalShop.toLocaleString()}`, tone: 'var(--color-primary)' },
+                      ] : [{ label: `${year} revenue`, value: `₱${totalRev.toLocaleString()}`, tone: 'var(--color-secondary)' }]),
                       { label: 'Payments taken', value: String(totalPay), tone: 'var(--color-text-primary)' },
                       { label: 'New members', value: String(totalNew), tone: 'var(--color-text-primary)' },
                     ].map((t) => (
@@ -267,6 +310,29 @@ export default function Revenue() {
             Read-only here on purpose; the plans page owns editing them. Each
             row is a link to it rather than a dead row above one button. */}
         <div className="flex flex-col gap-4 lg:min-h-0">
+        {shop && (
+          <Section title="Shop — best sellers" icon={ShoppingBag} hint="all time, voids left out"
+            actions={<Button variant="ghost" size="sm" onClick={() => navigate('/shop')}>Open <ArrowRight size={12} /></Button>}>
+            {top.length === 0 ? (
+              <EmptyState compact icon={ShoppingBag} title="No counter sales yet" hint="Sales rung up under Billing → Shop appear here." />
+            ) : (
+              <div className="space-y-2">
+                {top.map((t) => (
+                  <div key={t.productId}>
+                    <div className="flex items-baseline justify-between text-[12px]">
+                      <span className="text-white truncate">{t.name} <span style={{ color: 'var(--color-text-muted)' }}>· {t.qty} sold</span></span>
+                      <span className="font-semibold tabular-nums" style={{ color: 'var(--color-primary)' }}>{formatCurrency(t.revenue)}</span>
+                    </div>
+                    <div className="h-1 rounded-full mt-1" style={{ background: 'var(--color-surface-high)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.max(3, (t.revenue / (top[0].revenue || 1)) * 100)}%`, background: 'var(--color-primary)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
+
         <Section
           title="Membership plans" icon={CreditCard} count={plans.length}
           actions={

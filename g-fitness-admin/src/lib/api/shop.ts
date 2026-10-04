@@ -64,11 +64,29 @@ export async function voidSale(saleId: string, reason: string): Promise<void> {
   if (error) throw new Error(clean(error.message));
 }
 
+const SALE_COLUMNS = 'id, sale_day, total, created_at, voided_at, void_reason, member:profiles!shop_sales_member_id_fkey(first_name, last_name), seller:profiles!shop_sales_sold_by_fkey(first_name, last_name), shop_sale_items(qty, unit_price, shop_products(name))';
+
 export async function salesOn(day: string): Promise<Sale[]> {
-  const { data, error } = await supabase.from('shop_sales')
-    .select('id, sale_day, total, created_at, voided_at, void_reason, member:profiles!shop_sales_member_id_fkey(first_name, last_name), seller:profiles!shop_sales_sold_by_fkey(first_name, last_name), shop_sale_items(qty, unit_price, shop_products(name))')
-    .eq('sale_day', day).order('created_at', { ascending: false });
+  return salesBetween(day, day);
+}
+
+/** Every sale between two Manila days, newest first; voided ones included and marked. */
+export async function salesBetween(from: string, to: string): Promise<Sale[]> {
+  const { data, error } = await supabase.from('shop_sales').select(SALE_COLUMNS)
+    .gte('sale_day', from).lte('sale_day', to).order('created_at', { ascending: false });
   if (error) return [];
+  return toSales(data);
+}
+
+/** What one member bought at the counter — the "who is buying" link, read back (front desk only, 0133). */
+export async function memberPurchases(memberId: string): Promise<Sale[] | null> {
+  const { data, error } = await supabase.from('shop_sales').select(SALE_COLUMNS)
+    .eq('member_id', memberId).order('created_at', { ascending: false }).limit(50);
+  if (error) return null;
+  return toSales(data);
+}
+
+function toSales(data: unknown): Sale[] {
   const nm = (p: unknown) => {
     const x = p as { first_name?: string; last_name?: string } | null;
     return x ? `${x.first_name ?? ''} ${x.last_name ?? ''}`.trim() || null : null;
@@ -88,12 +106,20 @@ export async function shopReport(from: string, to: string): Promise<ReportRow[]>
     .map((r) => ({ productId: r.product_id, name: r.name, qty: r.qty, revenue: Number(r.revenue) }));
 }
 
-/** Members matching a name, for attaching a sale to someone (optional). */
-export async function findMembers(q: string): Promise<{ id: string; name: string }[]> {
+export interface MemberHit { id: string; name: string; email: string | null; photoUrl: string | null }
+
+/** Members matching a name or email, for "who is buying?" (optional). Archived accounts are left out. */
+export async function findMembers(q: string): Promise<MemberHit[]> {
   if (q.trim().length < 2) return [];
-  const safe = q.trim().replace(/[,()]/g, ' ');
-  const { data } = await supabase.from('gym_people').select('id, first_name, last_name').eq('role', 'member')
-    .or(`first_name.ilike.%${safe}%,last_name.ilike.%${safe}%`).limit(6);
-  return ((data ?? []) as { id: string; first_name: string; last_name: string }[])
-    .map((m) => ({ id: m.id, name: `${m.first_name} ${m.last_name}`.trim() }));
+  const safe = q.trim().replace(/[,()%]/g, ' ').replace(/\s+/g, ' ');
+  const [first, ...rest] = safe.split(' ');
+  // "Ana Reyes" is a first and a last name, so a full name typed in finds them too.
+  const filter = rest.length
+    ? `and(first_name.ilike.%${first}%,last_name.ilike.%${rest.join(' ')}%)`
+    : `first_name.ilike.%${safe}%,last_name.ilike.%${safe}%,email.ilike.%${safe}%`;
+  const { data } = await supabase.from('gym_people').select('id, first_name, last_name, email, photo_url').eq('role', 'member')
+    .neq('status', 'archived')
+    .or(filter).limit(6);
+  return ((data ?? []) as { id: string; first_name: string; last_name: string; email: string | null; photo_url: string | null }[])
+    .map((m) => ({ id: m.id, name: `${m.first_name} ${m.last_name}`.trim(), email: m.email, photoUrl: m.photo_url }));
 }
