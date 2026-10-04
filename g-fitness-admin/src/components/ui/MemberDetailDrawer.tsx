@@ -1462,9 +1462,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /**
- * Which words the member agreed to (0151), not only when. 'unversioned' is an
+ * Which words the member agreed to (0155), not only when. 'unversioned' is an
  * agreement from before versions were kept — real, but nobody can say to which
- * text, and the cell says exactly that. Nothing recorded, or 0151 not pasted:
+ * text, and the cell says exactly that. Nothing recorded, or 0155 not pasted:
  * the cell is left out rather than shown as a refusal (same rule as 0079's).
  */
 function AgreedVersionsCell({ profileId }: { profileId: string }) {

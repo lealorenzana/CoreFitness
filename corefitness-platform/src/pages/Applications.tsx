@@ -92,7 +92,7 @@ export default function Applications() {
                         {app.contact_pref && <span className="chip"><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
                       </span>
                     )}
-                    {/* 0150: which version of the gym documents they agreed to. Before 0150 the field is absent — say nothing. */}
+                    {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
                     {app.terms_version !== undefined && (
                       <span className="chips">
                         {app.terms_version

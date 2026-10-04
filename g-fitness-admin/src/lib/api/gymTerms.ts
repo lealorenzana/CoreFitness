@@ -1,10 +1,10 @@
 import { supabase } from '../supabaseClient';
 
 /**
- * The gym documents between Core Fitness and this gym (0152): which version is
+ * The gym documents between Core Fitness and this gym (0156): which version is
  * in effect, and whether this gym's owner has agreed to it. `my_gym_terms()`
  * answers null for anyone but an owner — the desk is never asked — and errors
- * before 0152 is pasted, which reads here as "nothing to ask".
+ * before 0156 is pasted, which reads here as "nothing to ask".
  */
 export const SITE = 'https://corefitness-site.vercel.app';
 

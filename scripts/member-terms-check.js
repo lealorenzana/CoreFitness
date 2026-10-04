@@ -1,5 +1,5 @@
 /**
- * 0151: a member whose newest agreement is older than the Terms now carry.
+ * 0155: a member whose newest agreement is older than the Terms now carry.
  *
  * Today shows "Updated for you to read" with the Terms row only (they agreed
  * to the current Privacy Policy); tapping it opens /terms at #agreement, which
@@ -86,7 +86,7 @@ async (page) => {
     rewards: [], events: [], event_registrations: [], workout_resources: [],
     trainer_profiles: [], public_trainers: [], trainer_availability: [], workout_plans: [],
     membership_events: [], payments: [], plan_features: [], features: [], activity_feed: [],
-    // 0151: agreed to an older Terms at sign-up, and to the current Privacy Policy.
+    // 0155: agreed to an older Terms at sign-up, and to the current Privacy Policy.
     terms_acceptances: [
       { document: 'member_terms', version: '2026-09-14', accepted_at: iso(-30, 9, 0), source: 'signup' },
       { document: 'member_privacy', version: '2026-09-19', accepted_at: iso(-30, 9, 0), source: 'signup' },

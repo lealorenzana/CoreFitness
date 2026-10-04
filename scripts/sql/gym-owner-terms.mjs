@@ -1,5 +1,5 @@
 /**
- * 0152: the platform publishes a version of the gym documents; each gym's
+ * 0156: the platform publishes a version of the gym documents; each gym's
  * active owner agrees to that version once; the desk, members, other gyms and
  * strangers cannot; the website and the platform read what they should.
  *

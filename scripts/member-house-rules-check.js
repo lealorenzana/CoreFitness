@@ -1,5 +1,5 @@
 /**
- * 0153: a gym publishes version 2 of its house rules; a member who agreed to
+ * 0157: a gym publishes version 2 of its house rules; a member who agreed to
  * version 1 (and is up to date on the Terms and Privacy Policy) sees one row on
  * Today — the house rules — which opens /terms#house-rules; the rules are shown
  * word for word with "You agreed to version 1"; "Agree to these rules" sends
@@ -85,7 +85,7 @@ async (page) => {
     rewards: [], events: [], event_registrations: [], workout_resources: [],
     trainer_profiles: [], public_trainers: [], trainer_availability: [], workout_plans: [],
     membership_events: [], payments: [], plan_features: [], features: [], activity_feed: [],
-    // 0151: agreed to an older Terms at sign-up, and to the current Privacy Policy.
+    // 0155: agreed to an older Terms at sign-up, and to the current Privacy Policy.
     terms_acceptances: [
       { document: 'member_terms', version: '2099-01-01', accepted_at: iso(-30, 9, 0), source: 'in_app' },
       { document: 'member_privacy', version: '2026-09-19', accepted_at: iso(-30, 9, 0), source: 'signup' },

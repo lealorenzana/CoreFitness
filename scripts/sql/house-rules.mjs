@@ -1,5 +1,5 @@
 /**
- * 0153: a gym's own house rules — the owner publishes versions that can never
+ * 0157: a gym's own house rules — the owner publishes versions that can never
  * be edited, members agree to the version in effect, the desk sees how many
  * did, and nothing crosses between gyms.
  *

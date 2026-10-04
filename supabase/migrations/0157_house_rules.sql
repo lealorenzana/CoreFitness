@@ -1,4 +1,4 @@
--- 0153 — A gym's own house rules: written by the owner, versioned, and agreed
+-- 0157 — A gym's own house rules: written by the owner, versioned, and agreed
 -- to by members word for word.
 --
 -- The member Terms (section 6, "Using the gym") are the same for every gym —
@@ -8,7 +8,7 @@
 --
 -- They are the gym's to write — but a member's agreement has to point at
 -- words that cannot change afterwards, which is exactly 0119's rule for the
--- waiver and 0151's for the Terms. So:
+-- waiver and 0155's for the Terms. So:
 --
 --   gym_house_rules         one row per published version, immutable (a
 --                           trigger refuses every update, the owner included);
@@ -185,7 +185,7 @@ grant execute on function house_rules_history() to authenticated;
 -- ============================================================================
 -- 4. TENANCY
 -- ============================================================================
--- 0152's list plus the two tables.
+-- 0156's list plus the two tables.
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$
   select array['account_status_events','achievement_unlocks','achievements','activity_log',
     'ai_coach_profiles','ai_meal_guides','ai_proposals','ai_usage_days',
@@ -202,7 +202,7 @@ create or replace function tenancy_gym_tables() returns text[] language sql immu
     'reward_redemptions','rewards','room_assignments','room_comments','room_members','room_posts',
     'room_submissions','rooms',
     'saved_resources','season_claims','season_tiers','shop_products','shop_sale_items','shop_sales',
-    'squad_members','squad_weeks','squads','stock_moves','terms_acceptances',
+    'squad_members','squad_weeks','squads','stock_moves','streak_milestones','terms_acceptances',
     'trainer_availability','trainer_credentials','trainer_feedback','trainer_profiles',
     'trainer_ratings','waiver_acceptances','winback_rules','winback_sends','workout_logs','workout_plans',
     'workout_routine_exercises','workout_routines','workout_sets']::text[]
@@ -228,11 +228,11 @@ begin
   end loop;
 end $$;
 
-create or replace function migration_0153_applied() returns boolean
+create or replace function migration_0157_applied() returns boolean
 language sql immutable as $marker$ select true $marker$;
-revoke all on function migration_0153_applied() from public, anon;
-grant execute on function migration_0153_applied() to authenticated;
-comment on function migration_0153_applied() is
+revoke all on function migration_0157_applied() from public, anon;
+grant execute on function migration_0157_applied() to authenticated;
+comment on function migration_0157_applied() is
   'Marker for scripts/probe-migrations.py. Delete only alongside the probe entry.';
 
--- VERIFICATION: scripts/sql/verify/verify0153.sql
+-- VERIFICATION: scripts/sql/verify/verify0157.sql

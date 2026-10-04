@@ -22,7 +22,7 @@ const splitTitle = (t: string) => {
 /**
  * The gym-facing documents (src/legal.ts), as a page of the site.
  *
- * The numbers a setting decides are read from `platform_public_terms()` (0150).
+ * The numbers a setting decides are read from `platform_public_terms()` (0154).
  * Before that migration is pasted — or if the read fails — the documents fall
  * back to wording that names no number ("the grace period shown in your gym
  * app") rather than printing one somebody typed.

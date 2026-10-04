@@ -7,7 +7,7 @@ const MUTED = 'var(--color-text-muted)';
 const stamp = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 /**
- * Settings → House rules (0153): the gym's own rules, shown to members inside
+ * Settings → House rules (0157): the gym's own rules, shown to members inside
  * the Terms (section 6) and agreed to version by version.
  *
  * Like the waiver, published words cannot be changed — members agreed to what
@@ -31,7 +31,7 @@ export default function HouseRulesTab() {
 
   if (versions === undefined) return <p className="text-xs" style={{ color: MUTED }}>Loading…</p>;
   if (versions === null) {
-    return <p className="text-xs" style={{ color: MUTED }}>House rules need migration 0153_house_rules.sql, which is not pasted yet.</p>;
+    return <p className="text-xs" style={{ color: MUTED }}>House rules need migration 0157_house_rules.sql, which is not pasted yet.</p>;
   }
 
   const current = versions[0] ?? null;

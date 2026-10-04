@@ -1,7 +1,7 @@
--- 0152 — The gym documents take effect when the platform publishes them, and
+-- 0156 — The gym documents take effect when the platform publishes them, and
 -- every gym's owner agrees to the version in effect.
 --
--- 0150 recorded an *applicant's* agreement, and left two things to a constant
+-- 0154 recorded an *applicant's* agreement, and left two things to a constant
 -- in the website's source: whether the documents were in effect at all
 -- (IN_EFFECT), and nothing whatever for the gyms that were already here before
 -- there were documents to agree to. A contract coming into force is not a code
@@ -32,7 +32,7 @@ alter table platform_billing add constraint platform_billing_terms_version_check
   check (gym_terms_published is null or gym_terms_published ~ '^\d{4}-\d{2}-\d{2}$');
 
 comment on column platform_billing.gym_terms_published is
-  'The version of the gym documents in effect (0152), or NULL while they are drafts. '
+  'The version of the gym documents in effect (0156), or NULL while they are drafts. '
   'Set only by platform_publish_gym_terms().';
 
 -- ============================================================================
@@ -63,7 +63,7 @@ $$;
 revoke all on function platform_publish_gym_terms(text) from public, anon;
 grant execute on function platform_publish_gym_terms(text) to authenticated;
 
--- 0150's reader, plus the version in effect.
+-- 0154's reader, plus the version in effect.
 create or replace function platform_public_terms() returns jsonb
 language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -97,7 +97,7 @@ create policy gym_terms_acceptances_owner on gym_terms_acceptances for select
 grant select on gym_terms_acceptances to authenticated;
 
 comment on table gym_terms_acceptances is
-  'Which version of the gym documents each gym agreed to, and which owner (0152). RLS on, '
+  'Which version of the gym documents each gym agreed to, and which owner (0156). RLS on, '
   'select for the gym''s owners only; written by accept_gym_terms_owner(), read by the platform '
   'through platform_gym_terms().';
 
@@ -163,7 +163,7 @@ language sql stable security definer set search_path = public as $$
   select g.id, g.name, b.gym_terms_published,
          latest.version, latest.accepted_at,
          nullif(btrim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
-         -- What the owner agreed to when they applied (0150), if they did.
+         -- What the owner agreed to when they applied (0154), if they did.
          (select ga.terms_version from gym_applications ga
            where ga.gym_id = g.id and ga.terms_version is not null
            order by ga.terms_accepted_at desc limit 1)
@@ -181,7 +181,7 @@ grant execute on function platform_gym_terms() to authenticated;
 -- ============================================================================
 -- 4. TENANCY
 -- ============================================================================
--- 0151's list plus gym_terms_acceptances.
+-- 0155's list plus gym_terms_acceptances.
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$
   select array['account_status_events','achievement_unlocks','achievements','activity_log',
     'ai_coach_profiles','ai_meal_guides','ai_proposals','ai_usage_days',
@@ -198,7 +198,7 @@ create or replace function tenancy_gym_tables() returns text[] language sql immu
     'reward_redemptions','rewards','room_assignments','room_comments','room_members','room_posts',
     'room_submissions','rooms',
     'saved_resources','season_claims','season_tiers','shop_products','shop_sale_items','shop_sales',
-    'squad_members','squad_weeks','squads','stock_moves','terms_acceptances',
+    'squad_members','squad_weeks','squads','stock_moves','streak_milestones','terms_acceptances',
     'trainer_availability','trainer_credentials','trainer_feedback','trainer_profiles',
     'trainer_ratings','waiver_acceptances','winback_rules','winback_sends','workout_logs','workout_plans',
     'workout_routine_exercises','workout_routines','workout_sets']::text[]
@@ -222,11 +222,11 @@ begin
                     using (gym_id = current_gym_id() and gym_writable())', t);
 end $$;
 
-create or replace function migration_0152_applied() returns boolean
+create or replace function migration_0156_applied() returns boolean
 language sql immutable as $marker$ select true $marker$;
-revoke all on function migration_0152_applied() from public, anon;
-grant execute on function migration_0152_applied() to authenticated;
-comment on function migration_0152_applied() is
+revoke all on function migration_0156_applied() from public, anon;
+grant execute on function migration_0156_applied() to authenticated;
+comment on function migration_0156_applied() is
   'Marker for scripts/probe-migrations.py. Delete only alongside the probe entry.';
 
--- VERIFICATION: scripts/sql/verify/verify0152.sql
+-- VERIFICATION: scripts/sql/verify/verify0156.sql

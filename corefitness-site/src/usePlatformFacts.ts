@@ -4,7 +4,7 @@ import { FALLBACK_FACTS, type Facts } from './legal';
 
 /**
  * What the gym documents quote from the platform's settings, and which version
- * is in effect — `platform_public_terms()` (0150, 0152). Read once per page
+ * is in effect — `platform_public_terms()` (0154, 0156). Read once per page
  * view. Until it answers (or if it cannot) the facts are the fallback: no
  * numbers, and nothing in effect, which is the honest reading of "unknown".
  */

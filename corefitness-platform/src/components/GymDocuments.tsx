@@ -8,7 +8,7 @@ const when = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: '
 
 /**
  * The gym documents on the website (Terms for gyms, the DPA, the platform's
- * Privacy Policy) and whether they are in effect (0152).
+ * Privacy Policy) and whether they are in effect (0156).
  *
  * Putting a version in effect is what makes the website stop calling it a
  * draft, makes the apply form ask for agreement, and puts a banner in front of
@@ -25,7 +25,7 @@ export default function GymDocuments() {
 
   const load = useCallback(async () => {
     try { setRows(await gymTerms()); setErr(null); }
-    catch (e) { setRows([]); setErr(explain(e, '0152')); }
+    catch (e) { setRows([]); setErr(explain(e, '0156')); }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
@@ -42,7 +42,7 @@ export default function GymDocuments() {
   return (
     <section className="card">
       <h2 className="section-title"><FileSignature size={14} /> Gym documents
-        <InfoDot tip="Terms for gyms, the Data Processing Agreement and the Privacy Policy on the website. In effect only when you put a version in effect here (0152)." /></h2>
+        <InfoDot tip="Terms for gyms, the Data Processing Agreement and the Privacy Policy on the website. In effect only when you put a version in effect here (0156)." /></h2>
       {err && <p className="empty">{err}</p>}
       {rows && !err && (
         <>

@@ -453,9 +453,9 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** Left empty by people, filled by bots. A real person never sees it. */
   const [trap, setTrap] = useState('');
   const [copied, setCopied] = useState(false);
-  /** Agreement to the gym documents (0150) — asked only once they are in effect. */
+  /** Agreement to the gym documents (0154) — asked only once they are in effect. */
   const [agreed, setAgreed] = useState(false);
-  /** In effect only when the platform has published this very text (0152). */
+  /** In effect only when the platform has published this very text (0156). */
   const IN_EFFECT = inEffect(usePlatformFacts());
 
   // A tier card's "Choose" fills the plan; so does there being only one.
@@ -501,7 +501,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     }
     if (rpcError) { setError(rpcError.message); setState('idle'); return; }
     const newToken = typeof data === 'string' ? data : null;
-    // The agreement is recorded against the private status token (0150). Before 0150 is pasted this call
+    // The agreement is recorded against the private status token (0154). Before 0154 is pasted this call
     // fails; the application still went in, and the platform simply sees no acceptance — never a false one.
     if (IN_EFFECT && newToken) {
       try { await supabase.rpc('accept_gym_terms', { p_token: newToken, p_version: VERSION }); } catch { /* see above */ }

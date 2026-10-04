@@ -138,7 +138,7 @@ export interface Application {
   messages?: number;
   unread?: number;
   last_message_at?: string | null;
-  /** 0150: the version of the gym documents the applicant agreed to, and when. Absent before 0150. */
+  /** 0154: the version of the gym documents the applicant agreed to, and when. Absent before 0154. */
   terms_version?: string | null;
   terms_accepted_at?: string | null;
 }
@@ -663,11 +663,11 @@ export interface PaymentClaim {
 export const SITE = 'https://corefitness-site.vercel.app';
 export const statusLink = (token: string) => `${SITE}/#status/${token}`;
 
-/** 0152: the gym documents — which version is in effect, and which gyms have agreed to it. */
+/** 0156: the gym documents — which version is in effect, and which gyms have agreed to it. */
 export interface GymTermsRow {
   gym_id: string; gym_name: string; published: string | null;
   accepted_version: string | null; accepted_at: string | null; accepted_by: string | null;
-  /** The version the owner agreed to when they applied (0150), if they did. */
+  /** The version the owner agreed to when they applied (0154), if they did. */
   from_application: string | null;
 }
 export const gymTerms = () => call<GymTermsRow[]>('platform_gym_terms');

@@ -1,4 +1,4 @@
--- 0151 — Which words a member agreed to, not only when.
+-- 0155 — Which words a member agreed to, not only when.
 --
 -- 0079 made the sign-up checkbox a record: `member_profiles.terms_accepted_at`,
 -- stamped by the server. It said, in its own header, what it could not do yet:
@@ -38,7 +38,7 @@ create table if not exists terms_acceptances (
   gym_id      uuid not null default acting_gym_id() references gyms(id) on delete cascade,
   profile_id  uuid not null references profiles(id) on delete cascade,
   document    text not null check (document in ('member_terms', 'member_privacy')),
-  /** The date printed at the top of the document, or 'unversioned' (before 0151). */
+  /** The date printed at the top of the document, or 'unversioned' (before 0155). */
   version     text not null check (version = 'unversioned' or version ~ '^\d{4}-\d{2}-\d{2}$'),
   accepted_at timestamptz not null default now(),
   source      text not null check (source in ('signup', 'in_app', 'backfill')),
@@ -59,7 +59,7 @@ create policy terms_acceptances_desk on terms_acceptances for select
 grant select on terms_acceptances to authenticated;
 
 comment on table terms_acceptances is
-  'Which version of the member Terms / Privacy Policy a member agreed to, and how (0151). '
+  'Which version of the member Terms / Privacy Policy a member agreed to, and how (0155). '
   'RLS on, select only: written by trg_member_terms_from_signup() and accept_member_terms().';
 
 -- ============================================================================
@@ -167,7 +167,7 @@ create or replace function tenancy_gym_tables() returns text[] language sql immu
     'reward_redemptions','rewards','room_assignments','room_comments','room_members','room_posts',
     'room_submissions','rooms',
     'saved_resources','season_claims','season_tiers','shop_products','shop_sale_items','shop_sales',
-    'squad_members','squad_weeks','squads','stock_moves','terms_acceptances',
+    'squad_members','squad_weeks','squads','stock_moves','streak_milestones','terms_acceptances',
     'trainer_availability','trainer_credentials','trainer_feedback','trainer_profiles',
     'trainer_ratings','waiver_acceptances','winback_rules','winback_sends','workout_logs','workout_plans',
     'workout_routine_exercises','workout_routines','workout_sets']::text[]
@@ -191,11 +191,11 @@ begin
                     using (gym_id = current_gym_id() and gym_writable())', t);
 end $$;
 
-create or replace function migration_0151_applied() returns boolean
+create or replace function migration_0155_applied() returns boolean
 language sql immutable as $marker$ select true $marker$;
-revoke all on function migration_0151_applied() from public, anon;
-grant execute on function migration_0151_applied() to authenticated;
-comment on function migration_0151_applied() is
+revoke all on function migration_0155_applied() from public, anon;
+grant execute on function migration_0155_applied() to authenticated;
+comment on function migration_0155_applied() is
   'Marker for scripts/probe-migrations.py. Delete only alongside the probe entry.';
 
--- VERIFICATION: scripts/sql/verify/verify0151.sql
+-- VERIFICATION: scripts/sql/verify/verify0155.sql

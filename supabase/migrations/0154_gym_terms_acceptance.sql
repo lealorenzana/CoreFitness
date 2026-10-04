@@ -1,4 +1,4 @@
--- 0150 — A gym that applies agrees to the platform's terms, and the record
+-- 0154 — A gym that applies agrees to the platform's terms, and the record
 -- says which words it agreed to.
 --
 -- Until now the website's footer sent a gym owner to the *member* Terms — a
@@ -43,7 +43,7 @@ alter table gym_applications add constraint gym_applications_terms_pair_check
   check ((terms_version is null) = (terms_accepted_at is null));
 
 comment on column gym_applications.terms_version is
-  'The effective date printed on the gym documents the applicant agreed to (0150). '
+  'The effective date printed on the gym documents the applicant agreed to (0154). '
   'Written once by accept_gym_terms(); NULL means no acceptance was recorded.';
 
 -- ============================================================================
@@ -135,11 +135,11 @@ $$;
 revoke all on function platform_public_terms() from public;
 grant execute on function platform_public_terms() to anon, authenticated;
 
-create or replace function migration_0150_applied() returns boolean
+create or replace function migration_0154_applied() returns boolean
 language sql immutable as $marker$ select true $marker$;
-revoke all on function migration_0150_applied() from public, anon;
-grant execute on function migration_0150_applied() to authenticated;
-comment on function migration_0150_applied() is
+revoke all on function migration_0154_applied() from public, anon;
+grant execute on function migration_0154_applied() to authenticated;
+comment on function migration_0154_applied() is
   'Marker for scripts/probe-migrations.py. Delete only alongside the probe entry.';
 
--- VERIFICATION: scripts/sql/verify/verify0150.sql
+-- VERIFICATION: scripts/sql/verify/verify0154.sql

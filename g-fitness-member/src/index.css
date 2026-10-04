@@ -1028,7 +1028,7 @@ html, body {
   .legal-p, .legal-list, .legal-table { margin-left: 0 !important; }
 }
 
-/* the reader's agreement to this version (0151) — components/legal/AgreementBlock.tsx */
+/* the reader's agreement to this version (0155) — components/legal/AgreementBlock.tsx */
 .legal-agree { scroll-margin-top: 120px; display: grid; gap: 12px; padding: 18px 20px; border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, var(--color-border));
   background: color-mix(in srgb, var(--color-secondary) 7%, var(--color-surface-raised)); }
@@ -1044,7 +1044,7 @@ html, body {
 .legal-agree-mark { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--color-primary); }
 @media print { .legal-agree { display: none !important; } }
 
-/* the gym's own house rules inside Terms §6 (0153) — components/legal/HouseRulesBlock.tsx */
+/* the gym's own house rules inside Terms §6 (0157) — components/legal/HouseRulesBlock.tsx */
 .legal-house { scroll-margin-top: 120px; margin: 16px 0 6px 48px; max-width: 68ch; border-radius: 16px; overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border)); background: var(--color-surface-raised); }
 @media (max-width: 560px) { .legal-house { margin-left: 0; } }

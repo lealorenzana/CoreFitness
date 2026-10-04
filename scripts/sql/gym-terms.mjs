@@ -1,5 +1,5 @@
 /**
- * 0150: a gym that applies agrees to a *version* of the gym documents, by its
+ * 0154: a gym that applies agrees to a *version* of the gym documents, by its
  * private status token, once; the platform sees it, nobody else can write it.
  *
  *   node <repo>/scripts/sql/gym-terms.mjs "<repo>"   (from a dir with pglite installed)

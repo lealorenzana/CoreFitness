@@ -33,7 +33,7 @@ export default function Layout() {
         <SubscriptionBanner />
         {/* Core Fitness's announcements to gyms (0137). */}
         <AnnouncementBanner />
-        {/* The gym documents, until an owner agrees to the version in effect (0152). */}
+        {/* The gym documents, until an owner agrees to the version in effect (0156). */}
         <GymTermsBanner />
         <main
           ref={mainRef}

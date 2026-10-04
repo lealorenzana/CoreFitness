@@ -6,7 +6,7 @@ import { acceptHouseRules, getMyHouseRules, type MyHouseRules } from '../../lib/
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Manila' });
 
 /**
- * Terms section 6: this gym's own house rules (0153), word for word, with the
+ * Terms section 6: this gym's own house rules (0157), word for word, with the
  * reader's agreement to this version. Rendered only when the gym has rules in
  * effect; a reader with no session sees nothing here (each gym writes its own,
  * and section 6 says so). Only a member of the gym gets the Agree button —

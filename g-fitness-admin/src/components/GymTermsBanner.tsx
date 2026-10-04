@@ -4,7 +4,7 @@ import { acceptGymTerms, myGymTerms, SITE, versionLabel, type MyGymTerms } from 
 
 /**
  * Core Fitness's documents for gyms, once the platform has put a version in
- * effect (0152), until one of this gym's owners agrees to it. Owners only —
+ * effect (0156), until one of this gym's owners agrees to it. Owners only —
  * `my_gym_terms()` answers nothing for the desk. Not dismissible: it is the
  * gym's agreement to the service it runs on, so it stays until it is given;
  * but it never blocks a screen — the gym keeps working while the owner reads.

@@ -1,14 +1,14 @@
 import { supabase } from '../supabaseClient';
 
 /**
- * Which version of the member Terms and Privacy Policy a member agreed to (0151),
+ * Which version of the member Terms and Privacy Policy a member agreed to (0155),
  * for the member drawer beside 0079's sign-up date. The desk reads its own gym's
  * rows (`terms_acceptances_desk` + the tenancy policy); nobody writes them here.
  */
 export interface Agreement { version: string; accepted_at: string; source: 'signup' | 'in_app' | 'backfill' }
 export interface MemberAgreements { member_terms: Agreement | null; member_privacy: Agreement | null }
 
-/** null when it cannot be read (0151 not pasted, or no access): the drawer then shows nothing for it. */
+/** null when it cannot be read (0155 not pasted, or no access): the drawer then shows nothing for it. */
 export async function memberAgreements(profileId: string): Promise<MemberAgreements | null> {
   const { data, error } = await supabase
     .from('terms_acceptances')

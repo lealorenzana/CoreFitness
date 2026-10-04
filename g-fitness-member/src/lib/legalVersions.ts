@@ -1,6 +1,6 @@
 /**
  * The version of each member-facing document: the date printed at the top of
- * the page, and the string a member's agreement records (0151).
+ * the page, and the string a member's agreement records (0155).
  *
  * One place, so the page's "Updated" date and what Register and the in-app
  * "Agree" send can never disagree. **Change a word of the page, change its date

@@ -1,5 +1,5 @@
--- VERIFICATION for 0152_gym_terms_owners.sql
--- Paste into the Supabase SQL editor right after 0152. Read-only: it changes
+-- VERIFICATION for 0156_gym_terms_owners.sql
+-- Paste into the Supabase SQL editor right after 0156. Read-only: it changes
 -- nothing and ends in an error that *is* the report.
 do $$
 declare v_col boolean; v_rls boolean; v_writes int; v_owner boolean; v_anon boolean; v_pub_anon boolean; v_keys boolean; v_tenant boolean; v_marker boolean;
@@ -12,8 +12,8 @@ begin
   select has_function_privilege('anon', 'platform_public_terms()', 'execute') into v_pub_anon;
   select (platform_public_terms() ? 'gym_terms_published') into v_keys;
   select 'gym_terms_acceptances' = any(tenancy_gym_tables()) into v_tenant;
-  select coalesce((select migration_0152_applied()), false) into v_marker;
-  raise exception 'REPORT 0152: published column=% % | RLS on=% % | write policies=% % | owners can agree=% % | anon can agree/publish=% % | website reads it=% % | in effect now=% (NULL = drafts) | on tenancy list=% % | marker=% %',
+  select coalesce((select migration_0156_applied()), false) into v_marker;
+  raise exception 'REPORT 0156: published column=% % | RLS on=% % | write policies=% % | owners can agree=% % | anon can agree/publish=% % | website reads it=% % | in effect now=% (NULL = drafts) | on tenancy list=% % | marker=% %',
     v_col, case when v_col then 'OK' else 'NOT OK' end,
     v_rls, case when v_rls then 'OK' else 'NOT OK - STOP' end,
     v_writes, case when v_writes = 0 then 'OK' else 'NOT OK - STOP' end,

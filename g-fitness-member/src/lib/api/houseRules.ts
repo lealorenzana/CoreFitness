@@ -1,10 +1,10 @@
 import { supabase } from '../supabaseClient';
 
 /**
- * The gym's own house rules (0153), as this member sees them: the version in
+ * The gym's own house rules (0157), as this member sees them: the version in
  * effect and whether they have agreed to it. `my_house_rules()` reads the
  * current gym only; agreeing goes through `accept_house_rules()` — there is no
- * write policy. null = nothing to show: no rules, signed out, or 0153 not pasted.
+ * write policy. null = nothing to show: no rules, signed out, or 0157 not pasted.
  */
 export interface MyHouseRules {
   id: string;

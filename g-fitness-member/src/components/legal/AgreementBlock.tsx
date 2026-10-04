@@ -9,11 +9,11 @@ import { prettyVersion, type LegalDocument } from '../../lib/legalVersions';
  *
  *   agreed to it        "You agreed to this version." — nothing to press
  *   agreed to an older  "You agreed to the version of …" + Agree to this version
- *   none recorded       Agree to this version (desk-made accounts, pre-0151 sign-ups)
+ *   none recorded       Agree to this version (desk-made accounts, pre-0155 sign-ups)
  *
  * Only for a member of the current gym: a coach or the desk opening the page has
  * no member terms of their own, and `accept_member_terms()` would refuse them.
- * Signed out, or 0151 not pasted: nothing — Register asks at sign-up.
+ * Signed out, or 0155 not pasted: nothing — Register asks at sign-up.
  */
 type State =
   | { kind: 'hidden' }

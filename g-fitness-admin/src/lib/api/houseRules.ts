@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 
 /**
- * The gym's own house rules (0153) — the owner's side. Every version is kept and
+ * The gym's own house rules (0157) — the owner's side. Every version is kept and
  * none can be edited: publishing new words makes the next version, and members
  * are asked to agree to it. `house_rules_history()` is front desk only; the
  * publish function refuses anyone but an active owner.
@@ -10,7 +10,7 @@ export interface HouseRulesVersion {
   id: string; version: number; body: string; published_at: string; published_by: string | null; agreed: number;
 }
 
-/** null when it cannot be read — 0153 not pasted. */
+/** null when it cannot be read — 0157 not pasted. */
 export async function listHouseRules(): Promise<HouseRulesVersion[] | null> {
   const { data, error } = await supabase.rpc('house_rules_history');
   if (error || !Array.isArray(data)) return null;

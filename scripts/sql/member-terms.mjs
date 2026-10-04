@@ -1,5 +1,5 @@
 /**
- * 0151: which version of the member Terms and Privacy Policy a member agreed
+ * 0155: which version of the member Terms and Privacy Policy a member agreed
  * to — at sign-up through the real auth trigger chain, and later in the app —
  * who can read it, that nobody can write it directly, and the backfill.
  *
@@ -119,9 +119,9 @@ await db.exec(`reset role;
   insert into member_profiles (gym_id, profile_id, qr_code, terms_accepted_at) values ('${GYM_A}', '${OLD}', 'OLD-QR-151', '2026-08-01T02:00:00Z')
     on conflict (gym_id, profile_id) do update set terms_accepted_at = excluded.terms_accepted_at;
   alter table member_profiles enable trigger member_terms_from_signup;`);
-await db.exec(readFileSync(`${REPO}/supabase/migrations/0151_member_terms_versions.sql`, 'utf8'));
+await db.exec(readFileSync(`${REPO}/supabase/migrations/0155_member_terms_versions.sql`, 'utf8'));
 const old = await rows(OLD);
-check('re-running 0151 backfills an earlier consent as "unversioned" at 0079\'s time',
+check('re-running 0155 backfills an earlier consent as "unversioned" at 0079\'s time',
   old.length === 2 && old.every((r) => r.version === 'unversioned' && r.source === 'backfill' && +new Date(r.accepted_at) === +new Date('2026-08-01T02:00:00Z')),
   JSON.stringify(old));
 check('and adds nothing twice', (await rows(M.versioned)).length === 5, `${(await rows(M.versioned)).length}`);

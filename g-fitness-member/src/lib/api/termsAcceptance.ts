@@ -2,17 +2,17 @@ import { supabase } from '../supabaseClient';
 import { PRIVACY_VERSION, TERMS_VERSION, type LegalDocument } from '../legalVersions';
 
 /**
- * A member's agreements to the member Terms and Privacy Policy (0151).
+ * A member's agreements to the member Terms and Privacy Policy (0155).
  *
  * Read with their own session — `terms_acceptances` lets a member read only
  * their own rows in the current gym. Written only by `accept_member_terms()`;
  * there is no insert policy, so nothing here could write one directly anyway.
  */
 
-/** The newest version agreed per document; 'unversioned' when only a pre-0151 agreement exists; null when none. */
+/** The newest version agreed per document; 'unversioned' when only a pre-0155 agreement exists; null when none. */
 export interface MyAgreements { member_terms: string | null; member_privacy: string | null }
 
-/** null when it cannot be read — signed out, or 0151 not pasted — so callers show nothing rather than nag. */
+/** null when it cannot be read — signed out, or 0155 not pasted — so callers show nothing rather than nag. */
 export async function getMyAgreements(): Promise<MyAgreements | null> {
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return null;

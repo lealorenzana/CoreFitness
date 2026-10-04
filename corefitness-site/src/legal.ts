@@ -14,18 +14,18 @@
  * Copy is a claim. Every clause describes something that runs, and names it in
  * the comment beside it; the numbers a setting decides (grace period, reminder
  * days, the business's name and contact) come from `platform_public_terms()`
- * (0150), never typed here. Where a clause is a promise the system cannot
+ * (0154), never typed here. Where a clause is a promise the system cannot
  * enforce — liability, notice of changes, a breach — it is written as one, and
  * it is exactly the kind of clause a lawyer should read before a gym signs.
  *
  * ---- VERSIONS ----------------------------------------------------------------------
  *
  * `VERSION` is the date printed at the top of all three. An applicant who agrees
- * stores this string (accept_gym_terms, 0150), so changing a word means changing
+ * stores this string (accept_gym_terms, 0154), so changing a word means changing
  * the date — the old text stays in git history under the old one.
  *
  * **Whether they are in effect is not decided here.** The platform owner
- * publishes a version from the platform app's Settings (0152,
+ * publishes a version from the platform app's Settings (0156,
  * `platform_billing.gym_terms_published`), and this text is in effect only when
  * that published version *is* this VERSION — see `inEffect()`. Until then every
  * document says "Draft — not yet in effect" and the apply form does not ask
@@ -43,7 +43,7 @@ export interface Facts {
   phone: string | null;
   graceDays: number | null;
   reminderDays: number[] | null;
-  /** The version in effect (0152), or null: drafts, not read yet, or 0152 not pasted. */
+  /** The version in effect (0156), or null: drafts, not read yet, or 0156 not pasted. */
   published: string | null;
 }
 

@@ -1,5 +1,5 @@
 /**
- * 0153: Settings → House Rules. Version 1 is in force with 23 agreements; the
+ * 0157: Settings → House Rules. Version 1 is in force with 23 agreements; the
  * owner edits the words, is told before publishing that every member will be
  * asked to agree and the words cannot be edited afterwards, publishes, and
  * the screen then shows version 2 in force and both versions in the history.
@@ -30,7 +30,7 @@ async (page) => {
   const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
   const SWEEPS = { n: 0 };
   const STATE = { trial: false };
-  // 0152: what my_gym_terms() answers — null for the desk; the owner's view otherwise.
+  // 0156: what my_gym_terms() answers — null for the desk; the owner's view otherwise.
   const TERMS = { answer: { published: '2026-10-03', accepted_version: null, accepted_at: null, accepted_by: null } };
   const ACCEPTED = [];
   TERMS.answer = null;   // not this check's subject: no gym-documents banner

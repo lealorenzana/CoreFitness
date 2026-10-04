@@ -52,7 +52,7 @@ interface Props {
   sections: LegalSection[];
   contactLead: string;
   other: { to: string; label: string; blurb: string };
-  /** Which member document this is — shows where the reader stands with this version (0151). */
+  /** Which member document this is — shows where the reader stands with this version (0155). */
   agreement?: LegalDocument;
 }
 

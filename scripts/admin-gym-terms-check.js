@@ -1,5 +1,5 @@
 /**
- * 0152: once the platform puts a version of the gym documents in effect, the
+ * 0156: once the platform puts a version of the gym documents in effect, the
  * admin app asks this gym's owner to agree — a banner above every screen with
  * the three documents linked, "I agree for my gym" sending exactly the version
  * in effect, then a thank-you. An owner whose gym already agreed is not asked,
@@ -31,7 +31,7 @@ async (page) => {
   const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
   const SWEEPS = { n: 0 };
   const STATE = { trial: false };
-  // 0152: what my_gym_terms() answers — null for the desk; the owner's view otherwise.
+  // 0156: what my_gym_terms() answers — null for the desk; the owner's view otherwise.
   const TERMS = { answer: { published: '2026-10-03', accepted_version: null, accepted_at: null, accepted_by: null } };
   const ACCEPTED = [];
   const PAYMENTS = [{ id: 'gp1', receipt_no: 'CF-2026-00012', amount: '999', paid_on: ymd(32), covers_from: ymd(32), covers_until: ymd(2), method: 'GCash', plan_name: 'Starter' }];
