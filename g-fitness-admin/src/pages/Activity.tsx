@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   History, Search, Calendar, CreditCard, CheckSquare, IdCard, Users,
   CalendarDays, Filter, X, ChevronRight, AlertTriangle, Archive,
+  ShoppingBag, Dumbbell, Trophy, BadgeCheck,
 } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
@@ -61,6 +62,10 @@ const GROUPS: Array<{ id: ActivityGroup; label: string; icon: typeof Calendar }>
   { id: 'memberships', label: 'Memberships', icon: IdCard },
   { id: 'accounts',    label: 'Accounts',    icon: Users },
   { id: 'schedule',    label: 'Schedule',    icon: CalendarDays },
+  { id: 'shop',        label: 'Shop',        icon: ShoppingBag },
+  { id: 'coaching',    label: 'Coaching',    icon: Dumbbell },
+  { id: 'engagement',  label: 'Rewards & streaks', icon: Trophy },
+  { id: 'team',        label: 'Team & settings', icon: BadgeCheck },
 ];
 
 const GROUP_ICON: Record<ActivityGroup, typeof Calendar> =
@@ -89,7 +94,7 @@ const ROLE_FILTERS: Array<{ id: UserRole; label: string }> = [
  * Never red — the palette has no reds.
  */
 function isNotable(action: string): boolean {
-  return /\.(cancelled|deleted|undone|rejected|suspended|archived|amended|price_changed|role_changed)$/.test(action);
+  return /\.(cancelled|deleted|undone|rejected|suspended|archived|amended|price_changed|role_changed|sale_voided|stock_damage|request_declined|refund|change_undone)$/.test(action);
 }
 
 const timeFmt = new Intl.DateTimeFormat('en-PH', {

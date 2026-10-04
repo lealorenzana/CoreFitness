@@ -23,7 +23,11 @@ export type ActivityGroup =
   | 'attendance'
   | 'memberships'
   | 'accounts'
-  | 'schedule';
+  | 'schedule'
+  | 'shop'
+  | 'coaching'
+  | 'engagement'
+  | 'team';
 
 /**
  * Which `action` prefixes belong to which chip. A prefix rather than a fixed
@@ -37,6 +41,11 @@ const ACTION_GROUPS: Record<ActivityGroup, string[]> = {
   memberships: ['membership.'],
   accounts:    ['member.', 'account.'],
   schedule:    ['class.', 'event.'],
+  // 0165: what was built after 0037.
+  shop:        ['shop.'],
+  coaching:    ['room.', 'classwork.', 'program.', 'ai.'],
+  engagement:  ['reward.', 'referral.', 'squad.', 'season.', 'streak.', 'winback.', 'achievement.'],
+  team:        ['credential.', 'gym.'],
 };
 
 export interface ActivityQuery {
@@ -169,6 +178,16 @@ export function activityHref(row: ActivityFeedRow): string | null {
     case 'event':          return '/events';
     case 'plan':           return '/membership-plans';
     case 'class_template': return '/schedule';
+    case 'membership_request':
+    case 'membership_event': return row.member_id ? `/members/${row.member_id}` : null;
+    case 'shop_sale':
+    case 'shop_product':   return '/shop';
+    case 'room':
+    case 'room_assignment': return '/rooms';
+    case 'program':        return '/programs';
+    case 'reward':
+    case 'season_tier':    return '/rewards';
+    case 'trainer_credential': return '/credentials';
     default:               return null;
   }
 }
