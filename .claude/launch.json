@@ -43,7 +43,8 @@
         "dev"
       ],
       "cwd": "corefitness-platform",
-      "port": 5175
+      "port": 5175,
+      "autoPort": true
     },
     {
       "name": "website",

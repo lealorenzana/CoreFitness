@@ -8,5 +8,8 @@ import react from '@vitejs/plugin-react';
  */
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5175, strictPort: true },
+  // 5175 when run by hand (`npm run dev`); the port a launcher hands over in PORT
+  // otherwise, so starting it from the app while a terminal copy holds 5175 opens
+  // a second copy instead of failing.
+  server: { port: Number(process.env.PORT) || 5175, strictPort: true },
 });
