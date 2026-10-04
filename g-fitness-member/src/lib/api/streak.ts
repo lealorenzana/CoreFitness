@@ -7,6 +7,9 @@ import { supabase } from '../supabaseClient';
  * never breaks it. Everything is decided in SQL — this module asks and reads.
  */
 
+/** One week in the last twelve (0152): reached, frozen, missed, before joining, or this week in progress. */
+export interface StreakWeek { week: string; days: number; state: 'hit' | 'frozen' | 'miss' | 'before' | 'current' }
+
 export interface StreakCard {
   target: number;
   current: number;
@@ -24,19 +27,36 @@ export interface StreakCard {
   outOfReach: boolean;
   nextMilestone: number | null;
   nudges: boolean;
+  /** Oldest first; empty before 0152 is pasted. */
+  history: StreakWeek[];
 }
 
 type Row = {
   target: number; current: number; best: number; days_this_week: number; needed: number; days_left: number;
   week: boolean[]; today_index: number; frozen: boolean; at_risk: boolean; out_of_reach: boolean;
-  next_milestone: number | null; nudges: boolean;
+  next_milestone: number | null; nudges: boolean; history?: StreakWeek[];
 };
 
 export const toStreak = (r: Row): StreakCard => ({
   target: r.target, current: r.current, best: r.best, daysThisWeek: r.days_this_week, needed: r.needed,
   daysLeft: r.days_left, week: r.week ?? [], todayIndex: r.today_index, frozen: r.frozen, atRisk: r.at_risk,
   outOfReach: r.out_of_reach, nextMilestone: r.next_milestone, nudges: r.nudges,
+  history: Array.isArray(r.history) ? r.history : [],
 });
+
+/**
+ * How the flame looks for a run — it grows the way a streak should feel like it
+ * is growing. Colours stay in the app's two roles (no reds or greens): amber is
+ * the flame, violet the aura that deepens with it.
+ */
+export type FlameTier = 'out' | 'ember' | 'flame' | 'blaze' | 'inferno';
+export const flameTier = (weeks: number): FlameTier =>
+  weeks <= 0 ? 'out' : weeks < 4 ? 'ember' : weeks < 12 ? 'flame' : weeks < 26 ? 'blaze' : 'inferno';
+export const TIER_LABEL: Record<FlameTier, string> = {
+  out: 'Not lit yet', ember: 'Ember', flame: 'Flame', blaze: 'Blaze', inferno: 'Inferno',
+};
+
+export const MILESTONES = [4, 12, 26, 52] as const;
 
 /** null = no streak here (Progress switched off at this gym, or 0151 not live yet). */
 export async function myStreak(): Promise<StreakCard | null> {

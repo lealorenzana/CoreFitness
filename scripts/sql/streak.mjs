@@ -213,6 +213,20 @@ check('…and no nudges', (await db.query(`select * from streak_nudge_sweep()`))
 await asOwner();
 await db.exec(`update gym_modules set enabled = true where gym_id = '${GYM_A}' and feature_key = 'progress'`);
 
+// ---- 7b. the last twelve weeks (0152) ---------------------------------------------------
+await as(STAFF);
+const h1 = (await one(`select member_streak('${M[0]}') as c`)).c.history;
+check('history: twelve weeks, oldest first', Array.isArray(h1) && h1.length === 12 && h1[0].week < h1[11].week, JSON.stringify(h1?.length));
+check("…m1's last four weeks are reached, this week included", h1.slice(-4).every((w) => w.state === 'hit'), JSON.stringify(h1.slice(-4)));
+const h2 = (await one(`select member_streak('${M[1]}') as c`)).c.history;
+check("…m2's gap three weeks ago is a miss, this week still in progress", h2[8].state === 'miss' && h2[11].state === 'current', JSON.stringify(h2.slice(-5)));
+const h3 = (await one(`select member_streak('${M[2]}') as c`)).c.history;
+check("…m3's frozen week is drawn frozen, not missed", h3[9].state === 'frozen' && h3[10].state === 'hit' && h3[8].state === 'hit', JSON.stringify(h3.slice(-4)));
+check('…each week carries its training days', h1[11].days === 3 && h3[9].days === 0, JSON.stringify([h1[11], h3[9]]));
+await asOwner();
+const report52 = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0152.sql`, 'utf8'))) ?? '';
+check('verify0152 reports every line OK', /REPORT 0152/.test(report52) && !/NOT OK/.test(report52), report52);
+
 // ---- 8. tenancy and the paste-after verification -----------------------------------------
 check('streak_milestones is on the tenancy list', (await one(`select 'streak_milestones' = any(tenancy_gym_tables()) as x`)).x);
 const report = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0151.sql`, 'utf8'))) ?? '';

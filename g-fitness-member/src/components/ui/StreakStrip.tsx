@@ -1,52 +1,64 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Flame } from '@phosphor-icons/react';
-import { Chip, NocButton, Panel, ProgressBar } from './noc';
-import GlassSheet from './GlassSheet';
+import { CaretRight, Flame, HourglassMedium, Snowflake } from '@phosphor-icons/react';
+import { ProgressBar } from './noc';
 import { toast } from './Toast';
-import { myStreak, setStreakTarget, settleMyStreak, streakLine, type StreakCard } from '../../lib/api/streak';
+import StreakOrb from '../streak/StreakOrb';
+import StreakSheet from '../streak/StreakSheet';
+import {
+  MILESTONES, TIER_LABEL, flameTier, myStreak, setStreakTarget, settleMyStreak, streakLine, type StreakCard,
+} from '../../lib/api/streak';
+
+/** Weeks already celebrated in this app session — memory only, never storage (CLAUDE.md). */
+const celebrated = new Set<string>();
 
 /**
- * The gym streak on Today (0151): how many weeks running the member has hit
- * their own weekly target, what this week still needs, and their target.
+ * The gym streak on Today (0151/0152), as a thing to tap rather than a card to
+ * read: the orb fills one segment per training day toward the member's own
+ * target, the flame at its centre grows with the run, an hourglass appears when
+ * the streak needs every day left, and securing the week ignites it once.
  *
- * It sits under the week marks rather than drawing a second row of dots: the
- * marks are the days, this is what the days add up to. A training day is a
- * check-in or a logged workout (0124), so the count here can be higher than the
- * marks above, which show visits only — the sheet says so.
- *
- * Renders nothing when there is no streak here (Progress switched off at the
- * gym, 0141, or 0151 not live yet).
+ * Tapping opens the streak's story (StreakSheet): the last twelve weeks, the
+ * road to the milestones, and the target. Renders nothing when there is no
+ * streak here (Progress switched off, 0141, or 0151 not live).
  */
 export default function StreakStrip() {
   const [card, setCard] = useState<StreakCard | null>(null);
   const [open, setOpen] = useState(false);
-  const [target, setTarget] = useState(2);
-  const [nudges, setNudges] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [ignite, setIgnite] = useState(false);
 
   const load = useCallback(async () => {
     const s = await myStreak();
     setCard(s);
-    if (s) { setTarget(s.target); setNudges(s.nudges); }
+    return s;
   }, []);
 
   useEffect(() => {
     void (async () => {
       // Pays any milestone newly reached, then reads the card it changed.
       const reached = await settleMyStreak();
-      await load();
+      const s = await load();
+      const weekKey = s?.history.at(-1)?.week ?? 'this-week';
+      const secured = !!s && s.needed === 0 && s.daysThisWeek > 0 && !celebrated.has(weekKey);
+      if (reached.length || secured) {
+        celebrated.add(weekKey);
+        setIgnite(true);
+        window.setTimeout(() => setIgnite(false), 1600);
+      }
       if (reached.length) toast.success(`Milestone reached: ${reached[reached.length - 1]} weeks in a row.`);
     })();
   }, [load]);
 
   if (!card) return null;
 
+  const tier = flameTier(card.current);
   const line = streakLine(card);
   const lineColor = line.tone === 'action' ? 'var(--color-secondary)'
     : line.tone === 'state' ? 'var(--color-primary-300)' : 'var(--color-text-muted)';
+  const live = !card.frozen && !card.outOfReach && card.needed > 0;
+  const next = MILESTONES.find((m) => m > card.current) ?? null;
+  const prev = [...MILESTONES].reverse().find((m) => m <= card.current) ?? 0;
 
-  const save = async () => {
-    setSaving(true);
+  const save = async (target: number, nudges: boolean) => {
     try {
       await setStreakTarget(target, nudges);
       await load();
@@ -54,64 +66,56 @@ export default function StreakStrip() {
       toast.success(`Your target is ${target} days a week.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not save that.');
-    } finally {
-      setSaving(false);
     }
   };
 
   return (
     <>
-      <Panel ariaLabel="Your gym streak">
-        <div className="flex items-center justify-between" style={{ gap: 12 }}>
-          <p className="flex items-center" style={{ gap: 8 }}>
-            <Flame size={18} weight={card.current > 0 ? 'fill' : 'regular'} aria-hidden
-              style={{ color: card.current > 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)' }} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-              {card.current > 0 ? `${card.current}-week streak` : 'No streak yet'}
-            </span>
-          </p>
-          <button onClick={() => setOpen(true)} style={{ fontSize: 12, color: 'var(--color-primary-300)' }}>
-            {card.target} days a week · Change
-          </button>
-        </div>
-        <ProgressBar style={{ marginTop: 10 }} fraction={Math.min(1, card.daysThisWeek / card.target)} />
-        <p className="flex justify-between tabular-nums" style={{ marginTop: 7, gap: 12, fontSize: 12 }}>
-          <span style={{ color: lineColor }}>{line.text}</span>
-          {/* The streak's week is Monday–Sunday (squads, quests and seasons too); the
-              marks above run Sunday–Saturday, so the label says which week this is. */}
-          <span className="flex-none" style={{ color: 'var(--color-text-muted)' }}>{card.daysThisWeek} of {card.target} · Mon–Sun</span>
-        </p>
-        {card.best > 0 && (
-          <p style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
-            Best {card.best} {card.best === 1 ? 'week' : 'weeks'}
-            {card.nextMilestone ? ` · next milestone at ${card.nextMilestone} weeks` : ''}
-          </p>
-        )}
-      </Panel>
+      <button onClick={() => setOpen(true)} aria-label={`Your gym streak: ${card.current} weeks. Open your streak`}
+        className={`streak-hero streak-hero--${tier}${card.atRisk ? ' streak-hero--risk' : ''} w-full text-left noc-press-soft`}>
+        <StreakOrb weeks={card.current} days={card.daysThisWeek} target={card.target} live={live} ignite={ignite} />
 
-      <GlassSheet open={open} onClose={() => setOpen(false)} title="Your weekly target"
-        subtitle="Training days you aim for each week"
-        footer={<NocButton className="w-full" onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Save'}</NocButton>}>
-        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-          A training day is a day you check in or log a workout. Reach your target every week — Monday to
-          Sunday — to keep your streak going. The week in progress never breaks it, and neither does a week your membership is frozen.
-        </p>
-        <div className="flex flex-wrap" style={{ gap: 8, marginTop: 14 }} role="group" aria-label="Days a week">
-          {[2, 3, 4, 5].map((n) => (
-            <Chip key={n} label={`${n} days`} on={target === n} onClick={() => setTarget(n)} />
-          ))}
-        </div>
-        <label className="flex items-start" style={{ gap: 10, marginTop: 18, fontSize: 13.5, color: 'var(--color-text-primary)' }}>
-          <input type="checkbox" checked={nudges} onChange={(e) => setNudges(e.target.checked)}
-            style={{ marginTop: 3, accentColor: 'var(--color-primary)' }} />
-          <span>
-            Remind me before it breaks
-            <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
-              One message in a week, on the day you need every day left to keep it.
+        <span className="flex-1 min-w-0 block">
+          <span className="flex items-center flex-wrap" style={{ gap: 8 }}>
+            {/* The number is the streak — TikTok's lesson: say it big, with the flame. */}
+            <span className="streak-count tabular-nums">
+              <Flame size={16} weight={card.current > 0 ? 'fill' : 'regular'} aria-hidden />
+              {card.current}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {card.current > 0 ? 'week streak' : 'No streak yet'}
+            </span>
+            {card.atRisk && (
+              <span className="streak-chip streak-chip--risk">
+                <HourglassMedium size={12} weight="fill" aria-hidden />
+                {card.daysLeft === 1 ? 'Ends tonight' : `${card.daysLeft} days left`}
+              </span>
+            )}
+            {card.frozen && (
+              <span className="streak-chip">
+                <Snowflake size={12} weight="bold" aria-hidden /> Paused
+              </span>
+            )}
+            {!card.atRisk && !card.frozen && card.current > 0 && (
+              <span className={`streak-chip streak-tier--${tier}`}>{TIER_LABEL[tier]}</span>
+            )}
+          </span>
+
+          <span className="block" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, color: lineColor }}>{line.text}</span>
+
+          <span className="block" style={{ marginTop: 9 }}>
+            {next && <ProgressBar fraction={Math.min(1, (card.current - prev) / (next - prev))} />}
+            <span className="flex justify-between tabular-nums" style={{ marginTop: 5, fontSize: 12, color: 'var(--color-text-muted)' }}>
+              <span>{card.daysThisWeek} of {card.target} this week</span>
+              {next && <span>{next - card.current} to {next}w</span>}
             </span>
           </span>
-        </label>
-      </GlassSheet>
+        </span>
+
+        <CaretRight size={16} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none', alignSelf: 'center' }} />
+      </button>
+
+      <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} />
     </>
   );
 }
