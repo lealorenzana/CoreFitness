@@ -86,6 +86,7 @@ async (page) => {
     platform_event_actions: () => [{ action: 'gym.suspended', n: 1 }, { action: 'gym.paid', n: 1 }],
     platform_applications: () => APPS,
     platform_application_thread: () => THREAD,
+    platform_application_send_payment: (b) => { CALLS.push(['sendpay', b]); THREAD.push({ id: 'm4', from_platform: true, body: b.p_note || 'Here is how to pay — GCash.', author_name: 'Lea', created_at: iso(0), method_label: 'GCash', method_kind: 'gcash' }); return null; },
     platform_application_reply: (b) => { CALLS.push(['reply', b]); THREAD.push({ id: 'm3', from_platform: true, body: b.p_body, author_name: 'Lea', created_at: iso(0) }); return null; },
     platform_payment_options: () => METHODS,
     billing_settings: () => [{ grace_days: 7, reminder_days: [7, 3, 1], business_name: 'Core Fitness', business_address: null, business_email: null, business_phone: null, receipt_note: null }],
@@ -176,6 +177,14 @@ async (page) => {
   await page.getByRole('button', { name: 'Send' }).click();
   await page.getByText('We can set you up this week.').waitFor({ timeout: 5000 });
   out.push('a conversation with the applicant: ' + (CALLS.some((c) => c[0] === 'reply' && c[1].p_id === 'a1') ? 'sent and shown' : 'MISSING'));
+  // 0158: a saved way to pay, sent into the conversation before they are let in.
+  await page.getByRole('button', { name: 'How to pay' }).click();
+  await page.getByRole('radio', { name: /GCash/ }).click();
+  await page.locator('.modal textarea').fill('Pay the first month and we let you in today.');
+  await page.getByRole('button', { name: 'Send it' }).click();
+  await page.getByText('Sent: GCash').waitFor({ timeout: 5000 });
+  out.push('a way to pay is sent in the conversation: ' + (CALLS.some((c) => c[0] === 'sendpay' && c[1].p_id === 'a1' && c[1].p_method === 'pm1'
+    && /first month/.test(c[1].p_note)) ? 'yes, GCash with the note' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-application-thread.png' });
   await page.keyboard.press('Escape');
 

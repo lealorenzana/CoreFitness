@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
+import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
@@ -163,7 +164,12 @@ export default function App() {
   /** `#legal/<doc>[/<section>]`: one of the gym documents instead of the page. */
   const [legal, setLegal] = useState(() => parseLegalHash(window.location.hash));
   useEffect(() => {
-    const on = () => { setToken(statusToken()); setLegal(parseLegalHash(window.location.hash)); };
+    const on = () => {
+      const t = statusToken();
+      setToken(t); setLegal(parseLegalHash(window.location.hash));
+      // The status link is a page of its own: it opens at its top, not wherever the form was.
+      if (t) window.scrollTo({ top: 0 });
+    };
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('hashchange', on);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -175,7 +181,7 @@ export default function App() {
   // The section dots watch the page's sections — re-attached when the page comes back from a document,
   // and the header's "#pricing" from a document lands on Pricing once the page has rendered.
   useEffect(() => {
-    if (legal) return;
+    if (legal || token) return;
     const id = window.location.hash.slice(1);
     const target = id && !id.includes('/') ? document.getElementById(id) : null;
     if (target) target.scrollIntoView({ block: 'start' });
@@ -184,7 +190,7 @@ export default function App() {
     }, { rootMargin: '-45% 0px -50% 0px' });
     NAV.forEach(([nid]) => { const el = document.getElementById(nid); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, [legal]);
+  }, [legal, token]);
   /** null while loading; [] when the price list cannot be read at all. */
   const [tiers, setTiers] = useState<Tier[] | null>(null);
 
@@ -233,15 +239,15 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="dots" aria-label="Jump to section" hidden={!!legal}>
+      <nav className="dots" aria-label="Jump to section" hidden={!!legal || !!token}>
         {NAV.map(([id, label]) => (
           <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}><span>{label}</span></a>
         ))}
       </nav>
 
       <main id="top">
-        {legal ? <><Legal doc={legal.doc} section={legal.section} /><SiteFooter /></> : <>
-        {token && <div className="wrap status-wrap"><StatusPage token={token} /></div>}
+        {legal ? <><Legal doc={legal.doc} section={legal.section} /><SiteFooter /></>
+        : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></> : <>
 
         <section className="hero" data-scroll>
           <div className="hero-bg" aria-hidden="true">
@@ -468,6 +474,8 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (chosen) setForm((f) => ({ ...f, plan: chosen }));
   }, [chosen]);
   const plan = tiers.find((t) => t.key === form.plan) ?? null;
+  /** The place picker composes "street, town, province"; stable, so its effect does not loop. */
+  const setAddress = useCallback((address: string) => setForm((f) => (f.address === address ? f : { ...f, address })), []);
 
   const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone];
   const done = needed.filter((v) => v.trim() !== '').length;
@@ -599,9 +607,9 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
               <label htmlFor="phone">Mobile number</label>
               <input id="phone" type="tel" required maxLength={20} autoComplete="tel" placeholder="09XX XXX XXXX" value={form.phone} onChange={set('phone')} />
             </div>
-            <div className="field">
-              <label htmlFor="address">Where is the gym? <span className="opt">(town, province)</span></label>
-              <input id="address" maxLength={200} placeholder="Mamburao, Occidental Mindoro" value={form.address} onChange={set('address')} />
+            <div className="full">
+              <span className="field-legend">Where is the gym?</span>
+              <PlacePicker onChange={setAddress} />
             </div>
             <div className="field">
               <label htmlFor="member_estimate">Members you have now, roughly</label>

@@ -44,7 +44,7 @@ export default function EmailIt({ to, toName, subject, body, kind, gymId }: Prop
         {state === 'busy' ? 'Sending…' : state === 'sent' ? `Emailed to ${to}` : `Email it to ${to}`}
       </button>
       {state === 'off' && (
-        <span className="meta">Email is not set up yet (Supabase secrets RESEND_API_KEY and MAIL_FROM), so nothing was sent. Pass it on yourself.</span>
+        <span className="meta">Email is not set up yet (Supabase secrets BREVO_API_KEY and MAIL_FROM), so nothing was sent. Pass it on yourself.</span>
       )}
       {state === 'failed' && (
         <span className="err">It did not go through{why ? `: ${why.slice(0, 200)}` : ''}. Pass it on yourself.</span>

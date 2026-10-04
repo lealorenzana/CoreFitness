@@ -122,6 +122,23 @@ async (page) => {
   await page.waitForTimeout(600);
   out.push('suspended from the popup: ' + (CALLS.some(([f, b]) => f === 'set_gym_status' && b.p_status === 'suspended' && b.p_gym === 'g4') && (await page.getByRole('dialog').count()) === 0 ? 'closed after' : 'MISSING'));
 
+  // Archive: for a gym that has closed — a typed name to confirm, then it leaves every list but Archived.
+  await page.getByPlaceholder('Find a gym').fill('Alpha');
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Alpha Fitness, open' }).click();
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
+  await page.getByLabel('Why').waitFor({ timeout: 5000 });
+  await page.getByLabel('Why').fill('The gym closed in October');
+  await page.getByLabel('Type Alpha Fitness to confirm').fill('Alpha');
+  await page.getByRole('button', { name: 'Archive the gym' }).click();
+  await page.waitForTimeout(400);
+  const wrongName = /exactly/.test(await text()) && !CALLS.some(([f, b]) => f === 'set_gym_status' && b.p_status === 'archived');
+  await page.getByLabel('Type Alpha Fitness to confirm').fill('alpha fitness');
+  await page.getByRole('button', { name: 'Archive the gym' }).click();
+  await page.waitForTimeout(600);
+  out.push('archive needs the name typed, then archives: ' + (wrongName && CALLS.some(([f, b]) => f === 'set_gym_status' && b.p_status === 'archived'
+    && b.p_gym === 'g1' && /closed/.test(b.p_reason)) ? 'yes' : 'MISSING wrongName=' + wrongName));
+  await page.keyboard.press('Escape');
   await page.getByPlaceholder('Find a gym').fill('');
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Beach Body, open' }).getByRole('button', { name: 'Invite the owner' }).click();

@@ -179,3 +179,15 @@ a[data-tip], button[data-tip], [role='button'][data-tip], .tile[data-tip] { curs
 .compare td.yes { color: var(--accent-text); font-weight: 700; }
 .compare td.no { color: var(--text-3); }
 .compare tr.diff td:first-child { color: var(--text); font-weight: 600; }
+
+/* 0158: a way to pay, sent inside an application conversation */
+.bubble-pay { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--text-2);
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--hairline); }
+.pay-pick { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-2, transparent); }
+.pay-opts { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.pay-opt { display: flex; align-items: center; justify-content: flex-start; gap: 10px; text-align: left; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--hairline); background: transparent; color: var(--text); cursor: pointer; }
+.pay-opt img { width: 36px; height: 36px; border-radius: 6px; background: #fff; object-fit: contain; flex: none; }
+.pay-opt span { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
+.pay-opt small { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-opt.on { border-color: var(--accent); background: var(--accent-tint); }

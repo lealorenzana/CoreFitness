@@ -86,7 +86,7 @@ check('reading the thread marks it read', (await one(`select unread from platfor
 await db.exec(`select platform_application_reply('${app.id}', 'Standard is ₱999 a month.')`);
 await asAnon();
 const msgs = (await one(`select application_status('${token}') -> 'messages' as m`)).m;
-check('the applicant reads our answer', msgs.length === 2 && msgs[1].from_platform === true, JSON.stringify(msgs));
+check('the applicant reads our answer', msgs.length === 2 && msgs[1].from_platform === true && msgs[1].pay === null, JSON.stringify(msgs));
 
 // ---- 3. how to pay ---------------------------------------------------------------------------------
 await as(P.ownerA);
@@ -98,6 +98,29 @@ check('a QR that is not an image is refused', !!(await tryExec(`select save_paym
 await asAnon();
 const opts = await all(`select * from platform_payment_options()`);
 check('anyone sees the active ways to pay, not the switched-off one', opts.length === 1 && opts[0].id === gcash, JSON.stringify(opts.map((o) => o.label)));
+
+// ---- 3b. 0158: how to pay, sent in the conversation before they are let in ----------------------------
+await as(P.ownerA);
+check('a gym owner cannot send an applicant how to pay', !!(await tryExec(`select platform_application_send_payment('${app.id}', '${gcash}')`)));
+await as(P.pa);
+check('a switched-off method cannot be sent', !!(await tryExec(`select platform_application_send_payment('${app.id}', '${off}')`)));
+await db.exec(`select platform_application_send_payment('${app.id}', '${gcash}', 'Pay the first month here and we will let you in today.')`);
+const thr = await all(`select * from platform_application_thread('${app.id}')`);
+check('the platform\'s thread names the method sent', thr.at(-1).method_label === 'GCash' && thr.at(-1).method_kind === 'gcash', JSON.stringify(thr.at(-1)));
+await asAnon();
+const sm = (await one(`select application_status('${token}') as s`)).s;
+const card = sm.messages.at(-1);
+check('the applicant sees the method as a card in the message, while still pending', sm.status === 'pending' && card.sent_method === true
+  && card.pay.account_number === '0917 555 0101' && card.pay.qr_image.startsWith('data:image/'), JSON.stringify(card));
+check('still no full payment list before they are let in', sm.pay === null);
+await db.exec(`reset role; update platform_payment_methods set account_number = '0917 555 0202' where id = '${gcash}'`);
+await asAnon();
+check('a corrected number is corrected in the conversation', (await one(`select application_status('${token}') -> 'messages' -> -1 -> 'pay' ->> 'account_number' as n`)).n === '0917 555 0202');
+await db.exec(`reset role; update platform_payment_methods set active = false where id = '${gcash}'`);
+await asAnon();
+const gone = (await one(`select application_status('${token}') -> 'messages' -> -1 as m`)).m;
+check('a switched-off method is no longer shown, but the message says one was sent', gone.sent_method === true && gone.pay === null, JSON.stringify(gone));
+await db.exec(`reset role; update platform_payment_methods set active = true, account_number = '0917 555 0101' where id = '${gcash}'`);
 
 // ---- 4. a gym pays and says so ---------------------------------------------------------------------
 await db.exec(`reset role; update gyms set paid_until = ${TODAY} - 20 where id = '${GYM_A}'`);

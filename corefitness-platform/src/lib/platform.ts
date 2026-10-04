@@ -11,11 +11,11 @@ export interface PlatformGym {
   id: string;
   name: string;
   slug: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'cancelled' | 'archived';
   /** A key in `platform_plans` (0108), not one of three fixed words any more. */
   plan: string;
   paid_until: string | null;
-  lock_reason: 'suspended' | 'overdue' | null;
+  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
   members: number;
   staff: number;
   created_at: string;
@@ -96,7 +96,7 @@ export interface GymDue {
   plan: string;
   paid_until: string;
   days_left: number;
-  lock_reason: 'suspended' | 'overdue' | null;
+  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
   members: number;
 }
 
@@ -184,7 +184,7 @@ export const createGym = (name: string, slug: string, applicationId?: string) =>
   call<string>('create_gym', { p_name: name, p_slug: slug, p_application: applicationId ?? null });
 export const rejectApplication = (id: string, reason: string) =>
   call<void>('reject_application', { p_id: id, p_reason: reason });
-export const setGymStatus = (gym: string, status: 'active' | 'suspended', reason: string) =>
+export const setGymStatus = (gym: string, status: 'active' | 'suspended' | 'archived', reason: string) =>
   call<void>('set_gym_status', { p_gym: gym, p_status: status, p_reason: reason });
 export const setGymPlan = (gym: string, plan: string, paidUntil: string | null) =>
   call<void>('set_gym_plan', { p_gym: gym, p_plan: plan, p_paid_until: paidUntil });
@@ -356,7 +356,7 @@ export interface GymDetail {
   id: string; name: string; slug: string; status: string;
   plan: string; plan_name: string | null;
   paid_until: string | null; days_left: number | null;
-  lock_reason: 'suspended' | 'overdue' | null;
+  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
   created_at: string; onboarded_at: string | null;
   members: number; staff: number; owners: number; trainers: number;
   classes: number; checkins_30d: number; payments_30d: number;
@@ -646,7 +646,9 @@ export const capacity = async () => (await call<CapacityRow[]>('platform_capacit
 export const sweepBilling = () => { void supabase.rpc('billing_reminders_sweep').then(() => undefined, () => undefined); };
 
 // ---- 0148: applicants we talk to, and gyms that pay from anywhere ----------------------------
-export interface ApplicationMessage { id: string; from_platform: boolean; body: string; author_name: string | null; created_at: string }
+export interface ApplicationMessage { id: string; from_platform: boolean; body: string; author_name: string | null; created_at: string;
+  /** 0158: the payment method this message sent, if it sent one. */
+  method_label?: string | null; method_kind?: string | null }
 export interface PaymentMethod {
   id: string; kind: 'gcash' | 'maya' | 'bank' | 'other'; label: string; account_name: string | null;
   account_number: string | null; qr_image: string | null; instructions: string | null; sort_order: number; active: boolean;
@@ -675,6 +677,9 @@ export const publishGymTerms = (version: string | null) => call<void>('platform_
 
 export const applicationThread = (id: string) => call<ApplicationMessage[]>('platform_application_thread', { p_id: id });
 export const replyApplication = (id: string, body: string) => call<void>('platform_application_reply', { p_id: id, p_body: body });
+/** 0158: send one saved way to pay inside the conversation — the applicant sees it as a card, kept current. */
+export const sendApplicationPayment = (id: string, method: string, note: string | null) =>
+  call<void>('platform_application_send_payment', { p_id: id, p_method: method, p_note: note });
 
 export const paymentMethods = () => call<PaymentMethod[]>('platform_payment_options');
 export const savePaymentMethod = (m: Omit<PaymentMethod, 'id'> & { id?: string | null }) => call<string>('save_payment_method', {

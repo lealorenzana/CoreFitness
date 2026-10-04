@@ -31,17 +31,20 @@ function since(iso: string | null): string {
 }
 
 type Risk = { level: string; reasons: string[] };
-type Filter = 'all' | 'live' | 'setup' | 'locked' | 'risk' | 'due' | 'needs';
+type Filter = 'all' | 'live' | 'setup' | 'locked' | 'risk' | 'due' | 'needs' | 'archived';
 type Sort = 'name' | 'members' | 'due' | 'newest';
 type Dialog =
-  | { kind: 'view' | 'plan' | 'suspend' | 'invite'; gym: PlatformGym }
+  | { kind: 'view' | 'plan' | 'suspend' | 'invite' | 'archive'; gym: PlatformGym }
   | { kind: 'add' };
 
 const PER_PAGE = 9;
 const setupState = (g: PlatformGym) => g.owners === 0 || !g.onboarded;
 const dueSoon = (g: PlatformGym) => g.days_left !== null && g.days_left <= 14;
+const archived = (g: PlatformGym) => g.status === 'archived';
 const matches = (g: PlatformGym, f: Filter, risk: Map<string, Risk>) =>
-  f === 'all' ? true
+  f === 'archived' ? archived(g)
+  : archived(g) ? false
+  : f === 'all' ? true
   : f === 'live' ? !g.lock_reason && !setupState(g)
   : f === 'setup' ? !g.lock_reason && setupState(g)
   : f === 'locked' ? !!g.lock_reason
@@ -156,7 +159,9 @@ export default function Gyms() {
 
       <div className="toolbar">
         <div className="filters" role="group" aria-label="Show">
-          {([['all', 'All'], ['live', 'Live'], ['setup', 'Setting up'], ['locked', 'Read-only'], ['risk', 'At risk'], ['due', 'Due soon']] as [Filter, string][]).map(([f, label]) => (
+          {([['all', 'All'], ['live', 'Live'], ['setup', 'Setting up'], ['locked', 'Read-only'], ['risk', 'At risk'], ['due', 'Due soon'], ['archived', 'Archived']] as [Filter, string][])
+            // Archived appears once a gym has been archived — an empty chip there only crowds the bar.
+            .filter(([f]) => f !== 'archived' || filter === 'archived' || (gyms ? count(f) : 0) > 0).map(([f, label]) => (
             <button key={f} type="button" className={filter === f ? 'on' : ''} aria-pressed={filter === f} onClick={() => pick(f)}>
               {label}<b>{gyms ? count(f) : ''}</b>
             </button>
@@ -212,7 +217,8 @@ export default function Gyms() {
             onPlan={() => setDialog({ kind: 'plan', gym: dialog.gym })}
             onSuspend={() => setDialog({ kind: 'suspend', gym: dialog.gym })}
             onInvite={() => setDialog({ kind: 'invite', gym: dialog.gym })}
-            onReactivate={() => void act(dialog.gym.id, async () => { await setGymStatus(dialog.gym.id, 'active', ''); setDialog(null); })} />
+            onReactivate={() => void act(dialog.gym.id, async () => { await setGymStatus(dialog.gym.id, 'active', ''); setDialog(null); })}
+            onArchive={() => setDialog({ kind: 'archive', gym: dialog.gym })} />
         )}
       </Modal>
 
@@ -225,6 +231,29 @@ export default function Gyms() {
             confirmLabel="Suspend the gym"
             onCancel={close}
             onConfirm={async (v) => { await setGymStatus(dialog.gym.id, 'suspended', v.reason.trim()); setDialog(null); await load(); }}
+          />
+        )}
+      </Modal>
+
+      <Modal open={dialog?.kind === 'archive'} onClose={close} size="sm" label="Archive">
+        {dialog?.kind === 'archive' && (
+          <Ask
+            title={`Archive ${dialog.gym.name}?`}
+            blurb="For a gym that has closed or will not come back. It disappears from your lists (find it under Archived), stops being listed to members, and goes read-only — its records are kept, nothing is deleted, and you can restore it any time. Its owner is shown the reason."
+            fields={[
+              { key: 'reason', label: 'Why', required: true, placeholder: 'The gym closed in October' },
+              { key: 'confirm', label: `Type ${dialog.gym.name} to confirm`, required: true, placeholder: dialog.gym.name },
+            ]}
+            confirmLabel="Archive the gym"
+            onCancel={close}
+            onConfirm={async (v) => {
+              if (v.confirm.trim().toLowerCase() !== dialog.gym.name.trim().toLowerCase()) {
+                throw new Error(`Type the gym's name exactly — ${dialog.gym.name} — to archive it.`);
+              }
+              await setGymStatus(dialog.gym.id, 'archived', v.reason.trim());
+              setDialog(null);
+              await load();
+            }}
           />
         )}
       </Modal>
@@ -286,12 +315,14 @@ export default function Gyms() {
 
 interface CardProps {
   gym: PlatformGym; risk?: Risk; busy: boolean;
-  onPlan: () => void; onSuspend: () => void; onInvite: () => void; onReactivate: () => void;
+  onPlan: () => void; onSuspend: () => void; onInvite: () => void; onReactivate: () => void; onArchive: () => void;
 }
 
 function StatusPill({ gym }: { gym: PlatformGym }) {
   return gym.lock_reason ? (
-    <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}</span>
+    <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended'
+      : gym.lock_reason === 'archived' ? 'Archived'
+      : gym.lock_reason === 'cancelled' ? 'Left Core Fitness' : 'Overdue — read-only'}</span>
   ) : (
     <span className="pill ok"><span className="dot" />{setupState(gym) ? 'Setting up' : 'Live'}</span>
   );
@@ -319,7 +350,7 @@ function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
  * it holds buttons of its own — and its footer buttons stop the click so they
  * open their own popup, not the quick view.
  */
-function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReactivate }: CardProps & { onOpen: () => void }) {
+function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReactivate }: Omit<CardProps, 'onArchive'> & { onOpen: () => void }) {
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const warn = !!gym.lock_reason || risk?.level === 'high';
   return (
@@ -363,7 +394,7 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
         <button className="btn ghost" disabled={busy} onClick={stop(onPlan)}>Plan</button>
         {gym.status === 'active'
           ? <button className="btn ghost" disabled={busy} onClick={stop(onSuspend)}>Suspend</button>
-          : <button className="btn" disabled={busy} onClick={stop(onReactivate)}>Reactivate</button>}
+          : <button className="btn" disabled={busy} onClick={stop(onReactivate)}>{gym.status === 'archived' ? 'Restore' : 'Reactivate'}</button>}
         <span className="open">Details <ChevronRight size={14} /></span>
       </div>
     </div>
@@ -371,7 +402,7 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
 }
 
 /** The popup a card opens: the gym at a glance, its decisions, and its full page. */
-function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onReactivate }: CardProps & { onFull: () => void }) {
+function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onReactivate, onArchive }: CardProps & { onFull: () => void }) {
   const joined = day(gym.created_at);
   return (
     <>
@@ -415,7 +446,8 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onRea
         <button className="btn ghost" disabled={busy} onClick={onPlan}>Change plan</button>
         {gym.status === 'active'
           ? <button className="btn ghost" disabled={busy} onClick={onSuspend}>Suspend</button>
-          : <button className="btn ghost" disabled={busy} onClick={onReactivate}>Reactivate</button>}
+          : <button className="btn ghost" disabled={busy} onClick={onReactivate}>{gym.status === 'archived' ? 'Restore' : 'Reactivate'}</button>}
+        {gym.status !== 'archived' && <button className="btn ghost" disabled={busy} onClick={onArchive}>Archive</button>}
       </div>
     </>
   );
