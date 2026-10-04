@@ -663,6 +663,16 @@ export interface PaymentClaim {
 export const SITE = 'https://corefitness-site.vercel.app';
 export const statusLink = (token: string) => `${SITE}/#status/${token}`;
 
+/** 0152: the gym documents — which version is in effect, and which gyms have agreed to it. */
+export interface GymTermsRow {
+  gym_id: string; gym_name: string; published: string | null;
+  accepted_version: string | null; accepted_at: string | null; accepted_by: string | null;
+  /** The version the owner agreed to when they applied (0150), if they did. */
+  from_application: string | null;
+}
+export const gymTerms = () => call<GymTermsRow[]>('platform_gym_terms');
+export const publishGymTerms = (version: string | null) => call<void>('platform_publish_gym_terms', { p_version: version });
+
 export const applicationThread = (id: string) => call<ApplicationMessage[]>('platform_application_thread', { p_id: id });
 export const replyApplication = (id: string, body: string) => call<void>('platform_application_reply', { p_id: id, p_body: body });
 

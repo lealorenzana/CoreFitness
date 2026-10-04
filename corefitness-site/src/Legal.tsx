@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from './supabase';
 import Icon from './Icon';
-import { buildDocs, DOC_ORDER, FALLBACK_FACTS, IN_EFFECT, VERSION, type DocKey, type Facts } from './legal';
+import { buildDocs, DOC_ORDER, inEffect, VERSION, type DocKey } from './legal';
+import { usePlatformFacts } from './usePlatformFacts';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -28,26 +28,10 @@ const splitTitle = (t: string) => {
  * app") rather than printing one somebody typed.
  */
 export default function Legal({ doc, section }: { doc: DocKey; section: string | null }) {
-  const [facts, setFacts] = useState<Facts>(FALLBACK_FACTS);
+  const facts = usePlatformFacts();
+  const live = inEffect(facts);
   const [active, setActive] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      if (!supabase) return;
-      const { data, error } = await supabase.rpc('platform_public_terms');
-      if (error || !data) return;
-      const d = data as Record<string, unknown>;
-      setFacts({
-        businessName: typeof d.business_name === 'string' && d.business_name.trim() ? d.business_name.trim() : FALLBACK_FACTS.businessName,
-        address: typeof d.business_address === 'string' && d.business_address.trim() ? d.business_address.trim() : null,
-        email: typeof d.business_email === 'string' && d.business_email.trim() ? d.business_email.trim() : null,
-        phone: typeof d.business_phone === 'string' && d.business_phone.trim() ? d.business_phone.trim() : null,
-        graceDays: typeof d.grace_days === 'number' ? d.grace_days : null,
-        reminderDays: Array.isArray(d.reminder_days) ? (d.reminder_days as number[]) : null,
-      });
-    })();
-  }, []);
 
   const docs = useMemo(() => buildDocs(facts), [facts]);
   const d = docs[doc];
@@ -110,12 +94,14 @@ export default function Legal({ doc, section }: { doc: DocKey; section: string |
           <div className="lg-meta">
             <span className="pill"><Icon name="clock" /> Version of {prettyDate(VERSION)}</span>
             <span className="pill"><Icon name="shield" /> Written to {d.law}</span>
-            {!IN_EFFECT && <span className="pill lg-draft"><Icon name="alert" /> Draft — not yet in effect</span>}
+            {!live && <span className="pill lg-draft"><Icon name="alert" /> Draft — not yet in effect</span>}
           </div>
           <p className="lede">{d.lede}</p>
-          {!IN_EFFECT && (
+          {!live && (
             <p className="note bad lg-draft-note">
-              <Icon name="alert" /> This is a draft under review. Nobody has agreed to it yet, and it binds no one until the date above is replaced by the date it takes effect.
+              <Icon name="alert" /> {facts.published
+                ? `This wording is a draft. The version in effect is the one of ${prettyDate(facts.published)}; this one binds no one until Core Fitness puts it in effect.`
+                : 'This is a draft under review. Nobody has agreed to it, and it binds no one until Core Fitness puts it in effect.'}
             </p>
           )}
         </div>

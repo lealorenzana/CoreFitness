@@ -6,6 +6,7 @@ import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
 import SubscriptionBanner from '../SubscriptionBanner';
 import AnnouncementBanner from '../AnnouncementBanner';
+import GymTermsBanner from '../GymTermsBanner';
 
 export default function Layout() {
   const location = useLocation();
@@ -32,6 +33,8 @@ export default function Layout() {
         <SubscriptionBanner />
         {/* Core Fitness's announcements to gyms (0137). */}
         <AnnouncementBanner />
+        {/* The gym documents, until an owner agrees to the version in effect (0152). */}
+        <GymTermsBanner />
         <main
           ref={mainRef}
           className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-dark-border scrollbar-track-dark"

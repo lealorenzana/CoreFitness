@@ -6,6 +6,7 @@ import {
 } from '../lib/platform';
 import InfoDot from '../components/InfoDot';
 import PaymentMethods from '../components/PaymentMethods';
+import GymDocuments from '../components/GymDocuments';
 
 const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -50,6 +51,7 @@ export default function Settings() {
   const ref = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/^https?:\/\//, '').split('.')[0] ?? 'not set';
 
   return (
+    <>
     <div className="set">
       <form className="card set-6" onSubmit={(e) => { e.preventDefault(); void save('business'); }}>
         <h2 className="section-title"><Building size={14} /> Business and receipts <InfoDot tip="Printed on every receipt a gym gets for paying Core Fitness — never typed into a screen." /></h2>
@@ -138,5 +140,8 @@ export default function Settings() {
         </ul>
       </section>
     </div>
+    {/* Below the grid, not in it: the grid makes every row as tall as its tallest card. */}
+    <div style={{ marginTop: 16 }}><GymDocuments /></div>
+    </>
   );
 }

@@ -5,7 +5,8 @@ import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
 import Legal, { parseLegalHash } from './Legal';
-import { IN_EFFECT, VERSION } from './legal';
+import { inEffect, VERSION } from './legal';
+import { usePlatformFacts } from './usePlatformFacts';
 import { useCountUp, useMotionEngine } from './motion';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -454,6 +455,8 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   const [copied, setCopied] = useState(false);
   /** Agreement to the gym documents (0150) — asked only once they are in effect. */
   const [agreed, setAgreed] = useState(false);
+  /** In effect only when the platform has published this very text (0152). */
+  const IN_EFFECT = inEffect(usePlatformFacts());
 
   // A tier card's "Choose" fills the plan; so does there being only one.
   useEffect(() => {

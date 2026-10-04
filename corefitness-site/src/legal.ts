@@ -24,12 +24,15 @@
  * stores this string (accept_gym_terms, 0150), so changing a word means changing
  * the date — the old text stays in git history under the old one.
  *
- * `IN_EFFECT` is false until the platform owner has had these reviewed. While it
- * is false every document says "Draft — not yet in effect" and the apply form
- * does not ask anybody to agree to it: agreeing to a draft records nothing true.
+ * **Whether they are in effect is not decided here.** The platform owner
+ * publishes a version from the platform app's Settings (0152,
+ * `platform_billing.gym_terms_published`), and this text is in effect only when
+ * that published version *is* this VERSION — see `inEffect()`. Until then every
+ * document says "Draft — not yet in effect" and the apply form does not ask
+ * anybody to agree: agreeing to a draft records nothing true. A site deployed
+ * with newer, unpublished wording therefore calls *that wording* a draft.
  */
 export const VERSION = '2026-10-03';
-export const IN_EFFECT = false;
 
 export type DocKey = 'terms' | 'dpa' | 'privacy';
 
@@ -40,10 +43,15 @@ export interface Facts {
   phone: string | null;
   graceDays: number | null;
   reminderDays: number[] | null;
+  /** The version in effect (0152), or null: drafts, not read yet, or 0152 not pasted. */
+  published: string | null;
 }
 
+/** This text is the one in effect. */
+export const inEffect = (f: Facts) => f.published === VERSION;
+
 export const FALLBACK_FACTS: Facts = {
-  businessName: 'Core Fitness', address: null, email: null, phone: null, graceDays: null, reminderDays: null,
+  businessName: 'Core Fitness', address: null, email: null, phone: null, graceDays: null, reminderDays: null, published: null,
 };
 
 export interface DocSection { id: string; title: string; body: string | string[] }
