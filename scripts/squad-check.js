@@ -115,6 +115,12 @@ async (page) => {
   let inSquad = false;
   const FN = {
     settle_squads: () => 0,
+    // The squad streak (0153): 3 weeks running, short of the target on the last open day.
+    my_squad_streak: () => !inSquad ? null : { squad_id: 'sq1', name: 'Iron Barkada', target: 9, current: 3, best: 5,
+      days_this_week: 4, needed: 5, days_left: 1, members: 3, at_risk: true, out_of_reach: false,
+      history: ['before', 'before', 'before', 'hit', 'hit', 'miss', 'hit', 'hit', 'miss', 'hit', 'hit', 'current'].map((state, i) => ({
+        week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10), days: state === 'hit' ? 10 : 4, state })) },
+    squad_streaks: () => [{ squad_name: 'Iron Barkada', current_streak: 3, is_mine: inSquad }, { squad_name: 'Morning Crew', current_streak: 7, is_mine: false }],
     settle_gym_goals: () => 0,
     join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
     create_squad: () => { inSquad = true; return 'sq1'; },
@@ -244,7 +250,10 @@ async (page) => {
   await page.waitForTimeout(1500);
   out.push('join sent: ' + (CALLS.join_squad?.p_code === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
   t = await text();
-  out.push("the squad's week: " + (/4\s*\/ 9 days this week/.test(t) && /5 more between you by Sunday/.test(t) ? '4 of 9' : 'MISSING'));
+  out.push("the squad's streak: " + (/3\s*week squad streak/.test(t) && /Ends tonight/.test(t) ? '3 weeks, ends tonight' : 'MISSING'));
+  out.push("the squad's week: " + (/4\s*\/ 9 days this week/.test(t) && /5 more between you today keeps the squad streak alive/.test(t) ? '4 of 9, 5 more today' : 'MISSING'));
+  out.push("the squad's twelve weeks: " + ((await page.locator('.streak-week').count()) === 12 && (await page.locator('.streak-week--hit').count()) === 6 ? '6 reached' : 'MISSING'));
+  out.push("the board shows each squad's streak: " + (/Morning Crew/.test(t) && /🔥 7-week streak/.test(t) && /🔥 3-week streak/.test(t) ? 'yes' : 'MISSING'));
   out.push('who has not trained yet: ' + (/Joy Not in yet this week/.test(t) ? 'Joy' : 'MISSING'));
   out.push('invite code shown: ' + (/ABCDEF/.test(t) ? 'shown' : 'MISSING'));
   out.push('the squad board: ' + (/Morning Crew/.test(t) && /Target hit/.test(t) ? 'shown' : 'MISSING'));

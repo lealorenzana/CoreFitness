@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Check, Flame, Snowflake } from '@phosphor-icons/react';
+import { Check } from '@phosphor-icons/react';
 import GlassSheet from '../ui/GlassSheet';
 import { Chip, NocButton } from '../ui/noc';
 import StreakOrb from './StreakOrb';
-import { MILESTONES, TIER_LABEL, flameTier, type StreakCard, type StreakWeek } from '../../lib/api/streak';
-
-const weekLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+import StreakWeeks from './StreakWeeks';
+import { MILESTONES, TIER_LABEL, closedDaysLabel, flameTier, type StreakCard, type StreakWeek } from '../../lib/api/streak';
 
 const STATE_WORDS: Record<StreakWeek['state'], string> = {
   hit: 'Target reached', frozen: 'Frozen — it did not break the streak', miss: 'Target missed',
@@ -28,7 +26,6 @@ export default function StreakSheet({
   const [target, setTarget] = useState(card.target);
   const [nudges, setNudges] = useState(card.nudges);
   const [saving, setSaving] = useState(false);
-  const [picked, setPicked] = useState<number | null>(null);
   // A sheet reopened for a changed card starts from the card, not stale edits.
   const [shownFor, setShownFor] = useState(card);
   if (shownFor !== card) { setShownFor(card); setTarget(card.target); setNudges(card.nudges); }
@@ -37,7 +34,8 @@ export default function StreakSheet({
   const best = Math.max(card.best, card.current);
   const next = MILESTONES.find((m) => m > best) ?? null;
   const prev = [...MILESTONES].reverse().find((m) => m <= best) ?? 0;
-  const pickedWeek = picked !== null ? card.history[picked] : null;
+  // The member's own plan (0030), offered — never applied — as a target (2–5).
+  const planTarget = card.planDays >= 2 ? Math.min(5, card.planDays) : null;
 
   const save = async () => {
     setSaving(true);
@@ -66,24 +64,7 @@ export default function StreakSheet({
       {card.history.length > 0 && (
         <section style={{ marginTop: 22 }} aria-label="Your last twelve weeks">
           <p className="eyebrow">Last 12 weeks</p>
-          <div className="streak-weeks" role="list">
-            {card.history.map((w, i) => (
-              <button key={w.week} role="listitem" onClick={() => setPicked(picked === i ? null : i)}
-                className={`streak-week streak-week--${w.state}${picked === i ? ' is-picked' : ''}`}
-                aria-label={`Week of ${weekLabel(w.week)}: ${STATE_WORDS[w.state]}, ${w.days} training ${w.days === 1 ? 'day' : 'days'}`}
-                style={{ ['--i' as string]: i }}>
-                {w.state === 'hit' ? <Flame size={15} weight="fill" />
-                  : w.state === 'frozen' ? <Snowflake size={14} weight="bold" />
-                  : w.state === 'current' ? <span className="streak-week__dot" />
-                  : null}
-              </button>
-            ))}
-          </div>
-          <p style={{ minHeight: 18, marginTop: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
-            {pickedWeek
-              ? `Week of ${weekLabel(pickedWeek.week)} · ${pickedWeek.days} training ${pickedWeek.days === 1 ? 'day' : 'days'} · ${STATE_WORDS[pickedWeek.state]}`
-              : 'Tap a week to see it.'}
-          </p>
+          <StreakWeeks weeks={card.history} words={STATE_WORDS} />
         </section>
       )}
 
@@ -120,6 +101,16 @@ export default function StreakSheet({
           Sunday — to keep your streak going. The week in progress never breaks it, and neither does a
           week your membership is frozen.
         </p>
+        {planTarget && planTarget !== target && (
+          <button onClick={() => setTarget(planTarget)} className="streak-plan-hint">
+            Your training plan has {card.planDays} days a week — <b>use {planTarget}</b>
+          </button>
+        )}
+        {card.closedDays.length > 0 && (
+          <p style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
+            The gym is closed on {closedDaysLabel(card.closedDays)}, so those days never count as days left.
+          </p>
+        )}
         <div className="flex flex-wrap" style={{ gap: 8, marginTop: 12 }} role="group" aria-label="Days a week">
           {[2, 3, 4, 5].map((n) => (
             <Chip key={n} label={`${n} days`} on={target === n} onClick={() => setTarget(n)} />

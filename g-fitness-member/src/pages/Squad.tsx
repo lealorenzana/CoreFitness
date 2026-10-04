@@ -6,6 +6,8 @@ import { Field, TextInput } from '../components/ui/Field';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
+import SquadStreakPanel from '../components/streak/SquadStreakPanel';
+import { mySquadStreak, squadStreaks, type SquadStreak } from '../lib/api/streak';
 import { errorMessage } from '../utils/errorMessage';
 import {
   createSquad, joinSquad, leaveSquad, mySquad, settleSquadsAndGoals, squadBoard,
@@ -28,6 +30,9 @@ export default function Squad() {
   const [squad, setSquad] = useState<MySquad | null | undefined>(undefined);
   const [live, setLive] = useState(true);
   const [board, setBoard] = useState<SquadBoardRow[]>([]);
+  // The squad streak (0153); null before it is pasted, and the plain week panel stays.
+  const [sqStreak, setSqStreak] = useState<SquadStreak | null>(null);
+  const [streaks, setStreaks] = useState<Map<string, number>>(new Map());
   const [name, setName] = useState('');
   const [target, setTarget] = useState('10');
   const [code, setCode] = useState('');
@@ -35,10 +40,12 @@ export default function Squad() {
 
   const load = useCallback(async () => {
     await settleSquadsAndGoals();
-    const [s, b] = await Promise.all([mySquad(), squadBoard()]);
+    const [s, b, ss, st] = await Promise.all([mySquad(), squadBoard(), mySquadStreak(), squadStreaks()]);
     setLive(s !== undefined);
     setSquad(s === undefined ? null : s);
     setBoard(b);
+    setSqStreak(ss);
+    setStreaks(st);
   }, []);
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
@@ -73,7 +80,7 @@ export default function Squad() {
 
       {squad ? (
         <>
-          <Panel>
+          {sqStreak ? <SquadStreakPanel s={sqStreak} /> : <Panel>
             <p className="tabular-nums" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, color: 'var(--color-text-primary)' }}>
               {squad.days}<span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-muted)' }}> / {squad.target} days this week</span>
             </p>
@@ -83,7 +90,7 @@ export default function Squad() {
                 ? 'Target reached this week — the squad points are yours.'
                 : `${squad.target - squad.days} more between you by Sunday.`}
             </p>
-          </Panel>
+          </Panel>}
 
           <section>
             <SectionHead title="This week" meta={`${squad.members.length} of 5`} />
@@ -148,7 +155,7 @@ export default function Squad() {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No squads yet. Be the first.</p>
         ) : board.map((b, i) => (
           <LineRow key={i} gutter={`#${i + 1}`} gutterWidth={36} title={`${b.name}${b.isMine ? ' (yours)' : ''}`}
-            meta={`${b.members} member${b.members === 1 ? '' : 's'} · ${b.days} / ${b.target} days`}
+            meta={`${b.members} member${b.members === 1 ? '' : 's'} · ${b.days} / ${b.target} days${(streaks.get(b.name) ?? 0) > 0 ? ` · 🔥 ${streaks.get(b.name)}-week streak` : ''}`}
             action={b.reached ? <StatusPill label="Target hit" tone="structure" /> : undefined}
             last={i === board.length - 1} />
         ))}

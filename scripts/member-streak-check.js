@@ -115,6 +115,8 @@ async (page) => {
   let STREAK = { target: 3, current: 4, best: 6, days_this_week: 2, needed: 1, days_left: 1,
     week: [true, false, true, false, false, false, false], today_index: 6, frozen: false,
     at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true,
+    // 0153: a four-day training plan, and a gym closed on Sundays.
+    plan_days: 4, closed_days: [0],
     // The last twelve weeks (0152), oldest first: two before joining, a missed week,
     // a frozen week, four reached, and this week in progress.
     history: ['before', 'before', 'hit', 'miss', 'hit', 'frozen', 'hit', 'hit', 'hit', 'hit', 'hit', 'current'].map((state, i) => ({
@@ -302,8 +304,13 @@ async (page) => {
   out.push('the sheet says what counts: ' + (/check in or log a workout/.test(st) && /neither does a week your membership is frozen/.test(st) ? 'yes' : 'MISSING'));
   await shot('streak-sheet');
 
-  // 3 - changing the target and the reminder.
-  await page.getByRole('button', { name: '4 days' }).click();
+  out.push('the plan is offered, never applied: ' + (/Your training plan has 4 days a week — use 4/.test(st) ? 'offered' : 'MISSING'));
+  out.push('closed days are explained: ' + (/The gym is closed on Sun, so those days never count as days left/.test(st) ? 'yes' : 'MISSING'));
+
+  // 3 - matching the plan, then the reminder.
+  await page.getByRole('button', { name: /Your training plan has 4 days a week/ }).click();
+  out.push('one tap matches the plan: ' + ((await page.getByRole('button', { name: '4 days' }).getAttribute('aria-pressed')) === 'true'
+    && (await page.getByRole('button', { name: /Your training plan has/ }).count()) === 0 ? '4 days chosen' : 'MISSING'));
   await page.getByLabel(/Remind me before it breaks/).uncheck();
   await page.getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(1200);

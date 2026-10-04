@@ -56,6 +56,7 @@
     { "file": "admin-season-check.js", "app": "admin" },
     { "file": "admin-tv-check.js", "app": "admin" },
     { "file": "admin-support-check.js", "app": "admin" },
+    { "file": "admin-closed-days-check.js", "app": "admin" },
     { "file": "admin-invite-email-check.js", "app": "admin" },
     { "file": "admin-subscription-check.js", "app": "admin" },
     { "file": "admin-tooltips-check.js", "app": "admin" },

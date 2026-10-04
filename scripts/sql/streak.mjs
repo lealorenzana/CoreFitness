@@ -227,6 +227,73 @@ await asOwner();
 const report52 = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0152.sql`, 'utf8'))) ?? '';
 check('verify0152 reports every line OK', /REPORT 0152/.test(report52) && !/NOT OK/.test(report52), report52);
 
+// ---- 7c. closed days, the plan, the squad streak (0153) --------------------------------
+await asOwner();
+const dow = (await one(`select extract(dow from (now() at time zone 'Asia/Manila'))::int as d`)).d;
+const leftAll = (await one(`select (manila_week_start() + 6) - (now() at time zone 'Asia/Manila')::date + 1 as n`)).n;
+await db.exec(`update gym_settings set closed_days = '{}', closing_time = null where gym_id = '${GYM_A}'`);
+check('no closed days: every day left counts', (await one(`select gym_days_left('${GYM_A}') as n`)).n === leftAll);
+// Close every day except today.
+const others = [0, 1, 2, 3, 4, 5, 6].filter((d) => d !== dow);
+await db.exec(`update gym_settings set closed_days = '{${others.join(',')}}' where gym_id = '${GYM_A}'`);
+check('closed every other day: only today is left', (await one(`select gym_days_left('${GYM_A}') as n`)).n === 1);
+await as(STAFF);
+check("…and the streak card's days left follows", (await one(`select member_streak('${M[0]}') as c`)).c.days_left === 1);
+await asOwner();
+await db.exec(`update gym_settings set closing_time = '00:00' where gym_id = '${GYM_A}'`);
+check('today, after closing time: nothing left', (await one(`select gym_days_left('${GYM_A}') as n`)).n === 0);
+await db.exec(`update gym_settings set closing_time = 'late-ish' where gym_id = '${GYM_A}'`);
+check('a closing time that is not a time is "not set", never an error', (await one(`select gym_days_left('${GYM_A}') as n`)).n === 1);
+check('a closed day outside 0–6 is refused', !!(await tryExec(`update gym_settings set closed_days = '{7}' where gym_id = '${GYM_A}'`)));
+check('closed all seven days is refused', !!(await tryExec(`update gym_settings set closed_days = '{0,1,2,3,4,5,6}' where gym_id = '${GYM_A}'`)));
+
+// The plan: three weekdays named.
+await db.exec(`insert into gym_plans (gym_id, member_id, day_of_week) values
+  ('${GYM_A}', '${M[0]}', 1), ('${GYM_A}', '${M[0]}', 3), ('${GYM_A}', '${M[0]}', 5) on conflict do nothing`);
+await as(M[0]);
+const cp = (await one(`select my_streak() as c`)).c;
+check("the card carries the plan's days (3) and the gym's closed days", cp.plan_days === 3 && Array.isArray(cp.closed_days) && cp.closed_days.length === 6, JSON.stringify([cp.plan_days, cp.closed_days]));
+check('…and the plan changes nothing by itself: the target is still theirs', cp.target === 2);
+
+// The squad: M[0] and M[1], target 4 a week, begun four weeks ago.
+await asOwner();
+const SQ = 'a5100000-0000-4000-8000-0000000005a1';
+await db.exec(`insert into squads (id, gym_id, name, code, weekly_target, created_by, created_at)
+    values ('${SQ}', '${GYM_A}', 'Iron Barkada', 'IRONBK', 4, '${M[0]}', now() - interval '27 days');
+  insert into squad_members (gym_id, squad_id, member_id) values ('${GYM_A}', '${SQ}', '${M[0]}'), ('${GYM_A}', '${SQ}', '${M[1]}');`);
+const sd = async (w) => (await one(`select squad_days('${SQ}', manila_week_start(${-w})) as n`)).n;
+const weekly = [await sd(3), await sd(2), await sd(1), await sd(0)];
+// Expected from squad_days alone: the run ending last week (this week is not reached).
+let expect = 0; for (let w = 1; w <= 3; w++) { if ((await sd(w)) >= 4) expect++; else break; }
+if (weekly[3] >= 4) expect++;
+await as(M[0]);
+const sq = (await one(`select my_squad_streak() as c`)).c;
+check(`the squad streak counts weeks the squad reached its target (days ${weekly.join('/')})`, sq && sq.current === expect && sq.target === 4, JSON.stringify(sq && { current: sq.current, best: sq.best }));
+check('…with twelve weeks of history, and weeks before the squad began drawn as before', sq.history.length === 12 && sq.history[0].state === 'before', JSON.stringify(sq.history.slice(0, 3)));
+check('…this week in progress never breaks it', weekly[3] >= 4 || sq.history[11].state === 'current');
+await as(M[2]);
+check('a member outside the squad has no squad streak', (await one(`select my_squad_streak() as c`)).c === null);
+const board = (await db.query(`select * from squad_streaks()`)).rows;
+check('the board shows squad names and streaks only, never codes or members', board.some((r) => r.squad_name === 'Iron Barkada' && r.current_streak === expect)
+  && Object.keys(board[0] ?? {}).every((k) => ['squad_name', 'current_streak', 'is_mine'].includes(k)), JSON.stringify(board));
+check("another member cannot read someone's squad streak", !!(await tryExec(`select member_squad_streak('${M[0]}')`)));
+await as(STAFF);
+check('the desk can, without the history', (await (async () => { const c = (await one(`select member_squad_streak('${M[0]}') as c`)).c; return c && c.current === expect && !('history' in c); })()));
+
+// The squad nudge: on the gym's last open day, short of the target, with a streak to lose.
+await asOwner();
+await db.exec(`update gym_settings set closing_time = null where gym_id = '${GYM_A}'`);
+const sqNow = await (async () => { await as(M[0]); return (await one(`select my_squad_streak() as c`)).c; })();
+await as(STAFF);
+const swept = (await db.query(`select * from streak_nudge_sweep()`)).rows.filter((r) => /streak ends tonight/.test(r.title));
+check(sqNow.at_risk ? 'a squad at risk tells each of its members once' : 'a squad not at risk tells nobody',
+  sqNow.at_risk ? swept.length === 2 && swept.every((r) => /Iron Barkada's/.test(r.title)) : swept.length === 0, JSON.stringify({ at_risk: sqNow.at_risk, swept }));
+check('…and never twice', (await db.query(`select * from streak_nudge_sweep()`)).rows.filter((r) => /streak ends tonight/.test(r.title)).length === 0);
+await asOwner();
+await db.exec(`update gym_settings set closed_days = '{}', closing_time = null where gym_id = '${GYM_A}'`);
+const report53 = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0153.sql`, 'utf8'))) ?? '';
+check('verify0153 reports every line OK', /REPORT 0153/.test(report53) && !/NOT OK/.test(report53), report53);
+
 // ---- 8. tenancy and the paste-after verification -----------------------------------------
 check('streak_milestones is on the tenancy list', (await one(`select 'streak_milestones' = any(tenancy_gym_tables()) as x`)).x);
 const report = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0151.sql`, 'utf8'))) ?? '';

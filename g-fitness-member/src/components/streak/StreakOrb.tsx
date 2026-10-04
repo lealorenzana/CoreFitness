@@ -27,7 +27,10 @@ export default function StreakOrb({
   const stroke = Math.max(5, Math.round(size / 14));
   const r = (size - stroke) / 2 - 2;
   const c = 2 * Math.PI * r;
-  const n = Math.max(1, target);
+  // A segment per target day up to ten; past that (a squad's target can be 35)
+  // segments would be slivers, so the ring becomes one arc filled by the fraction.
+  const continuous = target > 10;
+  const n = continuous ? 1 : Math.max(1, target);
   const gap = n > 1 ? Math.min(10, c / n / 4) : 0;
   const seg = c / n - gap;
   const filled = Math.min(days, n);
@@ -43,7 +46,15 @@ export default function StreakOrb({
             <stop offset="100%" stopColor="var(--color-primary)" />
           </linearGradient>
         </defs>
-        {Array.from({ length: n }, (_, i) => {
+        {continuous && (
+          <>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} stroke="rgba(233,233,237,0.10)" />
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
+              className="streak-seg streak-seg--on" stroke="url(#streak-seg)"
+              strokeDasharray={`${Math.max(0.01, c * Math.min(1, days / Math.max(1, target)))} ${c}`} />
+          </>
+        )}
+        {!continuous && Array.from({ length: n }, (_, i) => {
           const state = i < filled ? 'on' : i === filled && live ? 'next' : 'off';
           return (
             <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"

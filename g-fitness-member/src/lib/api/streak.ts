@@ -29,12 +29,17 @@ export interface StreakCard {
   nudges: boolean;
   /** Oldest first; empty before 0152 is pasted. */
   history: StreakWeek[];
+  /** Weekdays the member's own training plan names (0030); 0 = no plan, or before 0153. */
+  planDays: number;
+  /** Days the gym is closed, 0 = Sunday (0153). */
+  closedDays: number[];
 }
 
 type Row = {
   target: number; current: number; best: number; days_this_week: number; needed: number; days_left: number;
   week: boolean[]; today_index: number; frozen: boolean; at_risk: boolean; out_of_reach: boolean;
   next_milestone: number | null; nudges: boolean; history?: StreakWeek[];
+  plan_days?: number; closed_days?: number[];
 };
 
 export const toStreak = (r: Row): StreakCard => ({
@@ -42,6 +47,8 @@ export const toStreak = (r: Row): StreakCard => ({
   daysLeft: r.days_left, week: r.week ?? [], todayIndex: r.today_index, frozen: r.frozen, atRisk: r.at_risk,
   outOfReach: r.out_of_reach, nextMilestone: r.next_milestone, nudges: r.nudges,
   history: Array.isArray(r.history) ? r.history : [],
+  planDays: r.plan_days ?? 0,
+  closedDays: Array.isArray(r.closed_days) ? r.closed_days : [],
 });
 
 /**
@@ -101,4 +108,45 @@ export function streakLine(s: StreakCard): { text: string; tone: 'state' | 'acti
     text: `${s.needed} more training ${s.needed === 1 ? 'day' : 'days'} this week ${s.current > 0 ? 'keeps it going' : 'starts a streak'}.`,
     tone: 'action',
   };
+}
+
+/** A squad's streak (0153): consecutive weeks the squad reached its weekly target. */
+export interface SquadStreak {
+  name: string; target: number; current: number; best: number; daysThisWeek: number; needed: number;
+  daysLeft: number; members: number; atRisk: boolean; outOfReach: boolean; history: StreakWeek[];
+}
+
+/** null when not in a squad, Squads switched off, or before 0153. */
+export async function mySquadStreak(): Promise<SquadStreak | null> {
+  const { data, error } = await supabase.rpc('my_squad_streak');
+  if (error || !data) return null;
+  const r = data as Record<string, unknown>;
+  return {
+    name: String(r.name), target: Number(r.target), current: Number(r.current), best: Number(r.best),
+    daysThisWeek: Number(r.days_this_week), needed: Number(r.needed), daysLeft: Number(r.days_left),
+    members: Number(r.members), atRisk: Boolean(r.at_risk), outOfReach: Boolean(r.out_of_reach),
+    history: Array.isArray(r.history) ? (r.history as StreakWeek[]) : [],
+  };
+}
+
+/** The board's squad streaks — names and numbers only. Empty before 0153. */
+export async function squadStreaks(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('squad_streaks');
+  if (error || !Array.isArray(data)) return new Map();
+  return new Map((data as { squad_name: string; current_streak: number }[]).map((r) => [r.squad_name, r.current_streak]));
+}
+
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** "Sun" / "Sat and Sun" — the gym's closed days, said plainly. */
+export const closedDaysLabel = (days: number[]) => {
+  const names = [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_SHORT[d]);
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+};
+
+/** A trainee's squad streak, for their coach (0153). null when none, not visible, or before 0153. */
+export async function memberSquadStreak(memberId: string): Promise<{ current: number; atRisk: boolean } | null> {
+  const { data, error } = await supabase.rpc('member_squad_streak', { p_member: memberId });
+  if (error || !data) return null;
+  const r = data as Record<string, unknown>;
+  return { current: Number(r.current), atRisk: Boolean(r.at_risk) };
 }
