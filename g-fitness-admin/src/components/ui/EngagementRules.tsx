@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Coins, Target, Trophy } from 'lucide-react';
+import { Target, Trophy } from 'lucide-react';
 import Button from './Button';
 import Modal from './Modal';
 import { Section } from './kit';
 import { showToast } from '../../utils/toast';
 import {
-  challengeStandings, goalTemplateUsage, listGoalTemplates, listPointRules, updateGoalTemplate, updatePointRule,
-  type GoalTemplate, type PointRule, type Standing,
+  challengeStandings, goalTemplateUsage, listGoalTemplates, updateGoalTemplate,
+  type GoalTemplate, type Standing,
 } from '../../lib/api/engagementRules';
 
 const input = 'h-9 rounded-lg px-2.5 text-xs text-white outline-none';
@@ -19,80 +19,6 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
       style={{ background: on ? 'var(--color-primary)' : 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
       <span className="absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all" style={{ left: on ? 18 : 2 }} />
     </button>
-  );
-}
-
-/**
- * How members earn CORE points (0051's `point_rules`). The member's Rewards
- * screen lists these under "How you earn", so what is typed here is what they
- * read. Points already earned are never recalculated — a change applies to
- * points earned from now on.
- */
-export function PointRulesSection() {
-  const [rules, setRules] = useState<PointRule[] | null>(null);
-  const [draft, setDraft] = useState<Record<string, { label: string; points: string }>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const r = await listPointRules();
-        if (alive) setRules(r);
-      } catch {
-        if (alive) setFailed(true);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  const save = async (rule: PointRule, patch: Partial<Pick<PointRule, 'label' | 'points' | 'is_active'>>) => {
-    setBusy(rule.key);
-    try {
-      await updatePointRule(rule.key, patch);
-      setRules((rs) => rs?.map((r) => (r.key === rule.key ? { ...r, ...patch } : r)) ?? null);
-      setDraft((d) => { const n = { ...d }; delete n[rule.key]; return n; });
-      showToast('Saved — members see it next time they open Rewards', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save', 'error');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <Section title="How members earn points" icon={Coins} count={rules?.filter((r) => r.is_active).length}
-      hint="Shown to members under “How you earn”. Changes apply from now on; points already earned stay.">
-      {failed ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>The point rules could not be loaded.</p>
-      ) : !rules ? (
-        <div className="h-24 rounded-lg animate-pulse" style={{ background: 'var(--color-surface-raised)' }} />
-      ) : (
-        <div className="space-y-1.5">
-          {rules.map((r) => {
-            const d = draft[r.key] ?? { label: r.label, points: String(r.points) };
-            const dirty = d.label !== r.label || d.points !== String(r.points);
-            return (
-              <div key={r.key} className="flex items-center gap-2 rounded-lg px-2.5 py-2"
-                style={{ background: 'var(--color-surface-raised)', opacity: r.is_active ? 1 : 0.6 }}>
-                <Toggle on={r.is_active} label={`${r.label} ${r.is_active ? 'on' : 'off'}`}
-                  onChange={(v) => void save(r, { is_active: v })} />
-                <input className={`${input} flex-1 min-w-0`} style={inputStyle} value={d.label} aria-label="What members read"
-                  onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, label: e.target.value } }))} />
-                <input className={`${input} w-20 text-right tabular-nums`} style={inputStyle} value={d.points} inputMode="numeric" aria-label="Points"
-                  onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, points: e.target.value.replace(/\D/g, '') } }))} />
-                <span className="text-[11px] w-6" style={{ color: 'var(--color-text-muted)' }}>pts</span>
-                <Button size="sm" variant={dirty ? 'primary' : 'ghost'} disabled={!dirty || busy === r.key}
-                  onClick={() => void save(r, { label: d.label.trim(), points: Number(d.points) })}>
-                  {busy === r.key ? 'Saving…' : 'Save'}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Section>
   );
 }
 

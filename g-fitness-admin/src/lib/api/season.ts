@@ -32,6 +32,37 @@ export async function addTier(name: string, pointsNeeded: number, rewardId: stri
   if (error) throw new Error(error.message);
 }
 
+export async function updateTier(id: string, patch: { name?: string; pointsNeeded?: number; rewardId?: string | null }): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (patch.name !== undefined) row.name = patch.name.trim();
+  if (patch.pointsNeeded !== undefined) row.points_needed = patch.pointsNeeded;
+  if (patch.rewardId !== undefined) row.reward_id = patch.rewardId;
+  const { data, error } = await supabase.from('season_tiers').update(row).eq('id', id).select('id');
+  if (error) throw new Error(error.message);
+  assertWrote(data, 'That tier could not be changed.');
+}
+
+export interface SeasonOverview {
+  seasonStart: string; seasonEnd: string; members: number; scoring: number;
+  tiers: { id: string; name: string; pointsNeeded: number; reward: string | null; reached: number; claimed: number; handedOver: number }[];
+  top: { memberId: string; name: string; score: number }[];
+}
+
+/** This month as the owner and desk see it (0159). Null before 0159 is pasted, or for a member. */
+export async function seasonOverview(): Promise<SeasonOverview | null> {
+  const { data, error } = await supabase.rpc('season_overview');
+  if (error || !data) return null;
+  const d = data as { season_start: string; season_end: string; members: number; scoring: number;
+    tiers: { id: string; name: string; points_needed: number; reward: string | null; reached: number; claimed: number; handed_over: number }[];
+    top: { member_id: string; name: string; score: number }[] };
+  return {
+    seasonStart: d.season_start, seasonEnd: d.season_end, members: Number(d.members), scoring: Number(d.scoring),
+    tiers: d.tiers.map((t) => ({ id: t.id, name: t.name, pointsNeeded: t.points_needed, reward: t.reward,
+      reached: Number(t.reached), claimed: Number(t.claimed), handedOver: Number(t.handed_over) })),
+    top: d.top.map((t) => ({ memberId: t.member_id, name: t.name, score: Number(t.score) })),
+  };
+}
+
 export async function deleteTier(id: string): Promise<void> {
   const { data, error } = await supabase.from('season_tiers').delete().eq('id', id).select('id');
   if (error) throw new Error(error.message);

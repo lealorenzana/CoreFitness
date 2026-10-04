@@ -165,16 +165,25 @@ async (page) => {
 
 
   // Rewards: point rules
-  await page.goto('http://localhost:5174/rewards', { waitUntil: 'domcontentloaded' });
+  // The rules are their own tab of Rewards (2026-10-04): switched-on rules are
+  // edited in place, switched-off ones come back through "Add a way to earn".
+  await page.goto('http://localhost:5174/rewards?tab=earning', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   let t = await text();
   out.push('rules section: ' + grab(t, 'How members earn points', 120));
-  const pts = page.getByLabel('Points').first();
+  const pts = page.getByLabel(/^Points for /).first();
   await pts.fill('20');
   await page.getByRole('button', { name: 'Save' }).first().click();
   await page.waitForTimeout(900);
   out.push('checkin points now: ' + TABLES.point_rules.find((r) => r.key === 'checkin').points);
-  await page.getByRole('switch', { name: /Logged a workout on/ }).click();
+  const wl = TABLES.point_rules.find((r) => r.key === 'workout_logged');
+  if (wl.is_active) {
+    await page.getByRole('button', { name: /Switch off/ }).nth(TABLES.point_rules.filter((r) => r.is_active).indexOf(wl)).click();
+    await page.waitForTimeout(800);
+  }
+  await page.getByRole('button', { name: /Add a way to earn/ }).click();
+  await page.getByRole('button', { name: /Logged a workout/ }).click();
+  await page.getByRole('button', { name: 'Switch it on' }).click();
   await page.waitForTimeout(800);
   out.push('workout rule active: ' + TABLES.point_rules.find((r) => r.key === 'workout_logged').is_active);
   await page.getByText('How members earn points').scrollIntoViewIfNeeded();

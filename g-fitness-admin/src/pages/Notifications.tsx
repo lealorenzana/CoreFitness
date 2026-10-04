@@ -7,6 +7,7 @@ import {
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import BulkBar from '../components/ui/BulkBar';
 import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
@@ -106,6 +107,17 @@ const MESSAGE_MAX = 240;
 const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
 const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
 
+/** Starting points for the message — every bracket is for the owner to fill, so none is sent as a claim. */
+const TEMPLATES: { label: string; type: NotificationType; title: string; message: string; actionUrl: string }[] = [
+  { label: 'Closed for a day', type: 'system', title: 'We are closed on [day]', message: 'The gym is closed on [day] for [reason]. We open again on [day] at [time]. Sorry for the trouble!', actionUrl: '' },
+  { label: 'Holiday hours', type: 'system', title: 'Holiday hours this week', message: 'From [date] to [date] we open [time] to [time]. Regular hours return on [date].', actionUrl: '' },
+  { label: 'New class', type: 'event', title: 'New class: [name]', message: '[Name] starts on [day] at [time] with Coach [name]. Book your spot in the app.', actionUrl: '/member/book-class' },
+  { label: 'Event reminder', type: 'event', title: '[Event] is this [day]', message: 'Join us for [event] on [day] at [time]. Sign up in Events so we can plan for you.', actionUrl: '/member/events' },
+  { label: 'New challenge', type: 'achievement', title: 'New challenge: [name]', message: 'Join [name] in the app — reach the target by [date] and earn [points] points.', actionUrl: '/member/challenges' },
+  { label: 'Renewal nudge', type: 'payment', title: 'Keep your streak going', message: 'Your plan ends soon. Renew at the desk or in the app to keep training without a gap.', actionUrl: '/member/renew' },
+];
+const STEPS = ['Who gets it', 'The message', 'Check and send'];
+
 const AUDIENCE_LABEL: Record<RecipientType, string> = {
   all_members: 'All Members',
   all_trainers: 'All Trainers',
@@ -125,7 +137,7 @@ export default function Notifications() {
   const [form, setForm] = useState<NotificationForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
-  const [confirmSend, setConfirmSend] = useState(false);
+  const [step, setStep] = useState(0);
 
   const [recent, setRecent] = useState<BroadcastSummary[]>([]);
   const [people, setPeople] = useState<Recipient[]>([]);
@@ -164,10 +176,12 @@ export default function Notifications() {
       ? form.specificUsers.length
       : audienceCounts[form.recipientType] ?? 0;
 
-  const validate = () => {
+  /** Checks one step (or all of them when `upTo` is 2). */
+  const validate = (upTo = 2) => {
     const next: Record<string, string> = {};
-    if (!form.title.trim()) next.title = 'Required.';
-    if (!form.message.trim()) next.message = 'Required.';
+    if (upTo >= 1 && !form.title.trim()) next.title = 'Required.';
+    if (upTo >= 1 && !form.message.trim()) next.message = 'Required.';
+    if (upTo >= 1 && /\[[^\]]+\]/.test(form.title + form.message)) next.message = 'Fill in the [brackets] from the template first.';
     if (form.recipientType === 'specific' && form.specificUsers.length === 0) {
       next.recipients = 'Pick at least one person.';
     }
@@ -206,7 +220,6 @@ export default function Notifications() {
       });
 
       showSuccessToast(`Sent to ${recipients} ${recipients === 1 ? 'person' : 'people'}.`);
-      setConfirmSend(false);
       setShowSendModal(false);
       setForm(EMPTY_FORM);
       setErrors({});
@@ -236,6 +249,23 @@ export default function Notifications() {
       await load();
     } catch (err) {
       showErrorToast(err instanceof Error ? err.message : 'Could not recall that broadcast');
+    }
+  };
+
+  // Select-many (2026-10-04): recall several, or all of them, at once.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkRecall, setBulkRecall] = useState(false);
+  const togglePick = (key: string) => setPicked((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  const pickedRows = recent.filter((b) => picked.has(b.key));
+  const recallMany = async () => {
+    try {
+      const removed = await recallBroadcast(pickedRows.flatMap((b) => b.ids));
+      showSuccessToast(`Recalled ${pickedRows.length} announcement${pickedRows.length === 1 ? '' : 's'} from ${removed} inbox${removed === 1 ? '' : 'es'}.`);
+      setBulkRecall(false); setPicked(new Set()); setSelecting(false);
+      await load();
+    } catch (err) {
+      showErrorToast(err instanceof Error ? err.message : 'Could not recall those');
     }
   };
 
@@ -292,7 +322,7 @@ export default function Notifications() {
         subtitle="Messages sent to members and trainers"
         actions={
           <Button variant="primary" size="sm"
-            onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
+            onClick={() => { setForm(EMPTY_FORM); setErrors({}); setStep(0); setShowSendModal(true); }}>
             <Plus size={15} className="mr-1" /> Send announcement
           </Button>
         }
@@ -316,8 +346,20 @@ export default function Notifications() {
       <Section
         title="Sent announcements" icon={Bell} count={recent.length}
         hint="last 20 sends"
-        actions={<SearchBox value={historySearch} onChange={setHistorySearch} placeholder="Search sent…" width={200} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <SearchBox value={historySearch} onChange={setHistorySearch} placeholder="Search sent…" width={200} />
+            {recent.length > 0 && !selecting && <Button variant="ghost" size="sm" onClick={() => setSelecting(true)}>Select</Button>}
+          </div>
+        }
       >
+        {selecting && (
+          <BulkBar count={picked.size} total={recent.length}
+            onAll={() => setPicked(new Set(recent.map((b) => b.key)))}
+            onClear={() => setPicked(new Set())}
+            onDone={() => { setSelecting(false); setPicked(new Set()); }}
+            action={() => setBulkRecall(true)} actionLabel={`Recall ${picked.size || ''}`.trim()} />
+        )}
         {visibleHistory.length === 0 ? (
           <EmptyState
             icon={Bell}
@@ -327,7 +369,7 @@ export default function Notifications() {
               : 'Try a different search.'}
             action={recent.length === 0
               ? <Button variant="primary" size="sm"
-                  onClick={() => { setForm(EMPTY_FORM); setErrors({}); setShowSendModal(true); }}>
+                  onClick={() => { setForm(EMPTY_FORM); setErrors({}); setStep(0); setShowSendModal(true); }}>
                   <Plus size={14} /> Send one
                 </Button>
               : undefined}
@@ -338,7 +380,13 @@ export default function Notifications() {
               {paged.visible.map((notif) => {
                 const pct = notif.recipients > 0 ? Math.round((notif.readCount / notif.recipients) * 100) : 0;
                 return (
-                  <TileCard key={notif.key}>
+                  <TileCard key={notif.key} accent={picked.has(notif.key)}>
+                    {selecting && (
+                      <label className="flex items-center gap-2 mb-2 text-[11px] font-semibold text-white cursor-pointer">
+                        <input type="checkbox" checked={picked.has(notif.key)} onChange={() => togglePick(notif.key)} aria-label={`Select ${notif.title}`} />
+                        Select
+                      </label>
+                    )}
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-[12px] text-white font-semibold leading-snug flex-1">{notif.title}</h4>
                       <Badge variant="Standard" className="!text-[9px] !px-1.5 !py-0 flex-shrink-0">{notif.type}</Badge>
@@ -404,17 +452,21 @@ export default function Notifications() {
                   style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
                   onClick={(e) => e.stopPropagation()}>
                   <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                      <h2 className="text-lg font-bold text-white">Send Announcement</h2>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-lg font-bold text-white">Send an announcement</h2>
+                      <ol className="flex gap-2 mt-2" aria-label="Steps">
+                        {STEPS.map((t, i) => (
+                          <li key={t} className="flex-1">
+                            <div className="h-1 rounded-full" style={{ background: i <= step ? 'var(--color-primary)' : 'var(--color-border)' }} />
+                            <p className="text-[11px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : 'var(--color-text-secondary)' }}>{i + 1}. {t}</p>
+                          </li>
+                        ))}
+                      </ol>
                       {/* Spells out both halves, because they behave
                           differently and the difference matters: the inbox row
                           always arrives, the phone alert only reaches people
                           who installed the app and left that category on. */}
-                      <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                        Two things happen. It lands in each person's in-app inbox — always, and it
-                        stays there until they clear it. It also buzzes their phone, but only for
-                        people who installed the app and have not muted this category.
-                      </p>
+
                     </div>
                     <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>
                       <X size={18} />
@@ -422,6 +474,7 @@ export default function Notifications() {
                   </div>
 
                   <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                    {step === 0 && (<>
                     <SectionLabel>Recipients</SectionLabel>
                     <FormField label="Audience" required error={errors.recipients}>
                       <div className="grid grid-cols-4 gap-2">
@@ -483,6 +536,22 @@ export default function Notifications() {
                       </div>
                     )}
 
+                    </>)}
+
+                    {step === 1 && (<>
+                    <SectionLabel>Start from one</SectionLabel>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TEMPLATES.map((t) => (
+                        <button key={t.label} type="button"
+                          onClick={() => setForm({ ...form, notificationType: t.type, title: t.title, message: t.message, actionUrl: t.actionUrl })}
+                          className="h-8 px-3 rounded-full text-[11px] font-semibold"
+                          style={{ background: form.title === t.title ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                            color: form.title === t.title ? '#fff' : 'var(--color-text-secondary)',
+                            border: `1px solid ${form.title === t.title ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
                     <FieldDivider />
                     <SectionLabel>Message Content</SectionLabel>
                     <FormField label="Category" hint="Members can mute categories in Settings, so pick honestly.">
@@ -543,36 +612,63 @@ export default function Notifications() {
                       </select>
                     </FormField>
 
-                    {/* What it will actually look like. Composing blind into a box
-                        is how a title gets written that the shade truncates. */}
-                    {(form.title || form.message) && (
-                      <>
-                        <FieldDivider />
-                        <SectionLabel>Preview</SectionLabel>
-                        <div className="rounded-xl p-3 flex items-start gap-2.5"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: 'var(--color-primary)' }}>
-                            <Smartphone size={13} style={{ color: '#fff' }} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold text-white truncate">{form.title || 'Title'}</p>
-                            <p className="text-[10px] line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
-                              {form.message || 'Message'}
-                            </p>
+                    </>)}
+
+                    {/* What it will actually look like, and to whom — the last step
+                        is the confirmation: a push cannot be taken back. */}
+                    {step === 2 && (
+                      <div className="space-y-4">
+                        <div className="rounded-xl p-3 text-xs" style={{ background: 'var(--color-primary-light)', color: 'var(--color-text-secondary)' }}>
+                          Goes to <b className="text-white">{plannedRecipients} {plannedRecipients === 1 ? 'person' : 'people'}</b>
+                          {form.recipientType !== 'specific' ? ` (${AUDIENCE_LABEL[form.recipientType].toLowerCase()})` : ''}.
+                          {' '}It lands in each one's in-app inbox and stays there. It also buzzes the phones of people who installed the app
+                          and left “{form.notificationType}” notifications on — a buzz cannot be taken back once it arrives.
+                        </div>
+                        <div>
+                          <SectionLabel>On their phone</SectionLabel>
+                          <div className="rounded-2xl p-3 flex items-start gap-2.5 mt-2"
+                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--color-border)' }}>
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary)' }}>
+                              <Smartphone size={14} style={{ color: '#fff' }} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[12px] font-bold text-white truncate">{form.title}</p>
+                              <p className="text-[11px] line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{form.message}</p>
+                            </div>
                           </div>
                         </div>
-                      </>
+                        <div>
+                          <SectionLabel>In their inbox</SectionLabel>
+                          <div className="rounded-2xl overflow-hidden mt-2" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                            {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
+                            <div className="p-3">
+                              <p className="text-[13px] font-bold text-white">{form.title}</p>
+                              <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>{form.message}</p>
+                              {form.actionUrl && (
+                                <p className="text-[11px] mt-2 font-semibold" style={{ color: 'var(--color-primary)' }}>
+                                  Tap opens: {ANNOUNCEMENT_DESTINATIONS.find((d) => d.path === form.actionUrl)?.label ?? form.actionUrl}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
 
                   <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <Button variant="ghost" className="flex-1" onClick={() => setShowSendModal(false)}>Cancel</Button>
-                    <Button variant="secondary" className="flex-1"
-                      onClick={() => { if (validate()) setConfirmSend(true); }}>
-                      <Send size={15} className="mr-1.5" />
-                      Review &amp; send
+                    <Button variant="ghost" className="flex-1" onClick={() => (step > 0 ? setStep(step - 1) : setShowSendModal(false))}>
+                      {step > 0 ? 'Back' : 'Cancel'}
                     </Button>
+                    {step < 2 ? (
+                      <Button variant="secondary" className="flex-1" onClick={() => { if (validate(step)) setStep(step + 1); }}>Next</Button>
+                    ) : (
+                      <Button variant="secondary" className="flex-1" disabled={sending}
+                        onClick={() => { if (validate()) void handleSendNotification(); }}>
+                        <Send size={15} className="mr-1.5" />
+                        {sending ? 'Sending…' : `Send to ${plannedRecipients} ${plannedRecipients === 1 ? 'person' : 'people'}`}
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               </div>
@@ -581,23 +677,6 @@ export default function Notifications() {
         </AnimatePresence>,
         document.body
       )}
-
-      {/* A broadcast leaves the building and cannot be un-pushed, so it gets a
-          confirmation with the real headcount on it. */}
-      <ConfirmDialog
-        isOpen={confirmSend}
-        onClose={() => setConfirmSend(false)}
-        onConfirm={handleSendNotification}
-        title="Send this announcement?"
-        message={
-          `“${form.title.trim()}” goes to ${plannedRecipients} ${plannedRecipients === 1 ? 'person' : 'people'} ` +
-          `(${AUDIENCE_LABEL[form.recipientType]}). It lands in their inbox and pushes an alert to any installed phone. ` +
-          `You can remove it from their inboxes afterwards, but a push that has already arrived cannot be taken back.` +
-          (sending ? ' Sending…' : '')
-        }
-        confirmText={sending ? 'Sending…' : 'Send it'}
-        type="warning"
-      />
 
       <ConfirmDialog
         isOpen={!!toRecall}
@@ -611,6 +690,17 @@ export default function Notifications() {
             : ''
         }
         confirmText="Recall"
+        type="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={bulkRecall}
+        onClose={() => setBulkRecall(false)}
+        onConfirm={recallMany}
+        title={`Recall ${pickedRows.length} announcement${pickedRows.length === 1 ? '' : 's'}`}
+        message={`Delete them from ${pickedRows.reduce((n, b) => n + b.ids.length, 0)} inboxes in all. ` +
+          `${pickedRows.reduce((n, b) => n + b.readCount, 0)} have already been opened, and push alerts that reached a phone stay there — this only clears the in-app record. It cannot be undone.`}
+        confirmText="Recall all of them"
         type="danger"
       />
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Flag, AlertTriangle, Users, Clock, Trophy } from 'lucide-react';
+import { Plus, Flag, AlertTriangle, Users, Clock, Trophy, Sparkles } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { ChallengeStandingsModal, GoalTemplatesSection } from '../components/ui/EngagementRules';
@@ -28,6 +28,32 @@ import { supabase } from '../lib/supabaseClient';
  */
 
 interface Metric { key: string; label: string; unit: string | null }
+
+/** What each countable metric means, in the words challenge_progress() counts it (0102). */
+const COUNTS: Record<string, string> = {
+  training_days: 'Days they trained — a check-in or a finished workout; one per day however many.',
+  verified_days: 'Days they checked in at the gym.',
+  logged_days: 'Days they logged a workout without checking in (training at home).',
+  consistent_weeks: 'Weeks with at least two training days.',
+  weekend_days: 'Saturdays and Sundays they trained.',
+  distinct_activities: 'Different kinds of training — classes, workouts, sessions.',
+  early_checkins: 'Check-ins before 7 in the morning.',
+  late_checkins: 'Check-ins from 8 in the evening.',
+  goals_achieved: 'Goals with a number they reached.',
+  measurements: 'Body measurements they recorded.',
+  classes_attended: 'Booked classes they attended.',
+  pt_sessions_done: 'Completed 1-on-1 sessions.',
+};
+
+/** Ready-made challenges an owner can start from and change. */
+const PRESETS = [
+  { title: '10 training days in 30 days', metric: 'training_days', target: 10, days: 30, points: 250, weekly: false },
+  { title: 'Weekend warrior', metric: 'weekend_days', target: 6, days: 30, points: 200, weekly: false },
+  { title: 'Early bird week', metric: 'early_checkins', target: 3, days: 7, points: 60, weekly: true },
+  { title: 'Class explorer', metric: 'classes_attended', target: 8, days: 28, points: 300, weekly: false },
+  { title: 'Steady month', metric: 'consistent_weeks', target: 4, days: 30, points: 300, weekly: false },
+];
+const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
 interface Challenge {
   id: string;
@@ -76,6 +102,9 @@ export default function Challenges() {
   /** Fetch and apply. `loading` is owned by the caller, so this is safe to
    *  call again from a button without flashing the whole screen away. */
   const load = async () => {
+    // Completions are the database's: settle anyone who reached a target since
+    // the last look (0159 — pg_cron is optional here). Before 0159 this is refused and changes nothing.
+    await supabase.rpc('settle_challenges').then(() => undefined, () => undefined);
     const [m, c, p] = await Promise.all([
       supabase.from('achievement_metrics')
         .select('key, label, unit').eq('challengeable', true).order('sort_order'),
@@ -185,6 +214,7 @@ export default function Challenges() {
 
   /** One challenge, as a tile. Shared by both sections so they cannot drift. */
   const tile = (c: typeof items[number]) => {
+    const state = c.starts_on > now ? 'Starts ' + fmt(c.starts_on) : c.ends_on < now ? 'Ended ' + fmt(c.ends_on) : 'Live · ends ' + fmt(c.ends_on);
     const n = counts[c.id] ?? { joined: 0, done: 0 };
     // Progress is computed, never stored (0052) — this bar is the same
     // arithmetic the member sees, not a second number that can disagree.
@@ -215,8 +245,8 @@ export default function Challenges() {
         <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           {metricLabel(c.metric_key)} ≥ <span className="font-bold">{c.target}</span>
         </p>
-        <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-          {c.starts_on} → {c.ends_on}
+        <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+          {state}
           {c.reward_points > 0 && ` · ${c.reward_points} pts`}
         </p>
 
@@ -269,6 +299,22 @@ export default function Challenges() {
         { label: 'Completions', value: totalDone, icon: Trophy, tone: 'secondary' },
       ]} />
 
+      <Section title="How a challenge works" icon={Sparkles}>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <ol className="text-[12px] space-y-1 list-decimal pl-4" style={{ color: 'var(--color-text-secondary)' }}>
+            <li>You pick what is counted, a target and the dates. Members see it under Challenges in the app.</li>
+            <li>A member taps <b>Join</b>. From then the app counts their real check-ins, workouts and classes between the dates — nobody types a number.</li>
+            <li>When they reach the target they are marked done and get the points, once. Nobody can tick it for them, you included.</li>
+            <li>A weekly quest starts again every Monday with everyone in it, and pays once a week.</li>
+          </ol>
+          <p className="text-[12px] rounded-lg px-3 py-2 self-start" style={{ background: 'var(--color-primary-light)', color: 'var(--color-text-secondary)' }}>
+            <b className="text-white">Example.</b> “10 training days in 30 days”, worth 250 points. Ana joins on day 1 and trains Monday, Wednesday and Friday:
+            3 days a week, so she reaches 10 in her fourth week — her app shows 10 / 10, she is marked done, and 250 points land in her balance for Rewards
+            (and count toward this month&rsquo;s season).
+          </p>
+        </div>
+      </Section>
+
       {/* The whole gym's goal and the members' squads (0124). */}
       <GymGoalSection />
 
@@ -311,6 +357,22 @@ export default function Challenges() {
         confirmDisabled={busy || !form.title.trim()}
       >
         <div className="space-y-3">
+          <div>
+            <span className="text-[11px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Start from one</span>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {PRESETS.filter((pr) => metrics.some((m) => m.key === pr.metric)).map((pr) => (
+                <button key={pr.title} type="button"
+                  onClick={() => setForm({ ...form, title: pr.title, metric_key: pr.metric, target: String(pr.target), reward_points: String(pr.points),
+                    starts_on: today(), ends_on: inDays(pr.days - 1), repeatsWeekly: pr.weekly })}
+                  className="h-8 px-3 rounded-full text-[11px] font-semibold"
+                  style={{ background: form.title === pr.title ? 'var(--color-primary-light)' : 'var(--color-surface-high)',
+                    color: form.title === pr.title ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    border: `1px solid ${form.title === pr.title ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+                  {pr.title}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="block">
             <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Title</span>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -333,6 +395,7 @@ export default function Challenges() {
                 style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
                 {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
               </select>
+              {COUNTS[form.metric_key] && <span className="block text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>{COUNTS[form.metric_key]}</span>}
             </label>
             <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Target</span>
@@ -371,6 +434,14 @@ export default function Challenges() {
               automatically, and it pays its points once a week. The dates above are when it runs.
             </span>
           </label>
+          {/* The challenge in one sentence — what members will be agreeing to. */}
+          {form.title.trim() && Number(form.target) > 0 && form.ends_on >= form.starts_on && (
+            <p className="text-[12px] rounded-lg px-3 py-2" style={{ background: 'var(--color-primary-light)', color: 'var(--color-text-secondary)' }}>
+              <b className="text-white">Members will read:</b> {form.repeatsWeekly ? 'Every week' : `${fmt(form.starts_on)} – ${fmt(form.ends_on)}`}, reach{' '}
+              <b className="text-white">{form.target} × {(metrics.find((m) => m.key === form.metric_key)?.label ?? form.metric_key).toLowerCase()}</b>
+              {Number(form.reward_points) > 0 ? <> and earn <b className="text-white">{form.reward_points} points</b></> : ''}.
+            </p>
+          )}
           <ImageField
             value={form.imageUrl}
             onChange={(imageUrl) => setForm({ ...form, imageUrl })}

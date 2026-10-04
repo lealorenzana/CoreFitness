@@ -62,6 +62,9 @@ export async function listChallenges(memberId: string): Promise<Challenge[]> {
   // This week's quests exist once somebody asks (0123's sweep; pg_cron is
   // optional here). Before 0123 the function is missing, which changes nothing.
   await supabase.rpc('roll_weekly_quests').then(() => undefined, () => undefined);
+  // A member who reached the target is marked done and paid here too, not only
+  // by pg_cron, which is optional (0159). Before 0159 a member may not call it.
+  await supabase.rpc('settle_challenges').then(() => undefined, () => undefined);
 
   const BASE = 'id, title, description, metric_key, target, starts_on, ends_on, reward_points, image_url, achievement_metrics(label)';
   const q = (cols: string) => supabase.from('challenges').select(cols)

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import BulkBar from '../components/ui/BulkBar';
 import ImageField from '../components/ui/ImageField';
 import Pagination from '../components/ui/Pagination';
 import {
@@ -21,7 +22,7 @@ import {
 import { showToast } from '../utils/toast';
 import {
   listEvents, listRegistrations, listEventRegistrations, createEvent, updateEvent,
-  deleteEvent, eventStatus, type EventRow, type EventStatus,
+  deleteEvent, deleteEvents, eventStatus, type EventRow, type EventStatus,
 } from '../lib/api/events';
 import { listMembers } from '../lib/api/members';
 
@@ -99,6 +100,21 @@ function endTimeLabel(time: string, durationMinutes: string): string | null {
 
 /** Announcements and Events are one section — see SectionTabs for why the
  *  records stay in separate tables. */
+const EVENT_STEPS = ['What and when', 'Where and who', 'Picture and preview'];
+const DURATION_LABEL: Record<string, string> = { '30': '30 min', '45': '45 min', '60': '1 h', '90': '1 h 30', '120': '2 h' };
+const BRING = ['Water', 'A towel', 'Shoes you can move in', 'A mat', 'Gym clothes'];
+const FOR_WHOM = ['Everyone — beginners welcome', 'Members and their friends', 'Members only', 'For those already training regularly'];
+/** A quick-pick chip; on = the value the form holds now. */
+function Pick({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="h-8 px-3 rounded-full text-[11px] font-semibold"
+      style={{ background: on ? 'var(--color-primary-light)' : 'var(--color-bg)', color: on ? '#fff' : 'var(--color-text-secondary)',
+        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+      {children}
+    </button>
+  );
+}
+
 const COMMS_TABS = [
   { label: 'Announcements', to: '/notifications' },
   { label: 'Events', to: '/events' },
@@ -112,12 +128,18 @@ export default function Events() {
   const [saving, setSaving] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
+  const [step, setStep] = useState(0);
   const [editing, setEditing] = useState<EventRow | null>(null);
   const [form, setForm] = useState(emptyForm);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toCancel, setToCancel] = useState<EventRow | null>(null);
   const [toDelete, setToDelete] = useState<EventRow | null>(null);
+  // Select-many (2026-10-04): delete several, or every past one, in one go.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkDelete, setBulkDelete] = useState(false);
+  const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const [attendeesFor, setAttendeesFor] = useState<EventRow | null>(null);
   const [attendees, setAttendees] = useState<{ id: string; name: string; at: string }[]>([]);
@@ -150,7 +172,7 @@ export default function Events() {
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const openAdd = () => { setEditing(null); setForm(emptyForm); setErrors({}); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm(emptyForm); setErrors({}); setStep(0); setShowModal(true); };
 
   const openEdit = (evt: EventRow) => {
     const { date, time } = splitTimestamp(evt.starts_at);
@@ -173,6 +195,7 @@ export default function Events() {
       imageUrl: evt.image_url ?? '',
       duration: String(evt.duration_minutes),
     });
+    setStep(0);
     setShowModal(true);
   };
 
@@ -185,6 +208,7 @@ export default function Events() {
     if (!form.time) next.time = 'Pick a start time.';
     setErrors(next);
     if (Object.keys(next).length > 0) {
+      setStep(0);
       return showToast('Title, date and time are required', 'error');
     }
 
@@ -251,6 +275,18 @@ export default function Events() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      const removed = await deleteEvents([...picked]);
+      showToast(`${removed} event${removed === 1 ? '' : 's'} deleted`, 'success');
+      setBulkDelete(false); setPicked(new Set()); setSelecting(false);
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to delete events', 'error');
+    }
+  };
+  const pickedRegs = [...picked].reduce((n, id) => n + (counts[id] ?? 0), 0);
+
   const openAttendees = async (evt: EventRow) => {
     setAttendeesFor(evt);
     setAttendees([]);
@@ -301,7 +337,17 @@ export default function Events() {
       ]} />
 
       <Section title="All events" icon={Calendar} count={events.length}
-        hint="click the headcount to see who signed up">
+        hint="click the headcount to see who signed up"
+        actions={events.length > 0 && !selecting ? <Button variant="ghost" size="sm" onClick={() => setSelecting(true)}>Select</Button> : undefined}>
+        {selecting && (
+          <BulkBar count={picked.size} total={events.length}
+            onAll={() => setPicked(new Set(events.map((e) => e.id)))}
+            groups={[['Past events', () => setPicked(new Set(events.filter((e) => eventStatus(e) === 'Completed').map((e) => e.id)))],
+                     ['Cancelled', () => setPicked(new Set(events.filter((e) => e.cancelled).map((e) => e.id)))]]}
+            onClear={() => setPicked(new Set())}
+            onDone={() => { setSelecting(false); setPicked(new Set()); }}
+            action={() => setBulkDelete(true)} actionLabel={`Delete ${picked.size || ''}`.trim()} />
+        )}
         {loading ? (
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading events…</p>
         ) : events.length === 0 ? (
@@ -323,7 +369,13 @@ export default function Events() {
                 // same two numbers — nothing new is being claimed.
                 const share = evt.capacity > 0 ? Math.min(100, (registered / evt.capacity) * 100) : 0;
                 return (
-                  <TileCard key={evt.id} dim={evt.cancelled} accent={full && !evt.cancelled}>
+                  <TileCard key={evt.id} dim={evt.cancelled} accent={(full && !evt.cancelled) || picked.has(evt.id)}>
+                    {selecting && (
+                      <label className="flex items-center gap-2 mb-2 text-[11px] font-semibold text-white cursor-pointer">
+                        <input type="checkbox" checked={picked.has(evt.id)} onChange={() => togglePick(evt.id)} aria-label={`Select ${evt.title}`} />
+                        Select
+                      </label>
+                    )}
                     {/* Only when the gym chose one — never a stock image. */}
                     {evt.image_url && (
                       <img src={evt.image_url} alt="" loading="lazy"
@@ -435,6 +487,18 @@ export default function Events() {
         type="danger"
       />
 
+      <ConfirmDialog
+        isOpen={bulkDelete}
+        onClose={() => setBulkDelete(false)}
+        onConfirm={handleBulkDelete}
+        title={`Delete ${picked.size} event${picked.size === 1 ? '' : 's'}`}
+        message={pickedRegs > 0
+          ? `This also removes ${pickedRegs} registration${pickedRegs === 1 ? '' : 's'} — the members who signed up lose the record. Cancelling keeps them. This cannot be undone.`
+          : 'Nobody signed up to these, so nothing else is affected. This cannot be undone.'}
+        confirmText="Delete"
+        type="danger"
+      />
+
       {/* Add / Edit modal */}
       {createPortal(
         <AnimatePresence>
@@ -446,16 +510,29 @@ export default function Events() {
               <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="w-full max-w-md rounded-2xl overflow-hidden"
+                  className="w-full max-w-lg rounded-2xl overflow-hidden"
                   style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
                   onClick={(e) => e.stopPropagation()}>
                   <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <h2 className="text-base font-bold text-white">{editing ? 'Edit Event' : 'New Event'}</h2>
-                    <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-base font-bold text-white">{editing ? 'Edit event' : 'New event'}</h2>
+                      <ol className="flex gap-2 mt-2" aria-label="Steps">
+                        {EVENT_STEPS.map((t, i) => (
+                          <li key={t} className="flex-1">
+                            <button type="button" className="w-full text-left" onClick={() => setStep(i)}>
+                              <span className="block h-1 rounded-full" style={{ background: i <= step ? 'var(--color-primary)' : 'var(--color-border)' }} />
+                              <span className="block text-[11px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : 'var(--color-text-secondary)' }}>{i + 1}. {t}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white self-start" aria-label="Close">
                       <X size={20} />
                     </button>
                   </div>
                   <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
+                    {step === 0 && (<>
                     <SectionLabel>Details</SectionLabel>
                     <FormField label="Event title" required error={errors.title}>
                       <Input style={INSET} type="text" value={form.title} placeholder="e.g. Summer Fitness Challenge"
@@ -486,19 +563,30 @@ export default function Events() {
                       label="Duration (minutes)"
                       hint={endsAt ? `Finishes around ${endsAt}.` : 'How long the event runs.'}
                     >
-                      <Input style={INSET} type="number" min="15" step="15" value={form.duration} placeholder="60"
-                        onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {['30', '45', '60', '90', '120'].map((m) => (
+                          <Pick key={m} on={form.duration === m} onClick={() => setForm({ ...form, duration: m })}>{DURATION_LABEL[m]}</Pick>
+                        ))}
+                        <Input style={{ ...INSET, width: 90 }} type="number" min="15" step="15" value={form.duration} placeholder="60" aria-label="Minutes"
+                          onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+                      </div>
                     </FormField>
+                    </>)}
 
-                    <FieldDivider />
+                    {step === 1 && (<>
                     <SectionLabel>Location &amp; Capacity</SectionLabel>
                     <FormField label="Location" hint="Leave blank if it's at the gym.">
                       <Input style={INSET} type="text" value={form.location} placeholder="e.g. Main floor, Mamburao"
                         onChange={(e) => setForm({ ...form, location: e.target.value })} />
                     </FormField>
                     <FormField label="Capacity (people)" hint="Members can sign up until this is reached.">
-                      <Input style={INSET} type="number" min="1" value={form.capacity} placeholder="30"
-                        onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {['10', '20', '30', '50', '100'].map((n) => (
+                          <Pick key={n} on={form.capacity === n} onClick={() => setForm({ ...form, capacity: n })}>{n}</Pick>
+                        ))}
+                        <Input style={{ ...INSET, width: 90 }} type="number" min="1" value={form.capacity} placeholder="30" aria-label="Capacity"
+                          onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+                      </div>
                     </FormField>
 
                     <FieldDivider />
@@ -508,12 +596,25 @@ export default function Events() {
                       label="Intended Audience"
                       hint="The single most useful line. Saying everyone is welcome and no experience is needed brings people in; leaving it blank quietly keeps beginners away."
                     >
+                      <div className="flex gap-1.5 flex-wrap mb-2">
+                        {FOR_WHOM.map((w) => <Pick key={w} on={form.whoIsItFor === w} onClick={() => setForm({ ...form, whoIsItFor: w })}>{w}</Pick>)}
+                      </div>
                       <Input style={INSET} type="text" value={form.whoIsItFor}
                         placeholder="e.g. Everyone — half the group will be first-timers"
                         onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
                     </FormField>
 
                     <FormField label="Items to Bring" hint="Water, a towel, flat shoes — whatever they will wish they had.">
+                      <div className="flex gap-1.5 flex-wrap mb-2">
+                        {BRING.map((b) => {
+                          const list = form.whatToBring.split(',').map((x) => x.trim()).filter(Boolean);
+                          const on = list.some((x) => x.toLowerCase() === b.toLowerCase());
+                          return (
+                            <Pick key={b} on={on} onClick={() => setForm({ ...form,
+                              whatToBring: (on ? list.filter((x) => x.toLowerCase() !== b.toLowerCase()) : [...list, b]).join(', ') })}>{on ? '✓ ' : '+ '}{b}</Pick>
+                          );
+                        })}
+                      </div>
                       <Input style={INSET} type="text" value={form.whatToBring}
                         placeholder="e.g. Water, a towel, shoes you can move in"
                         onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
@@ -529,9 +630,12 @@ export default function Events() {
                             : 'Members pay at the desk; the app does not take payments.'
                       }
                     >
-                      <Input style={INSET} type="number" min="0" step="50" value={form.fee}
-                        placeholder="Leave blank if free"
-                        onChange={(e) => setForm({ ...form, fee: e.target.value })} />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Pick on={form.fee.trim() === ''} onClick={() => setForm({ ...form, fee: '' })}>Free</Pick>
+                        {['50', '100', '200', '500'].map((f) => <Pick key={f} on={form.fee === f} onClick={() => setForm({ ...form, fee: f })}>₱{f}</Pick>)}
+                        <Input style={{ ...INSET, width: 110 }} type="number" min="0" step="50" value={form.fee} aria-label="Fee"
+                          placeholder="Other ₱" onChange={(e) => setForm({ ...form, fee: e.target.value })} />
+                      </div>
                     </FormField>
 
                     <FormField label="Contact Person" hint="Shown to members who have a question before signing up.">
@@ -540,6 +644,9 @@ export default function Events() {
                         onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                     </FormField>
 
+                    </>)}
+
+                    {step === 2 && (<>
                     <ImageField
                       value={form.imageUrl}
                       onChange={(imageUrl) => setForm({ ...form, imageUrl })}
@@ -556,12 +663,48 @@ export default function Events() {
                         members' Events screen. Use it sparingly — if everything is featured, nothing is.
                       </span>
                     </label>
+
+                    <FieldDivider />
+                    <SectionLabel>How members will see it</SectionLabel>
+                    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                      {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
+                      <div className="p-3 space-y-1">
+                        {form.isFeatured && <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--color-secondary)' }}>Featured</span>}
+                        <p className="text-sm font-bold text-white">{form.title || 'Event name'}</p>
+                        <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
+                          {form.date ? new Date(`${form.date}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date'}
+                          {form.time ? ` · ${form.time}${endsAt ? `–${endsAt}` : ''}` : ''} · {form.location.trim() || 'At the gym'}
+                        </p>
+                        <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
+                          {form.fee.trim() === '' ? 'Free' : `₱${Number(form.fee).toLocaleString('en-PH')}`} · {form.capacity || 30} spots
+                          {form.whoIsItFor ? ` · ${form.whoIsItFor}` : ''}
+                        </p>
+                        {form.description && <p className="text-[12px] pt-1" style={{ color: 'var(--color-text-muted)' }}>{form.description}</p>}
+                        {form.whatToBring && <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Bring: {form.whatToBring}</p>}
+                      </div>
+                    </div>
+                    </>)}
                   </div>
                   <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <Button variant="ghost" className="flex-1" onClick={() => setShowModal(false)}>Cancel</Button>
-                    <Button variant="primary" className="flex-1" onClick={handleSave} disabled={saving}>
-                      {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Event'}
-                    </Button>
+                    <Button variant="ghost" className="flex-1" onClick={() => (step > 0 ? setStep(step - 1) : setShowModal(false))}>{step > 0 ? 'Back' : 'Cancel'}</Button>
+                    {step < 2 && !editing ? (
+                      <Button variant="primary" className="flex-1"
+                        onClick={() => {
+                          if (step === 0) {
+                            const next: Record<string, string> = {};
+                            if (!form.title.trim()) next.title = 'Give the event a name.';
+                            if (!form.date) next.date = 'Pick a date.';
+                            if (!form.time) next.time = 'Pick a start time.';
+                            setErrors(next);
+                            if (Object.keys(next).length > 0) return;
+                          }
+                          setStep(step + 1);
+                        }}>Next</Button>
+                    ) : (
+                      <Button variant="primary" className="flex-1" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving…' : editing ? 'Save changes' : 'Create event'}
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               </div>

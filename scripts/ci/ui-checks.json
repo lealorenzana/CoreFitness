@@ -51,6 +51,7 @@
     { "file": "admin-shop-desk-check.js", "app": "admin" },
     { "file": "admin-receipt-check.js", "app": "admin" },
     { "file": "admin-revenue-check.js", "app": "admin" },
+    { "file": "admin-engagement-ui-check.js", "app": "admin" },
     { "file": "platform-shell-check.js", "app": "platform" },
     { "file": "platform-gyms-check.js", "app": "platform" },
     { "file": "platform-insight-check.js", "app": "platform" },

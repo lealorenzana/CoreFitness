@@ -91,6 +91,15 @@ export async function deleteEvent(id: string): Promise<void> {
   assertWrote(data, 'That event could not be deleted. Please refresh and try again.');
 }
 
+/** Several at once (2026-10-04). Returns how many the database really removed. */
+export async function deleteEvents(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { data, error } = await supabase.from('events').delete().in('id', ids).select('id');
+  if (error) throw error;
+  assertWrote(data, 'Those events could not be deleted. Please refresh and try again.');
+  return data?.length ?? 0;
+}
+
 /** All registrations, for headcounts across the events list. */
 export async function listRegistrations(): Promise<EventRegistrationRow[]> {
   const { data, error } = await supabase

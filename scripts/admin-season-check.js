@@ -97,15 +97,20 @@ async (page) => {
   const out = [];
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
 
-  // 1 - Rewards: the season card.
-  await page.goto('http://localhost:5174/rewards', { waitUntil: 'domcontentloaded' });
+  // 1 - Rewards: referrals and the season are tabs of their own (2026-10-04).
+  await page.goto('http://localhost:5174/rewards?tab=referrals', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   let t = await text();
-  out.push('season card: ' + (/Monthly season/.test(t) ? 'shown' : 'MISSING'));
-  out.push('claim waiting: ' + (/Lea Lorenzana · Bronze — Protein shake/.test(t) ? 'shown' : 'MISSING'));
-  out.push('tier listed: ' + (/Bronze · 300 points · Protein shake/.test(t) ? 'shown' : 'MISSING'));
   out.push('referrals listed: ' + (/Lea Lorenzana brought Ana Reyes/.test(t) && /Paid · 100 \+ 50 pts/.test(t) && /Waiting for their first payment/.test(t) ? 'shown' : 'MISSING'));
   out.push('referral counts: ' + (/2 invited · 1 joined and paid · 1 this month/.test(t) ? 'shown' : 'MISSING'));
+  await page.getByRole('tab', { name: 'Monthly season' }).click();
+  await page.waitForTimeout(1200);
+  t = await text();
+  out.push('season card: ' + (/Monthly season/.test(t) && /How it works/.test(t) && /Example\./.test(t) ? 'shown, explained, with an example' : 'MISSING'));
+  out.push('claim waiting: ' + (/Lea Lorenzana · Bronze — Protein shake/.test(t) ? 'shown' : 'MISSING'));
+  out.push('tier listed: ' + ((await page.getByLabel('Bronze points').inputValue()) === '300'
+    && (await page.getByLabel('Bronze reward').inputValue()) === 'rw1' ? 'Bronze, 300, Protein shake' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-season.png', fullPage: true });
   await page.getByRole('button', { name: 'Handed over' }).click();
   await page.waitForTimeout(900);
   out.push('hand-over sent: ' + (SENT.rpc.hand_over_season_claim?.p_claim === 'c1' ? 'c1' : 'MISSING'));
@@ -117,7 +122,7 @@ async (page) => {
   await page.getByRole('button', { name: 'Add tier' }).click();
   await page.waitForTimeout(900);
   const tier = SENT.tiers[SENT.tiers.length - 1] || {};
-  out.push('new tier shows its reward: ' + (/Silver · 800 points · Protein shake/.test(await text()) ? 'shown' : 'MISSING'));
+  out.push('new tier shows its reward: ' + ((await page.getByLabel('Silver points').count()) === 1 && (await page.getByLabel('Silver reward').inputValue()) === 'rw1' ? 'shown' : 'MISSING'));
   out.push('tier sent: ' + (tier.name === 'Silver' && tier.points_needed === 800 && tier.reward_id === 'rw1' ? 'Silver 800 + reward' : 'MISSING ' + JSON.stringify(tier)));
   await page.screenshot({ path: 'shots/admin-season.png', fullPage: true });
 

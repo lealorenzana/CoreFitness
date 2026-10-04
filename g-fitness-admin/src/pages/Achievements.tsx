@@ -516,189 +516,248 @@ function AchievementForm({
   const chosen = allMetrics.find((m) => m.key === form.metric);
   const chosen2 = allMetrics.find((m) => m.key === form.metric2);
   const locked = form.rule_kind === 'builtin';
+  // A new one is made in three steps; an existing one opens on everything at once.
+  const [step, setStep] = useState(isNew ? 0 : -1);
+  const [advanced, setAdvanced] = useState(false);
+  // The requirement line writes itself from the rule until the owner types their own.
+  const [ownRequirement, setOwnRequirement] = useState(!isNew);
 
-  const selectStyle: React.CSSProperties = {
-    background: SURFACE_RAISED, border: `1px solid ${BORDER}`,
-    color: TEXT_SECOND, colorScheme: 'dark',
+  const field: React.CSSProperties = { background: SURFACE_RAISED, border: `1px solid ${BORDER}`, color: '#fff', colorScheme: 'dark' };
+  const label = (t: string, hint?: string) => (
+    <span className="block mb-1.5">
+      <span className="text-[12px] font-semibold text-white">{t}</span>
+      {hint && <span className="block text-[11px] mt-0.5" style={{ color: TEXT_SECOND }}>{hint}</span>}
+    </span>
+  );
+  const chip = (on: boolean): React.CSSProperties => ({
+    background: on ? PRIMARY_LIGHT : SURFACE_RAISED, color: on ? '#fff' : TEXT_SECOND,
+    border: `1px solid ${on ? PRIMARY : BORDER}`,
+  });
+
+  const autoRequirement = () => {
+    if (form.rule_kind === 'manual') return 'Given by the gym.';
+    if (!chosen) return '';
+    const one = chosen.is_boolean ? chosen.label : `Reach ${form.threshold || '…'} ${chosen.label.toLowerCase()}`;
+    const two = chosen2 ? (chosen2.is_boolean ? `, and ${chosen2.label.toLowerCase()}` : `, and ${form.threshold2 || '…'} ${chosen2.label.toLowerCase()}`) : '';
+    return `${one}${two}.`;
+  };
+  const requirement = ownRequirement ? form.requirement : autoRequirement();
+  const commit = () => {
+    if (!ownRequirement) setForm((f) => ({ ...f, requirement: autoRequirement() }));
   };
 
+  const ruleReady = locked || form.rule_kind === 'manual' || (!!form.metric && (chosen?.is_boolean || Number(form.threshold) > 0)
+    && (!form.metric2 || chosen2?.is_boolean || Number(form.threshold2) > 0));
+  const looksReady = !!form.title.trim() && !!form.description.trim();
+
+  const preview = (earned: boolean) => (
+    <div className="flex items-center gap-3 p-3 rounded-xl flex-1 min-w-[220px]" style={{ background: SURFACE_RAISED, opacity: earned ? 1 : 0.85 }}>
+      <span className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: SURFACE, border: `2px solid ${earned ? TIER_RING[form.tier] : BORDER}`, filter: earned ? undefined : 'grayscale(1)' }}>
+        <AchievementIcon name={form.icon} size={21} color={earned ? TIER_RING[form.tier] : TEXT_MUTED} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase" style={{ color: TEXT_SECOND }}>{earned ? 'Earned' : 'Locked'}</p>
+        <p className="text-sm font-semibold text-white truncate">{form.title || 'Untitled'}</p>
+        <p className="text-xs" style={{ color: TEXT_SECOND }}>{earned ? (form.description || 'What they see once they earn it') : (requirement || 'What they need to do')}</p>
+      </div>
+    </div>
+  );
+
+  const rule = locked ? (
+    <p className="text-xs p-3 rounded-lg" style={{ background: SURFACE_RAISED, color: TEXT_SECOND }}>
+      This is a built-in level badge. Its rule reads the same thresholds as the level shown on
+      the member's Home screen, so the two cannot disagree — the wording and icon are
+      editable, the rule is not.
+    </p>
+  ) : (
+    <div className="space-y-4">
+      <div>
+        {label('How is it earned?')}
+        <div className="grid grid-cols-2 gap-2">
+          {([['metric', 'Automatically', 'The app gives it when a number is reached — nobody has to remember.'],
+             ['manual', 'By hand', 'You give it to someone you choose, e.g. Member of the Month.']] as const).map(([k, t, h]) => (
+            <button key={k} type="button" onClick={() => set('rule_kind', k)} className="text-left rounded-xl p-3" style={chip(form.rule_kind === k)}>
+              <span className="block text-sm font-semibold">{t}</span>
+              <span className="block text-[11px] mt-0.5" style={{ color: TEXT_SECOND }}>{h}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {isNew && (
+        <div>
+          {label('Who can earn it?')}
+          <div className="flex gap-2">
+            {([['member', 'Members'], ['trainer', 'Trainers']] as const).map(([k, t]) => (
+              <button key={k} type="button" onClick={() => setForm((f) => ({ ...f, audience: k, metric: '', metric2: '' }))}
+                className="h-9 px-4 rounded-lg text-xs font-semibold" style={chip(form.audience === k)}>{t}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {form.rule_kind === 'metric' && (
+        <>
+          <div>
+            {label('What does it measure?', 'Counted by the database from what really happened.')}
+            <div className="grid gap-1.5 max-h-56 overflow-y-auto pr-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+              {metrics.map((m) => (
+                <button key={m.key} type="button" onClick={() => set('metric', m.key)}
+                  className="text-left rounded-lg px-3 py-2 text-xs font-medium" style={chip(form.metric === m.key)}>
+                  {m.label}{m.unit ? <span style={{ color: TEXT_SECOND }}> · {m.unit}</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+          {chosen && !chosen.is_boolean && (
+            <div>
+              {label('How many?')}
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="number" min={1} value={form.threshold} onChange={(e) => set('threshold', e.target.value)} aria-label="How many"
+                  placeholder="10" className="w-28 h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+                {[5, 10, 25, 50, 100].map((n) => (
+                  <button key={n} type="button" onClick={() => set('threshold', String(n))} className="h-8 px-3 rounded-lg text-xs font-semibold"
+                    style={chip(form.threshold === String(n))}>{n}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <details className="rounded-lg" open={!!form.metric2}>
+            <summary className="text-xs font-semibold cursor-pointer" style={{ color: TEXT_SECOND }}>Add a second condition (optional)</summary>
+            <div className="grid grid-cols-[1fr_120px] gap-3 mt-2">
+              <select value={form.metric2} onChange={(e) => set('metric2', e.target.value)} aria-label="And also"
+                className="w-full h-10 px-2 rounded-lg text-sm outline-none" style={field}>
+                <option value="">No second condition</option>
+                {metrics.filter((m) => m.key !== form.metric).map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
+              {form.metric2 && !chosen2?.is_boolean ? (
+                <input type="number" min={1} value={form.threshold2} onChange={(e) => set('threshold2', e.target.value)} aria-label="Second number"
+                  className="w-full h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+              ) : <div className="h-10" />}
+            </div>
+          </details>
+          <p className="text-xs" style={{ color: TEXT_SECOND }}>
+            Awarded by the server on each person's next sync — people who already qualify get it straight away.
+          </p>
+        </>
+      )}
+      {form.rule_kind === 'manual' && (
+        <p className="text-xs p-3 rounded-lg" style={{ background: SURFACE_RAISED, color: TEXT_SECOND }}>
+          Nobody earns this on their own. Use the gift button on its card to give it to a specific {form.audience}.
+        </p>
+      )}
+    </div>
+  );
+
+  const looks = (
+    <div className="space-y-4">
+      <div>
+        {label('Name')}
+        <input value={form.title} onChange={(e) => { set('title', e.target.value); if (isNew) set('key', slugify(e.target.value)); }}
+          placeholder="e.g. Ten-Day Club" aria-label="Title" className="w-full h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+      </div>
+      <div>
+        {label('What they read once it is theirs', 'Past tense, to whoever earned it.')}
+        <input value={form.description} onChange={(e) => set('description', e.target.value)} aria-label="Description"
+          placeholder="You trained ten days. That's a habit forming." className="w-full h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+      </div>
+      <div>
+        {label('What they read while it is locked', ownRequirement ? undefined : 'Written from the rule — type to change it.')}
+        <input value={requirement} aria-label="Requirement"
+          onChange={(e) => { setOwnRequirement(true); set('requirement', e.target.value); }}
+          placeholder="Train on ten different days." className="w-full h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+      </div>
+      <div>
+        {label('Tier')}
+        <div className="flex gap-2 flex-wrap">
+          {TIERS.map((t) => (
+            <button key={t} type="button" onClick={() => set('tier', t)} className="h-9 px-4 rounded-lg text-xs font-semibold capitalize flex items-center gap-1.5"
+              style={chip(form.tier === t)}>
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: TIER_RING[t] }} />{t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        {label('Icon')}
+        <div className="grid grid-cols-9 gap-1.5 max-h-36 overflow-y-auto p-2 rounded-lg" style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}>
+          {ICON_NAMES.map((n) => {
+            const on = form.icon === n;
+            return (
+              <button key={n} type="button" aria-label={`Icon ${n}`} onClick={() => set('icon', n)}
+                className="aspect-square rounded-lg flex items-center justify-center transition-colors"
+                style={{ background: on ? PRIMARY_LIGHT : 'transparent', border: `1px solid ${on ? PRIMARY : 'transparent'}` }}>
+                <AchievementIcon name={n} size={15} color={on ? PRIMARY : '#fff'} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        {label('Group', 'Where it sits in the gallery.')}
+        <input value={form.category} onChange={(e) => set('category', e.target.value)} aria-label="Category"
+          className="w-full h-10 px-3 rounded-lg text-sm outline-none" style={field} />
+      </div>
+      <div>
+        <button type="button" className="text-xs font-semibold" style={{ color: TEXT_SECOND }} onClick={() => setAdvanced((v) => !v)}>
+          {advanced ? '▾' : '▸'} Advanced
+        </button>
+        {advanced && (
+          <div className="mt-2">
+            {label('Key', isNew ? 'Made from the name. It links every earned badge to this one, so it cannot change after creating.' : 'Fixed once created.')}
+            <input value={form.key} disabled={!isNew} onChange={(e) => set('key', slugify(e.target.value))} aria-label="Key"
+              className="w-full h-10 px-3 rounded-lg text-sm font-mono outline-none disabled:opacity-60" style={field} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const STEPS = ['What earns it', 'How it looks', 'Check and create'];
+
   return (
-    <Modal isOpen onClose={onClose} hideFooter size="lg"
-      title={isNew ? 'New achievement' : `Edit "${form.title}"`}>
+    <Modal isOpen onClose={onClose} hideFooter size="lg" title={isNew ? 'New achievement' : `Edit "${form.title}"`}>
       <div className="space-y-4">
-        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: SURFACE_RAISED }}>
-          <span className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: SURFACE, border: `2px solid ${TIER_RING[form.tier]}` }}>
-            <AchievementIcon name={form.icon} size={21} color={TIER_RING[form.tier]} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{form.title || 'Untitled'}</p>
-            <p className="text-xs truncate" style={{ color: TEXT_SECOND }}>
-              {form.description || 'What they see once they earn it'}
+        {step >= 0 && (
+          <ol className="flex gap-2" aria-label="Steps">
+            {STEPS.map((t, i) => (
+              <li key={t} className="flex-1">
+                <div className="h-1 rounded-full" style={{ background: i <= step ? PRIMARY : BORDER }} />
+                <p className="text-[11px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : TEXT_SECOND }}>{i + 1}. {t}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {step === 0 && rule}
+        {step === 1 && looks}
+        {step === 2 && (
+          <div className="space-y-3">
+            <div className="flex gap-3 flex-wrap">{preview(false)}{preview(true)}</div>
+            <p className="text-xs" style={{ color: TEXT_SECOND }}>
+              {form.rule_kind === 'manual' ? `You give it by hand to a ${form.audience}.` : `Earned automatically by ${form.audience === 'member' ? 'members' : 'trainers'}: ${requirement}`}
+              {' '}Tier: {form.tier}.
             </p>
           </div>
-        </div>
-
-        <SectionLabel>Achievement Details</SectionLabel>
-
-        <FormField label="Title" required>
-          <input value={form.title}
-            onChange={(e) => {
-              set('title', e.target.value);
-              if (isNew) set('key', slugify(e.target.value));
-            }}
-            placeholder="Member of the Month"
-            className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }} />
-        </FormField>
-
-        <FormField
-          label="Key"
-          hint={isNew
-            ? 'Used internally. Cannot be changed later — it is what links every earned badge to this achievement.'
-            : 'Fixed once created: every earned badge points at it.'}>
-          <input value={form.key} disabled={!isNew}
-            onChange={(e) => set('key', slugify(e.target.value))}
-            className="w-full h-10 px-3 rounded-lg text-sm font-mono outline-none disabled:opacity-50"
-            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, color: TEXT_SECOND }} />
-        </FormField>
-
-        <FormField label="Description" required hint="Past tense, addressed to whoever earned it.">
-          <input value={form.description} onChange={(e) => set('description', e.target.value)}
-            placeholder="You trained every week this month."
-            className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }} />
-        </FormField>
-
-        <FormField label="Requirement" required hint="Shown while it is still locked, so it has to say what it wants.">
-          <input value={form.requirement} onChange={(e) => set('requirement', e.target.value)}
-            placeholder="Train at least 12 times in a calendar month."
-            className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }} />
-        </FormField>
-
-        <div className="grid grid-cols-3 gap-3">
-          <FormField label="Audience">
-            <select value={form.audience} disabled={!isNew}
-              onChange={(e) => set('audience', e.target.value as AchievementAudience)}
-              className="w-full h-10 px-2 rounded-lg text-sm outline-none disabled:opacity-50" style={selectStyle}>
-              <option value="member">Members</option>
-              <option value="trainer">Trainers</option>
-            </select>
-          </FormField>
-          <FormField label="Tier">
-            <select value={form.tier} onChange={(e) => set('tier', e.target.value as AchievementTier)}
-              className="w-full h-10 px-2 rounded-lg text-sm outline-none capitalize" style={selectStyle}>
-              {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Category" hint="Groups it in the gallery.">
-            <input value={form.category} onChange={(e) => set('category', e.target.value)}
-              className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-              style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }} />
-          </FormField>
-        </div>
-
-        <FormField label="Icon">
-          <div className="grid grid-cols-9 gap-1.5 max-h-36 overflow-y-auto p-2 rounded-lg"
-            style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}>
-            {ICON_NAMES.map((n) => {
-              const on = form.icon === n;
-              return (
-                <button key={n} title={n} onClick={() => set('icon', n)}
-                  className="aspect-square rounded-lg flex items-center justify-center transition-colors"
-                  style={{ background: on ? PRIMARY_LIGHT : 'transparent', border: `1px solid ${on ? PRIMARY : 'transparent'}` }}>
-                  <AchievementIcon name={n} size={15} color={on ? PRIMARY : TEXT_SECOND} />
-                </button>
-              );
-            })}
-          </div>
-        </FormField>
-
-        <FieldDivider />
-        <SectionLabel>Earning Rules</SectionLabel>
-
-        {locked ? (
-          <p className="text-xs p-3 rounded-lg" style={{ background: SURFACE_RAISED, color: TEXT_SECOND }}>
-            This is a built-in level badge. Its rule reads the same thresholds as the level shown on
-            the member's Home screen, so the two cannot disagree — the wording and icon above are
-            editable, the rule is not.
-          </p>
-        ) : (
+        )}
+        {step === -1 && (
           <>
-            <FormField label="Awarded">
-              <select value={form.rule_kind}
-                onChange={(e) => set('rule_kind', e.target.value as AchievementRuleKind)}
-                className="w-full h-10 px-2 rounded-lg text-sm outline-none" style={selectStyle}>
-                <option value="metric">Automatically, when a number is reached</option>
-                <option value="manual">By hand, to someone you choose</option>
-              </select>
-            </FormField>
-
-            {form.rule_kind === 'manual' ? (
-              <p className="text-xs p-3 rounded-lg" style={{ background: SURFACE_RAISED, color: TEXT_SECOND }}>
-                Nobody earns this on their own. Use the gift button on the card to give it to a
-                specific {form.audience}.
-              </p>
-            ) : (
-              <>
-                <div className="grid grid-cols-[1fr_120px] gap-3">
-                  <FormField label="Measure" required>
-                    <select value={form.metric} onChange={(e) => set('metric', e.target.value)}
-                      className="w-full h-10 px-2 rounded-lg text-sm outline-none" style={selectStyle}>
-                      <option value="">Choose a stat…</option>
-                      {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                    </select>
-                  </FormField>
-                  <FormField label="Reaches">
-                    {chosen?.is_boolean ? (
-                      <div className="h-10 flex items-center text-xs" style={{ color: TEXT_MUTED }}>yes / no</div>
-                    ) : (
-                      <input type="number" min={1} value={form.threshold}
-                        onChange={(e) => set('threshold', e.target.value)}
-                        placeholder="10"
-                        className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-                        style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, colorScheme: 'dark' }} />
-                    )}
-                  </FormField>
-                </div>
-
-                <div className="grid grid-cols-[1fr_120px] gap-3">
-                  <FormField label="And also (optional)">
-                    <select value={form.metric2} onChange={(e) => set('metric2', e.target.value)}
-                      className="w-full h-10 px-2 rounded-lg text-sm outline-none" style={selectStyle}>
-                      <option value="">No second condition</option>
-                      {metrics.filter((m) => m.key !== form.metric).map((m) => (
-                        <option key={m.key} value={m.key}>{m.label}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                  <FormField label="Reaches">
-                    {form.metric2 && !chosen2?.is_boolean ? (
-                      <input type="number" min={1} value={form.threshold2}
-                        onChange={(e) => set('threshold2', e.target.value)}
-                        className="w-full h-10 px-3 rounded-lg text-sm text-white outline-none"
-                        style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, colorScheme: 'dark' }} />
-                    ) : (
-                      <div className="h-10" />
-                    )}
-                  </FormField>
-                </div>
-
-                <p className="text-xs" style={{ color: TEXT_MUTED }}>
-                  Awarded by the server on each person's next sync — existing members who already
-                  qualify get it straight away, not just people who reach it from now on.
-                </p>
-              </>
-            )}
+            <div className="flex gap-3 flex-wrap">{preview(false)}{preview(true)}</div>
+            {looks}
+            <FieldDivider />
+            <SectionLabel>Earning rules</SectionLabel>
+            {rule}
           </>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : isNew ? 'Create' : 'Save changes'}
-          </Button>
+        <div className="flex justify-between gap-2 pt-2">
+          <Button variant="ghost" onClick={step > 0 ? () => setStep(step - 1) : onClose} disabled={saving}>{step > 0 ? 'Back' : 'Cancel'}</Button>
+          {step >= 0 && step < 2 ? (
+            <Button onClick={() => { commit(); setStep(step + 1); }} disabled={step === 0 ? !ruleReady : !looksReady}>Next</Button>
+          ) : (
+            <Button onClick={() => { commit(); onSave(); }} disabled={saving || !ruleReady || !looksReady}>
+              {saving ? 'Saving…' : isNew ? 'Create' : 'Save changes'}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

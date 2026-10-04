@@ -165,8 +165,13 @@ async (page) => {
   await page.waitForTimeout(2500);
   let t = await text();
   out.push('ready: ' + grab(t, 'Ready to collect', 90));
-  out.push('demand: ' + grab(t, 'saving for this', 20));
   await page.screenshot({ path: 'shots/admin-rewards.png' });
+  // The catalogue is its own tab (2026-10-04); demand shows there.
+  await page.getByRole('tab', { name: 'Catalogue' }).click();
+  await page.waitForTimeout(400);
+  out.push('demand: ' + grab(await text(), 'saving for this', 20));
+  await page.getByRole('tab', { name: /Requests/ }).click();
+  await page.waitForTimeout(400);
   await page.getByRole('button', { name: /Handed over/ }).first().click();
   await page.waitForTimeout(800);
   await page.getByRole('button', { name: /Approve/ }).first().click();

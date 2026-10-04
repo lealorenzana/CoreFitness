@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin } from 'lucide-react';
+import { Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin, Pencil } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import { PointRulesSection } from '../components/ui/EngagementRules';
+import EarningRules from '../components/rewards/EarningRules';
 import SeasonSection from '../components/SeasonSection';
 import ReferralsSection from '../components/ReferralsSection';
 import {
@@ -66,6 +67,7 @@ interface Reward {
 interface Redemption {
   id: string;
   member_id: string;
+  reward_id: string;
   cost_points: number;
   status: string;
   requested_at: string;
@@ -76,12 +78,23 @@ interface Redemption {
   member_profiles: { profiles: { first_name: string; last_name: string } | null } | null;
 }
 
-const emptyForm = { name: '', description: '', cost_points: '', stock: '' };
+const emptyForm = { id: null as string | null, name: '', description: '', cost_points: '', stock: '' };
 const HISTORY_PER_PAGE = 8;
 
-type CatalogueFilter = 'all' | 'live' | 'hidden';
+type CatalogueFilter = 'all' | 'live' | 'hidden' | 'out';
+type Tab = 'requests' | 'catalogue' | 'earning' | 'season' | 'referrals' | 'history';
+const TABS: [Tab, string][] = [
+  ['requests', 'Requests'], ['catalogue', 'Catalogue'], ['earning', 'How members earn'],
+  ['season', 'Monthly season'], ['referrals', 'Referrals'], ['history', 'History'],
+];
 
 export default function Rewards() {
+  // One section at a time (2026-10-04): the page was six stacked panels, the
+  // last ones a long scroll away. The tab lives in the address, so a link or a
+  // reload lands where you were.
+  const [params, setParams] = useSearchParams();
+  const tab = (TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'requests') as Tab;
+  const setTab = (t: Tab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [queue, setQueue] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,20 +155,36 @@ export default function Rewards() {
       showToast('Name and a positive point cost are required', 'error');
       return;
     }
-    setBusy('add');
-    const { error } = await supabase.from('rewards').insert({
+    const row = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       cost_points: cost,
       // Blank means unlimited, which the column stores as NULL. 0 would mean
       // "out of stock forever", which is a different thing entirely.
       stock: form.stock.trim() === '' ? null : Number(form.stock),
-    });
+    };
+    setBusy('add');
+    const res = form.id
+      ? await supabase.from('rewards').update(row).eq('id', form.id).select('id')
+      : await supabase.from('rewards').insert(row).select('id');
     setBusy(null);
-    if (error) { showToast(error.message, 'error'); return; }
-    showToast('Reward added', 'success');
+    if (res.error) { showToast(res.error.message, 'error'); return; }
+    // A zero-row update reports success (CLAUDE.md): only an admin may edit rewards.
+    if (!res.data || res.data.length === 0) { showToast('That reward was not changed — only an admin can edit the catalogue.', 'error'); return; }
+    showToast(form.id ? 'Reward saved' : 'Reward added', 'success');
     setForm(emptyForm);
     setAdding(false);
+    await load();
+  };
+
+  /** Restock: adds to what is on the shelf; a reward with unlimited stock has nothing to add to. */
+  const restock = async (rw: Reward, add: number) => {
+    if (rw.stock == null) return;
+    setBusy(rw.id);
+    const { data, error } = await supabase.from('rewards').update({ stock: rw.stock + add }).eq('id', rw.id).select('id');
+    setBusy(null);
+    if (error || !data || data.length === 0) { showToast(error?.message ?? 'Only an admin can restock', 'error'); return; }
+    showToast(`${rw.name}: ${rw.stock + add} in stock`, 'success');
     await load();
   };
 
@@ -227,6 +256,7 @@ export default function Rewards() {
     return rewards.filter((r) => {
       if (filter === 'live' && !r.is_active) return false;
       if (filter === 'hidden' && r.is_active) return false;
+      if (filter === 'out' && !(r.stock != null && r.stock <= 0)) return false;
       if (q && !r.name.toLowerCase().includes(q)
         && !(r.description ?? '').toLowerCase().includes(q)) return false;
       return true;
@@ -235,6 +265,8 @@ export default function Rewards() {
 
   const history = usePaged(decided, HISTORY_PER_PAGE);
   const liveCount = rewards.filter((r) => r.is_active).length;
+  const outCount = rewards.filter((r) => r.is_active && r.stock != null && r.stock <= 0).length;
+  const stockOf = (row: Redemption) => rewards.find((x) => x.id === row.reward_id)?.stock;
 
   if (loading) {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading rewards…</div>;
@@ -257,19 +289,31 @@ export default function Rewards() {
         title="CORE Points & Rewards"
         subtitle="What members can spend their points on, and who is waiting on a decision"
         actions={
-          <Button variant="secondary" onClick={() => setAdding(true)}>
+          <Button variant="secondary" onClick={() => { setForm(emptyForm); setAdding(true); }}>
             <Plus size={15} /> Add reward
           </Button>
         }
       />
 
       <StatTiles items={[
-        { label: 'Waiting', value: pending.length, icon: Clock, tone: pending.length > 0 ? 'secondary' : 'primary' },
-        { label: 'Live rewards', value: liveCount, icon: Gift },
-        { label: 'Hidden', value: rewards.length - liveCount, icon: Package },
-        { label: 'Decided', value: decided.length, icon: History },
+        { label: 'Waiting', value: pending.length, icon: Clock, tone: pending.length > 0 ? 'secondary' : 'primary', onClick: () => setTab('requests') },
+        { label: 'Ready to collect', value: ready.length, icon: HandHeart, onClick: () => setTab('requests') },
+        { label: 'Live rewards', value: liveCount, icon: Gift, onClick: () => setTab('catalogue') },
+        { label: 'Out of stock', value: outCount, icon: Package, tone: outCount > 0 ? 'secondary' : 'primary', onClick: () => { setFilter('out'); setTab('catalogue'); } },
       ]} />
 
+      <div className="flex gap-1 flex-wrap p-1 rounded-xl" role="tablist" aria-label="Rewards sections"
+        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', width: 'fit-content', maxWidth: '100%' }}>
+        {TABS.map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+            style={{ background: tab === k ? 'var(--color-primary)' : 'transparent', color: tab === k ? '#fff' : 'var(--color-text-secondary)' }}>
+            {label}{k === 'requests' && pending.length + ready.length > 0 ? ` · ${pending.length + ready.length}` : ''}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'requests' && (<div className="grid gap-4 xl:grid-cols-2 items-start">
       {/* ── The queue first: it is the thing with someone waiting on it ───── */}
       <Section title="Waiting for you" icon={Clock} count={pending.length}
         hint={pending.length > 0 ? 'stock only drops when you approve' : undefined}>
@@ -277,8 +321,11 @@ export default function Rewards() {
           <EmptyState compact icon={Check} title="Nothing to approve"
             hint="Requests land here the moment a member spends their points." />
         ) : (
-          <CardGrid min={300}>
-            {pending.map((row) => (
+          <CardGrid min={260}>
+            {pending.map((row) => {
+              const left = stockOf(row);
+              const out = left != null && left <= 0;
+              return (
               <TileCard key={row.id} accent>
                 <p className="text-[12px] font-semibold text-white truncate">{memberName(row)}</p>
                 <p className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
@@ -287,8 +334,9 @@ export default function Rewards() {
                 <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                   {row.cost_points} points · asked {new Date(row.requested_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}
                 </p>
+                {out && <p className="text-[11px] mt-1" style={{ color: 'var(--color-secondary)' }}>Out of stock — restock it under Catalogue, or decline.</p>}
                 <div className="flex gap-1.5 mt-2.5">
-                  <button onClick={() => setToApprove(row)} disabled={busy === row.id}
+                  <button onClick={() => setToApprove(row)} disabled={busy === row.id || out}
                     className="flex-1 h-8 rounded-lg text-[11px] font-bold disabled:opacity-50"
                     style={{ background: 'var(--color-primary)', color: '#fff' }}>
                     <Check size={12} className="inline mr-1" />Approve
@@ -298,21 +346,24 @@ export default function Rewards() {
                     disabled={busy === row.id}
                     className="px-3 h-8 rounded-lg text-[11px] font-semibold disabled:opacity-50"
                     style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                    <X size={12} className="inline mr-1" />Reject
+                    <X size={12} className="inline mr-1" />Decline
                   </button>
                 </div>
               </TileCard>
-            ))}
+              );
+            })}
           </CardGrid>
         )}
       </Section>
 
       {/* ── Ready to collect (0092) ── approved, waiting at the desk. Whoever
           hands it over marks it; the member's app then says Collected. */}
-      {ready.length > 0 && (
-        <Section title="Ready to collect" icon={HandHeart} count={ready.length}
+      <Section title="Ready to collect" icon={HandHeart} count={ready.length}
           hint="mark it when it leaves the desk">
-          <CardGrid min={300}>
+        {ready.length === 0 ? (
+          <EmptyState compact icon={HandHeart} title="Nothing waiting at the desk" hint="Approved rewards wait here until they are handed over." />
+        ) : (
+          <CardGrid min={260}>
             {ready.map((row) => (
               <TileCard key={row.id}>
                 <p className="text-[12px] font-semibold text-white truncate">{memberName(row)}</p>
@@ -327,11 +378,12 @@ export default function Rewards() {
               </TileCard>
             ))}
           </CardGrid>
-        </Section>
-      )}
+        )}
+      </Section>
+      </div>)}
 
       {/* ── The catalogue ─────────────────────────────────────────────────── */}
-      <Section
+      {tab === 'catalogue' && <Section
         title="What points buy" icon={Gift} count={rewards.length}
         actions={
           rewards.length > 0 ? (
@@ -344,6 +396,7 @@ export default function Rewards() {
                   { value: 'all', label: 'All', count: rewards.length },
                   { value: 'live', label: 'Live', count: liveCount },
                   { value: 'hidden', label: 'Hidden', count: rewards.length - liveCount },
+                  { value: 'out', label: 'Out of stock', count: outCount },
                 ]}
               />
             </Toolbar>
@@ -355,7 +408,7 @@ export default function Rewards() {
             icon={Gift}
             title="No rewards yet"
             hint="Members are already earning points — they just have nothing to spend them on."
-            action={<Button variant="secondary" onClick={() => setAdding(true)}><Plus size={14} /> Add the first one</Button>}
+            action={<Button variant="secondary" onClick={() => { setForm(emptyForm); setAdding(true); }}><Plus size={14} /> Add the first one</Button>}
           />
         ) : catalogue.length === 0 ? (
           <EmptyState compact icon={Gift} title="Nothing matches"
@@ -375,21 +428,37 @@ export default function Rewards() {
                   </div>
                   {/* An inactive reward is hidden from members, not deleted — the
                       requests already decided against it stay readable. */}
-                  <button onClick={() => toggleReward(r)}
-                    className="text-[9px] font-semibold flex-shrink-0 px-2 py-1 rounded"
-                    style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
-                    {r.is_active ? 'Hide' : 'Show'}
-                  </button>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => { setForm({ id: r.id, name: r.name, description: r.description ?? '', cost_points: String(r.cost_points), stock: r.stock == null ? '' : String(r.stock) }); setAdding(true); }}
+                      aria-label={`Edit ${r.name}`} className="p-1 rounded" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+                      <Pencil size={11} />
+                    </button>
+                    <button onClick={() => toggleReward(r)}
+                      className="text-[10px] font-semibold px-2 py-1 rounded"
+                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-muted)' }}>
+                      {r.is_active ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold"
                     style={{ color: 'var(--color-primary)' }}>
                     <Coins size={11} />{r.cost_points}
                   </span>
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  <span className="text-[11px]" style={{ color: r.stock != null && r.stock <= 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
                     {/* NULL stock is unlimited. 0 is out of stock, and says so. */}
-                    {r.stock == null ? 'unlimited' : `${r.stock} left`}
+                    {r.stock == null ? 'unlimited' : r.stock <= 0 ? 'out of stock' : `${r.stock} left`}
                   </span>
+                  {r.stock != null && (
+                    <span className="ml-auto flex gap-1">
+                      {[1, 5].map((n) => (
+                        <button key={n} disabled={busy === r.id} onClick={() => void restock(r, n)} aria-label={`Add ${n} to ${r.name}`}
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+                          +{n}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                 </div>
                 {/* Demand (0092): members who pinned it on their Rewards screen. */}
                 {wishlist && (wishlist.get(r.id) ?? 0) > 0 && (
@@ -401,17 +470,21 @@ export default function Rewards() {
             ))}
           </CardGrid>
         )}
-      </Section>
+      </Section>}
 
-      {/* ── How points are earned (0051's point_rules) — the other half of the
-          economy this page spends. Admin-only by RLS, like the route. ── */}
-      <PointRulesSection />
+      {/* ── How points are earned (0051's point_rules, 0159's two more) — the
+          other half of the economy this page spends. Admin-only by RLS. ── */}
+      {tab === 'earning' && <EarningRules />}
 
       {/* ── History, behind a button ──────────────────────────────────────────
           It was a fourth always-open panel listing 20 rows. Decisions already
           made are the least urgent thing on the page, so they wait to be asked
           for — and they page rather than growing forever. */}
-      {decided.length > 0 && (
+      {tab === 'history' && (decided.length === 0 ? (
+        <Section title="Already decided" icon={History}>
+          <EmptyState compact icon={History} title="No decisions yet" hint="Approved, declined and collected requests are kept here." />
+        </Section>
+      ) : (
         <Section
           title="Already decided" icon={History} count={decided.length}
           actions={
@@ -426,7 +499,7 @@ export default function Rewards() {
             </div>
           }
         >
-          {showHistory ? (
+          {showHistory || tab === 'history' ? (
             <>
               <div className="space-y-1">
                 {history.visible.map((row) => (
@@ -462,16 +535,16 @@ export default function Rewards() {
             </p>
           )}
         </Section>
-      )}
+      ))}
 
-      {/* ── Add a reward, floating ────────────────────────────────────────── */}
+      {/* ── Add or edit a reward, floating ────────────────────────────────── */}
       <Modal
         isOpen={adding}
         onClose={() => { setAdding(false); setForm(emptyForm); }}
-        title="Add a reward"
-        subtitle="What a member can turn their points into"
+        title={form.id ? 'Edit reward' : 'Add a reward'}
+        subtitle={form.id ? 'Members see the change at once; requests already made keep their price' : 'What a member can turn their points into'}
         onConfirm={addReward}
-        confirmLabel={busy === 'add' ? 'Adding…' : 'Add reward'}
+        confirmLabel={busy === 'add' ? 'Saving…' : form.id ? 'Save' : 'Add reward'}
         confirmDisabled={busy === 'add' || !form.name.trim() || !form.cost_points.trim()}
       >
         <div className="space-y-3">
@@ -516,46 +589,46 @@ export default function Rewards() {
       <Modal
         isOpen={!!rejecting}
         onClose={() => setRejecting(null)}
-        title="Reject this request?"
+        title="Decline this request?"
         subtitle={rejecting ? `${memberName(rejecting)} — ${rejecting.rewards?.name ?? 'Reward'}` : undefined}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setRejecting(null)}>Keep it waiting</Button>
             <Button variant="secondary"
-              disabled={!!busy}
+              disabled={!!busy || !rejectNote.trim()}
               onClick={async () => {
                 const row = rejecting;
                 if (!row) return;
                 setRejecting(null);
                 await decide(row, 'rejected', rejectNote.trim());
               }}>
-              Reject
+              Decline
             </Button>
           </>
         }
       >
         <label className="block">
           <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>
-            Reason — the member sees this
+            Why — the member reads this
           </span>
           <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={3}
             placeholder="e.g. Out of stock this month — try again in April."
             className="w-full px-3 py-2 rounded-lg text-xs text-white mt-1 resize-none"
             style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
         </label>
-        <p className="text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
-          Optional, but a rejection with no reason reads as a mistake. The
-          member keeps their points either way.
+        <p className="text-[11px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
+          Needed — a decline with no reason reads as a mistake. The member keeps
+          their points.
         </p>
       </Modal>
 
       {/* Approving hands something over and drops stock, so it asks first. */}
       {/* The monthly season (0123): tiers and the rewards waiting at the desk. */}
-      <SeasonSection isAdmin />
+      {tab === 'season' && <SeasonSection isAdmin />}
 
       {/* Who brought whom (0125). */}
-      <ReferralsSection />
+      {tab === 'referrals' && <ReferralsSection />}
 
       <ConfirmDialog
         isOpen={!!toApprove}
