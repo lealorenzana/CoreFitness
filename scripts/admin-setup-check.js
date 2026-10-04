@@ -40,6 +40,7 @@ async (page) => {
     { feature_key: 'squads', label: 'Squads', description: 'Train with friends.', state: 'not_sold', enabled: false, sort_order: 4, parent_key: null },
   ];
   const CALLS = [];
+  let FINISHED = false;
   const PATCHES = [];
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
@@ -56,7 +57,7 @@ async (page) => {
       CALLS.push([fn, b]);
       if (fn === 'my_gym_context') return json([{ gym_id: 'gym-a', gym_name: 'Ana Fitness', slug: 'ana-fitness', role: 'admin',
         status: 'active', lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1,
-        onboarded: false, onboarding_step: null, gym_state: 'setting_up' }]);
+        onboarded: FINISHED, onboarding_step: null, gym_state: FINISHED ? 'open' : 'setting_up' }]);
       if (fn === 'my_gym_app') return json([{ gym_id: 'gym-a', gym_name: 'Ana Fitness', slug: 'ana-fitness', short_name: null,
         logo_url: null, accent: 'violet', accent_action: null, tagline: null, points_name: 'Points', points_name_short: 'points',
         welcome_message: null, vocabulary: { members: 'members', member: 'member', trainers: 'coaches', trainer: 'coach', classes: 'classes', class: 'class' },
@@ -65,6 +66,7 @@ async (page) => {
       if (fn === 'set_gym_module') { const m = MODULES.find((x) => x.feature_key === b.p_feature); if (m) m.enabled = b.p_enabled; return json(null); }
       if (fn === 'retire_plan') { PLANS = PLANS.filter((p) => p.id !== b.p_plan_id); return json([{ moved: 0, plan_name: 'Free Trial', moved_to: 'Free Plan' }]); }
       if (fn === 'set_join_policy') return json(null);
+      if (fn === 'finish_gym_setup') { FINISHED = true; return json(new Date().toISOString()); }
       return json(null);
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
@@ -129,10 +131,17 @@ async (page) => {
   out.push('days edited, a plan added: ' + (PATCHES.some((p) => p.duration_days === 90) && PLANS.some((p) => p.name === 'Student rate' && p.price === 499) ? 'yes' : 'MISSING ' + JSON.stringify(PATCHES)));
   await next();                                    // door → ready
   t = await text();
-  out.push('the checklist links out: ' + ((await page.locator('a[href="/settings?tab=refunds"]').count()) === 1 && (await page.locator('a[href="/shop"]').count()) === 1 && /Open my gym/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the checklist is there: ' + ((await page.getByRole('button', { name: /Refund tiers and fee/ }).count()) === 1 && (await page.getByRole('button', { name: /The shop/ }).count()) === 1 && /Open my gym/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-setup-ready.png' });
   await page.getByRole('button', { name: /3\. How your app looks/ }).click();
   await page.waitForTimeout(300);
   out.push('a done step can be revisited: ' + (/Your main colour/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: /9\. Ready to open/ }).click();
+  await page.waitForTimeout(300);
+  // The bug: a checklist link opened a page while the gym was still "not set up", and the guard sent it back here.
+  await page.getByRole('button', { name: /Refund tiers and fee/ }).click();
+  await page.waitForURL(/\/settings\?tab=refunds/, { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  out.push('a checklist item finishes setup and opens its page: ' + (FINISHED && /\/settings\?tab=refunds/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   return out.join(String.fromCharCode(10));
 }

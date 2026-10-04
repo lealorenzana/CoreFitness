@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ArrowRight, Banknote, Building2, CalendarDays, Check, Clock, DoorOpen, Dumbbell, FileSignature, KeyRound,
   LayoutGrid, LogOut, Palette, ScrollText, ShoppingBag, Sparkles, Tags, Trash2, Type, UserPlus, Users,
@@ -263,7 +262,10 @@ export default function Setup() {
     await setFirstPassword(password.next);
   };
 
-  const go = (to: Step) => { if (done.includes(to) || to === step) setStep(to); };
+  // Any step up to the furthest one reached: going back to step 3 must not lock you out of step 9.
+  const furthest = Math.max(index, ...done.map((k) => steps.findIndex((x) => x.key === k) + 1));
+  const reachable = (to: Step) => steps.findIndex((x) => x.key === to) <= furthest;
+  const go = (to: Step) => { if (reachable(to)) setStep(to); };
 
   const next = async () => {
     setSaving(true);
@@ -281,14 +283,38 @@ export default function Setup() {
         await setOnboardingStep(to);
         setStep(to);
       } else {
-        await finishGymSetup();
-        clearGymContext();
-        // A full load: the shell reads the gym's name and colours once at boot.
-        window.location.assign('/dashboard');
+        await openGym('/dashboard');
       }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
     } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Finish setup, confirm the database now says so, then leave for `to`.
+   * The checklist links used to open in a new tab while the gym was still
+   * "not set up", so the guard sent that tab straight back here — finishing
+   * first is what lets any page open.
+   */
+  const openGym = async (to: string) => {
+    await finishGymSetup();
+    clearGymContext();
+    const ctx = await getGymContext(true);
+    if (ctx && !ctx.onboarded) {
+      throw new Error('Your gym could not be marked as set up. Try again, or ask Core Fitness in Support.');
+    }
+    // A full load: the shell reads the gym's name and colours once at boot.
+    window.location.assign(to);
+  };
+
+  const finishAndGo = async (to: string) => {
+    setSaving(true);
+    try {
+      await openGym(to);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be opened', 'error');
       setSaving(false);
     }
   };
@@ -355,7 +381,7 @@ export default function Setup() {
                 const Icon = s.icon;
                 return (
                   <li key={s.key}>
-                    <button type="button" onClick={() => go(s.key)} disabled={!ok && !here}
+                    <button type="button" onClick={() => go(s.key)} disabled={!reachable(s.key)}
                       aria-current={here ? 'step' : undefined}
                       className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm disabled:cursor-default"
                       style={{
@@ -716,8 +742,8 @@ export default function Setup() {
                     [Users, 'Invite your members', 'Bring in the people you already have.', '/invitations'],
                     [ShoppingBag, 'The shop', 'Drinks, supplements and gear at the desk.', '/shop'],
                   ] as const).map(([Icon, title, blurb, to]) => (
-                    <Link key={to} to={to} target="_blank" rel="noopener"
-                      className="flex items-start gap-3 rounded-xl border p-3 transition-colors hover:brightness-110"
+                    <button key={to} type="button" disabled={saving} onClick={() => void finishAndGo(to)}
+                      className="flex items-start gap-3 rounded-xl border p-3 text-left transition-colors hover:brightness-110 disabled:opacity-60"
                       style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
                         style={{ background: 'var(--color-surface-high)', color: 'var(--color-primary-300, var(--color-primary))' }}>
@@ -728,12 +754,12 @@ export default function Setup() {
                         <span className="block text-xs mt-0.5" style={labelStyle}>{blurb}</span>
                       </span>
                       <ArrowRight size={14} className="mt-1 shrink-0" style={labelStyle} />
-                    </Link>
+                    </button>
                   ))}
                 </div>
                 <p className={`mt-3 ${hint}`} style={labelStyle}>
-                  Each opens in a new tab, so this stays here. None of them is needed to open — your gym works with the
-                  standard rules until you change them.
+                  Choosing one opens your gym and takes you there. None of them is needed to open — your gym works with
+                  the standard rules until you change them, and every one is in the menu afterwards.
                 </p>
               </div>
             )}
