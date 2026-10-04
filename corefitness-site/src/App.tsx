@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { toTier, type PublicPlanRow, type Tier } from './pricing';
+import { billingFor, billings, priceLine, priceView, toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
@@ -14,7 +14,6 @@ const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 
 interface Gym { id: string; slug: string; name: string }
 
-const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
 
 /**
  * The public page: what Core Fitness is, what it costs, who already uses it,
@@ -376,17 +375,15 @@ export default function App() {
             <div className="grid tiers">
               {tiers === null && [0, 1, 2].map((i) => <div className="skeleton" key={i} aria-hidden="true" />)}
               {tiers?.map((t, i) => {
-                const showYear = yearly && t.yearly !== null && t.yearly > 0;
+                const view = priceView(t, yearly ? 'yearly' : 'monthly');
                 return (
                   <div className={`card tier tilt${t.trialDays ? ' has-trial' : ''}`} key={t.key} data-reveal style={{ ['--d' as string]: i }}>
                     {t.trialDays ? <span className="badge">{t.trialDays} days free</span> : null}
                     <h3>{t.name}</h3>
-                    <div className="price" key={showYear ? 'y' : 'm'}>
-                      {showYear ? <>{peso(t.yearly!)}<small> / year</small></>
-                        : <>{t.monthly === 0 ? 'Free' : t.monthly === null ? 'Talk to us' : peso(t.monthly)}{t.monthly ? <small> / month</small> : null}</>}
+                    <div className="price" key={view.unit ?? view.main}>
+                      {view.main}{view.unit && <small> {view.unit}</small>}
                     </div>
-                    {!showYear && t.yearly !== null && t.yearly > 0 && <p className="yearly">or {peso(t.yearly)} a year</p>}
-                    {yearly && !showYear && t.monthly !== 0 && t.monthly !== null && <p className="yearly">Monthly only</p>}
+                    {view.note && <p className="yearly">{view.note}</p>}
                     <p className="line">{t.line}</p>
                     {(t.maxMembers !== null || t.includes.length > 0) && (
                       <ul>
@@ -425,7 +422,7 @@ export default function App() {
           </div>
         </section>
 
-        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} /></div>
+        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} yearlyView={yearly} /></div>
 
         <SiteFooter />
         </>}
@@ -447,10 +444,10 @@ export default function App() {
 const HEARD = ['Facebook', 'A friend or another gym', 'Google', 'TikTok', 'Instagram', 'A Core Fitness gym', 'Other'];
 const CONTACT: [string, string][] = [['viber', 'Viber'], ['messenger', 'Messenger'], ['sms', 'Text (SMS)'], ['call', 'A call'], ['whatsapp', 'WhatsApp'], ['email', 'Email']];
 
-function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null }) {
+function ApplySection({ tiers, chosen, yearlyView }: { tiers: Tier[]; chosen: string | null; yearlyView: boolean }) {
   const [form, setForm] = useState({
     gym_name: '', owner_name: '', email: '', phone: '', address: '', member_estimate: '', message: '',
-    plan: '', billing: 'monthly', heard_from: '', heard_other: '', contact_pref: 'viber', contact_handle: '',
+    plan: '', billing: 'monthly' as 'monthly' | 'yearly', heard_from: '', heard_other: '', contact_pref: 'viber', contact_handle: '',
   });
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [token, setToken] = useState<string | null>(null);
@@ -463,11 +460,15 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** In effect only when the platform has published this very text (0156). */
   const IN_EFFECT = inEffect(usePlatformFacts());
 
-  // A tier card's "Choose" fills the plan; so does there being only one.
+  // A tier card's "Choose" fills the plan, on the billing the page was showing.
   useEffect(() => {
-    if (chosen) setForm((f) => ({ ...f, plan: chosen }));
+    if (chosen) setForm((f) => ({ ...f, plan: chosen, billing: yearlyView ? 'yearly' : 'monthly' }));
+    // Only a new choice re-fills; flipping the page's toggle later must not undo the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosen]);
   const plan = tiers.find((t) => t.key === form.plan) ?? null;
+  /** What is sent: a plan with no yearly price can only be bought monthly, and the reverse. */
+  const billing = plan ? billingFor(plan, form.billing) : form.billing;
 
   const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone];
   const done = needed.filter((v) => v.trim() !== '').length;
@@ -488,7 +489,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
       p_gym_name: form.gym_name.trim(), p_owner_name: form.owner_name.trim(), p_email: form.email.trim(),
       p_phone: form.phone.trim(), p_address: form.address.trim() || null,
       p_member_estimate: form.member_estimate ? Number(form.member_estimate) : null,
-      p_message: form.message.trim() || null, p_plan_key: form.plan || null, p_billing: form.billing,
+      p_message: form.message.trim() || null, p_plan_key: form.plan || null, p_billing: billing,
       p_heard_from: heard || null, p_contact_pref: form.contact_pref || null, p_contact_handle: form.contact_handle.trim() || null,
     });
     if (rpcError && /schema cache|Could not find the function/i.test(rpcError.message)) {
@@ -497,7 +498,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
         gym_name: form.gym_name.trim(), owner_name: form.owner_name.trim(), email: form.email.trim(),
         phone: form.phone.trim(), address: form.address.trim() || null,
         member_estimate: form.member_estimate ? Number(form.member_estimate) : null,
-        message: [form.message.trim(), plan ? `Plan: ${plan.name} (${form.billing})` : '', heard ? `Heard from: ${heard}` : '']
+        message: [form.message.trim(), plan ? `Plan: ${plan.name} (${billing})` : '', heard ? `Heard from: ${heard}` : '']
           .filter(Boolean).join('\n') || null,
       });
       if (insertError) { setError(insertError.message); setState('idle'); return; }
@@ -566,15 +567,15 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
                       aria-pressed={form.plan === t.key} onClick={() => setForm({ ...form, plan: t.key })}>
                       <span className="tick" aria-hidden="true"><Icon name="check" /></span>
                       <b>{t.name}</b>
-                      <span>{t.monthly === 0 ? 'Free' : t.monthly === null ? 'Talk to us' : `${peso(t.monthly)} / month`}</span>
+                      <span>{priceLine(t)}</span>
                       {t.trialDays ? <small>{t.trialDays} days free</small> : t.line ? <small>{t.line}</small> : null}
                     </button>
                   ))}
                 </div>
-                {plan && plan.yearly !== null && plan.yearly > 0 && (
+                {plan && billings(plan).length > 1 && (
                   <div className="billing">
-                    <label><input type="radio" name="billing" checked={form.billing === 'monthly'} onChange={() => setForm({ ...form, billing: 'monthly' })} /> Monthly</label>
-                    <label><input type="radio" name="billing" checked={form.billing === 'yearly'} onChange={() => setForm({ ...form, billing: 'yearly' })} /> Yearly ({peso(plan.yearly)})</label>
+                    <label><input type="radio" name="billing" checked={billing === 'monthly'} onChange={() => setForm({ ...form, billing: 'monthly' })} /> Monthly ({priceLine(plan)})</label>
+                    <label><input type="radio" name="billing" checked={billing === 'yearly'} onChange={() => setForm({ ...form, billing: 'yearly' })} /> Yearly ({priceLine(plan, 'yearly')})</label>
                   </div>
                 )}
               </div>

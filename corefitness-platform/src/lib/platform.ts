@@ -59,6 +59,8 @@ export interface PlatformFeature {
   label: string;
   description: string;
   sort_order: number;
+  /** 0141. A child works only while this part is on. Absent before 0141. */
+  parent_key?: string | null;
 }
 
 export interface PlanFeatureCell {

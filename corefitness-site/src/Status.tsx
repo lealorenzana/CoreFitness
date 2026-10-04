@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import { billingFor, priceLine } from './pricing';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
-const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 interface Status {
@@ -61,8 +61,14 @@ export default function StatusPage({ token }: { token: string }) {
     );
   }
 
-  const price = s.plan?.price_monthly != null ? Number(s.plan.price_monthly) : null;
-  const yearly = s.plan?.price_yearly != null ? Number(s.plan.price_yearly) : null;
+  // The price of the billing they chose — a yearly applicant is told the yearly amount.
+  const tier = s.plan ? {
+    monthly: s.plan.price_monthly != null ? Number(s.plan.price_monthly) : null,
+    yearly: s.plan.price_yearly != null ? Number(s.plan.price_yearly) : null,
+    trialDays: s.plan.trial_days,
+  } : null;
+  const billing = tier ? billingFor(tier, s.billing ?? 'monthly') : 'monthly';
+  const price = tier ? priceLine(tier, billing) : null;
 
   return (
     <section>
@@ -89,8 +95,8 @@ export default function StatusPage({ token }: { token: string }) {
 
       {s.plan && (
         <p>Plan: <strong style={{ color: 'var(--text)' }}>{s.plan.name}</strong>
-          {price ? ` — ${peso(price)} a month` : price === 0 ? ' — free' : ' — we will tell you the price'}
-          {s.billing === 'yearly' && yearly ? `, or ${peso(yearly)} a year` : ''}</p>
+          {price === 'Talk to us' ? ' — we will tell you the price' : ` — ${price}`}
+          {billing === 'yearly' ? ', billed yearly' : ''}</p>
       )}
 
       {s.status === 'approved' && s.pay && s.pay.length > 0 && (

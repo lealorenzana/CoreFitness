@@ -106,6 +106,8 @@ export function subscriptionWarning(b: GymBilling | null, graceDays = 7, onTrial
 export interface GymSubscription {
   plan_name: string | null;
   price_monthly: string | null;
+  /** From `my_gym_billing()` (0108), which `my_gym_subscription()` never carried. Null when there is none. */
+  price_yearly?: string | null;
   paid_until: string | null;
   days_left: number | null;
   /** The platform's setting: read-only this many days after paid_until. */
@@ -133,9 +135,12 @@ export interface GymReceipt {
 
 /** undefined = 0138 not live; null = not the owner. */
 export async function getSubscription(): Promise<GymSubscription | null | undefined> {
-  const { data, error } = await supabase.rpc('my_gym_subscription');
+  const [{ data, error }, billing] = await Promise.all([supabase.rpc('my_gym_subscription'), getGymBilling()]);
   if (error) return undefined;
-  return ((data ?? []) as GymSubscription[])[0] ?? null;
+  const sub = ((data ?? []) as GymSubscription[])[0] ?? null;
+  // The yearly price lives on the plan; without it a yearly gym was shown, and
+  // asked to pay, twelve times the monthly price.
+  return sub ? { ...sub, price_yearly: billing?.price_yearly ?? null } : null;
 }
 export async function myGymPayments(): Promise<GymReceiptRow[]> {
   const { data, error } = await supabase.rpc('my_gym_payments');

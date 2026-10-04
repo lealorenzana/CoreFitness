@@ -77,7 +77,7 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
             <div className="meta" style={{ margin: '4px 0 0' }}>
               Ref <b style={{ color: 'var(--text)', letterSpacing: '0.04em' }}>{c.reference}</b> · sent {day(c.paid_on)}
               {' · '}{c.months} month{c.months === 1 ? '' : 's'}{c.plan_name ? ` of ${c.plan_name}` : ''}
-              {c.price_monthly ? ` (list ${peso(Number(c.price_monthly) * c.months)})` : ''}
+              {c.price_monthly ? ` (monthly list price × ${c.months}: ${peso(Math.round(Number(c.price_monthly) * c.months * 100) / 100)})` : ''}
               {c.submitted_by_name ? ` · by ${c.submitted_by_name}` : ''}
             </div>
             {c.note && <div className="meta" style={{ margin: '4px 0 0' }}>“{c.note}”</div>}

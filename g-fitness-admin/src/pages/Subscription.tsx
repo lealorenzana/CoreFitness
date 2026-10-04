@@ -10,7 +10,17 @@ import {
 } from '../lib/api/subscription';
 
 const MUTED = 'var(--color-text-muted)';
-const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
+const peso = (n: string | number) => {
+  const v = Number(n);
+  return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
+};
+/** The plan's price as the website says it: Free, monthly and/or yearly, or not set. */
+const planPrice = (m: string | null, y: string | null) => {
+  const year = y !== null && Number(y) > 0 ? `${peso(y)} a year` : null;
+  if (m !== null && Number(m) > 0) return `${peso(m)} a month${year ? ` · or ${year}` : ''}`;
+  if (m !== null && Number(m) === 0) return 'Free';
+  return year ?? 'No price set';
+};
 const day = (d: string) => new Date(d + 'T00:00:00+08:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /**
@@ -69,7 +79,7 @@ export default function Subscription() {
         <Card className="!p-4">
           <p className="text-xs" style={{ color: MUTED }}>Plan</p>
           <p className="text-lg font-bold text-white mt-1">{sub.plan_name ?? '—'}</p>
-          <p className="text-xs mt-1" style={{ color: MUTED }}>{sub.price_monthly !== null ? `${peso(sub.price_monthly)} a month` : 'No price set'}</p>
+          <p className="text-xs mt-1" style={{ color: MUTED }}>{planPrice(sub.price_monthly, sub.price_yearly ?? null)}</p>
         </Card>
         <Card className="!p-4">
           <p className="text-xs" style={{ color: MUTED }}>{sub.on_trial ? 'Free trial until' : 'Covered until'}</p>
@@ -82,7 +92,7 @@ export default function Subscription() {
           <p className="text-xs mt-1" style={{ color: MUTED }}>{sub.grace_days} day{sub.grace_days === 1 ? '' : 's'} after the due date. Nothing is deleted.</p>
         </Card>
       </div>
-      <PayCoreFitness priceMonthly={sub.price_monthly} />
+      <PayCoreFitness priceMonthly={sub.price_monthly} priceYearly={sub.price_yearly ?? null} />
       <Card className="!p-4 space-y-3">
         <p className="text-xs font-semibold text-white">How full your plan is</p>
         {meter('Active members', sub.members, sub.max_members)}

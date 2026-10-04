@@ -9,12 +9,32 @@ import {
   type PlanFeatureCell, type PlatformFeature, type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 
-const peso = (n: string | null) =>
-  n === null ? null : '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 0 });
+/** Whole pesos stay whole (₱499); anything else keeps its centavos (₱499.50) — the price as charged. */
+const peso = (n: string | null) => {
+  if (n === null || n === '') return null;
+  const v = Number(n);
+  return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
+};
 
-const blank = (sort: number): PlatformPlan => ({
+/** A price as the website will show it: Free, a number, or "Talk to us" when nothing is decided. */
+const priceOf = (p: PlatformPlan) => {
+  const m = p.price_monthly === null ? null : Number(p.price_monthly);
+  const y = p.price_yearly === null || Number(p.price_yearly) <= 0 ? null : p.price_yearly;
+  if (m !== null && m > 0) return { main: peso(p.price_monthly)!, rest: `a month${y ? ` · ${peso(y)} a year` : ''}` };
+  if (m === 0) return { main: 'Free', rest: p.trial_days ? `for ${p.trial_days} days, then the gym locks until it pays` : 'no charge' };
+  if (y) return { main: peso(y)!, rest: 'a year · no monthly price' };
+  return null;
+};
+
+/**
+ * A new plan. Once 0121 is live every plan row carries `max_photos`; a new one
+ * must carry it too, or the field never shows and the column's default (100)
+ * is set silently.
+ */
+const blank = (sort: number, photos: boolean): PlatformPlan => ({
   key: '', name: '', blurb: null, price_monthly: null, price_yearly: null, trial_days: null,
   max_members: null, max_staff: null, is_public: true, is_active: true, sort_order: sort,
+  ...(photos ? { max_photos: 100 } : {}),
 });
 
 /**
@@ -149,7 +169,7 @@ export default function Plans() {
           {plans ? `${plans.length} plan${plans.length === 1 ? '' : 's'} · tick what each one unlocks` : 'Loading…'}
         </span>
         <span className="spacer" />
-        <button className="btn" onClick={() => setEditing(blank((plans?.length ?? 0) + 1))}>
+        <button className="btn" onClick={() => setEditing(blank((plans?.length ?? 0) + 1, plans?.some((p) => p.max_photos !== undefined) ?? false))}>
           <Plus size={15} /> Add a plan
         </button>
       </div>
@@ -187,13 +207,13 @@ export default function Plans() {
             </div>
             <div>
               <label htmlFor="pl-pm">₱ a month</label>
-              <input id="pl-pm" type="number" min={0} value={editing.price_monthly ?? ''}
+              <input id="pl-pm" type="number" min={0} step="0.01" value={editing.price_monthly ?? ''}
                 placeholder="not decided"
                 onChange={(e) => setEditing({ ...editing, price_monthly: e.target.value === '' ? null : e.target.value })} />
             </div>
             <div>
               <label htmlFor="pl-py">₱ a year</label>
-              <input id="pl-py" type="number" min={0} value={editing.price_yearly ?? ''}
+              <input id="pl-py" type="number" min={0} step="0.01" value={editing.price_yearly ?? ''}
                 placeholder="not offered"
                 onChange={(e) => setEditing({ ...editing, price_yearly: e.target.value === '' ? null : e.target.value })} />
             </div>
@@ -224,14 +244,28 @@ export default function Plans() {
               </div>
             )}
             <div>
+              <label htmlFor="pl-act">On sale</label>
+              <select id="pl-act" value={editing.is_active ? 'yes' : 'no'}
+                onChange={(e) => setEditing({ ...editing, is_active: e.target.value === 'yes' })}>
+                <option value="yes">Yes — gyms can be placed on it</option>
+                <option value="no">Retired — gyms already on it keep it</option>
+              </select>
+            </div>
+            <div>
               <label htmlFor="pl-pub">On the website</label>
-              <select id="pl-pub" value={editing.is_public ? 'yes' : 'no'}
+              <select id="pl-pub" value={editing.is_public ? 'yes' : 'no'} disabled={!editing.is_active}
                 onChange={(e) => setEditing({ ...editing, is_public: e.target.value === 'yes' })}>
-                <option value="yes">Shown</option>
+                <option value="yes">{editing.is_active ? 'Shown' : 'Shown once it is on sale again'}</option>
                 <option value="no">Hidden — for gyms you place on it yourself</option>
               </select>
             </div>
           </div>
+          {editing.price_monthly !== null && editing.price_yearly !== null && Number(editing.price_yearly) > 0
+            && Number(editing.price_monthly) > 0 && Number(editing.price_yearly) >= Number(editing.price_monthly) * 12 && (
+            <p className="meta" style={{ marginTop: 10 }}>
+              The yearly price is not less than twelve months ({peso(String(Number(editing.price_monthly) * 12))}), so no gym saves by paying yearly.
+            </p>
+          )}
           {editing.max_members !== null && (
             <p className="meta" style={{ marginTop: 10 }}>
               A gym on this plan will be refused its {editing.max_members + 1}th active member — by the
@@ -260,9 +294,12 @@ export default function Plans() {
             <span className="plan-gyms"><Building2 size={13} />{onIt} gym{onIt === 1 ? '' : 's'} on it</span>
           </div>
           <div className="plan-price">
-            {peso(plan.price_monthly)
-              ? <><b>{peso(plan.price_monthly)}</b><span>a month{plan.price_yearly !== null ? ` · ${peso(plan.price_yearly)} a year` : ''}</span></>
-              : <><b className="undecided">Talk to us</b><span>no price decided — the website says so</span></>}
+            {(() => {
+              const pr = priceOf(plan);
+              return pr
+                ? <><b>{pr.main}</b><span>{pr.rest}</span></>
+                : <><b className="undecided">Talk to us</b><span>no price decided — the website says so</span></>;
+            })()}
           </div>
           {plan.blurb && <p className="plan-blurb">“{plan.blurb}”</p>}
           <div className="plan-facts">
@@ -274,13 +311,21 @@ export default function Plans() {
           <div className="plan-unlocks">
             <span className="section-title" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length} <InfoDot tip="Tick what this plan includes. The database enforces it: a gym on this plan loses what is unticked, and the website follows." /></span>
             <div className="ticks">
-              {features.map((f) => (
-                <label className="tick" key={f.key} title={f.description}>
-                  <input type="checkbox" checked={on(plan.key, f.key)}
-                    onChange={() => void toggle(plan.key, f.key)} />
-                  <span>{f.label}</span>
-                </label>
-              ))}
+              {features.map((f) => {
+                // 0141: a child works only while its part is on, and the website
+                // (0158) lists it only then — say so instead of showing a tick that gives nothing.
+                const parent = f.parent_key ? features.find((x) => x.key === f.parent_key) : undefined;
+                const idle = !!parent && on(plan.key, f.key) && !on(plan.key, parent.key);
+                return (
+                  <label className="tick" key={f.key}
+                    title={idle ? `Needs ${parent!.label} — off on this plan, so gyms do not get it and the website does not list it.` : f.description}
+                    style={idle ? { opacity: 0.55 } : undefined}>
+                    <input type="checkbox" checked={on(plan.key, f.key)}
+                      onChange={() => void toggle(plan.key, f.key)} />
+                    <span>{f.label}{idle ? ` (needs ${parent!.label})` : ''}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
           <div className="plan-foot">
@@ -314,7 +359,14 @@ function ComparePlans({ plans, features, on, onSuggest }: {
 }) {
   if (plans.length < 2) return null;
   const differs = (f: string) => new Set(plans.map((p) => on(p.key, f))).size > 1;
-  const money = (p: PlatformPlan) => (p.price_monthly === null ? 'No price yet' : Number(p.price_monthly) === 0 ? 'Free' : `${peso(p.price_monthly)}/mo`);
+  const money = (p: PlatformPlan) => {
+    const pr = priceOf(p);
+    if (!pr) return 'No price yet';
+    if (pr.main === 'Free') return 'Free';
+    return p.price_monthly !== null && Number(p.price_monthly) > 0
+      ? `${pr.main}/mo${p.price_yearly !== null && Number(p.price_yearly) > 0 ? ` · ${peso(p.price_yearly)}/yr` : ''}`
+      : `${pr.main}/yr`;
+  };
   const nDiff = features.filter((f) => differs(f.key)).length;
   return (
     <section className="card" style={{ marginBottom: 16 }}>

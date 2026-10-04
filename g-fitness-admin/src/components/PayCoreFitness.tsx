@@ -35,7 +35,7 @@ async function shrink(file: File): Promise<string> {
  *
  * Works while the gym is read-only for being overdue: that is when it matters.
  */
-export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string | null }) {
+export default function PayCoreFitness({ priceMonthly, priceYearly = null }: { priceMonthly: string | null; priceYearly?: string | null }) {
   const [opts, setOpts] = useState<PayOption[] | undefined | null>(null);
   const [claims, setClaims] = useState<PaymentClaim[]>([]);
   const [method, setMethod] = useState('');
@@ -54,7 +54,13 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
   // The list price for the months chosen, filled in when the months change; the owner can type over it.
-  const listPrice = (m: number) => (priceMonthly !== null && Number(priceMonthly) > 0 ? String(Number(priceMonthly) * m) : '');
+  // Twelve months on a plan with a yearly price is the yearly price, not 12 × monthly.
+  // Rounded to centavos: 499.99 × 3 in floating point is 1499.9699999999998,
+  // which the step="0.01" input refuses and so blocks the form.
+  const listPrice = (m: number) => {
+    if (m === 12 && priceYearly !== null && Number(priceYearly) > 0) return String(Number(priceYearly));
+    return priceMonthly !== null && Number(priceMonthly) > 0 ? String(Math.round(Number(priceMonthly) * m * 100) / 100) : '';
+  };
   const [seeded, setSeeded] = useState(false);
   if (!seeded && listPrice(1)) { setSeeded(true); setAmount(listPrice(1)); }
 
@@ -113,7 +119,7 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
               </select></label>
             <label className="text-xs" style={{ color: MUTED }}>For how many months
               <select className={input + ' mt-1'} style={inputStyle} value={months} onChange={(e) => { const m = Number(e.target.value); setMonths(m); const p = listPrice(m); if (p) setAmount(p); }}>
-                {[1, 2, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m === 1 ? '' : 's'}</option>)}
+                {[1, 2, 3, 6, 12].map((m) => <option key={m} value={m}>{m === 12 && priceYearly !== null && Number(priceYearly) > 0 ? '12 months (yearly price)' : `${m} month${m === 1 ? '' : 's'}`}</option>)}
               </select></label>
             <label className="text-xs" style={{ color: MUTED }}>Amount sent (₱)
               <input className={input + ' mt-1'} style={inputStyle} type="number" min={1} step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
