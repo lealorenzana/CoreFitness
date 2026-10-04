@@ -1,4 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import AddTrainerWizard from '../components/trainers/AddTrainerWizard';
+import { supabase } from '../lib/supabaseClient';
+import { addDays, todayKey } from '../utils/dates';
 import { useCallback, useEffect, useState } from 'react';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
@@ -13,11 +16,10 @@ import {
 } from '../components/ui/kit';
 import { usePaged } from '../hooks/usePaged';
 import { useFillGrid } from '../hooks/useFillGrid';
-import { CalendarRange, UserPlus, X, Edit2, Eye, EyeOff, KeyRound, Copy, Archive, UserX, UserCheck, Clock, Star, Users } from 'lucide-react';
+import { CalendarRange, UserPlus, X, Edit2, Archive, UserX, UserCheck, Clock, Star, Users, ShieldCheck } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
-  createTrainer,
   listTrainers,
   listArchivedTrainers,
   setTrainerStatus,
@@ -81,12 +83,6 @@ function toList(value: string): string[] | null {
 
 const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
 const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
-/** Violet outline marks the two fields that create the actual login. */
-const CREDENTIAL_STYLE = {
-  background: 'var(--color-bg)',
-  border: '1px solid var(--color-primary)',
-  boxShadow: '0 0 0 1px rgba(124,58,237,0.1)',
-};
 
 export default function Trainers() {
   /** Sessions and classes each coach delivered in a month (0095). */
@@ -98,8 +94,6 @@ export default function Trainers() {
 
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', specialty: '', phone: '', bio: '', availability: [] as string[], loginEmail: '', loginPassword: '' });
-  const [showLoginPw, setShowLoginPw] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({
     id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[],
@@ -108,11 +102,25 @@ export default function Trainers() {
   const [saving, setSaving] = useState(false);
   const [toSuspend, setToSuspend] = useState<TrainerDisplay | null>(null);
   const [toArchive, setToArchive] = useState<TrainerDisplay | null>(null);
-  const [addErrors, setAddErrors] = useState<Record<string, string>>({});
+  /** trainer id → their verified credentials in date (0054/0160), for the mark on each card. */
+  const [verified, setVerified] = useState<Map<string, { title: string; expiresOn: string | null }[]>>(new Map());
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   const loadTrainers = useCallback(async () => {
     setLoading(true);
+    void (async () => {
+      // Admin reads every row (0054); members see the same set through public_trainer_credentials.
+      const full = await supabase.from('trainer_credentials').select('trainer_id, title, expires_on').eq('status', 'verified');
+      // Before 0160 there is no expires_on: the titles alone, all counted as in date.
+      const { data } = full.error ? await supabase.from('trainer_credentials').select('trainer_id, title').eq('status', 'verified') : full;
+      const today = todayKey();
+      const map = new Map<string, { title: string; expiresOn: string | null }[]>();
+      for (const c of ((data ?? []) as { trainer_id: string; title: string; expires_on?: string | null }[])) {
+        if (c.expires_on && c.expires_on < today) continue;
+        map.set(c.trainer_id, [...(map.get(c.trainer_id) ?? []), { title: c.title, expiresOn: c.expires_on ?? null }]);
+      }
+      setVerified(map);
+    })();
     try {
       // Bookable-hour windows come from the real table, in one query for the
       // whole roster — the card needs to say whether a trainer is actually
@@ -210,47 +218,6 @@ export default function Trainers() {
       await loadTrainers();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not update that account', 'error');
-    }
-  };
-
-  const handleAddTrainer = async () => {
-    // Marked against the field, not just announced in a toast that disappears
-    // before you've worked out which of the seven boxes it meant.
-    const next: Record<string, string> = {};
-    if (!addForm.name.trim()) next.name = 'Required.';
-    if (!addForm.specialty.trim()) next.specialty = 'Required.';
-    if (!addForm.loginEmail.trim()) next.loginEmail = 'Without this they cannot sign in.';
-    if (!addForm.loginPassword.trim()) next.loginPassword = 'Set a password for them.';
-    else if (addForm.loginPassword.length < 6) next.loginPassword = 'Supabase needs at least 6 characters.';
-    setAddErrors(next);
-    if (Object.keys(next).length > 0) {
-      showToast('Some required details are missing', 'error');
-      return;
-    }
-
-    const [firstName, ...rest] = addForm.name.trim().split(/\s+/);
-    const lastName = rest.join(' ') || firstName;
-
-    setSaving(true);
-    try {
-      await createTrainer({
-        email: addForm.loginEmail,
-        password: addForm.loginPassword,
-        firstName,
-        lastName,
-        phone: addForm.phone || undefined,
-        specialization: addForm.specialty,
-        bio: addForm.bio || undefined,
-        availability: addForm.availability.join(', ') || undefined,
-      });
-      showToast(`${addForm.name} added! They can now log in with the credentials you set.`, 'success');
-      setAddForm({ name: '', specialty: '', phone: '', bio: '', availability: [], loginEmail: '', loginPassword: '' });
-      setShowAddModal(false);
-      await loadTrainers();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to create trainer account', 'error');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -421,6 +388,17 @@ export default function Trainers() {
                   <p className="text-[11px] truncate" style={{ color: 'var(--color-primary)' }}>
                     {trainer.specialization}
                   </p>
+                  {(verified.get(trainer.id)?.length ?? 0) > 0 && (() => {
+                    const list = verified.get(trainer.id)!;
+                    const soon = list.filter((c) => c.expiresOn && c.expiresOn <= addDays(todayKey(), 30)).length;
+                    return (
+                      <p className="text-[10px] mt-0.5 inline-flex items-center gap-1 font-semibold"
+                        style={{ color: soon ? 'var(--color-secondary)' : 'var(--color-primary)' }}
+                        data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}${soon ? ` — ${soon} expiring within 30 days` : ''}`}>
+                        <ShieldCheck size={11} /> {list.length} verified{soon ? ` · ${soon} expiring` : ''}
+                      </p>
+                    );
+                  })()}
                   <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
                   {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
                   {(() => {
@@ -572,157 +550,7 @@ export default function Trainers() {
         type={showArchived ? 'info' : 'danger'}
       />
 
-      {/* Add Trainer Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setShowAddModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-                onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Add New Trainer</h2>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Fill in the trainer details</p>
-                  </div>
-                  <button onClick={() => setShowAddModal(false)}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: 'var(--color-text-muted)' }}>
-                    <X size={18} />
-                  </button>
-                </div>
-
-                {/* Form */}
-                <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <SectionLabel>Personal Information</SectionLabel>
-                  <FormField label="Full name" required error={addErrors.name}>
-                    <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })}
-                      placeholder="e.g. Coach Maria"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Specialization" required error={addErrors.specialty}
-                    hint="Shown to members as their headline — what they coach.">
-                    <input value={addForm.specialty} onChange={e => setAddForm({ ...addForm, specialty: e.target.value })}
-                      placeholder="e.g. Yoga, Boxing, HIIT"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  {/* There was a second "Email" field here, above Phone. It was
-                      bound to `addForm.email` and never sent anywhere —
-                      handleAddTrainer only ever passed `loginEmail`. Whatever
-                      the front desk typed into it was discarded on submit.
-                      There is one email on a profile, and it is the login one
-                      collected below. */}
-                  <FormField label="Phone">
-                    <input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })}
-                      placeholder="+63 917 000 0000"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Bio / description" hint="Members read this on the trainer's profile.">
-                    <textarea value={addForm.bio} onChange={e => setAddForm({ ...addForm, bio: e.target.value })}
-                      placeholder="Background, certifications, how they like to coach…"
-                      rows={2}
-                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
-                  </FormField>
-
-                  <FieldDivider />
-                  <SectionLabel>Availability</SectionLabel>
-                  {/* Renamed and explained. As "Available Days" this read like the
-                      switch that makes a trainer bookable — it isn't. It writes a
-                      free-text weekday blurb with no times, and no slot can be
-                      generated from it. Bookable hours live in
-                      `trainer_availability`, which only the trainer may write. */}
-                  <FormField
-                    label="Days they usually coach"
-                    hint="Display only — it appears on their profile. Bookable time slots are set by the trainer in the app, under Schedule → Availability."
-                  >
-                    <div className="flex flex-wrap gap-1.5">
-                      {WEEKDAY_LABELS.map(day => {
-                        const isSelected = addForm.availability.includes(day);
-                        return (
-                          <button key={day} type="button"
-                            onClick={() => setAddForm({ ...addForm, availability: isSelected ? addForm.availability.filter(d => d !== day) : [...addForm.availability, day] })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
-                            style={{
-                              background: isSelected ? 'var(--color-primary)' : 'var(--color-bg)',
-                              color: isSelected ? '#fff' : 'var(--color-text-muted)',
-                              border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            }}>
-                            {day.slice(0, 3)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </FormField>
-
-                  <FieldDivider />
-                  <div className="flex items-center gap-2">
-                    <KeyRound size={13} style={{ color: 'var(--color-secondary)' }} />
-                    <SectionLabel>App login</SectionLabel>
-                  </div>
-                  <p className="text-[10px] -mt-2" style={{ color: 'var(--color-text-muted)' }}>
-                    You are setting the trainer's password for them. Write it down before you save —
-                    it is not recoverable from this screen afterwards.
-                  </p>
-                  <FormField label="Login email" required error={addErrors.loginEmail}
-                    hint="They sign in with this on the phone app.">
-                    <input value={addForm.loginEmail} onChange={e => setAddForm({ ...addForm, loginEmail: e.target.value })}
-                      placeholder="e.g. cyrelle@corefitness.com"
-                      className={FIELD_CLASS} style={CREDENTIAL_STYLE} />
-                  </FormField>
-                  <FormField label="Login password" required error={addErrors.loginPassword} hint="At least 6 characters.">
-                    <div className="relative">
-                      <input type={showLoginPw ? 'text' : 'password'} value={addForm.loginPassword}
-                        onChange={e => setAddForm({ ...addForm, loginPassword: e.target.value })}
-                        placeholder="Min. 6 characters"
-                        className={`${FIELD_CLASS} !pr-16`} style={CREDENTIAL_STYLE} />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        <button type="button" onClick={() => setShowLoginPw(!showLoginPw)}
-                          data-tip={showLoginPw ? 'Hide password' : 'Show password'}
-                          className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
-                          {showLoginPw ? <EyeOff size={12} /> : <Eye size={12} />}
-                        </button>
-                        <button type="button" data-tip="Copy password"
-                          onClick={() => {
-                            if (!addForm.loginPassword) return showToast('Nothing to copy yet', 'error');
-                            navigator.clipboard.writeText(addForm.loginPassword);
-                            showToast('Password copied', 'success');
-                          }}
-                          className="p-1 rounded" style={{ color: 'var(--color-text-muted)' }}>
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </FormField>
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <button onClick={() => setShowAddModal(false)}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm transition-colors"
-                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    Cancel
-                  </button>
-                  {/* Creating a trainer is an Edge Function round trip that can
-                      take a second or two. Without a disabled state an impatient
-                      second click creates a second auth account. */}
-                  <button onClick={handleAddTrainer} disabled={saving}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors disabled:opacity-60"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    {saving ? 'Creating…' : 'Add Trainer'}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      {showAddModal && <AddTrainerWizard onClose={() => setShowAddModal(false)} onCreated={loadTrainers} />}
 
       {/* Edit Trainer Modal */}
       <AnimatePresence>

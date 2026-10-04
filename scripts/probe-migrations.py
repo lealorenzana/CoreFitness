@@ -199,6 +199,8 @@ CHECKS = [
     ('0157', 'rpc migration_0157_applied',     lambda: rpc('migration_0157_applied')),
     ('0158', 'rpc migration_0158_applied',     lambda: rpc('migration_0158_applied')),
     ('0159', 'rpc migration_0159_applied',     lambda: rpc('migration_0159_applied')),
+    ('0160', 'rpc migration_0160_applied',     lambda: rpc('migration_0160_applied')),
+    ('0161', 'rpc migration_0161_applied',     lambda: rpc('migration_0161_applied')),
 ]
 
 # The admin System page checks 0074..LAST. It read 117 while 0118 and 0119

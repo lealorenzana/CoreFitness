@@ -109,6 +109,22 @@ export default function Programs() {
 
       {tab === 'programs' ? (
         <>
+          {/* How a program reaches a member, said where it is built. */}
+          <Card className="!p-4">
+            <p className="text-xs font-bold text-white">How members get a program</p>
+            <ol className="grid gap-2 mt-2 md:grid-cols-4 text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">1. Workouts</b>Each training day is a workout — build them under Workouts, or start from a ready-made program.</li>
+              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">2. Weeks and days</b>Put a workout on each training day. Rest days stay empty.</li>
+              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">3. Publish</b>A draft is yours alone. Published, members find it under Train → Programs.</li>
+              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">4. They follow it</b>Today shows their next day with a Start button; each finished day counts for points, streaks and badges.</li>
+            </ol>
+            {programs.length > 0 && !programs.some((p) => p.published) && (
+              <p className="text-[11px] mt-3 rounded-lg px-3 py-2 flex items-center gap-2" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
+                <AlertTriangle size={13} /> Members cannot see any of your programs yet — open one and press Publish.
+              </p>
+            )}
+          </Card>
+
           <Card className="!p-4">
             <div className="flex items-center gap-2">
               <Sparkles size={14} style={{ color: 'var(--color-primary)' }} />
@@ -149,8 +165,11 @@ export default function Programs() {
                       <p className="text-xs font-semibold text-white truncate">
                         {p.name} {p.premium && <Crown size={11} className="inline" style={{ color: 'var(--color-secondary)' }} aria-label="Premium" />}
                       </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: MUTED }}>
-                        {p.published ? 'Published' : 'Draft'} · {p.weeks} week{p.weeks === 1 ? '' : 's'} · {p.days.length} training days
+                      <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>
+                        <span className="font-semibold" style={{ color: p.published ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
+                          {p.published ? 'Published — members see it' : 'Draft — only you see it'}
+                        </span>
+                        {' '}· {p.weeks} week{p.weeks === 1 ? '' : 's'} · {p.days.length} training days
                       </p>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => setEditingProgram(p.id)} aria-label={`Edit ${p.name}`}>Edit</Button>

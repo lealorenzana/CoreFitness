@@ -1,29 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { Check, Clock, FileText, Trash, UploadSimple, WarningCircle, X } from '@phosphor-icons/react';
+import { Check, Clock, FileText, PencilSimple, Plus, Trash, UploadSimple, WarningCircle, X } from '@phosphor-icons/react';
 import { TextInput } from './Field';
 import { StatusPill } from './noc';
 import {
-  listMyCredentials, uploadCredential, deleteCredential, credentialUrl,
+  listMyCredentials, uploadCredential, deleteCredential, credentialUrl, updateCredentialDetails, runCredentialExpirySweep,
   type Credential,
 } from '../../lib/api/trainerCredentials';
 import { errorMessage } from '../../utils/errorMessage';
+import { todayKey } from '../../utils/dates';
+
+/** Whole days from a to b, both YYYY-MM-DD on the local calendar. */
+const daysBetween = (a: string, b: string) => {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return Math.round((new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime()) / 86_400_000);
+};
 
 /**
- * A trainer's certificates, on their own profile screen (migration 0054).
+ * A trainer's certificates, on their own profile screen (0054; 0160 adds who
+ * issued it, its number and its dates).
  *
- * ## What this is honest about
- *
- * The certifications *text* field above this says the gym does not verify it,
- * and that stays true — it is still whatever the trainer typed. This section is
- * the separate thing: the document, and whether anyone has looked at it.
- *
- * A trainer cannot set the status. The database refuses it (0054), and this
- * screen shows the status as a read-only badge rather than a control, so the
- * refusal is never something the trainer discovers by being rejected.
- *
- * ## Members never see any of this
- *
- * Not the file, not the status. RLS restricts reads to the owner and the admin.
+ * The certifications *text* field above stays the trainer's own words; this is
+ * the document, and whether the gym has looked at it. A trainer cannot set the
+ * status — the database refuses it — so it shows as a badge, not a control.
+ * Members see a verified one's name, issuer and "valid until" on the coach's
+ * profile, never the file or the number, and only while it is in date.
  */
 
 const TONE: Record<Credential['status'], { tone: 'muted' | 'structure' | 'action'; label: string }> = {
@@ -31,13 +32,39 @@ const TONE: Record<Credential['status'], { tone: 'muted' | 'structure' | 'action
   verified: { tone: 'structure', label: 'Verified by the gym' },
   rejected: { tone: 'action',    label: 'Not accepted' },
 };
-
+const COMMON = ['First Aid / CPR', 'Personal Trainer (CPT)', 'Group Fitness', 'Strength & Conditioning', 'Nutrition coaching', 'Yoga teacher'];
+const ISSUERS = ['Philippine Red Cross', 'TESDA', 'NASM', 'ACE', 'ISSA', 'ACSM', 'NSCA'];
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPT = 'application/pdf,image/jpeg,image/png';
+const EMPTY = { title: '', issuer: '', credentialNumber: '', issuedOn: '', expiresOn: '', noExpiry: false };
+const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="noc-press"
+      style={{ height: 32, padding: '0 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+        background: on ? 'color-mix(in srgb, var(--color-primary) 18%, transparent)' : 'var(--color-surface)',
+        color: on ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
+        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+      {children}
+    </button>
+  );
+}
+
+/** "Valid until …", "Expires in 12 days", "Expired" — from the date, never stored. */
+function validity(c: Credential): { text: string; warn: boolean } | null {
+  if (!c.expiresOn) return null;
+  const left = daysBetween(todayKey(), c.expiresOn);
+  if (left < 0) return { text: `Expired ${fmt(c.expiresOn)} — upload the renewed one`, warn: true };
+  if (left <= 30) return { text: `Expires in ${left} day${left === 1 ? '' : 's'} (${fmt(c.expiresOn)})`, warn: true };
+  return { text: `Valid until ${fmt(c.expiresOn)}`, warn: false };
+}
 
 export default function CredentialsSection({ trainerId }: { trainerId: string }) {
   const [items, setItems] = useState<Credential[]>([]);
-  const [title, setTitle] = useState('');
+  const [form, setForm] = useState(EMPTY);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,8 +81,8 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
 
   useEffect(() => {
     let alive = true;
-    // Awaited first, so nothing is set synchronously from the effect body.
     (async () => {
+      await runCredentialExpirySweep();
       await load();
       if (alive) setLoading(false);
     })();
@@ -63,33 +90,47 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trainerId]);
 
+  const details = () => ({ issuer: form.issuer, credentialNumber: form.credentialNumber, issuedOn: form.issuedOn || null,
+    expiresOn: form.noExpiry ? null : form.expiresOn || null });
+  const formError = () => {
+    if (!form.title.trim()) return 'Name the certificate — "First Aid / CPR", "NASM-CPT".';
+    if (!form.noExpiry && !form.expiresOn) return 'Add the expiry date, or tick "It does not expire".';
+    if (form.issuedOn && form.expiresOn && form.expiresOn < form.issuedOn) return 'It cannot expire before it was issued.';
+    return null;
+  };
+
   const pick = () => {
-    if (!title.trim()) {
-      setError('Give the document a name first — "NASM-CPT", "First Aid".');
-      return;
-    }
+    const e = formError();
+    if (e) { setError(e); return; }
     setError(null);
     fileRef.current?.click();
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // Reset immediately so picking the same file twice still fires a change.
     e.target.value = '';
     if (!file) return;
-
-    // Checked here as well as by the bucket, because a 5 MB rejection from
-    // storage arrives after the upload has already been attempted over what is
-    // often mobile data.
-    if (file.size > MAX_BYTES) {
-      setError('That file is over 5 MB. A phone photo or a scan should be well under.');
-      return;
-    }
+    if (file.size > MAX_BYTES) { setError('That file is over 5 MB. A phone photo or a scan should be well under.'); return; }
     setBusy(true);
     setError(null);
     try {
-      await uploadCredential(trainerId, title, file);
-      setTitle('');
+      await uploadCredential(trainerId, form.title, file, details());
+      setForm(EMPTY); setAdding(false);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveEdit = async (c: Credential) => {
+    const e = formError();
+    if (e) { setError(e); return; }
+    setBusy(true);
+    try {
+      await updateCredentialDetails(c.id, form.title, details());
+      setEditing(null); setForm(EMPTY);
       await load();
     } catch (err) {
       setError(errorMessage(err));
@@ -100,34 +141,48 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
 
   const open = async (c: Credential) => {
     const url = await credentialUrl(c.filePath);
-    if (!url) {
-      setError('That file could not be opened just now. Try again in a moment.');
-      return;
-    }
+    if (!url) { setError('That file could not be opened just now. Try again in a moment.'); return; }
     window.open(url, '_blank', 'noopener');
   };
 
   const remove = async (c: Credential) => {
     setBusy(true);
-    try {
-      await deleteCredential(c.id, c.filePath);
-      await load();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+    try { await deleteCredential(c.id, c.filePath); await load(); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
   };
 
-  // Drawn in the Nocturne style (2026-09-18): a titled block on the page with
-  // rows beneath, not a grey card inside the form.
+  const fields = (
+    <div className="flex flex-col" style={{ gap: 10, marginTop: 10 }}>
+      <div className="flex flex-wrap" style={{ gap: 6 }}>
+        {COMMON.map((c) => <Chip key={c} on={form.title === c} onClick={() => setForm({ ...form, title: c })}>{c}</Chip>)}
+      </div>
+      <TextInput value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Certificate name" aria-label="Certificate name" />
+      <div className="flex flex-wrap" style={{ gap: 6 }}>
+        {ISSUERS.map((c) => <Chip key={c} on={form.issuer === c} onClick={() => setForm({ ...form, issuer: c })}>{c}</Chip>)}
+      </div>
+      <TextInput value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} placeholder="Who issued it" aria-label="Issued by" />
+      <TextInput value={form.credentialNumber} onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })} placeholder="Certificate or licence number (optional)" aria-label="Certificate number" />
+      <div className="grid grid-cols-2" style={{ gap: 8 }}>
+        <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Issued
+          <TextInput type="date" value={form.issuedOn} max={todayKey()} onChange={(e) => setForm({ ...form, issuedOn: e.target.value })} aria-label="Issued on" style={{ colorScheme: 'dark', marginTop: 4 }} />
+        </label>
+        <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Expires
+          <TextInput type="date" value={form.expiresOn} disabled={form.noExpiry} onChange={(e) => setForm({ ...form, expiresOn: e.target.value })} aria-label="Expires on" style={{ colorScheme: 'dark', marginTop: 4 }} />
+        </label>
+      </div>
+      <label className="flex items-center" style={{ gap: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+        <input type="checkbox" checked={form.noExpiry} onChange={(e) => setForm({ ...form, noExpiry: e.target.checked, expiresOn: '' })} /> It does not expire
+      </label>
+    </div>
+  );
+
   return (
     <div>
       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>Certificates</p>
       <p style={{ fontSize: 12, marginTop: 3, marginBottom: 10, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-        Upload the document itself — a PDF or a photo. Only you and the gym owner
-        can open it; members never see the file. The gym marks it verified once
-        they have looked at it.
+        Upload the document — a PDF or a photo. Only you and the gym owner can open it. Once the gym verifies it, members see its
+        name, who issued it and until when on your profile (never the file or the number), until it expires.
       </p>
 
       {error && (
@@ -137,36 +192,38 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
         </p>
       )}
 
-      <div className="flex" style={{ gap: 8 }}>
-        <TextInput
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. NASM-CPT"
-          aria-label="Certificate name"
-          className="flex-1 min-w-0"
-        />
-        <button onClick={pick} disabled={busy}
-          className="flex-none inline-flex items-center noc-press disabled:opacity-50"
-          style={{
-            gap: 6, height: 46, padding: '0 14px', borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 600,
-            color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
-            background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
-          }}>
-          <UploadSimple size={15} /> {busy ? 'Sending…' : 'Add'}
+      {!adding && !editing && (
+        <button onClick={() => { setForm(EMPTY); setAdding(true); setError(null); }} className="inline-flex items-center noc-press"
+          style={{ gap: 6, height: 42, padding: '0 14px', borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 600,
+            color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)', background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)' }}>
+          <Plus size={15} /> Add a certificate
         </button>
-      </div>
+      )}
+
+      {adding && (
+        <div style={{ padding: 12, borderRadius: 14, border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>New certificate</p>
+          {fields}
+          <div className="flex" style={{ gap: 8, marginTop: 12 }}>
+            <button onClick={pick} disabled={busy} className="flex-1 inline-flex items-center justify-center noc-press disabled:opacity-50"
+              style={{ gap: 6, height: 44, borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 700, background: 'var(--color-secondary)', color: '#1a1205' }}>
+              <UploadSimple size={15} /> {busy ? 'Sending…' : 'Choose the file and send'}
+            </button>
+            <button onClick={() => { setAdding(false); setError(null); }} style={{ height: 44, padding: '0 14px', fontSize: 13.5, color: 'var(--color-text-muted)' }}>Cancel</button>
+          </div>
+        </div>
+      )}
       <input ref={fileRef} type="file" accept={ACCEPT} onChange={onFile} className="hidden" />
 
       {loading ? (
         <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : items.length === 0 ? (
-        <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>
-          Nothing uploaded yet.
-        </p>
+        <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>Nothing uploaded yet.</p>
       ) : (
         <div style={{ marginTop: 6 }}>
           {items.map((c, i) => {
             const tone = TONE[c.status];
+            const v = validity(c);
             return (
               <div key={c.id}>
                 <div style={{ padding: '11px 0' }}>
@@ -175,24 +232,48 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
                       <FileText size={16} className="flex-none" style={{ color: 'var(--color-primary-300)' }} />
                       <span className="truncate" style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{c.title}</span>
                     </button>
-                    <div className="flex items-center flex-none" style={{ gap: 6 }}>
+                    <div className="flex items-center flex-none" style={{ gap: 4 }}>
                       <span className="inline-flex items-center" style={{ gap: 4 }}>
                         {c.status === 'verified' ? <Check size={12} style={{ color: 'var(--color-primary-300)' }} />
                           : c.status === 'rejected' ? <X size={12} style={{ color: 'var(--color-secondary)' }} />
                           : <Clock size={12} style={{ color: 'var(--color-text-muted)' }} />}
                         <StatusPill label={tone.label} tone={tone.tone} />
                       </span>
-                      <button onClick={() => remove(c)} disabled={busy}
-                        aria-label="Remove" className="grid place-items-center"
+                      {c.status !== 'verified' && (
+                        <button onClick={() => { setEditing(c.id); setAdding(false); setError(null);
+                          setForm({ title: c.title, issuer: c.issuer ?? '', credentialNumber: c.credentialNumber ?? '', issuedOn: c.issuedOn ?? '',
+                            expiresOn: c.expiresOn ?? '', noExpiry: !c.expiresOn && !!c.issuer }); }}
+                          aria-label={`Correct ${c.title}`} className="grid place-items-center" style={{ width: 32, height: 32, color: 'var(--color-text-muted)' }}>
+                          <PencilSimple size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => remove(c)} disabled={busy} aria-label="Remove" className="grid place-items-center"
                         style={{ width: 32, height: 32, color: 'var(--color-text-muted)' }}>
                         <Trash size={14} />
                       </button>
                     </div>
                   </div>
+                  {(c.issuer || v) && (
+                    <p style={{ fontSize: 12.5, marginTop: 4, color: v?.warn ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                      {[c.issuer, v?.text].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                   {c.reviewNote && (
                     <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
-                      {c.reviewNote}
+                      {c.reviewNote}{c.status === 'rejected' ? ' — correct it and it goes back to the gym.' : ''}
                     </p>
+                  )}
+                  {editing === c.id && (
+                    <div style={{ marginTop: 8, padding: 12, borderRadius: 14, border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+                      {fields}
+                      <div className="flex" style={{ gap: 8, marginTop: 12 }}>
+                        <button onClick={() => void saveEdit(c)} disabled={busy} className="flex-1 noc-press disabled:opacity-50"
+                          style={{ height: 44, borderRadius: 'var(--radius-btn)', fontSize: 13.5, fontWeight: 700, background: 'var(--color-secondary)', color: '#1a1205' }}>
+                          {busy ? 'Saving…' : c.status === 'rejected' ? 'Save and send back' : 'Save'}
+                        </button>
+                        <button onClick={() => { setEditing(null); setError(null); }} style={{ height: 44, padding: '0 14px', fontSize: 13.5, color: 'var(--color-text-muted)' }}>Cancel</button>
+                      </div>
+                    </div>
                   )}
                 </div>
                 {i < items.length - 1 && <div className="hair" />}

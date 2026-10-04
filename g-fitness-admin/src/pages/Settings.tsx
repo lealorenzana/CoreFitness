@@ -1,3 +1,4 @@
+import StaffAccounts from '../components/staff/StaffAccounts';
 import { motion } from 'framer-motion';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { useState, useEffect, useCallback } from 'react';
@@ -6,12 +7,11 @@ import WaiverTab from '../components/WaiverTab';
 import HouseRulesTab from '../components/HouseRulesTab';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import FormField from '../components/ui/FormField';
-import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, UserX, UserCheck, Archive, Camera, Trash2, Check, Banknote, FileSignature, ScrollText } from 'lucide-react';
+import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listRefundRules, updateRefundRule, getRefundFee, setRefundFee,
@@ -24,7 +24,7 @@ import { announceMyProfileChanged } from '../lib/api/profiles';
 import ImageField from '../components/ui/ImageField';
 import { publishBranding, DEFAULT_BRANDING } from '../hooks/useBranding';
 import {
-  getGymSettings, updateGymSettings, changePassword, listStaffAccounts, createStaffAccount,
+  getGymSettings, updateGymSettings, changePassword, listStaffAccounts,
 } from '../lib/api/settings';
 import type { ProfileRow, ProfileStatus } from '../types/db';
 
@@ -116,8 +116,6 @@ export default function Settings() {
   const [showPw, setShowPw] = useState(false);
 
   const [accounts, setAccounts] = useState<ProfileRow[]>([]);
-  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '' });
-  const [showStaffPw, setShowStaffPw] = useState(false);
   const [staffAction, setStaffAction] = useState<{ account: ProfileRow; next: ProfileStatus } | null>(null);
 
   /** Who last changed the gym information, and when — already stored, never shown. */
@@ -244,31 +242,6 @@ export default function Settings() {
       showToast('Password changed. Use it next time you sign in.', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to change password', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCreateStaff = async () => {
-    const { firstName, lastName, email, password } = newStaff;
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
-      return showToast('Name, email and password are required', 'error');
-    }
-    if (password.length < 8) return showToast('Password must be at least 8 characters', 'error');
-    setSaving(true);
-    try {
-      await createStaffAccount({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        phone: newStaff.phone.trim() || undefined,
-        password,
-      });
-      showToast(`${firstName} can now sign in with the password you set.`, 'success');
-      setNewStaff({ firstName: '', lastName: '', email: '', phone: '', password: '' });
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to create staff account', 'error');
     } finally {
       setSaving(false);
     }
@@ -670,90 +643,8 @@ export default function Settings() {
             )}
 
             {activeTab === 'staff' && (
-              <>
-                <div className="rounded-xl p-5 space-y-3" style={panel}>
-                  <h2 className="text-sm font-bold text-white">Accounts</h2>
-                  {accounts.length === 0 ? (
-                    <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No accounts found.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {accounts.map((a) => {
-                        const isMe = a.id === me?.id;
-                        return (
-                        <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl group"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                          <Avatar name={`${a.first_name} ${a.last_name}`} photoUrl={a.photo_url} size={32} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-white truncate">
-                              {a.first_name} {a.last_name}
-                              {/* Without this you cannot tell which row is your own
-                                  account — and the one row you must not suspend. */}
-                              {isMe && <span className="ml-1.5 font-normal" style={{ color: TEXT_MUTED }}>(you)</span>}
-                            </p>
-                            <p className="text-[10px] truncate" style={{ color: TEXT_MUTED }}>{a.email}</p>
-                          </div>
-                          {a.status !== 'active' && (
-                            <Badge variant="Suspended" className="!text-[9px] !px-2 !py-0.5">{a.status.replace('_', ' ')}</Badge>
-                          )}
-                          <Badge variant={a.role === 'admin' ? 'Premium' : 'Standard'} className="!text-[9px] !px-2 !py-0.5 capitalize">
-                            {a.role}
-                          </Badge>
-                          {/* Never offered on your own account: suspending yourself
-                              locks you out of the only screen that could undo it. */}
-                          {/* Always visible: these are rare but consequential,
-                              and a control you have to hover to discover is one
-                              the front desk will not find under pressure. */}
-                          {!isMe && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setStaffAction({ account: a, next: a.status === 'suspended' ? 'active' : 'suspended' })}
-                                data-tip={a.status === 'suspended' ? 'Reactivate' : 'Suspend'}
-                                className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
-                                {a.status === 'suspended' ? <UserCheck size={12} /> : <UserX size={12} />}
-                              </button>
-                              <button onClick={() => setStaffAction({ account: a, next: 'archived' })}
-                                data-tip="Archive" className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
-                                <Archive size={12} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-xl p-5 space-y-4" style={panel}>
-                  <div>
-                    <h2 className="text-sm font-bold text-white">Add Front-Desk Staff</h2>
-                    <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
-                      Staff can take payments, check members in and extend memberships. They cannot
-                      change plan pricing, manage trainers, or create accounts.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="First Name" value={newStaff.firstName}
-                      onChange={(v) => setNewStaff({ ...newStaff, firstName: v })} />
-                    <Field label="Last Name" value={newStaff.lastName}
-                      onChange={(v) => setNewStaff({ ...newStaff, lastName: v })} />
-                  </div>
-                  <Field label="Email" type="email" value={newStaff.email}
-                    onChange={(v) => setNewStaff({ ...newStaff, email: v })} />
-                  <Field label="Phone (optional)" value={newStaff.phone}
-                    onChange={(v) => setNewStaff({ ...newStaff, phone: v })} />
-                  <Field label="Password" type={showStaffPw ? 'text' : 'password'} value={newStaff.password}
-                    placeholder="At least 8 characters"
-                    onChange={(v) => setNewStaff({ ...newStaff, password: v })} />
-                  <button type="button" onClick={() => setShowStaffPw(!showStaffPw)}
-                    className="flex items-center gap-1.5 text-[10px]" style={{ color: TEXT_MUTED }}>
-                    {showStaffPw ? <EyeOff size={12} /> : <Eye size={12} />} {showStaffPw ? 'Hide' : 'Show'} password
-                  </button>
-                  <Button variant="primary" onClick={handleCreateStaff} disabled={saving}>
-                    {saving ? 'Creating…' : 'Create Staff Account'}
-                  </Button>
-                </div>
-              </>
+              <StaffAccounts accounts={accounts} meId={me?.id ?? null}
+                onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
             )}
           </motion.div>
         )}

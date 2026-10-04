@@ -10,6 +10,8 @@ import Badge from './Badge';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
+import { todayKey } from '../../utils/dates';
+import { supabase } from '../../lib/supabaseClient';
 import {
   loadTrainerDetail, weekdayName, formatTimeOfDay, type TrainerDetail,
 } from '../../services/trainerDetailService';
@@ -283,7 +285,76 @@ function ProfileTab({ detail }: { detail: TrainerDetail }) {
           <MiniStat label="Class requests" value={String(stats.bookingsPending)} sub="awaiting the desk" />
         </div>
       </Section>
+
+      <CoachingSection trainerId={profile.id} />
+      <CredentialsSection trainerId={profile.id} />
     </div>
+  );
+}
+
+/**
+ * What this coach runs in the app (0122/0128): rooms, 1-on-1 trainees, and the
+ * workouts they built. Counts only — the rooms themselves are under Rooms.
+ */
+function CoachingSection({ trainerId }: { trainerId: string }) {
+  const [n, setN] = useState<{ rooms: number; trainees: number; workouts: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const count = async (q: PromiseLike<{ count: number | null; error: unknown }>) => { const r = await q; return r.error ? 0 : r.count ?? 0; };
+      const [rooms, trainees, workouts] = await Promise.all([
+        count(supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId).is('archived_at', null)),
+        count(supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId).eq('kind', 'pt').is('archived_at', null)),
+        count(supabase.from('gym_workouts').select('id', { count: 'exact', head: true }).eq('created_by', trainerId)),
+      ]);
+      if (alive) setN({ rooms, trainees, workouts });
+    })();
+    return () => { alive = false; };
+  }, [trainerId]);
+  if (!n) return null;
+  return (
+    <Section title="Coaching in the app">
+      <div className="grid grid-cols-3 gap-2">
+        <MiniStat label="Rooms" value={String(n.rooms)} sub="classes, 1-on-1 and groups" />
+        <MiniStat label="1-on-1 trainees" value={String(n.trainees)} />
+        <MiniStat label="Workouts built" value={String(n.workouts)} />
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * Their certificates and where each stands (0054/0160). Verified ones in date
+ * are what members see on this coach's profile; the file and the number never.
+ */
+function CredentialsSection({ trainerId }: { trainerId: string }) {
+  const [rows, setRows] = useState<{ title: string; status: string; issuer?: string | null; expires_on?: string | null }[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const full = await supabase.from('trainer_credentials').select('title, status, issuer, expires_on').eq('trainer_id', trainerId).order('uploaded_at', { ascending: false });
+      const res = full.error ? await supabase.from('trainer_credentials').select('title, status').eq('trainer_id', trainerId) : full;
+      if (alive) setRows(res.error ? [] : ((res.data ?? []) as { title: string; status: string; issuer?: string | null; expires_on?: string | null }[]));
+    })();
+    return () => { alive = false; };
+  }, [trainerId]);
+  if (rows === null) return null;
+  const today = todayKey();
+  return (
+    <Section title={`Credentials (${rows.filter((r) => r.status === 'verified' && !(r.expires_on && r.expires_on < today)).length} verified)`}>
+      {rows.length === 0 ? <Empty text="Nothing uploaded. Coaches add certificates under Profile → Edit profile in the app; you verify them under Credentials." /> : (
+        <div className="space-y-1.5">
+          {rows.map((r, i) => {
+            const lapsed = !!r.expires_on && r.expires_on < today;
+            return (
+              <Row key={i} title={r.title}
+                subtitle={[r.issuer, r.expires_on ? `${lapsed ? 'expired' : 'valid until'} ${formatDate(r.expires_on)}` : null].filter(Boolean).join(' · ') || undefined}
+                right={<Badge variant={r.status === 'verified' && !lapsed ? 'Completed' : r.status === 'pending' ? 'Pending' : 'Failed'}>{lapsed ? 'lapsed' : r.status === 'pending' ? 'waiting' : r.status}</Badge>} />
+            );
+          })}
+        </div>
+      )}
+    </Section>
   );
 }
 

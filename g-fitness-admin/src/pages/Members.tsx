@@ -1,3 +1,4 @@
+import AddMemberWizard from '../components/members/AddMemberWizard';
 import Avatar from '../components/ui/Avatar';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import {
@@ -28,7 +29,6 @@ import {
   listPendingRegistrations,
   approveMemberRegistration,
   rejectPendingRegistration,
-  createMember,
   updateMemberProfile,
   startFreeMembership,
 } from '../lib/api/members';
@@ -913,7 +913,7 @@ export default function Members() {
       <MemberDetailDrawer memberId={viewingId} onClose={closeDrawer} onChanged={load} />
 
       {isAddOpen && (
-        <AddMemberForm plans={plans} onClose={() => setIsAddOpen(false)} onCreated={async () => { setIsAddOpen(false); await load(); }} />
+        <AddMemberWizard plans={plans} onClose={() => setIsAddOpen(false)} onCreated={load} />
       )}
       {editing && (
         <EditMemberForm member={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load(); }} />
@@ -1064,160 +1064,6 @@ export default function Members() {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-/* ─── Add Member (walk-in) ─── */
-function AddMemberForm({
-  plans,
-  onClose,
-  onCreated,
-}: {
-  plans: MembershipPlanRow[];
-  onClose: () => void;
-  onCreated: () => void | Promise<void>;
-}) {
-  const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', password: '', phone: '', address: '',
-    dateOfBirth: '', gender: '',
-    emergencyContactName: '', emergencyContactPhone: '', emergencyContactRelationship: '',
-    experienceLevel: '', planId: plans[0]?.id ?? '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [showPw, setShowPw] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const submit = async () => {
-    // Marked against the field that's missing. A toast alone made staff hunt
-    // through eleven inputs for the one they'd skipped.
-    const next: Record<string, string> = {};
-    if (!form.firstName.trim()) next.firstName = 'Required.';
-    if (!form.lastName.trim()) next.lastName = 'Required.';
-    if (!form.email.trim()) next.email = 'They sign in with this.';
-    if (!form.password.trim()) next.password = 'Set a password for them.';
-    else if (form.password.length < 6) next.password = 'Supabase needs at least 6 characters.';
-    setErrors(next);
-    if (Object.keys(next).length > 0) {
-      showToast('Some required details are missing', 'error');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const created = await createMember({
-        email: form.email.trim(),
-        password: form.password,
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        phone: form.phone || undefined,
-        address: form.address || undefined,
-        dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender || undefined,
-        emergencyContactName: form.emergencyContactName || undefined,
-        emergencyContactPhone: form.emergencyContactPhone || undefined,
-        emergencyContactRelationship: form.emergencyContactRelationship || undefined,
-        experienceLevel: form.experienceLevel || undefined,
-        planId: form.planId || undefined,
-      });
-
-      // Written again from here, deliberately.
-      //
-      // The Edge Function learned about these two fields in the same change,
-      // but it is deployed separately — against a copy that hasn't been
-      // redeployed yet, it accepts the extra keys and silently ignores them,
-      // which is precisely the shape of "a control that writes a flag nothing
-      // reads". `updateMemberProfile` throws on a zero-row write, so this
-      // either lands or says so. Once redeployed it rewrites identical values.
-      if (form.dateOfBirth || form.gender) {
-        try {
-          await updateMemberProfile(created.id, {
-            date_of_birth: form.dateOfBirth || null,
-            gender: form.gender || null,
-          });
-        } catch {
-          showToast(
-            `${form.firstName} was added, but their birth date and gender could not be saved. Add them with Edit.`,
-            'error'
-          );
-        }
-      }
-
-      showToast(`${form.firstName} ${form.lastName} added. Record their payment to activate the membership.`, 'success');
-      await onCreated();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to add member', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalShell title="Add Member (Walk-in)" subtitle="Creates a real login the member can use on the phone app" onClose={onClose}>
-      <SectionLabel>Personal Information</SectionLabel>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="First name" required error={errors.firstName}
-          value={form.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />
-        <Field label="Last name" required error={errors.lastName}
-          value={form.lastName} onChange={(v) => setForm({ ...form, lastName: v })} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+63 917 000 0000" />
-        <SelectField label="Experience level" value={form.experienceLevel}
-          onChange={(v) => setForm({ ...form, experienceLevel: v })}
-          hint="What they say about themselves."
-          options={[{ value: '', label: 'Not set' }, ...EXPERIENCE_LEVELS.map((l) => ({ value: l, label: l }))]} />
-      </div>
-      {/* A birth date, not an age — an age column is right for a year and then
-          lies. Self-registration has collected both since 0031; without these
-          two fields a walk-in was left with NULLs nobody would ever fill in. */}
-      <div className="grid grid-cols-2 gap-3">
-        <DateField label="Date of birth" value={form.dateOfBirth}
-          onChange={(v) => setForm({ ...form, dateOfBirth: v })} max={todayKey()} />
-        <SelectField label="Gender" value={form.gender} onChange={(v) => setForm({ ...form, gender: v })} options={GENDERS} />
-      </div>
-      <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} placeholder="Mamburao, Occidental Mindoro" />
-
-      <FieldDivider />
-      <SectionLabel>App login</SectionLabel>
-      <p className="text-[10px] -mt-2" style={{ color: 'var(--color-text-muted)' }}>
-        You are setting this password for them. Write it down before you save — it is not
-        recoverable from this screen afterwards.
-      </p>
-      <Field label="Login email" required type="email" error={errors.email}
-        value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="member@email.com" />
-      <FormField label="Login password" required error={errors.password} hint="At least 6 characters.">
-        <div className="relative">
-          <input type={showPw ? 'text' : 'password'} value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 6 characters"
-            className={`${FIELD_CLASS} !pr-9`} style={FIELD_STYLE} />
-          <button type="button" onClick={() => setShowPw(!showPw)}
-            data-tip={showPw ? 'Hide password' : 'Show password'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1" style={{ color: 'var(--color-text-muted)' }}>
-            {showPw ? <EyeOff size={12} /> : <Eye size={12} />}
-          </button>
-        </div>
-      </FormField>
-
-      <FieldDivider />
-      <SectionLabel>Membership</SectionLabel>
-      <SelectField label="Plan" value={form.planId} onChange={(v) => setForm({ ...form, planId: v })}
-        hint="Starts as pending — recording their cash payment is what activates it."
-        options={[{ value: '', label: 'No plan yet' }, ...plans.map((p) => ({ value: p.id, label: `${p.name} — ₱${p.price}` }))]} />
-
-      <FieldDivider />
-      <SectionLabel>Emergency contact</SectionLabel>
-      <p className="text-[10px] -mt-2" style={{ color: 'var(--color-text-muted)' }}>
-        Optional, but this is the one blank field that matters in a room full of heavy things.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Name" value={form.emergencyContactName} onChange={(v) => setForm({ ...form, emergencyContactName: v })} />
-        <Field label="Phone" value={form.emergencyContactPhone} onChange={(v) => setForm({ ...form, emergencyContactPhone: v })} />
-      </div>
-      <Field label="Relationship" value={form.emergencyContactRelationship}
-        onChange={(v) => setForm({ ...form, emergencyContactRelationship: v })} placeholder="e.g. Parent, Spouse" />
-
-      <ModalFooter onClose={onClose} onSubmit={submit} saving={saving} submitLabel="Add Member" />
-    </ModalShell>
   );
 }
 

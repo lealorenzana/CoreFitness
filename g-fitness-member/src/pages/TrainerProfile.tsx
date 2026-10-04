@@ -379,9 +379,11 @@ export default function TrainerProfile() {
                     title={c.title}
                     // NULL is possible on rows verified before reviewed_at was
                     // written; the title stands on its own.
-                    meta={c.verified_on
-                      ? `Verified ${new Date(c.verified_on).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
-                      : undefined}
+                    meta={[
+                      c.issuer,
+                      c.verified_on ? `Verified ${new Date(c.verified_on).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : null,
+                      c.expires_on ? `valid until ${new Date(`${c.expires_on}T00:00:00`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : null,
+                    ].filter(Boolean).join(' · ') || undefined}
                     last={i === credentials.length - 1}
                   />
                 ))}

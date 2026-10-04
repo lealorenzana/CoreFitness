@@ -18,6 +18,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/book-class', 'classes'],
   ['/member/booking-history', 'classes'],
   ['/member/program/', 'programs'],
+  ['/member/programs', 'programs'],
   ['/member/progress-photos', 'photos'],
   ['/member/shop', 'shop'],
   ['/member/rooms', 'rooms'],

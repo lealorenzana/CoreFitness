@@ -117,6 +117,15 @@ export default function Payments() {
       }
       setMemberMembership(latestMembershipByMember);
 
+      // Add member's "Record their first payment" lands here as ?record=<member>:
+      // the form opens on that member and their plan's price, once.
+      const rec = new URLSearchParams(window.location.search).get('record');
+      if (rec && latestMembershipByMember[rec]) {
+        setPreset({ memberId: rec, memberName: nameById[rec] ?? 'Member', amount: latestMembershipByMember[rec].planPrice, key: `new-${rec}` });
+        setIsModalOpen(true);
+        window.history.replaceState(window.history.state, '', window.location.pathname);
+      }
+
       setPayments(
         paymentRows.map((p) => ({
           id: p.id,

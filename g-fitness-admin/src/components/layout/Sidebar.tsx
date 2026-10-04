@@ -13,6 +13,7 @@ import { useBranding } from '../../hooks/useBranding';
 import { DEFAULT_WORDS, title, useGymWords } from '../../hooks/useGymWords';
 import { supabase } from '../../lib/supabaseClient';
 import { moduleOn, useGymModules } from '../../hooks/useGymModules';
+import { myStaffPermissions, type StaffArea } from '../../lib/api/staffPermissions';
 
 const BG           = 'var(--color-bg)';
 const SURFACE      = 'var(--color-surface)';
@@ -28,6 +29,8 @@ interface Leaf {
   path: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  /** 0161: the desk area this row belongs to — hidden from a staff account the owner left it out of. */
+  area?: StaffArea;
   /**
    * The gym-renameable noun this row is named after (0114).
    *
@@ -94,6 +97,7 @@ const NAV: Entry[] = [
     label: 'Attendance',
     path: '/attendance',
     icon: CheckSquare,
+    area: 'checkins',
     alsoMatches: ['/attendance-history'],
   },
   {
@@ -110,17 +114,17 @@ const NAV: Entry[] = [
     label: 'Classes',
     icon: CalendarDays,
     children: [
-      { label: 'Schedule', path: '/schedule', icon: CalendarDays, module: 'classes' },
-      { label: 'Bookings', path: '/bookings', icon: Calendar, module: 'classes' },
+      { label: 'Schedule', path: '/schedule', icon: CalendarDays, module: 'classes', area: 'bookings' },
+      { label: 'Bookings', path: '/bookings', icon: Calendar, module: 'classes', area: 'bookings' },
     ],
   },
   {
     label: 'Billing',
     icon: CreditCard,
     children: [
-      { label: 'Payments', path: '/payments', icon: CreditCard },
+      { label: 'Payments', path: '/payments', icon: CreditCard, area: 'payments' },
       // The counter (0133): the owner manages products, the desk sells.
-      { label: 'Shop', path: '/shop', icon: ShoppingBag, module: 'shop' },
+      { label: 'Shop', path: '/shop', icon: ShoppingBag, module: 'shop', area: 'shop' },
       { label: 'Plans', path: '/membership-plans', icon: Banknote, adminOnly: true },
     ],
   },
@@ -128,7 +132,7 @@ const NAV: Entry[] = [
     label: 'Reports',
     icon: TrendingUp,
     children: [
-      { label: 'Revenue', path: '/revenue', icon: Banknote },
+      { label: 'Revenue', path: '/revenue', icon: Banknote, area: 'payments' },
       { label: 'Retention', path: '/retention', icon: Target, alsoMatches: ['/retention/messages'], module: 'analytics' },
       { label: 'Activity log', path: '/activity', icon: History, adminOnly: true },
     ],
@@ -153,6 +157,7 @@ const NAV: Entry[] = [
     icon: Bell,
     alsoMatches: ['/events'],
     module: 'push',
+    area: 'communications',
   },
   {
     label: 'Training',
@@ -238,6 +243,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(true);
+  // A narrowed staff account (0161): null = the whole desk.
+  const [areas, setAreas] = useState<StaffArea[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void myStaffPermissions().then((a) => { if (alive) setAreas(a); });
+    return () => { alive = false; };
+  }, []);
   const brand = useBranding();
   // This gym's own nouns (0114). Defaults to the English words, so the nav
   // never flickers between two wordings while the read lands.
@@ -262,7 +274,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
    * holding exactly one child flattened into that child.
    */
   const entries = useMemo<Entry[]>(() => {
-    const visible = (l: Leaf) => (isAdmin || !l.adminOnly) && moduleOn(modules, l.module);
+    const visible = (l: Leaf) => (isAdmin || !l.adminOnly) && moduleOn(modules, l.module)
+      && (isAdmin || !areas || !l.area || areas.includes(l.area));
     // Renamed only where the gym actually chose a word — compared key by key
     // against the defaults, not by "did they rename anything".
     //
@@ -288,7 +301,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       out.push({ ...e, children });
     }
     return out;
-  }, [isAdmin, words, modules]);
+  }, [isAdmin, words, modules, areas]);
 
   /**
    * Which drawers are open — remembered, so the section you work in every day

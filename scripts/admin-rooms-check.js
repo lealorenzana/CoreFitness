@@ -77,7 +77,18 @@ async (page) => {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   let seen = await text();
   out.push('rooms by trainer: ' + (/Coach Rae/i.test(seen) && /Coach Ben/i.test(seen) && /8-week fat loss/.test(seen) && /Ana Reyes · 1-on-1/.test(seen) ? 'shown' : 'MISSING'));
-  out.push('activity: ' + (/12 members · 3 posts · 5 comments/.test(seen) ? 'shown' : 'MISSING'));
+  const hiit = (await page.getByRole('button', { name: /Morning HIIT/ }).first().innerText()).replace(/\s+/g, ' ');
+  out.push('activity: ' + (/ 12 8$/.test(hiit) ? 'members and posts+comments on the row' : 'MISSING ' + hiit));
+  // Find and filter (2026-10-04).
+  await page.getByLabel('Find a room, coach or member').fill('fat loss');
+  await page.waitForTimeout(400);
+  const benOnly = await page.evaluate(() => document.body.innerText);
+  out.push('search by room name: ' + (/8-week fat loss/.test(benOnly) && !/Morning HIIT/.test(benOnly) ? 'only that room' : 'MISSING'));
+  await page.getByLabel('Find a room, coach or member').fill('');
+  await page.locator('button[aria-pressed]', { hasText: '1-on-1' }).click();
+  await page.waitForTimeout(300);
+  out.push('filter by kind: ' + ((await page.getByRole('button', { name: /Morning HIIT/ }).count()) === 0 ? 'classes hidden' : 'MISSING'));
+  await page.locator('button[aria-pressed]', { hasText: 'All' }).click();
   out.push('linked from the sidebar: ' + ((await page.locator('aside a[href="/rooms"], aside button:has-text("Rooms")').count()) > 0 || /Rooms/.test(seen) ? 'yes' : 'MISSING'));
   await page.getByText('Morning HIIT').first().click();
   await page.waitForTimeout(800);

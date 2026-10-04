@@ -61,10 +61,31 @@ interface Row {
   uploaded_at: string;
   reviewed_at: string | null;
   review_note: string | null;
+  /** 0160 — absent before it is pasted. */
+  issuer?: string | null;
+  credential_number?: string | null;
+  issued_on?: string | null;
+  expires_on?: string | null;
   trainer_profiles: { profiles: { first_name: string; last_name: string; photo_url: string | null } | null } | null;
 }
 
-type Filter = 'all' | Row['status'];
+type Filter = 'all' | Row['status'] | 'expiring';
+
+/** Days left before a verified credential lapses (negative once it has); null when it does not expire. */
+function daysLeft(row: Row): number | null {
+  if (!row.expires_on) return null;
+  const [y, m, d] = row.expires_on.split('-').map(Number);
+  const now = new Date();
+  return Math.round((new Date(y, m - 1, d).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86_400_000);
+}
+const expiring = (row: Row) => row.status === 'verified' && (daysLeft(row) ?? 999) <= 30;
+function validityLine(row: Row): { text: string; warn: boolean } | null {
+  const left = daysLeft(row);
+  if (left === null) return row.issuer ? { text: row.issuer, warn: false } : null;
+  const when = new Date(`${row.expires_on}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+  const v = left < 0 ? `expired ${when} — members no longer see it` : left <= 30 ? `expires in ${left} day${left === 1 ? '' : 's'}` : `valid until ${when}`;
+  return { text: [row.issuer, v].filter(Boolean).join(' · '), warn: left <= 30 };
+}
 
 /** A signing result. `missing` is the object not being in storage; `failed` is
  *  the request itself not getting through — the two call for different fixes. */
@@ -235,6 +256,9 @@ function CredentialTile({ row, signed, broken, busy, onView, onVerify, onReject,
         <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
           Uploaded {dateFmt.format(new Date(row.uploaded_at))}{size && ` · ${size}`}
         </p>
+        {validityLine(row) && (
+          <p className="text-[11px] truncate" style={{ color: validityLine(row)!.warn ? 'var(--color-secondary)' : TEXT_SECOND }}>{validityLine(row)!.text}</p>
+        )}
         {row.review_note && (
           <p className="text-[10px] truncate" style={{ color: 'var(--color-secondary)' }} title={row.review_note}>
             “{row.review_note}”
@@ -311,6 +335,11 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
     ['File', [fileKind(row), fileSize(row.size_bytes)].filter(Boolean).join(' · ')],
   ];
   if (row.reviewed_at) details.push(['Reviewed', dateFmt.format(new Date(row.reviewed_at))]);
+  // What the trainer says it is — the owner checks these against the document.
+  if (row.issuer) details.push(['Issued by', row.issuer]);
+  if (row.credential_number) details.push(['Number', row.credential_number]);
+  if (row.issued_on) details.push(['Issued on', dateFmt.format(new Date(`${row.issued_on}T00:00:00`))]);
+  details.push(['Expires', row.expires_on ? dateFmt.format(new Date(`${row.expires_on}T00:00:00`)) : (row.issuer ? 'Does not expire' : 'Not given')]);
 
   const navButton = (side: 'left' | 'right', go: (() => void) | null) => go && (
     <button onClick={go} aria-label={side === 'left' ? 'Previous credential' : 'Next credential'}
@@ -454,10 +483,13 @@ export default function Credentials() {
   /** Pure fetch, no state. Keeps every setState behind an await in the caller,
    *  which is what react-hooks/set-state-in-effect is asking for. */
   const fetchRows = async (): Promise<Row[] | null> => {
-    const { data, error } = await supabase
-      .from('trainer_credentials')
-      .select('id, trainer_id, title, file_path, mime_type, size_bytes, status, uploaded_at, reviewed_at, review_note, trainer_profiles(profiles(first_name, last_name, photo_url))')
-      .order('uploaded_at', { ascending: false });
+    // Expiry reminders go out from here too — pg_cron is optional (0160); refused before it, harmlessly.
+    await supabase.rpc('credential_expiry_sweep').then(() => undefined, () => undefined);
+    const base = 'id, trainer_id, title, file_path, mime_type, size_bytes, status, uploaded_at, reviewed_at, review_note, trainer_profiles(profiles(first_name, last_name, photo_url))';
+    const q = (cols: string) => supabase.from('trainer_credentials').select(cols).order('uploaded_at', { ascending: false });
+    let { data, error } = await q(`${base}, issuer, credential_number, issued_on, expires_on`);
+    // Before 0160 the detail columns do not exist; the page works as it did.
+    if (error && (error.code === '42703' || error.code === 'PGRST204' || /column/i.test(error.message))) ({ data, error } = await q(base));
     return error ? null : ((data ?? []) as unknown as Row[]);
   };
 
@@ -483,7 +515,7 @@ export default function Credentials() {
   const shown = useMemo(() => {
     const order = { pending: 0, rejected: 1, verified: 2 } as const;
     return rows
-      .filter((r) => filter === 'all' || r.status === filter)
+      .filter((r) => filter === 'all' || (filter === 'expiring' ? expiring(r) : r.status === filter))
       .sort((a, b) => order[a.status] - order[b.status] || b.uploaded_at.localeCompare(a.uploaded_at));
   }, [rows, filter]);
 
@@ -582,6 +614,7 @@ export default function Credentials() {
     pending: rows.filter((r) => r.status === 'pending').length,
     verified: rows.filter((r) => r.status === 'verified').length,
     rejected: rows.filter((r) => r.status === 'rejected').length,
+    expiring: rows.filter(expiring).length,
   };
   const viewIndex = viewRow ? shown.findIndex((r) => r.id === viewRow.id) : -1;
   const step = (by: number) => {
@@ -605,6 +638,7 @@ export default function Credentials() {
             { value: 'pending', label: 'Waiting', count: counts.pending },
             { value: 'verified', label: 'Verified', count: counts.verified },
             { value: 'rejected', label: 'Rejected', count: counts.rejected },
+            { value: 'expiring', label: 'Expiring', count: counts.expiring },
           ]} />
         }
       />
@@ -613,6 +647,8 @@ export default function Credentials() {
         { label: 'Waiting for review', value: loading ? '—' : counts.pending, icon: Clock, tone: counts.pending > 0 ? 'secondary' : 'primary' },
         { label: 'Verified', value: loading ? '—' : counts.verified, icon: ShieldCheck },
         { label: 'Rejected', value: loading ? '—' : counts.rejected, icon: X },
+        { label: 'Expiring or lapsed', value: loading ? '—' : counts.expiring, icon: Clock, tone: counts.expiring > 0 ? 'secondary' : 'primary',
+          onClick: () => setFilter('expiring'), tooltip: 'Verified credentials that run out within 30 days, or already have — members stop seeing one the day it lapses' },
       ]} />
 
       {loading ? (

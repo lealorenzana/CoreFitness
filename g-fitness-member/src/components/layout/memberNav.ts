@@ -74,7 +74,7 @@ const TAB_PATHS: string[][] = [
   // at (/member/book, /member/bookings).
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
    '/member/booking-history', '/member/progress', '/member/achievements',
-   '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts',
+   '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts', '/member/programs', '/member/program/',
    '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages', '/member/progress-photos',
    '/member/workout-history'],
   // You: the money-and-access half, and the account itself. Profile lost its
@@ -164,6 +164,7 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Progress', path: '/member/progress', icon: ChartLineUp , module: 'progress' },
     { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck , module: 'classes' },
     { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText , module: 'progress' },
+    { label: 'Programs', path: '/member/programs', icon: CalendarCheck , module: 'programs' },
     { label: 'Free workouts', path: '/member/workouts', icon: BookOpen },
     { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching',
       words: (w) => w('trainers', true) },
@@ -214,6 +215,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'My bookings', path: '/member/booking-history' , module: 'classes' },
       { label: 'Training plan', path: '/member/gym-plan' , module: 'progress' },
       { label: 'Rebuild my plan', path: '/member/plan' , module: 'progress' },
+      { label: 'Programs', path: '/member/programs' , module: 'programs' },
       { label: 'Free workouts', path: '/member/workouts' },
       { label: 'My routines', path: '/member/track' , module: 'progress' },
       { label: 'Coaches', path: '/member/trainers' , module: 'coaching',

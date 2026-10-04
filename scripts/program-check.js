@@ -297,5 +297,15 @@ async (page) => {
   t = await text();
   out.push('next day is up next: ' + (/Up next · week 1, Wed/.test(t) ? 'Wed' : 'MISSING'));
 
+  // 2026-10-04: Programs is its own screen under Train, and Today shows the next day.
+  await go('/member/programs');
+  t = await text();
+  out.push('Programs screen: ' + (/Starter Strength/.test(t) && /Following/.test(t) && /1 of \d+ days done/.test(t) ? 'followed one first, with progress' : 'MISSING ' + t.slice(0, 200)));
+  await shot('programs');
+  await go('/member/home');
+  t = await text();
+  out.push('Today shows the next program day: ' + (/Your program/i.test(t) && /Week 1 · Day \d+ — /.test(t) ? 'yes' : 'MISSING'));
+  await shot('today-program');
+
   return out.join('\n');
 }

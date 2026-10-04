@@ -25,7 +25,14 @@ export interface Credential {
   status: CredentialStatus;
   uploadedAt: string;
   reviewNote: string | null;
+  /** 0160 — who issued it, its number, and its dates. Null before 0160 or when not given. */
+  issuer: string | null;
+  credentialNumber: string | null;
+  issuedOn: string | null;
+  expiresOn: string | null;
 }
+
+export interface CredentialDetails { issuer?: string | null; credentialNumber?: string | null; issuedOn?: string | null; expiresOn?: string | null }
 
 const BUCKET = 'credentials';
 /** Long enough to open the file, short enough that a copied link goes stale. */
@@ -34,7 +41,16 @@ const SIGNED_URL_SECONDS = 300;
 interface Row {
   id: string; title: string; file_path: string; mime_type: string | null;
   size_bytes: number | null; status: string; uploaded_at: string; review_note: string | null;
+  issuer?: string | null; credential_number?: string | null; issued_on?: string | null; expires_on?: string | null;
 }
+const BASE = 'id, title, file_path, mime_type, size_bytes, status, uploaded_at, review_note';
+const FULL = `${BASE}, issuer, credential_number, issued_on, expires_on`;
+/** A column that does not exist yet (before 0160): PostgREST's 42703 / PGRST204. */
+const missingColumn = (e: { code?: string } | null) => !!e && (e.code === '42703' || e.code === 'PGRST204');
+const detailRow = (d: CredentialDetails) => ({
+  issuer: d.issuer?.trim() || null, credential_number: d.credentialNumber?.trim() || null,
+  issued_on: d.issuedOn || null, expires_on: d.expiresOn || null,
+});
 
 const toCredential = (r: Row): Credential => ({
   id: r.id,
@@ -45,16 +61,19 @@ const toCredential = (r: Row): Credential => ({
   status: r.status as CredentialStatus,
   uploadedAt: r.uploaded_at,
   reviewNote: r.review_note,
+  issuer: r.issuer ?? null,
+  credentialNumber: r.credential_number ?? null,
+  issuedOn: r.issued_on ?? null,
+  expiresOn: r.expires_on ?? null,
 });
 
 export async function listMyCredentials(trainerId: string): Promise<Credential[]> {
-  const { data, error } = await supabase
-    .from('trainer_credentials')
-    .select('id, title, file_path, mime_type, size_bytes, status, uploaded_at, review_note')
-    .eq('trainer_id', trainerId)
-    .order('uploaded_at', { ascending: false });
+  const q = (cols: string) => supabase.from('trainer_credentials').select(cols)
+    .eq('trainer_id', trainerId).order('uploaded_at', { ascending: false });
+  let { data, error } = await q(FULL);
+  if (missingColumn(error)) ({ data, error } = await q(BASE));
   if (error) throw error;
-  return ((data ?? []) as Row[]).map(toCredential);
+  return ((data ?? []) as unknown as Row[]).map(toCredential);
 }
 
 /**
@@ -66,7 +85,7 @@ export async function listMyCredentials(trainerId: string): Promise<Credential[]
  * owner and the admin could ever reach it anyway.
  */
 export async function uploadCredential(
-  trainerId: string, title: string, file: File
+  trainerId: string, title: string, file: File, details: CredentialDetails = {},
 ): Promise<Credential> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
   // Random filename, not the original: a document called
@@ -79,17 +98,12 @@ export async function uploadCredential(
   });
   if (up.error) throw up.error;
 
-  const { data, error } = await supabase
-    .from('trainer_credentials')
-    .insert({
-      trainer_id: trainerId,
-      title: title.trim(),
-      file_path: path,
-      mime_type: file.type,
-      size_bytes: file.size,
-    })
-    .select('id, title, file_path, mime_type, size_bytes, status, uploaded_at, review_note')
-    .single();
+  const row = { trainer_id: trainerId, title: title.trim(), file_path: path, mime_type: file.type, size_bytes: file.size };
+  const hasDetails = Object.values(detailRow(details)).some((v) => v !== null);
+  let { data, error } = await supabase.from('trainer_credentials')
+    .insert(hasDetails ? { ...row, ...detailRow(details) } : row).select(BASE).single();
+  // Before 0160 the detail columns are not there: keep the document, drop the details.
+  if (missingColumn(error)) ({ data, error } = await supabase.from('trainer_credentials').insert(row).select(BASE).single());
 
   if (error) {
     // Do not leave an orphan behind if the row failed — the file would sit in
@@ -98,6 +112,23 @@ export async function uploadCredential(
     throw error;
   }
   return toCredential(data as Row);
+}
+
+/**
+ * Correct the title or details of one that is waiting or was not accepted
+ * (0160). Correcting a rejected one sends it back to the gym; a verified one
+ * is refused by the database — a renewal is a new upload.
+ */
+export async function updateCredentialDetails(id: string, title: string, details: CredentialDetails): Promise<void> {
+  const { data, error } = await supabase.from('trainer_credentials')
+    .update({ title: title.trim(), ...detailRow(details) }).eq('id', id).select('id');
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  assertWrote(data, 'That credential could not be changed.');
+}
+
+/** Reminders about credentials running out (0160) — pg_cron is optional, so screens ask. */
+export async function runCredentialExpirySweep(): Promise<void> {
+  await supabase.rpc('credential_expiry_sweep').then(() => undefined, () => undefined);
 }
 
 /** A short-lived URL. Returns null rather than throwing — the row still renders. */

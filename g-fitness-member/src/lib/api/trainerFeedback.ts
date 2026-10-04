@@ -73,6 +73,9 @@ export interface PublicCredential {
   /** When the gym verified it. NULL only for rows verified before reviewed_at
    *  was being written; the screen shows the title without a date. */
   verified_on: string | null;
+  /** 0160: who issued it and until when. The view already leaves out an expired one. */
+  issuer?: string | null;
+  expires_on?: string | null;
 }
 
 export async function listPublicCredentials(trainerId: string): Promise<PublicCredential[]> {

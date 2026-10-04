@@ -19,6 +19,7 @@ const Privacy = lazyPage(() => import('./pages/Privacy'));
 import Home from './pages/Home';
 const Workouts = lazyPage(() => import('./pages/Workouts'));
 const Program = lazyPage(() => import('./pages/Program'));
+const Programs = lazyPage(() => import('./pages/Programs'));
 const Season = lazyPage(() => import('./pages/Season'));
 const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
@@ -271,6 +272,7 @@ function App() {
               rather than deleted so older links and notification action_urls
               still land somewhere sensible. */}
           <Route path="workouts" element={<Workouts />} />
+          <Route path="programs" element={<Programs />} />
           <Route path="program/:programId" element={<Program />} />
           <Route path="progress-photos" element={<ProgressPhotos />} />
           <Route path="shop" element={<ShopMenu />} />
