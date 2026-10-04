@@ -1192,3 +1192,29 @@ html, body {
   border: 1px dashed color-mix(in srgb, var(--color-secondary) 55%, transparent);
 }
 .streak-plan-hint b { color: var(--color-secondary); font-weight: 700; }
+
+/* Get the app (/get-app): a panel per platform, numbered steps with the real icons. */
+.getapp-panel { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+.getapp-steps { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.getapp-step { display: flex; gap: 12px; align-items: flex-start; }
+.getapp-step__n {
+  flex: none; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 700; color: var(--color-primary-300);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+.getapp-step__title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+.getapp-step__icon {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px;
+  color: var(--color-text-primary); background: var(--color-surface-high);
+}
+.getapp-step__text { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--color-text-muted); }
+.getapp-note { font-size: 12.5px; line-height: 1.55; color: var(--color-text-muted); }
+.getapp-note--action {
+  padding: 10px 12px; border-radius: 10px; color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, transparent);
+}
+.getapp-note--action b { color: var(--color-secondary); }
+.getapp-alt { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid rgba(233, 233, 237, 0.08); }
+.getapp-alt p { font-size: 12.5px; color: var(--color-text-muted); }

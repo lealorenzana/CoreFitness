@@ -60,5 +60,32 @@ async (page) => {
   }
   await page.waitForTimeout(500);
   out.push('…and the member is still on /get-app: ' + (/\/get-app$/.test(page.url()) ? 'yes' : 'NAVIGATED to ' + page.url()));
+  const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  let t = await text();
+  out.push('Android: the three steps: ' + (/Download the app/.test(t) && /Allow the install/.test(t) && /Open Core Fitness/.test(t) ? 'yes' : 'MISSING'));
+
+  // The iPhone tab: Safari's Share → Add to Home Screen, and never an install button.
+  await page.getByRole('tab', { name: /iPhone/ }).click();
+  t = await text();
+  out.push('iPhone: Share, then Add to Home Screen: ' + (/Open this page in Safari/.test(t) && /Tap Share/.test(t) && /Tap "Add to Home Screen"/.test(t) ? 'yes' : 'MISSING'));
+  out.push('iPhone: no download and no install button: ' + ((await page.getByRole('button', { name: /Download for Android|Install from this browser/ }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await page.screenshot({ path: 'shots/member-get-app-iphone.png' });
+
+  // An iPhone opens on its own tab; Chrome on an iPhone is told to use Safari.
+  for (const [name, agent, safariNote] of [
+    ['Safari on iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1', false],
+    ['Chrome on iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0 Mobile/15E148 Safari/604.1', true],
+  ]) {
+    const p2 = await page.context().newPage();
+    await p2.addInitScript((ua) => Object.defineProperty(navigator, 'userAgent', { get: () => ua }), agent);
+    await p2.goto('http://localhost:5173/get-app', { waitUntil: 'domcontentloaded' });
+    await p2.getByText('Get the app').first().waitFor({ timeout: 15000 });
+    await p2.waitForTimeout(800);
+    const t2 = (await p2.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+    const onIphone = (await p2.getByRole('tab', { name: /iPhone/ }).getAttribute('aria-selected')) === 'true';
+    const note = /only Safari can add an app to the Home Screen/.test(t2);
+    out.push(`${name}: opens on the iPhone tab${safariNote ? ', told to use Safari' : ''}: ` + (onIphone && note === safariNote ? 'yes' : `MISSING tab=${onIphone} note=${note}`));
+    await p2.close();
+  }
   return out.join('\n');
 }
