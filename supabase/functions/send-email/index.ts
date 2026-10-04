@@ -21,7 +21,11 @@
 // an email went out that did not — the rule that made those screens say "pass
 // this on yourself" in the first place.
 //
-// To turn it on: get a key from resend.com (free tier), then
+// To turn it on, either provider:
+//   Brevo (brevo.com, free 300/day, no domain needed): verify your sender address
+//   under Senders, create an API key, then set BREVO_API_KEY and MAIL_FROM to
+//   "Core Fitness <that address>". Brevo is used whenever its key is set.
+// Or Resend (needs a verified domain to email anyone but you): get a key, then
 //   Dashboard → Edge Functions → Secrets:
 //     RESEND_API_KEY   re_...
 //     MAIL_FROM        Core Fitness <hello@your-verified-domain>
@@ -100,13 +104,18 @@ Deno.serve(async (req: Request) => {
     });
     if (recordError) return json({ error: recordError.message }, 403);
 
-    const apiKey = Deno.env.get("RESEND_API_KEY");
+    // Two providers. Brevo first when its key is set: its free plan sends to
+    // anyone from a single verified sender address (a Gmail works, 300 a day),
+    // where Resend's sends to others only from a verified domain. Either way
+    // MAIL_FROM is "Name <address>" and that address must be verified there.
+    const brevoKey = Deno.env.get("BREVO_API_KEY");
+    const apiKey = brevoKey ? null : Deno.env.get("RESEND_API_KEY");
     const from = Deno.env.get("MAIL_FROM");
 
-    if (!apiKey || !from) {
+    if ((!brevoKey && !apiKey) || !from) {
       await caller.rpc("settle_email", {
         p_id: id, p_status: "not_configured",
-        p_error: "No RESEND_API_KEY / MAIL_FROM secret is set on this project.",
+        p_error: "No BREVO_API_KEY or RESEND_API_KEY, or no MAIL_FROM, is set on this project.",
       });
       return json({
         id, configured: false, status: "not_configured",
@@ -115,18 +124,34 @@ Deno.serve(async (req: Request) => {
       }, 200);
     }
 
+    // "Core Fitness <me@gmail.com>" → name and address, for Brevo's sender object.
+    const m = /^\s*(.*?)\s*<\s*([^>]+?)\s*>\s*$/.exec(from);
+    const sender = m ? { name: m[1] || "Core Fitness", email: m[2] } : { name: "Core Fitness", email: from.trim() };
+
     try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from,
-          to: [to],
-          subject,
-          text: body,
-          html: asHtml(body),
-        }),
-      });
+      const res = brevoKey
+        ? await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: { "api-key": brevoKey, "Content-Type": "application/json", accept: "application/json" },
+            body: JSON.stringify({
+              sender,
+              to: [{ email: to, ...(toName ? { name: toName } : {}) }],
+              subject,
+              textContent: body,
+              htmlContent: asHtml(body),
+            }),
+          })
+        : await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from,
+              to: [to],
+              subject,
+              text: body,
+              html: asHtml(body),
+            }),
+          });
 
       if (!res.ok) {
         // The provider's own sentence, not a guess at what went wrong. A
