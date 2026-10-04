@@ -144,7 +144,11 @@ async (page) => {
   // A gym that never set the second one is told what it currently is, rather
   // than shown fourteen unselected swatches and left to guess.
   out.push('unset says amber: ' + (/Not set, so your buttons are amber/.test(t) ? 'shown' : 'MISSING'));
-  out.push('nouns: ' + has(t, 'What you call your people'));
+  await page.getByRole('tab', { name: 'Words' }).click();
+  await page.waitForTimeout(400);
+  out.push('nouns: ' + has(await text(), 'What you call your people'));
+  await page.getByRole('tab', { name: 'Look' }).click();
+  await page.waitForTimeout(400);
   await page.screenshot({ path: 'shots/admin-gym-app.png', fullPage: true });
 
   // Pick an action colour and a noun, then save. The assertion is on what was
@@ -166,9 +170,11 @@ async (page) => {
   out.push('sidebar before: ' + (/Trainers/.test(navBefore) ? 'Trainers' : 'MISSING')
     + ' / ' + (/Members/.test(navBefore) ? 'Members' : 'MISSING'));
 
+  await page.getByRole('tab', { name: 'Words' }).click();
+  await page.waitForTimeout(400);
   await page.getByLabel('All of them', { exact: true }).first().fill('PTs');
   await page.getByLabel('All of your people', { exact: true }).fill('Athletes');
-  await page.getByRole('button', { name: 'Save' }).nth(1).click();
+  await page.getByRole('button', { name: 'Save' }).first().click();   // the Words tab has the one Save
   await page.waitForTimeout(1500);
   out.push('noun sent: ' + (CALLS.save_gym_vocabulary?.p_words?.trainers ?? 'MISSING'));
 
@@ -183,6 +189,8 @@ async (page) => {
 
   // Moving the front door. The warning has to be on screen *before* the button,
   // because "every printed link stops working" is not a thing to learn after.
+  await page.getByRole('tab', { name: 'How members join' }).click();
+  await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Change' }).click();
   await page.waitForTimeout(400);
   t = await text();

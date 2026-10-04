@@ -118,7 +118,7 @@ async (page) => {
   };
 
   await page.setViewportSize({ width: 1700, height: 900 });
-  await page.goto('http://localhost:5174/gym-app', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5174/gym-app?tab=runs', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
 
   // ---- the sidebar follows the switches ----
@@ -166,6 +166,8 @@ async (page) => {
   out.push('Challenges back in the sidebar: ' + (nav.includes('Challenges') ? 'yes' : 'MISSING'));
 
   // ---- a brand colour by code ----
+  await page.getByRole('tab', { name: 'Look' }).click();
+  await page.waitForTimeout(400);
   await page.locator('#look-accent-code').fill('#1F8A70');
   await page.waitForTimeout(300);
   t = await text();

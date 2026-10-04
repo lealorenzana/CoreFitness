@@ -101,6 +101,8 @@ async (page) => {
   await page.getByRole('button', { name: /Invite link/ }).waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: /Invite link/ }).click();
   await page.getByRole('dialog', { name: 'Invite members' }).waitFor({ timeout: 5000 });
+  // The link and code arrive after the dialog opens (my_gym_app); wait for them, not a fixed time.
+  await page.getByText('PPDSSJ').first().waitFor({ timeout: 8000 }).catch(() => {});
   t = await text();
   out.push('Members has the join link, the code and the app page: ' + (/corefitness-gym\.vercel\.app\/join\/gabby-pogi-123/.test(t) && /PPDSSJ/.test(t) && /\/get-app/.test(t) ? 'yes' : 'MISSING'));
   out.push('a QR code to scan at the desk: ' + ((await page.locator('[role="dialog"] svg').count()) >= 1 ? 'yes' : 'MISSING'));

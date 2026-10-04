@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Check, Copy, Link2, Lock, Printer, RefreshCw } from 'lucide-react';
+import { Check, Copy, Link2, Printer, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import {
@@ -15,6 +15,7 @@ import { uploadMedia } from '../lib/api/media';
 import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
 import AiCoachCard from '../components/AiCoachCard';
+import ModuleSwitches from '../components/ModuleSwitches';
 import ThemePreview from '../components/ThemePreview';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -385,21 +386,7 @@ export default function GymApp() {
           Switch off anything your gym does not do. It disappears from your members' app and from
           this dashboard — nothing is deleted, and switching it back on brings everything with it.
         </p>
-        <div className="mt-4 space-y-2">
-          {modules.filter((m) => !m.parent_key).map((parent) => (
-            <div key={parent.feature_key} className="space-y-1.5">
-              <ModuleRow m={parent} onToggle={toggle} />
-              {modules.some((c) => c.parent_key === parent.feature_key) && (
-                <div className="ml-6 space-y-1.5 border-l pl-3" style={{ borderColor: 'var(--color-border)' }}>
-                  {modules.filter((c) => c.parent_key === parent.feature_key).map((child) => (
-                    <ModuleRow key={child.feature_key} m={child} parentLabel={parent.label}
-                      onToggle={toggle} small />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <div className="mt-4"><ModuleSwitches modules={modules} onToggle={toggle} /></div>
       </div>}
 
       {/* ---- the AI coach (0147) ---------------------------------------------- */}
@@ -541,44 +528,3 @@ export default function GymApp() {
  * One switch. A child (0141) whose parent is off shows why and cannot be
  * flipped — its own setting is kept, and returns with the parent.
  */
-function ModuleRow({ m, onToggle, parentLabel, small }: {
-  m: GymModule; onToggle: (m: GymModule) => void; parentLabel?: string; small?: boolean;
-}) {
-  const locked = m.state === 'not_sold';
-  const held = m.state === 'parent_off';
-  const note = locked
-    ? 'Your Core Fitness plan does not include this. Ask us to move you to a plan that does.'
-    : held
-      ? `Off because ${parentLabel ?? 'the part it belongs to'} is off. Switch that on and this comes back as you left it.`
-      : m.description;
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(m)}
-      disabled={locked || held}
-      aria-pressed={m.enabled}
-      data-tip={locked || held ? undefined : m.enabled ? `Switch off ${m.label}` : `Switch on ${m.label}`}
-      className={`w-full flex items-start gap-3 rounded-lg border text-left disabled:cursor-default ${small ? 'px-3 py-2' : 'px-3.5 py-3'}`}
-      style={{
-        borderColor: m.enabled ? 'var(--color-primary)' : 'var(--color-border)',
-        background: 'var(--color-bg)',
-        opacity: locked || held ? 0.6 : 1,
-      }}
-    >
-      <span className="mt-0.5 shrink-0">
-        {locked ? <Lock size={16} style={{ color: 'var(--color-text-muted)' }} />
-          : m.enabled ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
-          : <span className="block h-4 w-4 rounded border" style={{ borderColor: 'var(--color-border)' }} />}
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className={`block font-medium ${small ? 'text-[13px]' : 'text-sm'}`}
-          style={{ color: 'var(--color-text-primary)' }}>
-          {m.label}
-        </span>
-        <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-          {note}
-        </span>
-      </span>
-    </button>
-  );
-}

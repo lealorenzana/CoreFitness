@@ -94,7 +94,11 @@ function passwordChecks(pw: string) {
 }
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  // `?tab=refunds` opens that tab — the setup wizard's last step links straight to each one.
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const asked = new URLSearchParams(window.location.search).get('tab');
+    return TABS.some((t) => t.id === asked) ? (asked as TabId) : 'profile';
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
