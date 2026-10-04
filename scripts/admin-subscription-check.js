@@ -99,7 +99,7 @@ async (page) => {
 
   STATE.trial = true;
   await page.goto('http://localhost:5174/subscription', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Free trial until').waitFor({ timeout: 15000 });
+  await page.getByText(/Free trial — \d+ days? left/).waitFor({ timeout: 15000 });
   await page.waitForTimeout(400);
   t = await text();
   out.push('a trial gym is told it is a trial: ' + (/Your free trial ends in 5 days/.test(t) && !/subscription runs out/.test(t) && /5 days left/.test(t) ? 'banner and page' : 'MISSING'));

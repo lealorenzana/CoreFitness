@@ -49,6 +49,9 @@ export interface PlatformPlan {
   max_staff: number | null;
   /** 0121. Photos a gym may upload (exercise guides); NULL = unlimited. Absent before 0121. */
   max_photos?: number | null;
+  /** 0163: the AI coach ceiling; undefined before 0163, null = no ceiling. */
+  ai_daily_cap?: number | null;
+  ai_monthly_cap?: number | null;
   is_public: boolean;
   is_active: boolean;
   sort_order: number;
@@ -615,6 +618,23 @@ export const saveAnnouncement = (a: { id?: string | null; title: string; body: s
 export const endAnnouncement = (id: string) => call<void>('end_announcement', { p_id: id });
 export const listTickets = (status?: string) => call<PlatformTicket[]>('platform_support_tickets', { p_status: status ?? null });
 export const ticketThread = (id: string) => call<TicketMessage[]>('support_thread', { p_ticket: id });
+/** 0162: support access asked for and given on the ticket, and the fix written down. */
+export interface TicketAccess {
+  hours: number | null; why: string | null; requested_at: string | null; answer: 'approved' | 'declined' | null;
+  expires_at: string | null; live: boolean; first_used_at: string | null; resolution: string | null; resolved_at: string | null;
+  context: { message?: string; route?: string; build?: string; user_agent?: string; at?: string } | null;
+}
+export const ticketAccess = (id: string) => call<TicketAccess | null>('ticket_access_state', { p_ticket: id });
+export const requestTicketAccess = (id: string, hours: number, why: string) =>
+  call<void>('platform_request_ticket_access', { p_ticket: id, p_hours: hours, p_why: why });
+export const resolveTicket = (id: string, resolution: string) => call<void>('resolve_ticket', { p_ticket: id, p_resolution: resolution });
+/** 0163: a plan's AI coach ceiling; null = no ceiling. */
+export const setPlanAiCaps = (plan: string, daily: number | null, monthly: number | null) =>
+  call<void>('set_plan_ai_caps', { p_plan: plan, p_daily: daily, p_monthly: monthly });
+/** 0164: start billing a gym (a covered-until date) or clear it (no billing). */
+export const setGymBilling = (gym: string, paidUntil: string | null, note: string | null) =>
+  call<void>('platform_set_billing', { p_gym: gym, p_paid_until: paidUntil, p_note: note });
+
 export const replyTicket = (id: string, body: string, close = false) =>
   call<void>('reply_support_ticket', { p_ticket: id, p_body: body, p_close: close });
 export const setTicketStatus = (id: string, status: 'open' | 'closed') => call<void>('set_ticket_status', { p_ticket: id, p_status: status });

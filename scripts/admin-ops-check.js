@@ -170,13 +170,10 @@ async (page) => {
   await page.getByText('End of day').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'shots/admin-cash.png' });
 
-  // System
+  // System is the platform's now (2026-10-04): an old bookmark lands on Support.
   await page.goto('http://localhost:5174/system', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(3000);
-  t = await text();
-  out.push('system: ' + grab(t, 'Database migrations', 170));
-  out.push('crashes: ' + grab(t, 'Crash reports', 150));
-  await page.screenshot({ path: 'shots/admin-system.png' });
+  await page.waitForTimeout(2000);
+  out.push('old /system bookmark: ' + (new URL(page.url()).pathname === '/support' ? 'sent to /support' : 'MISSING ' + page.url()));
 
   // Kiosk (headless has no camera: the typed code still works)
   await page.goto('http://localhost:5174/kiosk', { waitUntil: 'domcontentloaded' });

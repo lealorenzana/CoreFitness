@@ -118,6 +118,8 @@ async (page) => {
   await page.waitForTimeout(200);
   const book = await page.getByText('Book', { exact: true }).evaluate((e) => getComputedStyle(e).backgroundColor);
   out.push('one tap changes the preview: ' + (book === 'rgb(234, 88, 12)' ? 'yes (orange button)' : 'MISSING ' + book));
+  await page.goto('http://localhost:5174/gym-app?tab=join', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
   t = await text();
   out.push('the copy buttons are separate: ' + (/Copy link/.test(t) && /Copy code/.test(t) && /Copy a message to send/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-theme-preview.png', fullPage: true });

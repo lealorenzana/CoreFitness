@@ -172,7 +172,7 @@ const NAV: Entry[] = [
   },
 
   { label: 'Your app', path: '/gym-app', icon: Smartphone, adminOnly: true },
-  { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true, alsoMatches: ['/system'] },
+  { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true },
   // What this gym pays Core Fitness, and its receipts (0138).
   { label: 'Your plan', path: '/subscription', icon: CreditCard, adminOnly: true },
   // Talking to Core Fitness (0137): owner and desk.
@@ -208,7 +208,7 @@ const NAV_TIPS: Record<string, string> = {
   '/resources': 'Articles and videos saved for members',
   '/rooms': "Coaches' rooms: their posts, classwork and members — read and moderate",
   '/gym-app': "How the member app looks: your logo, colours, words and join poster",
-  '/settings': 'Gym details, hours, rules, waivers and the system status',
+  '/settings': 'Gym details, hours, rules, waivers and staff accounts',
   '/subscription': 'What this gym pays Core Fitness, until when, and the receipts',
   '/support': 'Ask Core Fitness anything, and read the answers',
   People: 'Members, invitations, coaches and their credentials',

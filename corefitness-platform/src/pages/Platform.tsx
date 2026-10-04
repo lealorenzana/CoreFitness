@@ -3,6 +3,7 @@ import InfoDot from '../components/InfoDot';
 import { Link } from 'react-router-dom';
 import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
 import Tiles from '../components/Tiles';
+import { LAST, probeMigrations, type MigrationState } from '../lib/migrations';
 import {
   demoSummary, explain, getOverview, lastBackup,
   listAdmins, listCrashes, listEmails, listEvents, listSupportGrants,
@@ -44,6 +45,8 @@ export default function Platform() {
   const [wiping, setWiping] = useState(false);
   const [typed, setTyped] = useState('');
   const [wiped, setWiped] = useState<string | null>(null);
+  const [migs, setMigs] = useState<{ num: number; state: MigrationState }[] | null>(null);
+  useEffect(() => { void (async () => { setMigs(await probeMigrations().catch(() => [])); })(); }, []);
 
   const load = useCallback(async () => {
     try {
@@ -296,6 +299,18 @@ export default function Platform() {
           one at a time, in number order, in the Supabase SQL editor — and the matching
           <code style={{ margin: '0 4px' }}>scripts/sql/verify/verifyNNNN.sql</code> after each.
         </div>
+        {migs === null ? <p className="meta" style={{ marginTop: 8 }}>Asking the database…</p> : (() => {
+          const waiting = migs.filter((m) => m.state === 'missing').map((m) => String(m.num).padStart(4, '0'));
+          const unsure = migs.filter((m) => m.state === 'unknown').length;
+          return (
+            <p className="meta" data-migrations={waiting.join(',')} style={{ marginTop: 8, color: waiting.length ? 'var(--warn, #F59E0B)' : undefined }}>
+              {waiting.length === 0 && unsure === 0
+                ? `0074–${String(LAST).padStart(4, '0')} are all live.`
+                : waiting.length ? `Not pasted yet: ${waiting.join(', ')} — paste them in this order.` : ''}
+              {unsure > 0 && ` ${unsure} could not be checked from here; run the script.`}
+            </p>
+          );
+        })()}
       </div>
       </div>
 

@@ -116,7 +116,7 @@ async (page) => {
     const leaked = MEMBERS.flatMap((m) => [m.id, m.first_name, m.last_name]).filter((s) => html.includes(s));
     return leaked.length ? 'STILL SHOWN ' + leaked.join(', ') : 'none';
   };
-  const open = async (path = '/gym-app') => {
+  const open = async (path = '/gym-app?tab=coach') => {
     await page.goto('http://localhost:5174' + path, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2200);
   };

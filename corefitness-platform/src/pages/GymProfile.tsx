@@ -9,11 +9,13 @@ import ExportGym from '../components/ExportGym';
 import SupportDoor from '../components/SupportDoor';
 import {
   addGymNote, deleteGymNote, explain, gymContacts, gymEvents, gymFeatures, gymNotes, gymWeeks, listGyms, listPayments,
-  setNotePinned,
+  setGymBilling, setNotePinned,
   type GymContact, type GymFeature, type GymNote, type GymPayment, type GymWeek, type PlatformEvent, type PlatformGym,
 } from '../lib/platform';
 
 const peso = (v: string | number | null | undefined) => `₱${Number(v ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
+/** A Manila calendar date n days from today, as YYYY-MM-DD (UTC+8, never the UTC date). */
+const manilaDay = (n = 0) => new Date(Date.now() + 8 * 3_600_000 + n * 86_400_000).toISOString().slice(0, 10);
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 function ago(iso: string | null): string {
   if (!iso) return 'never';
@@ -41,6 +43,8 @@ export default function GymProfile() {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(true);
+  const [billing, setBilling] = useState<{ until: string; note: string } | null>(null);
+  const [billBusy, setBillBusy] = useState(false);
 
   const loadNotes = useCallback(async () => { try { setNotes(await gymNotes(gymId)); } catch { /* before 0135 */ } }, [gymId]);
   const load = useCallback(async () => {
@@ -113,6 +117,46 @@ export default function GymProfile() {
           );
         })}
       </div>
+
+      <section className="card" style={{ marginTop: 16 }} data-card="billing">
+        <h2 className="section-title"><Clock size={14} /> Billing</h2>
+        <p className="meta">
+          {gym.paid_until
+            ? <>Covered until {day(gym.paid_until)}. After that and the grace days, the gym goes read-only until a payment is verified.</>
+            : <>No billing — this gym has no covered-until date, so nothing is ever due and it never locks. Start billing to give it a date; its owner is told, and reminded before it.</>}
+        </p>
+        {billing ? (
+          <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <label htmlFor="bill-until" className="meta">Covered until</label>
+            <input id="bill-until" type="date" min={manilaDay()} value={billing.until}
+              onChange={(e) => setBilling({ ...billing, until: e.target.value })} />
+            <input className="grow" value={billing.note} maxLength={300} placeholder="A note for the owner (optional)"
+              onChange={(e) => setBilling({ ...billing, note: e.target.value })} aria-label="Note" />
+            <button className="btn" disabled={billBusy || !billing.until} onClick={() => void (async () => {
+              setBillBusy(true);
+              try { await setGymBilling(gym.id, billing.until, billing.note.trim() || null); setBilling(null); await load(); }
+              catch (e) { setError(e instanceof Error ? e.message : 'Billing could not be set'); }
+              finally { setBillBusy(false); }
+            })()}>{gym.paid_until ? 'Save the date' : 'Start billing'}</button>
+            <button className="btn ghost" onClick={() => setBilling(null)}>Cancel</button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8, marginTop: 10 }}>
+            <button className="btn" onClick={() => setBilling({ until: gym.paid_until ?? manilaDay(30), note: '' })}>
+              {gym.paid_until ? 'Change the date' : 'Start billing'}
+            </button>
+            {gym.paid_until && (
+              <button className="btn ghost" disabled={billBusy} onClick={() => void (async () => {
+                if (!window.confirm(`Stop billing ${gym.name}? It will have no covered-until date, so it never locks.`)) return;
+                setBillBusy(true);
+                try { await setGymBilling(gym.id, null, null); await load(); }
+                catch (e) { setError(e instanceof Error ? e.message : 'Billing could not be cleared'); }
+                finally { setBillBusy(false); }
+              })()}>No billing</button>
+            )}
+          </div>
+        )}
+      </section>
 
       {live && (
         <div className="grid-2">

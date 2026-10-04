@@ -13,6 +13,9 @@ import { supabase } from '../supabaseClient';
 export interface AiUsage {
   daily_limit: number;
   monthly_limit: number;
+  /** 0163: the most the gym's Core Fitness plan allows; null = no ceiling (or before 0163). */
+  plan_daily_cap: number | null;
+  plan_monthly_cap: number | null;
   month_start: string;
   messages_month: number;
   tokens_in_month: number;
@@ -52,6 +55,8 @@ export async function getAiUsage(): Promise<AiUsageResult> {
     usage: {
       daily_limit: n('daily_limit'),
       monthly_limit: n('monthly_limit'),
+      plan_daily_cap: d.plan_daily_cap == null ? null : Number(d.plan_daily_cap),
+      plan_monthly_cap: d.plan_monthly_cap == null ? null : Number(d.plan_monthly_cap),
       month_start: String(d.month_start ?? ''),
       messages_month: n('messages_month'),
       tokens_in_month: n('tokens_in_month'),

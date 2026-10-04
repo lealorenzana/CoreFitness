@@ -38,6 +38,8 @@ async function shrink(file: File): Promise<string> {
 export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string | null }) {
   const [opts, setOpts] = useState<PayOption[] | undefined | null>(null);
   const [claims, setClaims] = useState<PaymentClaim[]>([]);
+  /** A QR code shown big enough to scan from this screen with another phone, and saved as an image. */
+  const [bigQr, setBigQr] = useState<{ src: string; label: string } | null>(null);
   const [method, setMethod] = useState('');
   const [months, setMonths] = useState(1);
   const [amount, setAmount] = useState('');
@@ -92,7 +94,12 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
             {opts.map((o) => (
               <div key={o.id} className="rounded-lg border p-3" style={{ borderColor: 'var(--color-border)' }}>
                 <p className="text-sm font-semibold text-white">{o.label}</p>
-                {o.qr_image && <img src={o.qr_image} alt={`${o.label} QR code`} className="mt-2 w-full max-w-[200px] rounded-md bg-white p-1" />}
+                {o.qr_image && (
+                  <button type="button" onClick={() => setBigQr({ src: o.qr_image!, label: o.label })} aria-label={`Show the ${o.label} QR code larger`} className="block mt-2 cursor-zoom-in">
+                    <img src={o.qr_image} alt={`${o.label} QR code`} className="w-full max-w-[200px] rounded-md bg-white p-1" />
+                    <span className="block text-[11px] mt-1" style={{ color: MUTED }}>Tap to enlarge</span>
+                  </button>
+                )}
                 {o.account_name && <p className="text-xs mt-2" style={{ color: MUTED }}>{o.account_name}</p>}
                 {o.account_number && (
                   <p className="text-sm text-white mt-0.5 flex items-center gap-2">{o.account_number}
@@ -152,6 +159,20 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
               </span>
             </p>
           ))}
+        </div>
+      )}
+      {bigQr && (
+        <div className="fixed inset-0 z-[1000] grid place-items-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }} role="dialog" aria-modal="true"
+          aria-label={`${bigQr.label} QR code`} onClick={() => setBigQr(null)}>
+          <div className="rounded-2xl p-5 w-full max-w-sm text-center" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+            <img src={bigQr.src} alt={`${bigQr.label} QR code`} className="w-full rounded-xl bg-white p-2" />
+            <p className="text-sm text-white mt-3">{bigQr.label}</p>
+            <div className="flex gap-2 justify-center mt-3">
+              <a href={bigQr.src} download={`${bigQr.label.replace(/[^a-z0-9]+/gi, '-')}-qr.png`} className="h-9 px-4 rounded-lg text-xs font-semibold grid place-items-center"
+                style={{ border: '1px solid var(--color-border)', color: '#fff' }}>Save image</a>
+              <button type="button" onClick={() => setBigQr(null)} className="h-9 px-4 rounded-lg text-xs font-semibold" style={{ background: 'var(--color-primary)', color: '#fff' }}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </Card>

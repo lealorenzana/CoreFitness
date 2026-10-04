@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LifeBuoy, Send } from 'lucide-react';
+import { Bug, CheckCircle2, LifeBuoy, Send, ShieldCheck } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
-import { closeTicket, myTickets, openTicket, replyTicket, thread, type ThreadMessage, type Ticket } from '../lib/api/support';
+import {
+  approveTicketAccess, closeTicket, declineTicketAccess, myTickets, openTicket, replyTicket, thread, ticketAccess,
+  type ThreadMessage, type Ticket, type TicketAccess,
+} from '../lib/api/support';
+import { revokeSupportAccess } from '../lib/api/gymApp';
+import { getGymContext } from '../lib/gymContext';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' };
@@ -13,6 +18,12 @@ const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'sh
  * Support (0137): questions and problems for Core Fitness, from the owner or
  * the desk. Each ticket is a thread between this gym and the platform; a reply
  * arrives as a notification and a "new" mark here.
+ *
+ * Support access lives here (0162), not on Your app: Core Fitness asks for a
+ * few hours of read-only access *on the ticket it is for*, the owner answers
+ * with one tap, the window shows while it is open, and the fix is written on
+ * the ticket when it is closed. A ticket opened from a crash screen carries
+ * the error with it.
  */
 export default function Support() {
   const [tickets, setTickets] = useState<Ticket[] | null | undefined>(null);
@@ -24,17 +35,24 @@ export default function Support() {
   const [body, setBody] = useState('');
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
+  const [access, setAccess] = useState<TicketAccess | null>(null);
+  const [owner, setOwner] = useState(false);
+  useEffect(() => { void getGymContext().then((c) => setOwner(c?.role === 'admin')); }, []);
 
   const load = useCallback(async () => { setTickets(await myTickets()); }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const show = async (t: Ticket) => {
     setOpen(t);
-    try { setMsgs(await thread(t.id)); await load(); } catch (e) { showToast(e instanceof Error ? e.message : 'Could not open it', 'error'); }
+    setAccess(null);
+    try { setMsgs(await thread(t.id)); setAccess(await ticketAccess(t.id)); await load(); } catch (e) { showToast(e instanceof Error ? e.message : 'Could not open it', 'error'); }
   };
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
-    try { await fn(); showToast(ok, 'success'); await load(); if (openId.current) setMsgs(await thread(openId.current)); }
+    try {
+      await fn(); showToast(ok, 'success'); await load();
+      if (openId.current) { setMsgs(await thread(openId.current)); setAccess(await ticketAccess(openId.current)); }
+    }
     catch (e) { showToast(e instanceof Error ? e.message : 'That did not work', 'error'); }
     finally { setBusy(false); }
   };
@@ -90,6 +108,41 @@ export default function Support() {
                 {open.status !== 'closed' && <Button size="sm" variant="ghost" disabled={busy}
                   onClick={() => void run(async () => { await closeTicket(open.id); setOpen({ ...open, status: 'closed' }); }, 'Closed')}>Mark solved</Button>}
               </div>
+              {access?.context?.message && (
+                <div className="rounded-lg px-3 py-2 mb-3 text-[11px] flex gap-2" style={{ ...FIELD, color: 'var(--color-text-secondary)' }}>
+                  <Bug size={13} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-secondary)' }} />
+                  <span>Sent with the error report: <b className="text-white">{access.context.message}</b>{access.context.route ? ` on ${access.context.route}` : ''}. No member details go with it.</span>
+                </div>
+              )}
+              {access?.requested_at && !access.answer && (
+                <div className="rounded-xl p-3 mb-3" style={{ background: 'var(--color-secondary-light)', border: '1px solid var(--color-secondary)' }}>
+                  <p className="text-xs font-semibold text-white flex items-center gap-1.5"><ShieldCheck size={14} /> Core Fitness asks to look at your gym for {access.hours} hour{access.hours === 1 ? '' : 's'}</p>
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Why: {access.why}. They can only look — the database refuses them every change — it ends by itself, and every visit is in your activity log.
+                  </p>
+                  {owner ? (
+                    <div className="flex gap-2 mt-2">
+                      <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run(() => approveTicketAccess(open.id), 'Access open — it ends by itself')}>Approve</Button>
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => declineTicketAccess(open.id), 'Declined')}>Decline</Button>
+                    </div>
+                  ) : <p className="text-[11px] mt-2" style={{ color: MUTED }}>Only the gym owner can answer this.</p>}
+                </div>
+              )}
+              {access?.live && (
+                <div className="rounded-xl p-3 mb-3 flex items-center gap-3 flex-wrap" style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+                  <ShieldCheck size={15} style={{ color: 'var(--color-primary)' }} />
+                  <p className="text-[11px] flex-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Core Fitness can look until {when(access.expires_at!)}. {access.first_used_at ? 'They have looked.' : 'Nobody has looked yet.'}
+                  </p>
+                  {owner && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => revokeSupportAccess(), 'Access withdrawn')}>Withdraw now</Button>}
+                </div>
+              )}
+              {access?.resolution && (
+                <div className="rounded-xl p-3 mb-3" style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+                  <p className="text-xs font-semibold text-white flex items-center gap-1.5"><CheckCircle2 size={14} /> What was fixed</p>
+                  <p className="text-[11px] mt-1 whitespace-pre-wrap" style={{ color: 'var(--color-text-secondary)' }}>{access.resolution}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 {msgs.map((m) => (
                   <div key={m.id} className="rounded-lg px-3 py-2" style={{ background: m.fromPlatform ? 'var(--color-primary-light)' : 'var(--color-surface-high)',

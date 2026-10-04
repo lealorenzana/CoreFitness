@@ -201,17 +201,20 @@ CHECKS = [
     ('0159', 'rpc migration_0159_applied',     lambda: rpc('migration_0159_applied')),
     ('0160', 'rpc migration_0160_applied',     lambda: rpc('migration_0160_applied')),
     ('0161', 'rpc migration_0161_applied',     lambda: rpc('migration_0161_applied')),
+    ('0162', 'rpc migration_0162_applied',     lambda: rpc('migration_0162_applied')),
+    ('0163', 'rpc migration_0163_applied',     lambda: rpc('migration_0163_applied')),
+    ('0164', 'rpc migration_0164_applied',     lambda: rpc('migration_0164_applied')),
 ]
 
-# The admin System page checks 0074..LAST. It read 117 while 0118 and 0119
+# The platform home's Migrations card checks 0074..LAST (it was admin's System page until 2026-10-04). It read 117 while 0118 and 0119
 # shipped, so it could not see either (2026-09-26) — the drift its own comment
 # warns about. Said here, where a new migration's entry is always added.
 import os, re as _re
-_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'g-fitness-admin', 'src', 'pages', 'SystemHealth.tsx')
+_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'corefitness-platform', 'src', 'lib', 'migrations.ts')
 try:
-    _last = int(_re.search(r'const LAST = (\d+);', open(_sh, encoding='utf-8').read()).group(1))
+    _last = int(_re.search(r'export const LAST = (\d+);', open(_sh, encoding='utf-8').read()).group(1))
     if _last != int(CHECKS[-1][0]):
-        print('WARNING: SystemHealth.tsx LAST = %d but the last probe row is %s. Update LAST.' % (_last, CHECKS[-1][0]))
+        print('WARNING: corefitness-platform/src/lib/migrations.ts LAST = %d but the last probe row is %s. Update LAST.' % (_last, CHECKS[-1][0]))
         print()
 except (OSError, AttributeError):
     pass

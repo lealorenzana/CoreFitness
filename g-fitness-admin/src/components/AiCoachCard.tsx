@@ -6,6 +6,7 @@ import { StatTiles } from './ui/kit';
 import { showToast } from '../utils/toast';
 import { formatUsd, getAiUsage, setAiLimits, type AiUsageResult } from '../lib/api/aiCoach';
 import { getGymContext } from '../lib/gymContext';
+import { Link } from 'react-router-dom';
 
 /**
  * The AI coach on Your app (0147): its two limits, and this Manila month's
@@ -49,8 +50,10 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
   const save = async () => {
     // The same sentences SQL uses, so a typo never costs a round trip (2.5 would otherwise be cast or refused).
     const d = Number(daily), m = Number(monthly);
-    if (!Number.isInteger(d) || d < 1 || d > 500) { showToast('A daily limit is 1 to 500 messages.', 'error'); return; }
-    if (!Number.isInteger(m) || m < 1 || m > 100000) { showToast('A monthly limit is 1 to 100,000 messages.', 'error'); return; }
+    const maxD = (res?.ok ? res.usage.plan_daily_cap : null) ?? 500;
+    const maxM = (res?.ok ? res.usage.plan_monthly_cap : null) ?? 100000;
+    if (!Number.isInteger(d) || d < 1 || d > maxD) { showToast(`A daily limit is 1 to ${maxD} messages${maxD < 500 ? ' on your plan' : ''}.`, 'error'); return; }
+    if (!Number.isInteger(m) || m < 1 || m > maxM) { showToast(`A monthly limit is 1 to ${maxM.toLocaleString('en-PH')} messages${maxM < 100000 ? ' on your plan' : ''}.`, 'error'); return; }
     setSaving(true);
     try {
       await setAiLimits(d, m);
@@ -63,6 +66,9 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
     }
   };
 
+  // The plan's ceiling (0163); null = none beyond the absolute 500 / 100,000.
+  const capD = res?.ok ? res.usage.plan_daily_cap : null;
+  const capM = res?.ok ? res.usage.plan_monthly_cap : null;
   const muted = { color: 'var(--color-text-secondary)' };
   const input = 'w-full rounded-lg border px-3 py-2 text-sm';
   const inputStyle = {
@@ -93,9 +99,9 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
           )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <FormField label="Messages per member per day" hint={owner ? '1 to 500' : null}>
+            <FormField label="Messages per member per day" hint={owner ? `1 to ${capD ?? 500}${capD ? ' — the most your plan allows' : ''}` : null}>
               {owner ? (
-                <input id="ai-daily" type="number" min={1} max={500} step={1} className={input} style={inputStyle}
+                <input id="ai-daily" type="number" min={1} max={capD ?? 500} step={1} className={input} style={inputStyle}
                   value={daily} onChange={(e) => setDaily(e.target.value)} />
               ) : (
                 <p id="ai-daily" className="text-sm font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
@@ -103,9 +109,9 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
                 </p>
               )}
             </FormField>
-            <FormField label="Messages for the whole gym per month" hint={owner ? '1 to 100,000' : null}>
+            <FormField label="Messages for the whole gym per month" hint={owner ? `1 to ${(capM ?? 100000).toLocaleString('en-PH')}${capM ? ' — the most your plan allows' : ''}` : null}>
               {owner ? (
-                <input id="ai-monthly" type="number" min={1} max={100000} step={1} className={input} style={inputStyle}
+                <input id="ai-monthly" type="number" min={1} max={capM ?? 100000} step={1} className={input} style={inputStyle}
                   value={monthly} onChange={(e) => setMonthly(e.target.value)} />
               ) : (
                 <p id="ai-monthly" className="text-sm font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
@@ -114,6 +120,13 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
               )}
             </FormField>
           </div>
+          {(capD != null || capM != null) && (
+            <p className="mt-3 text-xs rounded-lg px-3 py-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+              Your Core Fitness plan allows up to {capD != null ? `${capD} a member a day` : 'any number a day'} and{' '}
+              {capM != null ? `${capM.toLocaleString('en-PH')} a month for the gym` : 'any number a month'}. You can set lower limits, never higher.{' '}
+              <Link to="/subscription" style={{ color: 'var(--color-primary)' }}>Need more? See plans →</Link>
+            </p>
+          )}
           {owner ? (
             <Button className="mt-4" onClick={() => void save()} disabled={saving || !daily || !monthly}>
               {saving ? 'Saving…' : 'Save'}

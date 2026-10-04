@@ -5,7 +5,8 @@ import { Building2, CheckCircle2, Inbox, LifeBuoy, MessageSquareReply, Send } fr
 import Tiles from '../components/Tiles';
 import SupportGrants from '../components/SupportGrants';
 import {
-  CHANGED, explain, listTickets, replyTicket, setTicketStatus, ticketThread, type PlatformTicket, type TicketMessage,
+  CHANGED, explain, listTickets, replyTicket, requestTicketAccess, resolveTicket, setTicketStatus, ticketAccess, ticketThread,
+  type PlatformTicket, type TicketAccess, type TicketMessage,
 } from '../lib/platform';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -26,6 +27,9 @@ export default function Support() {
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [access, setAccess] = useState<TicketAccess | null>(null);
+  const [asking, setAsking] = useState<{ hours: number; why: string } | null>(null);
+  const [fix, setFix] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try { setTickets(await listTickets()); setError(null); }
@@ -35,11 +39,12 @@ export default function Support() {
 
   const show = async (t: PlatformTicket) => {
     setOpen(t);
-    try { setMsgs(await ticketThread(t.id)); await load(); window.dispatchEvent(new Event(CHANGED)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not open it'); }
+    setAccess(null); setAsking(null); setFix(null);
+    try { setMsgs(await ticketThread(t.id)); setAccess(await ticketAccess(t.id).catch(() => null)); await load(); window.dispatchEvent(new Event(CHANGED)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not open it'); }
   };
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
-    try { await fn(); await load(); if (openId.current) setMsgs(await ticketThread(openId.current)); window.dispatchEvent(new Event(CHANGED)); }
+    try { await fn(); await load(); if (openId.current) { setMsgs(await ticketThread(openId.current)); setAccess(await ticketAccess(openId.current).catch(() => null)); } window.dispatchEvent(new Event(CHANGED)); }
     catch (e) { setError(e instanceof Error ? e.message : 'That did not work'); }
     finally { setBusy(false); }
   };
@@ -90,6 +95,44 @@ export default function Support() {
                   {open.status === 'closed' ? 'Reopen' : 'Close'}
                 </button>
               </div>
+              {access?.context?.message && (
+                <div className="card" style={{ padding: 12, marginBottom: 10 }}>
+                  <span className="name" style={{ fontSize: 13 }}>Error report attached</span>
+                  <span className="meta" style={{ display: 'block', fontFamily: 'ui-monospace, Consolas, monospace', whiteSpace: 'pre-wrap' }}>
+                    {access.context.message}{access.context.route ? ` — on ${access.context.route}` : ''}{access.context.build ? ` · build ${access.context.build}` : ''}
+                  </span>
+                </div>
+              )}
+              <div className="card" style={{ padding: 12, marginBottom: 10 }}>
+                <span className="name" style={{ fontSize: 13 }}>Support access</span>
+                {access?.live ? (
+                  <span className="meta" style={{ display: 'block' }}>Open until {when(access.expires_at!)} — read-only. <Link to={`/gyms/${open.gym_id}`}>Open the gym</Link> and use Support view.</span>
+                ) : access?.requested_at && !access.answer ? (
+                  <span className="meta" style={{ display: 'block' }}>Asked for {access.hours} h — waiting for the owner to approve it on the ticket.</span>
+                ) : asking ? (
+                  <div className="row" style={{ gap: 8, marginTop: 6 }}>
+                    <select value={asking.hours} onChange={(e) => setAsking({ ...asking, hours: Number(e.target.value) })} aria-label="Hours">
+                      {[1, 2, 4, 8, 24].map((h) => <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>)}
+                    </select>
+                    <input className="grow" value={asking.why} maxLength={300} onChange={(e) => setAsking({ ...asking, why: e.target.value })}
+                      placeholder="What you need to look at — the owner reads this" aria-label="Why" />
+                    <button className="btn" disabled={busy || !asking.why.trim()}
+                      onClick={() => void run(async () => { await requestTicketAccess(open.id, asking.hours, asking.why.trim()); setAsking(null); })}>Ask the owner</button>
+                    <button className="btn ghost" onClick={() => setAsking(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <span className="meta" style={{ display: 'block' }}>
+                    {access?.answer === 'declined' ? 'The owner declined the last request. ' : access?.answer === 'approved' ? 'The window from this ticket has ended. ' : 'Read-only, time-limited, approved by the owner on this ticket. '}
+                    {open.status !== 'closed' && <button className="btn ghost" style={{ marginLeft: 4 }} onClick={() => setAsking({ hours: 4, why: '' })}>Ask for access</button>}
+                  </span>
+                )}
+              </div>
+              {access?.resolution && (
+                <div className="card" style={{ padding: 12, marginBottom: 10 }}>
+                  <span className="name" style={{ fontSize: 13 }}>Fixed</span>
+                  <span className="meta" style={{ display: 'block', whiteSpace: 'pre-wrap' }}>{access.resolution}</span>
+                </div>
+              )}
               {msgs.map((m) => (
                 <div key={m.id} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 8,
                   background: m.from_platform ? 'var(--accent-tint)' : 'var(--surface-raised)',
@@ -108,7 +151,18 @@ export default function Support() {
                   onClick={() => void run(async () => { await replyTicket(open.id, reply, true); setReply(''); setOpen({ ...open, status: 'closed' }); })}>
                   Reply and close
                 </button>
+                {open.status !== 'closed' && <button className="btn ghost" onClick={() => setFix(fix === null ? '' : null)}>Mark fixed…</button>}
               </div>
+              {fix !== null && (
+                <div style={{ marginTop: 10 }}>
+                  <textarea rows={3} value={fix} maxLength={2000} onChange={(e) => setFix(e.target.value)} aria-label="What was fixed"
+                    placeholder="What was wrong and what you changed — the gym reads this, and any access from this ticket ends" />
+                  <button className="btn" style={{ marginTop: 8 }} disabled={busy || !fix.trim()}
+                    onClick={() => void run(async () => { await resolveTicket(open.id, fix.trim()); setFix(null); setOpen({ ...open, status: 'closed' }); })}>
+                    Close as fixed
+                  </button>
+                </div>
+              )}
             </>
           )}
         </section>

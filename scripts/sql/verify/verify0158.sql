@@ -8,7 +8,7 @@ begin
   select has_function_privilege('authenticated', 'platform_application_send_payment(uuid, uuid, text)', 'execute') into v_send;
   select has_function_privilege('anon', 'platform_application_send_payment(uuid, uuid, text)', 'execute') into v_anon;
   select has_function_privilege('anon', 'application_pay_card(uuid)', 'execute') or has_function_privilege('authenticated', 'application_pay_card(uuid)', 'execute') into v_card;
-  select count(*) into v_thread from information_schema.routine_columns where routine_name = 'platform_application_thread' and column_name = 'method_label';
+  select count(*) into v_thread from pg_proc where proname = 'platform_application_thread' and pg_get_function_result(oid) like '%method_label%';
   select coalesce((select migration_0158_applied()), false) into v_marker;
   raise exception 'REPORT 0158: column=% % | platform can send=% % | anon can send=% % | card callable directly=% % | thread names method=% % | marker=% %',
     v_col, case when v_col then 'OK' else 'NOT OK - STOP' end,

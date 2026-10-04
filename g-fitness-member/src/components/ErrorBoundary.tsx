@@ -28,7 +28,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
       }}>
         <p style={{ fontSize: 20, fontWeight: 700 }}>Something went wrong</p>
         <p style={{ fontSize: 14, lineHeight: 1.5, maxWidth: 340, color: '#A5A8BA' }}>
-          This screen hit a problem and could not be shown. It has been reported to the gym.
+          This screen hit a problem and could not be shown. Core Fitness has been sent the error.
           Nothing you saved has been lost.
         </p>
         <button onClick={() => window.location.reload()} style={{

@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
 import {
   explain, listGyms, listPlanFeatures, listPlatformFeatures, listPlatformPlans, retirePlan, savePlan, setPlanFeature,
-  setPlanPhotoLimit,
+  setPlanAiCaps, setPlanPhotoLimit,
   type PlanFeatureCell, type PlatformFeature, type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 
@@ -96,6 +96,10 @@ export default function Plans() {
       // as a key on every plan row once 0121 is pasted).
       if (editing.max_photos !== undefined) {
         await setPlanPhotoLimit(editing.key, editing.max_photos);
+      }
+      // 0163's AI coach ceiling, likewise only once the columns exist.
+      if (editing.ai_daily_cap !== undefined) {
+        await setPlanAiCaps(editing.key, editing.ai_daily_cap ?? null, editing.ai_monthly_cap ?? null);
       }
       setEditing(null);
       await load();
@@ -223,6 +227,22 @@ export default function Plans() {
                   onChange={(e) => setEditing({ ...editing, max_photos: e.target.value === '' ? null : Number(e.target.value) })} />
               </div>
             )}
+            {editing.ai_daily_cap !== undefined && (
+              <>
+                <div>
+                  <label htmlFor="pl-aid">AI coach: most a member a day</label>
+                  <input id="pl-aid" type="number" min={1} max={500} value={editing.ai_daily_cap ?? ''}
+                    placeholder="no ceiling (500)"
+                    onChange={(e) => setEditing({ ...editing, ai_daily_cap: e.target.value === '' ? null : Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label htmlFor="pl-aim">AI coach: most a gym a month</label>
+                  <input id="pl-aim" type="number" min={1} max={100000} value={editing.ai_monthly_cap ?? ''}
+                    placeholder="no ceiling (100,000)"
+                    onChange={(e) => setEditing({ ...editing, ai_monthly_cap: e.target.value === '' ? null : Number(e.target.value) })} />
+                </div>
+              </>
+            )}
             <div>
               <label htmlFor="pl-pub">On the website</label>
               <select id="pl-pub" value={editing.is_public ? 'yes' : 'no'}
@@ -236,6 +256,12 @@ export default function Plans() {
             <p className="meta" style={{ marginTop: 10 }}>
               A gym on this plan will be refused its {editing.max_members + 1}th active member — by the
               database, at the desk, with that sentence. Existing members are never touched.
+            </p>
+          )}
+          {editing.ai_daily_cap !== undefined && (editing.ai_daily_cap !== null || editing.ai_monthly_cap !== null) && (
+            <p className="meta" style={{ marginTop: 10 }}>
+              A gym on this plan can set its AI coach limits up to these and no higher; a gym already above
+              them is brought down to them when you save, and its owner sees the ceiling on Your app.
             </p>
           )}
           <div style={{ height: 12 }} />
@@ -268,6 +294,7 @@ export default function Plans() {
           <div className="plan-facts">
             {plan.trial_days ? <span className="chip">{plan.trial_days} free days</span> : null}
             <span className="chip">{plan.max_members === null ? 'Any number of members' : `Up to ${plan.max_members} members`}</span>
+            {plan.ai_daily_cap != null && <span className="chip">AI coach {plan.ai_daily_cap}/day{plan.ai_monthly_cap != null ? ` · ${plan.ai_monthly_cap.toLocaleString('en-PH')}/month` : ''}</span>}
             <span className="chip">{plan.max_staff === null ? 'Any number on the desk' : `Up to ${plan.max_staff} on the desk`}</span>
             {plan.max_photos !== undefined && <span className="chip">{plan.max_photos === null ? 'Any number of photos' : `Up to ${plan.max_photos} photos`}</span>}
           </div>

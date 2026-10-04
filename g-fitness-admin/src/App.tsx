@@ -37,7 +37,6 @@ import Credentials from './pages/Credentials';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
 import LobbyTv from './pages/LobbyTv';
-import SystemHealth from './pages/SystemHealth';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -121,7 +120,9 @@ function App() {
                 matches so the two cannot disagree. */}
             <Route path="credentials" element={<ProtectedRoute adminOnly><Credentials /></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
-            <Route path="system" element={<ProtectedRoute adminOnly><SystemHealth /></ProtectedRoute>} />
+            {/* System moved to the platform app (2026-10-04): migrations, demo data and backups are
+                Core Fitness's to look after, not a gym owner's. An old bookmark lands on Support. */}
+            <Route path="system" element={<Navigate to="/support" replace />} />
           </Route>
 
           {/* Self-service check-in by the door (2026-09-19): full screen, outside

@@ -54,3 +54,30 @@ export async function thread(id: string): Promise<ThreadMessage[]> {
   return ((data ?? []) as { id: string; author_name: string; from_platform: boolean; body: string; created_at: string }[])
     .map((m) => ({ id: m.id, authorName: m.author_name, fromPlatform: m.from_platform, body: m.body, createdAt: m.created_at }));
 }
+
+/** Where a ticket's access request stands (0162). Null before 0162 or when unreadable. */
+export interface TicketAccess {
+  hours: number | null; why: string | null; requested_at: string | null; answer: 'approved' | 'declined' | null;
+  expires_at: string | null; live: boolean; first_used_at: string | null;
+  resolution: string | null; resolved_at: string | null;
+  context: { message?: string; route?: string; build?: string } | null;
+}
+export async function ticketAccess(id: string): Promise<TicketAccess | null> {
+  const { data, error } = await supabase.rpc('ticket_access_state', { p_ticket: id });
+  if (error || !data) return null;
+  return data as TicketAccess;
+}
+export async function approveTicketAccess(id: string): Promise<void> {
+  const { error } = await supabase.rpc('approve_ticket_access', { p_ticket: id });
+  if (error) throw new Error(clean(error.message));
+}
+export async function declineTicketAccess(id: string): Promise<void> {
+  const { error } = await supabase.rpc('decline_ticket_access', { p_ticket: id });
+  if (error) throw new Error(clean(error.message));
+}
+/** A ticket opened from a crash screen: the error goes with it, nothing about members. Falls back to a plain ticket before 0162. */
+export async function openTicketWithContext(subject: string, body: string, context: { message: string; route: string; build?: string }): Promise<string> {
+  const { data, error } = await supabase.rpc('open_support_ticket_with_context', { p_subject: subject.trim(), p_body: body.trim(), p_context: context });
+  if (error) return openTicket(subject, `${body}\n\nError: ${context.message}\nScreen: ${context.route}`);
+  return data as string;
+}

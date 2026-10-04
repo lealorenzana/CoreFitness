@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, LifeBuoy, Link2, Lock, Printer, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Check, Copy, Link2, Lock, Printer, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import {
-  getGymApp, getGymModules, getSupportGrant, grantSupportAccess, revokeSupportAccess,
+  getGymApp, getGymModules,
   saveGymLook, saveGymVocabulary, saveGymWords, setGymModule, setGymSlug, setJoinPolicy,
   type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy,
-  type SupportGrant,
 } from '../lib/api/gymApp';
 import { rampFor } from '../lib/gymTheme';
 import ColourRolePicker from '../components/ColourRolePicker';
@@ -41,7 +41,13 @@ const MEMBER_APP = 'https://corefitness-gym.vercel.app';
  * Core Fitness plan does not include — offering a switch that would be refused
  * is a control writing a flag nothing honours (CLAUDE.md).
  */
+const APP_TABS: [AppTab, string][] = [['look', 'Look'], ['words', 'Words'], ['runs', 'What you run'], ['coach', 'AI coach'], ['join', 'How members join']];
+type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join';
+
 export default function GymApp() {
+  const [params, setParams] = useSearchParams();
+  const tab = (APP_TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'look') as AppTab;
+  const setTab = (t: AppTab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
   const [app, setApp] = useState<App | null>(null);
   const [modules, setModules] = useState<GymModule[]>([]);
   const [words, setWords] = useState({ points_name: '', points_name_short: '', welcome_message: '' });
@@ -58,19 +64,11 @@ export default function GymApp() {
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | 'message' | null>(null);
-  /** A live invitation to Core Fitness to look at this gym (0113). */
-  const [support, setSupport] = useState<SupportGrant | null>(null);
-  /** The reason box, open. window.prompt() does nothing in an embedded browser
-      — it throws "prompt() is not supported" and the button looks dead, which
-      is the same bug the platform app already had and fixed. */
-  const [asking, setAsking] = useState<number | null>(null);
-  const [why, setWhy] = useState('');
 
   const load = useCallback(async () => {
-    const [a, m, sup] = await Promise.all([getGymApp(), getGymModules(), getSupportGrant()]);
+    const [a, m] = await Promise.all([getGymApp(), getGymModules()]);
     setApp(a);
     setModules(m);
-    setSupport(sup);
     if (a) {
       setWords({
         points_name: a.points_name,
@@ -197,19 +195,31 @@ export default function GymApp() {
   };
 
   return (
-    // Two columns on a wide screen, each card whole (never split across them):
-    // one 760px column left half of a 1700px window empty.
-    <div className="xl:columns-2 gap-4 [&>*]:mb-4 [&>*]:break-inside-avoid">
-      <div className="[column-span:all]">
+    // One section at a time (2026-10-04). The two masonry columns packed cards of
+    // very different heights, so one column ran on while the other ended in a
+    // large empty area; a tab is always one full-width section.
+    <div className="space-y-4">
+      <div>
         <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Your app</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           What {app.gym_name}'s members see on their phones. Your gym's name, address and
           opening hours are on Settings; everything your members actually look at is here.
         </p>
       </div>
+      <div className="flex gap-1 flex-wrap p-1 rounded-xl" role="tablist" aria-label="Your app sections"
+        style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', width: 'fit-content', maxWidth: '100%' }}>
+        {APP_TABS.filter(([k]) => k !== 'coach' || (coach && coach.state !== 'not_sold')).map(([k, t]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ background: tab === k ? 'var(--color-primary)' : 'transparent', color: tab === k ? '#fff' : 'var(--color-text-secondary)' }}>
+            {t}
+          </button>
+        ))}
+      </div>
 
       {/* ---- what it looks like ------------------------------------------------ */}
-      <div className={card} style={cardStyle}>
+      {tab === 'look' && <div className={`${card} grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]`} style={cardStyle}>
+        <div>
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           What it looks like
         </h2>
@@ -243,8 +253,6 @@ export default function GymApp() {
           )}
         </div>
 
-        <ThemePreview accent={look.accent} action={look.action}
-          onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
 
         <div className="mt-5">
           <label className={label} style={labelStyle}>Your logo</label>
@@ -290,10 +298,15 @@ export default function GymApp() {
         <Button className="mt-5" onClick={() => void saveLook()} disabled={saving || uploading}>
           {saving ? 'Saving' + '…' : 'Save'}
         </Button>
-      </div>
+        </div>
+        <div className="lg:-mt-5">
+          <ThemePreview accent={look.accent} action={look.action}
+            onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
+        </div>
+      </div>}
 
       {/* ---- what it says ---------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
+      {tab === 'words' && <div className={card} style={cardStyle}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           What it says
         </h2>
@@ -361,10 +374,10 @@ export default function GymApp() {
         <Button className="mt-4" onClick={() => void saveWords()} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
-      </div>
+      </div>}
 
       {/* ---- what it runs ---------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
+      {tab === 'runs' && <div className={card} style={cardStyle}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           What your gym runs
         </h2>
@@ -387,97 +400,15 @@ export default function GymApp() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* ---- the AI coach (0147) ---------------------------------------------- */}
       {/* Only where the gym's plan sells the assistant: a gym that cannot run the
           coach has no limits to set and no usage to read (the gym's plan hides). */}
-      {coach && coach.state !== 'not_sold' && <AiCoachCard switchedOff={!coach.enabled} />}
-
-      {/* ---- letting us look -------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
-        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          Support access
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          If something here is wrong and we cannot work it out from a description, you can let Core
-          Fitness look at your gym for a few hours. We can only ever look — the database refuses us
-          every change while your access is open — and it ends by itself.
-        </p>
-
-        {support ? (
-          <div className="mt-4 rounded-lg border p-3.5"
-            style={{ borderColor: 'var(--color-primary)', background: 'var(--color-bg)' }}>
-            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-              Open for another {Number(support.hours_left).toFixed(1)} hours
-            </p>
-            <p className="mt-1 text-xs" style={labelStyle}>
-              {support.reason ? `You wrote: "${support.reason}". ` : ''}
-              {support.first_used_at
-                ? 'We have looked at least once, and every visit is in your activity log.'
-                : 'Nobody has looked yet. Every visit is written into your activity log.'}
-            </p>
-            <Button variant="ghost" className="mt-3" onClick={() => void (async () => {
-              try { await revokeSupportAccess(); await load(); showToast('Support access withdrawn.', 'success'); }
-              catch (e) { showToast(e instanceof Error ? e.message : 'That did not work', 'error'); }
-            })()}>
-              Withdraw it now
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {[1, 4, 24].map((h) => (
-                <Button key={h} variant="ghost" onClick={() => { setAsking(h); setWhy(''); }}>
-                  <LifeBuoy size={14} className="mr-1.5" />
-                  {h === 24 ? 'For a day' : h === 1 ? 'For an hour' : `For ${h} hours`}
-                </Button>
-              ))}
-            </div>
-
-            {asking !== null && (
-              <form
-                className="mt-3 rounded-lg border p-3.5"
-                style={{ borderColor: 'var(--color-primary)', background: 'var(--color-bg)' }}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void (async () => {
-                    try {
-                      await grantSupportAccess(asking, why.trim() || null);
-                      setAsking(null);
-                      await load();
-                    } catch (err) {
-                      showToast(err instanceof Error ? err.message : 'That did not work', 'error');
-                    }
-                  })();
-                }}
-              >
-                <label className={label} style={labelStyle} htmlFor="sup-why">
-                  What should we look at?
-                </label>
-                <input id="sup-why" className={input} style={inputStyle} value={why} autoFocus
-                  maxLength={200} placeholder="The members page shows nobody since Tuesday"
-                  onChange={(e) => setWhy(e.target.value)} />
-                <p className="mt-2 text-xs" style={labelStyle}>
-                  This is written into your own activity log, next to every visit we make.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Button type="submit">
-                    Open for {asking === 24 ? 'a day' : asking === 1 ? 'an hour' : `${asking} hours`}
-                  </Button>
-                  <Button variant="ghost" onClick={() => setAsking(null)}>Cancel</Button>
-                </div>
-              </form>
-            )}
-            <p className="mt-2 text-xs" style={labelStyle}>
-              Nobody at Core Fitness can give themselves this. It only exists while you offer it.
-            </p>
-          </div>
-        )}
-      </div>
+      {tab === 'coach' && coach && coach.state !== 'not_sold' && <AiCoachCard switchedOff={!coach.enabled} />}
 
       {/* ---- how they join --------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
+      {tab === 'join' && <div className={card} style={cardStyle}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           How members join
         </h2>
@@ -587,7 +518,7 @@ export default function GymApp() {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {poster && (
         <JoinPoster
