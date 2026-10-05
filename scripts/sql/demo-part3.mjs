@@ -75,6 +75,11 @@ await db.exec(`reset role;
   insert into conversations (id, gym_id, member_id, trainer_id) values ('5eed0061-0000-4000-8000-000000000001', '${GYM}', '${MATES[0]}', '${COACH}');
   insert into messages (gym_id, conversation_id, sender_id, body) values ('${GYM}', '5eed0061-0000-4000-8000-000000000001', '${MATES[0]}', 'Hi coach');`);
 
+// Production has several gyms, each with its own copy of every badge (0098) —
+// the seed once picked a badge from every gym and broke the unique key.
+await db.exec(`reset role; insert into gyms (id, slug, name) values ('b0000000-0000-4000-8000-00000000000b', 'gym-b', 'Gym B') on conflict do nothing;
+  insert into achievements select (jsonb_populate_record(null::achievements, to_jsonb(a) || jsonb_build_object('gym_id', 'b0000000-0000-4000-8000-00000000000b'))).*
+    from achievements a where a.gym_id = '${GYM}' on conflict do nothing;`);
 const before = (await one(`select count(*)::int n from attendance where member_id = '${LEA}'`)).n;
 for (const f of readdirSync(`${DD}/part3`).sort()) {
   const fine = await run(`part 3 ${f}`, `${DD}/part3/${f}`);

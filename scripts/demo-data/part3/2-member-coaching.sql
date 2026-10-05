@@ -77,13 +77,13 @@ begin
          ((v_today - 8 - 35 * i) + time '08:00') at time zone 'Asia/Manila',
          ((v_today - 9 - 35 * i) + time '20:00') at time zone 'Asia/Manila'
     from generate_series(0, 18) i
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into pt_sessions (id, gym_id, trainer_id, member_id, starts_at, duration_minutes, status, notes, requested_at,
                            approved_at, approved_by, decided_by, decided_by_role, decided_at, created_at)
   values (format(id_of, '123', '000000000099')::uuid, v_gym, v_coach, v_me, ((v_today + 4) + time '07:00') at time zone 'Asia/Manila', 60,
           'approved', 'Test day: new squat max', now() - interval '1 day', now() - interval '20 hours', v_coach, v_coach, 'trainer',
           now() - interval '20 hours', now() - interval '1 day')
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- A note and a next step after every session; the older ones done.
   insert into trainer_feedback (id, gym_id, trainer_id, member_id, note, recommendation, pt_session_id, created_at, updated_at, seen_at, done_at)
@@ -103,7 +103,7 @@ begin
          ((v_today - 6 - 35 * i) + time '12:00') at time zone 'Asia/Manila',
          case when i > 0 then ((v_today - 2 - 35 * i) + time '18:00') at time zone 'Asia/Manila' end
     from generate_series(0, 18) i
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   insert into trainer_ratings (gym_id, member_id, trainer_id, stars, comment, created_at, updated_at, period)
   values (v_gym, v_me, v_coach, 5, 'Patient, explains every cue, and the programme actually works.', now() - interval '20 days', now() - interval '20 days',
@@ -126,16 +126,16 @@ begin
                  (2, 60, 'Deload week. Same exercises, half the sets. Your joints will thank you.'),
                  (3, 21, 'Video of your last squat is in the chat — compare it with the one from March.'),
                  (4, 3, 'Test day next week. Eat well and arrive 15 minutes early to warm up.')) x(n, ago, body)
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into room_assignments (id, gym_id, room_id, kind, checkin_type, title, instructions, due_on, created_by, created_at)
   values (format(id_of, '128', '000000000001')::uuid, v_gym, v_room, 'checkin', 'question', 'How did this week''s sessions feel?',
           'One line on energy, sleep and anything that hurt.', v_today - 10, v_coach, (v_today - 14) at time zone 'Asia/Manila')
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into room_submissions (id, gym_id, assignment_id, member_id, turned_in_at, answer_text, returned_at, return_comment, points_awarded)
   values (format(id_of, '129', '000000000001')::uuid, v_gym, format(id_of, '128', '000000000001')::uuid, v_me,
           (v_today - 11) at time zone 'Asia/Manila', 'Energy good, slept 7 hours most nights. Left knee a bit stiff after lunges.',
           (v_today - 10) at time zone 'Asia/Manila', 'Thanks — swap lunges for step-ups this week and we will check the knee on Friday.', 0)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── A private chat with the coach ──────────────────────────────────────────────
   insert into conversations (id, gym_id, member_id, trainer_id, created_at, last_message_at, member_read_at, trainer_read_at)
@@ -154,7 +154,7 @@ begin
                  (6, true, 70, 'Swap them for step-ups this week and tell me how it feels.'),
                  (7, true, 26, 'Test day is next week. Light session Wednesday, rest Thursday.'),
                  (8, false, 24, 'Got it, thank you!')) x(n, coach, ago, body)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── One of the gym's programs, two days in ─────────────────────────────────────
   select p.id into v_prog from gym_programs p
@@ -171,7 +171,7 @@ begin
            ((v_today - 6 + 2 * (row_number() over (order by d.week, d.day))::int) + time '19:00') at time zone 'Asia/Manila',
            ((v_today - 6 + 2 * (row_number() over (order by d.week, d.day))::int) + time '18:10') at time zone 'Asia/Manila'
       from (select * from gym_program_days where program_id = v_prog order by week, day limit 2) d
-    on conflict (id) do nothing;
+    on conflict do nothing;
   end if;
 
   alter table bookings          enable trigger user;

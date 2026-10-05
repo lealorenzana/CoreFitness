@@ -63,7 +63,7 @@ begin
          v_anchor - 30 * i, v_anchor - 30 * i + 29, false,
          ((v_anchor - 30 * i) + time '09:00') at time zone 'Asia/Manila', ((v_anchor - 30 * i) + time '09:00') at time zone 'Asia/Manila'
     from generate_series(1, 22) i
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   insert into payments (id, gym_id, member_id, membership_id, amount, method, status, paid_on, invoice_number, notes,
                         recorded_by, plan_id, plan_name, created_at)
@@ -73,7 +73,7 @@ begin
          case when i % 5 = 0 then 'Paid online by GCash, ref ' || (1009000000 + i * 7919)::text end,
          v_owner, v_plan.id, v_plan.name, ((v_anchor - 30 * i) + time '09:15') at time zone 'Asia/Manila'
     from generate_series(1, 22) i
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── About three visits a week since the first term ─────────────────────────────
   insert into attendance (id, gym_id, member_id, check_in_time, method, recorded_by, activity)
@@ -86,7 +86,7 @@ begin
      and abs(hashtext(d::text || 'go')) % 100 < 52
      and not exists (select 1 from attendance a where a.member_id = v_me
                       and (a.check_in_time at time zone 'Asia/Manila')::date = d)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── A weigh-in every month: 72 kg down to 64, body fat and waist with it ───────
   insert into body_measurements (id, gym_id, member_id, measured_on, weight_kg, height_cm, body_fat_pct, waist_cm, hips_cm,
@@ -98,7 +98,7 @@ begin
          case i when 22 then 'First weigh-in with Coach' when 12 then 'Back after the holidays' end,
          ((v_anchor - 30 * i + 2) + time '18:00') at time zone 'Asia/Manila'
     from generate_series(0, 22) i
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── Three goals: two reached, one on the way ──────────────────────────────────
   insert into fitness_goals (id, gym_id, member_id, title, metric, start_value, target_value, target_date, achieved_on, created_at)
@@ -106,7 +106,7 @@ begin
     (format(id_of, '114', '000000000001')::uuid, v_gym, v_me, 'Reach 65 kg', 'weight_kg', 72, 65, v_anchor - 40, v_anchor - 60, (v_anchor - 650) at time zone 'Asia/Manila'),
     (format(id_of, '114', '000000000002')::uuid, v_gym, v_me, 'Waist under 76 cm', 'waist_cm', 84, 76, v_anchor - 90, v_anchor - 120, (v_anchor - 400) at time zone 'Asia/Manila'),
     (format(id_of, '114', '000000000003')::uuid, v_gym, v_me, 'Body fat under 18%', 'body_fat_pct', 23, 18, v_today + 90, null, (v_anchor - 60) at time zone 'Asia/Manila')
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── Three routines (push, pull, legs) from the gym's exercise library ──────────
   insert into workout_routines (id, gym_id, member_id, name, notes, position, created_at, updated_at)
@@ -114,7 +114,7 @@ begin
     (format(id_of, '115', '000000000001')::uuid, v_gym, v_me, 'Push day', 'Chest, shoulders, triceps', 10, (v_anchor - 640) at time zone 'Asia/Manila', now()),
     (format(id_of, '115', '000000000002')::uuid, v_gym, v_me, 'Pull day', 'Back and biceps', 11, (v_anchor - 640) at time zone 'Asia/Manila', now()),
     (format(id_of, '115', '000000000003')::uuid, v_gym, v_me, 'Leg day', 'Squat first, always', 12, (v_anchor - 640) at time zone 'Asia/Manila', now())
-  on conflict (id) do nothing;
+  on conflict do nothing;
   v_r := array[format(id_of, '115', '000000000001')::uuid, format(id_of, '115', '000000000002')::uuid, format(id_of, '115', '000000000003')::uuid];
 
   insert into workout_routine_exercises (id, gym_id, routine_id, position, exercise_id, custom_name, target_sets, target_reps,
@@ -128,7 +128,7 @@ begin
       (2, 0, '%lat pulldown%', 'Lat Pulldown', 10, 35), (2, 1, '%row%', 'Seated Row', 10, 30), (2, 2, '%curl%', 'Dumbbell Curl', 12, 8),
       (3, 0, '%squat%', 'Back Squat', 8, 50), (3, 1, '%romanian%', 'Romanian Deadlift', 10, 40), (3, 2, '%leg press%', 'Leg Press', 12, 80)
     ) x(r, p, pat, label, reps, kg)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── A workout on most weight days, the routine in turn, heavier as months pass ──
   insert into workout_logs (id, gym_id, member_id, performed_on, activity, duration_minutes, notes, routine_id, completed_at, created_at)
@@ -141,7 +141,7 @@ begin
                  row_number() over (order by a.check_in_time)::int as n
             from attendance a
            where a.member_id = v_me and a.id::text like '5eed3112-%' and a.activity = 'Weights') w
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   insert into workout_sets (id, gym_id, log_id, exercise_id, custom_name, set_number, reps, weight_kg, created_at)
   select format(id_of, '118', lpad((l.n * 10 + x.p * 3 + s)::text, 12, '0'))::uuid, v_gym, l.id, rx.exercise_id,
@@ -153,35 +153,36 @@ begin
     join workout_routine_exercises rx on rx.routine_id = l.routine_id
     cross join lateral (select rx.position as p) x
     cross join generate_series(1, 3) s
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── The points those earned, and the badges ────────────────────────────────────
   insert into point_ledger (id, gym_id, member_id, rule_key, points, source_table, source_id, created_at)
   select ('5eed3119-0000-4000-8000-' || substr(a.id::text, 25))::uuid, v_gym, v_me, 'checkin', 10, 'attendance', a.id, a.check_in_time
     from attendance a where a.member_id = v_me and a.id::text like '5eed3112-%'
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into point_ledger (id, gym_id, member_id, rule_key, points, source_table, source_id, created_at)
   select ('5eed3219-0000-4000-8000-' || substr(l.id::text, 25))::uuid, v_gym, v_me, 'workout_logged', 15, 'workout_logs', l.id, l.completed_at
     from workout_logs l where l.member_id = v_me and l.id::text like '5eed3117-%'
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   insert into achievement_unlocks (id, gym_id, user_id, achievement_key, unlocked_on, seen, created_at)
   select format(id_of, '120', lpad(row_number() over (order by a.sort_order)::text, 12, '0'))::uuid, v_gym, v_me, a.key,
          v_anchor - 600 + (row_number() over (order by a.sort_order))::int * 25, true,
          ((v_anchor - 600 + (row_number() over (order by a.sort_order))::int * 25) + time '19:00') at time zone 'Asia/Manila'
     from achievements a
-   where a.active and a.audience in ('member', 'all') and coalesce(a.tier, '') <> 'legendary'
-     and not exists (select 1 from achievement_unlocks u where u.user_id = v_me and u.achievement_key = a.key)
+   -- This gym's catalogue only: every gym has its own copy of each badge (0098).
+   where a.gym_id = v_gym and a.active and a.audience in ('member', 'all') and coalesce(a.tier, '') <> 'legendary'
+     and not exists (select 1 from achievement_unlocks u where u.gym_id = v_gym and u.user_id = v_me and u.achievement_key = a.key)
    order by a.sort_order
    limit 14
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ── The weekly plan: Monday push, Wednesday pull, Friday legs ───────────────────
   insert into gym_plans (id, gym_id, member_id, day_of_week, remind_at, active, routine_id, created_at)
   select format(id_of, '146', lpad(x.dow::text, 12, '0'))::uuid, v_gym, v_me, x.dow, time '17:30', true, v_r[x.r], (v_anchor - 600) at time zone 'Asia/Manila'
     from (values (1, 1), (3, 2), (5, 3)) x(dow, r)
    where not exists (select 1 from gym_plans p where p.member_id = v_me and p.day_of_week = x.dow)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   alter table memberships       enable trigger user;
   alter table payments          enable trigger user;

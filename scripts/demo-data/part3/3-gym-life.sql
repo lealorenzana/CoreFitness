@@ -61,12 +61,12 @@ begin
                  (9, 'Shaker bottle', 'Gear', '600 ml, leak-proof lid.', 180, 3),
                  (10, 'Day pass', 'Passes', 'One visit for a friend.', 100, 0)) x(n, name, cat, descr, price, low)
    where not exists (select 1 from shop_products p where p.gym_id = v_gym and lower(p.name) = lower(x.name))
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   insert into stock_moves (id, gym_id, product_id, change, reason, note, moved_by, moved_at)
   select format(id_of, '141', lpad(p.n::text, 12, '0'))::uuid, v_gym, p.id, 200, 'delivery', 'Opening stock', v_owner, (v_today - 120) at time zone 'Asia/Manila'
     from (select id, substr(id::text, 25)::int as n from shop_products where id::text like '5eed3138-%') p
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   -- ~140 sales: one or two items each; one in five to the member, most to demo members, some walk-ins.
   insert into shop_sales (id, gym_id, sale_day, total, member_id, sold_by, created_at)
@@ -74,7 +74,7 @@ begin
          0, case when s % 5 = 0 then v_me when s % 3 = 0 or v_mates is null then null else v_mates[1 + s % coalesce(array_length(v_mates, 1), 1)] end,
          v_owner, ((v_today - 1 - (s * 83 % 118)) + time '18:00' + (s % 120) * interval '1 minute') at time zone 'Asia/Manila'
     from generate_series(1, 140) s
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into shop_sale_items (id, gym_id, sale_id, product_id, qty, unit_price)
   select format(id_of, '140', lpad((s * 10 + k)::text, 12, '0'))::uuid, v_gym, format(id_of, '139', lpad(s::text, 12, '0'))::uuid,
          p.id, 1 + (s + k) % 2, p.price
@@ -82,13 +82,13 @@ begin
     join lateral (select id, price from shop_products where id::text like '5eed3138-%'
                   order by id offset ((s * 7 + k * 3) % 9) limit 1) p on true
    where k = 1 or s % 3 = 0
-  on conflict (id) do nothing;
+  on conflict do nothing;
   update shop_sales s set total = (select coalesce(sum(i.qty * i.unit_price), 0) from shop_sale_items i where i.sale_id = s.id)
    where s.id::text like '5eed3139-%';
   insert into stock_moves (id, gym_id, product_id, change, reason, sale_id, moved_by, moved_at)
   select ('5eed3241-0000-4000-8000-' || substr(i.id::text, 25))::uuid, v_gym, i.product_id, -i.qty, 'sale', i.sale_id, v_owner, s.created_at
     from shop_sale_items i join shop_sales s on s.id = i.sale_id where i.id::text like '5eed3140-%'
-  on conflict (id) do nothing;
+  on conflict do nothing;
   update shop_products p set stock = greatest(0, (select coalesce(sum(m.change), 0) from stock_moves m where m.product_id = p.id))
    where p.id::text like '5eed3138-%';
 
@@ -98,7 +98,7 @@ begin
          (select id from rewards where gym_id = v_gym and is_active order by cost_points offset x.n - 1 limit 1), x.n, (v_today - 200) at time zone 'Asia/Manila'
     from (values (1, 'Bronze', 300), (2, 'Silver', 700), (3, 'Gold', 1200)) x(n, name, pts)
    where not exists (select 1 from season_tiers t where t.gym_id = v_gym and lower(t.name) = lower(x.name))
-  on conflict (id) do nothing;
+  on conflict do nothing;
   insert into season_claims (id, gym_id, member_id, tier_id, season_start, claimed_at, handed_over_at, handed_by)
   select format(id_of, '137', lpad(m::text, 12, '0'))::uuid, v_gym, v_me, t.id,
          (date_trunc('month', v_today)::date - (m || ' months')::interval)::date,
@@ -175,7 +175,7 @@ begin
       (11, 'system', 'Renewal reminder', 'Your membership renews soon — renew at the desk or online.', '/member/renew', 31),
       (12, 'announcement', 'Anniversary Open Gym', 'Bring a friend for free on Saturday, with raffle prizes at 5 PM.', '/member/events', 36)
     ) x(n, type, title, msg, url, ago)
-  on conflict (id) do nothing;
+  on conflict do nothing;
 
   alter table shop_products       enable trigger user;
   alter table shop_sales          enable trigger user;
