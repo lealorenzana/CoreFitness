@@ -89,7 +89,7 @@ async (page) => {
     // 0155: agreed to an older Terms at sign-up, and to the current Privacy Policy.
     terms_acceptances: [
       { document: 'member_terms', version: '2026-09-14', accepted_at: iso(-30, 9, 0), source: 'signup' },
-      { document: 'member_privacy', version: '2026-10-03', accepted_at: iso(-30, 9, 0), source: 'signup' },
+      { document: 'member_privacy', version: '2026-10-05', accepted_at: iso(-30, 9, 0), source: 'signup' },
     ],
   };
   const RPC = {

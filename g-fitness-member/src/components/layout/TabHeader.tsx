@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
-import { RAILS, visibleDestinations, type Tab } from './memberNav';
+import { RAILS, hubEntry, visibleDestinations, type Tab } from './memberNav';
 import { useGymApp } from '../../hooks/useGymApp';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
 import { weekRangeLabel } from '../../utils/dates';
@@ -156,7 +156,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
           return (
             <button
               key={d.path}
-              onClick={() => navigate(d.path)}
+              onClick={() => navigate(d.hub ? hubEntry(d.hub, gymApp) : d.path)}
               className="flex-none whitespace-nowrap noc-press inline-flex items-center"
               style={{
                 gap: 7,

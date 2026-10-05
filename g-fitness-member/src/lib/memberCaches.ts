@@ -1,4 +1,5 @@
 import { clearPageCache } from './pageCache';
+import { clearHubMemory } from '../components/layout/memberNav';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
 import { clearFeatureCache } from '../hooks/useFeatures';
 import { clearGymApp } from './gymApp';
@@ -45,6 +46,7 @@ import { clearAchievementCache } from './api/achievements';
 export function clearMemberCaches(): void {
   clearPageCache();
   clearScrollMemory();
+  clearHubMemory();
   // Entitlements are per-member *and* per-gym: the same person can be on
   // Premium at one gym and the free tier at another.
   clearFeatureCache();

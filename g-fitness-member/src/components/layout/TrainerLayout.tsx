@@ -33,7 +33,7 @@ export default function TrainerLayout() {
   const mainRef = useRef<HTMLDivElement>(null);
   const root = trainerTabRootFor(location.pathname);
 
-  useScrollMemory(mainRef, location.pathname);
+  useScrollMemory(mainRef, location.pathname + location.search);
 
   // The gym's colour and name, and whether it is read-only (0104).
   const gym = useGymBrand();

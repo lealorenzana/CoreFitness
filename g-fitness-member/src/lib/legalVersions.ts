@@ -8,7 +8,7 @@
  * old date, which is what makes an agreement to it mean something.
  */
 export const TERMS_VERSION = '2026-10-04';
-export const PRIVACY_VERSION = '2026-10-03';   // the AI coach and meal-guide wording (2026-10-03)
+export const PRIVACY_VERSION = '2026-10-05';   // meal guides removed (2026-10-05)
 
 export type LegalDocument = 'member_terms' | 'member_privacy';
 

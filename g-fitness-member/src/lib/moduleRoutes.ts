@@ -28,6 +28,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/track', 'progress'],
   ['/member/workout-history', 'progress'],
   ['/member/progress', 'progress'],
+  ['/member/coach-notes', 'progress'],
   ['/member/rewards', 'engagement'],
   ['/member/challenges', 'engagement'],
   ['/member/achievements', 'engagement'],

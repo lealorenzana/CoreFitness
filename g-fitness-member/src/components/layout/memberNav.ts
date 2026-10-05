@@ -1,6 +1,6 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Camera, Bell, BookOpen, CalendarCheck, CalendarDots, ChalkboardTeacher, ChartLineUp, ChatCircleText, ChatsCircle, ClipboardText, GearSix, Gift, House, Medal, Megaphone, Receipt, Scales, Storefront, Target, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Bell, CalendarDots, ChalkboardTeacher, ChartLineUp, ClipboardText, GearSix, Gift, House, Megaphone, Receipt, Scales, Storefront, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -32,6 +32,7 @@ export function visibleDestinations(items: Destination[], app: GymApp | null): D
   const rename = hasOwnWords(app);
   return items
     .filter((d) => moduleOn(app, d.module))
+    .filter((d) => !d.hub || hubTabs(d.hub, app).length > 0)
     .map((d) => (rename && d.words
       ? { ...d, label: d.words((k, title) => word(app, k, title)) }
       : d));
@@ -76,7 +77,7 @@ const TAB_PATHS: string[][] = [
    '/member/booking-history', '/member/progress', '/member/achievements',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts', '/member/programs', '/member/program/',
    '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages', '/member/progress-photos',
-   '/member/workout-history'],
+   '/member/workout-history', '/member/coach-notes'],
   // You: the money-and-access half, and the account itself. Profile lost its
   // tab in this redesign; its screens live here now.
   ['/member/membership', '/member/renew', '/member/renew-membership',
@@ -140,11 +141,11 @@ export interface Destination {
    */
   words?: (w: WordReader) => string;
   /**
-   * Drawn only while this holds for the member, on top of `module`. `'meals'`:
-   * Progress → Meals can be filled — they have a guide, or the coach is theirs
-   * (hooks/useMealsShown). The sheet that draws the list asks.
+   * A rail pill that opens a whole section (HUBS) rather than one screen: it
+   * lands on the tab the member last had open there, else the first one this
+   * gym runs (`hubEntry`).
    */
-  onlyWhen?: 'meals';
+  hub?: HubId;
 }
 
 /**
@@ -158,26 +159,14 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Updates', path: '/member/notifications', icon: Bell },
     { label: 'Announcements', path: '/member/events', icon: Megaphone , module: 'push' },
     { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales , module: 'progress' },
-    { label: 'My routines', path: '/member/track', icon: Barbell , module: 'progress' },
   ],
+  // Four sections instead of fifteen pills (2026-10-05): each opens a HUBS
+  // section whose own tabs hold the screens that used to be pills of their own.
   train: [
-    { label: 'Progress', path: '/member/progress', icon: ChartLineUp , module: 'progress' },
-    { label: 'My bookings', path: '/member/booking-history', icon: CalendarCheck , module: 'classes' },
-    { label: 'Training plan', path: '/member/gym-plan', icon: ClipboardText , module: 'progress' },
-    { label: 'Programs', path: '/member/programs', icon: CalendarCheck , module: 'programs' },
-    { label: 'Free workouts', path: '/member/workouts', icon: BookOpen },
-    { label: 'Coaches', path: '/member/trainers', icon: Users , module: 'coaching',
-      words: (w) => w('trainers', true) },
-    { label: 'Challenges', path: '/member/challenges', icon: Trophy , module: 'engagement' },
-    { label: 'Season', path: '/member/season', icon: Medal , module: 'seasons' },
-    { label: 'Squad', path: '/member/squad', icon: Users , module: 'squads' },
-    { label: 'Rooms', path: '/member/rooms', icon: ChalkboardTeacher , module: 'rooms' },
-    { label: 'Messages', path: '/member/messages', icon: ChatsCircle , module: 'chat' },
-    { label: 'Achievements', path: '/member/achievements', icon: Medal , module: 'engagement' },
-    { label: 'Goals', path: '/member/progress?tab=goals', icon: Target , module: 'progress' },
-    { label: 'Progress photos', path: '/member/progress-photos', icon: Camera , module: 'photos' },
-    { label: 'Coach notes', path: '/member/progress?tab=feedback', icon: ChatCircleText , module: 'progress',
-      words: (w) => w('trainer', true) + ' notes' },
+    { label: 'My plan', path: '/member/gym-plan', icon: ClipboardText, hub: 'plan' },
+    { label: 'Progress', path: '/member/progress', icon: ChartLineUp, hub: 'progress' },
+    { label: 'Coaching', path: '/member/booking-history', icon: ChalkboardTeacher, hub: 'coaching' },
+    { label: 'Challenges', path: '/member/challenges', icon: Trophy, hub: 'compete' },
   ],
   you: [
     { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise },
@@ -190,6 +179,90 @@ export const RAILS: Record<TabId, Destination[]> = {
     { label: 'Settings', path: '/member/settings', icon: GearSix },
   ],
 };
+
+export type HubId = 'plan' | 'progress' | 'coaching' | 'compete';
+
+/**
+ * Sections: screens that belong together, behind one tab strip.
+ *
+ * Train's rail had fifteen pills, and Progress had its own five tabs on top —
+ * Goals and Coach notes were each reachable three ways, and the coach, the
+ * coach's notes, bookings and rooms were four places for one relationship.
+ * Each screen is still its own route (every notification link, deep link and
+ * old bookmark lands exactly where it did); the section only adds the strip
+ * under the title (HubStrip), and a tab switch *replaces* the entry so Back
+ * leaves the section rather than walking back through its tabs.
+ */
+export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
+  { id: 'plan', label: 'My plan', tabs: [
+    { label: 'This week', path: '/member/gym-plan', module: 'progress' },
+    { label: 'Programs', path: '/member/programs', module: 'programs' },
+    { label: 'Routines', path: '/member/track', module: 'progress' },
+    { label: 'Free workouts', path: '/member/workouts' },
+  ] },
+  { id: 'progress', label: 'Progress', tabs: [
+    { label: 'Overview', path: '/member/progress', module: 'progress' },
+    { label: 'Body', path: '/member/progress?tab=body', module: 'progress' },
+    { label: 'Goals', path: '/member/progress?tab=goals', module: 'progress' },
+    { label: 'Photos', path: '/member/progress-photos', module: 'photos' },
+    { label: 'Achievements', path: '/member/achievements', module: 'engagement' },
+  ] },
+  { id: 'coaching', label: 'Coaching', tabs: [
+    { label: 'Bookings', path: '/member/booking-history', module: 'classes' },
+    { label: 'Coaches', path: '/member/trainers', module: 'coaching', words: (w) => w('trainers', true) },
+    { label: 'Rooms', path: '/member/rooms', module: 'rooms' },
+    { label: 'Messages', path: '/member/messages', module: 'chat' },
+    { label: 'Notes', path: '/member/coach-notes', module: 'progress' },
+  ] },
+  { id: 'compete', label: 'Challenges', tabs: [
+    { label: 'Challenges', path: '/member/challenges', module: 'engagement' },
+    { label: 'Season', path: '/member/season', module: 'seasons' },
+    { label: 'Squad', path: '/member/squad', module: 'squads' },
+  ] },
+];
+
+/** A section's tabs this gym runs, with its own words. */
+export function hubTabs(id: HubId, app: GymApp | null): Destination[] {
+  const hub = HUBS.find((h) => h.id === id);
+  return hub ? visibleDestinations(hub.tabs, app) : [];
+}
+
+const tabParam = (path: string) => new URLSearchParams(path.split('?')[1] ?? '').get('tab');
+
+/**
+ * The section and tab a screen is, or null. A tab whose path carries `?tab=`
+ * matches only that value; the one without matches any other value (so an old
+ * `?tab=workouts` link to Progress still lights Overview).
+ */
+export function hubAt(pathname: string, search: string): { hub: HubId; tab: Destination } | null {
+  const q = new URLSearchParams(search).get('tab');
+  for (const hub of HUBS) {
+    for (const tab of hub.tabs) {
+      const [p] = tab.path.split('?');
+      if (p !== pathname) continue;
+      const want = tabParam(tab.path);
+      if (want) { if (q === want) return { hub: hub.id, tab }; continue; }
+      const siblings = hub.tabs.filter((o) => o.path.startsWith(p + '?')).map((o) => tabParam(o.path));
+      if (!q || !siblings.includes(q)) return { hub: hub.id, tab };
+    }
+  }
+  return null;
+}
+
+/** The tab each section was last left on, for this session only (memory, never storage). */
+const lastTab = new Map<HubId, string>();
+export function rememberHubTab(id: HubId, path: string): void { lastTab.set(id, path); }
+/** Forget the remembered tabs. Called from `logout()` with the other per-member memory. */
+export function clearHubMemory(): void { lastTab.clear(); }
+
+/** Where a section's pill lands: the tab last open there, else the first one this gym runs. */
+export function hubEntry(id: HubId, app: GymApp | null): string {
+  const tabs = hubTabs(id, app);
+  const last = lastTab.get(id);
+  if (last && tabs.some((t) => t.path.split('?')[0] === last.split('?')[0])) return last;
+  return tabs[0]?.path ?? '/member/book-class';
+}
+
 
 /**
  * Everything: the discoverability surface for the whole member app.
@@ -209,34 +282,43 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     ],
   },
   {
-    group: 'Train',
+    group: 'My plan',
     items: [
       { label: 'Book a session', path: '/member/book-class' , module: 'classes' },
-      { label: 'My bookings', path: '/member/booking-history' , module: 'classes' },
-      { label: 'Training plan', path: '/member/gym-plan' , module: 'progress' },
-      { label: 'Rebuild my plan', path: '/member/plan' , module: 'progress' },
+      { label: 'This week', path: '/member/gym-plan' , module: 'progress' },
       { label: 'Programs', path: '/member/programs' , module: 'programs' },
+      { label: 'Routines', path: '/member/track' , module: 'progress' },
       { label: 'Free workouts', path: '/member/workouts' },
-      { label: 'My routines', path: '/member/track' , module: 'progress' },
-      { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
-        words: (w) => w('trainers', true) },
-      { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
-      { label: 'Season', path: '/member/season' , module: 'seasons' },
-      { label: 'Squad', path: '/member/squad' , module: 'squads' },
-      { label: 'Rooms', path: '/member/rooms' , module: 'rooms' },
-      { label: 'Messages', path: '/member/messages' , module: 'chat' },
     ],
   },
   {
     group: 'Progress',
     items: [
+      { label: 'Overview', path: '/member/progress' , module: 'progress' },
       { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
       { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
       { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
-      { label: 'Coach notes', path: '/member/progress?tab=feedback' , module: 'progress',
-        words: (w) => w('trainer', true) + ' notes' },
-      { label: 'Meals', path: '/member/progress?tab=meals' , module: 'progress', onlyWhen: 'meals' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
+    ],
+  },
+  {
+    group: 'Coaching',
+    items: [
+      { label: 'My bookings', path: '/member/booking-history' , module: 'classes' },
+      { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
+        words: (w) => w('trainers', true) },
+      { label: 'Rooms', path: '/member/rooms' , module: 'rooms' },
+      { label: 'Messages', path: '/member/messages' , module: 'chat' },
+      { label: 'Coach notes', path: '/member/coach-notes' , module: 'progress',
+        words: (w) => w('trainer', true) + ' notes' },
+    ],
+  },
+  {
+    group: 'Challenges',
+    items: [
+      { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
+      { label: 'Season', path: '/member/season' , module: 'seasons' },
+      { label: 'Squad', path: '/member/squad' , module: 'squads' },
     ],
   },
   {
@@ -252,7 +334,6 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Shop', path: '/member/shop', module: 'shop' },
       { label: 'Invite a friend', path: '/member/refer' , module: 'referrals' },
       { label: 'Profile', path: '/member/profile' },
-      { label: 'Edit profile', path: '/member/profile/edit' },
       { label: 'Settings', path: '/member/settings' },
       // Which gym this app is showing. One gym: the screen is where you join
       // another. Several: it is how you switch (docs/TENANCY.md).

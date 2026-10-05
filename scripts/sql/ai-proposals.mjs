@@ -606,186 +606,44 @@ await guarded('M1. meal_text_ok', async () => {
     JSON.stringify({ bad: Object.fromEntries(bad.map((s, i) => [s, b[i]])), good: Object.fromEntries(good.map((s, i) => [s, g[i]])), n }));
 });
 
-// M2 ------------------------------------------------------------------------------------------
-await guarded('M2. meals.set refusals', async () => {
+// 0166: meal guides are retired (2026-10-05). 0146's create/apply/undo/read checks (M2-M9,
+// M11, M12) were removed with the feature; these prove it stays retired.
+await guarded('M13. a new meal guide is refused', async () => {
   await as(A);
-  const nums = await tryPropose('meals.set', { sections: [{ title: 'Lunch', items: ['A palm of chicken', '150g rice'] }] });
-  const title = await tryPropose('meals.set', { sections: [{ title: 'Eat 1800 kcal', items: ['Rice'] }] });
-  const empty = await tryPropose('meals.set', { sections: [] });
-  const seven = await tryPropose('meals.set', { sections: Array.from({ length: 7 }, () => ({ title: 'Snack', items: ['Banana'] })) });
-  const nine = await tryPropose('meals.set', { sections: [{ title: 'Snack', items: Array.from({ length: 9 }, () => 'Banana') }] });
-  const long = await tryPropose('meals.set', { sections: [{ title: 'x'.repeat(41), items: ['Banana'] }] });
-  const blank = await tryPropose('meals.set', { sections: [{ title: 'Snack', items: ['  '] }] });
-  const notStr = await tryPropose('meals.set', { sections: [{ title: 'Snack', items: [3] }] });
+  const err = await tryPropose('meals.set', meals1);
   await owner();
-  const made = (await one(`select count(*)::int as n from ai_proposals where kind = 'meals.set'`)).n;
-  const NUM = "Meal guidance can't include calorie, gram, macro or percentage targets.";
-  const SHAPE = "That meal guide isn't complete.";
-  const is = (e, s) => !!e && e.includes(s) && !/violates|constraint|syntax|invalid input/i.test(e);
-  check('M2. a numbers item or title is refused with the plain sentence; a bad shape says the guide is not complete; nothing made',
-    is(nums, NUM) && is(title, NUM) && [empty, seven, nine, long, blank, notStr].every((e) => is(e, SHAPE)) && made === 0,
-    JSON.stringify({ nums, title, empty, seven, nine, long, blank, notStr, made }));
+  const pending = (await one(`select count(*)::int as n from ai_proposals where kind = 'meals.set' and status = 'pending'`)).n;
+  check('M13. proposing a meal guide is refused, and none is pending', /no longer part of the app/.test(err ?? '') && pending === 0, err ?? 'no error');
 });
-
-// M11 (fix round 1) -------------------------------------------------------------------------------
-await guarded('M11. a meal guide\'s summary obeys the no-numbers rule', async () => {
-  await as(A);
-  const e = await tryPropose('meals.set', meals1, 'Eat 1800 kcal a day');
-  const ok = await tryPropose('meals.set', meals1, 'Three easy meals');
-  // Only a meal guide's summary is held to it: a routine summary may still say "3 sets of 10".
-  const r = await tryPropose('goal.create', { title: 'Summary numbers', metric: 'custom' }, 'Protein: 150');
+await guarded('M14. an old pending meal guide cannot be applied', async () => {
   await owner();
-  const made = (await one(`select count(*)::int as n from ai_proposals where summary = 'Eat 1800 kcal a day'`)).n;
-  await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
-  check('M11. a meals.set whose summary carries a number target is refused with the plain sentence; others are not',
-    !!e && e.includes("Meal guidance can't include calorie, gram, macro or percentage targets.") && made === 0
-      && ok === null && r === null,
-    JSON.stringify({ e, ok, r, made }));
+  await db.exec(`alter table ai_proposals disable trigger ai_proposals_no_meals`);
+  const id = (await one(`insert into ai_proposals (gym_id, member_id, kind, payload, summary)
+    values ('${GYM}', '${A}', 'meals.set', '${JSON.stringify(meals1)}'::jsonb, 'A meal guide') returning id`)).id;
+  await db.exec(`alter table ai_proposals enable trigger ai_proposals_no_meals`);
+  await as(A);
+  const err = await tryExec(`select apply_ai_proposal('${id}')`);
+  const row = await proposalRow(id);
+  const guide = await guideOfA();
+  check('M14. applying a leftover meals.set proposal is refused and writes no guide',
+    !!err && row.status === 'pending' && guide === null, JSON.stringify({ err, status: row.status, guide }));
 });
-
-// M3–M5 ---------------------------------------------------------------------------------------
-let g1, g2;
-await guarded('M3. meals.set create → apply → my_meal_guide', async () => {
-  await as(A);
-  g1 = await propose('meals.set', meals1, 'A week of meals');
-  const pending = await guideOfA();
-  await as(A);
-  const res = (await one(`select apply_ai_proposal('${g1}') as r`)).r;
-  const mine = (await one(`select my_meal_guide() as g`)).g;
-  const p = await proposalRow(g1);
-  check('M3. a meal guide writes nothing until applied; applied, my_meal_guide() returns it',
-    pending === null && res?.kind === 'meals.set' && same(mine, meals1.sections)
-      && p.status === 'applied' && p.undo !== null && (p.undo.sections ?? null) === null,
-    JSON.stringify({ pending, res, mine, p }));
-});
-await guarded('M4. undo restores none, then the previous guide; newer blocks older', async () => {
-  await as(A);
-  const e0 = await tryExec(`select undo_ai_proposal('${g1}')`);
-  const none = await guideOfA();
-  await as(A);
-  const mine0 = (await one(`select my_meal_guide() as g`)).g;
-  // Again, then a second guide on top.
-  await as(A);
-  g1 = await propose('meals.set', meals1);
-  await db.exec(`select apply_ai_proposal('${g1}')`);
-  await pause();
-  await as(A);
-  g2 = await propose('meals.set', meals2);
-  await db.exec(`select apply_ai_proposal('${g2}')`);
-  const top = await guideOfA();
-  await as(A);
-  const eOld = await tryExec(`select undo_ai_proposal('${g1}')`);
-  const still = await guideOfA();
-  await pause();
-  await as(A);
-  const e2 = await tryExec(`select undo_ai_proposal('${g2}')`);
-  const back = await guideOfA();
-  await pause();
-  await as(A);
-  const e1 = await tryExec(`select undo_ai_proposal('${g1}')`);
-  const gone = await guideOfA();
-  check('M4. the first guide\'s undo leaves none; a newer guide blocks undoing the older; newest first restores the previous, then none',
-    e0 === null && none === null && mine0 === null
-      && same(top, meals2.sections)
-      && !!eOld && /A newer change from the coach replaced this one — undo that first\./.test(eOld)
-      && same(still, meals2.sections)
-      && e2 === null && same(back, meals1.sections) && e1 === null && gone === null,
-    JSON.stringify({ e0, none, mine0, top, eOld, still, e2, back, e1, gone }));
-});
-await guarded('M5. a guide changed since its apply cannot be undone', async () => {
-  await as(A);
-  const g = await propose('meals.set', meals1);
-  await db.exec(`select apply_ai_proposal('${g}')`);
-  await db.exec(`reset role; update ai_meal_guides set updated_at = now() + interval '1 minute' where member_id = '${A}';`);
-  await as(A);
-  const e = await tryExec(`select undo_ai_proposal('${g}')`);
-  const kept = await guideOfA();
-  check('M5. undo is refused with the "changed this yourself since" sentence when the guide moved after the coach\'s write',
-    !!e && /You've changed this yourself since/.test(e) && same(kept, meals1.sections)
-      && (await proposalRow(g)).status === 'applied',
-    JSON.stringify({ e, kept }));
-});
-
-// M6–M8: who reads it --------------------------------------------------------------------------
-await guarded('M6. B and the desk cannot read A\'s guide', async () => {
-  await as(B);
-  const bRows = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  const bMine = (await one(`select my_meal_guide() as g`)).g;
-  const bT = (await one(`select trainee_meal_guide('${A}') as g`)).g;
-  await as(DESK);
-  const dRows = (await one(`select count(*)::int as n from ai_meal_guides`)).n;
-  const dT = (await one(`select trainee_meal_guide('${A}') as g`)).g;
+await guarded('M15. the coach is not sent a meal guide', async () => {
   await owner();
-  const exists = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  check('M6. B and a desk account read no row of A\'s guide, directly or through either function',
-    exists === 1 && bRows === 0 && bMine === null && bT === null && dRows === 0 && dT === null,
-    JSON.stringify({ exists, bRows, bMine, bT, dRows, dT }));
+  await db.exec(`insert into ai_meal_guides (gym_id, member_id, sections) values ('${GYM}', '${A}', '${JSON.stringify(meals1.sections)}'::jsonb)
+    on conflict do nothing`);
+  await as(A);
+  await db.exec(`select set_ai_coach_consent(true)`);
+  const ctx = (await one(`select ai_coach_context() as c`)).c;
+  check('M15. ai_coach_context() has no meal_guide, even with consent and a stored guide', !!ctx && !('meal_guide' in ctx), JSON.stringify(ctx));
 });
-await guarded('M7. a trainer of A reads it only when A shares goals', async () => {
-  await as(T);
-  const offRows = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  const offFn = (await one(`select trainee_meal_guide('${A}') as g`)).g;
+await guarded('M16. trainers cannot read a meal guide', async () => {
   await db.exec(`reset role; update member_share_prefs set share_goals = true where member_id = '${A}' and gym_id = '${GYM}';`);
   await as(T);
-  const onRows = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  const onFn = (await one(`select trainee_meal_guide('${A}') as g`)).g;
-  await as(T2);
-  const t2Rows = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  const t2Fn = (await one(`select trainee_meal_guide('${A}') as g`)).g;
-  await as(DESK);
-  const dRows = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${A}'`)).n;
-  const dFn = (await one(`select trainee_meal_guide('${A}') as g`)).g;
-  check('M7. A\'s trainer sees the guide only with goals shared; a trainer who never trained A, and the desk, never',
-    offRows === 0 && offFn === null && onRows === 1 && same(onFn, meals1.sections)
-      && t2Rows === 0 && t2Fn === null && dRows === 0 && dFn === null,
-    JSON.stringify({ offRows, offFn, onRows, onFn, t2Rows, t2Fn, dRows, dFn }));
-});
-await guarded('M8. nobody writes the table directly', async () => {
+  const err = await tryExec(`select trainee_meal_guide('${A}')`);
   await owner();
-  const pol = await rows(`select policyname from pg_policies where tablename = 'ai_meal_guides'
-    and cmd in ('INSERT','UPDATE','DELETE','ALL') and permissive = 'PERMISSIVE'`);
-  await as(B);
-  const ins = await tryExec(`insert into ai_meal_guides (gym_id, member_id, sections) values ('${GYM}', '${B}', '[]'::jsonb)`);
-  await as(A);
-  await tryExec(`update ai_meal_guides set sections = '[]'::jsonb where member_id = '${A}'`);
-  await tryExec(`delete from ai_meal_guides where member_id = '${A}'`);
   const kept = await guideOfA();
-  const forged = (await one(`select count(*)::int as n from ai_meal_guides where member_id = '${B}'`)).n;
-  check('M8. no write policy on ai_meal_guides; a direct insert/update/delete changes nothing',
-    pol.length === 0 && !!ins && forged === 0 && same(kept, meals1.sections),
-    JSON.stringify({ pol, ins, forged, kept }));
-});
-
-// M12 -----------------------------------------------------------------------------------------
-await guarded('M12. the coach reads the current guide only with consent', async () => {
-  await as(A);
-  await db.exec(`select set_ai_coach_consent(false)`);
-  const off = (await one(`select ai_coach_context() as c`)).c;
-  await db.exec(`select set_ai_coach_consent(true)`);
-  const on = (await one(`select ai_coach_context() as c`)).c;
-  check('M12. ai_coach_context(): no meal_guide without the history consent; with it, A\'s current sections',
-    !(off && 'meal_guide' in off) && same(on?.meal_guide, meals1.sections),
-    JSON.stringify({ off, on }));
-});
-
-// M9 ------------------------------------------------------------------------------------------
-await guarded('M9. progress switched off', async () => {
-  await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
-  await as(A);
-  const pm = await propose('meals.set', meals2);
-  await db.exec(`reset role; insert into gym_modules (gym_id, feature_key, enabled) values ('${GYM}', 'progress', false)
-    on conflict (gym_id, feature_key) do update set enabled = false;`);
-  await as(A);
-  const ea = await tryExec(`select apply_ai_proposal('${pm}')`);
-  const ec = await tryPropose('meals.set', meals2);
-  const kept = await guideOfA();
-  const st = (await proposalRow(pm)).status;
-  await db.exec(`reset role; update gym_modules set enabled = true where gym_id = '${GYM}' and feature_key = 'progress';`);
-  const plain = (e) => !!e && /doesn't use/.test(e) && !/violates|constraint|syntax/i.test(e);
-  check('M9. with progress switched off a meal guide is refused at create and at apply; nothing written',
-    plain(ea) && plain(ec) && st === 'pending' && same(kept, meals1.sections),
-    JSON.stringify({ ea, ec, st }));
-  await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
+  check('M16. trainee_meal_guide is no longer callable; the member\'s stored guide is kept', !!err && kept !== null, err ?? 'callable');
 });
 
 // M10 -----------------------------------------------------------------------------------------
@@ -797,5 +655,5 @@ await guarded('M10. tenancy and verify0146', async () => {
     t && /REPORT 0146/.test(report) && !/NOT OK/.test(report), report);
 });
 
-console.log(failures ? `\n${failures} FAILED` : '\nall 0145 + 0146 checks passed');
+console.log(failures ? `\n${failures} FAILED` : '\nall 0145 + 0146 + 0166 checks passed');
 process.exit(failures ? 1 : 0);

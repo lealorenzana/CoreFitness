@@ -1,13 +1,12 @@
 /**
- * 0145, the trainer's side: a trainee's routine that came from the AI coach's
- * proposal says so on the trainee sheet ("Built with the coach"), and one the
- * member made does not. On a database without 0145 the routines still list.
+ * The member app's navigation after the clean-up (2026-10-05): Train's rail is
+ * four sections (My plan, Progress, Coaching, Challenges) instead of fifteen
+ * pills; each section's tabs sit under the page title; a section reopens on the
+ * tab last used; Progress has no Meals or Coach tab (coach notes live under
+ * Coaching, and old ?tab=feedback links land there); and a screen's own tab
+ * (My bookings: Past) survives Back.
  *
- * 0146: the trainee's meal guide shows, read-only with the fixed line, when
- * trainee_meal_guide returns sections (their trainer, goals shared) — and
- * nothing at all when it returns null.
- *
- * Setup copied from trainer-assign-check.js.
+ * Fixture copied from member-photos-check.js, signed in as a member.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -28,7 +27,7 @@ async (page) => {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 
   const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
-    role: 'trainer', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
+    role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
   const session = {
     access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'm1', role: 'authenticated', exp })}.sig`,
     refresh_token: 'r', token_type: 'bearer', expires_at: exp,
@@ -36,7 +35,7 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => {
     localStorage.setItem(k, JSON.stringify(s));
-    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'trainer' }));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
   }, [KEY, session]);
 
   const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
@@ -60,10 +59,7 @@ async (page) => {
     exercises: EX,
     attendance: [-1, -3, -7, -8, -9, -14, -15, -16].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d, 18, 20 + i), method: 'qr', activity: 'Gym floor' })),
     workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0) },
-      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) },
-      // The trainee's own: one built with the coach (0145), one they made themselves.
-      { id: 'rc', member_id: 'mb1', name: 'Coach push day', notes: null, position: 0, updated_at: iso(-1, 9, 0), source: 'coach' },
-      { id: 'rm', member_id: 'mb1', name: 'My pull day', notes: null, position: 1, updated_at: iso(-1, 9, 0), source: 'member' }],
+      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) }],
     workout_routine_exercises: [
       { id: 'x1', routine_id: 'r1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 3,
         target_reps: 8, target_weight_kg: 60, target_seconds: null, rest_seconds: 90 },
@@ -74,13 +70,7 @@ async (page) => {
     workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
       completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
     workout_sets: [],
-    gym_plans: [
-      // The trainee's week: Monday is theirs, Wednesday the coach set (0145).
-      { id: 'gt1', member_id: 'mb1', day_of_week: 1, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rm', created_at: iso(-5, 9, 0), source: 'member' },
-      { id: 'gt3', member_id: 'mb1', day_of_week: 3, remind_at: '18:00:00', active: true, last_reminded_on: null,
-        routine_id: 'rc', created_at: iso(-5, 9, 0), source: 'coach' },
-      { id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
       { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
@@ -130,34 +120,32 @@ async (page) => {
     return true;
   }));
 
-  let BEFORE_0145 = false;
-  // 0146: what trainee_meal_guide returns — sections, or null (not shared / none).
-  const MEALS = [{ title: 'Breakfast', items: ['2 eggs for protein, a fist of rice'] },
-    { title: 'Dinner', items: ['A palm of chicken, two cupped hands of vegetables'] }];
-  let MEAL_GUIDE = MEALS;
-  const MEAL_ASKS = [];
-  let refusedSource = 0;
+
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const UPLOADED = [];
+  DB.progress_photos = [
+    { id: 'ph1', member_id: 'm1', path: 'gym-1/m1/a.jpg', pose: 'front', taken_on: dstr(-60), note: 'Start, 74 kg', created_at: iso(-60, 9, 0) },
+    { id: 'ph2', member_id: 'm1', path: 'gym-1/m1/b.jpg', pose: 'front', taken_on: dstr(-2), note: '69 kg', created_at: iso(-2, 9, 0) },
+    { id: 'ph3', member_id: 'm1', path: 'gym-1/m1/c.jpg', pose: 'side', taken_on: dstr(-2), note: null, created_at: iso(-2, 9, 1) },
+  ];
+  DB.member_share_prefs = [{ member_id: 'm1', share_photos: false }];
+  const ROOM = { id: 'rm1', kind: 'pt', name: 'Lea · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+    member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: false, full_access: true };
   const CALLS = {};
-  let assigned = null;
+  let n2 = 0;
   const FN = {
-    trainee_meal_guide: (b) => { MEAL_ASKS.push(b.p_member); return b.p_member === 'mb1' ? MEAL_GUIDE : null; },
-    assign_program: (b) => { assigned = b.p_program; return 'en1'; },
-    // The trainee's gym streak (0151): at risk this week.
-    member_streak: (b) => b.p_member !== 'mb1' ? null : { target: 3, current: 5, best: 7, days_this_week: 1, needed: 2,
-      days_left: 2, week: [true, false, false, false, false, false, false], today_index: 5, frozen: false,
-      at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true },
-    member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
-    member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
-      { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
-    program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({
-      program_id: assigned, program_name: 'Starter Strength', day_id: 'd' + d, week: 1, day: d,
-      workout_id: 'gw1', workout_name: 'Leg Day A', done: false })),
-    request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
-      const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
-      DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
-        created_at: new Date().toISOString(), closed_at: null, close_note: null, membership_plans: { name: plan.name, price: plan.price } });
-      return 'rr' + n; },
-    withdraw_renewal_request: () => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; }); return null; },
+    reserve_progress_photo: (b) => { const id = 'new' + (++n2); const p = `gym-1/m1/new${n2}.jpg`;
+      DB.progress_photos.unshift({ id, member_id: 'm1', path: p, pose: b.p_pose, taken_on: b.p_taken_on || dstr(0), note: b.p_note, created_at: new Date().toISOString() });
+      return [{ photo_id: id, path: p }]; },
+    set_share_photos: (b) => { DB.member_share_prefs[0].share_photos = b.p_share; return null; },
+    delete_progress_photo: () => null,
+    sync_gym_rooms: () => 0,
+    my_rooms: () => [ROOM],
+    room_badges: () => [],
+    room_classwork: () => [{ id: 'wp', kind: 'checkin', checkin_type: 'photo', title: 'Front photo, week 4', instructions: 'Same spot, same light.',
+      due_on: dstr(2), gym_workout_id: null, workout_name: null, created_at: iso(-1, 9, 0), whole_room: true, targets: 1, turned_in: 0,
+      late: 0, missing: 0, to_review: 0, my_status: 'assigned', my_answer_text: null, my_answer_number: null, my_return_comment: null, my_points: 0 }],
+    submit_checkin_photo: () => 's1',
   };
   const RPC = {
     refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
@@ -213,12 +201,19 @@ async (page) => {
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
-    if (!path.startsWith('/rest/v1/')) return json([]);
-    // A database without 0145: naming `source` is a 400, as PostgREST answers an unknown column.
-    if (BEFORE_0145 && path.endsWith('/workout_routines') && params.some(([k, v]) => k === 'select' && /(^|,)\s*source\b/.test(v))) {
-      refusedSource++;
-      return json({ code: '42703', message: 'column workout_routines.source does not exist' }, 400);
+    // Private storage (0132): signed links, and uploads into reserved slots.
+    if (path.startsWith('/storage/v1/object/sign/')) {
+      if (req.method() === 'POST') {
+        const b = JSON.parse(req.postData() || '{}');
+        return json((b.paths || []).map((p) => ({ path: p, signedURL: `/object/sign/progress/${p}?token=t`, error: null })));
+      }
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
     }
+    if (path.startsWith('/storage/v1/object/progress/')) {
+      UPLOADED.push(path.replace('/storage/v1/object/progress/', ''));
+      return json({ Key: path });
+    }
+    if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
     const method = req.method();
@@ -244,9 +239,7 @@ async (page) => {
       if (t === 'workout_routines') DB.workout_routine_exercises = DB.workout_routine_exercises.filter((x) => !hit.some((h) => h.id === x.routine_id));
       return json(hit);
     }
-    // Without 0145 the column is not there to come back either.
-    const rows = match(DB[t], params).map((r) => embed(t, r))
-      .map((r) => (BEFORE_0145 && (t === 'workout_routines' || t === 'gym_plans') ? (({ source: _s, ...rest }) => rest)(r) : r));
+    const rows = match(DB[t], params).map((r) => embed(t, r));
     return json(one ? rows[0] ?? null : rows);
   });
 
@@ -258,37 +251,61 @@ async (page) => {
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1300);
   };
+
+
+
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+
+  const pills = async () => page.evaluate(() => [...document.querySelectorAll('header button, [role="navigation"] button')]
+    .map((b) => b.innerText.trim()).filter(Boolean));
+  const strip = async (hub) => page.evaluate((h) => [...document.querySelectorAll(`[data-hub="${h}"] [role="tab"]`)]
+    .map((b) => b.innerText.trim()), hub);
+  const tap = async (name) => { await page.getByRole('button', { name, exact: true }).first().click(); await page.waitForTimeout(1200); };
+
+  await go('/member/book-class');
   let t = await text();
-  out.push("the trainee's gym streak, and that it is at risk: " + (/Gym streak/.test(t) && /5 weeks running/.test(t)
-    && /needs 2 more — every day left/.test(t) && /aims for 3 days a week · best 7 weeks/.test(t) ? 'yes' : 'MISSING'));
-  out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  const marks = (t.match(/Built with the coach/g) || []).length;
-  out.push('the coach routine is marked, once: ' + (marks === 1 ? 'yes' : marks === 0 ? 'MISSING' : 'NO, ' + marks + ' marks'));
-  // The mark sits on the coach's routine's row, not the member's.
-  const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
-  out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
-  const planMarks = (t.match(/Set by the coach/g) || []).length;
-  out.push('the training plan marks the coach day, once: ' + (planMarks === 1 ? 'yes' : planMarks === 0 ? 'MISSING' : 'NO, ' + planMarks + ' marks'));
-  const planRow = await page.locator('div', { hasText: 'Set by the coach' }).filter({ hasText: 'Wed: Coach push day' }).filter({ hasNotText: 'Mon: My pull day' }).count();
-  out.push('the plan mark is on Wednesday: ' + (planRow > 0 ? 'yes' : 'MISSING'));
-  await page.getByText('Coach push day').first().scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: 'shots/trainer-coach-mark.png' });
+  const rail = await pills();
+  out.push('Train has four sections: ' + (['My plan', 'Progress', 'Coaching', 'Challenges'].every((x) => rail.includes(x))
+    && !rail.includes('Coach notes') && !rail.includes('Goals') && !rail.includes('Squad') ? 'yes' : 'MISSING ' + JSON.stringify(rail)));
+  await shot('nav-train');
 
-  // Meal guides were retired (0166): the sheet never asks for one and never shows one.
-  out.push('no meal guide on the trainee sheet: ' + (MEAL_ASKS.length === 0 && await page.locator('[data-trainee-meals]').count() === 0 && !/Meal guide/i.test(t) ? 'yes' : 'STILL SHOWN'));
-
-  BEFORE_0145 = true;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
-  await page.waitForTimeout(1500);
+  await tap('Progress');
+  let tabs = await strip('progress');
+  out.push('Progress tabs: ' + (JSON.stringify(tabs) === JSON.stringify(['Overview', 'Body', 'Goals', 'Photos', 'Achievements']) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   t = await text();
-  out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
-  out.push('before 0145 nothing is marked: ' + (!/Built with the coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
-  return out.join('\n');
+  out.push('no Meals, no Coach tab on Progress: ' + (!/\bMeals\b/.test(t) && !tabs.includes('Coach') ? 'yes' : 'STILL SHOWN'));
+
+  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Goals' }).click();
+  await page.waitForTimeout(1000);
+  out.push('a section tab is in the address: ' + (/\/member\/progress\?tab=goals$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Achievements' }).click();
+  await page.waitForTimeout(1200);
+  out.push('Achievements carries the same strip: ' + ((await strip('progress')).length === 5 && /\/member\/achievements$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  await page.getByRole('button', { name: 'Train' }).last().click();
+  await page.waitForTimeout(1200);
+  await tap('Progress');
+  out.push('the section reopens on the tab last used: ' + (/\/member\/achievements$/.test(page.url()) ? 'yes (Achievements)' : 'MISSING ' + page.url()));
+
+  await go('/member/progress?tab=feedback');
+  tabs = await strip('coaching');
+  out.push('an old Coach notes link lands under Coaching: ' + (/\/member\/coach-notes$/.test(page.url()) && tabs.includes('Notes') && tabs.includes('Bookings') && tabs.includes('Rooms') ? tabs.join(' · ') : 'MISSING ' + page.url() + ' ' + JSON.stringify(tabs)));
+  await shot('nav-coaching');
+
+  await go('/member/booking-history');
+  await page.getByRole('tab', { name: /^Past/ }).first().click();
+  await page.waitForTimeout(600);
+  const pastUrl = page.url();
+  await page.goto('http://localhost:5173/member/home', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+  await page.goBack();
+  await page.waitForTimeout(1800);
+  const pastOn = await page.getByRole('tab', { name: /^Past/ }).first().getAttribute('aria-selected').catch(() => null);
+  out.push('My bookings keeps Past after Back: ' + (/show=past/.test(pastUrl) && pastOn === 'true' ? 'yes' : 'MISSING ' + pastUrl + ' ' + pastOn));
+
+  await go('/member/gym-plan');
+  tabs = await strip('plan');
+  out.push('My plan tabs: ' + (['This week', 'Programs', 'Routines', 'Free workouts'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  await shot('nav-plan');
+  return out.join(String.fromCharCode(10));
 }

@@ -1,4 +1,5 @@
 import { Check } from '@phosphor-icons/react';
+import { useUrlState } from '../hooks/useUrlState';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,7 +54,7 @@ export default function Events() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('upcoming');
+  const [tab, setTab] = useUrlState<Tab>('show', 'upcoming', ['upcoming', 'mine', 'past']);
 
   const load = useCallback(async () => {
     setLoading(true);

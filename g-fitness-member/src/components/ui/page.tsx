@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { panelStyle } from './Card';
+import HubStrip from '../layout/HubStrip';
 
 /**
  * The frame every member screen is built in.
@@ -116,6 +117,7 @@ export function PageTitle({
         </div>
         {action && <div className="flex-shrink-0 self-center">{action}</div>}
       </div>
+      <HubStrip />
     </header>
   );
 }

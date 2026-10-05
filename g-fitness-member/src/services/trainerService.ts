@@ -12,7 +12,6 @@ import {
 } from '../lib/api/achievements';
 import { listMyPlan } from '../lib/api/gymPlans';
 import { listRoutines } from '../lib/api/routines';
-import { traineeMealGuide, type MealSection } from '../lib/api/aiProposals';
 import type { BookingStatus, ClassRow } from '../types/db';
 
 /**
@@ -99,9 +98,6 @@ export interface MemberDetailForTrainer {
     latest: { title: string; on: string }[];
     closest: { title: string; line: string; fraction: number }[];
   } | null;
-  /** The meal guide they applied from their AI coach (0146) — only while they
-   *  share goals with trainers; null otherwise, or when they have none. */
-  mealGuide: MealSection[] | null;
 }
 
 async function achievementsFor(memberId: string): Promise<MemberDetailForTrainer['achievements']> {
@@ -151,7 +147,7 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
 
   // Each read is independent and allowed to fail on its own. A trainer looking
   // at a member must not get a blank screen because one optional panel errored.
-  const [progression, goals, measurements, workouts, planRows, routines, achievements, mealGuide] = await Promise.all([
+  const [progression, goals, measurements, workouts, planRows, routines, achievements] = await Promise.all([
     getProgression(memberId).catch(() => null),
     shared.shareGoals ? listGoals(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareMeasurements ? listMeasurements(memberId).catch(() => []) : Promise.resolve([]),
@@ -161,8 +157,6 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
     listMyPlan(memberId).catch(() => null),
     shared.shareWorkouts ? listRoutines(memberId).catch(() => []) : Promise.resolve([]),
     achievementsFor(memberId),
-    // The database decides (trainee_meal_guide): their trainer, with goals shared.
-    traineeMealGuide(memberId).catch(() => null),
   ]);
 
   const openGoals = goals.filter((g) => g.achieved_on == null).slice(0, 4);
@@ -180,7 +174,6 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
     progression,
     achievements,
     shared,
-    mealGuide,
     // Newest first, and only what a coach can act on in a modal.
     goals: openGoals,
     emergency: em?.emergency_contact_name

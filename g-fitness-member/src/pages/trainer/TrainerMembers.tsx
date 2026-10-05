@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
-import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, ForkKnife, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -10,7 +10,6 @@ import TraineeRecords from '../../components/trainer/TraineeRecords';
 import TraineeSquad from '../../components/trainer/TraineeSquad';
 import TraineeStreak from '../../components/trainer/TraineeStreak';
 import TraineePhotos from '../../components/trainer/TraineePhotos';
-import MealGuide from '../../components/MealGuide';
 import { TextArea, TextInput } from '../../components/ui/Field';
 import { InlineStat, LineRow, NocButton, ProgressBar, StatusPill } from '../../components/ui/noc';
 import { supabase } from '../../lib/supabaseClient';
@@ -531,22 +530,6 @@ export default function TrainerMembers() {
                       </div>
                     ))}
                   </SharedBlock>
-
-                  {/* The meal guide they applied from their AI coach (0146) — read-only,
-                      and only when trainee_meal_guide returns one: their trainer,
-                      with goals shared. Nothing at all otherwise. */}
-                  {detail?.mealGuide && (
-                    <div data-trainee-meals style={{ padding: '12px 0', borderBottom: '1px solid var(--color-separator)' }}>
-                      <p className="flex items-center" style={{
-                        gap: 7, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-primary-300)',
-                      }}>
-                        <ForkKnife size={14} /> Meal guide
-                        {/* The same mark as a routine the member applied from the coach (0145). */}
-                        <span className="flex-none" style={{ marginLeft: 'auto' }}><StatusPill tone="muted" label="Built with the coach" /></span>
-                      </p>
-                      <MealGuide sections={detail.mealGuide} compact />
-                    </div>
-                  )}
 
                   <SharedBlock
                     icon={Barbell}

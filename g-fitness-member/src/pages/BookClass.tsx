@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useUrlState } from '../hooks/useUrlState';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, CalendarStar, Moon, SlidersHorizontal, Sparkle, Sun, SunHorizon, Target, User, UsersThree } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -306,7 +307,7 @@ function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): st
 export default function BookClass() {
   const navigate = useNavigate();
   const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
-  const [filter, setFilter] = useState<Filter>(deepLinkTrainerId ? 'pt' : 'classes');
+  const [filter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
   const [weekOffset, setWeekOffset] = useState<0 | 7>(0);
   const [selected, setSelected] = useState<number | null>(null);
 

@@ -50,8 +50,12 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
  * content and its `scrollTop` no longer means anything.
  */
 
-/** How long to keep re-applying while a screen's content loads in. */
-const SETTLE_MS = 1200;
+/**
+ * How long to keep re-applying while a screen's content loads in. Was 1200ms,
+ * which a slow connection outlasts: the list arrived after the restore had given
+ * up and the member landed at the top. A touch still stops it at once.
+ */
+const SETTLE_MS = 4000;
 /** Gap between re-applications. Short enough to look instant, cheap enough to ignore. */
 const SETTLE_TICK_MS = 60;
 

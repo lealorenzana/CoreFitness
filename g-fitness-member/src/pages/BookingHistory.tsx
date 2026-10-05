@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useUrlState } from '../hooks/useUrlState';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Plus, Star, UsersThree, X,
@@ -105,7 +106,7 @@ export default function BookingHistory() {
   const [rows, setRows] = useState<MyBooking[]>([]);
   const [visitDays, setVisitDays] = useState<Set<string>>(new Set());
   const [evaluate, setEvaluate] = useState<Set<string>>(new Set());
-  const [tab, setTab] = useState<Tab>('upcoming');
+  const [tab, setTab] = useUrlState<Tab>('show', 'upcoming', ['upcoming', 'past', 'cancelled']);
   const [kind, setKind] = useState<Kind>('all');
   const [loading, setLoading] = useState(true);
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);

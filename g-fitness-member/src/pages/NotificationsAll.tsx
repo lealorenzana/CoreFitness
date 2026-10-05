@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useUrlState } from '../hooks/useUrlState';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Archive, Checks, Envelope, EnvelopeOpen, Trash } from '@phosphor-icons/react';
 
@@ -42,7 +43,7 @@ export default function NotificationsAll() {
 
   const [all, setAll] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('inbox');
+  const [tab, setTab] = useUrlState<Tab>('show', 'inbox', ['inbox', 'unread', 'archived']);
   const [detail, setDetail] = useState<Notification | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());

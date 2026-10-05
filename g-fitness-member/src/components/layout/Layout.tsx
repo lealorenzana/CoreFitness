@@ -83,7 +83,8 @@ export default function Layout() {
   // reset that sent the member back to the top of Home every time they came
   // back to it. A screen visited before now resumes where it was left; a screen
   // seen for the first time still starts at the top.
-  useScrollMemory(mainRef, location.pathname);
+  // Keyed with the search too, so each tab (`?tab=`, `?show=`) keeps its own place.
+  useScrollMemory(mainRef, location.pathname + location.search);
 
   // The gym's colour and name, and whether it is read-only (0104).
   const gym = useGymBrand();

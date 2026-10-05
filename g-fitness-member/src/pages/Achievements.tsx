@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useUrlState } from '../hooks/useUrlState';
 import { useLocation } from 'react-router-dom';
 import { HandHeart, Lock, SealCheck, Sparkle, Users } from '@phosphor-icons/react';
 
@@ -89,7 +90,7 @@ export default function Achievements() {
   const [unlocked, setUnlocked] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<AchievementDef | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useUrlState<Filter>('show', 'all', ['all', 'earned', 'locked']);
   const [progress, setProgress] = useState<Map<string, AchievementProgress> | null>(null);
   const [rarity, setRarity] = useState<Map<string, Rarity> | null>(null);
   const [units, setUnits] = useState<Units>(new Map());

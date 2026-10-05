@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Eyebrow, NocButton, Panel, StatusPill } from './ui/noc';
-import { MealGuidanceNote } from './MealGuide';
 import {
-  applyProposal, discardProposal, mealSections, undoProposal,
+  applyProposal, discardProposal, undoProposal,
   type GoalPayload, type ProposalNames, type ProposalStatus, type RoutinePayload, type SchedulePayload,
 } from '../lib/api/aiProposals';
 import { formatRemindAt } from '../lib/api/gymPlans';
@@ -115,7 +114,9 @@ export default function ProposalCard({
   const t = useT();
   const lang = useLanguage();
   const { lead, lines } = detailLines(kind, payload, names, t, dateLocale(lang));
-  const meals = kind === 'meals.set' ? mealSections(obj(payload).sections) : [];
+  // Meal guides were removed (2026-10-05). An old proposal of that kind can
+  // still be discarded, never applied.
+  const retired = kind === 'meals.set';
 
   const run = async (act: () => Promise<unknown>, next: ProposalStatus) => {
     setBusy(true);
@@ -143,24 +144,20 @@ export default function ProposalCard({
             {lines.map((l, i) => <p key={i}>{l}</p>)}
           </div>
         )}
-        {kind === 'meals.set' && (
-          <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
-            {meals.map((sec, si) => (
-              <div key={si} data-meal-section style={{ marginTop: si ? 8 : 0 }}>
-                <p style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{sec.title}</p>
-                {sec.items.map((item, i) => <p key={i}>{item}</p>)}
-              </div>
-            ))}
-            <MealGuidanceNote style={{ marginTop: 10 }} />
-          </div>
+        {retired && status === 'pending' && (
+          <p style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
+            {t('Meal guides are no longer part of the app, so this cannot be applied.')}
+          </p>
         )}
 
         {status === 'pending' && (
           <div className="flex" style={{ gap: 10, marginTop: 12 }}>
-            <NocButton variant="fill" className="flex-1" disabled={busy} style={{ height: 42 }}
-              onClick={() => void run(() => applyProposal(id), 'applied')}>
-              {t('Apply')}
-            </NocButton>
+            {!retired && (
+              <NocButton variant="fill" className="flex-1" disabled={busy} style={{ height: 42 }}
+                onClick={() => void run(() => applyProposal(id), 'applied')}>
+                {t('Apply')}
+              </NocButton>
+            )}
             <NocButton variant="ghost" className="flex-1" disabled={busy} style={{ height: 42 }}
               onClick={() => void run(() => discardProposal(id), 'discarded')}>
               {t('Discard')}

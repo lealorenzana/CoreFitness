@@ -5,13 +5,15 @@ import { listRoutines } from './routines';
 /**
  * The coach's proposals (0145).
  *
- * The coach can only propose: a routine, a weekly plan, a goal or a meal guide waits as a row
+ * The coach can only propose: a routine, a weekly plan or a goal waits as a row
  * until the member taps Apply, and an applied change can be undone. Every rule —
  * whose it is, whether it is still waiting, whether a newer change is in the way —
  * is the database's, and its refusals are plain sentences meant to be shown as-is.
  */
 
-export type ProposalKind = 'routine.create' | 'routine.replace' | 'schedule.set' | 'goal.create' | 'meals.set';
+export type ProposalKind = 'routine.create' | 'routine.replace' | 'schedule.set' | 'goal.create'
+  /** Retired with meal guides (0166): an old one can only be discarded. */
+  | 'meals.set';
 export type ProposalStatus = 'pending' | 'applied' | 'discarded' | 'undone';
 
 export interface Proposal {
@@ -36,39 +38,6 @@ export interface RoutinePayload {
 export interface SchedulePayload { days: { day_of_week: number; routine_id?: string; remind_at?: string }[] }
 export interface GoalPayload {
   title: string; metric: string; start_value?: number; target_value?: number; target_date?: string;
-}
-
-/** A meal guide (0146): sections of everyday meal ideas, portions by hand size, never numbers. */
-export interface MealSection { title: string; items: string[] }
-export interface MealsPayload { sections: MealSection[] }
-
-/** Keeps only well-formed sections — a malformed row reads as no guide, never a guessed one. */
-export function mealSections(v: unknown): MealSection[] {
-  if (!Array.isArray(v)) return [];
-  return v
-    .filter((s): s is MealSection => !!s && typeof s === 'object' && typeof (s as MealSection).title === 'string'
-      && Array.isArray((s as MealSection).items))
-    .map((s) => ({ title: s.title, items: s.items.filter((i): i is string => typeof i === 'string') }));
-}
-
-/** The member's applied meal guide, or null when they have none (0146 `my_meal_guide`). */
-export async function myMealGuide(): Promise<MealSection[] | null> {
-  const { data, error } = await supabase.rpc('my_meal_guide');
-  if (error) throw new Error(error.message);
-  const sections = mealSections(data);
-  return sections.length ? sections : null;
-}
-
-/**
- * One trainee's meal guide, for their trainer (0146 `trainee_meal_guide`): null
- * unless the caller trains them and they share their goals with trainers. The
- * desk and the owner always get null — the rule is the database's, not this screen's.
- */
-export async function traineeMealGuide(memberId: string): Promise<MealSection[] | null> {
-  const { data, error } = await supabase.rpc('trainee_meal_guide', { p_member: memberId });
-  if (error) throw new Error(error.message);
-  const sections = mealSections(data);
-  return sections.length ? sections : null;
 }
 
 /** Every waiting proposal, and the last 30 days of decided ones, newest first. */
