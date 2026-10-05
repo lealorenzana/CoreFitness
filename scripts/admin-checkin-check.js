@@ -110,6 +110,9 @@ async (page) => {
   await page.waitForTimeout(4500);
   t = await send(`CF1.${Date.now().toString(36)}.${QRM.id}`.toUpperCase());
   out.push("the member app's QR payload checks in: " + (/Welcome, Paolo/.test(t) && INSERTED.some((r) => r.member_id === QRM.id) ? 'yes' : 'MISSING ' + t.slice(0, 160)));
+  // The 2026-10-05 bug: every check-in sent gym_id: null, which overrides the
+  // database's own gym and RLS refused the row. It must leave gym_id out.
+  out.push('no check-in sends an empty gym: ' + (INSERTED.length > 0 && INSERTED.every((r) => !('gym_id' in r) || r.gym_id) ? 'yes' : 'MISSING ' + JSON.stringify(INSERTED[0])));
   out.push('roster loaded once at open: ' + (rosterCalls >= 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-checkin.png' });
   return out.join(String.fromCharCode(10));

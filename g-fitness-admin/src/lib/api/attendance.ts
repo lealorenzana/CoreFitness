@@ -82,7 +82,10 @@ export async function recordCheckIn(input: {
     .from('attendance')
     .insert({
       member_id: input.memberId,
-      gym_id: input.gymId ?? null,
+      // Only when given. Since 0098 gym_id is the tenant column, filled in by the
+      // database from the acting gym; an explicit null overrode that and RLS
+      // refused every check-in (2026-10-05).
+      ...(input.gymId ? { gym_id: input.gymId } : {}),
       method: input.method,
       recorded_by: input.recordedBy,
       activity: input.activity ?? null,

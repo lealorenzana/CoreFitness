@@ -205,7 +205,11 @@ export async function performCheckIn(
   try {
     await recordCheckIn({ memberId: member.profile.id, method, recordedBy: opts.adminId, activity: opts.activity });
   } catch (err) {
-    return { ok: false, reason: 'failed', message: err instanceof Error ? err.message : 'Check-in failed' };
+    // A Supabase error is a plain object with a message, not an Error — reading
+    // only `instanceof Error` hid the database's reason behind "Check-in failed".
+    const message = err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+      ? (err as { message: string }).message : 'Check-in failed';
+    return { ok: false, reason: 'failed', message };
   }
   // The balance, at the one moment the desk can act on it. Points are awarded
   // by a trigger on the insert (0051), so this reads after the write. Never
