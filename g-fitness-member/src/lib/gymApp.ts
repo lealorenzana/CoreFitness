@@ -29,7 +29,7 @@ export type FeatureKey =
   | 'front_desk' | 'checkin' | 'classes' | 'coaching'
   | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics'
   // 0141: each lives inside a parent above, and is on only while it is.
-  | 'shop' | 'requests' | 'chat' | 'rooms' | 'programs' | 'photos'
+  | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
   | 'squads' | 'seasons' | 'quests' | 'referrals';
 
 /**

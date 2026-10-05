@@ -33,7 +33,7 @@ interface RecordPaymentModalProps {
   /** memberId -> their current plan. Missing entry = no membership to bill against. */
   planByMember: Record<string, MemberPlanInfo>;
   /** Opened from a renewal request (0091): the member and the amount filled in. */
-  preset?: { memberId: string; memberName: string; amount: number; key: string } | null;
+  preset?: { memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string } | null;
 }
 
 export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset }: RecordPaymentModalProps) {
@@ -63,13 +63,15 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
   const [appliedPreset, setAppliedPreset] = useState<string | null>(null);
   if (isOpen && preset && appliedPreset !== preset.key) {
     setAppliedPreset(preset.key);
-    setFormData((f) => ({ ...f, memberId: preset.memberId, amount: String(preset.amount) }));
+    setFormData((f) => ({ ...f, memberId: preset.memberId, amount: String(preset.amount),
+      method: preset.method ?? f.method, notes: preset.notes ?? f.notes }));
     setMemberSearch(preset.memberName);
     setShowMemberDropdown(false);
   }
   if (!isOpen && appliedPreset !== null) setAppliedPreset(null);
 
-  const paymentMethods = ['Cash'];
+  // Cash at the desk, or what a member paid into the gym's own account (0167).
+  const paymentMethods = ['Cash', 'GCash', 'Maya', 'Bank transfer'];
 
   const filteredMembers = members.filter(m => {
     const fullName = `${m.profile.first_name} ${m.profile.last_name}`;

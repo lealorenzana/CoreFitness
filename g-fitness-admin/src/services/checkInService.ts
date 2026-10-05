@@ -1,9 +1,9 @@
 import { getBalance } from '../lib/api/points';
-import { getMemberByQrCode, type MemberWithProfile } from '../lib/api/members';
+import { getMembersByCheckInCode, getMemberByQrCode, type MemberWithProfile } from '../lib/api/members';
 import { recordCheckIn } from '../lib/api/attendance';
 import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
 import { notifyUser } from '../lib/api/notify';
-import { matchesCheckInCode } from '../utils/checkInCode';
+import { matchesCheckInCode, normaliseCheckInCode } from '../utils/checkInCode';
 
 /**
  * Checking a member in from a scanned or typed code — shared by the Attendance
@@ -141,11 +141,21 @@ export async function resolveCheckInCode(raw: string, members: MemberWithProfile
   // Short code — resolved against the roster already in memory rather than with
   // a prefix query, so an ambiguous code is refused outright instead of silently
   // checking in whichever row the database happened to return.
-  const typed = qr.replace(/[\s-]/g, '');
-  if (typed.length === 6) {
+  const typed = normaliseCheckInCode(qr);
+  if (typed.length === 6 && /^[0-9a-f]{6}$/.test(typed)) {
     const matches = members.filter((m) => matchesCheckInCode(m.profile.id, typed));
     if (matches.length === 1) return { member: matches[0], method: 'manual' };
     if (matches.length > 1) return { error: 'More than one member has that code — use the search instead.' };
+    // Not in the roster this page loaded when it opened: a member approved since,
+    // or a roster that failed to load. Ask the database before saying no.
+    let fresh: MemberWithProfile[];
+    try {
+      fresh = await getMembersByCheckInCode(typed);
+    } catch (err) {
+      return { error: `Could not look that code up: ${err instanceof Error ? err.message : 'unknown error'}` };
+    }
+    if (fresh.length === 1) return { member: fresh[0], method: 'manual' };
+    if (fresh.length > 1) return { error: 'More than one member has that code — use the search instead.' };
     return { error: `No member has the code ${typed.toUpperCase()}.` };
   }
   const m = await lookup(qr);

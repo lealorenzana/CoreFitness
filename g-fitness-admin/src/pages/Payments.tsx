@@ -73,7 +73,8 @@ export default function Payments() {
   const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
   /** "I'm coming to renew" from the phone app (0091). Null before it is live. */
   const [requests, setRequests] = useState<OpenRenewalRequest[] | null>(null);
-  const [preset, setPreset] = useState<{ memberId: string; memberName: string; amount: number; key: string } | null>(null);
+  const [preset, setPreset] = useState<{ memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string } | null>(null);
+  const [proof, setProof] = useState<string | null>(null);
   const [toDecline, setToDecline] = useState<OpenRenewalRequest | null>(null);
 
   const loadData = async () => {
@@ -234,7 +235,11 @@ export default function Payments() {
    */
   /** Record the payment a request asked for — the modal opens filled in. */
   const recordForRequest = (r: OpenRenewalRequest) => {
-    setPreset({ memberId: r.memberId, memberName: r.memberName, amount: r.planPrice, key: r.id });
+    setPreset({ memberId: r.memberId, memberName: r.memberName, amount: r.paid?.amount ?? r.planPrice, key: r.id,
+      ...(r.paid ? {
+        method: r.paid.kind === 'gcash' ? 'GCash' : r.paid.kind === 'maya' ? 'Maya' : 'Bank transfer',
+        notes: `Paid online by ${r.paid.method}, ref ${r.paid.reference}${r.paid.paidOn ? ` on ${r.paid.paidOn}` : ''}`,
+      } : {}) });
     setIsModalOpen(true);
   };
 
@@ -343,6 +348,22 @@ export default function Payments() {
                       {r.planPrice > 0 ? `₱${r.planPrice.toLocaleString()}` : 'Free'}
                     </span>
                   </div>
+                  {r.paid && (
+                    <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2" data-online-pay
+                      style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
+                      {r.paid.proof && (
+                        <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="See the screenshot"
+                          className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
+                          <img src={r.paid.proof} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      )}
+                      <p className="text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)' }}>
+                        <span className="text-white font-semibold">Paid ₱{r.paid.amount.toLocaleString()} by {r.paid.method}</span>
+                        <br />Ref <span className="font-mono text-white">{r.paid.reference}</span>
+                        {r.paid.paidOn ? ` · ${r.paid.paidOn}` : ''} — check it reached your account, then record it.
+                      </p>
+                    </div>
+                  )}
                   <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
                     Wants <span className="text-white font-semibold">{r.planName}</span>
                     {current ? <> · on {current.planName} now</> : ' · no membership yet'}
@@ -524,6 +545,12 @@ export default function Payments() {
         preset={preset}
       />
       <DeclineDialog request={toDecline} onClose={() => setToDecline(null)} onDecline={decline} />
+      {proof && (
+        <div className="fixed inset-0 z-[1000] grid place-items-center p-6" style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={() => setProof(null)} role="dialog" aria-label="Payment screenshot">
+          <img src={proof} alt="The member's payment screenshot" className="max-h-[85vh] max-w-full rounded-lg" />
+        </div>
+      )}
       <ViewReceiptModal isOpen={isReceiptModalOpen} onClose={() => { setIsReceiptModalOpen(false); setSelectedPayment(null); }} payment={selectedPayment} />
     </div>
   );

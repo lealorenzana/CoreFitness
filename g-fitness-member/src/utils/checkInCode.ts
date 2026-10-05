@@ -30,7 +30,17 @@ export function formatCheckInCode(memberId: string): string {
 }
 
 /** True when a typed string is this member's code. Tolerates spaces and case. */
+/**
+ * What was typed, as the code it must be: spaces and dashes dropped, and the
+ * letters people read a digit as turned into that digit. The code is hex, so
+ * "O" can only ever mean 0 and "I"/"L" only 1 — a member reading "0E4 CAF" out
+ * loud is heard as "OE4CAF" more often than not.
+ */
+export function normaliseCheckInCode(typed: string): string {
+  return typed.replace(/[\s-]/g, '').toLowerCase().replace(/o/g, '0').replace(/[il]/g, '1');
+}
+
 export function matchesCheckInCode(memberId: string, typed: string): boolean {
-  const normalised = typed.replace(/[\s-]/g, '').toLowerCase();
+  const normalised = normaliseCheckInCode(typed);
   return normalised.length === 6 && checkInCodeOf(memberId) === normalised;
 }

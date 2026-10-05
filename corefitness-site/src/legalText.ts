@@ -32,7 +32,7 @@
  * anybody to agree: agreeing to a draft records nothing true. A site deployed
  * with newer, unpublished wording therefore calls *that wording* a draft.
  */
-export const VERSION = '2026-10-03';
+export const VERSION = '2026-10-05';
 
 export type DocKey = 'terms' | 'dpa' | 'privacy';
 
@@ -160,7 +160,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'This agreement is part of the Terms of Service for gyms and wins over them on anything about personal data.',
         ] },
         { id: 'what', title: '2. What we process', body: [
-          'Identity and contact details, emergency contacts, memberships and the payments your desk records, check-ins, bookings and coaching sessions.',
+          'Identity and contact details, emergency contacts, memberships and the payments your desk records — with the reference numbers and screenshots members send when they pay you online — check-ins, bookings and coaching sessions.',
           'What members choose to log for themselves: workouts, measurements, goals, progress photos, and messages with their coaches.',
           'Answers to the health questionnaire that comes with your waiver. These are sensitive personal information and are shown only to your owners and front desk — never to coaches.',
         ] },

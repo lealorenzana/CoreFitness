@@ -57,6 +57,28 @@ export async function getMemberProfile(memberId: string): Promise<MemberWithProf
 }
 
 /** Attendance/QR check-in lookup — resolves a scanned QR code back to a member. */
+/**
+ * Members whose id starts with a six-hex-digit check-in code — read from the
+ * database, not a roster cached when the page opened. A uuid range is the
+ * prefix: every id from `xxxxxx00-0000-…` to `xxxxxxff-ffff-…`.
+ */
+export async function getMembersByCheckInCode(code: string): Promise<MemberWithProfile[]> {
+  const c = code.toLowerCase();
+  if (!/^[0-9a-f]{6}$/.test(c)) return [];
+  const { data, error } = await supabase
+    .from('member_profiles')
+    .select('*, profiles!inner(*)')
+    .gte('profile_id', `${c}00-0000-0000-0000-000000000000`)
+    .lte('profile_id', `${c}ff-ffff-ffff-ffff-ffffffffffff`)
+    .neq('profiles.status', 'archived')
+    .limit(3);
+  if (error) throw error;
+  return (data ?? []).map((row) => {
+    const { profiles, ...member } = row as MemberProfileRow & { profiles: ProfileRow };
+    return { profile: profiles, member: member as MemberProfileRow };
+  });
+}
+
 export async function getMemberByQrCode(qrCode: string): Promise<MemberWithProfile | null> {
   const { data, error } = await supabase
     .from('member_profiles')

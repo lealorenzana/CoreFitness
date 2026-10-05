@@ -59,6 +59,6 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   front_desk: 'the front desk', checkin: 'check-in', classes: 'classes and bookings', coaching: 'coaches',
   engagement: 'points, rewards and challenges', progress: 'progress tracking', assistant: 'the assistant',
   push: 'announcements', analytics: 'analytics', shop: 'the shop', requests: 'freeze and cancel requests in the app',
-  chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
+  online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
   squads: 'squads', seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends',
 };

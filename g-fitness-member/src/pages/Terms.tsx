@@ -106,7 +106,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'membership',
     title: '1. Your membership',
-    body: 'Membership gives you access to the gym during posted opening hours. The gym is cash-only by design: membership is paid at the front desk, and nothing in this app takes payment or holds card details. What the app shows you is the record of what the desk entered.',
+    body: 'Membership gives you access to the gym during posted opening hours. Membership is paid at the front desk in cash or — where your gym has turned it on — by GCash, Maya or bank transfer into the gym’s own account, which the desk confirms by hand before your plan changes. Nothing in this app takes payment or holds card details: you pay in your own GCash or bank app, and the app only carries the reference number and the screenshot you choose to send. What the app shows you is the record of what the desk entered.',
   },
   {
     id: 'freezing',
@@ -125,7 +125,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
     body: [
       'Days are counted from the start date of your membership, in Manila time — not from the day you paid.',
       feeLine(state),
-      'Refunds are paid in cash at the desk.',
+      'Refunds are paid by the desk — in cash, or back to the GCash, Maya or bank account you paid from.',
     ],
   },
   {

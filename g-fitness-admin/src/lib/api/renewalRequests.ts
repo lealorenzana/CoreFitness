@@ -19,10 +19,14 @@ export interface OpenRenewalRequest {
   planDays: number | null;
   note: string | null;
   createdAt: string;
+  /** Paid online (0167): what the member sent, for the desk to check before recording. */
+  paid: { method: string; kind: string | null; reference: string; amount: number; paidOn: string | null; proof: string | null } | null;
 }
 
 interface Row {
   id: string; member_id: string; plan_id: string; note: string | null; created_at: string;
+  pay_method_label?: string | null; pay_kind?: string | null; pay_reference?: string | null;
+  pay_amount?: number | string | null; paid_on?: string | null; pay_proof?: string | null;
   membership_plans: { name: string; price: number | string; duration_days: number | null } | null;
 }
 
@@ -30,11 +34,25 @@ interface Row {
 export async function listOpenRenewalRequests(): Promise<OpenRenewalRequest[] | null> {
   const { data, error } = await supabase
     .from('renewal_requests')
+    .select('id, member_id, plan_id, note, created_at, pay_method_label, pay_kind, pay_reference, pay_amount, paid_on, pay_proof, membership_plans (name, price, duration_days)')
+    .eq('status', 'open')
+    .order('created_at', { ascending: true });
+  // Before 0167 the pay_* columns do not exist: read the request without them.
+  if (error) return listWithoutPayment();
+  return shape((data ?? []) as unknown as Row[]);
+}
+
+async function listWithoutPayment(): Promise<OpenRenewalRequest[] | null> {
+  const { data, error } = await supabase
+    .from('renewal_requests')
     .select('id, member_id, plan_id, note, created_at, membership_plans (name, price, duration_days)')
     .eq('status', 'open')
     .order('created_at', { ascending: true });
   if (error) return null;
-  const rows = (data ?? []) as unknown as Row[];
+  return shape((data ?? []) as unknown as Row[]);
+}
+
+async function shape(rows: Row[]): Promise<OpenRenewalRequest[]> {
   const ids = [...new Set(rows.map((r) => r.member_id))];
   const people = new Map<string, { name: string; photo: string | null }>();
   if (ids.length) {
@@ -49,6 +67,10 @@ export async function listOpenRenewalRequests(): Promise<OpenRenewalRequest[] | 
     planId: r.plan_id, planName: r.membership_plans?.name ?? 'Plan',
     planPrice: Number(r.membership_plans?.price ?? 0), planDays: r.membership_plans?.duration_days ?? null,
     note: r.note, createdAt: r.created_at,
+    paid: r.pay_reference ? {
+      method: r.pay_method_label ?? 'Online', kind: r.pay_kind ?? null, reference: r.pay_reference,
+      amount: Number(r.pay_amount ?? r.membership_plans?.price ?? 0), paidOn: r.paid_on ?? null, proof: r.pay_proof ?? null,
+    } : null,
   }));
 }
 

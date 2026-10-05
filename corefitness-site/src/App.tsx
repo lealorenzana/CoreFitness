@@ -32,7 +32,7 @@ const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
 
 const FEATURES: { icon: IconName; title: string; body: string; tag: string }[] = [
-  { icon: 'desk', tag: 'Desk', title: 'The front desk', body: 'Members and memberships, cash payments with a receipt number, QR check-in and a kiosk members use themselves, a shop with stock that counts itself, and waivers signed in the app. Freezes, renewals and refunds follow rules you set.' },
+  { icon: 'desk', tag: 'Desk', title: 'The front desk', body: 'Members and memberships, payments with a receipt number — cash at the desk, or GCash, Maya and bank transfers members send from the app for your desk to confirm (you can keep it desk-only), QR check-in and a kiosk members use themselves, a shop with stock that counts itself, and waivers signed in the app. Freezes, renewals and refunds follow rules you set.' },
   { icon: 'calendar', tag: 'Floor', title: 'Classes and coaches', body: 'A weekly timetable that generates itself, bookings your coaches accept, a waitlist that tells everyone waiting the moment a seat frees, and one-to-one sessions with clash checks.' },
   { icon: 'sparkle', tag: 'AI coach', title: 'A coach in their pocket', body: 'On the membership plans you choose, members get an AI coach that builds and adjusts their routines, weekly schedule and goals. Nothing changes until they tap Apply, every change can be undone, and a stated injury gets a referral to a person, never a changed exercise. You set its daily and monthly limits.' },
   { icon: 'message', tag: 'Coaching', title: 'Coaching between sessions', body: 'A room for every class and one-to-one trainee, where coaches post, set workouts and check-ins members turn in from the app. Private coach–member chat, programs you build, and progress photos only the member — and the coaches they share with — can see.' },
@@ -43,7 +43,7 @@ const FEATURES: { icon: IconName; title: string; body: string; tag: string }[] =
   { icon: 'toggle', tag: 'Fit', title: 'Switch off what you don’t run', body: 'No classes? No shop? Turn whole parts of the system off, and your members’ app and your menus simply stop showing them.' },
 ];
 
-const TICKER = ['QR check-in', 'Cash receipts', 'AI coach', 'Class timetable', 'Waitlists', 'Coaching rooms', 'Coach chat', 'Programs', 'Points', 'Badges', 'Rewards', 'Challenges', 'Squads', 'Seasons', 'Workout logs', 'Personal records', 'Progress photos', 'The shop', 'Waivers', 'Freeze & renew', 'Lobby TV', 'English · Filipino', 'Your logo, your colour'];
+const TICKER = ['QR check-in', 'Cash & GCash', 'AI coach', 'Class timetable', 'Waitlists', 'Coaching rooms', 'Coach chat', 'Programs', 'Points', 'Badges', 'Rewards', 'Challenges', 'Squads', 'Seasons', 'Workout logs', 'Personal records', 'Progress photos', 'The shop', 'Waivers', 'Freeze & renew', 'Lobby TV', 'English · Filipino', 'Your logo, your colour'];
 
 /** "Nine parts." — the heading counts the cards, so adding one can never leave it wrong. */
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
@@ -277,7 +277,7 @@ export default function App() {
               <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
               <img src="/logo-320.webp" alt="" width={320} height={320} />
               <span className="orbit o1"><Icon name="qr" /> QR check-in</span>
-              <span className="orbit o2"><Icon name="cash" /> Cash, with receipts</span>
+              <span className="orbit o2"><Icon name="cash" /> Cash or GCash, with receipts</span>
               <span className="orbit o3"><Icon name="globe" /> English · Filipino</span>
               <span className="orbit o4"><Icon name="phone" /> Android app</span>
             </div>

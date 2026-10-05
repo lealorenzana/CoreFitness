@@ -18,8 +18,12 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import GlassSheet from '../components/ui/GlassSheet';
+import PayOnline, { type PayOnlineValue } from '../components/PayOnline';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import {
   listMyRenewalRequests, requestRenewal, withdrawRenewalRequest, type RenewalRequest,
+  listGymPayMethods, requestRenewalPaid, type GymPayMethod,
 } from '../lib/api/renewalRequests';
 import { basisLine, formatPeso, getRefundQuote, type RefundQuote } from '../lib/api/refunds';
 
@@ -134,6 +138,16 @@ export default function RenewMembership() {
   const [sheet, setSheet] = useState(false);
   const [when, setWhen] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // 0167: the gym's own accounts, when it takes payments online.
+  const gymApp = useGymApp();
+  const [payMethods, setPayMethods] = useState<GymPayMethod[]>([]);
+  const [payMode, setPayMode] = useState<'desk' | 'online'>('desk');
+  const [pay, setPay] = useState<PayOnlineValue>({ methodId: null, reference: '', proof: null });
+  const onlineOn = moduleOn(gymApp, 'online_pay');
+  useEffect(() => {
+    if (!onlineOn) return;
+    void (async () => { setPayMethods(await listGymPayMethods()); })();
+  }, [onlineOn]);
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
@@ -241,15 +255,23 @@ export default function RenewMembership() {
     setRequests(await listMyRenewalRequests(memberId));
   };
 
+  const canPayOnline = onlineOn && payMethods.length > 0 && !!selected && Number(selected.price) > 0;
+  const paying = canPayOnline && payMode === 'online';
   const send = async () => {
     if (!selected) return;
+    if (paying && pay.reference.trim().length < 4) { toast.error('Type the reference number from your receipt.'); return; }
     setSending(true);
     try {
-      await requestRenewal(selected.id, when ? `Coming ${when.toLowerCase()}` : undefined);
+      if (paying) {
+        await requestRenewalPaid(selected.id, pay.methodId ?? payMethods[0].id, pay.reference.trim(), pay.proof);
+      } else {
+        await requestRenewal(selected.id, when ? `Coming ${when.toLowerCase()}` : undefined);
+      }
       await reload();
       setSheet(false);
       setSelectedId(null);
-      toast.success('Sent — the front desk knows you are coming');
+      setPay({ methodId: null, reference: '', proof: null });
+      toast.success(paying ? 'Sent — the desk will confirm your payment' : 'Sent — the front desk knows you are coming');
     } catch (err) {
       toast.error(errorMessage(err, 'Could not send the request'));
     } finally {
@@ -348,21 +370,24 @@ export default function RenewMembership() {
               <div className="flex items-center justify-between" style={{ gap: 10 }}>
                 <Eyebrow tone="action">
                   <span className="inline-flex items-center" style={{ gap: 6 }}>
-                    <PaperPlaneTilt size={13} weight="fill" /> The desk knows you are coming
+                    <PaperPlaneTilt size={13} weight="fill" /> {openRequest.paid ? 'Payment sent' : 'The desk knows you are coming'}
                   </span>
                 </Eyebrow>
-                <StatusPill label="Requested" tone="action" />
+                <StatusPill label={openRequest.paid ? 'To confirm' : 'Requested'} tone="action" />
               </div>
               <p style={{ fontSize: 19, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>
                 {openRequest.planName ?? 'Your plan'}
               </p>
               <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>
-                {openRequest.planPrice ? `Bring ${peso(openRequest.planPrice)} in cash` : 'No payment needed'}
+                {openRequest.paid ? `Paid ${peso(openRequest.paid.amount)} by ${openRequest.paid.method} · ref ${openRequest.paid.reference}`
+                  : openRequest.planPrice ? `Bring ${peso(openRequest.planPrice)} in cash` : 'No payment needed'}
                 {' · '}sent {new Date(openRequest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                {openRequest.note ? ` · ${openRequest.note}` : ''}
+                {openRequest.note && !openRequest.paid ? ` · ${openRequest.note}` : ''}
               </p>
               <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                It closes by itself once staff record your payment — your plan changes then, not before.
+                {openRequest.paid
+                  ? 'The desk checks it reached the gym\'s account, then records it — your plan changes then. If something is off they tell you why.'
+                  : 'It closes by itself once staff record your payment — your plan changes then, not before.'}
               </p>
               <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} onClick={() => void withdraw()}>
                 Withdraw request
@@ -565,12 +590,12 @@ export default function RenewMembership() {
             open={sheet && selected != null}
             onClose={() => setSheet(false)}
             title={action.label}
-            subtitle="Nothing is charged in the app — the desk takes cash"
+            subtitle={canPayOnline ? 'Pay at the desk, or pay the gym now by ' + payMethods.map((m) => m.label).join(', ') : 'Nothing is charged in the app — the desk takes cash'}
             footer={
               <div className="flex flex-col" style={{ gap: 8 }}>
                 <NocButton variant="fill" className="w-full" disabled={sending} icon={<PaperPlaneTilt size={16} weight="fill" />}
                   onClick={() => void send()}>
-                  {sending ? 'Sending…' : openRequest ? 'Replace my request' : 'Tell the desk I am coming'}
+                  {sending ? 'Sending…' : paying ? 'Send for the desk to confirm' : openRequest ? 'Replace my request' : 'Tell the desk I am coming'}
                 </NocButton>
                 <NocButton variant="ghost" className="w-full" onClick={() => { setSheet(false); setConfirmed(true); }}>
                   Just show me what to do
@@ -578,7 +603,16 @@ export default function RenewMembership() {
               </div>
             }
           >
-            {selected && (
+            {selected && canPayOnline && (
+              <div className="flex" style={{ gap: 8, marginBottom: 14 }} role="group" aria-label="How you will pay">
+                <Chip label="Pay at the desk" on={payMode === 'desk'} onClick={() => setPayMode('desk')} />
+                <Chip label="Pay now online" on={payMode === 'online'} onClick={() => setPayMode('online')} />
+              </div>
+            )}
+            {selected && paying && (
+              <PayOnline methods={payMethods} amount={peso(Number(selected.price))} value={pay} onChange={setPay} />
+            )}
+            {selected && !paying && (
               <div className="flex flex-col" style={{ gap: 14 }}>
                 <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
                   The front desk gets a heads-up that you want{' '}

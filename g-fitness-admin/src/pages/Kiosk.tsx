@@ -76,7 +76,12 @@ export default function Kiosk() {
       setGymName(settings?.gym_name ?? '');
       await refreshToday();
     })();
-    const t = window.setInterval(() => { void refreshToday(); setNow(new Date()); }, 60_000);
+    const t = window.setInterval(() => {
+      void refreshToday();
+      setNow(new Date());
+      // A member approved after the kiosk opened must be able to check in too.
+      void listMembers().then((m) => { if (alive && m.length) membersRef.current = m; }).catch(() => undefined);
+    }, 60_000);
     const c = window.setInterval(() => setNow(new Date()), 1000);
     return () => { alive = false; window.clearInterval(t); window.clearInterval(c); };
   }, [refreshToday]);
@@ -131,7 +136,9 @@ export default function Kiosk() {
     let timer: number | null = null;
     void (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } } })
+          // A webcam that refuses the size, or is still being released: any picture at all.
+          .catch(async () => { await new Promise((r) => setTimeout(r, 400)); return navigator.mediaDevices.getUserMedia({ video: true }); });
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         const v = videoRef.current;
         if (!v) return;

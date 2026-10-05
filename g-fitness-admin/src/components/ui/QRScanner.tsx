@@ -81,6 +81,9 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       try {
         const probe = await navigator.mediaDevices.getUserMedia({ video: true });
         stopStream(probe);
+        // Many Windows webcams refuse to reopen the instant they were closed
+        // ("Could not start video source"); a moment's pause lets them go.
+        await new Promise((r) => setTimeout(r, 350));
         if (cancelled) return;
 
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -118,15 +121,22 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
+        const open = (video: MediaTrackConstraints | true) => navigator.mediaDevices.getUserMedia({ video });
+        let stream: MediaStream;
+        try {
+          stream = await open({
             deviceId: { exact: cameraId },
             // 1280x720 is not a nicety. At the 640x480 a webcam defaults to,
             // this QR's modules are a few pixels across and no decoder reads it.
             width: { ideal: 1280 },
             height: { ideal: 720 },
-          },
-        });
+          });
+        } catch {
+          // The chosen camera would not start (busy, unplugged, or not yet
+          // released): any camera at all beats a blank box.
+          await new Promise((r) => setTimeout(r, 400));
+          stream = await open({ width: { ideal: 1280 }, height: { ideal: 720 } }).catch(() => open(true));
+        }
         if (cancelled) {
           stopStream(stream);
           return;

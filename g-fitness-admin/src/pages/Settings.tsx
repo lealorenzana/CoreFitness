@@ -11,7 +11,8 @@ import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import FormField from '../components/ui/FormField';
-import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText } from 'lucide-react';
+import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone } from 'lucide-react';
+import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
   listRefundRules, updateRefundRule, getRefundFee, setRefundFee,
@@ -50,7 +51,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'refunds' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -59,6 +60,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'gym', label: 'Gym Information', icon: Building2 },
   { id: 'refunds', label: 'Refund Policy', icon: Banknote },
+  { id: 'payments', label: 'Online Payments', icon: Smartphone },
   { id: 'waiver', label: 'Waiver', icon: FileSignature },
   { id: 'house-rules', label: 'House Rules', icon: ScrollText },
   { id: 'security', label: 'Security', icon: Shield },
@@ -594,6 +596,7 @@ export default function Settings() {
             )}
 
             {activeTab === 'refunds' && <RefundPolicyTab />}
+            {activeTab === 'payments' && <OnlinePaymentsTab />}
             {activeTab === 'waiver' && <WaiverTab />}
             {activeTab === 'house-rules' && <HouseRulesTab />}
 
