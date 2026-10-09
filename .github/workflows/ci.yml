@@ -66,6 +66,8 @@ jobs:
           npm run build
       - name: Every gym colour, preset or code, stays readable as text
         run: node --experimental-strip-types scripts/accent-contrast.mjs
+      - name: One date rule, three identical copies (no year before today unless recording or looking back)
+        run: node --experimental-strip-types scripts/date-rules-check.mjs "$PWD"
       - name: The AI coach's pure rules (prompt, limits, stream)
         run: node --experimental-strip-types scripts/ai-coach-core.mjs
 
