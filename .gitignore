@@ -24,3 +24,5 @@ CoreFitness-System-Documentation.html
 # one command each, and nobody diffs it - the same reasoning as the generated
 # documentation above. The commands that install them are in docs/CI.md.
 .claude/skills/
+
+.superpowers/
