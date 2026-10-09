@@ -31,6 +31,9 @@ async (page) => {
     { id: 5, occurred_at: iso(0), action: 'shop.sale_voided', subject_type: 'shop_sale', summary: 'Voided a ₱150.00 sale: Rang up twice' },
     { id: 4, occurred_at: iso(0), action: 'shop.sale', subject_type: 'shop_sale', summary: 'Sold ₱150.00 to Mara Cruz' },
     { id: 3, occurred_at: iso(0), action: 'classwork.turned_in', subject_type: 'room_assignment', summary: 'Mara Cruz turned in "Leg day"' },
+    // One sweep's win-back sends: three members, once each (2026-10-10 — one line in the log, not twelve).
+    ...Array.from({ length: 3 }, (_, k) => ({ id: 100 + k, occurred_at: iso(0), action: 'winback.sent', subject_type: 'member',
+      summary: `Sent Member ${k + 1} a win-back message (no visit 14)` })),
     { id: 2, occurred_at: iso(1), action: 'streak.milestone', subject_type: 'member', summary: 'Mara Cruz reached a 12-week streak' },
     { id: 1, occurred_at: iso(1), action: 'credential.verified', subject_type: 'trainer_credential', summary: "Verified Carlo Cruz's \"First Aid\"" },
   ].map((r) => ({ subject_id: null, detail: null, reconstructed: false, actor_id: 'u2', actor_role: 'admin', actor_name: 'Ana Lisa',
@@ -63,9 +66,13 @@ async (page) => {
       const or = u.searchParams.get('or');
       ASKED.push(or ?? '');
       const prefixes = or ? [...or.matchAll(/action\.ilike\.([a-z_.]+)%/g)].map((m) => m[1]) : null;
-      const rows = prefixes ? ROWS.filter((r) => prefixes.some((p) => r.action.startsWith(p))) : ROWS;
+      const all = prefixes ? ROWS.filter((r) => prefixes.some((p) => r.action.startsWith(p))) : ROWS;
+      // One page, as PostgREST answers range(): offset/limit honoured, the total in Content-Range.
+      const off = Number(u.searchParams.get('offset') ?? 0);
+      const lim = Number(u.searchParams.get('limit') ?? all.length);
+      const rows = all.slice(off, off + lim);
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows),
-        headers: { 'Content-Range': `0-${Math.max(0, rows.length - 1)}/${rows.length}`, 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
+        headers: { 'Content-Range': `${off}-${Math.max(off, off + rows.length - 1)}/${all.length}`, 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     }
     if (t === 'gym_settings') {
       const row = { id: true, gym_id: g.gym_id, gym_name: g.gym_name, short_name: g.short_name, logo_url: null, address: 'Brgy Bunot' };
@@ -81,11 +88,15 @@ async (page) => {
 
   const out = [];
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1280, height: 1500 });
   await page.goto('http://localhost:5174/activity', { waitUntil: 'domcontentloaded' });
   await page.getByText('Sold ₱150.00 to Mara Cruz').waitFor({ timeout: 15000 });
   let t = await text();
   out.push('the new events are listed: ' + (/Mara Cruz turned in "Leg day"/.test(t) && /12-week streak/.test(t) && /First Aid/.test(t) ? 'yes' : 'MISSING'));
+  out.push('a day’s win-back sends are one line: ' + ((await page.locator('[data-winback-group]').count()) === 1 && /Win-back messages sent to 3 members/.test(t) && !/Member 2 a win-back/.test(t) ? 'yes' : 'MISSING'));
+  await page.locator('[data-winback-group] button').click();
+  await page.waitForTimeout(300);
+  out.push('…that opens to who: ' + (/Sent Member 2 a win-back message/.test(await text()) ? 'yes' : 'MISSING'));
   out.push('the new chips: ' + (['Shop', 'Coaching', 'Rewards & streaks', 'Team & settings'].every((c) => t.includes(c)) ? 'all four' : 'MISSING'));
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click();
