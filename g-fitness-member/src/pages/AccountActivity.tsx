@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { useSearchParams } from 'react-router-dom';
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip } from '../components/ui/noc';
@@ -42,17 +44,19 @@ export default function AccountActivity() {
     return () => { alive = false; };
   }, []);
 
+  // Twenty lines to a page (2026-10-10); the page's lines are grouped by month.
+  const allLines = useMemo(() => toLines((rows ?? []).filter((a) => matchesFilter(a, filter))), [rows, filter]);
+  const paged = usePaged(allLines);
   const months = useMemo(() => {
-    const lines = toLines((rows ?? []).filter((a) => matchesFilter(a, filter)));
-    const out: [string, typeof lines][] = [];
-    for (const l of lines) {
+    const out: [string, typeof allLines][] = [];
+    for (const l of paged.rows) {
       const label = new Date(l.at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       const last = out[out.length - 1];
       if (last && last[0] === label) last[1].push(l);
       else out.push([label, [l]]);
     }
     return out;
-  }, [rows, filter]);
+  }, [paged.rows]);
 
   return (
     <Page>
@@ -60,9 +64,9 @@ export default function AccountActivity() {
         subtitle="Points earned and spent, payments, and changes to your membership" />
 
       <div className="flex" style={{ gap: 8 }}>
-        <Chip label="All" on={filter === 'all'} onClick={() => setFilter('all')} />
-        <Chip label="Points" on={filter === 'points'} onClick={() => setFilter('points')} />
-        <Chip label="Payments" on={filter === 'payments'} onClick={() => setFilter('payments')} />
+        <Chip label="All" on={filter === 'all'} onClick={() => { setFilter('all'); paged.setPage(1); }} />
+        <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); paged.setPage(1); }} />
+        <Chip label="Payments" on={filter === 'payments'} onClick={() => { setFilter('payments'); paged.setPage(1); }} />
       </div>
 
       {error ? (
@@ -84,6 +88,7 @@ export default function AccountActivity() {
           </section>
         ))
       )}
+      <Pager page={paged.page} pages={paged.pages} total={paged.total} noun={paged.total === 1 ? 'entry' : 'entries'} onPage={paged.setPage} />
 
       {gaps.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--color-secondary)' }}>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUrlState } from '../hooks/useUrlState';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Plus, Star, UsersThree, X,
@@ -159,6 +161,9 @@ export default function BookingHistory() {
   const past = useMemo(() => rows.filter((r) => !closed(r) && !isUpcoming(r, now) && ofKind(r)), [rows, now, ofKind]);
   const cancelled = useMemo(() => rows.filter((r) => closed(r) && ofKind(r)), [rows, ofKind]);
   const visible = tab === 'upcoming' ? upcoming : tab === 'past' ? past : cancelled;
+  // Past and cancelled are histories: twenty to a page (2026-10-10). Upcoming
+  // is short by nature and stays whole, grouped by day.
+  const paged = usePaged(visible, undefined, `${tab}:${kind}`);
 
   const next = upcoming[0] ?? null;
 
@@ -391,7 +396,9 @@ export default function BookingHistory() {
             </div>
           ) : (
             <section className="noc-rows">
-              {visible.map((r, i) => renderRow(r, i === visible.length - 1))}
+              {paged.rows.map((r, i) => renderRow(r, i === paged.rows.length - 1))}
+              <Pager page={paged.page} pages={paged.pages} total={paged.total}
+                noun={paged.total === 1 ? 'session' : 'sessions'} onPage={paged.setPage} />
             </section>
           )}
         </>

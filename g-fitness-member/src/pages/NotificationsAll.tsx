@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUrlState } from '../hooks/useUrlState';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Archive, Checks, Envelope, EnvelopeOpen, Trash } from '@phosphor-icons/react';
 
@@ -77,7 +79,9 @@ export default function NotificationsAll() {
     return tab === 'unread' ? inbox.filter((n) => !n.read) : inbox;
   }, [all, tab]);
 
-  const buckets = bucketize(visible);
+  // Twenty to a page (2026-10-10); a new tab starts on page 1.
+  const paged = usePaged(visible, undefined, tab);
+  const buckets = bucketize(paged.rows);
   const unreadCount = all.filter((n) => !n.archived && !n.read).length;
   const allSelected = visible.length > 0 && visible.every((n) => selected.has(n.id));
 
@@ -243,6 +247,10 @@ export default function NotificationsAll() {
               ))}
             </div>
           ))}
+          <div style={{ padding: '0 var(--card-pad)' }}>
+            <Pager page={paged.page} pages={paged.pages} total={paged.total}
+              noun={paged.total === 1 ? 'notification' : 'notifications'} onPage={paged.setPage} />
+          </div>
         </div>
       )}
 

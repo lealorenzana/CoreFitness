@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
-import { listMemberAttendance } from '../lib/api/attendance';
+import { listMemberAttendancePage } from '../lib/api/attendance';
+import { usePagedQuery } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import type { AttendanceRow } from '../types/db';
 import { errorMessage } from '../utils/errorMessage';
 
@@ -11,25 +13,18 @@ import { errorMessage } from '../utils/errorMessage';
  * Every check-in, by month (2026-09-19). Attendance shows the latest five and
  * "See all"; this is "all". Newest first, each with the time, what was trained
  * (0018, when recorded) and how it was recorded.
+ *
+ * Twenty to a page, fetched a page at a time (2026-10-10): 321 check-ins were
+ * one endless scroll.
  */
 export default function VisitHistory() {
-  const [rows, setRows] = useState<AttendanceRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const id = await getCurrentMemberId();
-        if (!id) throw new Error('Your session could not be verified.');
-        const r = await listMemberAttendance(id);
-        if (alive) setRows(r);
-      } catch (err) {
-        if (alive) setError(errorMessage(err, 'Could not load your visits.'));
-      }
-    })();
-    return () => { alive = false; };
+  const fetchPage = useCallback(async (from: number, to: number) => {
+    const id = await getCurrentMemberId();
+    if (!id) throw new Error('Your session could not be verified.');
+    return listMemberAttendancePage(id, from, to);
   }, []);
+  const { rows, total, error: failed, page, pages, setPage } = usePagedQuery(fetchPage);
+  const error = failed ? errorMessage(failed, 'Could not load your visits.') : null;
 
   const months = useMemo(() => {
     const sorted = [...(rows ?? [])].sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
@@ -46,7 +41,7 @@ export default function VisitHistory() {
   return (
     <Page>
       <PageTitle back fallback="/member/attendance-history" title="All visits"
-        subtitle={rows ? `${rows.length} ${rows.length === 1 ? 'check-in' : 'check-ins'} in all` : 'Every check-in'} />
+        subtitle={rows ? `${total} ${total === 1 ? 'check-in' : 'check-ins'} in all` : 'Every check-in'} />
       {error ? (
         <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
       ) : rows == null ? (
@@ -73,6 +68,9 @@ export default function VisitHistory() {
             </div>
           </section>
         ))
+      )}
+      {rows && rows.length > 0 && (
+        <Pager page={page} pages={pages} total={total} noun={total === 1 ? 'visit' : 'visits'} onPage={setPage} />
       )}
     </Page>
   );

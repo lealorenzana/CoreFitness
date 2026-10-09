@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { Page, PageTitle } from '../components/ui/page';
 import { SkeletonList } from '../components/ui/Skeleton';
 import RedemptionRow from '../components/ui/RedemptionRow';
@@ -44,6 +46,7 @@ export default function RewardRequests() {
     }
   };
 
+  const paged = usePaged(rows);
   const spent = (rows ?? []).filter((r) => r.status !== 'rejected').reduce((s, r) => s + r.costPoints, 0);
 
   return (
@@ -58,9 +61,10 @@ export default function RewardRequests() {
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nothing asked for yet.</p>
       ) : (
         <section>
-          {rows.map((m, i) => (
-            <RedemptionRow key={m.id} m={m} last={i === rows.length - 1} busy={busy === m.id} onWithdraw={() => void withdraw(m.id)} />
+          {paged.rows.map((m, i) => (
+            <RedemptionRow key={m.id} m={m} last={i === paged.rows.length - 1} busy={busy === m.id} onWithdraw={() => void withdraw(m.id)} />
           ))}
+          <Pager page={paged.page} pages={paged.pages} total={paged.total} noun={paged.total === 1 ? 'request' : 'requests'} onPage={paged.setPage} />
         </section>
       )}
     </Page>

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { Page, PageTitle } from '../components/ui/page';
 import { SkeletonList } from '../components/ui/Skeleton';
 import DayWorkoutsSheet from '../components/ui/DayWorkoutsSheet';
@@ -35,16 +37,18 @@ export default function WorkoutHistory() {
     return () => { alive = false; };
   }, []);
 
+  // Twenty to a page (2026-10-10); the page's rows are grouped by month.
+  const paged = usePaged(logs);
   const months = useMemo(() => {
     const out: [string, WorkoutLog[]][] = [];
-    for (const l of logs ?? []) {
+    for (const l of paged.rows) {
       const label = new Date(`${l.date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       const last = out[out.length - 1];
       if (last && last[0] === label) last[1].push(l);
       else out.push([label, [l]]);
     }
     return out;
-  }, [logs]);
+  }, [paged.rows]);
 
   return (
     <Page>
@@ -72,6 +76,7 @@ export default function WorkoutHistory() {
           </section>
         ))
       )}
+      <Pager page={paged.page} pages={paged.pages} total={paged.total} noun={paged.total === 1 ? 'workout' : 'workouts'} onPage={paged.setPage} />
       <DayWorkoutsSheet memberId={memberId} day={openDay} onClose={() => setOpenDay(null)} />
     </Page>
   );

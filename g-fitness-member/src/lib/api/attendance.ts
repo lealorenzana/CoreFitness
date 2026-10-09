@@ -19,6 +19,20 @@ export async function listMemberAttendance(memberId: string): Promise<Attendance
   return data ?? [];
 }
 
+/** One page of a member's check-ins, newest first, with the total (2026-10-10, pages of 20). */
+export async function listMemberAttendancePage(
+  memberId: string, from: number, to: number,
+): Promise<{ rows: AttendanceRow[]; total: number }> {
+  const { data, error, count } = await supabase
+    .from('attendance')
+    .select('*', { count: 'exact' })
+    .eq('member_id', memberId)
+    .order('check_in_time', { ascending: false })
+    .range(from, to);
+  if (error) throw error;
+  return { rows: data ?? [], total: count ?? 0 };
+}
+
 /**
  * Whether this member has a check-in at or after `since`.
  *

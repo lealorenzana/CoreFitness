@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { useNavigate } from 'react-router-dom';
 import { ArrowsClockwise, CaretRight, HourglassMedium, PaperPlaneTilt, Receipt } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -87,17 +89,24 @@ export default function PaymentHistory() {
   const expiry = membership?.expiry_date ?? null;
   const currentPlanName = membership?.membership_plans?.name ?? null;
 
+  // Twenty to a page (2026-10-10), grouped by year; a year's total is the
+  // whole year's, not just the rows on this page.
+  const sortedPayments = useMemo(
+    () => [...payments].sort((a, b) => (b.paid_on ?? '').localeCompare(a.paid_on ?? '')), [payments]);
+  const paged = usePaged(sortedPayments);
+  const yearTotal = (y: string) => sortedPayments
+    .filter((p) => (p.paid_on ?? '').slice(0, 4) === y && p.status === 'completed')
+    .reduce((s, p) => s + Number(p.amount), 0);
   const byYear = useMemo(() => {
-    const sorted = [...payments].sort((a, b) => (b.paid_on ?? '').localeCompare(a.paid_on ?? ''));
     const out: [string, PaymentRow[]][] = [];
-    for (const p of sorted) {
+    for (const p of paged.rows) {
       const y = (p.paid_on ?? '').slice(0, 4) || '—';
       const lastGroup = out[out.length - 1];
       if (lastGroup && lastGroup[0] === y) lastGroup[1].push(p);
       else out.push([y, [p]]);
     }
     return out;
-  }, [payments]);
+  }, [paged.rows]);
 
   /** The plan a payment bought: the 0091 snapshot, or — for older rows — the plan today, labelled as such. */
   const planOf = (p: PaymentRow): string =>
@@ -172,7 +181,7 @@ export default function PaymentHistory() {
               <div className="flex items-baseline justify-between" style={{ gap: 12 }}>
                 <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{y}</h2>
                 <span style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
-                  {peso(rows.filter((p) => p.status === 'completed').reduce((s, p) => s + Number(p.amount), 0))}
+                  {peso(yearTotal(y))}
                 </span>
               </div>
               <div className="noc-rows" style={{ marginTop: 4 }}>
@@ -199,6 +208,7 @@ export default function PaymentHistory() {
               </div>
             </section>
           ))}
+          <Pager page={paged.page} pages={paged.pages} total={paged.total} noun={paged.total === 1 ? 'payment' : 'payments'} onPage={paged.setPage} />
 
           <button onClick={() => navigate('/terms')} className="self-start" style={{ fontSize: 12.5, color: 'var(--color-primary-300)' }}>
             How refunds work
