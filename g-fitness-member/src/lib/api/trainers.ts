@@ -34,7 +34,7 @@ export async function updateTrainerProfile(
 ): Promise<void> {
   const { data, error } = await supabase
     .from('trainer_profiles').update(updates).eq('profile_id', id)
-    .select('id');
+    .select('profile_id');
   if (error) throw error;
   assertWrote(data, 'Those trainer details could not be saved. Please refresh and try again.');
 }

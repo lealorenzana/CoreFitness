@@ -173,6 +173,8 @@ export const resetCode = async (roomId: string) => (await rpc('reset_room_code',
 export const setArchived = (roomId: string, archived: boolean) => rpc('set_room_archived', { p_room: roomId, p_archived: archived });
 export const joinRoom = async (code: string) => (await rpc('join_room', { p_code: code.trim() })) as string;
 export const leaveRoom = (roomId: string) => rpc('leave_room', { p_room: roomId });
+/** A trainer's own coaching group, with its posts and classwork (0169). Class and 1-on-1 rooms are closed instead. */
+export const deleteRoom = (roomId: string) => rpc('delete_room', { p_room: roomId });
 export const removeFromRoom = (roomId: string, memberId: string) => rpc('remove_from_room', { p_room: roomId, p_member: memberId });
 
 // ---- classwork (0129) ------------------------------------------------------------------------

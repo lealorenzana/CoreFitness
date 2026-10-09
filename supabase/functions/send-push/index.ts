@@ -1,7 +1,14 @@
 // Sends a web push notification to every device a member has registered.
 //
-// Callable by admin, staff and trainer — the same people who can already create
-// a notification row. A member cannot push to anyone, including themselves.
+// Two ways in (2026-10-09, migration 0170):
+//   * { notificationId } — from the database trigger on `notifications`, for
+//     EVERY new row. Nothing the caller sends is trusted except the id: the row
+//     itself says who, what and where, and claim_notification_push() takes it
+//     once, while fresh. That is why the function is deployed --no-verify-jwt:
+//     the trigger can only present the project's publishable key, not a JWT.
+//   * { userId, title, ... } — the older direct call. Still requires a signed-in
+//     owner, desk or trainer of the caller's current gym (gym_roles, not the
+//     legacy profiles.role). The apps no longer use it.
 //
 // Server-side because the VAPID *private* key signs every request and must never
 // reach a browser. It lives only as an Edge Function secret, like the
@@ -41,9 +48,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Missing Authorization header" }, 401);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -55,31 +59,41 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Push is not configured: VAPID keys are not set" }, 500);
     }
 
-    // Who is calling, according to their own JWT.
-    const caller = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await caller.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Invalid session" }, 401);
-
     const admin = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("role")
-      .eq("id", userData.user.id)
-      .single();
-
-    if (!profile || !["admin", "staff", "trainer"].includes(profile.role)) {
-      return json({ error: "Not allowed" }, 403);
-    }
-
     const body = await req.json().catch(() => null);
-    const userId: string | undefined = body?.userId;
-    const title: string | undefined = body?.title;
-    const message: string | undefined = body?.body;
-    const type: string = body?.type ?? "system";
-    const url: string = body?.url ?? "/member/home";
+
+    let userId: string | undefined;
+    let title: string | undefined;
+    let message: string | undefined;
+    let type = "system";
+    let url = "/member/home";
+
+    if (typeof body?.notificationId === "string") {
+      // From the database: the row is the truth, claimed once.
+      const { data: claimed, error: claimErr } = await admin.rpc("claim_notification_push", { p_id: body.notificationId });
+      const row = Array.isArray(claimed) ? claimed[0] : claimed;
+      if (claimErr || !row) return json({ sent: 0, skipped: "already pushed, too old, or unknown" }, 200);
+      userId = row.user_id;
+      title = row.title;
+      message = row.message;
+      type = row.type ?? "system";
+      url = row.action_url ?? "/member/home";
+    } else {
+      // The older direct call: a signed-in owner, desk or trainer of their gym.
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return json({ error: "Missing Authorization header" }, 401);
+      const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+      const { data: userData, error: userErr } = await caller.auth.getUser();
+      if (userErr || !userData.user) return json({ error: "Invalid session" }, 401);
+      const { data: ctx } = await caller.rpc("my_gym_context");
+      const role = (Array.isArray(ctx) ? ctx[0] : ctx)?.role;
+      if (!["admin", "staff", "trainer"].includes(role)) return json({ error: "Not allowed" }, 403);
+      userId = body?.userId;
+      title = body?.title;
+      message = body?.body;
+      type = body?.type ?? "system";
+      url = body?.url ?? "/member/home";
+    }
 
     if (!userId || !title) return json({ error: "userId and title are required" }, 400);
 

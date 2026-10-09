@@ -298,16 +298,25 @@ export default function Members() {
       .catch(() => {});
   }, [showPendingPanel]);
 
+  const q = searchTerm.trim().toLowerCase();
+  // Only the digits typed, and only when there are some: a name has none, and
+  // every phone number "includes" the empty string — which made every member
+  // match a name search (2026-10-09).
+  const qDigits = q.replace(/\D/g, '');
+  const qCode = q.replace(/[\s-]/g, '');
+  // Word by word, so "Lea R. Lorenzana" finds "Lea Lorenzana": a middle initial
+  // (one letter) and the word order never stop a match.
+  const qWords = q.split(/[\s,.]+/).filter((w) => w.length > 1);
   const filtered = members.filter((m) => {
-    const q = searchTerm.trim().toLowerCase();
+    const hay = `${m.fullName} ${m.email}`.toLowerCase();
     // Phone and check-in code included: at a front desk the member is standing
     // there, and what they can give you is a number, not a spelling.
     const matchesSearch =
       !q ||
-      m.fullName.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      m.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
-      formatCheckInCode(m.id).toLowerCase().replace(/\s/g, '').includes(q.replace(/\s/g, ''));
+      hay.includes(q) ||
+      (qWords.length > 0 && qWords.every((w) => hay.includes(w))) ||
+      (qDigits.length >= 3 && m.phone.replace(/\D/g, '').includes(qDigits)) ||
+      (qCode.length >= 3 && formatCheckInCode(m.id).toLowerCase().replace(/\s/g, '').includes(qCode));
     const matchesAccount =
       filters.accountStatus === 'all' || m.accountStatus === filters.accountStatus;
     const matchesMembership =

@@ -190,5 +190,55 @@ await db.exec(`select sync_gym_rooms()`);
 check('a retired class archives its room', (await one(`select archived from my_rooms() where id = '${classRoom}'`)).archived === true);
 check('an archived room takes no posts', !!(await tryExec(`insert into room_posts (gym_id, room_id, body) values ('${GYM_A}', '${classRoom}', 'late')`)));
 
-console.log(failures ? `\n${failures} FAILED` : '\nall 0128 checks passed');
+// ---- 7. (0169) leave any room; come back on your own ----------------------------------------
+const sees = async (room) => (await all(`select id from my_rooms() where id = '${room}'`)).length === 1;
+await as(P.prem);
+check('0169: the trainee is in their 1-on-1 room', await sees(ptRoom));
+await db.exec(`select leave_room('${ptRoom}')`);
+check('0169: leaving a 1-on-1 room takes it off their list', !(await sees(ptRoom)));
+await asOwner();
+await db.exec(`insert into pt_sessions (gym_id, member_id, trainer_id, starts_at, created_at)
+  values ('${GYM_A}', '${P.prem}', '${P.coach}', now() + interval '3 days', now() + interval '1 minute')`);
+await as(P.prem);
+check('0169: a new session with that coach brings the room back', await sees(ptRoom));
+
+await asOwner();
+await db.exec(`update class_templates set active = true where id = 'd0000000-0000-4000-8000-000000000001'`);
+await as(P.coach);
+await db.exec(`select sync_gym_rooms()`);
+await as(P.prem);
+const inClass = await sees(classRoom);
+check('0169: the member is in the class room (a booking in the last 60 days)', inClass);
+await db.exec(`select leave_room('${classRoom}')`);
+check('0169: leaving a class room takes it off their list', !(await sees(classRoom)));
+check('0169: leaving it twice says they are not in it', /not in that room/.test(await tryExec(`select leave_room('${classRoom}')`) ?? ''));
+await asOwner();
+await db.exec(`update bookings set requested_at = now() + interval '1 minute' where member_id = '${P.prem}'
+  and class_id in (select id from classes where template_id = 'd0000000-0000-4000-8000-000000000001')`);
+await as(P.prem);
+check('0169: booking that class again brings the room back', await sees(classRoom));
+
+// ---- 8. (0169) a trainer closes any room of theirs, and the sweep leaves it closed --------------
+await as(P.coach2);
+check('0169: another trainer cannot close it', !!(await tryExec(`select set_room_archived('${classRoom}', true)`)));
+await as(P.coach);
+await db.exec(`select set_room_archived('${classRoom}', true)`);
+await db.exec(`select sync_gym_rooms()`);
+check('0169: a class room its trainer closed stays closed through the sweep', (await one(`select archived from my_rooms() where id = '${classRoom}'`)).archived === true);
+await db.exec(`select set_room_archived('${classRoom}', false)`);
+check('0169: and reopens', (await one(`select archived from my_rooms() where id = '${classRoom}'`)).archived === false);
+
+// ---- 9. (0169) a trainer deletes their own coaching group -------------------------------------
+const grp2 = (await one(`select create_group_room('Weekend runners', null) as id`)).id;
+await db.exec(`insert into room_posts (gym_id, room_id, body) values ('${GYM_A}', '${grp2}', 'First run Saturday')`);
+await as(P.prem);
+check('0169: a member cannot delete a group', !!(await tryExec(`select delete_room('${grp2}')`)));
+await as(P.coach);
+check('0169: a class room cannot be deleted, only closed', /close it instead/.test(await tryExec(`select delete_room('${classRoom}')`) ?? ''));
+await db.exec(`select delete_room('${grp2}')`);
+await asOwner();
+check('0169: deleting a group takes its posts with it', (await one(`select count(*)::int n from rooms where id = '${grp2}'`)).n === 0
+  && (await one(`select count(*)::int n from room_posts where room_id = '${grp2}'`)).n === 0);
+
+console.log(failures ? `\n${failures} FAILED` : '\nall 0128 + 0169 checks passed');
 process.exit(failures ? 1 : 0);

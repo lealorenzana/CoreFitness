@@ -9,7 +9,7 @@ import StreamTab from '../../components/rooms/StreamTab';
 import ClassworkTab from '../../components/rooms/ClassworkTab';
 import PeopleTab from '../../components/rooms/PeopleTab';
 import ProgressTab from '../../components/rooms/ProgressTab';
-import { leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
+import { deleteRoom, leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
 
 type Tab = 'stream' | 'classwork' | 'people' | 'progress';
 const KIND: Record<RoomT['kind'], string> = { class: 'Class', pt: '1-on-1', group: 'Coaching group' };
@@ -84,21 +84,41 @@ export default function Room() {
               room.commentsOn ? 'Comments are off in this room.' : 'Comments are on.')}>
             {room.commentsOn ? 'Turn comments off' : 'Turn comments on'}
           </NocButton>
-          {room.kind === 'group' && (
-            <NocButton variant="ghost" disabled={busy}
-              onClick={() => void run(() => setArchived(room.id, !room.archived),
-                room.archived ? 'The group is open again.' : 'The group is closed. It stays readable.')}>
-              {room.archived ? 'Reopen the group' : 'Close the group'}
-            </NocButton>
-          )}
         </div>
       )}
-      {tab === 'people' && mode === 'member' && room.kind === 'group' && (
-        <NocButton variant="ghost" disabled={busy}
-          onClick={() => void run(() => leaveRoom(room.id), 'You left the group.', () => navigate('/member/rooms'))}>
-          Leave the group
-        </NocButton>
-      )}
+
+      {/* Room options, on every tab (0169): leave any room; a trainer closes any
+          room of theirs and deletes their own coaching group. */}
+      <div className="flex flex-col" data-room-options style={{ gap: 8, marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--color-separator)' }}>
+        {isTrainer && (
+          <NocButton variant="ghost" disabled={busy}
+            onClick={() => void run(() => setArchived(room.id, !room.archived),
+              room.archived ? 'The room is open again.' : 'The room is closed. It stays readable, and nothing new can be posted.')}>
+            {room.archived ? 'Reopen this room' : 'Close this room'}
+          </NocButton>
+        )}
+        {isTrainer && room.kind === 'group' && (
+          <NocButton variant="ghost" disabled={busy}
+            onClick={() => {
+              if (!window.confirm(`Delete "${room.name}"? Its posts, comments and classwork are deleted too, for everyone. This cannot be undone — close it instead to keep them.`)) return;
+              void run(() => deleteRoom(room.id), 'The group was deleted.', () => navigate(fallback));
+            }}>
+            Delete this group
+          </NocButton>
+        )}
+        {mode === 'member' && (
+          <NocButton variant="ghost" disabled={busy}
+            onClick={() => {
+              const back = room.kind === 'group' ? 'You can join again with its code.'
+                : room.kind === 'class' ? 'Booking this class again brings it back.'
+                : 'Booking a new session with this coach brings it back.';
+              if (!window.confirm(`Leave "${room.name}"? It disappears from your rooms. ${back}`)) return;
+              void run(() => leaveRoom(room.id), 'You left the room.', () => navigate('/member/rooms'));
+            }}>
+            Leave this room
+          </NocButton>
+        )}
+      </div>
     </Page>
   );
 }

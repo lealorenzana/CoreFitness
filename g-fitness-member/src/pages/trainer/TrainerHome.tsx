@@ -1,4 +1,5 @@
 import { SkeletonList } from '../../components/ui/Skeleton';
+import PushPrompt from '../../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -126,6 +127,7 @@ export default function TrainerHome() {
 
   return (
     <Page>
+      <PushPrompt />
       {/* ── The lead panel ─────────────────────────────────────────────────
           What needs you, when something does (amber — something to do);
           otherwise today's next class (violet — what you have). */}

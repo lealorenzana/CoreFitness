@@ -1,4 +1,3 @@
-import { supabase } from '../supabaseClient';
 import { addNotification } from './notifications';
 
 /**
@@ -45,21 +44,10 @@ export interface NotifyInput {
 
 /** Fire-and-forget push. Swallows everything — see the note above. */
 export function pushOnly(input: NotifyInput): void {
-  void supabase.functions
-    .invoke('send-push', {
-      body: {
-        userId: input.userId,
-        title: input.title,
-        body: input.message,
-        type: input.type,
-        url: input.actionUrl ?? '/member/home',
-      },
-    })
-    .catch(() => {
-      /* Push is a courtesy. A dead endpoint, an unconfigured VAPID key, or an
-         offline device must never surface as a failure of the thing the member
-         actually did. send-push prunes dead subscriptions on its own. */
-    });
+  // Delivery moved into the database (0170): a trigger on `notifications`
+  // pushes every new row — including the many the database writes itself, which
+  // this never reached. Calling send-push here as well would push twice.
+  void input;
 }
 
 /** Write the notification row (awaited), then push (not awaited). */

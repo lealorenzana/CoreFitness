@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import PushPrompt from '../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, Lock } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -290,6 +291,7 @@ export default function Home() {
 
   return (
     <Page>
+      <PushPrompt />
       {/* Whose gym this is, on the screen a member opens every day.
 
           The logo has existed since 0067 and reached the phone in 0112, and no

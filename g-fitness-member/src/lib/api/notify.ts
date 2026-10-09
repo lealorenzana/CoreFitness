@@ -1,4 +1,3 @@
-import { supabase } from '../supabaseClient';
 
 /**
  * Best-effort push, for the trainer app.
@@ -20,17 +19,8 @@ export function pushOnly(input: {
   message: string;
   actionUrl?: string;
 }): void {
-  void supabase.functions
-    .invoke('send-push', {
-      body: {
-        userId: input.userId,
-        title: input.title,
-        body: input.message,
-        type: input.type,
-        url: input.actionUrl ?? '/member/home',
-      },
-    })
-    .catch(() => {
-      /* See above — deliberately silent. send-push prunes dead endpoints. */
-    });
+  // Delivery moved into the database (0170): a trigger on `notifications`
+  // pushes every new row — including the many the database writes itself, which
+  // this never reached. Calling send-push here as well would push twice.
+  void input;
 }
