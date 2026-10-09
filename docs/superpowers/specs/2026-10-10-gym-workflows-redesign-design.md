@@ -229,18 +229,31 @@ For 1 and 2 the owner also picks **auto-approve** or **desk approves**. Maps ont
   minimum age (C8) and the waiver are part of sign-up.
 
 ### C7. Gym equipment
-Owner manages an **Equipment** list in admin (name, category, photo, quantity, status:
-*Available / Under repair / Coming soon*). Members see it in the app (More → Equipment, and on the
-gym's page); the AI coach and the exercise library can say "this gym has it". Switch `equipment`.
+Owner manages an **Equipment** list in admin (name, category, photo, quantity, **location in the
+gym** e.g. "2nd floor, cardio zone", status: *Available / Under repair / Coming soon*). Members see
+it in the app (More → Equipment, and on the gym's page). Switch `equipment`.
+- **Linked to exercises:** each item lists the library exercises that use it ("Leg press → 3
+  exercises"); an exercise shows whether this gym has its equipment; the AI coach swaps by it (B8).
+- **Report a problem:** a member taps "Report a problem" on an item (what's wrong, optional photo);
+  the desk is notified and can mark it *Under repair*, which members then see. One open report per
+  member per item.
 
 ### C8. Day passes and walk-ins
 Owner chooses in setup:
 - **Sell day passes?** price per day; optional 5- or 10-visit pack price.
-- **Do walk-ins need the app?** *No* — the desk logs a **guest** (name, phone optional) and takes
-  cash; guests appear in attendance and cash summaries, not in member lists. *Optional* — a guest
-  can also install the app and buy/pay a day pass (GCash proof or PayMongo) and show a QR at the door.
+- **Do walk-ins need the app?** *No* — the desk types the guest's **name (+ phone, optional)** and
+  takes cash; next time typing the phone finds them, so visits add up. Guests appear in attendance
+  and cash summaries, never in member lists. *Optional* — a guest can also use the app and buy a
+  day pass there (GCash proof or PayMongo).
+- **Guests never count** toward the gym's Core Fitness member limit; the platform sees guest
+  visits as a number on Usage.
+- **A day-pass guest in the app, that day:** check in with a QR; the free tier (free library,
+  log that day's workout, gym info, equipment); **book a class that day** if the owner allows
+  guests in classes (switch); **buy a membership** in the app. **Never** coach features — no
+  coach-assigned programs, no 1-on-1 or group rooms; those are for paying members.
+- **The guest's workout log is kept** after the day ends, so joining feels like continuing:
+  it becomes their member history when they buy a plan.
 - **Nudge to a plan** after N visits in a month (owner sets N; off by default).
-- A day-pass holder in the app gets the free tier for that day plus check-in.
 - **Minimum age** to sign up: owner sets, default **16**; under 18 needs guardian consent on the waiver.
 
 ---
