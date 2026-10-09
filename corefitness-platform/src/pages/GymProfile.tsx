@@ -7,6 +7,7 @@ import GymMark from '../components/GymMark';
 import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
 import SupportDoor from '../components/SupportDoor';
+import DatePicker from '../components/DatePicker';
 import {
   addGymNote, deleteGymNote, explain, gymContacts, gymEvents, gymFeatures, gymNotes, gymWeeks, listGyms, listPayments,
   setGymBilling, setNotePinned,
@@ -128,8 +129,8 @@ export default function GymProfile() {
         {billing ? (
           <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <label htmlFor="bill-until" className="meta">Covered until</label>
-            <input id="bill-until" type="date" min={manilaDay()} value={billing.until}
-              onChange={(e) => setBilling({ ...billing, until: e.target.value })} />
+            <span style={{ width: 190 }}><DatePicker id="bill-until" mode="future" value={billing.until}
+              onChange={(v) => setBilling({ ...billing, until: v })} /></span>
             <input className="grow" value={billing.note} maxLength={300} placeholder="A note for the owner (optional)"
               onChange={(e) => setBilling({ ...billing, note: e.target.value })} aria-label="Note" />
             <button className="btn" disabled={billBusy || !billing.until} onClick={() => void (async () => {

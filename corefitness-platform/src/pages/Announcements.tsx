@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import InfoDot from '../components/InfoDot';
 import { Building2, EyeOff, History, Megaphone, Radio } from 'lucide-react';
 import Tiles from '../components/Tiles';
+import DatePicker from '../components/DatePicker';
 import {
   endAnnouncement, explain, listAnnouncements, listPlatformPlans, saveAnnouncement,
   type PlatformAnnouncement, type PlatformPlan,
@@ -99,7 +100,7 @@ export default function Announcements() {
                 {plans.filter((p) => p.is_active).map((p) => <option key={p.key} value={p.key}>Gyms on {p.name}</option>)}
               </select></div>
             <div><label htmlFor="an-ends">Ends (optional)</label>
-              <input id="an-ends" type="date" value={form.ends} onChange={(e) => setForm({ ...form, ends: e.target.value })} /></div>
+              <DatePicker id="an-ends" mode="future" placeholder="No end date" value={form.ends} onChange={(v) => setForm({ ...form, ends: v })} /></div>
           </div>
           <div style={{ marginTop: 16 }}>
             <button className="btn" type="submit" disabled={busy || !form.title.trim() || !form.body.trim()}>Announce</button>

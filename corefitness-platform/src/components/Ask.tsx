@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import DatePicker from './DatePicker';
+import type { DateMode } from '../lib/dateRules';
 
 export interface AskField {
   key: string;
   label: string;
   /** A short list makes a <select>; leaving it out makes an <input>. */
   options?: string[];
-  type?: 'text' | 'date';
+  /** A date: drawn by DatePicker under this rule (lib/dateRules.ts), never a raw date input. */
+  dateMode?: DateMode;
   placeholder?: string;
   initial?: string;
   /** Blank is refused before the call is made — 0106 refuses it again in SQL. */
@@ -64,8 +67,11 @@ export default function Ask({ title, blurb, fields, confirmLabel, onConfirm, onC
                 onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}>
                 {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
+            ) : field.dateMode ? (
+              <DatePicker id={`ask-${field.key}`} mode={field.dateMode} value={values[field.key]}
+                onChange={(v) => setValues({ ...values, [field.key]: v })} />
             ) : (
-              <input id={`ask-${field.key}`} type={field.type ?? 'text'} value={values[field.key]}
+              <input id={`ask-${field.key}`} type="text" value={values[field.key]}
                 placeholder={field.placeholder} autoFocus={field === fields[0]}
                 onChange={(e) => setValues({ ...values, [field.key]: e.target.value })} />
             )}

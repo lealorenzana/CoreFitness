@@ -5,6 +5,7 @@ import { Download, Receipt as ReceiptIcon } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import ReceiptSheet from '../components/ReceiptSheet';
 import PaymentClaims from '../components/PaymentClaims';
+import DatePicker from '../components/DatePicker';
 import {
   billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
@@ -272,18 +273,18 @@ function RecordPayment({ gym, onCancel, onDone }: {
         </div>
         <div>
           <label htmlFor="pay-on">Paid on</label>
-          <input id="pay-on" type="date" required value={form.paid_on}
-            onChange={(e) => setForm({ ...form, paid_on: e.target.value })} />
+          <DatePicker id="pay-on" mode="record" bounds={{ backDays: 62 }} value={form.paid_on}
+            onChange={(v) => setForm({ ...form, paid_on: v })} />
         </div>
         <div>
           <label htmlFor="pay-from">Covers from</label>
-          <input id="pay-from" type="date" value={form.covers_from}
-            onChange={(e) => setForm({ ...form, covers_from: e.target.value })} />
+          <DatePicker id="pay-from" mode="history" max={form.covers_until || undefined} value={form.covers_from}
+            onChange={(v) => setForm({ ...form, covers_from: v })} />
         </div>
         <div>
           <label htmlFor="pay-to">Covers until</label>
-          <input id="pay-to" type="date" required value={form.covers_until}
-            onChange={(e) => setForm({ ...form, covers_until: e.target.value })} />
+          <DatePicker id="pay-to" mode="future" value={form.covers_until}
+            onChange={(v) => setForm({ ...form, covers_until: v })} />
         </div>
         <div>
           <label htmlFor="pay-how">How it arrived</label>

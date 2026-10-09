@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BadgeCheck, Image as ImageIcon, Wallet, XCircle } from 'lucide-react';
 import Modal from './Modal';
+import DatePicker from './DatePicker';
 import {
   CHANGED, explain, paymentClaims, rejectPayment, verifyPayment, type PaymentClaim,
 } from '../lib/platform';
@@ -9,7 +10,6 @@ import {
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const day = (iso: string) => new Date(iso.length === 10 ? `${iso}T00:00:00` : iso)
   .toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
-const todayManila = () => new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
 /** One calendar month on from a YYYY-MM-DD, as dates, never through UTC. */
 const addMonths = (from: string, months: number) => {
   const [y, m, d] = from.split('-').map(Number);
@@ -112,7 +112,7 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
                 </div>
                 <div>
                   <label htmlFor="pc-until">Covers the gym until</label>
-                  <input id="pc-until" type="date" value={until} min={todayManila()} onChange={(e) => setUntil(e.target.value)} />
+                  <DatePicker id="pc-until" mode="future" value={until} onChange={setUntil} />
                 </div>
               </div>
               <button className="btn" style={{ marginTop: 12, width: '100%' }} disabled={busy || !until || !(Number(amount) > 0)}

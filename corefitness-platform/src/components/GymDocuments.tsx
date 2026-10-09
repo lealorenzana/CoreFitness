@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, FileSignature } from 'lucide-react';
 import { explain, gymTerms, publishGymTerms, SITE, type GymTermsRow } from '../lib/platform';
 import InfoDot from './InfoDot';
+import DatePicker from './DatePicker';
 
 const day = (v: string) => { const [y, m, d] = v.split('-').map(Number); return new Date(y!, (m ?? 1) - 1, d).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' }); };
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' });
@@ -56,7 +57,7 @@ export default function GymDocuments() {
           {confirming === null && (
             <div className="row" style={{ flexWrap: 'wrap', gap: 10, marginTop: 14, alignItems: 'center' }}>
               <label htmlFor="gd-version" style={{ margin: 0 }}>Version (the date at the top of the documents)</label>
-              <input id="gd-version" type="date" value={version} onChange={(e) => setVersion(e.target.value)} style={{ width: 170 }} />
+              <span style={{ width: 190 }}><DatePicker id="gd-version" mode="history" value={version} onChange={setVersion} /></span>
               <button className="btn" type="button" disabled={!version || busy || version === published} onClick={() => setConfirming('publish')}>Put in effect</button>
               {published && <button className="btn ghost" type="button" disabled={busy} onClick={() => setConfirming('withdraw')}>Set back to draft</button>}
             </div>

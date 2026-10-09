@@ -9,6 +9,7 @@ import Pagination from '../components/Pagination';
 import InfoDot from '../components/InfoDot';
 import Modal from '../components/Modal';
 import EventDetail from '../components/EventDetail';
+import DatePicker from '../components/DatePicker';
 
 const PER_PAGE = 25;
 const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -87,8 +88,8 @@ export default function Activity() {
           {families.map(([k, n]) => <option key={k} value={k}>{say(k)} — all ({n})</option>)}
           {actions.map((a) => <option key={a.action} value={a.action}>{say(a.action)} ({a.n})</option>)}
         </select>
-        <input type="date" aria-label="From" value={f.from ?? ''} max={f.to ?? undefined} onChange={(e) => set({ from: e.target.value || null })} style={{ width: 160 }} data-tip="From this Manila day" />
-        <input type="date" aria-label="To" value={f.to ?? ''} min={f.from ?? undefined} onChange={(e) => set({ to: e.target.value || null })} style={{ width: 160 }} data-tip="To this Manila day" />
+        <span style={{ width: 160 }} aria-label="From" data-tip="From this Manila day"><DatePicker mode="history" placeholder="From" value={f.from ?? ''} max={f.to ?? undefined} onChange={(v) => set({ from: v || null })} /></span>
+        <span style={{ width: 160 }} aria-label="To" data-tip="To this Manila day"><DatePicker mode="history" placeholder="To" value={f.to ?? ''} min={f.from ?? undefined} onChange={(v) => set({ to: v || null })} /></span>
         <div className="filters">
           <button type="button" onClick={() => set({ from: manilaDay(0), to: manilaDay(0) })}>Today</button>
           <button type="button" onClick={() => set({ from: manilaDay(6), to: null })}>7 days</button>

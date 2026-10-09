@@ -195,7 +195,7 @@ async (page) => {
   out.push('a payment claim with its reference: ' + (/Harbour Strength · ₱999 by GCash/.test(t) && /GC 1234 5678/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /Check it/ }).click();
   await page.locator('.proof').waitFor({ timeout: 5000 });
-  const until = await page.locator('#pc-until').inputValue();
+  const until = await page.locator('#pc-until').getAttribute('data-value') ?? '';
   out.push('covers-until continues from paid-until: ' + (until > day(12) ? until : 'MISSING ' + until));
   await page.screenshot({ path: 'shots/platform-verify-payment.png' });
   await page.getByRole('button', { name: /verify and record/ }).click();

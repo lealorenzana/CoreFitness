@@ -268,7 +268,7 @@ export default function Gyms() {
               // gym is the one on it, or the picker could not show its own value.
               { key: 'plan', label: 'Plan', initial: dialog.gym.plan,
                 options: plans.filter((p) => p.is_active || p.key === dialog.gym.plan).map((p) => p.key) },
-              { key: 'paid', label: 'Paid until', type: 'date', initial: dialog.gym.paid_until ?? '' },
+              { key: 'paid', label: 'Paid until', dateMode: 'future', initial: dialog.gym.paid_until ?? '' },
             ]}
             confirmLabel="Save"
             onCancel={close}
