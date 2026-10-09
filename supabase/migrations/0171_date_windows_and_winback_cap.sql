@@ -217,6 +217,12 @@ $$;
 drop trigger if exists winback_cap on winback_sends;
 create trigger winback_cap before insert on winback_sends for each row execute function trg_winback_cap();
 
+-- 3. The progress-photos switch says what turning it off does (it existed,
+--    nested under Progress in Your app; an owner asked for one).
+update platform_features
+   set description = 'Private progress photos a member can choose to share with a coach. Off: the album is hidden; photos already taken stay the member''s and return when it is back on.'
+ where key = 'photos';
+
 create or replace function migration_0171_applied() returns boolean
 language sql immutable as $marker$ select true $marker$;
 revoke all on function migration_0171_applied() from public, anon;

@@ -252,18 +252,26 @@ export default function Activity() {
     listActivityActors().then(setActors).catch(() => setActors([]));
   }, []);
 
-  /** Grouped by Manila calendar day, preserving the server's ordering. */
+  /**
+   * Grouped by Manila calendar day, preserving the server's ordering.
+   *
+   * A day's win-back sends are ONE line (2026-10-10). The sweep messages
+   * everyone it applies to at once, and a line per member made the log read
+   * as if the gym were messaging the same people every day — it was 64
+   * different members, once each.
+   */
   const days = useMemo(() => {
-    const out: Array<{ key: string; label: string; items: ActivityFeedRow[] }> = [];
+    const out: Array<{ key: string; label: string; items: ActivityFeedRow[]; winback: ActivityFeedRow[] }> = [];
     for (const row of rows) {
       const d = new Date(row.occurred_at);
       const key = dateKey(d);
-      const last = out[out.length - 1];
-      if (last?.key === key) last.items.push(row);
-      else out.push({ key, label: dayFmt.format(d), items: [row] });
+      let last = out[out.length - 1];
+      if (last?.key !== key) { last = { key, label: dayFmt.format(d), items: [], winback: [] }; out.push(last); }
+      if (row.action === 'winback.sent') last.winback.push(row); else last.items.push(row);
     }
     return out;
   }, [rows]);
+  const [openWinback, setOpenWinback] = useState<string | null>(null);
 
   const filtersActive = group !== null || role !== null || actorId !== '' || debounced !== '' || liveOnly;
 
@@ -457,6 +465,31 @@ export default function Activity() {
                         {day.label}
                       </p>
 
+                      {day.winback.length > 0 && (
+                        <div data-winback-group className="py-2.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                          <button type="button" className="flex items-start gap-3 w-full text-left"
+                            onClick={() => setOpenWinback(openWinback === day.key ? null : day.key)} aria-expanded={openWinback === day.key}>
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: PRIMARY_LIGHT }}>
+                              <History size={14} style={{ color: PRIMARY }} />
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-sm text-white">
+                                Win-back messages sent to {day.winback.length} {day.winback.length === 1 ? 'member' : 'members'}
+                              </span>
+                              <span className="block text-xs mt-1" style={{ color: TEXT_MUTED }}>
+                                Automatic, at most one a member a month · {openWinback === day.key ? 'hide who' : 'show who'}
+                              </span>
+                            </span>
+                          </button>
+                          {openWinback === day.key && (
+                            <ul className="mt-2 ml-11 space-y-1">
+                              {day.winback.map((w) => (
+                                <li key={w.id} className="text-xs" style={{ color: TEXT_SECOND }}>{w.summary}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
                       {day.items.map((row) => {
                         const href = activityHref(row);
                         const g = groupForAction(row.action);
