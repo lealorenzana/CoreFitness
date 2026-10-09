@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Mail, Upload, X } from 'lucide-react';
 import Button from '../components/ui/Button';
+import Pagination from '../components/ui/Pagination';
+import { PageSummary } from '../components/ui/kit';
+import { usePaged } from '../hooks/usePaged';
 import { showToast } from '../utils/toast';
 import { getGymContext } from '../lib/gymContext';
 import {
@@ -29,6 +32,7 @@ const when = (iso: string) =>
  */
 export default function Invitations() {
   const [rows, setRows] = useState<Invitation[] | null>(null);
+  const paged = usePaged(rows ?? [], 20);
   const [showDone, setShowDone] = useState(false);
   const [role, setRole] = useState<InviteRole>('member');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -294,7 +298,7 @@ export default function Invitations() {
         )}
 
         <div className="mt-3 space-y-2">
-          {rows?.map((r) => (
+          {paged.visible.map((r) => (
             <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3.5 py-2.5"
               style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
               <span className="min-w-0 flex-1">
@@ -327,6 +331,10 @@ export default function Invitations() {
             </div>
           ))}
         </div>
+        <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
+            <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="invitations" />
+            <Pagination currentPage={paged.page} totalItems={paged.total} itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+          </div>
       </div>
     </div>
   );

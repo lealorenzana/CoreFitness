@@ -5,6 +5,8 @@ import { useBranding } from '../hooks/useBranding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Pagination from '../components/ui/Pagination';
+import { usePaged } from '../hooks/usePaged';
 import { AlertTriangle, Users, Target, Activity } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { exportToCSV } from '../utils/exportUtils';
@@ -21,6 +23,7 @@ export default function Retention() {
   const years = dashboardService.getYears();
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [atRiskMembers, setAtRiskMembers] = useState<AtRiskMemberRow[]>([]);
+  const paged = usePaged(atRiskMembers, 20);
   const [summary, setSummary] = useState<RetentionSummary | null>(null);
   const [chartData, setChartData] = useState<{ month: string; rate: number }[]>([]);
   const [, setLoading] = useState(true);
@@ -214,7 +217,7 @@ export default function Retention() {
                 </tr>
               </thead>
               <tbody>
-                {atRiskMembers.map(m => (
+                {paged.visible.map(m => (
                   <tr key={m.id} style={{ borderBottom: '1px solid var(--color-border)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -261,6 +264,9 @@ export default function Retention() {
                 ))}
               </tbody>
             </table>
+            <div className="flex justify-end py-2">
+              <Pagination currentPage={paged.page} totalItems={paged.total} itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+            </div>
           </div>
         </div>
       </div>

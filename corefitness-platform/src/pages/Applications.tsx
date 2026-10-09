@@ -9,6 +9,8 @@ import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
+import Pagination from '../components/Pagination';
+import { usePaged } from '../lib/usePaged';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -40,7 +42,9 @@ export default function Applications() {
   const of = (s: Show) => (s === 'all' ? all : all.filter((a) => a.status === s));
   const waiting = of('pending');
   const oldest = waiting.reduce<Application | null>((o, a) => (!o || a.created_at < o.created_at ? a : o), null);
-  const shown = of(show).sort((a, b) => (show === 'pending' ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)));
+  const shownAll = of(show).sort((a, b) => (show === 'pending' ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)));
+  const paged = usePaged(shownAll);
+  const shown = paged.rows;
   const pick = (s: Show) => setShow(show === s ? 'all' : s);
 
   return (
@@ -115,6 +119,7 @@ export default function Applications() {
                   ) : <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : 'Turned down'}</span>}
                 </div>
               ))}
+              <Pagination page={paged.page} perPage={paged.perPage} total={paged.total} noun={paged.total === 1 ? 'application' : 'applications'} onPage={paged.setPage} />
             </div>
           )}
         </section>

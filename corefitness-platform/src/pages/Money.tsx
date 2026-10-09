@@ -6,6 +6,8 @@ import { downloadCsv } from '../lib/csv';
 import ReceiptSheet from '../components/ReceiptSheet';
 import PaymentClaims from '../components/PaymentClaims';
 import DatePicker from '../components/DatePicker';
+import Pagination from '../components/Pagination';
+import { usePaged } from '../lib/usePaged';
 import {
   billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
@@ -45,6 +47,7 @@ export default function Money() {
   const [due, setDue] = useState<GymDue[] | null>(null);
   const [revenue, setRevenue] = useState<RevenueMonth[] | null>(null);
   const [payments, setPayments] = useState<GymPayment[] | null>(null);
+  const paidPage = usePaged(payments);
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState<PlatformGym | null>(null);
@@ -173,7 +176,7 @@ export default function Money() {
         <div style={{ marginTop: 10 }}>
           {payments === null && <p className="empty">Loading…</p>}
           {payments?.length === 0 && <p className="empty">No payment has been recorded yet.</p>}
-          {payments?.map((p) => (
+          {paidPage.rows.map((p) => (
             <div className="log" key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <span style={{ flex: 1, minWidth: 0 }}>
               <strong style={{ color: 'var(--text)' }}>{peso(p.amount)}</strong>
@@ -188,6 +191,7 @@ export default function Money() {
               )}
             </div>
           ))}
+          <Pagination page={paidPage.page} perPage={paidPage.perPage} total={paidPage.total} noun={paidPage.total === 1 ? 'payment' : 'payments'} onPage={paidPage.setPage} />
         </div>
       </div>
 

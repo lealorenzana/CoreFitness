@@ -1,14 +1,6 @@
 import { supabase } from '../supabaseClient';
 import type { AttendanceRow, CheckinMethod } from '../../types/db';
 
-export async function listAttendance(gymId?: string): Promise<AttendanceRow[]> {
-  let query = supabase.from('attendance').select('*').order('check_in_time', { ascending: false });
-  if (gymId) query = query.eq('gym_id', gymId);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function listMemberAttendance(memberId: string): Promise<AttendanceRow[]> {
   const { data, error } = await supabase
     .from('attendance')

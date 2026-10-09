@@ -7,6 +7,8 @@ import {
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DatePicker from '../components/ui/DatePicker';
+import Pagination from '../components/ui/Pagination';
+import { PageSummary } from '../components/ui/kit';
 import { useGymFirstDay } from '../hooks/useGymFirstDay';
 import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import { exportToCSV } from '../utils/exportUtils';
@@ -400,17 +402,6 @@ export default function AttendanceHistory() {
               </button>
             )}
           </div>
-          {pages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}>Previous</Button>
-              <span className="text-[11px] tabular-nums" style={{ color: 'var(--color-text-muted)' }}>
-                {page} / {pages}
-              </span>
-              <Button variant="ghost" size="sm" disabled={page === pages}
-                onClick={() => setPage((p) => p + 1)}>Next</Button>
-            </div>
-          )}
         </div>
 
         {visible.length === 0 ? (
@@ -460,6 +451,10 @@ export default function AttendanceHistory() {
                 ))}
               </tbody>
             </table>
+            <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
+              <PageSummary page={Math.min(page, pages)} perPage={PAGE} total={filtered.length} noun="check-ins" />
+              <Pagination currentPage={Math.min(page, pages)} totalItems={filtered.length} itemsPerPage={PAGE} onPageChange={setPage} />
+            </div>
           </div>
         )}
       </Card>

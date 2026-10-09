@@ -17,7 +17,7 @@ import { todayKey, localDateKey, addDays } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
 import { supabase } from '../lib/supabaseClient';
 import { listMembers, type MemberWithProfile } from '../lib/api/members';
-import { listAttendance, deleteCheckIn } from '../lib/api/attendance';
+import { listAttendanceBetween, deleteCheckIn } from '../lib/api/attendance';
 import { getGymSettings } from '../lib/api/settings';
 import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
 import type { AttendanceRow } from '../types/db';
@@ -55,7 +55,9 @@ export default function Attendance() {
     try {
       const [memberRows, attendanceRows, { data: { user } }] = await Promise.all([
         listMembers(),
-        listAttendance(),
+        // The last seven days: today's log and the week's count are all this
+        // page shows. It read every check-in the gym ever had (2026-10-10).
+        listAttendanceBetween(addDays(todayKey(), -6), todayKey()),
         supabase.auth.getUser(),
       ]);
       setMembers(memberRows);

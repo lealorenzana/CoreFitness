@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Receipt } from 'lucide-react';
 import Button from '../ui/Button';
+import Pagination from '../ui/Pagination';
+import { PageSummary } from '../ui/kit';
+import { usePaged } from '../../hooks/usePaged';
 import { formatCurrency } from '../../utils/formatters';
 import { todayKey as manilaToday, addDays } from '../../utils/dates';
 import DatePicker from '../ui/DatePicker';
@@ -30,6 +33,7 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
   const firstDay = useGymFirstDay();
   const [report, setReport] = useState<ReportRow[] | null>(null);
   const [sales, setSales] = useState<Sale[] | null>(null);
+  const paged = usePaged(sales ?? [], 20);
 
   useEffect(() => {
     let alive = true;
@@ -106,8 +110,8 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
           {sales === null ? <p className="text-xs" style={{ color: MUTED }}>Loading…</p> : sales.length === 0 ? (
             <p className="text-xs py-6 text-center" style={{ color: MUTED }}>No sales in these dates.</p>
           ) : (
-            <div className="max-h-[420px] overflow-y-auto pr-1">
-              {sales.map((s) => (
+            <div>
+              {paged.visible.map((s) => (
                 <div key={s.id} className="flex items-center gap-3 py-2 text-xs" style={{ borderTop: '1px solid var(--color-border)', opacity: s.voidedAt ? 0.55 : 1 }}>
                   <span className="w-24 tabular-nums" style={{ color: MUTED }}>
                     {new Date(s.createdAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
@@ -121,6 +125,10 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
                   <Button size="sm" variant="ghost" onClick={() => onReceipt(s)} aria-label="Receipt"><Receipt size={13} /></Button>
                 </div>
               ))}
+              <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
+            <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="sales" />
+            <Pagination currentPage={paged.page} totalItems={paged.total} itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+          </div>
             </div>
           )}
         </div>

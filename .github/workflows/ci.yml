@@ -70,6 +70,8 @@ jobs:
         run: node --experimental-strip-types scripts/date-rules-check.mjs "$PWD"
       - name: Every date picker in the four apps names a mode (no raw date inputs)
         run: python3 scripts/audit-dates.py
+      - name: Every history read is paged, bounded or allowed with a reason
+        run: python3 scripts/audit-lists.py
       - name: The AI coach's pure rules (prompt, limits, stream)
         run: node --experimental-strip-types scripts/ai-coach-core.mjs
 

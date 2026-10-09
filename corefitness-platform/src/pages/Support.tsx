@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { Building2, CheckCircle2, Inbox, LifeBuoy, MessageSquareReply, Send } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import SupportGrants from '../components/SupportGrants';
+import Pagination from '../components/Pagination';
+import { usePaged } from '../lib/usePaged';
 import {
   CHANGED, explain, listTickets, replyTicket, requestTicketAccess, resolveTicket, setTicketStatus, ticketAccess, ticketThread,
   type PlatformTicket, type TicketAccess, type TicketMessage,
@@ -49,9 +51,12 @@ export default function Support() {
     finally { setBusy(false); }
   };
 
-  if (tickets === null) return <p className="empty">Loading support…</p>;
-  const shown = tickets.filter((t) => filter === 'all' ? true : filter === 'closed' ? t.status === 'closed'
+  // Paged before the early return: a hook after it would run on some renders only.
+  const shownAll = (tickets ?? []).filter((t) => filter === 'all' ? true : filter === 'closed' ? t.status === 'closed'
     : t.status !== 'closed' && t.last_from === 'gym');
+  const paged = usePaged(shownAll);
+  const shown = paged.rows;
+  if (tickets === null) return <p className="empty">Loading support…</p>;
 
   return (
     <>
@@ -79,6 +84,7 @@ export default function Support() {
               <span className="meta">{t.gym_name} · {t.opened_by_name} · {t.status === 'closed' ? 'closed' : t.last_from === 'gym' ? 'waiting for you' : 'answered'} · {when(t.updated_at)}</span>
             </button>
           ))}
+          <Pagination page={paged.page} perPage={paged.perPage} total={paged.total} noun={paged.total === 1 ? 'ticket' : 'tickets'} onPage={paged.setPage} />
         </section>
 
         <section className="card">

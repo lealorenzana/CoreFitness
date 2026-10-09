@@ -8,6 +8,8 @@ import GymMark from '../components/GymMark';
 import Tiles from '../components/Tiles';
 import InfoDot from '../components/InfoDot';
 import AiUsage from '../components/AiUsage';
+import Pagination from '../components/Pagination';
+import { usePaged } from '../lib/usePaged';
 
 /**
  * What each gym uses (0140): every gym against every feature, counted over the
@@ -49,6 +51,7 @@ export default function Usage() {
   const breadth = (gym: string) => USAGE_FEATURES.filter((f) => n(gym, f.key) > 0).length;
   const rows = [...gyms].sort((a, b) => sort === 'total' ? total(b.id) - total(a.id)
     : sort === 'breadth' ? breadth(b.id) - breadth(a.id) : n(b.id, sort) - n(a.id, sort));
+  const usagePage = usePaged(rows);
   const unused = USAGE_FEATURES.filter((f) => gyms.every((g) => n(g.id, f.key) === 0));
   const quiet = gyms.filter((g) => total(g.id) === 0 && !g.lock_reason);
   const spendOf = (gym: string) => ai?.find((a) => a.gym_id === gym)?.est_cost_usd ?? 0;
@@ -102,7 +105,7 @@ export default function Usage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((g) => (
+              {usagePage.rows.map((g) => (
                 <tr key={g.id}>
                   <td className="use-gym"><Link to={`/gyms/${g.id}`}><GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={26} /><span>{g.name}</span></Link></td>
                   {USAGE_FEATURES.map((f) => {
@@ -127,6 +130,7 @@ export default function Usage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={usagePage.page} perPage={usagePage.perPage} total={usagePage.total} noun={usagePage.total === 1 ? 'gym' : 'gyms'} onPage={usagePage.setPage} />
         {unused.length > 0 && use && use.length > 0 && (
           <p className="meta use-foot">Nobody used {unused.map((f) => f.label.toLowerCase()).join(', ')} in these {days} days — worth an announcement.</p>
         )}
