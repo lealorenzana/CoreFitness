@@ -146,9 +146,12 @@ await as(P.memberB);
 check("gym B's wall shows none of gym A's", (await count(`select * from pr_wall()`)) === 0);
 
 // ---- weekly quests ------------------------------------------------------------------------
+// A template that began ten days ago — written as the database would (0171
+// refuses a signed-in owner a start in the past).
+await asOwner();
+const tmpl = (await one(`insert into challenges (gym_id, title, metric_key, target, starts_on, ends_on, reward_points, repeats_weekly)
+  values ('${GYM_A}', 'Train once this week', 'training_days', 1, current_date - 10, current_date + 30, 50, true) returning id`)).id;
 await as(P.admin);
-const tmpl = (await one(`insert into challenges (title, metric_key, target, starts_on, ends_on, reward_points, repeats_weekly)
-  values ('Train once this week', 'training_days', 1, current_date - 10, current_date + 30, 50, true) returning id`)).id;
 await db.exec(`select roll_weekly_quests(); select roll_weekly_quests();`);
 const kids = (await db.query(`select id, starts_on, ends_on from challenges where parent_id = '${tmpl}'`)).rows;
 check("rolling twice makes one copy for this week", kids.length === 1, JSON.stringify(kids));

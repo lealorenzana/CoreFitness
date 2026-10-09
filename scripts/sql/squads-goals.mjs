@@ -128,8 +128,13 @@ await as(M[0]);
 check('a member cannot set a gym goal', !!(await tryExec(`insert into gym_goals (title, metric, target, starts_on, ends_on, reward_points)
   values ('x', 'training_days', 1, current_date, current_date + 1, 10)`)));
 await as(ADMIN);
-const goal = (await one(`insert into gym_goals (title, metric, target, starts_on, ends_on, reward_points)
-  values ('100 days in October', 'training_days', 3, current_date - 1, current_date + 5, 40) returning id`)).id;
+check('an owner cannot start a gym goal in the past (0171)', !!(await tryExec(`insert into gym_goals (title, metric, target, starts_on, ends_on, reward_points)
+  values ('Backdated', 'training_days', 3, current_date - 1, current_date + 5, 40)`)));
+// Started yesterday, so yesterday's training counts — written as the database would.
+await asOwner();
+const goal = (await one(`insert into gym_goals (gym_id, created_by, title, metric, target, starts_on, ends_on, reward_points)
+  values ('${GYM_A}', '${ADMIN}', '100 days in October', 'training_days', 3, current_date - 1, current_date + 5, 40) returning id`)).id;
+await as(ADMIN);
 await as(M[0]);
 const g = await one(`select * from current_gym_goal()`);
 check('members see the goal with its progress', g && g.title === '100 days in October' && Number(g.progress) === 3, JSON.stringify(g));
