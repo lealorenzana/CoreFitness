@@ -271,6 +271,31 @@ async (page) => {
   await page.waitForTimeout(600);
   out.push('sharing is the member\'s switch: ' + (CALLS.set_share_photos?.p_share === true && /Shared with your coaches/.test(await text()) ? 'shared' : 'MISSING'));
 
+  // ---- the date it was taken: a RECORD date (lib/dateRules.ts, 2026-10-10) ----
+  await page.getByRole('button', { name: 'Taken on' }).click();
+  await page.waitForTimeout(400);
+  const cal = await page.evaluate(() => {
+    const sheet = document.querySelector('[data-date-sheet]');
+    const next = sheet?.querySelector('button[aria-label="Next month"]');
+    const days = [...(sheet?.querySelectorAll('[data-date-days] button') ?? [])];
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const label = tomorrow.toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const tmr = days.find((d) => d.getAttribute('aria-label') === label);
+    return { sheet: !!sheet, nextDisabled: next?.disabled ?? null, tomorrowDisabled: tmr ? tmr.disabled : 'other month' };
+  });
+  out.push('taken-on opens our calendar, not the phone’s: ' + (cal.sheet ? 'yes' : 'MISSING'));
+  out.push('taken-on cannot page into next month: ' + (cal.nextDisabled ? 'yes' : 'MISSING'));
+  out.push('taken-on cannot be tomorrow: ' + (cal.tomorrowDisabled === true || cal.tomorrowDisabled === 'other month' ? 'yes' : 'MISSING'));
+  await page.locator('[data-date-header]').click();
+  await page.waitForTimeout(200);
+  const ys = await page.evaluate(() => [...document.querySelectorAll('[data-date-years] button')].map((b) => Number(b.textContent)));
+  const thisYear = new Date().getFullYear();
+  out.push('taken-on offers no future year and nothing older than a year back: '
+    + (ys.length && Math.max(...ys) === thisYear && Math.min(...ys) >= thisYear - 1 ? 'yes' : 'MISSING ' + ys.join(',')));
+  await page.getByRole('button', { name: 'Close' }).last().click();
+  await page.waitForTimeout(300);
+
   await page.getByLabel('Pose').selectOption('side');
   await page.getByLabel('Add a progress photo').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG });
   await page.waitForTimeout(1500);

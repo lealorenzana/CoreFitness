@@ -3,6 +3,7 @@ import { Camera, Lock, Trash } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip, NocButton, Panel, SectionHead } from '../components/ui/noc';
 import { Field, Select, TextInput } from '../components/ui/Field';
+import DateField from '../components/ui/DateField';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -99,7 +100,7 @@ export default function ProgressPhotos() {
             </Select>
           </Field>
           <Field label="Taken on">
-            <TextInput type="date" value={taken} max={todayKey()} aria-label="Taken on" onChange={(e) => setTaken(e.target.value)} />
+            <DateField mode="record" bounds={{ backDays: 365 }} value={taken} label="Taken on" onChange={(v) => setTaken(v || todayKey())} />
           </Field>
         </div>
         <Field label="Note (optional)">

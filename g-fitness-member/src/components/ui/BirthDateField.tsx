@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Cake } from 'lucide-react';
+import { dateBounds, withinBounds } from '../../lib/dateRules';
 
 /**
  * Day / month / year selects for a birth date.
@@ -25,10 +26,8 @@ interface Props {
   value: string;
   onChange: (next: string) => void;
   label?: string;
-  /** Youngest allowed birth year. Defaults to this year. */
-  maxYear?: number;
-  /** How far back the year list runs. */
-  yearsBack?: number;
+  /** The gym's minimum age (default 16): the youngest birth date allowed. */
+  minAge?: number;
 }
 
 const MONTHS = [
@@ -55,11 +54,15 @@ const selectStyle: React.CSSProperties = {
 };
 
 export default function BirthDateField({
-  value, onChange, label = 'Date of birth', maxYear, yearsBack = 100,
+  value, onChange, label = 'Date of birth', minAge = 16,
 }: Props) {
   const id = useId();
-  const thisYear = new Date().getFullYear();
-  const newest = maxYear ?? thisYear;
+  // 120 years back to `minAge` years ago — the birth rule in lib/dateRules.ts,
+  // which 0171 also enforces in SQL. The list never offers a future year.
+  const bounds = dateBounds('birth', { minAge });
+  const newest = Number(bounds.max.slice(0, 4));
+  const oldest = Number(bounds.min.slice(0, 4));
+  const [tooYoung, setTooYoung] = useState(false);
 
   /**
    * The three parts are held locally, not derived from `value`.
@@ -94,14 +97,20 @@ export default function BirthDateField({
     const safeDay = nd > maxDay ? maxDay : nd;
     setParts([ny, nm, safeDay]);
 
-    const next = ny && nm && safeDay
+    const full = ny && nm && safeDay
       ? `${ny}-${String(nm).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`
       : '';
+    // A date in the youngest year can still be too recent (born in December
+    // when today is October): say so, and emit nothing rather than a date the
+    // database would refuse.
+    const ok = !full || withinBounds(full, bounds);
+    setTooYoung(!ok);
+    const next = ok ? full : '';
     lastEmitted.current = next;
     onChange(next);
   };
 
-  const years = Array.from({ length: yearsBack + 1 }, (_, i) => newest - i);
+  const years = Array.from({ length: newest - oldest + 1 }, (_, i) => newest - i);
   const days = Array.from({ length: daysIn(year, month) }, (_, i) => i + 1);
 
   return (
@@ -134,6 +143,11 @@ export default function BirthDateField({
           {years.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
       </div>
+      {tooYoung && (
+        <p role="alert" style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-secondary)' }}>
+          You need to be at least {minAge} to join.
+        </p>
+      )}
     </div>
   );
 }

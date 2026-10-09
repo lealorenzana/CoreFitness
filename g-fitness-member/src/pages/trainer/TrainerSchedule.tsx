@@ -7,6 +7,7 @@ import DateRail, { buildRail } from '../../components/ui/DateRail';
 import GlassSheet from '../../components/ui/GlassSheet';
 import Modal from '../../components/ui/Modal';
 import { Field, Select, TextInput } from '../../components/ui/Field';
+import DateField from '../../components/ui/DateField';
 import { addDays, dateKey, todayKey } from '../../utils/dates';
 import { createClass, deleteClass, listTrainerClasses, updateClass } from '../../lib/api/classes';
 import { toast } from '../../components/ui/Toast';
@@ -329,7 +330,7 @@ function ClassEditor({
           ) : (
             <>
               <Field label="Day">
-                <TextInput type="date" value={day} min={todayKey()} onChange={(e) => setDay(e.target.value)} />
+                <DateField mode="future" value={day} label="Day" onChange={setDay} />
               </Field>
               <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
                 <Field label="Starts">

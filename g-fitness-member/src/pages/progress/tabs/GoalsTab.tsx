@@ -6,6 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import StepFlow, { ChoiceTile, type FlowStep } from '../../../components/ui/StepFlow';
 import { Field, TextInput } from '../../../components/ui/Field';
+import DateField from '../../../components/ui/DateField';
 import ExercisePicker from '../../../components/ui/ExercisePicker';
 import GlassSheet from '../../../components/ui/GlassSheet';
 import Modal from '../../../components/ui/Modal';
@@ -191,7 +192,7 @@ function DeadlinePicker({ value, onChange }: { value: string; onChange: (v: stri
         })}
       </div>
       <Field label="Or an exact date">
-        <TextInput type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+        <DateField mode="future" value={value} label="Target date" onChange={onChange} />
       </Field>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import GlassSheet from '../ui/GlassSheet';
 import { Chip, NocButton } from '../ui/noc';
 import { Field, Select, TextArea, TextInput } from '../ui/Field';
+import DateField from '../ui/DateField';
 import { toast } from '../ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { addDays, todayKey } from '../../utils/dates';
@@ -109,7 +110,7 @@ export default function AssignSheet({ roomId, open, onClose, onDone }: {
             placeholder="Anything they should know" />
         </Field>
         <Field label="Due" hint="On time means by the end of this day.">
-          <TextInput type="date" value={due} min={todayKey()} aria-label="Due date" onChange={(e) => setDue(e.target.value)} />
+          <DateField mode="future" value={due} label="Due date" onChange={setDue} />
         </Field>
 
         <div>

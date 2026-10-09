@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Check, Clock, FileText, PencilSimple, Plus, Trash, UploadSimple, WarningCircle, X } from '@phosphor-icons/react';
 import { TextInput } from './Field';
+import DateField from './DateField';
 import { StatusPill } from './noc';
 import {
   listMyCredentials, uploadCredential, deleteCredential, credentialUrl, updateCredentialDetails, runCredentialExpirySweep,
@@ -165,10 +166,10 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
       <TextInput value={form.credentialNumber} onChange={(e) => setForm({ ...form, credentialNumber: e.target.value })} placeholder="Certificate or licence number (optional)" aria-label="Certificate number" />
       <div className="grid grid-cols-2" style={{ gap: 8 }}>
         <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Issued
-          <TextInput type="date" value={form.issuedOn} max={todayKey()} onChange={(e) => setForm({ ...form, issuedOn: e.target.value })} aria-label="Issued on" style={{ colorScheme: 'dark', marginTop: 4 }} />
+          <span style={{ display: 'block', marginTop: 4 }}><DateField mode="record" bounds={{ backDays: 3650 }} value={form.issuedOn} label="Issued on" onChange={(v) => setForm({ ...form, issuedOn: v })} /></span>
         </label>
         <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Expires
-          <TextInput type="date" value={form.expiresOn} disabled={form.noExpiry} onChange={(e) => setForm({ ...form, expiresOn: e.target.value })} aria-label="Expires on" style={{ colorScheme: 'dark', marginTop: 4 }} />
+          <span style={{ display: 'block', marginTop: 4 }}><DateField mode="future" bounds={{ aheadDays: 3650 }} value={form.expiresOn} disabled={form.noExpiry} label="Expires on" onChange={(v) => setForm({ ...form, expiresOn: v })} /></span>
         </label>
       </div>
       <label className="flex items-center" style={{ gap: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
