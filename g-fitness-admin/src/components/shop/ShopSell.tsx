@@ -165,7 +165,8 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
                     </span>
                     <span className="w-20 text-right tabular-nums text-white font-semibold">{formatCurrency(s.total)}</span>
                     <Button size="sm" variant="ghost" onClick={() => onReceipt(s)} aria-label={`Receipt for the ${formatCurrency(s.total)} sale`}><Receipt size={13} /></Button>
-                    {!s.voidedAt && <Button size="sm" variant="ghost" disabled={busy} onClick={() => setVoiding({ id: s.id, reason: '' })}>Void</Button>}
+                    {!s.voidedAt && <Button size="sm" variant="ghost" disabled={busy} onClick={() => setVoiding({ id: s.id, reason: '' })}
+                      data-tip="Undo a mistaken sale: today only, before the drawer is closed. The stock goes back; the sale stays listed as voided.">Void</Button>}
                   </div>
                   {voiding?.id === s.id && (
                     <form className="flex items-center gap-2 mt-2" onSubmit={async (e) => {

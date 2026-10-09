@@ -59,6 +59,16 @@ export default function ShopMenu() {
               const a = AVAIL[i.availability];
               return (
                 <LineRow key={i.id} title={i.name} last={k === list.length - 1} dim={i.availability === 'sold_out'}
+                  // The product's own photo (2026-10-10: it was saved by the owner
+                  // and never shown here); a quiet tile when there is none.
+                  gutterWidth={64}
+                  gutter={i.photoUrl
+                    ? <img src={i.photoUrl} alt="" loading="lazy" data-product-photo
+                        style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} />
+                    : <span aria-hidden className="grid place-items-center"
+                        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgba(233,233,237,0.05)', color: 'var(--color-text-muted)' }}>
+                        <Storefront size={20} />
+                      </span>}
                   meta={`${peso(i.price)}${i.description ? ` · ${i.description}` : ''}`}
                   action={a ? <StatusPill label={a.label} tone={a.tone} /> : undefined} />
               );

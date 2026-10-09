@@ -120,7 +120,7 @@ async (page) => {
   const FN = {
     shop_catalog: () => [
       { id: 'p1', name: 'Water 500ml', category: 'Drinks', description: null, price: 20, photo_url: null, availability: 'in_stock' },
-      { id: 'p2', name: 'Whey scoop', category: 'Supplements', description: 'Chocolate', price: 60, photo_url: null, availability: 'low' },
+      { id: 'p2', name: 'Whey scoop', category: 'Supplements', description: 'Chocolate', price: 60, photo_url: 'https://ifwxtekyjgeljerslnzr.supabase.co/storage/v1/object/public/media/gyms/g1/content/whey.jpg', availability: 'low' },
       { id: 'p4', name: 'Pre-workout', category: 'Supplements', description: null, price: 80, photo_url: null, availability: 'sold_out' },
     ],
   };
@@ -226,6 +226,9 @@ async (page) => {
   const t = await text();
   out.push('the menu by category: ' + (/Drinks/.test(t) && /Supplements/.test(t) && /Water 500ml/.test(t) && /₱20/.test(t) ? 'shown' : 'MISSING'));
   out.push('availability, not counts: ' + (/Only a few left/.test(t) && /Sold out/.test(t) && !/\d+ left/.test(t) ? 'shown' : 'MISSING'));
+  // The owner's product photo reaches the member (2026-10-10); a product without one gets a quiet tile.
+  const photos = await page.locator('img[data-product-photo]').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+  out.push('a product photo is shown: ' + (photos.length === 1 && /whey\.jpg$/.test(photos[0]) ? 'yes' : 'MISSING ' + JSON.stringify(photos)));
   out.push('pay at the desk, no ordering: ' + (/Pay at the front desk/.test(t) && (await page.getByRole('button', { name: /buy|order|cart/i }).count()) === 0 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-shop.png' });
   return out.join('\n');

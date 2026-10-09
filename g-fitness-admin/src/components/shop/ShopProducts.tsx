@@ -111,11 +111,11 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Whey scoop" aria-label="Product name"
                   className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
               </Labelled>
-              <Labelled label="Price (₱)">
+              <Labelled label="Price (₱)" tip="What the desk charges and members see. The database keeps the price — the till cannot type a different one.">
                 <input value={form.price} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value.replace(/[^0-9.]/g, '') })}
                   placeholder="e.g. 100" aria-label="Price" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
               </Labelled>
-              <Labelled label="Category">
+              <Labelled label="Category" tip="Groups the menu in the members' app and the till, e.g. Drinks, Supplements, Rentals.">
                 <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Drinks" aria-label="Category"
                   list="shop-categories" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
                 <datalist id="shop-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
@@ -132,24 +132,24 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                   aria-label="Description" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
               </Labelled>
               {form.trackStock && (form.id ? (
-                <Labelled label="In stock now" span={2}>
+                <Labelled label="In stock now" span={2} tip="Changes only through sales, Delivery and Count — never typed over, so every change has a reason.">
                   <p className="h-9 flex items-center text-xs text-white">{form.stock} — change it with Delivery or Count</p>
                 </Labelled>
               ) : (
-                <Labelled label="How many you have now" span={2}>
+                <Labelled label="How many you have now" span={2} tip="Your opening count. After this, stock moves only with sales, deliveries and shelf counts.">
                   <input value={form.opening} inputMode="numeric" onChange={(e) => setForm({ ...form, opening: e.target.value.replace(/\D/g, '') })}
                     placeholder="e.g. 24" aria-label="How many you have now" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
                 </Labelled>
               ))}
               {form.trackStock && (
-                <Labelled label="Warn me when down to" span={2}>
+                <Labelled label="Warn me when down to" span={2} tip="At or below this number the product is marked Running low here, and members see “Only a few left”.">
                   <input value={form.lowStockAt} inputMode="numeric" onChange={(e) => setForm({ ...form, lowStockAt: e.target.value.replace(/\D/g, '') })}
                     aria-label="Warn me when down to" className="w-full h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
                 </Labelled>
               )}
               <div className="col-span-2 lg:col-span-4 flex flex-wrap gap-4 text-xs text-white">
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock <span style={{ color: MUTED }}>(untick for services like towel rental)</span></label>
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={form.shownInApp} onChange={(e) => setForm({ ...form, shownInApp: e.target.checked })} /> Show in members' app</label>
+                <label className="flex items-center gap-1.5" data-tip="Off for things you never run out of — towel rental, locker for the day."><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock <span style={{ color: MUTED }}>(untick for services like towel rental)</span></label>
+                <label className="flex items-center gap-1.5" data-tip="Members see the name, photo, price and whether it is available — never how many you have."><input type="checkbox" checked={form.shownInApp} onChange={(e) => setForm({ ...form, shownInApp: e.target.checked })} /> Show in members' app</label>
               </div>
             </div>
           </div>
@@ -208,7 +208,7 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                     <p className="text-sm font-bold tabular-nums" style={{ color: isLow ? 'var(--color-secondary)' : 'var(--color-text)' }}>
                       {p.trackStock ? p.stock : '—'}
                     </p>
-                    <p className="text-[11px]" style={{ color: MUTED }}>{p.trackStock ? 'in stock' : 'not counted'}</p>
+                    <p className="text-[11px]" style={{ color: MUTED }} data-tip={p.trackStock ? 'How many the database says you have, after every sale and stock change' : 'Stock is not counted for this one'}>{p.trackStock ? 'in stock' : 'not counted'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap text-[11px]" style={{ color: MUTED }}>
@@ -219,12 +219,13 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                 {owner && (
                   <div className="flex gap-1 flex-wrap">
                     {p.trackStock && p.active && (<>
-                      <Button size="sm" variant="ghost" onClick={() => setStockFor({ p, reason: 'delivery', qty: '', note: '' })}>Delivery</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setStockFor({ p, reason: 'count', qty: String(p.stock), note: '' })}>Count</Button>
+                      <Button size="sm" variant="ghost" data-tip="Stock arrived: adds to what you have" onClick={() => setStockFor({ p, reason: 'delivery', qty: '', note: '' })}>Delivery</Button>
+                      <Button size="sm" variant="ghost" data-tip="You counted the shelf: sets the number to what is really there, and records the difference" onClick={() => setStockFor({ p, reason: 'count', qty: String(p.stock), note: '' })}>Count</Button>
                     </>)}
                     <Button size="sm" variant="ghost" onClick={() => setForm({ id: p.id, name: p.name, category: p.category, description: p.description ?? '', price: String(p.price),
                       photoUrl: p.photoUrl, trackStock: p.trackStock, lowStockAt: String(p.lowStockAt), shownInApp: p.shownInApp, opening: '', stock: p.stock })}>Edit</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => onToggle(p)}>{p.active ? 'Retire' : 'Restore'}</Button>
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => onToggle(p)}
+                      data-tip={p.active ? 'Stop selling it. Past sales and receipts keep it; you can restore it later.' : 'Put it back on sale'}>{p.active ? 'Retire' : 'Restore'}</Button>
                   </div>
                 )}
               </div>
@@ -236,12 +237,16 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
   );
 }
 
-function Labelled({ label, span = 1, children }: { label: string; span?: 1 | 2 | 4; children: React.ReactNode }) {
+function Labelled({ label, span = 1, tip, children }: { label: string; span?: 1 | 2 | 4; tip?: string; children: React.ReactNode }) {
   // Literal classes only: Tailwind emits CSS for names it can read in the source.
   const cls = span === 4 ? 'col-span-2 lg:col-span-4' : span === 2 ? 'col-span-2' : 'col-span-1';
   return (
     <label className={`block ${cls}`}>
-      <span className="block text-[11px] font-semibold uppercase mb-1" style={{ color: MUTED }}>{label}</span>
+      <span className="flex items-center gap-1 text-[11px] font-semibold uppercase mb-1" style={{ color: MUTED }}>
+        {label}
+        {tip && <span data-tip={tip} aria-hidden className="inline-grid place-items-center w-3.5 h-3.5 rounded-full text-[9px] normal-case cursor-help"
+          style={{ border: `1px solid ${MUTED}` }}>?</span>}
+      </span>
       {children}
     </label>
   );
