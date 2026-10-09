@@ -8,6 +8,7 @@ import GymGoalSection from '../components/GymGoalSection';
 import { PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard } from '../components/ui/kit';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
+import DatePicker from '../components/ui/DatePicker';
 
 /**
  * Gym challenges (migration 0052).
@@ -408,15 +409,17 @@ export default function Challenges() {
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Starts</span>
-              <input type="date" value={form.starts_on} onChange={(e) => setForm({ ...form, starts_on: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
+              <div className="mt-1">
+                <DatePicker mode="future" value={form.starts_on}
+                  onChange={(v) => setForm({ ...form, starts_on: v, ends_on: form.ends_on && v && form.ends_on < v ? '' : form.ends_on })} />
+              </div>
             </label>
             <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Ends</span>
-              <input type="date" value={form.ends_on} onChange={(e) => setForm({ ...form, ends_on: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg text-xs text-white mt-1"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
+              <div className="mt-1">
+                <DatePicker mode="future" min={form.starts_on || undefined} value={form.ends_on}
+                  onChange={(v) => setForm({ ...form, ends_on: v })} />
+              </div>
             </label>
             <label className="block">
               <span className="text-[10px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Points</span>

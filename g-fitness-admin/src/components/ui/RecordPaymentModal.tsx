@@ -25,6 +25,7 @@ import type { MemberPlanInfo } from '../../pages/Payments';
 // UTC+8, so for the first two hours of every business day the ISO date is
 // yesterday — and this value is written straight to payments.paid_on.
 import { todayKey } from '../../utils/dates';
+import DatePicker from './DatePicker';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -364,14 +365,15 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                     <Calendar size={16} />
                     Payment Date
                   </label>
-                  <Input
-                    type="date"
+                  {/* Cash received this month: never a future day, never before the 1st (0171). */}
+                  <DatePicker
+                    mode="record"
+                    bounds={{ earliest: todayKey().slice(0, 8) + '01' }}
                     value={formData.date}
-                    onChange={(e) => {
-                      setFormData({ ...formData, date: e.target.value });
+                    onChange={(v) => {
+                      setFormData({ ...formData, date: v });
                       if (errors.date) setErrors({ ...errors, date: '' });
                     }}
-                    className={errors.date ? 'border-red-500' : ''}
                   />
                   {errors.date && (
                     <p className="text-yellow text-xs mt-1">{errors.date}</p>

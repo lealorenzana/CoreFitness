@@ -3,6 +3,7 @@ import { Copy, Send, Wallet } from 'lucide-react';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { showToast } from '../utils/toast';
+import DatePicker from './ui/DatePicker';
 import { todayKey } from '../utils/dates';
 import { claimPayment, myPaymentClaims, payOptions, type PayOption, type PaymentClaim } from '../lib/api/subscription';
 
@@ -124,8 +125,8 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
               </select></label>
             <label className="text-xs" style={{ color: MUTED }}>Amount sent (₱)
               <input className={input + ' mt-1'} style={inputStyle} type="number" min={1} step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-            <label className="text-xs" style={{ color: MUTED }}>Day you sent it
-              <input className={input + ' mt-1'} style={inputStyle} type="date" required value={paidOn} max={todayKey()} onChange={(e) => setPaidOn(e.target.value)} /></label>
+            <div className="text-xs" style={{ color: MUTED }}>Day you sent it
+              <div className="mt-1"><DatePicker mode="record" bounds={{ backDays: 62 }} value={paidOn} onChange={setPaidOn} /></div></div>
             <label className="text-xs" style={{ color: MUTED }}>Reference number
               <input className={input + ' mt-1'} style={inputStyle} required minLength={4} maxLength={60} placeholder="From your GCash or bank receipt"
                 value={reference} onChange={(e) => setReference(e.target.value)} /></label>

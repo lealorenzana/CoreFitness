@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { UsersRound } from 'lucide-react';
 import Card from './ui/Card';
+import DatePicker from './ui/DatePicker';
 import Button from './ui/Button';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -144,10 +145,14 @@ export default function GymGoalSection() {
           inputMode="numeric" aria-label="Goal target" className="h-9 px-3 rounded-lg text-xs text-white" style={FIELD} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" value={form.starts_on} onChange={(e) => setForm({ ...form, starts_on: e.target.value })} aria-label="Goal starts"
-          className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD} />
-        <input type="date" value={form.ends_on} onChange={(e) => setForm({ ...form, ends_on: e.target.value })} aria-label="Goal ends"
-          className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD} />
+        <div className="w-44" aria-label="Goal starts">
+          <DatePicker mode="future" value={form.starts_on} placeholder="Starts"
+            onChange={(v) => setForm({ ...form, starts_on: v, ends_on: form.ends_on && v && form.ends_on < v ? '' : form.ends_on })} />
+        </div>
+        <div className="w-44" aria-label="Goal ends">
+          <DatePicker mode="future" min={form.starts_on || undefined} value={form.ends_on} placeholder="Ends"
+            onChange={(v) => setForm({ ...form, ends_on: v })} />
+        </div>
         <input value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: e.target.value.replace(/[^0-9]/g, '') })}
           inputMode="numeric" aria-label="Reward points" className="h-9 px-3 rounded-lg text-xs text-white w-20" style={FIELD} />
         <span className="text-[10px]" style={{ color: MUTED }}>points each</span>

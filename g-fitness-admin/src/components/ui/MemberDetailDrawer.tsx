@@ -6,6 +6,8 @@ import {
   Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, FileCheck, Trash2, Banknote, Pause, Play, Ban,
 } from 'lucide-react';
 import Avatar from './Avatar';
+import DatePicker from './DatePicker';
+import { todayKey } from '../../utils/dates';
 import Badge from './Badge';
 import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
@@ -812,9 +814,7 @@ function RecordPaymentInline({
         </div>
         <div>
           <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Date received</label>
-          <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl text-white text-xs"
-            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+          <DatePicker mode="record" bounds={{ earliest: todayKey().slice(0, 8) + '01' }} value={paidOn} onChange={(v) => v && setPaidOn(v)} />
         </div>
       </div>
       <div>

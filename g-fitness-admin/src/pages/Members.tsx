@@ -1150,7 +1150,7 @@ function EditMemberForm({
           options={[{ value: '', label: 'Not set' }, ...EXPERIENCE_LEVELS.map((l) => ({ value: l, label: l }))]} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DateField label="Date of birth" value={form.dateOfBirth}
+        <BirthField label="Date of birth" value={form.dateOfBirth}
           onChange={(v) => setForm({ ...form, dateOfBirth: v })} max={todayKey()} />
         <SelectField label="Gender" value={form.gender} onChange={(v) => setForm({ ...form, gender: v })} options={GENDERS} />
       </div>
@@ -1245,12 +1245,12 @@ function Field({ label, value, onChange, placeholder, required, hint, error, typ
  * `startView="year"` because this is a birth date: paging back from this month
  * to 1998 is 300-odd clicks, so it opens on the year grid instead.
  */
-function DateField({ label, value, onChange, max, hint }: {
+function BirthField({ label, value, onChange, max, hint }: {
   label: string; value: string; onChange: (v: string) => void; max?: string; hint?: string;
 }) {
   return (
     <FormField label={label} hint={hint}>
-      <DatePicker value={value} max={max} onChange={onChange} startView="year"
+      <DatePicker mode="birth" value={value} max={max} onChange={onChange} startView="year"
         placeholder="Not on file" />
     </FormField>
   );

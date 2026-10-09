@@ -7,6 +7,7 @@ import {
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DatePicker from '../components/ui/DatePicker';
+import { useGymFirstDay } from '../hooks/useGymFirstDay';
 import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import { exportToCSV } from '../utils/exportUtils';
 import { listAttendanceBetween } from '../lib/api/attendance';
@@ -63,6 +64,7 @@ const ATTENDANCE_TABS = [
 export default function AttendanceHistory() {
   const [from, setFrom] = useState(manilaDate(-29));
   const [to, setTo] = useState(manilaDate());
+  const firstDay = useGymFirstDay();
   const [preset, setPreset] = useState<Preset>('30');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
@@ -240,12 +242,12 @@ export default function AttendanceHistory() {
           </div>
           <label className="w-40">
             <span className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>From</span>
-            <DatePicker value={from} max={to}
+            <DatePicker mode="history" bounds={{ earliest: firstDay }} value={from} max={to}
               onChange={(v) => { setFrom(v || from); setPreset('custom'); }} />
           </label>
           <label className="w-40">
             <span className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>To</span>
-            <DatePicker value={to} min={from} max={manilaDate()}
+            <DatePicker mode="history" bounds={{ earliest: firstDay }} value={to} min={from}
               onChange={(v) => { setTo(v || to); setPreset('custom'); }} />
           </label>
         </div>

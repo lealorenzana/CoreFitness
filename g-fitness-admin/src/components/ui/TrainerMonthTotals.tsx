@@ -4,6 +4,23 @@ import Button from './Button';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/exportUtils';
 import { todayKey } from '../../utils/dates';
+import { useGymFirstDay } from '../../hooks/useGymFirstDay';
+
+/** 'YYYY-MM' from this month back to the gym's first (or 24 months when unknown). */
+function monthsSince(first: string | undefined, today: string): string[] {
+  const out: string[] = [];
+  let y = Number(today.slice(0, 4)); let m = Number(today.slice(5, 7));
+  const stop = first ? first.slice(0, 7) : '';
+  for (let i = 0; i < 120; i++) {
+    const k = `${y}-${String(m).padStart(2, '0')}`;
+    out.push(k);
+    if ((stop && k <= stop) || (!stop && i === 23)) break;
+    m -= 1; if (m === 0) { m = 12; y -= 1; }
+  }
+  return out;
+}
+const fmtMonth = (k: string) => new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, 1)
+  .toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
 
 interface Row {
   trainer_id: string; first_name: string; last_name: string;
@@ -22,6 +39,7 @@ interface Row {
  */
 export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [month, setMonth] = useState(() => todayKey().slice(0, 7));
+  const firstDay = useGymFirstDay();
   const [rows, setRows] = useState<Row[] | null | undefined>(undefined);
   const [ptRate, setPtRate] = useState('');
   const [classRate, setClassRate] = useState('');
@@ -70,9 +88,13 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
         </div>
       }>
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <input type="month" value={month} max={todayKey().slice(0, 7)} onChange={(e) => setMonth(e.target.value)}
+        {/* A month that happened: the gym's first month … this month, never a year
+            nobody worked in (the native month input offered any). */}
+        <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"
           className="h-9 rounded-lg px-2.5 text-xs text-white outline-none"
-          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
+          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', colorScheme: 'dark' }}>
+          {monthsSince(firstDay, todayKey()).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+        </select>
         {[['Per PT session ₱', ptRate, setPtRate], ['Per class led ₱', classRate, setClassRate]].map(([label, v, set]) => (
           <label key={label as string} className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
             {label as string}

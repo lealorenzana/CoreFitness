@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Popover from './Popover';
+import { boundsHint, dateBounds, narrow, type BoundOpts, type DateMode } from '../../lib/dateRules';
 
 /**
  * Our own calendar, because the native one cannot be designed.
@@ -13,6 +14,14 @@ import Popover from './Popover';
  *
  * The value stays a plain **'YYYY-MM-DD' string**, identical to what
  * `<input type="date">` produced, so nothing downstream changes.
+ *
+ * ## Every picker names a mode (2026-10-10)
+ *
+ * It accepted any year, so a gym-wide goal could start in 2002. `mode` comes
+ * from `lib/dateRules.ts` — future (the default use: bookings, events, goals),
+ * record (something that already happened), history (looking back) or birth —
+ * and `min`/`max` only narrow it further. Years outside it are not offered and
+ * the month arrows stop at its edges; 0171 refuses the same windows in SQL.
  *
  * Dates are built and compared as local Y/M/D parts throughout. `new
  * Date('2026-08-19')` parses as **UTC midnight**, which in Manila is 8am the
@@ -55,7 +64,11 @@ export interface DatePickerProps {
   /** 'YYYY-MM-DD', or '' for empty. */
   value: string;
   onChange: (value: string) => void;
-  /** Inclusive bounds, 'YYYY-MM-DD'. Out-of-range days are shown but disabled. */
+  /** Which dates make sense here — see lib/dateRules.ts. Required. */
+  mode: DateMode;
+  /** Options for the mode (record window, the gym's first day, minimum age). */
+  bounds?: BoundOpts;
+  /** Narrows the mode further, inclusive 'YYYY-MM-DD' (e.g. an end never before its start). */
   min?: string;
   max?: string;
   placeholder?: string;
@@ -64,19 +77,24 @@ export interface DatePickerProps {
 }
 
 export default function DatePicker({
-  value, onChange, min, max, placeholder = 'Select a date', startView = 'month',
+  value, onChange, mode, bounds, min: minProp, max: maxProp, placeholder = 'Select a date', startView = 'month',
 }: DatePickerProps) {
+  const { min, max } = narrow(dateBounds(mode, bounds), minProp, maxProp);
   const [open, setOpen] = useState(false);
   const [showYears, setShowYears] = useState(startView === 'year');
   const anchorRef = useRef<HTMLButtonElement>(null);
 
   const selected = parse(value);
   const today = parse(todayKey())!;
-  // The month on screen: the selected date's, else today's.
-  const [view, setView] = useState(() => ({
-    y: selected?.y ?? today.y,
-    m: selected?.m ?? today.m,
-  }));
+  // The month on screen: the selected date's, else today's — or the nearest
+  // edge of the window when today is outside it (a birth date opens at the
+  // youngest allowed year, not on a month where every day is greyed out).
+  const [view, setView] = useState(() => {
+    if (selected) return { y: selected.y, m: selected.m };
+    const k = todayKey();
+    const at = k < min ? parse(min)! : k > max ? parse(max)! : today;
+    return { y: at.y, m: at.m };
+  });
 
   const cells = useMemo(() => {
     const firstDow = new Date(view.y, view.m, 1).getDay();
@@ -101,7 +119,7 @@ export default function DatePicker({
       return {
         ...c,
         k,
-        disabled: (min != null && k < min) || (max != null && k > max),
+        disabled: k < min || k > max,
         isToday: k === todayKey(),
         isSelected: k === value,
       };
@@ -109,12 +127,12 @@ export default function DatePicker({
   }, [view, value, min, max]);
 
   const years = useMemo(() => {
-    const from = min ? Number(min.slice(0, 4)) : today.y - 100;
-    const to = max ? Number(max.slice(0, 4)) : today.y + 10;
+    const from = Number(min.slice(0, 4));
+    const to = Number(max.slice(0, 4));
     const list: number[] = [];
     for (let y = to; y >= from; y--) list.push(y);
     return list;
-  }, [min, max, today.y]);
+  }, [min, max]);
 
   const pick = (k: string) => {
     onChange(k);
@@ -128,6 +146,11 @@ export default function DatePicker({
       return { y: next.getFullYear(), m: next.getMonth() };
     });
   };
+  // The arrows stop at the mode's edges: paging into a month where every day
+  // is greyed out only looks broken.
+  const viewKey = `${view.y}-${String(view.m + 1).padStart(2, '0')}`;
+  const canPrev = viewKey > min.slice(0, 7);
+  const canNext = viewKey < max.slice(0, 7);
 
   return (
     <>
@@ -156,8 +179,8 @@ export default function DatePicker({
               {MONTHS[view.m]} {view.y}
             </button>
             <div className="flex items-center gap-1">
-              <IconBtn onClick={() => step(-1)} label="Previous month"><ChevronLeft size={14} /></IconBtn>
-              <IconBtn onClick={() => step(1)} label="Next month"><ChevronRight size={14} /></IconBtn>
+              <IconBtn onClick={() => step(-1)} disabled={!canPrev} label="Previous month"><ChevronLeft size={14} /></IconBtn>
+              <IconBtn onClick={() => step(1)} disabled={!canNext} label="Next month"><ChevronRight size={14} /></IconBtn>
             </div>
           </div>
 
@@ -165,7 +188,13 @@ export default function DatePicker({
             <div className="grid grid-cols-4 gap-1 max-h-[212px] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
               {years.map((y) => (
                 <button key={y} type="button"
-                  onClick={() => { setView((v) => ({ ...v, y })); setShowYears(false); }}
+                  onClick={() => {
+                    // Land on a month inside the window, not January of a year that starts in June.
+                    const m = `${y}` === min.slice(0, 4) ? Math.max(view.m, Number(min.slice(5, 7)) - 1)
+                      : `${y}` === max.slice(0, 4) ? Math.min(view.m, Number(max.slice(5, 7)) - 1) : view.m;
+                    setView({ y, m });
+                    setShowYears(false);
+                  }}
                   className="py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
                   style={{
                     background: y === view.y ? 'var(--color-primary)' : 'transparent',
@@ -215,6 +244,9 @@ export default function DatePicker({
             </>
           )}
 
+          <p className="mt-2 text-[10px] text-center" data-date-hint style={{ color: 'var(--color-text-muted)' }}>
+            {boundsHint(mode, { min, max })}
+          </p>
           <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
             <button type="button" onClick={() => { onChange(''); setOpen(false); }}
               className="text-[10px] font-semibold px-2 py-1 rounded-lg"
@@ -224,7 +256,7 @@ export default function DatePicker({
             <button type="button"
               onClick={() => {
                 const k = todayKey();
-                if ((min && k < min) || (max && k > max)) {
+                if (k < min || k > max) {
                   // Jump the view there anyway — refusing silently looks broken.
                   setView({ y: today.y, m: today.m });
                   return;
@@ -242,10 +274,10 @@ export default function DatePicker({
   );
 }
 
-function IconBtn({ onClick, label, children }: { onClick: () => void; label: string; children: React.ReactNode }) {
+function IconBtn({ onClick, label, disabled, children }: { onClick: () => void; label: string; disabled?: boolean; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} data-tip={label} aria-label={label}
-      className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
+    <button type="button" onClick={onClick} data-tip={label} aria-label={label} disabled={disabled}
+      className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
       {children}
     </button>

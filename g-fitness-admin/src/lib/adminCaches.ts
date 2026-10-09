@@ -3,6 +3,7 @@ import { clearGymContext } from './gymContext';
 import { clearBrandingCache } from '../hooks/useBranding';
 import { clearGymWordsCache } from '../hooks/useGymWords';
 import { clearGymModulesCache } from '../hooks/useGymModules';
+import { clearGymFirstDayCache } from '../hooks/useGymFirstDay';
 
 /**
  * Every in-memory cache that belongs to *one gym*, emptied — the admin twin of
@@ -37,6 +38,7 @@ export function clearAdminCaches(): void {
   clearBrandingCache();
   clearGymWordsCache();
   clearGymModulesCache();
+  clearGymFirstDayCache();
 }
 
 /** `undefined` until Supabase has said who is signed in at all. */

@@ -9,7 +9,6 @@ import Button from '../ui/Button';
 import { createMember, isEmailTaken, isPhoneTaken, updateMemberProfile } from '../../lib/api/members';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { showToast } from '../../utils/toast';
-import { todayKey } from '../../utils/dates';
 import type { MembershipPlanRow } from '../../types/db';
 
 const STEPS = ['Who they are', 'Their login', 'Training and safety', 'Membership'];
@@ -156,7 +155,7 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
         </StepField>
         <div className="grid grid-cols-2 gap-3">
           <StepField label="Birthday">
-            <DatePicker value={f.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} max={todayKey()} startView="year" placeholder="Pick a date" />
+            <DatePicker mode="birth" value={f.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} startView="year" placeholder="Pick a date" />
           </StepField>
           <StepField label="Gender">
             <ChipPick ariaLabel="Gender" value={f.gender} options={GENDERS} onChange={(v) => set('gender', v)} />

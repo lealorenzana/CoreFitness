@@ -3,10 +3,11 @@ import { Receipt } from 'lucide-react';
 import Button from '../ui/Button';
 import { formatCurrency } from '../../utils/formatters';
 import { todayKey as manilaToday, addDays } from '../../utils/dates';
+import DatePicker from '../ui/DatePicker';
+import { useGymFirstDay } from '../../hooks/useGymFirstDay';
 import { salesBetween, shopReport, type ReportRow, type Sale } from '../../lib/api/shop';
 
 const MUTED = 'var(--color-text-muted)';
-const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' };
 const PANEL = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
 
 type Preset = 'today' | 'week' | 'month' | 'last' | 'custom';
@@ -26,6 +27,7 @@ function rangeFor(p: Preset): { from: string; to: string } {
 export default function ShopSales({ refresh, onReceipt }: { refresh: number; onReceipt: (s: Sale) => void }) {
   const [preset, setPreset] = useState<Preset>('month');
   const [range, setRange] = useState(rangeFor('month'));
+  const firstDay = useGymFirstDay();
   const [report, setReport] = useState<ReportRow[] | null>(null);
   const [sales, setSales] = useState<Sale[] | null>(null);
 
@@ -56,9 +58,9 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
         ))}
         {preset === 'custom' && (
           <span className="flex items-center gap-2">
-            <input type="date" value={range.from} aria-label="From" onChange={(e) => setRange({ ...range, from: e.target.value })} className="h-8 px-2 rounded-lg text-xs text-white" style={FIELD} />
+            <span className="w-40" aria-label="From"><DatePicker mode="history" bounds={{ earliest: firstDay }} max={range.to || undefined} value={range.from} onChange={(v) => v && setRange({ ...range, from: v })} /></span>
             <span className="text-xs" style={{ color: MUTED }}>to</span>
-            <input type="date" value={range.to} aria-label="To" onChange={(e) => setRange({ ...range, to: e.target.value })} className="h-8 px-2 rounded-lg text-xs text-white" style={FIELD} />
+            <span className="w-40" aria-label="To"><DatePicker mode="history" bounds={{ earliest: firstDay }} min={range.from || undefined} value={range.to} onChange={(v) => v && setRange({ ...range, to: v })} /></span>
           </span>
         )}
       </div>

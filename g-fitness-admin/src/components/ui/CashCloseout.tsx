@@ -4,6 +4,7 @@ import Button from './Button';
 import { Section } from './kit';
 import { showToast } from '../../utils/toast';
 import { todayKey } from '../../utils/dates';
+import DatePicker from './DatePicker';
 import { supabase } from '../../lib/supabaseClient';
 import { cashDay, closeCashDay, recentCloseouts, type CashDay, type Closeout } from '../../lib/api/cash';
 
@@ -92,9 +93,9 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
     <Section title="End of day" icon={Wallet}
       hint="Count the drawer, type the total, close the day. The expected amount is worked out by the database."
       actions={
-        <input type="date" value={day} max={todayKey()} onChange={(e) => { setDay(e.target.value); setRedo(false); }}
-          className="h-9 rounded-lg px-2.5 text-xs text-white outline-none"
-          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', colorScheme: 'dark' }} />
+        <div className="w-44">
+          <DatePicker mode="record" bounds={{ backDays: 7 }} value={day} onChange={(v) => { if (v) { setDay(v); setRedo(false); } }} />
+        </div>
       }>
       {summary === undefined ? (
         <div className="h-24 rounded-lg animate-pulse" style={{ background: 'var(--color-surface-raised)' }} />

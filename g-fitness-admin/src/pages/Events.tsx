@@ -75,12 +75,6 @@ function splitTimestamp(iso: string): { date: string; time: string } {
   };
 }
 
-/** Today as YYYY-MM-DD, for the date picker's floor. Never toISOString(). */
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 /**
  * When the event finishes, from the start time and duration.
  *
@@ -552,7 +546,7 @@ export default function Events() {
                           drops a white Chrome-styled calendar over the app and
                           `color-scheme` is the only thing CSS can change about it. */}
                       <FormField label="Date" required error={errors.date}>
-                        <DatePicker value={form.date} min={editing ? undefined : todayKey()}
+                        <DatePicker mode="future" value={form.date}
                           onChange={(v) => setForm({ ...form, date: v })} />
                       </FormField>
                       <FormField label="Start time" required error={errors.time}>
