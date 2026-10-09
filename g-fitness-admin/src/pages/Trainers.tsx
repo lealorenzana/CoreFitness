@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import AddTrainerWizard from '../components/trainers/AddTrainerWizard';
+import CredentialReview from '../components/trainers/CredentialReview';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { addDays, todayKey } from '../utils/dates';
 import { useCallback, useEffect, useState } from 'react';
@@ -105,6 +107,12 @@ export default function Trainers() {
   /** trainer id → their verified credentials in date (0054/0160), for the mark on each card. */
   const [verified, setVerified] = useState<Map<string, { title: string; expiresOn: string | null }[]>>(new Map());
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  /** trainer id → certificates waiting for the owner's decision: "Needs review" on the card. */
+  const [pending, setPending] = useState<Map<string, number>>(new Map());
+  // Credentials are a view of this page (2026-10-10), in the address so /credentials can land on it.
+  const [params, setParams] = useSearchParams();
+  const reviewing = params.get('view') === 'credentials';
+  const setReviewing = (on: boolean) => setParams(on ? { view: 'credentials' } : {}, { replace: true });
 
   const loadTrainers = useCallback(async () => {
     setLoading(true);
@@ -120,6 +128,10 @@ export default function Trainers() {
         map.set(c.trainer_id, [...(map.get(c.trainer_id) ?? []), { title: c.title, expiresOn: c.expires_on ?? null }]);
       }
       setVerified(map);
+      const { data: waiting } = await supabase.from('trainer_credentials').select('trainer_id').eq('status', 'pending');
+      const counts = new Map<string, number>();
+      for (const c of (waiting ?? []) as { trainer_id: string }[]) counts.set(c.trainer_id, (counts.get(c.trainer_id) ?? 0) + 1);
+      setPending(counts);
     })();
     try {
       // Bookable-hour windows come from the real table, in one query for the
@@ -297,6 +309,18 @@ export default function Trainers() {
   // The page is exactly the window's height (header 4rem + <main>'s padding
   // 3rem), so the roster area in the middle takes what is left and the pager
   // sits at the bottom edge instead of wherever the last card happened to end.
+  const waitingTotal = [...pending.values()].reduce((a, b) => a + b, 0);
+  if (reviewing) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div>
+          <Button variant="ghost" size="sm" onClick={() => setReviewing(false)}>← Back to trainers</Button>
+        </div>
+        <CredentialReview onChanged={loadTrainers} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
       <TrainerMonthTotals isOpen={showTotals} onClose={() => setShowTotals(false)} />
@@ -311,6 +335,10 @@ export default function Trainers() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowTotals(true)}>
               <CalendarRange size={14} /> Monthly totals
+            </Button>
+            <Button variant={waitingTotal > 0 ? 'secondary' : 'outline'} size="sm" onClick={() => setReviewing(true)}
+              data-tip="Coaches' certificates: look at each document, then verify or reject it">
+              <ShieldCheck size={14} /> Credentials{waitingTotal > 0 ? ` · ${waitingTotal} to review` : ''}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
               <UserPlus size={14} /> Add trainer
@@ -399,6 +427,13 @@ export default function Trainers() {
                       </p>
                     );
                   })()}
+                  {(pending.get(trainer.id) ?? 0) > 0 && (
+                    <p className="text-[10px] mt-0.5 inline-flex items-center gap-1 font-semibold" data-needs-review
+                      style={{ color: 'var(--color-secondary)' }}
+                      data-tip="Certificates waiting for you — open the coach to verify or reject them">
+                      <ShieldCheck size={11} /> Needs review · {pending.get(trainer.id)}
+                    </p>
+                  )}
                   <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
                   {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
                   {(() => {

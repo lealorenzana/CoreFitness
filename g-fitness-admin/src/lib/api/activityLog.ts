@@ -187,7 +187,7 @@ export function activityHref(row: ActivityFeedRow): string | null {
     case 'program':        return '/programs';
     case 'reward':
     case 'season_tier':    return '/rewards';
-    case 'trainer_credential': return '/credentials';
+    case 'trainer_credential': return '/trainers?view=credentials';
     default:               return null;
   }
 }

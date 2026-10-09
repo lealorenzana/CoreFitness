@@ -10,8 +10,8 @@ import Badge from './Badge';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
-import { todayKey } from '../../utils/dates';
 import { supabase } from '../../lib/supabaseClient';
+import CredentialReview from '../trainers/CredentialReview';
 import {
   loadTrainerDetail, weekdayName, formatTimeOfDay, type TrainerDetail,
 } from '../../services/trainerDetailService';
@@ -216,7 +216,7 @@ function Body({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-dark-border">
-        {tab === 'profile'  && <ProfileTab detail={detail} />}
+        {tab === 'profile'  && <ProfileTab detail={detail} onChanged={() => void onRefresh()} />}
         {tab === 'schedule' && <ScheduleTab detail={detail} />}
         {tab === 'sessions' && <SessionsTab detail={detail} />}
         {tab === 'clients'  && <ClientsTab detail={detail} />}
@@ -245,7 +245,7 @@ function FootStat({ label, value }: { label: string; value: string }) {
 
 /* ─────────────────────────── Profile ─────────────────────────── */
 
-function ProfileTab({ detail }: { detail: TrainerDetail }) {
+function ProfileTab({ detail, onChanged }: { detail: TrainerDetail; onChanged?: () => void }) {
   const { profile, trainer } = detail.identity;
   const { stats } = detail;
 
@@ -287,7 +287,7 @@ function ProfileTab({ detail }: { detail: TrainerDetail }) {
       </Section>
 
       <CoachingSection trainerId={profile.id} />
-      <CredentialsSection trainerId={profile.id} />
+      <CredentialsSection trainerId={profile.id} onChanged={onChanged} />
     </div>
   );
 }
@@ -327,33 +327,12 @@ function CoachingSection({ trainerId }: { trainerId: string }) {
  * Their certificates and where each stands (0054/0160). Verified ones in date
  * are what members see on this coach's profile; the file and the number never.
  */
-function CredentialsSection({ trainerId }: { trainerId: string }) {
-  const [rows, setRows] = useState<{ title: string; status: string; issuer?: string | null; expires_on?: string | null }[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const full = await supabase.from('trainer_credentials').select('title, status, issuer, expires_on').eq('trainer_id', trainerId).order('uploaded_at', { ascending: false });
-      const res = full.error ? await supabase.from('trainer_credentials').select('title, status').eq('trainer_id', trainerId) : full;
-      if (alive) setRows(res.error ? [] : ((res.data ?? []) as { title: string; status: string; issuer?: string | null; expires_on?: string | null }[]));
-    })();
-    return () => { alive = false; };
-  }, [trainerId]);
-  if (rows === null) return null;
-  const today = todayKey();
+function CredentialsSection({ trainerId, onChanged }: { trainerId: string; onChanged?: () => void }) {
+  // The certificates themselves, with Verify and Reject — not a summary that
+  // sent the owner to another page (2026-10-10: Trainers and Credentials are one).
   return (
-    <Section title={`Credentials (${rows.filter((r) => r.status === 'verified' && !(r.expires_on && r.expires_on < today)).length} verified)`}>
-      {rows.length === 0 ? <Empty text="Nothing uploaded. Coaches add certificates under Profile → Edit profile in the app; you verify them under Credentials." /> : (
-        <div className="space-y-1.5">
-          {rows.map((r, i) => {
-            const lapsed = !!r.expires_on && r.expires_on < today;
-            return (
-              <Row key={i} title={r.title}
-                subtitle={[r.issuer, r.expires_on ? `${lapsed ? 'expired' : 'valid until'} ${formatDate(r.expires_on)}` : null].filter(Boolean).join(' · ') || undefined}
-                right={<Badge variant={r.status === 'verified' && !lapsed ? 'Completed' : r.status === 'pending' ? 'Pending' : 'Failed'}>{lapsed ? 'lapsed' : r.status === 'pending' ? 'waiting' : r.status}</Badge>} />
-            );
-          })}
-        </div>
-      )}
+    <Section title="Credentials">
+      <CredentialReview trainerId={trainerId} compact onChanged={onChanged} />
     </Section>
   );
 }

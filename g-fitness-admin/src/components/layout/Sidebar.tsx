@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, ShieldCheck, TrendingUp, Smartphone, MailPlus, CalendarRange,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -107,7 +107,6 @@ const NAV: Entry[] = [
       { label: 'Members', path: '/members', icon: Users, noun: 'members' },
       { label: 'Invitations', path: '/invitations', icon: MailPlus },
       { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true, noun: 'trainers' },
-      { label: 'Credentials', path: '/credentials', icon: ShieldCheck, adminOnly: true },
     ],
   },
   {
@@ -190,7 +189,6 @@ const NAV_TIPS: Record<string, string> = {
   '/members': 'Everyone who belongs here: memberships, payments, approvals and archiving',
   '/invitations': 'Invite owners, desk staff and coaches by email',
   '/trainers': 'Your coaches: their hours, sessions, ratings and who they coach',
-  '/credentials': "Coaches' certificates, checked and kept on file",
   '/schedule': 'The class timetable: create classes, rooms and coaches',
   '/bookings': 'Every class booking and 1-on-1 session, with cancellations',
   '/payments': 'Record a payment, print a receipt, close the cash drawer',
@@ -211,7 +209,7 @@ const NAV_TIPS: Record<string, string> = {
   '/settings': 'Gym details, hours, rules, waivers and staff accounts',
   '/subscription': 'What this gym pays Core Fitness, until when, and the receipts',
   '/support': 'Ask Core Fitness anything, and read the answers',
-  People: 'Members, invitations, coaches and their credentials',
+  People: 'Members, invitations and coaches (with their certificates)',
   Classes: 'The timetable and every booking',
   Billing: 'Payments, the shop and membership plans',
   Reports: 'Revenue, retention and the activity log',

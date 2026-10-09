@@ -33,7 +33,6 @@ import Support from './pages/Support';
 import Subscription from './pages/Subscription';
 import Rewards from './pages/Rewards';
 import Challenges from './pages/Challenges';
-import Credentials from './pages/Credentials';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
 import LobbyTv from './pages/LobbyTv';
@@ -118,7 +117,8 @@ function App() {
             <Route path="challenges" element={<ProtectedRoute adminOnly><Challenges /></ProtectedRoute>} />
             {/* Not staff: RLS refuses them these rows outright, and the route
                 matches so the two cannot disagree. */}
-            <Route path="credentials" element={<ProtectedRoute adminOnly><Credentials /></ProtectedRoute>} />
+            {/* Credentials live with the trainers now (2026-10-10); old links land on that view. */}
+            <Route path="credentials" element={<Navigate to="/trainers?view=credentials" replace />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
             {/* System moved to the platform app (2026-10-04): migrations, demo data and backups are
                 Core Fitness's to look after, not a gym owner's. An old bookmark lands on Support. */}

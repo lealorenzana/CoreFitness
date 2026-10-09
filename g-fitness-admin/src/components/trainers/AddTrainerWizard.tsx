@@ -121,7 +121,7 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
         <Button size="sm" variant="ghost" onClick={() => void navigator.clipboard.writeText(login).then(() => setCopied(true))}><Copy size={13} /> {copied ? 'Copied' : 'Copy to send them'}</Button>
         <div className="rounded-xl p-3 text-xs flex gap-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
           <ShieldCheck size={15} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
-          <span>For the <b className="text-white">verified</b> mark on their profile, they upload each certificate in the app (Profile → Edit profile → Certificates) and you check it under Credentials.
+          <span>For the <b className="text-white">verified</b> mark on their profile, they upload each certificate in the app (Profile → Edit profile → Certificates) and you check it on their card here (Trainers → the coach → Credentials).
             Until then members read their certifications as the coach&rsquo;s own words.</span>
         </div>
         <Button variant="secondary" className="w-full" onClick={onClose}>Done</Button>

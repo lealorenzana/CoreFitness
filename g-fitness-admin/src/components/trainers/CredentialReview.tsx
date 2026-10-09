@@ -1,19 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FileText, Check, X, AlertTriangle, ShieldCheck, Clock, ChevronLeft, ChevronRight,
   ExternalLink, ImageOff, RotateCw, Award,
 } from 'lucide-react';
-import Avatar from '../components/ui/Avatar';
-import Pagination from '../components/ui/Pagination';
-import { PageHeader, StatTiles, Chips, EmptyState, PageSummary } from '../components/ui/kit';
-import { useFillGrid } from '../hooks/useFillGrid';
-import { assertWrote } from '../lib/api/mutate';
-import { showToast } from '../utils/toast';
-import { supabase } from '../lib/supabaseClient';
+import Avatar from '../ui/Avatar';
+import Pagination from '../ui/Pagination';
+import { PageHeader, StatTiles, Chips, EmptyState, PageSummary } from '../ui/kit';
+import { useFillGrid } from '../../hooks/useFillGrid';
+import { assertWrote } from '../../lib/api/mutate';
+import { showToast } from '../../utils/toast';
+import { supabase } from '../../lib/supabaseClient';
 
 /**
  * Trainer certificates, for the person who hires them (migration 0054).
+ *
+ * ## One page with the trainers (2026-10-10)
+ *
+ * This was its own page, /credentials, beside /trainers — two places for one
+ * question, "can I trust this coach?". It is now a view of Trainers
+ * (`/trainers?view=credentials`, every coach's) and a section of each
+ * trainer's drawer (`trainerId`, `compact`): a card that needs a decision says
+ * so on the roster, and the decision is made where the coach is.
  *
  * ## Why the page exists at all
  *
@@ -466,7 +474,14 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
   );
 }
 
-export default function Credentials() {
+export default function CredentialReview({ trainerId, compact = false, onChanged }: {
+  /** Only this coach's certificates (the trainer's drawer). */
+  trainerId?: string;
+  /** No header or tiles, four to a page: a section inside the drawer. */
+  compact?: boolean;
+  /** After a decision, so the roster's "needs review" marks refresh. */
+  onChanged?: () => void;
+} = {}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -478,20 +493,24 @@ export default function Credentials() {
   const [broken, setBroken] = useState<Record<string, true>>({});
   // Destructured: the compiler lint treats an object whose member is passed as
   // a `ref` as a ref itself, and would refuse the read of `perPage`.
-  const { measure: measureGrid, perPage, rows: gridRows } = useFillGrid(6, 1, TILE_MIN_PX);
+  const { measure: measureGrid, perPage: fillPerPage, rows: gridRows } = useFillGrid(6, 1, TILE_MIN_PX);
+  const perPage = compact ? 4 : fillPerPage;
 
   /** Pure fetch, no state. Keeps every setState behind an await in the caller,
    *  which is what react-hooks/set-state-in-effect is asking for. */
-  const fetchRows = async (): Promise<Row[] | null> => {
+  const fetchRows = useCallback(async (): Promise<Row[] | null> => {
     // Expiry reminders go out from here too — pg_cron is optional (0160); refused before it, harmlessly.
     await supabase.rpc('credential_expiry_sweep').then(() => undefined, () => undefined);
     const base = 'id, trainer_id, title, file_path, mime_type, size_bytes, status, uploaded_at, reviewed_at, review_note, trainer_profiles(profiles(first_name, last_name, photo_url))';
-    const q = (cols: string) => supabase.from('trainer_credentials').select(cols).order('uploaded_at', { ascending: false });
+    const q = (cols: string) => {
+      const b = supabase.from('trainer_credentials').select(cols).order('uploaded_at', { ascending: false });
+      return trainerId ? b.eq('trainer_id', trainerId) : b;
+    };
     let { data, error } = await q(`${base}, issuer, credential_number, issued_on, expires_on`);
     // Before 0160 the detail columns do not exist; the page works as it did.
     if (error && (error.code === '42703' || error.code === 'PGRST204' || /column/i.test(error.message))) ({ data, error } = await q(base));
     return error ? null : ((data ?? []) as unknown as Row[]);
-  };
+  }, [trainerId]);
 
   const load = async () => {
     const res = await fetchRows();
@@ -507,7 +526,7 @@ export default function Credentials() {
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, []);
+  }, [fetchRows]);
 
   const setFilter = (f: Filter) => { setFilterState(f); setPage(1); };
 
@@ -603,6 +622,7 @@ export default function Credentials() {
       assertWrote(data, 'That credential could not be updated — it may have been removed.');
       showToast(status === 'verified' ? 'Marked verified' : 'Rejected — the trainer will see your reason', 'success');
       await load();
+      onChanged?.();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not save that decision', 'error');
     } finally {
@@ -628,7 +648,14 @@ export default function Credentials() {
   return (
     // Exactly the window's height (header 4rem + <main>'s padding 3rem): the
     // cards fill the middle and the pager sits at the bottom edge.
-    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
+    <div className={compact ? 'flex flex-col gap-3' : 'h-[calc(100vh-7rem)] flex flex-col gap-4'} data-credential-review={compact ? 'trainer' : 'all'}>
+      {compact ? (rows.length > 1 && (
+        <Chips value={filter} onChange={setFilter} options={[
+          { value: 'all', label: 'All', count: rows.length },
+          { value: 'pending', label: 'Waiting', count: counts.pending },
+          { value: 'verified', label: 'Verified', count: counts.verified },
+        ]} />
+      )) : (<>
       <PageHeader
         title="Trainer credentials"
         subtitle="Certificates trainers upload from the app — look at the document, then verify or reject it"
@@ -650,6 +677,7 @@ export default function Credentials() {
         { label: 'Expiring or lapsed', value: loading ? '—' : counts.expiring, icon: Clock, tone: counts.expiring > 0 ? 'secondary' : 'primary',
           onClick: () => setFilter('expiring'), tooltip: 'Verified credentials that run out within 30 days, or already have — members stop seeing one the day it lapses' },
       ]} />
+      </>)}
 
       {loading ? (
         <p className="text-sm" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
@@ -658,7 +686,8 @@ export default function Credentials() {
           hint="A connection problem, not an empty list — nothing has been reviewed or missed. Reload to try again." />
       ) : rows.length === 0 ? (
         <EmptyState icon={Award} title="No certificates uploaded yet"
-          hint="Trainers add these from their own profile screen in the phone app." />
+          hint={trainerId ? 'This coach adds them under Profile → Edit profile in the app; they appear here to verify.'
+            : 'Trainers add these from their own profile screen in the phone app.'} />
       ) : shown.length === 0 ? (
         <EmptyState icon={FileText} title={`No ${filter === 'pending' ? 'waiting' : filter} credentials`}
           hint="Try another filter — the rest are still on All." />
@@ -666,14 +695,14 @@ export default function Credentials() {
         // Measured by `useFillGrid`: height from the page, never from the
         // cards; scrolls rather than clips; a stable gutter so a scrollbar
         // appearing cannot change the column count.
-        <div ref={measureGrid} className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+        <div ref={compact ? undefined : measureGrid} className={compact ? '' : 'flex-1 min-h-0 overflow-y-auto'} style={compact ? undefined : { scrollbarGutter: 'stable' }}>
           {/* CardGrid's columns, with rows that share the box's height — see
               TILE_MIN_PX. Never below a card's minimum, so a very short
               window scrolls the box rather than squashing the cards. */}
-          <div className="grid gap-3 h-full"
+          <div className={compact ? 'grid gap-3' : 'grid gap-3 h-full'}
             style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-              gridTemplateRows: `repeat(${gridRows}, minmax(${TILE_MIN_PX}px, 1fr))`,
+              gridTemplateColumns: compact ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(auto-fill, minmax(250px, 1fr))',
+              gridTemplateRows: compact ? undefined : `repeat(${gridRows}, minmax(${TILE_MIN_PX}px, 1fr))`,
             }}>
             {pageRows.map((r) => (
               <CredentialTile key={r.id} row={r}

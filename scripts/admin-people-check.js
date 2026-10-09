@@ -39,7 +39,10 @@ async (page) => {
     member_profiles: [], memberships: [], payments: [], trainer_profiles: [{ profile_id: 't1', specialization: 'Strength', bio: null, availability: null, years_experience: 5, certifications: [], focus_areas: ['Strength'], achievements: null, profiles: person('t1', 'trainer', 'Tess') }],
     trainer_credentials: [
       { id: 'c1', trainer_id: 't1', title: 'First Aid / CPR', file_path: 't1/a.pdf', mime_type: 'application/pdf', size_bytes: 1000, status: 'verified', uploaded_at: iso(-300), reviewed_at: iso(-290), review_note: null,
-        issuer: 'Philippine Red Cross', credential_number: 'PRC-1', issued_on: day(-300), expires_on: day(10), trainer_profiles: { profiles: { first_name: 'Tess', last_name: 'Test', photo_url: null } } }],
+        issuer: 'Philippine Red Cross', credential_number: 'PRC-1', issued_on: day(-300), expires_on: day(10), trainer_profiles: { profiles: { first_name: 'Tess', last_name: 'Test', photo_url: null } } },
+      // Waiting for the owner: the card says "Needs review" (Trainers and Credentials are one page, 2026-10-10).
+      { id: 'c2', trainer_id: 't1', title: 'Kettlebell Level 1', file_path: 't1/b.pdf', mime_type: 'application/pdf', size_bytes: 2000, status: 'pending', uploaded_at: iso(-2), reviewed_at: null, review_note: null,
+        issuer: 'StrongFirst', credential_number: null, issued_on: day(-30), expires_on: null, trainer_profiles: { profiles: { first_name: 'Tess', last_name: 'Test', photo_url: null } } }],
     staff_permissions: [{ user_id: 's1', areas: ['checkins', 'shop'] }],
   };
   const CALLS = [];
@@ -70,6 +73,8 @@ async (page) => {
       const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
       if (req.method() !== 'GET') { CALLS.push([req.method(), t, req.postData() ? JSON.parse(req.postData()) : null, query]); return json([{ id: 'x', profile_id: 'x' }]); }
       let rows = TABLES[t] ?? [];
+      const st = /(?:^|&)status=eq\.(\w+)/.exec(query);
+      if (t === 'trainer_credentials' && st) rows = rows.filter((r) => r.status === st[1]);
       if (t === 'profiles' && /role=in\.\(admin,staff\)/.test(query)) rows = rows.filter((r) => r.role === 'admin' || r.role === 'staff');
       if (t === 'profiles' && /role=eq\.trainer/.test(query)) rows = rows.filter((r) => r.role === 'trainer');
       return json(one ? (rows[0] ?? null) : rows);
@@ -116,6 +121,14 @@ async (page) => {
   await page.goto('http://localhost:5174/trainers', { waitUntil: 'domcontentloaded' });
   await page.getByText('Tess Test').first().waitFor({ timeout: 15000 });
   out.push('a verified, expiring credential shows on the card: ' + (/1 verified · 1 expiring/.test(await text()) ? 'yes' : 'MISSING'));
+  out.push('a certificate waiting for a decision says so on the card: ' + (/Needs review · 1/.test(await text()) ? 'yes' : 'MISSING'));
+  out.push('the sidebar has no separate Credentials page: ' + ((await page.locator('aside nav a[href="/credentials"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await page.getByText('Tess Test').first().click();
+  await page.locator('[data-credential-review="trainer"] button', { hasText: /Verify/ }).first().waitFor({ timeout: 10000 }).catch(() => {});
+  const drawer = await text();
+  out.push("the coach's drawer shows their certificates to decide on: " + (/Kettlebell Level 1/.test(drawer) && (await page.locator('[data-credential-review="trainer"] button', { hasText: /Verify/ }).count()) > 0 ? 'yes' : 'MISSING ' + drawer.slice(drawer.indexOf('Tess'), drawer.indexOf('Tess') + 400)));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   await page.getByRole('button', { name: /Add trainer/ }).first().click();
   await page.getByLabel('First name').fill('Ben');
   await page.getByLabel('Last name').fill('Cruz');
@@ -138,6 +151,7 @@ async (page) => {
   // ---- Credentials ------------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/credentials', { waitUntil: 'domcontentloaded' });
   await page.getByText('First Aid / CPR').first().waitFor({ timeout: 15000 });
+  out.push('an old /credentials link lands on the Trainers credentials view: ' + (/\/trainers\?view=credentials$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   const t = await text();
   out.push('issuer and expiry on the card: ' + (/Philippine Red Cross · expires in 10 days/.test(t) ? 'yes' : 'MISSING'));
   out.push('an expiring count: ' + (/Expiring\s*1\b/i.test(t) && /Expiring or lapsed\s*1\b/i.test(t) ? 'yes' : 'MISSING ' + (t.match(/Expiring[^A-Z]{0,30}/i) || [''])[0]));
