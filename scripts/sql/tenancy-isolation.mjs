@@ -166,7 +166,9 @@ const GLOBAL = [
   // 0187: an applicant's documents belong to an application, before any gym exists.
   'application_documents',
   // 0188: what a gym tells the platform — like support tickets, definer functions only, no policy.
-  'platform_ratings', 'feature_requests', 'testimonials'];
+  'platform_ratings', 'feature_requests', 'testimonials',
+  // 0189: what a gym bought from the platform (AI coach top-ups) — definer functions only, no policy.
+  'gym_ai_credits', 'ai_topups'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
@@ -832,8 +834,10 @@ check('a gym admin cannot look up a stranger by email', !(await one(`select plat
 await as(PLATFORM);
 check('the three plans gyms are already on exist as rows',
   (await one("select count(*)::int as n from platform_plans where key in ('trial','standard','premium')")).n === 3);
-check('no price is invented: only the free trial carries a number',
-  (await one('select count(*)::int as n from platform_plans where price_monthly is not null')).n === 1
+// 0189 decided the prices: the free trial, and Starter/Growth/Pro at their launch prices.
+// Standard and Premium were never priced and stay that way (no longer offered).
+check('no price is invented: only the trial and the three decided tiers carry a number',
+  (await one("select string_agg(key, ',' order by key) as k from platform_plans where price_monthly is not null")).k === 'growth,pro,starter,trial'
   && Number((await one("select price_monthly from platform_plans where key = 'trial'")).price_monthly) === 0);
 check('every plan opens including everything, so pasting takes nothing away',
   (await one('select count(*)::int as n from platform_plan_features where not enabled')).n === 0

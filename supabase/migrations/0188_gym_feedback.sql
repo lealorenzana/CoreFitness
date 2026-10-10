@@ -203,9 +203,10 @@ begin
   if storage_role_here() is distinct from 'admin' then
     raise exception 'The gym''s owner writes its testimonial.' using errcode = '42501';
   end if;
-  -- One live testimonial a gym: a new one replaces any not yet approved.
+  -- One live testimonial a gym: a new one replaces the old (it leaves the
+  -- website until Core Fitness approves the new words).
   update testimonials set status = 'withdrawn', decided_at = now()
-   where gym_id = current_gym_id() and status = 'pending';
+   where gym_id = current_gym_id() and status in ('pending', 'approved');
   insert into testimonials (gym_id, quote, shown_name, shown_role)
   values (current_gym_id(), btrim(p_quote), btrim(p_name), nullif(btrim(p_role), ''))
   returning id into v_id;
