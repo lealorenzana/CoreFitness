@@ -78,7 +78,24 @@ await as(PA);
 const sug = await all(`select * from platform_gym_suggestions()`);
 check('the platform sees each suggested gym once, with how many asked and the notes', sug.length === 1 && sug[0].asks === 2 && sug[0].notes.includes('Please add them'), JSON.stringify(sug));
 
+// ---- 0183: the platform fills the cache from its own browser ----
+const ROWS = `'[{"osm_id":"node/9","name":"Barako Gym","latitude":13.21,"longitude":120.61,"address":null},{"osm_id":"evil","name":"Fake","latitude":1,"longitude":1}]'::jsonb`;
+await as(AD);
+check('a gym owner cannot write map data', (await tryExec(`select platform_store_osm_tile('13.00:120.50', ${ROWS})`)) !== null);
+await anon();
+check('nor can anyone signed out', (await tryExec(`select platform_store_osm_tile('13.00:120.50', ${ROWS})`)) !== null);
+await as(PA);
+check('a made-up area is refused', (await tryExec(`select platform_store_osm_tile('anywhere', ${ROWS})`)) !== null);
+const stored = (await one(`select platform_store_osm_tile('13.00:120.50', ${ROWS}) n`)).n;
+check('the platform stores an area — and a row that is not an OpenStreetMap id is dropped', stored === 1, String(stored));
 await owner();
-check('marker', (await one(`select migration_0182_applied() ok`)).ok === true);
-console.log(failures ? `\n${failures} FAILED` : '\nall 0182 checks passed');
+check('…and the area is marked fresh', (await one(`select count::int c from osm_tiles where tile = '13.00:120.50'`)).c === 1);
+await as(PA);
+check('the platform reads where gyms are pinned', (await all(`select * from platform_pinned_gyms()`)).some((r) => r.id === GYM));
+await as(AD);
+check('…a gym owner does not', (await all(`select * from platform_pinned_gyms()`)).length === 0);
+
+await owner();
+check('marker', (await one(`select migration_0182_applied() ok`)).ok === true && (await one(`select migration_0183_applied() ok`)).ok === true);
+console.log(failures ? `\n${failures} FAILED` : '\nall 0182 + 0183 checks passed');
 process.exit(failures ? 1 : 0);

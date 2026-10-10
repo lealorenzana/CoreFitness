@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
 import Pagination from '../components/Pagination';
 import GymSuggestions from '../components/GymSuggestions';
+import MapData from '../components/MapData';
 import { usePaged } from '../lib/usePaged';
 
 const when = (iso: string) =>
@@ -153,6 +154,7 @@ export default function Applications() {
             </div>
           </section>
           <GymSuggestions />
+          <MapData />
         </aside>
       </div>
 
