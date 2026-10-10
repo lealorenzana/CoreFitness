@@ -30,7 +30,9 @@ export type FeatureKey =
   | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics'
   // 0141: each lives inside a parent above, and is on only while it is.
   | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
-  | 'squads' | 'seasons' | 'quests' | 'referrals';
+  | 'squads' | 'seasons' | 'quests' | 'referrals'
+  // 0176: Targets (members' own goals), a child of Progress.
+  | 'targets';
 
 /**
  * What this gym calls its people and its sessions (0114).

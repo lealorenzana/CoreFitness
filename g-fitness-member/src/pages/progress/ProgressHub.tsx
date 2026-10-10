@@ -6,6 +6,8 @@ import BodyProgressTab     from './tabs/BodyProgressTab';
 import WorkoutProgressTab  from './tabs/WorkoutProgressTab';
 import VisualDashboardTab  from './tabs/VisualDashboardTab';
 import GoalsTab            from './tabs/GoalsTab';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 
 /**
  * Progress — Overview · Body · Goals, under the Progress section's strip
@@ -30,12 +32,15 @@ function resolveTab(value: string | null): TabId {
 
 export default function ProgressHub() {
   const [params] = useSearchParams();
+  const app = useGymApp();
   if (params.get('tab') === 'feedback') return <Navigate to="/member/coach-notes" replace />;
-  const active = resolveTab(params.get('tab'));
+  // Targets (0176) is a switch: off, its tab is gone and an old link lands on Overview.
+  const wanted = resolveTab(params.get('tab'));
+  const active: TabId = wanted === 'goals' && !moduleOn(app, 'targets') ? 'overview' : wanted;
 
   return (
     <Page>
-      <PageTitle back title="Progress" subtitle="How your training, your body and your goals are going" />
+      <PageTitle back title="Progress" subtitle="How your training, your body and your targets are going" />
 
       <div key={active} className="flex flex-col noc-stack" style={{ gap: 'var(--stack)' }}>
         {active === 'overview' && (

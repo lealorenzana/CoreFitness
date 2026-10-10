@@ -157,7 +157,7 @@ function GoalCard({
           <button onClick={() => onEdit(g)} className="inline-flex items-center noc-press" style={{ gap: 5, color: 'var(--color-primary-300)' }}>
             <PencilSimple size={14} /> Edit
           </button>
-          <button onClick={() => onRemove(g)} aria-label={`Remove goal: ${g.title}`}
+          <button onClick={() => onRemove(g)} aria-label={`Remove target: ${g.title}`}
             className="inline-flex items-center noc-press ml-auto" style={{ gap: 5, color: 'var(--color-text-muted)' }}>
             <Trash size={14} /> Remove
           </button>
@@ -221,10 +221,10 @@ export default function GoalsTab() {
       const s = await loadGoals(memberId);
       setSnap(s);
       if (announce && s.justReached > 0) {
-        toast.success(s.justReached === 1 ? 'Goal reached — points added!' : `${s.justReached} goals reached — points added!`);
+        toast.success(s.justReached === 1 ? 'Target reached — points added!' : `${s.justReached} targets reached — points added!`);
       }
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load your goals'));
+      toast.error(errorMessage(err, 'Could not load your targets'));
     } finally {
       setLoading(false);
     }
@@ -270,7 +270,7 @@ export default function GoalsTab() {
   const steps: FlowStep[] = [
     {
       id: 'kind',
-      title: 'What kind of goal?',
+      title: 'What kind of target?',
       hint: 'Every kind except the last tracks itself from what you already log.',
       valid: d.kind !== '',
       render: (
@@ -359,12 +359,12 @@ export default function GoalsTab() {
     } satisfies FlowStep] : []),
     {
       id: 'finish',
-      title: d.kind === 'custom' ? "What's the goal?" : 'Name it, and pick a date',
+      title: d.kind === 'custom' ? "What's the target?" : 'Name it, and pick a date',
       hint: d.kind === 'custom' ? 'In your own words — "Run a 5k", "Do a full pull-up".' : 'The date is optional. With one, the app tells you whether you are on pace.',
       valid: (d.title || suggestedTitle()).trim() !== '',
       render: (
         <div className="flex flex-col" style={{ gap: 14 }}>
-          <Field label="Goal">
+          <Field label="Name">
             <TextInput value={d.title || suggestedTitle()} maxLength={60} placeholder="e.g. Run a 5k"
               onChange={(e) => setDraft({ title: e.target.value })} />
           </Field>
@@ -377,7 +377,7 @@ export default function GoalsTab() {
   const create = async () => {
     if (!memberId || !d.kind) return;
     const title = (d.title || suggestedTitle()).trim();
-    if (!title) return toast.error('Give the goal a name');
+    if (!title) return toast.error('Give the target a name');
     const num = (v: string) => (v.trim() === '' ? null : Number(v));
     setSaving(true);
     try {
@@ -390,11 +390,11 @@ export default function GoalsTab() {
         targetValue: d.kind === 'custom' ? null : num(d.target),
         deadline: d.deadline || null,
       });
-      toast.success('Goal set');
+      toast.success('Target set');
       setCreating(false);
       await load(true);
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not save that goal'));
+      toast.error(errorMessage(err, 'Could not save that target'));
     } finally {
       setSaving(false);
     }
@@ -414,7 +414,7 @@ export default function GoalsTab() {
         targetValue: editing.kind === 'custom' ? null : edit.target.trim() === '' ? null : Number(edit.target),
         deadline: edit.deadline || null,
       });
-      toast.success('Goal updated');
+      toast.success('Target updated');
       setEditing(null);
       await load(true);
     } catch (err) {
@@ -430,7 +430,7 @@ export default function GoalsTab() {
       setRemoving(null);
       await load();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not remove that goal'));
+      toast.error(errorMessage(err, 'Could not remove that target'));
     }
   };
   const done1 = async (g: GoalView) => {
@@ -439,13 +439,13 @@ export default function GoalsTab() {
       toast.success('Nicely done');
       await load();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not update that goal'));
+      toast.error(errorMessage(err, 'Could not update that target'));
     }
   };
 
   return (
     <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-      <StepFlow open={creating} title="New goal" steps={steps} submitLabel="Set goal" saving={saving}
+      <StepFlow open={creating} title="New target" steps={steps} submitLabel="Set target" saving={saving}
         onClose={() => setCreating(false)} onSubmit={create} />
 
       {/* ── The goal that leads ── */}
@@ -453,7 +453,7 @@ export default function GoalsTab() {
         <Panel glow={focus.pace === 'behind' ? 'action' : 'structure'}>
           <Eyebrow tone={focus.pace === 'behind' ? 'action' : undefined}>
             {focus.overdue && focus.deadline ? `Past its date · ${shortDay(focus.deadline)}`
-              : focus.deadline ? `Up next · by ${shortDay(focus.deadline)}` : 'Your main goal'}
+              : focus.deadline ? `Up next · by ${shortDay(focus.deadline)}` : 'Your main target'}
           </Eyebrow>
           <div className="flex items-center" style={{ gap: 16, marginTop: 12 }}>
             <Ring pct={focus.pct}>
@@ -499,7 +499,7 @@ export default function GoalsTab() {
         </Panel>
       ) : (
         <Panel glow="structure">
-          <Eyebrow>No goal in play</Eyebrow>
+          <Eyebrow>No target in play</Eyebrow>
           <p style={{ fontSize: 17, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>Give your training a target</p>
           <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
             A weight to reach, a lift to hit, or a habit to build. It tracks itself from what you already log,
@@ -542,12 +542,12 @@ export default function GoalsTab() {
       </p>
 
       {/* ── Edit ── */}
-      <GlassSheet open={editing !== null} onClose={() => setEditing(null)} title="Edit goal"
+      <GlassSheet open={editing !== null} onClose={() => setEditing(null)} title="Edit target"
         subtitle={editing?.subject}
         footer={<NocButton variant="fill" className="w-full" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</NocButton>}>
         {editing && (
           <div className="flex flex-col" style={{ gap: 14 }}>
-            <Field label="Goal">
+            <Field label="Name">
               <TextInput value={edit.title} maxLength={60} onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
             </Field>
             {editing.kind !== 'custom' && (
@@ -564,7 +564,7 @@ export default function GoalsTab() {
       <Modal
         isOpen={removing !== null}
         onClose={() => setRemoving(null)}
-        title="Remove this goal"
+        title="Remove this target"
         subtitle={removing ? `"${removing.title}" and its progress will be gone.` : undefined}
         confirmLabel="Remove"
         cancelLabel="Keep"

@@ -272,11 +272,11 @@ async (page) => {
 
   await tap('Progress');
   let tabs = await strip('progress');
-  out.push('Progress tabs: ' + (JSON.stringify(tabs) === JSON.stringify(['Overview', 'Body', 'Goals', 'Photos', 'Achievements']) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  out.push('Progress tabs: ' + (JSON.stringify(tabs) === JSON.stringify(['Overview', 'Body', 'Targets', 'Photos', 'Achievements']) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   t = await text();
   out.push('no Meals, no Coach tab on Progress: ' + (!/\bMeals\b/.test(t) && !tabs.includes('Coach') ? 'yes' : 'STILL SHOWN'));
 
-  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Goals' }).click();
+  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Targets' }).click();
   await page.waitForTimeout(1000);
   out.push('a section tab is in the address: ' + (/\/member\/progress\?tab=goals$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Achievements' }).click();

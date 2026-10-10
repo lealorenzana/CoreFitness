@@ -206,7 +206,7 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
   { id: 'progress', label: 'Progress', tabs: [
     { label: 'Overview', path: '/member/progress', module: 'progress' },
     { label: 'Body', path: '/member/progress?tab=body', module: 'progress' },
-    { label: 'Goals', path: '/member/progress?tab=goals', module: 'progress' },
+    { label: 'Targets', path: '/member/progress?tab=goals', module: 'targets' },
     { label: 'Photos', path: '/member/progress-photos', module: 'photos' },
     { label: 'Achievements', path: '/member/achievements', module: 'engagement' },
   ] },
@@ -303,7 +303,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Overview', path: '/member/progress' , module: 'progress' },
       { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
-      { label: 'Goals', path: '/member/progress?tab=goals' , module: 'progress' },
+      { label: 'Targets', path: '/member/progress?tab=goals' , module: 'targets' },
       { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
       { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
     ],
