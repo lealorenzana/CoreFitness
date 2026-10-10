@@ -7,7 +7,11 @@ import EmptyState from '../components/ui/EmptyState';
 import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
-import { cleanSlug, gymByCode, gymBySlug, gymJoinRules, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
+import {
+  cleanSlug, directionsUrl, distanceKm, gymByCode, gymBySlug, gymFinder, gymJoinRules, osmGymsNear, requestToJoin, suggestGym,
+  type FinderGym, type OsmGym, type PublicGym,
+} from '../lib/api/gyms';
+import { getHere, locationGranted, tileCentre, type Here } from '../lib/here';
 import { claimReferral, refFromUrl } from '../lib/api/referrals';
 import { getGymContext, myGyms } from '../lib/gymContext';
 import { supabase } from '../lib/supabaseClient';
@@ -19,6 +23,12 @@ import { supabase } from '../lib/supabaseClient';
  * front desk approves, exactly as for a sign-up), and someone with no account
  * yet, who is sent to sign-up with the gym already chosen. `/join/<slug>` is
  * the link a gym shares, so the choice is already made.
+ *
+ * The list (0182) is every gym on Core Fitness, nearest first once the member
+ * lets the phone say where it is (asked once, kept on the phone), and each row
+ * says what to do: Join (listed), Have a code? (code only), Directions (front
+ * desk only). Gyms OpenStreetMap knows that are not on Core Fitness come after,
+ * each with Suggest. The legend is the map's alone (/join/map).
  */
 export default function JoinGym() {
   const navigate = useNavigate();
@@ -29,7 +39,11 @@ export default function JoinGym() {
   const [code, setCode] = useState(() => new URLSearchParams(window.location.search).get('code') ?? '');
   const [codeBusy, setCodeBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [gyms, setGyms] = useState<PublicGym[] | null>(null);
+  const [gyms, setGyms] = useState<FinderGym[] | null>(null);
+  const [here, setHere] = useState<Here | null>(null);
+  const [canAsk, setCanAsk] = useState(true);
+  const [osm, setOsm] = useState<OsmGym[]>([]);
+  const [suggested, setSuggested] = useState<Set<string>>(new Set());
   const [mine, setMine] = useState<Set<string>>(new Set());
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -45,10 +59,10 @@ export default function JoinGym() {
     try {
       if (byLink) {
         const gym = await gymBySlug(term);
-        setGyms(gym ? [gym] : []);
+        setGyms(gym ? [{ ...gym, join_policy: 'open', latitude: null, longitude: null, address: null }] : []);
         return;
       }
-      setGyms(await listGyms(term));
+      setGyms(await gymFinder(term));
     } catch (e) {
       setGyms([]);
       toast.error(errorMessage(e));
@@ -64,7 +78,27 @@ export default function JoinGym() {
     })();
   }, [load, slug]);
 
-  // Typing filters the list; the search runs in the database (list_gyms).
+  // Where the phone is — only when the browser already allows it, so opening
+  // the page never pops a prompt; "Use my location" asks.
+  useEffect(() => {
+    if (slug) return;
+    void (async () => {
+      const h = await getHere(false);
+      if (h) setHere(h);
+      else setCanAsk(!(await locationGranted()) && 'geolocation' in navigator);
+    })();
+  }, [slug]);
+  useEffect(() => {
+    if (!here) return;
+    void osmGymsNear(tileCentre(here).lat, tileCentre(here).lng).then(setOsm);
+  }, [here]);
+  const askHere = async () => {
+    const h = await getHere(true);
+    if (h) setHere(h);
+    else { setCanAsk(false); toast.info('Location is off — search by name or town instead.'); }
+  };
+
+  // Typing filters the list; the search runs in the database (gym_finder).
   useEffect(() => {
     if (slug) return;
     const t = setTimeout(() => { void load(search); }, 250);
@@ -91,6 +125,16 @@ export default function JoinGym() {
     if (!slug && new URLSearchParams(window.location.search).get('code')) void (async () => { await findByCode(); })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const suggest = async (g: OsmGym) => {
+    try {
+      await suggestGym(g);
+      setSuggested((x) => new Set(x).add(g.osm_id));
+      toast.success(`Thanks — Core Fitness will reach out to ${g.name ?? 'that gym'}.`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
 
   const join = async (gym: PublicGym) => {
     // A friend's code rides along from `/join/<slug>?ref=CODE` (0125).
@@ -127,6 +171,22 @@ export default function JoinGym() {
     }
   };
 
+  // Nearest first when the phone said where it is; pinned gyms before unpinned.
+  const sorted = [...(gyms ?? [])].sort((a, b) => {
+    if (!here) return 0;
+    const da = a.latitude != null && a.longitude != null ? distanceKm(here, { lat: a.latitude, lng: a.longitude }) : Infinity;
+    const db = b.latitude != null && b.longitude != null ? distanceKm(here, { lat: b.latitude, lng: b.longitude }) : Infinity;
+    return da - db;
+  });
+  // OpenStreetMap's gyms near the phone that are not a Core Fitness gym already
+  // (one within 150 m of a pinned gym is taken to be that gym), nearest first.
+  const nearbyOsm = here ? osm
+    .filter((o) => !(gyms ?? []).some((g) => g.latitude != null && g.longitude != null
+      && distanceKm({ lat: g.latitude, lng: g.longitude }, { lat: o.latitude, lng: o.longitude }) < 0.15))
+    .filter((o) => !search.trim() || (o.name ?? '').toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => distanceKm(here, { lat: a.latitude, lng: a.longitude }) - distanceKm(here, { lat: b.latitude, lng: b.longitude }))
+    .slice(0, 10) : [];
+
   return (
     <Page>
       <PageTitle title="Find your gym" subtitle="Every gym on Core Fitness" back fallback="/choose-gym" />
@@ -153,7 +213,7 @@ export default function JoinGym() {
         <TextInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name"
+          placeholder="Search by name or town"
           aria-label="Search gyms"
         />
       )}
@@ -166,34 +226,69 @@ export default function JoinGym() {
         />
       )}
 
-      {gyms && gyms.length > 0 && (
-        <div>
-          <SectionHead title={slug ? 'Your gym' : 'Gyms'} />
-          {gyms.map((gym, i) => (
-            <LineRow
-              key={gym.id}
-              // The gym's own mark, at the size the row already reserves. A gym
-              // that uploaded none gets nothing here rather than the Core
-              // Fitness logo: this is a list of gyms, and every one of them
-              // wearing the platform's mark is the opposite of what it is for.
-              gutter={gym.logo_url
-                ? <img src={gym.logo_url} alt="" width={36} height={36}
-                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-                : undefined}
-              gutterWidth={gym.logo_url ? 48 : undefined}
-              title={gym.name}
-              // The gym's own line when it wrote one — its pitch, not ours.
-              // The state of *this* member's relationship to it wins, because
-              // "you are already here" is the answer to the question they are
-              // about to ask by tapping.
-              meta={mine.has(gym.id) ? 'You are already here'
-                : busy === gym.id ? 'Asking…'
-                : gym.tagline || 'Tap to join'}
-              dim={mine.has(gym.id)}
-              onClick={mine.has(gym.id) ? undefined : () => void join(gym)}
-              last={i === gyms.length - 1}
-            />
+      {!slug && (
+        <div className="flex" style={{ gap: 8 }}>
+          {canAsk && !here && (
+            <NocButton variant="ghost" className="flex-1" onClick={() => void askHere()}>Use my location</NocButton>
+          )}
+          <NocButton variant="structure" className="flex-1" onClick={() => navigate('/join/map', { state: { here } })}>Map</NocButton>
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div data-finder>
+          <SectionHead title={slug ? 'Your gym' : here ? 'Nearest first' : 'Gyms'} />
+          {sorted.map((gym, i) => {
+            const km = here && gym.latitude != null && gym.longitude != null
+              ? distanceKm(here, { lat: gym.latitude, lng: gym.longitude }) : null;
+            const ref = refFromUrl();
+            const action = mine.has(gym.id) ? undefined
+              : gym.join_policy === 'closed' && !ref ? 'Directions'
+              : gym.join_policy === 'code' && !slug ? 'Have a code?'
+              : busy === gym.id ? 'Asking…' : 'Join';
+            const onClick = mine.has(gym.id) ? undefined
+              : action === 'Directions' ? () => window.open(directionsUrl(gym), '_blank', 'noopener')
+              : action === 'Have a code?' ? () => document.querySelector<HTMLInputElement>('input[aria-label="Join code"]')?.focus()
+              : () => void join(gym);
+            return (
+              <LineRow
+                key={gym.id}
+                // The gym's own mark, at the size the row already reserves. A gym
+                // that uploaded none gets nothing here rather than the Core
+                // Fitness logo: this is a list of gyms, and every one of them
+                // wearing the platform's mark is the opposite of what it is for.
+                gutter={gym.logo_url
+                  ? <img src={gym.logo_url} alt="" width={36} height={36}
+                      style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                  : undefined}
+                gutterWidth={gym.logo_url ? 48 : undefined}
+                title={gym.name}
+                // Where it is and how far, then the gym's own line. "You are
+                // already here" wins: it answers the question a tap would ask.
+                meta={mine.has(gym.id) ? 'You are already here'
+                  : [km != null ? `${km < 10 ? km.toFixed(1) : Math.round(km)} km` : null,
+                     gym.join_policy === 'closed' ? 'Joins at the front desk' : gym.join_policy === 'code' ? 'Joins with its code' : null,
+                     gym.tagline || gym.address].filter(Boolean).join(' · ') || undefined}
+                action={action}
+                dim={mine.has(gym.id)}
+                onClick={onClick}
+                last={i === sorted.length - 1}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {!slug && nearbyOsm.length > 0 && (
+        <div data-osm>
+          <SectionHead title="Not on Core Fitness yet" />
+          {nearbyOsm.map((g, i) => (
+            <LineRow key={g.osm_id} title={g.name ?? 'A gym'} last={i === nearbyOsm.length - 1}
+              meta={[here ? `${(() => { const k = distanceKm(here, { lat: g.latitude, lng: g.longitude }); return k < 10 ? k.toFixed(1) : Math.round(k); })()} km` : null, g.address].filter(Boolean).join(' · ') || undefined}
+              action={suggested.has(g.osm_id) ? 'Suggested' : 'Suggest'} actionTone={suggested.has(g.osm_id) ? 'muted' : 'action'}
+              onClick={suggested.has(g.osm_id) ? undefined : () => void suggest(g)} />
           ))}
+          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>Gym data © OpenStreetMap contributors.</p>
         </div>
       )}
 

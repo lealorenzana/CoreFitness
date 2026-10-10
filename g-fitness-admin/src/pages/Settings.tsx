@@ -7,6 +7,7 @@ import WaiverTab from '../components/WaiverTab';
 import HouseRulesTab from '../components/HouseRulesTab';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
+import GymLocationPicker from '../components/GymLocationPicker';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Avatar from '../components/ui/Avatar';
@@ -596,6 +597,9 @@ export default function Settings() {
                 <Button variant="primary" onClick={handleSaveGym} disabled={saving}>
                   {saving ? 'Saving…' : 'Save Gym Information'}
                 </Button>
+
+                {/* Its own save: the pin is not part of the form above (0182). */}
+                <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}><GymLocationPicker /></div>
               </div>
             )}
 

@@ -58,6 +58,7 @@ const EditProfile = lazyPage(() => import('./pages/EditProfile'));
 const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
 const BookClass = lazyPage(() => import('./pages/BookClass'));
 const MyCoach = lazyPage(() => import('./pages/MyCoach'));
+const GymMap = lazyPage(() => import('./pages/GymMap'));
 const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
 const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
@@ -190,6 +191,7 @@ function App() {
         {/* Which gym am I using, and joining another. Outside both shells: a
             person here has not picked a gym yet, so no tab bar applies. */}
         <Route path="/choose-gym" element={<StandalonePage><ChooseGym /></StandalonePage>} />
+        <Route path="/join/map" element={<GymMap />} />
         <Route path="/join" element={<StandalonePage><JoinGym /></StandalonePage>} />
         <Route path="/join/:slug" element={<StandalonePage><JoinGym /></StandalonePage>} />
         {/* An invitation from a gym (0111). Public on purpose: it is usually

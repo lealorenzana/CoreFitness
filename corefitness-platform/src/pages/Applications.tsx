@@ -10,6 +10,7 @@ import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
 import Pagination from '../components/Pagination';
+import GymSuggestions from '../components/GymSuggestions';
 import { usePaged } from '../lib/usePaged';
 
 const when = (iso: string) =>
@@ -151,6 +152,7 @@ export default function Applications() {
               <span><b>{all.length ? `${Math.round((of('approved').length / all.length) * 100)}%` : '—'}</b>let in</span>
             </div>
           </section>
+          <GymSuggestions />
         </aside>
       </div>
 

@@ -79,6 +79,11 @@ async (page) => {
         }]);
       }
       if (fn === 'set_active_gym') { state.current = body.p_gym; return json(null); }
+      // 0182: the finder lists every gym with how it is joined.
+      if (fn === 'gym_finder') return json([
+        { id: 'gym-a', slug: 'core-fitness', name: 'Core Fitness', short_name: null, logo_url: null, accent: 'violet', join_policy: 'open', latitude: null, longitude: null, address: null },
+        { id: 'gym-d', slug: 'seaside-fit', name: 'Seaside Fit', short_name: null, logo_url: null, accent: 'blue', join_policy: 'open', latitude: null, longitude: null, address: null },
+      ]);
       if (fn === 'list_gyms') return json([
         { id: 'gym-a', slug: 'core-fitness', name: 'Core Fitness', short_name: null, logo_url: null, accent: 'violet' },
         { id: 'gym-d', slug: 'seaside-fit', name: 'Seaside Fit', short_name: null, logo_url: null, accent: 'blue' },

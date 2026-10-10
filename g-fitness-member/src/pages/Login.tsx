@@ -540,8 +540,11 @@ export default function Login() {
             ) : (
               <p className="text-white/40 text-xs">
                 Don&apos;t have an account?{' '}
+                {/* Sign up starts by finding the gym (0182) — its rule decides what
+                    the next step is. An invitation's own link still goes straight to
+                    the form for that gym. */}
                 <button
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/join')}
                   className="font-semibold hover:text-violet-300 transition-colors"
                   style={{ color: 'var(--color-primary)' }}
                 >
@@ -556,6 +559,10 @@ export default function Login() {
               <span className="mx-1.5">•</span>
               <button onClick={() => navigate('/privacy')} className="hover:text-white/40">
                 Privacy Policy
+              </button>
+              <span className="mx-1.5">•</span>
+              <button onClick={() => navigate('/join')} className="hover:text-white/40" data-find-gym>
+                Find a gym
               </button>
               <span className="mx-1.5">•</span>
               <button onClick={() => navigate('/get-app')} className="hover:text-white/40">

@@ -3,6 +3,7 @@ import { clearHubMemory } from '../components/layout/memberNav';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
 import { clearFeatureCache } from '../hooks/useFeatures';
 import { clearGymApp } from './gymApp';
+import { clearHere } from './here';
 import { clearAchievementCache } from './api/achievements';
 
 /**
@@ -52,6 +53,7 @@ export function clearMemberCaches(): void {
   clearFeatureCache();
   // The gym's words, colours, logo and modules.
   clearGymApp();
+  clearHere();
   // The achievement catalogue is a per-gym table (0098 tags it), and this one
   // had no clearer at all — not even on logout, so it also survived one person
   // signing out and another signing in on the same phone.

@@ -26,6 +26,10 @@ async (page) => {
       const b = JSON.parse(req.postData() || '{}');
       CALLS.push([fn, b]);
       if (fn === 'list_gyms') return json([OPEN, { ...OPEN, id: 'gym-x', slug: 'x', name: 'Another Gym' }]);
+      // 0182: every active gym, with how it is joined (never its code).
+      if (fn === 'gym_finder') return json([{ ...OPEN, join_policy: 'open', latitude: null, longitude: null, address: null },
+        { ...OPEN, id: 'gym-x', slug: 'x', name: 'Another Gym', join_policy: 'open', latitude: null, longitude: null, address: null },
+        { ...GYM, join_policy: 'code', latitude: null, longitude: null, address: null }]);
       if (fn === 'gym_by_slug') return json(b.p_slug === GYM.slug ? [GYM] : []);
       if (fn === 'gym_by_code') return json(String(b.p_code).toUpperCase() === 'PPDSSJ' ? [GYM] : []);
       if (fn === 'peek_invitation') return json([{ gym_id: GYM.id, gym_name: GYM.name, slug: GYM.slug, logo_url: null, accent: 'emerald',
@@ -49,7 +53,8 @@ async (page) => {
   await page.goto('http://localhost:5173/join', { waitUntil: 'domcontentloaded' });
   await page.getByText('Have a join code?').waitFor({ timeout: 15000 });
   let t = await text();
-  out.push('the unlisted gym is not in the search list: ' + (!/gabby pogi 123/.test(t) ? 'yes' : 'STILL SHOWN'));
+  // 0182: a code-only gym is in the finder, but its row asks for the code — it never offers Join.
+  out.push('a code-only gym is listed with "Have a code?", not Join: ' + (/gabby pogi 123/.test(t) && /Have a code\?/.test(t) ? 'yes' : 'MISSING'));
   out.push('/join offers the app: ' + (/Install the app on your phone/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Join code').fill('ppdssj');
   await page.waitForTimeout(2500);

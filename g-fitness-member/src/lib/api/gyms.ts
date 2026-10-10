@@ -113,3 +113,70 @@ export async function requestToJoin(gymId: string, via: JoinVia = 'list', code?:
   if (old.error) throw new Error(old.error.message);
   return 'desk';
 }
+
+/** A gym in the finder (0182): how it is joined and where it is. */
+export interface FinderGym extends PublicGym {
+  join_policy: 'open' | 'code' | 'closed';
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+}
+
+/**
+ * Every active gym for "Find your gym" (0182's `gym_finder`), so each row can
+ * say what to do. Before 0182 it falls back to the listed gyms (all "open").
+ */
+export async function gymFinder(search?: string): Promise<FinderGym[]> {
+  const { data, error } = await supabase.rpc('gym_finder', { p_search: search?.trim() || null });
+  if (error) {
+    const listed = await listGyms(search);
+    return listed.map((g) => ({ ...g, join_policy: 'open', latitude: null, longitude: null, address: null }));
+  }
+  return ((data ?? []) as (PublicGym & { join_policy: string; latitude: number | string | null; longitude: number | string | null; address: string | null })[])
+    .map((g) => ({
+      ...g,
+      join_policy: (['open', 'code', 'closed'].includes(g.join_policy) ? g.join_policy : 'open') as FinderGym['join_policy'],
+      latitude: g.latitude == null ? null : Number(g.latitude),
+      longitude: g.longitude == null ? null : Number(g.longitude),
+    }));
+}
+
+/** A gym OpenStreetMap knows that is not on Core Fitness (0182). */
+export interface OsmGym { osm_id: string; name: string | null; latitude: number; longitude: number; address: string | null }
+
+/**
+ * OpenStreetMap's gyms around a point, through the osm-gyms Edge Function,
+ * which caches them by tile. Empty when the function is not deployed or
+ * OpenStreetMap is busy — the finder still lists Core Fitness gyms.
+ */
+export async function osmGymsNear(lat: number, lng: number): Promise<OsmGym[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('osm-gyms', { body: { lat, lng } });
+    if (error || !data?.gyms) return [];
+    return (data.gyms as OsmGym[]).map((g) => ({ ...g, latitude: Number(g.latitude), longitude: Number(g.longitude) }));
+  } catch {
+    return [];
+  }
+}
+
+export async function suggestGym(g: OsmGym, note?: string): Promise<void> {
+  const { error } = await supabase.rpc('suggest_gym', {
+    p_osm_id: g.osm_id, p_name: g.name ?? 'A gym', p_lat: g.latitude, p_lng: g.longitude, p_note: note ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Straight-line distance in km — for sorting a list, not for directions. */
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Directions in the phone's own maps app. */
+export function directionsUrl(g: { latitude: number | null; longitude: number | null; name: string; address?: string | null }): string {
+  return g.latitude != null && g.longitude != null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${g.latitude},${g.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([g.name, g.address].filter(Boolean).join(', '))}`;
+}

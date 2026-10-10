@@ -160,7 +160,9 @@ const GLOBAL = [
   // a gym's "we paid" claim to the platform (like gym_payments, the platform's
   // ledger about a gym, not the gym's own data). RLS on, no policy; every read
   // and write is a definer function (onboarding-payments.mjs).
-  'application_messages', 'platform_payment_methods', 'gym_payment_claims'];
+  'application_messages', 'platform_payment_methods', 'gym_payment_claims',
+  // 0182: OpenStreetMap's gyms (public map data, cached by tile) and suggestions to the platform.
+  'osm_gyms', 'osm_tiles', 'gym_suggestions'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,

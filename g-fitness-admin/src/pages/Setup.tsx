@@ -12,6 +12,7 @@ import ModuleSwitches from '../components/ModuleSwitches';
 import AiCoachCard from '../components/AiCoachCard';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
+import GymLocationPicker from '../components/GymLocationPicker';
 import { clearGymContext, getGymContext } from '../lib/gymContext';
 import {
   finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
@@ -479,6 +480,7 @@ export default function Setup() {
                     It is saved with your colours, two steps on.
                   </p>
                 </div>
+                <div className="sm:col-span-2"><GymLocationPicker /></div>
               </div>
             )}
 
