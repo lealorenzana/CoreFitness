@@ -167,6 +167,11 @@ check('a rejected reference can be sent again, corrected', !!(await one(`select 
 
 // ---- 6. approved applicants see how to pay ------------------------------------------------------------
 await as(P.pa);
+// 0187: approval needs the six documents verified. Filed here directly; documents have their own suite (applicant-accounts.mjs).
+await db.exec(`reset role; insert into application_documents (application_id, kind, path, status, expires_on)
+  select '${app.id}', k, '${app.id}/' || k, 'verified', ${TODAY} + 300
+    from unnest(array['permit', 'dti_sec', 'bir_2303', 'owner_id', 'front_photo', 'barangay']) k`);
+await as(P.pa);
 await db.exec(`select create_gym('Iron Den', 'iron-den', '${app.id}')`);
 await asAnon();
 const st2 = (await one(`select application_status('${token}') as s`)).s;
