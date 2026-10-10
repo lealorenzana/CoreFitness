@@ -36,7 +36,7 @@ export default function Room() {
   }, [roomId]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const fallback = mode === 'trainer' ? '/trainer/rooms' : '/member/rooms';
+  const fallback = mode === 'trainer' ? `/trainer/rooms?room=${roomId}` : '/member/rooms';
   if (room === undefined) return <Page><PageTitle back fallback={fallback} title="Room" /><SkeletonList /></Page>;
   if (room === null) {
     return (
@@ -68,7 +68,7 @@ export default function Room() {
   };
 
   return (
-    <Page>
+    <Page className={mode === 'trainer' ? 'noc-slide-in' : undefined}>
       <PageTitle back fallback={fallback} title={room.name}
         subtitle={`${KIND[room.kind]}${mode === 'member' ? ` · ${room.trainerName}` : ` · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`}${room.archived ? ' · closed' : ''}`} />
       {room.description && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{room.description}</p>}

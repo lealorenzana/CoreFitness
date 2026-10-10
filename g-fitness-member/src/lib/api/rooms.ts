@@ -271,3 +271,11 @@ export function dueLabel(dueOn: string): string {
   const d = new Date(`${dueOn}T12:00:00+08:00`);
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Manila' });
 }
+
+/** Each of my rooms' picture (0178): a 1-on-1 shows the member, class and group rooms what their coach set. */
+export async function myRoomPhotos(): Promise<Map<string, string | null>> {
+  const { data, error } = await supabase.rpc('my_room_photos');
+  if (error) return new Map();
+  return new Map(((data ?? []) as { room_id: string; photo_url: string | null }[]).map((r) => [r.room_id, r.photo_url]));
+}
+export const setRoomPhoto = (roomId: string, url: string | null) => rpc('set_room_photo', { p_room: roomId, p_url: url });

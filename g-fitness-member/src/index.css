@@ -601,6 +601,10 @@ html, body {
   to   { opacity: 1; transform: none; }
 }
 @keyframes noc-fade { from { opacity: 0; } to { opacity: 1; } }
+/* A trainer's channel opens over the room list, Discord-style (2026-10-10). */
+@keyframes noc-slide-in { from { transform: translateX(28px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.noc-slide-in { animation: noc-slide-in 0.22s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .noc-slide-in { animation: none; } }
 @keyframes noc-pop {
   0%   { transform: scale(0.82); }
   60%  { transform: scale(1.12); }
