@@ -65,6 +65,7 @@ export const exportGym = (gym: string) => call<GymExport>('platform_export_gym',
 /** The features platform_gym_usage() counts, in the order the screens show them. */
 export const USAGE_FEATURES: { key: string; label: string; tip: string }[] = [
   { key: 'checkins', label: 'Check-ins', tip: 'Visits recorded at the desk or the kiosk' },
+  { key: 'guests', label: 'Walk-ins', tip: 'Day-pass and pack visits by guests who are not members (0185) — never counted toward the member limit' },
   { key: 'classes', label: 'Classes', tip: 'Class spots booked by members or the desk' },
   { key: 'pt', label: '1-on-1', tip: 'Personal training sessions booked' },
   { key: 'workouts', label: 'Workouts', tip: 'Workouts members logged in the app' },
@@ -73,7 +74,7 @@ export const USAGE_FEATURES: { key: string; label: string; tip: string }[] = [
   { key: 'chat', label: 'Chat', tip: 'Messages between members and their coaches — counted, never read' },
   { key: 'shop', label: 'Shop', tip: 'Sales rung up at the counter' },
   { key: 'rewards', label: 'Rewards', tip: "Points spent on the gym's rewards" },
-  { key: 'squads', label: 'Squads', tip: 'Squads members formed' },
+  { key: 'squads', label: 'Teams', tip: 'Teams members formed' },
   { key: 'referrals', label: 'Referrals', tip: 'Friends referred by members' },
   { key: 'photos', label: 'Photos', tip: 'Progress photos members took — counted, never seen' },
   { key: 'payments', label: 'Payments', tip: 'Member payments the desk recorded' },

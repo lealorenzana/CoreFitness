@@ -8,13 +8,14 @@ import HouseRulesTab from '../components/HouseRulesTab';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
+import DayPassSettings from '../components/DayPassSettings';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import FormField from '../components/ui/FormField';
-import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake } from 'lucide-react';
+import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -54,7 +55,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'bookings' | 'coaching' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'bookings' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -64,6 +65,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'gym', label: 'Gym Information', icon: Building2 },
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
   { id: 'coaching', label: 'Coaching', icon: Handshake },
+  { id: 'walk-ins', label: 'Walk-ins', icon: Footprints },
   { id: 'refunds', label: 'Refund Policy', icon: Banknote },
   { id: 'payments', label: 'Online Payments', icon: Smartphone },
   { id: 'waiver', label: 'Waiver', icon: FileSignature },
@@ -623,6 +625,17 @@ export default function Settings() {
                   </p>
                 </div>
                 <CoachingSettings />
+              </div>
+            )}
+            {activeTab === 'walk-ins' && (
+              <div className="rounded-xl p-5 space-y-4" style={panel}>
+                <div>
+                  <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Day passes and walk-ins</h2>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    Guests who are not members, recorded at the desk under Attendance → Walk-ins.
+                  </p>
+                </div>
+                <DayPassSettings />
               </div>
             )}
             {activeTab === 'refunds' && <RefundPolicyTab />}

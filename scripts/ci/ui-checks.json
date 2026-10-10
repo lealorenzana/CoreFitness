@@ -53,6 +53,7 @@
     { "file": "admin-coaching-check.js", "app": "admin" },
     { "file": "admin-gym-location-check.js", "app": "admin" },
     { "file": "admin-equipment-check.js", "app": "admin" },
+    { "file": "admin-walk-ins-check.js", "app": "admin" },
     { "file": "admin-rewards-check.js", "app": "admin" },
     { "file": "admin-ops-check.js", "app": "admin" },
     { "file": "admin-activity-check.js", "app": "admin" },

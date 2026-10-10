@@ -60,6 +60,7 @@ type Preset = '7' | '30' | '90' | 'custom';
  */
 const ATTENDANCE_TABS = [
   { label: 'Today', to: '/attendance' },
+  { label: 'Walk-ins', to: '/attendance/walk-ins' },
   { label: 'History', to: '/attendance-history' },
 ];
 

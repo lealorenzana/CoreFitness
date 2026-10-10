@@ -96,7 +96,7 @@ async (page) => {
   await page.goto('http://localhost:5174/admin/setup', { waitUntil: 'domcontentloaded' });
   await page.getByText('Setting up Ana Fitness').waitFor({ timeout: 15000 });
   let t = await text();
-  out.push('the rail lists every step: ' + (['Your gym', 'When you are open', 'How your app looks', 'Your words', 'What you run', 'Who approves bookings', 'How coaching works', 'The AI coach', 'Your plans', 'How members join', 'Ready to open'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
+  out.push('the rail lists every step: ' + (['Your gym', 'When you are open', 'How your app looks', 'Your words', 'What you run', 'Who approves bookings', 'How coaching works', 'Day passes and walk-ins', 'The AI coach', 'Your plans', 'How members join', 'Ready to open'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-setup-1.png' });
 
   await next();                                    // gym → hours
@@ -120,7 +120,9 @@ async (page) => {
   await next();                                    // bookings → coaching (0181)
   t = await text();
   out.push('the coaching step asks how members get a coach: ' + ((await page.locator('[data-coaching-settings]').count()) === 1 ? 'yes' : 'MISSING'));
-  await next();                                    // coaching → coach
+  await next();                                    // coaching → walk-ins (0185)
+  out.push('the walk-ins step offers day passes: ' + ((await page.locator('[data-day-pass-settings]').count()) === 1 ? 'yes' : 'MISSING'));
+  await next();                                    // walk-ins → coach
   t = await text();
   out.push('the AI coach step: ' + (/How much your members may talk to it/.test(t) ? 'shown (the plan sells it)' : 'MISSING'));
   await next();                                    // coach → plans
@@ -143,7 +145,7 @@ async (page) => {
   await page.getByRole('button', { name: /3\. How your app looks/ }).click();
   await page.waitForTimeout(300);
   out.push('a done step can be revisited: ' + (/Your main colour/.test(await text()) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /11\. Ready to open/ }).click();
+  await page.getByRole('button', { name: /12\. Ready to open/ }).click();
   await page.waitForTimeout(300);
   // The bug: a checklist link opened a page while the gym was still "not set up", and the guard sent it back here.
   await page.getByRole('button', { name: /Refund tiers and fee/ }).click();

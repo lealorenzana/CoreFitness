@@ -185,7 +185,7 @@ async (page) => {
   const first = await page.locator('.use-table tbody tr').first().innerText();
   out.push('every gym × every feature, busiest first: ' + ((await page.locator('.use-table tbody tr').count()) === 3 && /G Fitness/.test(first) && /1,420/.test(t) ? 'yes' : 'MISSING'));
   out.push('a gym doing nothing, flagged: ' + (/1 Open gyms doing nothing/.test(t) ? 'Ana gymanigga' : 'MISSING'));
-  out.push('features nobody used, said: ' + (/Nobody used/.test(t) && /squads/.test(t) ? 'yes' : 'MISSING'));
+  out.push('features nobody used, said: ' + (/Nobody used/.test(t) && /teams/.test(t) ? 'yes' : 'MISSING'));
   const cellTip = await tipAfterHover(page.locator('.use-table tbody tr').first().locator('td').nth(1));
   out.push('a cell in words, on hover: ' + (/G Fitness: 1,420 check-ins in 30 days/.test(cellTip) ? 'yes' : 'MISSING ' + cellTip));
   // ---- the AI coach on Usage (0147) ----

@@ -23,6 +23,7 @@ import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
 import Coaching from './pages/Coaching';
 import EquipmentPage from './pages/Equipment';
+import WalkIns from './pages/WalkIns';
 import Events from './pages/Events';
 import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
@@ -70,6 +71,7 @@ function App() {
                 them a coach or another desk account either way. */}
             <Route path="invitations" element={<Invitations />} />
             <Route path="attendance" element={<Attendance />} />
+            <Route path="attendance/walk-ins" element={<WalkIns />} />
             {/* Staff see it too: "did this member come in last week" is a
                 front-desk question, and the data is already theirs to read. */}
             <Route path="attendance-history" element={<AttendanceHistory />} />

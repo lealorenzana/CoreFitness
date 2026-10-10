@@ -13,6 +13,7 @@ import AiCoachCard from '../components/AiCoachCard';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
+import DayPassSettings from '../components/DayPassSettings';
 import { clearGymContext, getGymContext } from '../lib/gymContext';
 import {
   finishGymSetup, getGymSettings, mustChangePassword, setFirstPassword, updateGymSettings,
@@ -47,7 +48,7 @@ import type { MembershipPlanRow } from '../types/db';
  * lives on Settings, Your app or Membership Plans.
  */
 
-type Step = 'gym' | 'hours' | 'look' | 'words' | 'runs' | 'bookings' | 'coaching' | 'coach' | 'plans' | 'door' | 'password' | 'ready';
+type Step = 'gym' | 'hours' | 'look' | 'words' | 'runs' | 'bookings' | 'coaching' | 'walkins' | 'coach' | 'plans' | 'door' | 'password' | 'ready';
 
 const STEPS: { key: Step; title: string; blurb: string; icon: typeof Check }[] = [
   { key: 'gym', title: 'Your gym', blurb: 'What your members and your receipts will say.', icon: Building2 },
@@ -57,6 +58,7 @@ const STEPS: { key: Step; title: string; blurb: string; icon: typeof Check }[] =
   { key: 'runs', title: 'What you run', blurb: 'Switch off what your gym does not do. Nothing is deleted.', icon: LayoutGrid },
   { key: 'bookings', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all. Classes and 1-on-1 apart.', icon: CalendarDays },
   { key: 'coaching', title: 'How coaching works', blurb: 'How members get a coach, for how long, and who is paid.', icon: Dumbbell },
+  { key: 'walkins', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and what packs you sell.', icon: Banknote },
   { key: 'coach', title: 'The AI coach', blurb: 'How much your members may talk to it.', icon: Sparkles },
   { key: 'plans', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.', icon: Tags },
   { key: 'door', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.', icon: DoorOpen },
@@ -593,6 +595,10 @@ export default function Setup() {
               </div>
             )}
 
+            {step === 'walkins' && (
+              <div className="mt-5"><DayPassSettings /></div>
+            )}
+
             {step === 'coaching' && (
               <div className="mt-5"><CoachingSettings /></div>
             )}
@@ -788,7 +794,7 @@ export default function Setup() {
 
             <div className="mt-7 flex flex-wrap items-center gap-2 border-t pt-5" style={{ borderColor: 'var(--color-border)' }}>
               <Button onClick={() => void next()} disabled={saving || uploading}>
-                {saving ? 'Saving…' : isLast ? 'Open my gym' : step === 'runs' || step === 'bookings' || step === 'coaching' || step === 'coach' ? 'Continue' : 'Save and continue'}
+                {saving ? 'Saving…' : isLast ? 'Open my gym' : step === 'runs' || step === 'bookings' || step === 'coaching' || step === 'walkins' || step === 'coach' ? 'Continue' : 'Save and continue'}
               </Button>
               {index > 0 && (
                 <Button variant="ghost" disabled={saving} onClick={() => setStep(steps[index - 1].key)}>Back</Button>

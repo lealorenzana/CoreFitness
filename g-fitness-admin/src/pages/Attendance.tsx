@@ -33,6 +33,7 @@ const ITEMS_PER_PAGE = 10;
  */
 const ATTENDANCE_TABS = [
   { label: 'Today', to: '/attendance' },
+  { label: 'Walk-ins', to: '/attendance/walk-ins' },
   { label: 'History', to: '/attendance-history' },
 ];
 
