@@ -135,7 +135,8 @@ export default function Setup() {
       setModules(mods);
       setPlans(planRows);
       setEdited(Object.fromEntries(planRows.map((p) => [p.id, {
-        name: p.name, price: String(p.price), days: p.duration_days == null ? '' : String(p.duration_days),
+        // A starter plan with no price yet (0186) starts blank, not ₱0.
+        name: p.name, price: p.price_unset ? '' : String(p.price), days: p.duration_days == null ? '' : String(p.duration_days),
       }])));
       setNeedsPassword(temp);
       // Pick up where they left off (0111): every earlier step saved before it advanced.
@@ -236,9 +237,12 @@ export default function Setup() {
       const next = edited[plan.id];
       if (!next) continue;
       if (!next.name.trim()) throw new Error('A plan needs a name.');
+      if (plan.price_unset && plan.tier !== 'free' && next.price.trim() === '') {
+        throw new Error(`${next.name.trim() || plan.name}: set a price — members do not see it until you do.`);
+      }
       const { price, days } = parse(next);
-      if (next.name.trim() === plan.name && price === plan.price && days === (plan.duration_days ?? null)) continue;
-      await updatePlan(plan.id, { name: next.name.trim(), price, duration_days: days });
+      if (!plan.price_unset && next.name.trim() === plan.name && price === plan.price && days === (plan.duration_days ?? null)) continue;
+      await updatePlan(plan.id, { name: next.name.trim(), price, duration_days: days, price_unset: false });
     }
     const fresh = await listPlans();
     setPlans(fresh);

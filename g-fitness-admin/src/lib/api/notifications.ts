@@ -82,7 +82,16 @@ export async function addNotification(input: NewNotification): Promise<void> {
   if (error) throw error;
 }
 
-export type BroadcastAudience = 'all_members' | 'all_trainers' | 'everyone' | 'specific';
+/** 0186 adds the plan audiences: the free tier (an expired member is in it), paid plans, or chosen plans. */
+export type BroadcastAudience = 'all_members' | 'all_trainers' | 'everyone' | 'specific' | 'free_tier' | 'paid' | 'plans';
+const PLAN_AUDIENCES: BroadcastAudience[] = ['free_tier', 'paid', 'plans'];
+
+/** Members in a plan audience, decided in SQL (members_in_audience, 0186) — the screen never guesses who has lapsed. */
+async function planAudience(audience: BroadcastAudience, planIds?: string[]): Promise<string[]> {
+  const { data, error } = await supabase.rpc('members_in_audience', { p_kind: audience, p_plans: planIds ?? null });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { user_id: string }[]).map((r) => r.user_id);
+}
 
 export interface BroadcastResult {
   recipients: number;
@@ -102,6 +111,8 @@ export interface BroadcastResult {
 export async function broadcastNotification(input: {
   audience: BroadcastAudience;
   userIds?: string[];
+  /** For the 'plans' audience. */
+  planIds?: string[];
   type: string;
   title: string;
   message: string;
@@ -111,10 +122,12 @@ export async function broadcastNotification(input: {
    *  title and message already have. */
   imageUrl?: string | null;
 }): Promise<BroadcastResult> {
-  let recipientIds: string[] = [];
+  let recipientIds: string[];
 
   if (input.audience === 'specific') {
     recipientIds = input.userIds ?? [];
+  } else if (PLAN_AUDIENCES.includes(input.audience)) {
+    recipientIds = await planAudience(input.audience, input.planIds);
   } else {
     let query = supabase.from('gym_people').select('id').eq('status', 'active');
     if (input.audience === 'all_members') query = query.eq('role', 'member');
@@ -213,8 +226,9 @@ export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary
  * filters `broadcastNotification` uses, so the preview cannot disagree with the
  * send.
  */
-export async function countAudience(audience: BroadcastAudience): Promise<number> {
+export async function countAudience(audience: BroadcastAudience, planIds?: string[]): Promise<number> {
   if (audience === 'specific') return 0;
+  if (PLAN_AUDIENCES.includes(audience)) return (await planAudience(audience, planIds)).length;
   let query = supabase.from('gym_people').select('id', { count: 'exact', head: true }).eq('status', 'active');
   if (audience === 'all_members') query = query.eq('role', 'member');
   else if (audience === 'all_trainers') query = query.eq('role', 'trainer');

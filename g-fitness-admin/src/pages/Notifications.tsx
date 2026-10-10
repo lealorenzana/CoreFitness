@@ -17,6 +17,7 @@ import {
 import { usePaged } from '../hooks/usePaged';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { listPlans } from '../lib/api/membershipPlans';
 import { supabase } from '../lib/supabaseClient';
 import {
   broadcastNotification,
@@ -56,6 +57,8 @@ interface Recipient {
 interface NotificationForm {
   recipientType: RecipientType;
   specificUsers: string[];
+  /** For the 'plans' audience (0186). */
+  planIds: string[];
   notificationType: NotificationType;
   title: string;
   message: string;
@@ -67,6 +70,7 @@ interface NotificationForm {
 const EMPTY_FORM: NotificationForm = {
   recipientType: 'all_members',
   specificUsers: [],
+  planIds: [],
   notificationType: 'info',
   title: '',
   message: '',
@@ -123,6 +127,9 @@ const AUDIENCE_LABEL: Record<RecipientType, string> = {
   all_trainers: 'All Trainers',
   everyone: 'Everyone',
   specific: 'Pick People',
+  free_tier: 'Free tier',
+  paid: 'Paid plans',
+  plans: 'Some plans',
 };
 
 /** Announcements and Events are one section — see SectionTabs for why the
@@ -144,10 +151,19 @@ export default function Notifications() {
   const [peopleSearch, setPeopleSearch] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
+  /** Free tier / Paid plans, counted by the database (0186); null before 0186, and the buttons do not show. */
+  const [planCounts, setPlanCounts] = useState<{ free_tier: number | null; paid: number | null }>({ free_tier: null, paid: null });
+  const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
   const [toRecall, setToRecall] = useState<BroadcastSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
+      // The plan audiences (0186) are counted by the database; before 0186 they read 0.
+      void Promise.all([countAudience('free_tier').catch(() => null), countAudience('paid').catch(() => null), listPlans().catch(() => [])])
+        .then(([free, paid, plans]) => {
+          setPlanCounts({ free_tier: free, paid });
+          setPlans(plans.filter((p) => p.is_active !== false).map((p) => ({ id: p.id, name: p.name })));
+        });
       const [broadcasts, { data: profiles }, members, trainers, everyone] = await Promise.all([
         listRecentBroadcasts(),
         supabase.from('gym_people').select('id, first_name, last_name, role')
@@ -185,6 +201,9 @@ export default function Notifications() {
     if (form.recipientType === 'specific' && form.specificUsers.length === 0) {
       next.recipients = 'Pick at least one person.';
     }
+    if (form.recipientType === 'plans' && form.planIds.length === 0) {
+      next.recipients = 'Pick at least one plan.';
+    }
     // An action URL that isn't an in-app path sends the member nowhere.
     const url = form.actionUrl?.trim();
     if (url && !url.startsWith('/')) next.actionUrl = 'Must be an in-app path starting with "/".';
@@ -198,6 +217,7 @@ export default function Notifications() {
       const { recipients, recipientIds } = await broadcastNotification({
         audience: form.recipientType,
         userIds: form.specificUsers,
+        planIds: form.planIds,
         type: form.notificationType,
         title: form.title.trim(),
         message: form.message.trim(),
@@ -478,10 +498,15 @@ export default function Notifications() {
                     <SectionLabel>Recipients</SectionLabel>
                     <FormField label="Audience" required error={errors.recipients}>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['all_members', 'all_trainers', 'everyone', 'specific'] as RecipientType[]).map((type) => {
+                        {(['all_members', 'all_trainers', 'everyone', 'specific', 'free_tier', 'paid', 'plans'] as RecipientType[])
+                          .filter((type) => !['free_tier', 'paid', 'plans'].includes(type) || planCounts.free_tier !== null)
+                          .map((type) => {
                           const isActive = form.recipientType === type;
-                          const Icon = type === 'all_members' ? Users : type === 'all_trainers' ? Dumbbell : type === 'everyone' ? Bell : User;
-                          const count = type === 'specific' ? null : audienceCounts[type];
+                          const Icon = type === 'all_members' ? Users : type === 'all_trainers' ? Dumbbell : type === 'everyone' ? Bell
+                            : type === 'free_tier' ? Users : type === 'paid' ? Users : type === 'plans' ? Users : User;
+                          const count = type === 'specific' || type === 'plans' ? null
+                            : type === 'free_tier' || type === 'paid' ? planCounts[type]
+                            : audienceCounts[type as 'all_members' | 'all_trainers' | 'everyone'];
                           return (
                             <button key={type} type="button" onClick={() => setForm({ ...form, recipientType: type })}
                               className="p-2.5 rounded-xl text-[10px] font-semibold transition-all flex flex-col items-center gap-1 text-center"
@@ -499,6 +524,29 @@ export default function Notifications() {
                         })}
                       </div>
                     </FormField>
+
+                    {form.recipientType === 'free_tier' && (
+                      <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                        Members on your free plan, and members whose paid plan has lapsed. Frozen memberships are left out.
+                      </p>
+                    )}
+                    {form.recipientType === 'plans' && (
+                      <div className="flex flex-wrap gap-1.5" data-audience-plans>
+                        {plans.map((p) => {
+                          const on = form.planIds.includes(p.id);
+                          return (
+                            <button key={p.id} type="button" aria-pressed={on}
+                              onClick={() => setForm({ ...form, planIds: on ? form.planIds.filter((x) => x !== p.id) : [...form.planIds, p.id] })}
+                              className="text-[11px] font-semibold rounded-full px-3 py-1.5"
+                              style={{ background: on ? 'var(--color-primary)' : 'var(--color-bg)', color: on ? '#fff' : 'var(--color-text-secondary)',
+                                border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+                              {p.name}
+                            </button>
+                          );
+                        })}
+                        <p className="w-full text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Members whose current plan is one of these and is still running.</p>
+                      </div>
+                    )}
 
                     {form.recipientType === 'specific' && (
                       <div>

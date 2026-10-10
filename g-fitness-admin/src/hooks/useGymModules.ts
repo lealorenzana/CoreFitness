@@ -19,7 +19,7 @@ import { getGymApp } from '../lib/api/gymApp';
 /** Each 0141 switch and the switch it lives inside — the same pairs as platform_features.parent_key. */
 export const PARENT: Record<string, string> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
-  programs: 'progress', photos: 'progress', squads: 'engagement', seasons: 'engagement',
+  programs: 'progress', photos: 'progress', squads: 'engagement', points: 'engagement', seasons: 'points',
   quests: 'engagement', referrals: 'engagement',
 };
 

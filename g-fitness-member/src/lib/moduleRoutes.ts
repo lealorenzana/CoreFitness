@@ -30,7 +30,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/track', 'progress'],
   ['/member/workout-history', 'progress'],
   ['/member/progress', 'progress'],
-  ['/member/rewards', 'engagement'],
+  ['/member/rewards', 'points'],
   ['/member/challenges', 'engagement'],
   ['/member/achievements', 'engagement'],
   ['/member/season', 'seasons'],
@@ -62,6 +62,6 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   engagement: 'points, rewards and challenges', progress: 'progress tracking', assistant: 'the assistant',
   push: 'announcements', analytics: 'analytics', shop: 'the shop', requests: 'freeze and cancel requests in the app',
   online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
-  equipment: 'the equipment list',
+  equipment: 'the equipment list', points: 'points and rewards',
   squads: 'teams', seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends', targets: 'targets',
 };

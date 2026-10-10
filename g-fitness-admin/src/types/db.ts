@@ -111,6 +111,8 @@ export interface MembershipPlanRow {
   name: string;
   tier: PlanTier;
   price: number;
+  /** A starter plan the owner has not priced yet (0186): members never see it. */
+  price_unset?: boolean;
   /** Days a payment buys. NULL = the plan does not expire (0024) — the free
    *  tier, which used to store 3650 days and render as a decade-long countdown. */
   duration_days: number | null;

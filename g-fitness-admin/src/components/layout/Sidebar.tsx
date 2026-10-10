@@ -143,7 +143,7 @@ const NAV: Entry[] = [
     icon: Trophy,
     children: [
       { label: 'Challenges', path: '/challenges', icon: Flag, adminOnly: true, module: 'engagement' },
-      { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true, module: 'engagement' },
+      { label: 'Rewards', path: '/rewards', icon: Gift, adminOnly: true, module: 'points' },
       { label: 'Achievements', path: '/achievements', icon: Trophy, adminOnly: true, module: 'engagement' },
     ],
   },

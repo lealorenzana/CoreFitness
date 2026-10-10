@@ -34,7 +34,9 @@ export type FeatureKey =
   // 0176: Targets (members' own goals), a child of Progress.
   | 'targets'
   // 0184: the gym's equipment list.
-  | 'equipment';
+  | 'equipment'
+  // 0186: points (earning and the rewards shop), a child of Engagement; Seasons live under it.
+  | 'points';
 
 /**
  * What this gym calls its people and its sessions (0114).
@@ -157,7 +159,7 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 /** Each 0141 switch and the switch it lives inside (the same pairs as platform_features.parent_key). */
 export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
-  programs: 'progress', photos: 'progress', squads: 'engagement', seasons: 'engagement',
+  programs: 'progress', photos: 'progress', squads: 'engagement', points: 'engagement', seasons: 'points',
   quests: 'engagement', referrals: 'engagement',
 };
 

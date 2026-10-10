@@ -216,7 +216,8 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
                       <div className="flex items-center justify-between" style={{ gap: 12, marginTop: 14 }}>
                         <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                           {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
-                          {c.rewardPoints > 0 && (
+                          {/* With points off (0186) a challenge is still a challenge — just not a points one. */}
+                          {c.rewardPoints > 0 && moduleOn(gymApp, 'points') && (
                             <span style={{ color: 'var(--color-primary-300)' }}> · {c.rewardPoints} points</span>
                           )}
                         </p>

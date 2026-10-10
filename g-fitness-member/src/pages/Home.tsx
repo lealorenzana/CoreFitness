@@ -199,7 +199,7 @@ export default function Home() {
     });
   } else if (home.checkedInToday) {
     const at = home.checkInAtToday ? ` at ${clock(home.checkInAtToday)}` : '';
-    const points = extras?.checkinPoints != null ? `${extras.checkinPoints} points added. ` : '';
+    const points = extras?.checkinPoints != null && moduleOn(gymApp, 'points') ? `${extras.checkinPoints} points added. ` : '';
     entries.push({
       key: 'now', gutter: 'Now', live: true,
       title: `Checked in${at}`,

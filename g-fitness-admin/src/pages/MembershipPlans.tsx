@@ -135,6 +135,7 @@ export default function MembershipPlans() {
       name: form.name,
       tier: form.tier,
       price: Number(form.price),
+      price_unset: false,
       duration_days: form.durationMonths === NEVER ? null : Number(form.durationMonths) * 30,
       description: featureLines.join('\n'),
       is_active: form.isActive,
@@ -316,7 +317,9 @@ export default function MembershipPlans() {
                   </div>
 
                   <div className="flex items-baseline gap-1 mt-2.5">
-                    <span className="text-xl font-bold text-white tabular-nums">₱{plan.price}</span>
+                    {plan.price_unset
+                      ? <span className="text-sm font-semibold" data-price-unset style={{ color: 'var(--color-secondary)' }}>Set a price — members do not see it yet</span>
+                      : <span className="text-xl font-bold text-white tabular-nums">₱{plan.price}</span>}
                     <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
                       / {durationLabel(plan.duration_days)}
                     </span>
@@ -381,7 +384,7 @@ export default function MembershipPlans() {
       {/* What each plan unlocks in the member app (0049). Below the grid rather
           than inside the edit modal: it is a comparison across plans, and the
           gym reads it as one table when deciding what a tier is worth. */}
-      {plans.length > 0 && <PlanFeatureMatrix plans={plans} />}
+      {plans.length > 0 && <PlanFeatureMatrix plans={plans} onPlanChanged={() => void loadData()} />}
 
       {/* Create/Edit Modal */}
       <AnimatePresence>

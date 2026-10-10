@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { moduleOn, useGymModules } from '../hooks/useGymModules';
+import { updatePlan } from '../lib/api/membershipPlans';
 import { Check, Lock, AlertTriangle } from 'lucide-react';
 import Card from './ui/Card';
 import { showToast } from '../utils/toast';
@@ -25,9 +27,35 @@ import type { MembershipPlanRow } from '../types/db';
 
 interface Props {
   plans: MembershipPlanRow[];
+  /** Called after a booking row changes a plan, so the cards above match. */
+  onPlanChanged?: () => void;
 }
 
-export default function PlanFeatureMatrix({ plans }: Props) {
+/**
+ * The groups the table reads in (D3, 0186), and the gym switch behind each
+ * feature — a feature the gym has switched off is shown, greyed, and says so,
+ * rather than looking as if it unlocks something. Unknown keys (a feature
+ * added later) land in "Other": the rows come from the catalogue, never a list.
+ */
+const GROUP_OF: Record<string, string> = {
+  can_book_classes: 'Booking', can_book_pt: 'Booking',
+  workout_tracker: 'Training', premium_programs: 'Training', plan_builder: 'AI coach', ai_model: 'AI coach',
+  challenges: 'Points and challenges', points_earn: 'Points and challenges', points_redeem: 'Points and challenges',
+  coaching_rooms: 'Coaching',
+};
+const SWITCH_OF: Record<string, string> = {
+  can_book_classes: 'classes', can_book_pt: 'coaching', workout_tracker: 'progress', premium_programs: 'programs',
+  plan_builder: 'assistant', ai_model: 'assistant', challenges: 'engagement', points_earn: 'points', points_redeem: 'points',
+  coaching_rooms: 'rooms',
+};
+const GROUP_ORDER = ['Booking', 'Training', 'Coaching', 'Points and challenges', 'AI coach', 'Other'];
+const BOOKING_ROWS: FeatureDef[] = [
+  { key: 'can_book_classes', label: 'Book classes', description: 'Members on the plan book seats in group classes.' } as FeatureDef,
+  { key: 'can_book_pt', label: 'Book 1-on-1 and have a coach', description: 'Members on the plan book 1-on-1 sessions, and (when coaching is included) pick a coach.' } as FeatureDef,
+];
+
+export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
+  const modules = useGymModules();
   const [features, setFeatures] = useState<FeatureDef[]>([]);
   const [cells, setCells] = useState<PlanFeatureCell[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,12 +82,36 @@ export default function PlanFeatureMatrix({ plans }: Props) {
     return () => { alive = false; };
   }, []);
 
-  const isOn = (planId: string, key: string) =>
-    cells.find((c) => c.plan_id === planId && c.feature_key === key)?.enabled ?? false;
+  const isBooking = (key: string) => key === 'can_book_classes' || key === 'can_book_pt';
+  const [booking, setBooking] = useState<Record<string, boolean>>({});
+  const isOn = (planId: string, key: string) => {
+    if (isBooking(key)) {
+      const local = booking[`${planId}:${key}`];
+      if (local !== undefined) return local;
+      const p = plans.find((x) => x.id === planId) as unknown as Record<string, unknown> | undefined;
+      return !!p?.[key];
+    }
+    return cells.find((c) => c.plan_id === planId && c.feature_key === key)?.enabled ?? false;
+  };
 
   const toggle = async (planId: string, key: string) => {
     const next = !isOn(planId, key);
     const id = `${planId}:${key}`;
+    if (isBooking(key)) {
+      // Booking is a column on the plan (0017), not a plan feature — same table, its own save.
+      setSaving(id);
+      setBooking((b) => ({ ...b, [id]: next }));
+      try {
+        await updatePlan(planId, { [key]: next } as Partial<MembershipPlanRow>);
+        onPlanChanged?.();
+      } catch {
+        setBooking((b) => ({ ...b, [id]: !next }));
+        showToast('Could not save that change', 'error');
+      } finally {
+        setSaving(null);
+      }
+      return;
+    }
     setSaving(id);
     setCells((prev) => {
       const found = prev.some((c) => c.plan_id === planId && c.feature_key === key);
@@ -113,7 +165,8 @@ export default function PlanFeatureMatrix({ plans }: Props) {
           <p className="text-[10px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             Members on a plan without a tick see the feature explained and locked, not
             hidden — so they can see what upgrading gets them. Class and personal
-            training limits are set per plan above; these are the app's own features.
+            training limits are set per plan above. Hover a row for what it does; a row
+            marked &ldquo;off at your gym&rdquo; is switched off on Your app.
             A new plan starts from its tier's defaults and can be changed here.
           </p>
         </div>
@@ -137,10 +190,22 @@ export default function PlanFeatureMatrix({ plans }: Props) {
             </tr>
           </thead>
           <tbody>
-            {features.map((f) => (
-              <tr key={f.key} style={{ borderTop: '1px solid var(--color-border)' }}>
-                <td className="py-2.5 pr-3 align-top">
-                  <p className="text-xs font-semibold text-white">{f.label}</p>
+            {GROUP_ORDER.flatMap((group) => {
+              const rows = [...BOOKING_ROWS, ...features].filter((f) => (GROUP_OF[f.key] ?? 'Other') === group);
+              if (rows.length === 0) return [];
+              return [
+                <tr key={`g-${group}`} data-matrix-group={group}>
+                  <td colSpan={plans.length + 1} className="pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>{group}</td>
+                </tr>,
+                ...rows.map((f) => ({ f, off: !moduleOn(modules, SWITCH_OF[f.key]) })),
+              ];
+            }).map((row) => {
+              if (!('f' in (row as object))) return row as React.ReactElement;
+              const { f, off } = row as { f: FeatureDef; off: boolean };
+              return (
+              <tr key={f.key} style={{ borderTop: '1px solid var(--color-border)', opacity: off ? 0.55 : 1 }} data-matrix-row={f.key}>
+                <td className="py-2.5 pr-3 align-top" data-tip={f.description}>
+                  <p className="text-xs font-semibold text-white">{f.label}{off && <span className="ml-1.5 text-[10px] font-normal" style={{ color: 'var(--color-secondary)' }}>· off at your gym</span>}</p>
                   <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                     {f.description}
                   </p>
@@ -167,7 +232,8 @@ export default function PlanFeatureMatrix({ plans }: Props) {
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
