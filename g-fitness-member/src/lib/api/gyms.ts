@@ -70,8 +70,46 @@ export async function gymByCode(code: string): Promise<PublicGym | null> {
   return rows[0] ?? null;
 }
 
-/** Ask a gym to let you in. Their front desk approves it, as for a sign-up (0078). */
-export async function requestToJoin(gymId: string): Promise<void> {
-  const { error } = await supabase.rpc('request_to_join', { p_gym: gymId });
-  if (error) throw new Error(error.message);
+/** How a person found the gym — what 0179's joining rule is checked against. */
+export type JoinVia = 'list' | 'link' | 'code';
+
+export interface JoinRules {
+  /** open = listed; code = link or code only; closed = front desk only. */
+  policy: 'open' | 'code' | 'closed';
+  /** Whether a sign-up is let in at once or waits for the desk. */
+  approval: 'auto' | 'desk';
+  minAge: number;
+}
+
+/**
+ * A gym's joining rule, approval and minimum age (0179's `gym_join_rules`).
+ * NULL before 0179 or for a gym not taking sign-ups — the screen then asks
+ * nothing new, and the database still has the last word.
+ */
+export async function gymJoinRules(gymId: string): Promise<JoinRules | null> {
+  const { data, error } = await supabase.rpc('gym_join_rules', { p_gym: gymId });
+  if (error) return null;
+  const row = (Array.isArray(data) ? data[0] : data) as { policy: string; approval: string; min_age: number } | undefined;
+  if (!row) return null;
+  return {
+    policy: (['open', 'code', 'closed'].includes(row.policy) ? row.policy : 'open') as JoinRules['policy'],
+    approval: row.approval === 'auto' ? 'auto' : 'desk',
+    minAge: row.min_age ?? 16,
+  };
+}
+
+/**
+ * Ask a gym to let you in. The gym's rule decides (0179): 'auto' means you are
+ * in now, 'desk' means the front desk approves it, as for a sign-up (0078).
+ * Before 0179 only the one-argument call exists, and every join waits.
+ */
+export async function requestToJoin(gymId: string, via: JoinVia = 'list', code?: string | null, referral?: string | null): Promise<'auto' | 'desk'> {
+  const { data, error } = await supabase.rpc('request_to_join', {
+    p_gym: gymId, p_via: via, p_code: code ?? null, p_referral: referral ?? null,
+  });
+  if (!error) return data === 'auto' ? 'auto' : 'desk';
+  if (error.code !== 'PGRST202') throw new Error(error.message);
+  const old = await supabase.rpc('request_to_join', { p_gym: gymId });
+  if (old.error) throw new Error(old.error.message);
+  return 'desk';
 }

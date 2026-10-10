@@ -44,6 +44,8 @@ export interface MemberProfileRow {
    * the desk on paper, has NULL here.
    */
   terms_accepted_at: string | null;
+  /** Under 18 at sign-up: the parent or guardian who agreed (0179). */
+  guardian_consent_name?: string | null;
   /**
    * What the member is currently training for (0044):
    * 'bulking' | 'cutting' | 'maintaining', or NULL for not stated.

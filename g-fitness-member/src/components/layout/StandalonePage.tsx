@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import MobileFrame from './MobileFrame';
+import { Toaster } from '../ui/Toast';
 
 /**
  * A screen outside both shells that is still one of ours — choosing or joining a
@@ -10,10 +11,14 @@ import MobileFrame from './MobileFrame';
  * desktop. MobileFrame gives the scroller; this column gives the shell's 20px
  * gutter and a phone-width measure, centred, so a link opened on a laptop reads
  * like the app it leads to.
+ *
+ * It carries its own Toaster: the shell's lives in Layout, so a toast raised
+ * here (a refused join, a join request sent) used to go nowhere.
  */
 export default function StandalonePage({ children }: { children: ReactNode }) {
   return (
     <MobileFrame>
+      <Toaster />
       <div className="mx-auto w-full max-w-[480px] px-5 pt-4 pb-8">{children}</div>
     </MobileFrame>
   );

@@ -10,7 +10,7 @@ import MobileFrame from '../components/layout/MobileFrame';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { showErrorToast } from '../utils/errorHandler';
 import { registerMember, isEmailTaken, isPhoneTaken } from '../lib/api/members';
-import { gymBySlug, listGyms, type PublicGym } from '../lib/api/gyms';
+import { gymBySlug, listGyms, type PublicGym, gymJoinRules, type JoinRules } from '../lib/api/gyms';
 import { supabase } from '../lib/supabaseClient';
 import { listPlans, publicPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
@@ -119,7 +119,17 @@ export default function Register() {
     emergencyName: '', emergencyPhone: '', emergencyRelationship: '',
     email: '', password: '', confirmPassword: '',
     selectedPlanId: '', termsAccepted: false,
+    guardianName: '',
   });
+  /** The gym's joining rule, approval and minimum age (0179); null = not known. */
+  const [rules, setRules] = useState<JoinRules | null>(null);
+  /** Came by the gym's own link (or a code, which lands on it) — 0179's `join_via`. */
+  const viaLink = !!new URLSearchParams(window.location.search).get('join');
+  const minAge = rules?.minAge ?? 16;
+  const age = formData.dateOfBirth ? ageFrom(formData.dateOfBirth) : null;
+  const needsGuardian = age != null && age < 18;
+  /** Front desk only, and no member's invitation: nothing here can let them in. */
+  const deskOnly = rules?.policy === 'closed' && !refFromUrl() && !new URLSearchParams(window.location.search).get('invite');
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [gym, setGym] = useState<PublicGym | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -171,6 +181,7 @@ export default function Register() {
       }
       if (cancelled) return;
       setGym(chosen);
+      if (chosen) void gymJoinRules(chosen.id).then((r) => { if (!cancelled) setRules(r); });
       try {
         const rows = chosen ? await publicPlans(chosen.id) : await listPlans();
         if (!cancelled) setPlans(rows.filter((p) => p.is_active !== false));
@@ -203,6 +214,7 @@ export default function Register() {
    */
   const validate = async (which: number): Promise<boolean> => {
     if (which === 1) {
+      if (deskOnly) return fail(`${gym?.name ?? 'This gym'} signs members up at the front desk. Ask a member for their invite link.`);
       if (!formData.firstName.trim()) return fail('Please enter your first name');
       if (!formData.lastName.trim()) return fail('Please enter your last name');
 
@@ -212,6 +224,11 @@ export default function Register() {
       if (!formData.dateOfBirth) return fail('Please enter your date of birth');
       const dobProblem = birthDateProblem(formData.dateOfBirth);
       if (dobProblem) return fail(dobProblem);
+      const years = ageFrom(formData.dateOfBirth);
+      if (years != null && years < minAge)
+        return fail(`${gym?.name ?? 'This gym'} welcomes members from age ${minAge}. Ask at the front desk.`);
+      if (years != null && years < 18 && !formData.guardianName.trim())
+        return fail('Under 18: please enter the name of the parent or guardian who agrees');
 
       if (!formData.gender) return fail('Please choose an option for gender');
 
@@ -292,6 +309,8 @@ export default function Register() {
         termsAccepted: formData.termsAccepted,
         // A friend's code from the join link (0125): carried into the account's metadata.
         referralCode: refFromUrl() ?? undefined,
+        joinVia: viaLink ? 'link' : 'list',
+        guardianName: needsGuardian ? formData.guardianName.trim() : undefined,
       });
       setIsLoading(false);
 
@@ -341,8 +360,10 @@ export default function Register() {
             </motion.div>
             <h2 className="display text-2xl text-white">You're registered</h2>
             <p className="text-xs mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Confirm your email. The gym reviews new sign-ups, and once yours is approved you can
-              sign in on the free plan{selectedPlan ? ` — we have noted you asked about ${selectedPlan.name}` : ''}.
+              {rules?.approval === 'auto'
+                ? <>Confirm your email, then sign in — you are on the free plan{selectedPlan ? ` (we have noted you asked about ${selectedPlan.name})` : ''}.</>
+                : <>Confirm your email. The gym reviews new sign-ups, and once yours is approved you can
+              sign in on the free plan{selectedPlan ? ` — we have noted you asked about ${selectedPlan.name}` : ''}.</>}
               Visit the gym to pay whenever you want to upgrade.
             </p>
             <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>Taking you to sign in…</p>
@@ -454,6 +475,14 @@ export default function Register() {
                     </p>
                   </div>
 
+                  {deskOnly && (
+                    <div data-desk-only className="rounded-2xl px-4 py-3 text-xs leading-relaxed"
+                      style={{ background: 'var(--color-secondary-light, rgba(245,158,11,0.12))', color: 'var(--color-text)' }}>
+                      {gym?.name ?? 'This gym'} creates its members' accounts at the front desk. Visit the gym and they
+                      will set you up — or ask a member to send you their invite link.
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     {/* Placeholders were "Eya" / "Lorenzana" — one real member's
                         name used as the example on every signup. */}
@@ -467,7 +496,7 @@ export default function Register() {
                       "You are N" line is the confirmation that the date was
                       typed the way they meant it. */}
                   <div>
-                    <BirthDateField value={formData.dateOfBirth}
+                    <BirthDateField value={formData.dateOfBirth} minAge={minAge}
                       onChange={(v) => update('dateOfBirth', v)} />
                     {formData.dateOfBirth && ageFrom(formData.dateOfBirth) != null && (
                       <p className="text-xs mt-1.5 font-semibold" style={{ color: 'var(--color-secondary)' }}>
@@ -475,6 +504,19 @@ export default function Register() {
                       </p>
                     )}
                   </div>
+
+                  {/* Under 18: the gym takes them with a parent's or guardian's
+                      consent (0179), recorded on the member row the desk sees. */}
+                  {needsGuardian && (
+                    <div data-guardian>
+                      <Field label="Parent or guardian who agrees" icon={User} value={formData.guardianName}
+                        placeholder="Their full name" autoComplete="off"
+                        onChange={(e: { target: { value: string } }) => update('guardianName', e.target.value)} />
+                      <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                        Under 18, you join with their consent. The front desk may ask them to sign the waiver.
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>

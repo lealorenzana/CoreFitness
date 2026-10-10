@@ -120,6 +120,12 @@ export async function registerMember(input: {
   /** A friend's referral code from a `?ref=` join link (0125). Recorded when the
    *  member lands in the gym; paid only when the desk records their first payment. */
   referralCode?: string;
+  /** How they found the gym (0179): the list, its own link, or its code. */
+  joinVia?: 'list' | 'link' | 'code';
+  /** A join code typed in, checked by 0179 against the gym's own. */
+  joinCode?: string;
+  /** Under 18: the parent or guardian who agrees (0179). */
+  guardianName?: string;
   /**
    * True when the new account is already signed in.
    *
@@ -165,6 +171,10 @@ export async function registerMember(input: {
         privacy_version: PRIVACY_VERSION,
         // Read by 0125's trigger on gym_roles. A bad code never blocks sign-up.
         referral_code: input.referralCode ?? '',
+        // 0179's joining rule: how they came, and a code if they typed one.
+        join_via: input.joinVia ?? 'list',
+        join_code: input.joinCode ?? '',
+        guardian_name: input.guardianName ?? '',
       },
     },
   });

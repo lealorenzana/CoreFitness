@@ -17,8 +17,10 @@ import {
 import { createPlan, listPlans, retirePlan, updatePlan } from '../lib/api/membershipPlans';
 import {
   getGymApp, getGymModules, saveGymLook, saveGymVocabulary, saveGymWords, setGymModule, setGymSlug, setJoinPolicy,
-  setOnboardingStep, type GymModule, type GymVocabulary, type JoinPolicy,
+  getJoinSettings, setJoinSettings,
+  setOnboardingStep, type GymModule, type GymVocabulary, type JoinPolicy, type JoinSettings,
 } from '../lib/api/gymApp';
+import JoinApproval from '../components/JoinApproval';
 import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
@@ -83,6 +85,8 @@ export default function Setup() {
   const [uploading, setUploading] = useState(false);
   const [modules, setModules] = useState<GymModule[]>([]);
   const [door, setDoor] = useState<JoinPolicy>('open');
+  /** Approval and minimum age (0179); null before 0179. */
+  const [joinSet, setJoinSet] = useState<JoinSettings | null>(null);
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [edited, setEdited] = useState<Record<string, PlanDraft>>({});
@@ -119,6 +123,7 @@ export default function Setup() {
       setSavedSlug(app?.slug ?? '');
       setLogoUrl(settings?.logo_url ?? null);
       setDoor(app?.join_policy ?? 'open');
+      void getJoinSettings().then(setJoinSet);
       setJoinCode(app?.join_code ?? null);
       setModules(mods);
       setPlans(planRows);
@@ -253,7 +258,7 @@ export default function Setup() {
       setSlug(moved);
       setSavedSlug(moved);
     }
-    setJoinCode(await setJoinPolicy(door, false));
+    setJoinCode(joinSet ? await setJoinSettings(door, joinSet) : await setJoinPolicy(door, false));
   };
 
   const savePassword = async () => {
@@ -704,8 +709,11 @@ export default function Setup() {
                     </span>
                   </button>
                 ))}
+                {joinSet && <JoinApproval policy={door} value={joinSet} onChange={setJoinSet} />}
                 <p className={hint} style={labelStyle}>
-                  However they arrive, you still approve every sign-up.
+                  {joinSet?.approval === 'auto' && door !== 'closed'
+                    ? 'Sign-ups start on your free plan straight away.'
+                    : 'However they arrive, you approve every sign-up.'}
                   {joinCode && door === 'code' && (
                     <> Your join code is <strong style={{ color: 'var(--color-text-primary)', letterSpacing: '0.12em' }}>{joinCode}</strong>.</>
                   )}

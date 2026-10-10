@@ -353,6 +353,9 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
             value={member.date_of_birth ? `${formatDate(member.date_of_birth)}${stats.age != null ? ` · ${stats.age} yrs` : ''}` : null}
           />
           <InfoCell icon={User} label="Gender" value={member.gender ? GENDER_LABEL[member.gender] ?? member.gender : null} />
+          {member.guardian_consent_name && (
+            <InfoCell icon={User} label="Guardian consent" value={member.guardian_consent_name} />
+          )}
           <InfoCell
             icon={QrCode}
             label="Check-in code"

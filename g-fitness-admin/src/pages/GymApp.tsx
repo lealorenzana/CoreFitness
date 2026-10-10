@@ -6,8 +6,10 @@ import { showToast } from '../utils/toast';
 import {
   getGymApp, getGymModules,
   saveGymLook, saveGymVocabulary, saveGymWords, setGymModule, setGymSlug, setJoinPolicy,
-  type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy,
+  getJoinSettings, setJoinSettings,
+  type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy, type JoinSettings,
 } from '../lib/api/gymApp';
+import JoinApproval from '../components/JoinApproval';
 import { rampFor } from '../lib/gymTheme';
 import ColourRolePicker from '../components/ColourRolePicker';
 import { refreshGymModules } from '../hooks/useGymModules';
@@ -62,14 +64,17 @@ export default function GymApp() {
       "blank", so an accidental empty box cannot be saved as one. */
   const [slug, setSlug] = useState<string | null>(null);
   const [poster, setPoster] = useState(false);
+  /** Approval and minimum age (0179); null before 0179, and nothing is offered. */
+  const [joinSet, setJoinSet] = useState<JoinSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | 'message' | null>(null);
 
   const load = useCallback(async () => {
-    const [a, m] = await Promise.all([getGymApp(), getGymModules()]);
+    const [a, m, js] = await Promise.all([getGymApp(), getGymModules(), getJoinSettings()]);
     setApp(a);
     setModules(m);
+    setJoinSet(js);
     if (a) {
       setWords({
         points_name: a.points_name,
@@ -158,10 +163,22 @@ export default function GymApp() {
 
   const changeDoor = async (policy: JoinPolicy, newCode = false) => {
     try {
-      await setJoinPolicy(policy, newCode);
+      if (joinSet && !newCode) await setJoinSettings(policy, joinSet);
+      else await setJoinPolicy(policy, newCode);
       await load();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+    }
+  };
+
+  const changeJoinSettings = async (next: JoinSettings) => {
+    if (!app) return;
+    setJoinSet(next);
+    try {
+      await setJoinSettings(app.join_policy, next);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+      await load();
     }
   };
 
@@ -400,7 +417,9 @@ export default function GymApp() {
           How members join
         </h2>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          However they arrive, you still approve every sign-up before they can use anything.
+          {joinSet?.approval === 'auto' && app.join_policy !== 'closed'
+            ? 'Sign-ups are let in at once, on your free plan. A request a member\u2019s invite brings to a front-desk-only gym always waits for the desk.'
+            : 'However they arrive, you approve every sign-up before they can use anything.'}
         </p>
         <div className="mt-4 space-y-2">
           {([
@@ -426,6 +445,8 @@ export default function GymApp() {
             </button>
           ))}
         </div>
+
+        {joinSet && <JoinApproval policy={app.join_policy} value={joinSet} onChange={(v) => void changeJoinSettings(v)} />}
 
         {app.join_policy !== 'closed' && (
           <div className="mt-4 rounded-lg border p-3.5"

@@ -7,7 +7,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
-import { cleanSlug, gymByCode, gymBySlug, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
+import { cleanSlug, gymByCode, gymBySlug, gymJoinRules, listGyms, requestToJoin, type PublicGym } from '../lib/api/gyms';
 import { claimReferral, refFromUrl } from '../lib/api/referrals';
 import { getGymContext, myGyms } from '../lib/gymContext';
 import { supabase } from '../lib/supabaseClient';
@@ -95,6 +95,14 @@ export default function JoinGym() {
   const join = async (gym: PublicGym) => {
     // A friend's code rides along from `/join/<slug>?ref=CODE` (0125).
     const ref = refFromUrl();
+    // A gym that signs members up only at the desk takes a request only from a
+    // friend a member invited (0179). Said here, before a form is filled in
+    // that the database would refuse at the end.
+    const rules = await gymJoinRules(gym.id);
+    if (rules?.policy === 'closed' && !ref) {
+      toast.info(`${gym.name} creates its members' accounts at the front desk. Visit the gym, or ask a member to invite you.`);
+      return;
+    }
     if (!signedIn) {
       // No account yet: sign up into this gym, keeping the friend's code.
       // The slug rides along: a gym joined by link or code is not in the
@@ -104,12 +112,13 @@ export default function JoinGym() {
     }
     setBusy(gym.id);
     try {
-      await requestToJoin(gym.id);
+      // Found by its own link (or a code, which lands on the link) or in the list.
+      const way = await requestToJoin(gym.id, slug ? 'link' : 'list', null, ref);
       // Named after the request, so the member row it needs already exists. A
       // code that does not apply is said, but the join itself has succeeded.
       if (ref) await claimReferral(gym.id, ref).catch((e: Error) => toast.info(e.message));
       await getGymContext(true);
-      toast.success(`${gym.name} has your request. They will approve it at the desk.`);
+      toast.success(way === 'auto' ? `You have joined ${gym.name}.` : `${gym.name} has your request. They will approve it at the desk.`);
       navigate('/choose-gym');
     } catch (e) {
       toast.error(errorMessage(e));

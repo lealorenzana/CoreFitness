@@ -215,3 +215,30 @@ export async function revokeSupportAccess(): Promise<void> {
   const { error } = await supabase.rpc('revoke_support_access');
   if (error) throw new Error(error.message);
 }
+
+/** How a sign-up is let in, and from what age (0179). */
+export interface JoinSettings {
+  approval: 'auto' | 'desk';
+  minAge: number;
+}
+
+/** NULL before 0179: the screen then offers neither control. */
+export async function getJoinSettings(): Promise<JoinSettings | null> {
+  const { data, error } = await supabase.from('gym_settings').select('join_approval, min_age').maybeSingle();
+  if (error || !data) return null;
+  const row = data as { join_approval: string | null; min_age: number | null };
+  return { approval: row.join_approval === 'auto' ? 'auto' : 'desk', minAge: row.min_age ?? 16 };
+}
+
+/**
+ * The joining rule, the approval and the minimum age, saved together (0179's
+ * `set_join_settings`). Returns the join code. Before 0179 only the rule saves.
+ */
+export async function setJoinSettings(policy: JoinPolicy, s: JoinSettings): Promise<string | null> {
+  const { data, error } = await supabase.rpc('set_join_settings', {
+    p_policy: policy, p_approval: s.approval, p_min_age: s.minAge,
+  });
+  if (!error) return (data as string) ?? null;
+  if (error.code !== 'PGRST202') throw new Error(error.message);
+  return setJoinPolicy(policy, false);
+}
