@@ -164,7 +164,9 @@ const GLOBAL = [
   // 0182: OpenStreetMap's gyms (public map data, cached by tile) and suggestions to the platform.
   'osm_gyms', 'osm_tiles', 'gym_suggestions',
   // 0187: an applicant's documents belong to an application, before any gym exists.
-  'application_documents'];
+  'application_documents',
+  // 0188: what a gym tells the platform — like support tickets, definer functions only, no policy.
+  'platform_ratings', 'feature_requests', 'testimonials'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
