@@ -202,6 +202,19 @@ $$;
 revoke all on function coach_timeline(uuid, timestamptz, int) from public, anon;
 grant execute on function coach_timeline(uuid, timestamptz, int) to authenticated;
 
+-- The 1-on-1 room between the caller and another person (either side), for the
+-- links that used to open Messages or Coach notes. Null when there is none yet.
+create or replace function pt_room_with(p_other uuid) returns uuid
+language sql stable security definer set search_path = public as $$
+  select r.id from rooms r
+   where r.gym_id = current_gym_id() and r.kind = 'pt'
+     and ((r.member_id = auth.uid() and r.trainer_id = p_other) or (r.trainer_id = auth.uid() and r.member_id = p_other))
+   order by r.archived_at nulls first, r.created_at desc
+   limit 1;
+$$;
+revoke all on function pt_room_with(uuid) from public, anon;
+grant execute on function pt_room_with(uuid) to authenticated;
+
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$
   select array['account_status_events','achievement_unlocks','achievements','activity_log',
     'ai_coach_profiles','ai_meal_guides','ai_proposals','ai_usage_days',

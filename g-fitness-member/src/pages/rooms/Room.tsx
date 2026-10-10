@@ -9,9 +9,10 @@ import StreamTab from '../../components/rooms/StreamTab';
 import ClassworkTab from '../../components/rooms/ClassworkTab';
 import PeopleTab from '../../components/rooms/PeopleTab';
 import ProgressTab from '../../components/rooms/ProgressTab';
+import TimelineTab from '../../components/rooms/TimelineTab';
 import { deleteRoom, leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
 
-type Tab = 'stream' | 'classwork' | 'people' | 'progress';
+type Tab = 'together' | 'stream' | 'classwork' | 'people' | 'progress';
 const KIND: Record<RoomT['kind'], string> = { class: 'Class', pt: '1-on-1', group: 'Coaching group' };
 
 /**
@@ -46,12 +47,17 @@ export default function Room() {
     );
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'stream', label: 'Stream' }, { id: 'classwork', label: 'Classwork' }, { id: 'people', label: 'People' },
-    ...(mode === 'trainer' ? [{ id: 'progress' as Tab, label: 'Progress' }] : []),
-  ];
+  // A 1-on-1 room is the member and coach's ONE place (0174): Together first —
+  // chat, notes and the coach's routines in one timeline — then classwork.
+  const pt = room.kind === 'pt';
+  const tabs: { id: Tab; label: string }[] = pt
+    ? [{ id: 'together', label: 'Together' }, { id: 'classwork', label: 'Classwork' },
+       ...(mode === 'trainer' ? [{ id: 'progress' as Tab, label: 'Progress' }] : [])]
+    : [{ id: 'stream', label: 'Stream' }, { id: 'classwork', label: 'Classwork' }, { id: 'people', label: 'People' },
+       ...(mode === 'trainer' ? [{ id: 'progress' as Tab, label: 'Progress' }] : [])];
+  const first: Tab = pt ? 'together' : 'stream';
   const wanted = params.get('tab') as Tab | null;
-  const tab: Tab = tabs.some((t) => t.id === wanted) ? (wanted as Tab) : 'stream';
+  const tab: Tab = tabs.some((t) => t.id === wanted) ? (wanted as Tab) : first;
   const isTrainer = mode === 'trainer' && room.isMine;
 
   const run = async (fn: () => Promise<unknown>, ok: string, after?: () => void) => {
@@ -68,7 +74,9 @@ export default function Room() {
       {room.description && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{room.description}</p>}
 
       <TextTabs label="Room sections" tabs={tabs} active={tab}
-        onChange={(t) => setParams(t === 'stream' ? {} : { tab: t }, { replace: true })} />
+        onChange={(t) => setParams(t === first ? {} : { tab: t }, { replace: true })} />
+
+      {tab === 'together' && <TimelineTab room={room} mode={mode} />}
 
       {tab === 'stream' && (
         <StreamTab room={room} canPost={isTrainer} canComment={isTrainer || (mode === 'member' && room.fullAccess)} />

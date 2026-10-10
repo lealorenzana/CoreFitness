@@ -10,6 +10,7 @@ import FeatureLock from '../components/ui/FeatureLock';
 import Modal from '../components/ui/Modal';
 import { toast } from '../components/ui/Toast';
 import { getCurrentMemberId } from '../services/bookingService';
+import { coachSaveRoutine, restoreRoutineVersion, routineVersions, type RoutineVersion } from '../lib/api/coachPlace';
 import { listExercises, type Exercise } from '../lib/api/workoutSets';
 import {
   deleteRoutine, getRoutine, saveRoutine, type RoutineExercise,
@@ -55,7 +56,11 @@ function Stepper({
  */
 export default function RoutineEditor() {
   const navigate = useNavigate();
-  const { routineId } = useParams();
+  const { routineId, memberId: traineeId } = useParams();
+  // A coach writing or editing their trainee's routine (0174): the same editor,
+  // saved through coach_save_routine, which checks the coach may.
+  const coachMode = !!traineeId;
+  const doneTo = coachMode ? '/trainer/members' : '/member/track';
   // "Add to a routine" from the exercise library hands its exercise over here.
   const addExerciseId = (useLocation().state as { addExerciseId?: string } | null)?.addExerciseId ?? null;
   const isNew = !routineId || routineId === 'new';
@@ -67,12 +72,15 @@ export default function RoutineEditor() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Earlier versions (0174): a coach's edit keeps the one before, and the member can put it back.
+  const [versions, setVersions] = useState<RoutineVersion[]>([]);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const id = await getCurrentMemberId();
+        const id = coachMode ? traineeId! : await getCurrentMemberId();
         if (!id) throw new Error('Could not identify your account.');
         const [ex, existing] = await Promise.all([
           listExercises(),
@@ -87,6 +95,7 @@ export default function RoutineEditor() {
           targetSets: 3, targetReps: handed.isTimed ? null : 10, targetWeightKg: null,
           targetSeconds: handed.isTimed ? 30 : null, restSeconds: 90,
         }] : [];
+        if (existing && !coachMode) setVersions(await routineVersions(existing.id));
         if (existing) {
           setName(existing.name);
           setItems([...existing.exercises, ...extra]);
@@ -102,7 +111,17 @@ export default function RoutineEditor() {
       }
     })();
     return () => { alive = false; };
-  }, [isNew, routineId, addExerciseId]);
+  }, [isNew, routineId, addExerciseId, coachMode, traineeId, reload]);
+
+  const putBack = async (v: RoutineVersion) => {
+    try {
+      await restoreRoutineVersion(v.id);
+      toast.success('The earlier version is back. This one is kept too, if you change your mind.');
+      setReload((n) => n + 1);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not put that version back'));
+    }
+  };
 
   const add = (exerciseId: string) => {
     const ex = catalogue.find((e) => e.id === exerciseId);
@@ -133,9 +152,17 @@ export default function RoutineEditor() {
     if (!memberId || !valid || saving) return;
     setSaving(true);
     try {
-      await saveRoutine(memberId, { id: isNew ? undefined : routineId, name, notes: null, exercises: items });
-      toast.success(`${name.trim()} saved.`);
-      navigate('/member/track', { replace: true });
+      if (coachMode) {
+        await coachSaveRoutine(memberId, isNew ? null : routineId as string, name.trim(), null, items.map((e) => ({
+          exercise_id: e.exerciseId, custom_name: e.customName, target_sets: e.targetSets, target_reps: e.targetReps,
+          target_weight_kg: e.targetWeightKg, target_seconds: e.targetSeconds, rest_seconds: e.restSeconds,
+        })));
+        toast.success(isNew ? `${name.trim()} is in their routines — they've been told.` : `${name.trim()} updated — they've been told, and can put the earlier version back.`);
+      } else {
+        await saveRoutine(memberId, { id: isNew ? undefined : routineId, name, notes: null, exercises: items });
+        toast.success(`${name.trim()} saved.`);
+      }
+      navigate(doneTo, { replace: true });
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save that routine'));
       setSaving(false);
@@ -154,12 +181,11 @@ export default function RoutineEditor() {
   };
 
   const title = (
-    <PageTitle back fallback="/member/track" title={isNew ? 'New routine' : 'Edit routine'}
-      subtitle="The exercises, in order, and what you aim for on each" />
+    <PageTitle back fallback={doneTo} title={coachMode ? (isNew ? 'New routine for your trainee' : 'Edit their routine') : isNew ? 'New routine' : 'Edit routine'}
+      subtitle={coachMode ? 'They are told when you save, and can go back to the version before' : 'The exercises, in order, and what you aim for on each'} />
   );
 
-  return (
-    <FeatureLock feature="workout_tracker" context={<Page>{title}</Page>}>
+  const body = (
       <Page>
         {title}
         {error && <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>}
@@ -242,7 +268,23 @@ export default function RoutineEditor() {
               <NocButton variant="fill" className="w-full" onClick={save} disabled={!valid || saving}>
                 {saving ? 'Saving…' : 'Save routine'}
               </NocButton>
-              {!isNew && (
+              {versions.length > 0 && (
+                <div data-routine-versions style={{ marginTop: 6 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Earlier versions</p>
+                  {versions.slice(0, 5).map((v) => (
+                    <div key={v.id} className="flex items-center justify-between" style={{ gap: 8, padding: '8px 0', borderBottom: '1px solid var(--color-separator)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                        {v.name ?? 'This routine'} · before {new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <button type="button" onClick={() => void putBack(v)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                        Put this back
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Deleting stays the member's alone — a coach edits, never removes. */}
+              {!isNew && !coachMode && (
                 <NocButton variant="ghost" className="w-full" onClick={() => setConfirmDelete(true)}>
                   Delete routine
                 </NocButton>
@@ -263,6 +305,10 @@ export default function RoutineEditor() {
           <span />
         </Modal>
       </Page>
-    </FeatureLock>
+  );
+  // The member's plan gates their own tracker (0049). A coach writing for their
+  // trainee has no member plan of their own — the database checks them instead.
+  return coachMode ? body : (
+    <FeatureLock feature="workout_tracker" context={<Page>{title}</Page>}>{body}</FeatureLock>
   );
 }

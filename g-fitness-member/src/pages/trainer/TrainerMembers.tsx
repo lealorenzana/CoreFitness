@@ -22,6 +22,7 @@ import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import { Page } from '../../components/ui/page';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * One block of a member's own data in the trainer's view.
@@ -90,6 +91,7 @@ interface RosterMember {
 const CACHE_KEY = 'trainer:roster';
 
 export default function TrainerMembers() {
+  const navigate = useNavigate();
   // See lib/pageCache.ts — the roster is three queries and a join, and it is a
   // bottom-nav tab a trainer bounces in and out of all day.
   const cached = readCache<RosterMember[]>(CACHE_KEY);
@@ -521,14 +523,26 @@ export default function TrainerMembers() {
                   >
                     {detail?.routines.map((r) => (
                       <div key={r.id} className="flex items-center" style={{ gap: 8 }}>
-                        <p className="truncate min-w-0" style={line}>
+                        <p className="truncate min-w-0 flex-1" style={line}>
                           {r.name}<span style={muted}> — {r.exerciseCount} {r.exerciseCount === 1 ? 'exercise' : 'exercises'}</span>
                         </p>
-                        {/* The member applied the coach's proposal (0145) — so a trainer
-                            knows whose plan this is before changing it. */}
-                        {r.source === 'coach' && <span className="flex-none"><StatusPill tone="muted" label="Built with the coach" /></span>}
+                        {/* Whose plan this is before changing it: the AI coach's (0145), yours, or theirs. */}
+                        {r.source === 'coach' && <span className="flex-none"><StatusPill tone="muted" label="AI coach" /></span>}
+                        {r.source === 'trainer' && <span className="flex-none"><StatusPill tone="muted" label="Yours" /></span>}
+                        <button type="button" className="flex-none" data-coach-edit={r.id}
+                          onClick={() => selectedMember && navigate(`/trainer/members/${selectedMember.id}/routine/${r.id}`)}
+                          style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)', padding: '4px 0' }}>
+                          Edit
+                        </button>
                       </div>
                     ))}
+                    {selectedMember && (
+                      <button type="button" data-coach-new-routine
+                        onClick={() => navigate(`/trainer/members/${selectedMember.id}/routine/new`)}
+                        style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)', padding: '6px 0' }}>
+                        + New routine for {selectedMember.name.split(' ')[0]}
+                      </button>
+                    )}
                   </SharedBlock>
 
                   <SharedBlock

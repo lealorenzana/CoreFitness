@@ -104,7 +104,12 @@ check('the member sees chat, notes and the coach\'s routines in one list',
 check('…newest first', tl[0].kind === 'routine', JSON.stringify(tl.slice(0, 3)));
 await as(P.coach);
 check('the coach sees the same list', (await rows(`select 1 from coach_timeline('${room}')`)).length === tl.length);
+await as(P.mine);
+check('the member finds the room with their coach', (await one(`select pt_room_with('${P.coach}') r`)).r === room);
+await as(P.coach);
+check('…and the coach finds it from the member', (await one(`select pt_room_with('${P.mine}') r`)).r === room);
 await as(P.stranger);
+check("someone else finds no room with them", (await one(`select pt_room_with('${P.coach}') r`)).r === null);
 check('nobody else can read it', (await tryExec(`select * from coach_timeline('${room}')`)) !== null);
 await as(P.coach2);
 check('…not even another coach', (await tryExec(`select * from coach_timeline('${room}')`)) !== null);

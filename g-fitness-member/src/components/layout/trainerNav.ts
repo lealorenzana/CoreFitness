@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
   Barbell, Buildings,
-  Bell, CalendarBlank, ChatsCircle, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
+  Bell, CalendarBlank, ClockCountdown, GearSix, House, Trophy, User, UserCircle, UsersThree, Tray,
 } from '@phosphor-icons/react';
 import { visibleDestinations, type Destination, type WordReader } from './memberNav';
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp } from '../../lib/gymApp';
@@ -92,7 +92,6 @@ export function trainerRail(id: TrainerTabId, app: GymApp | null): Destination[]
 export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
-    { label: 'Messages', path: '/trainer/messages', icon: ChatsCircle, module: 'chat' },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },

@@ -214,8 +214,6 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
     { label: 'Bookings', path: '/member/booking-history', module: 'classes' },
     { label: 'Coaches', path: '/member/trainers', module: 'coaching', words: (w) => w('trainers', true) },
     { label: 'Rooms', path: '/member/rooms', module: 'rooms' },
-    { label: 'Messages', path: '/member/messages', module: 'chat' },
-    { label: 'Notes', path: '/member/coach-notes', module: 'progress' },
   ] },
   { id: 'compete', label: 'Challenges', tabs: [
     { label: 'Challenges', path: '/member/challenges', module: 'engagement' },
@@ -312,9 +310,6 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
         words: (w) => w('trainers', true) },
       { label: 'Rooms', path: '/member/rooms' , module: 'rooms' },
-      { label: 'Messages', path: '/member/messages' , module: 'chat' },
-      { label: 'Coach notes', path: '/member/coach-notes' , module: 'progress',
-        words: (w) => w('trainer', true) + ' notes' },
     ],
   },
   {

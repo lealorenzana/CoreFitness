@@ -289,7 +289,8 @@ async (page) => {
 
   await go('/member/progress?tab=feedback');
   tabs = await strip('coaching');
-  out.push('an old Coach notes link lands under Coaching: ' + (/\/member\/coach-notes$/.test(page.url()) && tabs.includes('Notes') && tabs.includes('Bookings') && tabs.includes('Rooms') ? tabs.join(' · ') : 'MISSING ' + page.url() + ' ' + JSON.stringify(tabs)));
+  // Coach notes are the 1-on-1 room's Together tab now (0174): the old link lands in the room (or Rooms).
+  out.push('an old Coach notes link lands in the coach room: ' + (/\/member\/rooms(\/|$)/.test(page.url()) ? page.url().replace(/^.*\/member/, '/member') : 'MISSING ' + page.url()));
   await shot('nav-coaching');
 
   await go('/member/booking-history');

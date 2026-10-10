@@ -28,11 +28,9 @@ const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
 const TrainerRooms = lazyPage(() => import('./pages/trainer/TrainerRooms'));
-const Inbox = lazyPage(() => import('./pages/chat/Inbox'));
 const ProgressPhotos = lazyPage(() => import('./pages/ProgressPhotos'));
-const CoachNotes = lazyPage(() => import('./pages/CoachNotes'));
+const CoachPlaceRedirect = lazyPage(() => import('./pages/CoachPlaceRedirect'));
 const ShopMenu = lazyPage(() => import('./pages/ShopMenu'));
-const Conversation = lazyPage(() => import('./pages/chat/Conversation'));
 const PlanBuilder = lazyPage(() => import('./pages/PlanBuilder'));
 const WorkoutTracker = lazyPage(() => import('./pages/WorkoutTracker'));
 const Routines = lazyPage(() => import('./pages/Routines'));
@@ -219,13 +217,15 @@ function App() {
           <Route index element={<Navigate to="/trainer/home" replace />} />
           <Route path="home" element={<TrainerHome />} />
           <Route path="members" element={<TrainerMembers />} />
+          {/* A coach writes or edits their trainee's routine (0174). */}
+          <Route path="members/:memberId/routine/:routineId" element={<RoutineEditor />} />
           {/* Rooms (0128/0129): the trainer's Google Classroom. */}
           <Route path="rooms" element={<TrainerRooms />} />
           <Route path="rooms/:roomId" element={<Room />} />
           <Route path="rooms/:roomId/work/:assignmentId" element={<AssignmentDetail />} />
-          {/* Chat with trainees (0131). Same screens as the member's. */}
-          <Route path="messages" element={<Inbox />} />
-          <Route path="messages/:conversationId" element={<Conversation />} />
+          {/* Chat with a trainee lives in your 1-on-1 room with them (0174); old links land there. */}
+          <Route path="messages" element={<CoachPlaceRedirect />} />
+          <Route path="messages/:conversationId" element={<CoachPlaceRedirect />} />
           <Route path="schedule" element={<TrainerSchedule />} />
           {/* Sub-route of Schedule rather than a sixth nav tab — the bottom bar
               is full at five, and hours are something you set occasionally, not
@@ -278,12 +278,13 @@ function App() {
           <Route path="programs" element={<Programs />} />
           <Route path="program/:programId" element={<Program />} />
           <Route path="progress-photos" element={<ProgressPhotos />} />
-          <Route path="coach-notes" element={<CoachNotes />} />
+          <Route path="coach-notes" element={<CoachPlaceRedirect />} />
           <Route path="shop" element={<ShopMenu />} />
           <Route path="rooms" element={<MemberRooms />} />
           <Route path="rooms/:roomId" element={<Room />} />
-          <Route path="messages" element={<Inbox />} />
-          <Route path="messages/:conversationId" element={<Conversation />} />
+          {/* Messages and Coach notes are the 1-on-1 room's Together tab now (0174). */}
+          <Route path="messages" element={<CoachPlaceRedirect />} />
+          <Route path="messages/:conversationId" element={<CoachPlaceRedirect />} />
           <Route path="plan" element={<PlanBuilder />} />
           {/* Routines (0086): the list, the editor, and a routine run set by set.
               The free-form log stays at /track/log for a session with no routine. */}
