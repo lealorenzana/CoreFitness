@@ -4,8 +4,8 @@ import StreakWeeks from './StreakWeeks';
 import type { SquadStreak, StreakWeek } from '../../lib/api/streak';
 
 const WORDS: Record<StreakWeek['state'], string> = {
-  hit: 'Squad target reached', frozen: 'Frozen', miss: 'Squad target missed',
-  before: 'Before the squad began', current: 'This week — still going',
+  hit: 'Team target reached', frozen: 'Frozen', miss: 'Team target missed',
+  before: 'Before the team began', current: 'This week — still going',
 };
 
 /**
@@ -17,15 +17,15 @@ const WORDS: Record<StreakWeek['state'], string> = {
 export default function SquadStreakPanel({ s }: { s: SquadStreak }) {
   const live = s.needed > 0 && !s.outOfReach;
   const line = s.needed === 0
-    ? 'Target reached this week — the squad points are yours, and the streak is safe.'
+    ? 'Target reached this week — the team points are yours, and the streak is safe.'
     : s.outOfReach
-      ? (s.current > 0 ? 'This week is out of reach now. A new squad streak starts Monday.' : `${s.needed} more between you would have started a streak.`)
+      ? (s.current > 0 ? 'This week is out of reach now. A new team streak starts Monday.' : `${s.needed} more between you would have started a streak.`)
       : s.atRisk
-        ? `${s.needed} more between you today keeps the squad streak alive.`
+        ? `${s.needed} more between you today keeps the team streak alive.`
         : `${s.needed} more between you by Sunday${s.current > 0 ? ' keeps the streak going' : ' starts a squad streak'}.`;
   return (
     <div className={`streak-hero streak-hero--${s.current > 0 ? 'flame' : 'out'}${s.atRisk ? ' streak-hero--risk' : ''}`}
-      style={{ flexDirection: 'column', alignItems: 'stretch' }} aria-label="Your squad's streak">
+      style={{ flexDirection: 'column', alignItems: 'stretch' }} aria-label="Your team's streak">
       <div className="flex items-center" style={{ gap: 14 }}>
         <StreakOrb weeks={s.current} days={s.daysThisWeek} target={s.target} live={live} />
         <div className="flex-1 min-w-0">
@@ -34,7 +34,7 @@ export default function SquadStreakPanel({ s }: { s: SquadStreak }) {
               <Flame size={16} weight={s.current > 0 ? 'fill' : 'regular'} aria-hidden />{s.current}
             </span>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-              {s.current > 0 ? 'week squad streak' : 'No squad streak yet'}
+              {s.current > 0 ? 'week team streak' : 'No team streak yet'}
             </span>
             {s.atRisk && (
               <span className="streak-chip streak-chip--risk">

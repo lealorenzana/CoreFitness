@@ -23,7 +23,7 @@ export default function TraineeSquad({ memberId, firstName }: { memberId: string
   if (!squad) return null;
   return (
     <div style={{ marginTop: 14 }}>
-      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>Squad</p>
+      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>Team</p>
       <p style={{ fontSize: 13.5, marginTop: 4, color: 'var(--color-text-primary)' }}>
         {squad.name} · {squad.days} of {squad.target} days this week
       </p>

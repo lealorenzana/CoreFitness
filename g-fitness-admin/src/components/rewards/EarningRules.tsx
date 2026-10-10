@@ -20,7 +20,7 @@ const WHEN: Record<string, string> = {
   goal_achieved: 'A goal with a number, reached — the app checks it; a hand-ticked goal earns nothing.',
   challenge_complete: 'Finishing a challenge.',
   personal_record: 'A new personal record on a lift — at most three a week, since weights are typed in.',
-  squad_week: 'Their squad reaches its weekly target.',
+  squad_week: 'Their team reaches its weekly target.',
   gym_goal: 'The whole gym reaches its goal — everyone who helped.',
   referral: 'A friend they invited pays for a membership — at most five a month.',
   referral_welcome: 'Joining through a friend, once they first pay.',

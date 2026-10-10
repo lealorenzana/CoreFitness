@@ -151,8 +151,8 @@ export default function Season() {
       <GymGoalStrip />
 
       {moduleOn(gymApp, 'squads') && (
-      <Panel onClick={() => navigate('/member/squad')} ariaLabel="Your squad">
-        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>Your squad</p>
+      <Panel onClick={() => navigate('/member/squad')} ariaLabel="Your team">
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>Your team</p>
         <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>
           Train with friends: hit your weekly target together and everyone gets the points.
         </p>

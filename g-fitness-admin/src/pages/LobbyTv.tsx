@@ -61,7 +61,7 @@ export default function LobbyTv() {
     }
     if (data.wall.length) list.push({ key: 'wall', title: 'Personal records this week', body: <Rows accent={accent} rows={data.wall.map((w) => [w.name, w.exercise, w.value])} /> });
     if (data.season.length) list.push({ key: 'season', title: `${now.toLocaleDateString('en-US', { month: 'long' })} season`, body: <Rows accent={accent} ranked rows={data.season.map((s) => [s.name, '', `${s.score.toLocaleString()} pts`])} /> });
-    if (data.squads.length) list.push({ key: 'squads', title: 'Squads this week', body: <Rows accent={accent} ranked rows={data.squads.map((s) => [s.name, `${s.members} members${s.reached ? ' · target hit' : ''}`, `${s.days} / ${s.target} days`])} /> });
+    if (data.squads.length) list.push({ key: 'squads', title: 'Teams this week', body: <Rows accent={accent} ranked rows={data.squads.map((s) => [s.name, `${s.members} members${s.reached ? ' · target hit' : ''}`, `${s.days} / ${s.target} days`])} /> });
     if (data.classes.length) list.push({ key: 'classes', title: 'Classes today', body: <Rows accent={accent} rows={data.classes.map((c) => [
       new Date(c.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), c.name,
       c.booked >= c.capacity ? 'Full' : `${c.capacity - c.booked} spots left`])} /> });

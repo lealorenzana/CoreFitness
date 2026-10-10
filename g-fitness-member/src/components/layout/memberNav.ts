@@ -218,7 +218,7 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
   { id: 'compete', label: 'Challenges', tabs: [
     { label: 'Challenges', path: '/member/challenges', module: 'engagement' },
     { label: 'Season', path: '/member/season', module: 'seasons' },
-    { label: 'Squad', path: '/member/squad', module: 'squads' },
+    { label: 'Team', path: '/member/squad', module: 'squads' },
   ] },
 ];
 
@@ -317,7 +317,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     items: [
       { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
       { label: 'Season', path: '/member/season' , module: 'seasons' },
-      { label: 'Squad', path: '/member/squad' , module: 'squads' },
+      { label: 'Team', path: '/member/squad' , module: 'squads' },
     ],
   },
   {

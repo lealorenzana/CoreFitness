@@ -162,7 +162,7 @@ export default function GymGoalSection() {
       <div>
         <p className="text-[10px] font-semibold uppercase mb-1.5" style={{ color: MUTED }}>Members&apos; squads ({squads.length})</p>
         {squads.length === 0 ? (
-          <p className="text-xs" style={{ color: MUTED }}>No squads yet. Members start them in the app and invite friends with a code.</p>
+          <p className="text-xs" style={{ color: MUTED }}>No teams yet. Members start them in the app and invite friends with a code.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {squads.map((s) => (

@@ -57,12 +57,12 @@ export default function Squad() {
     finally { setBusy(false); }
   };
 
-  if (squad === undefined) return <Page><PageTitle back title="Squad" /><SkeletonList /></Page>;
+  if (squad === undefined) return <Page><PageTitle back title="Team" /><SkeletonList /></Page>;
   if (!live) {
     return (
       <Page>
-        <PageTitle back title="Squad" />
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Squads are not switched on at your gym yet.</p>
+        <PageTitle back title="Team" />
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Teams are not switched on at your gym yet.</p>
       </Page>
     );
   }
@@ -70,12 +70,12 @@ export default function Squad() {
   const copy = async () => {
     if (!squad) return;
     try { await navigator.clipboard.writeText(squad.code); toast.success('Code copied — send it to your friends.'); }
-    catch { toast.info(`Your squad code is ${squad.code}`); }
+    catch { toast.info(`Your team code is ${squad.code}`); }
   };
 
   return (
     <Page>
-      <PageTitle back fallback="/member/challenges" title={squad ? squad.name : 'Squad'}
+      <PageTitle back fallback="/member/challenges" title={squad ? squad.name : 'Team'}
         subtitle={squad ? 'Train together — hit the target, everyone gets the points' : 'Two to five friends, one weekly target'} />
 
       {squad ? (
@@ -87,7 +87,7 @@ export default function Squad() {
             <ProgressBar style={{ marginTop: 12 }} fraction={Math.min(1, squad.days / Math.max(1, squad.target))} />
             <p style={{ fontSize: 12.5, marginTop: 8, color: squad.days >= squad.target ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
               {squad.days >= squad.target
-                ? 'Target reached this week — the squad points are yours.'
+                ? 'Target reached this week — the team points are yours.'
                 : `${squad.target - squad.days} more between you by Sunday.`}
             </p>
           </Panel>}
@@ -102,7 +102,7 @@ export default function Squad() {
           </section>
 
           {squad.members.length < 5 && (
-            <Panel onClick={() => void copy()} ariaLabel="Copy the squad code">
+            <Panel onClick={() => void copy()} ariaLabel="Copy the team code">
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Invite a friend with this code</p>
               <p className="flex items-center tabular-nums" style={{ gap: 10, marginTop: 4, fontSize: 24, fontWeight: 800, letterSpacing: '0.2em', color: 'var(--color-text-primary)' }}>
                 {squad.code} <Copy size={18} aria-hidden style={{ color: 'var(--color-secondary)' }} />
@@ -111,28 +111,28 @@ export default function Squad() {
           )}
 
           <NocButton variant="ghost" className="w-full" disabled={busy}
-            onClick={() => void run(leaveSquad, 'You left the squad.')}>
+            onClick={() => void run(leaveSquad, 'You left the team.')}>
             Leave the squad
           </NocButton>
         </>
       ) : (
         <>
           <section>
-            <SectionHead title="Join a friend's squad" />
-            <Field label="Squad code" hint="Six letters — ask whoever started it.">
+            <SectionHead title="Join a friend's team" />
+            <Field label="Team code" hint="Six letters — ask whoever started it.">
               <TextInput value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6))}
-                placeholder="ABCDEF" aria-label="Squad code" style={{ letterSpacing: '0.2em' }} />
+                placeholder="ABCDEF" aria-label="Team code" style={{ letterSpacing: '0.2em' }} />
             </Field>
             <NocButton variant="action" className="w-full" disabled={busy || code.length !== 6}
-              onClick={() => void run(() => joinSquad(code), 'You are in. Say hi to your squad.')}>
+              onClick={() => void run(() => joinSquad(code), 'You are in. Say hi to your team.')}>
               Join
             </NocButton>
           </section>
 
           <section>
             <SectionHead title="Or start one" />
-            <Field label="Squad name">
-              <TextInput value={name} onChange={(e) => setName(e.target.value)} maxLength={30} placeholder="e.g. Iron Barkada" aria-label="Squad name" />
+            <Field label="Team name">
+              <TextInput value={name} onChange={(e) => setName(e.target.value)} maxLength={30} placeholder="e.g. Iron Barkada" aria-label="Team name" />
             </Field>
             <Field label="Weekly target (training days between you)" hint="Three friends training three days each is 9.">
               <TextInput value={target} inputMode="numeric" aria-label="Weekly target"
@@ -140,7 +140,7 @@ export default function Squad() {
             </Field>
             <NocButton variant="structure" className="w-full"
               disabled={busy || name.trim().length < 2 || !(Number(target) >= 1 && Number(target) <= 35)}
-              onClick={() => void run(() => createSquad(name, Number(target)), 'Squad started. Share your code.')}>
+              onClick={() => void run(() => createSquad(name, Number(target)), 'Team started. Share your code.')}>
               Start a squad
             </NocButton>
           </section>
@@ -150,9 +150,9 @@ export default function Squad() {
       <GymGoalStrip />
 
       <section>
-        <SectionHead title="Squads this week" />
+        <SectionHead title="Teams this week" />
         {board.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No squads yet. Be the first.</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No teams yet. Be the first.</p>
         ) : board.map((b, i) => (
           <LineRow key={i} gutter={`#${i + 1}`} gutterWidth={36} title={`${b.name}${b.isMine ? ' (yours)' : ''}`}
             meta={`${b.members} member${b.members === 1 ? '' : 's'} · ${b.days} / ${b.target} days${(streaks.get(b.name) ?? 0) > 0 ? ` · 🔥 ${streaks.get(b.name)}-week streak` : ''}`}
