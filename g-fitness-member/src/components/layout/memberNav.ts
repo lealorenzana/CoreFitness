@@ -1,6 +1,6 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Bell, CalendarDots, ChalkboardTeacher, ChartLineUp, ClipboardText, GearSix, Gift, House, Megaphone, Receipt, Scales, Storefront, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { ArrowsClockwise, Barbell, Bell, CalendarDots, ChalkboardTeacher, ChartLineUp, ClipboardText, GearSix, Gift, House, Receipt, Scales, Storefront, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -156,8 +156,8 @@ export interface Destination {
  */
 export const RAILS: Record<TabId, Destination[]> = {
   today: [
-    { label: 'Updates', path: '/member/notifications', icon: Bell },
-    { label: 'Announcements', path: '/member/events', icon: Megaphone , module: 'push' },
+    // One Inbox (2026-10-10): notifications for you, and what the gym posts for everyone.
+    { label: 'Inbox', path: '/member/notifications', icon: Bell, hub: 'inbox' },
     { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales , module: 'progress' },
   ],
   // Four sections instead of fifteen pills (2026-10-05): each opens a HUBS
@@ -180,7 +180,7 @@ export const RAILS: Record<TabId, Destination[]> = {
   ],
 };
 
-export type HubId = 'plan' | 'progress' | 'coaching' | 'compete';
+export type HubId = 'plan' | 'progress' | 'coaching' | 'compete' | 'inbox';
 
 /**
  * Sections: screens that belong together, behind one tab strip.
@@ -214,6 +214,11 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
     { label: 'Bookings', path: '/member/booking-history', module: 'classes' },
     { label: 'Coaches', path: '/member/trainers', module: 'coaching', words: (w) => w('trainers', true) },
     { label: 'Rooms', path: '/member/rooms', module: 'rooms' },
+  ] },
+  // Updates and Announcements were two screens for "what's new" (2026-10-10).
+  { id: 'inbox', label: 'Inbox', tabs: [
+    { label: 'For you', path: '/member/notifications' },
+    { label: 'From the gym', path: '/member/events', module: 'push' },
   ] },
   { id: 'compete', label: 'Challenges', tabs: [
     { label: 'Challenges', path: '/member/challenges', module: 'engagement' },
@@ -277,8 +282,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     group: 'Today',
     items: [
       { label: 'Today', path: '/member/home' },
-      { label: 'Updates', path: '/member/notifications' },
-      { label: 'Events and announcements', path: '/member/events' , module: 'push' },
+      { label: 'Inbox — for you', path: '/member/notifications' },
+      { label: 'Inbox — from the gym', path: '/member/events' , module: 'push' },
       { label: 'Ask the assistant', path: '/member/chatbot' , module: 'assistant' },
     ],
   },

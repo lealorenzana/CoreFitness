@@ -173,7 +173,7 @@ export default function NotificationsAll() {
       <PageTitle
         back
         fallback={isTrainer ? '/trainer/home' : '/member/home'}
-        title="Updates"
+        title={isTrainer ? 'Updates' : 'Inbox'}
         subtitle={loading ? undefined : `${all.length} total · ${unreadCount} unread`}
         action={!loading && all.length > 0 ? (
           <button onClick={() => (selecting ? exitSelect() : setSelecting(true))}

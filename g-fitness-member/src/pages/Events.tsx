@@ -129,7 +129,7 @@ export default function Events() {
 
   return (
     <Page>
-      <PageTitle back title="Events" subtitle="What the gym has coming up"
+      <PageTitle back title="Inbox" subtitle="From the gym — events and announcements for everyone"
         action={
           // The other half of "what has the gym told me" — see NotificationsAll.
           <button onClick={() => navigate('/member/notifications')} style={{ fontSize: 13, color: 'var(--color-primary-300)' }}>

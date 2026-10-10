@@ -309,5 +309,10 @@ async (page) => {
   tabs = await strip('plan');
   out.push('Workouts tabs: ' + (['Today', 'Routines', 'Programs', 'Browse'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   await shot('nav-plan');
+
+  // One Inbox (2026-10-10): what is for you, and what the gym posts, side by side.
+  await go('/member/notifications');
+  tabs = await strip('inbox');
+  out.push('Inbox: For you · From the gym: ' + (tabs.includes('For you') && tabs.includes('From the gym') ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   return out.join(String.fromCharCode(10));
 }
