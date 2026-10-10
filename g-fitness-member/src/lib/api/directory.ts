@@ -29,6 +29,8 @@ export interface PublicTrainer {
   certifications: string[] | null;
   focus_areas: string[] | null;
   achievements: string | null;
+  /** available / away / on_leave (0178), carried by the view since 0181. */
+  presence?: 'available' | 'away' | 'on_leave' | null;
 }
 
 export interface ClassAvailability {

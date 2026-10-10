@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -107,6 +107,8 @@ const NAV: Entry[] = [
       { label: 'Members', path: '/members', icon: Users, noun: 'members' },
       { label: 'Invitations', path: '/invitations', icon: MailPlus },
       { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true, noun: 'trainers' },
+      // Coaching terms (0181): who trains with whom until when; payments to confirm.
+      { label: 'Coaching', path: '/coaching', icon: Handshake, module: 'coaching' },
     ],
   },
   {

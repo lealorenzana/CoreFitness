@@ -57,6 +57,7 @@ const Waiver = lazyPage(() => import('./pages/Waiver'));
 const EditProfile = lazyPage(() => import('./pages/EditProfile'));
 const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
 const BookClass = lazyPage(() => import('./pages/BookClass'));
+const MyCoach = lazyPage(() => import('./pages/MyCoach'));
 const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
 const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
@@ -67,6 +68,7 @@ const TrainerAvailability = lazyPage(() => import('./pages/trainer/TrainerAvaila
 const TrainerSettings = lazyPage(() => import('./pages/trainer/TrainerSettings'));
 const TrainerExercises = lazyPage(() => import('./pages/trainer/TrainerExercises'));
 const TrainerBookings = lazyPage(() => import('./pages/trainer/TrainerBookings'));
+const TrainerCoaching = lazyPage(() => import('./pages/trainer/TrainerCoaching'));
 const TrainerProfile = lazyPage(() => import('./pages/trainer/TrainerProfile'));
 const TrainerEditProfile = lazyPage(() => import('./pages/trainer/TrainerEditProfile'));
 const Achievements = lazyPage(() => import('./pages/Achievements'));
@@ -232,6 +234,7 @@ function App() {
               a destination you switch to. */}
           <Route path="availability" element={<TrainerAvailability />} />
           <Route path="bookings" element={<TrainerBookings />} />
+          <Route path="coaching" element={<TrainerCoaching />} />
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />
           <Route path="settings" element={<TrainerSettings />} />
@@ -263,6 +266,7 @@ function App() {
           <Route path="chatbot" element={<ChatbotPage />} />
           <Route path="events" element={<Events />} />
           <Route path="trainers" element={<Trainers />} />
+          <Route path="coach" element={<MyCoach />} />
           <Route path="book-class" element={<BookClass />} />
           <Route path="booking-history" element={<BookingHistory />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />

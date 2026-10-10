@@ -212,6 +212,7 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
   ] },
   { id: 'coaching', label: 'Coaching', tabs: [
     { label: 'Bookings', path: '/member/booking-history', module: 'classes' },
+    { label: 'Your coach', path: '/member/coach', module: 'coaching' },
     { label: 'Coaches', path: '/member/trainers', module: 'coaching', words: (w) => w('trainers', true) },
     { label: 'Rooms', path: '/member/rooms', module: 'rooms' },
   ] },

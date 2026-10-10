@@ -6,13 +6,14 @@ import { Link } from 'react-router-dom';
 import WaiverTab from '../components/WaiverTab';
 import HouseRulesTab from '../components/HouseRulesTab';
 import BookingApproval from '../components/BookingApproval';
+import CoachingSettings from '../components/CoachingSettings';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
 import FormField from '../components/ui/FormField';
-import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck } from 'lucide-react';
+import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -52,7 +53,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'bookings' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'bookings' | 'coaching' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -61,6 +62,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'gym', label: 'Gym Information', icon: Building2 },
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
+  { id: 'coaching', label: 'Coaching', icon: Handshake },
   { id: 'refunds', label: 'Refund Policy', icon: Banknote },
   { id: 'payments', label: 'Online Payments', icon: Smartphone },
   { id: 'waiver', label: 'Waiver', icon: FileSignature },
@@ -606,6 +608,17 @@ export default function Settings() {
                   </p>
                 </div>
                 <BookingApproval />
+              </div>
+            )}
+            {activeTab === 'coaching' && (
+              <div className="rounded-xl p-5 space-y-4" style={panel}>
+                <div>
+                  <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>How coaching works here</h2>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    How members get a coach, for how long, and who is paid.
+                  </p>
+                </div>
+                <CoachingSettings />
               </div>
             )}
             {activeTab === 'refunds' && <RefundPolicyTab />}

@@ -717,6 +717,31 @@ language sql stable security definer set search_path = public as $fn$
   );
 $fn$;
 
+-- A member choosing a coach, or a stand-in, sees whether they are on leave
+-- (0178's presence). The view as 0099 made it, presence appended; the
+-- security_barrier 0115 gave it is restated, never lost on a replace.
+create or replace view public_trainers with (security_barrier = true) as
+ select p.id,
+    p.first_name,
+    p.last_name,
+    p.photo_url,
+    tp.specialization,
+    tp.bio,
+    tp.availability,
+    tp.years_experience,
+    tp.certifications,
+    tp.focus_areas,
+    tp.achievements,
+    tp.gym_id,
+    tp.presence
+   from profiles p
+     join trainer_profiles tp on tp.profile_id = p.id
+  where tp.gym_id = current_gym_id()
+    and exists (select 1 from gym_roles r where r.user_id = p.id and r.gym_id = tp.gym_id
+                  and r.role = 'trainer'::user_role and r.status = 'active')
+    and (sees_demo_data() or not is_demo_row(p.id));
+revoke all on public_trainers from anon;
+
 -- The four new tables are gym tables (TENANCY).
 create or replace function tenancy_gym_tables() returns text[] language sql immutable as $$
   select array['account_status_events','achievement_unlocks','achievements','activity_log',

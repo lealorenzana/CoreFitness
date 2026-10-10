@@ -14,6 +14,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/chatbot', 'assistant'],
   ['/member/events', 'push'],
   ['/member/trainers', 'coaching'],
+  ['/member/coach', 'coaching'],
   ['/member/trainer/', 'coaching'],
   ['/member/book-class', 'classes'],
   ['/member/booking-history', 'classes'],
@@ -36,6 +37,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/pause-or-cancel', 'requests'],
   // trainer
   ['/trainer/rooms', 'rooms'],
+  ['/trainer/coaching', 'coaching'],
   ['/trainer/messages', 'chat'],
   ['/trainer/schedule', 'classes'],
   ['/trainer/achievements', 'engagement'],

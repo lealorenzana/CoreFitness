@@ -17,6 +17,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import { Stars, StarInput } from '../components/ui/StarRating';
 import type { ClassRow } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
+import TrainWith from '../components/coaching/TrainWith';
 import { Eyebrow, LineRow, NocButton, Panel, SeeAll } from '../components/ui/noc';
 
 /**
@@ -240,6 +241,8 @@ export default function TrainerProfile() {
           <NocButton variant="action" icon={<CalendarPlus size={16} />} onClick={bookWith}>
             Book with {trainer.first_name}
           </NocButton>
+          {/* A coaching term with them (0181), when the gym lets members pick. */}
+          <TrainWith trainerId={trainer.id} firstName={trainer.first_name} presence={trainer.presence} />
 
           {/* ── Evaluating this coach ──
               Not eligible yet, and SAYING SO. This was `{eligible && …}` and

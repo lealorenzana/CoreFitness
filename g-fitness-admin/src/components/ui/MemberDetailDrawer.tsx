@@ -34,6 +34,7 @@ import { formatCheckInCode } from '../../utils/checkInCode';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
 import { supabase } from '../../lib/supabaseClient';
+import { memberCoaching, STATUS_WORDS as COACHING_STATUS_WORDS, type CoachingRow } from '../../lib/api/coaching';
 import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
 import { memberAgreements, type Agreement, type MemberAgreements } from '../../lib/api/termsAcceptance';
@@ -423,6 +424,8 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
           )}
         </div>
       </Section>
+
+      <CoachingSection memberId={profile.id} />
 
       <PointsSection memberId={profile.id} />
 
@@ -1746,5 +1749,40 @@ function Empty({ text }: { text: string }) {
       style={{ background: 'var(--color-surface-raised)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>
       {text}
     </div>
+  );
+}
+
+/**
+ * The member's coach and until when (0181) — under "paid to the coach" this is
+ * all the gym sees, never the money. Nothing at all before 0181 or with no
+ * coaching; a link to Coaching for the rest.
+ */
+function CoachingSection({ memberId }: { memberId: string }) {
+  const [row, setRow] = useState<CoachingRow | null>(null);
+  const [coachName, setCoachName] = useState<string | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const c = await memberCoaching(memberId);
+      setRow(c);
+      if (c) {
+        const { data } = await supabase.from('gym_people').select('first_name, last_name').eq('id', c.trainer_id).maybeSingle();
+        const p = data as { first_name: string; last_name: string } | null;
+        setCoachName(p ? `${p.first_name} ${p.last_name}` : null);
+      }
+    })();
+  }, [memberId]);
+  if (!row) return null;
+  return (
+    <Section title="Coach">
+      <div data-drawer-coaching className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+        <p className="text-sm font-semibold text-white">{coachName ?? 'Their coach'}{row.kind === 'group' ? ' · group' : ''}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+          {row.status === 'active' && row.ends_on
+            ? `Until ${new Date(`${row.ends_on}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : COACHING_STATUS_WORDS[row.status]}
+          {row.fee_mode === 'trainer_direct' ? ' · paid to the coach' : ''}
+        </p>
+      </div>
+    </Section>
   );
 }

@@ -21,6 +21,7 @@ import GymApp from './pages/GymApp';
 import Invitations from './pages/Invitations';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
+import Coaching from './pages/Coaching';
 import Events from './pages/Events';
 import Notifications from './pages/Notifications';
 import Activity from './pages/Activity';
@@ -91,6 +92,7 @@ function App() {
             <Route path="gym-app" element={<ProtectedRoute adminOnly><GymApp /></ProtectedRoute>} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="bookings" element={<Bookings />} />
+            <Route path="coaching" element={<Coaching />} />
             <Route path="events" element={<Events />} />
             <Route path="notifications" element={<Notifications />} />
             {/* Admin-only, and not merely for tidiness: the point of an audit

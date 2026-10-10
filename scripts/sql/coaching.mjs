@@ -206,6 +206,9 @@ await as(AD);
 check('a made-up way in is refused', (await tryExec(`select set_coaching_settings(array['bribe'], array[1], 'included')`)) !== null);
 check('a 30-month term is refused', (await tryExec(`select set_coaching_settings(array['pick_pt'], array[30], 'included')`)) !== null);
 
+await as(A);
+check("the coach list carries each coach's presence", (await one(`select count(*)::int n from public_trainers where id = '${T}' and presence = 'available'`)).n === 1);
+check('…and the view keeps its protection (0115)', (await one(`select count(*)::int n from views_without_protection() where view_name = 'public_trainers'`)).n === 0);
 await owner();
 check('marker', (await one(`select migration_0181_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0181 checks passed');

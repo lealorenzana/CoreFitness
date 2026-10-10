@@ -92,6 +92,8 @@ export function trainerRail(id: TrainerTabId, app: GymApp | null): Destination[]
 export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
+    // Coaching terms (0181): requests, Received, trainees and until when.
+    { label: 'Coaching', path: '/trainer/coaching', icon: UsersThree, module: 'coaching' },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
@@ -100,6 +102,7 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   rooms: [
     // The roster the Rooms tab replaced, unchanged.
     { label: 'All my members', path: '/trainer/members', icon: UsersThree },
+    { label: 'Coaching', path: '/trainer/coaching', icon: UsersThree, module: 'coaching' },
   ],
   // Schedule leads with its own Bookable hours panel, so a pill would repeat it.
   schedule: [],
