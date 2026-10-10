@@ -189,7 +189,8 @@ check('an insert with no gym and no caller fails', !!(await fails(`insert into e
 
 // Gym B gets Gym #1's rules, then the rows later checks read.
 await db.exec(`select seed_gym_defaults('${GYM_B}')`);
-for (const t of ['point_rules', 'cancellation_reasons', 'goal_templates', 'achievements', 'refund_rules', 'membership_plans']) {
+// Plans are the exception since 0186: a new gym gets starter plans, not Gym #1's.
+for (const t of ['point_rules', 'cancellation_reasons', 'goal_templates', 'achievements', 'refund_rules']) {
   const [a, b] = [(await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_A}'${t === 'membership_plans' ? ' and is_active' : ''}`)).n,
     (await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_B}'`)).n];
   check(`Gym B starts with Gym #1's ${t} (${b} of ${a})`, a > 0 && a === b, `${b} of ${a}`);
@@ -199,9 +200,10 @@ check('Gym B has its own settings row, named after the gym',
 const pfDiff = await one(`select count(*)::int as n from plan_features f join membership_plans p on p.id = f.plan_id
   where p.gym_id = '${GYM_B}' and f.gym_id <> '${GYM_B}'`);
 check("Gym B's plan features are filed under Gym B", pfDiff.n === 0);
+check('Gym B starts with the three starter plans (0186)',
+  (await db.query(`select name from membership_plans where gym_id = '${GYM_B}' order by name`)).rows.map((r) => r.name).join() === 'Free,Monthly,Premium');
 check('seeding twice adds nothing', !(await fails(`select seed_gym_defaults('${GYM_B}')`)) &&
-  (await one(`select count(*)::int as n from membership_plans where gym_id = '${GYM_B}'`)).n ===
-  (await one(`select count(*)::int as n from membership_plans where gym_id = '${GYM_A}' and is_active`)).n);
+  (await one(`select count(*)::int as n from membership_plans where gym_id = '${GYM_B}'`)).n === 3);
 // Fixture rows are system writes: they name their gym, as system code must once
 // two gyms exist (a trigger's side rows then land there too).
 await db.exec(`
@@ -219,7 +221,8 @@ await db.exec(`
     ('${GYM_B}', '${P.memberB}', 'system', 'B only', 'B only');
   insert into events (gym_id, title, starts_at) values ('${GYM_B}', 'Gym B open day', now() + interval '3 days');
   insert into rewards (gym_id, name, cost_points) values ('${GYM_B}', 'Gym B towel', 100);`);
-const bPlan = await one(`select id from membership_plans where gym_id = '${GYM_B}' limit 1`);
+// The plan that earns points (the starter Premium), so the points checks below have something to earn.
+const bPlan = await one(`select id from membership_plans where gym_id = '${GYM_B}' and name = 'Premium' limit 1`);
 await db.exec(`select act_as_gym('${GYM_B}');
   insert into memberships (gym_id, member_id, plan_id) values ('${GYM_B}', '${P.memberB}', '${bPlan.id}');
   insert into payments (gym_id, member_id, amount, method, invoice_number) values ('${GYM_B}', '${P.memberB}', 999, 'cash', 'B-0001');
@@ -560,7 +563,9 @@ await db.exec(`delete from classes where name in ('Gym B Secret Class', 'Gym A C
 // ---- 0102: points, badges, challenges and goals are per gym -------------------
 // The two-gym member gets an active membership in each gym, then checks in at Gym B.
 await asOwner();
-const planFor = (g) => `(select id from membership_plans where gym_id = '${g}' and is_active order by price desc limit 1)`;
+// A plan whose members earn points — not "the dearest": a new gym's starter plans all read ₱0 until priced (0186).
+const planFor = (g) => `(select p.id from membership_plans p join plan_features f on f.plan_id = p.id
+  and f.feature_key = 'points_earn' and f.enabled where p.gym_id = '${g}' and p.is_active order by p.price desc limit 1)`;
 await db.exec(`select act_as_gym('${GYM_A}');
   insert into memberships (gym_id, member_id, plan_id, status, start_date, expiry_date)
   values ('${GYM_A}', '${P.both}', ${planFor(GYM_A)}, 'active', current_date, current_date + 30);
