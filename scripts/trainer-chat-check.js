@@ -1,6 +1,9 @@
 /**
- * Chat, the coach's side (0131): Messages from Home, unread from a trainee,
- * opening the chat marks it read.
+ * Chat, the coach's side, since 0174: Messages is no longer a screen of its own
+ * — a 1-on-1 chat lives in that trainee's room (Together). Every old link a
+ * coach has (a chat notification's /trainer/messages/<conversation>, the bare
+ * /trainer/messages) must still land in the room with that trainee, found
+ * through pt_room_with(), never on a dead page.
  *
  * Setup copied from trainer-assign-check.js.
  */
@@ -128,6 +131,12 @@ async (page) => {
   let MUTED = false;
   const CALLS = {};
   const FN = {
+    pt_room_with: (b) => (b.p_other === 'm1' ? 'rm1' : null),
+    my_rooms: () => [{ id: 'rm1', kind: 'pt', name: 'Lea Lorenzana · 1-on-1', description: null, trainer_id: 't1',
+      trainer_name: 'Kenji Ramos', member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false,
+      join_code: null, is_mine: true, full_access: true },
+      { id: 'rm2', kind: 'pt', name: 'Ben · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Kenji Ramos',
+      member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: true, full_access: true }],
     my_conversations: () => [{ id: 'cv1', other_id: ROLE === 'trainer' ? 'm1' : 't1',
       other_name: ROLE === 'trainer' ? 'Lea Lorenzana' : 'Coach Rae', other_photo: null,
       last_message: 'Should I skip leg day?', last_from_me: ROLE !== 'trainer', last_message_at: iso(0, 9, 5),
@@ -236,17 +245,13 @@ async (page) => {
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
 
-  await go('/trainer/home');
-  out.push('Messages on Home: ' + ((await page.getByText('Messages', { exact: true }).count()) > 0 ? 'one tap away' : 'MISSING'));
-  await go('/trainer/messages');
-  let t = await text();
-  out.push('unread from a trainee: ' + (/Lea Lorenzana/.test(t) && /2 new/.test(t) ? 'shown' : 'MISSING'));
-  out.push('no "message a coach" for a coach: ' + (!/Message a coach/.test(t) ? 'none' : 'MISSING'));
-  await page.getByText('Lea Lorenzana').click();
+  await go('/trainer/messages/cv1');
   await page.waitForTimeout(1200);
-  t = await text();
-  out.push('opens the chat: ' + (/\/trainer\/messages\/cv1/.test(page.url()) && /my knee hurts/.test(t) ? 'cv1' : 'MISSING ' + page.url()));
-  out.push('read when opened: ' + (CALLS.mark_conversation_read?.p_conversation === 'cv1' ? 'marked' : 'MISSING'));
+  out.push("an old chat link opens that trainee's room: " + (/\/trainer\/rooms\/rm1/.test(page.url()) ? 'rm1' : 'MISSING ' + page.url()));
+  out.push('…found by who the chat is with: ' + (CALLS.pt_room_with?.p_other === 'm1' ? 'yes' : 'MISSING'));
+  await go('/trainer/messages');
+  await page.waitForTimeout(1200);
+  out.push('the bare Messages link, with two trainees, opens the list of rooms: ' + (/\/trainer\/rooms\/?(\?|$)/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   await page.screenshot({ path: 'shots/trainer-chat.png' });
   return out.join('\n');
 }

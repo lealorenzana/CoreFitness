@@ -1,12 +1,8 @@
 /**
- * 0124 in the member app: squads and the gym-wide goal.
+ * 0180 on the member's side: a kind of booking the gym switched off is not a
+ * tab, and a kind it confirms at once says Book, not Request.
  *
- *   - no squad: join with a code (typed in any case) or start one;
- *   - in a squad: the week's days against the target, who has not trained yet,
- *     the invite code, the board of squads, and leaving;
- *   - the gym goal on Today with the member's own contribution.
- *
- * Setup copied from workout-run-check.js. Member dev server on :5173.
+ * Fixture copied from member-nav-check.js, signed in as a member.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -80,6 +76,19 @@ async (page) => {
       { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
     ],
     saved_resources: [],
+    // The coach's roster (0082): one trainee.
+    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
+      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
+    gym_programs: [
+      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
+        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
+      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
+        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
+    ],
+    classes: [{ id: 'c1', name: 'Sunrise HIIT', level: 'all_levels', class_type: 'hiit', location: 'Studio', capacity: 10,
+      scheduled_at: iso(1, 7, 0), duration_minutes: 60, trainer_id: 't1', status: 'scheduled' }],
+    class_availability: [{ class_id: 'c1', capacity: 10, booked_count: 2 }],
+    bookings: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
       activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
@@ -111,37 +120,32 @@ async (page) => {
     return true;
   }));
 
+
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const UPLOADED = [];
+  DB.progress_photos = [
+    { id: 'ph1', member_id: 'm1', path: 'gym-1/m1/a.jpg', pose: 'front', taken_on: dstr(-60), note: 'Start, 74 kg', created_at: iso(-60, 9, 0) },
+    { id: 'ph2', member_id: 'm1', path: 'gym-1/m1/b.jpg', pose: 'front', taken_on: dstr(-2), note: '69 kg', created_at: iso(-2, 9, 0) },
+    { id: 'ph3', member_id: 'm1', path: 'gym-1/m1/c.jpg', pose: 'side', taken_on: dstr(-2), note: null, created_at: iso(-2, 9, 1) },
+  ];
+  DB.member_share_prefs = [{ member_id: 'm1', share_photos: false }];
+  const ROOM = { id: 'rm1', kind: 'pt', name: 'Lea · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+    member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: false, full_access: true };
   const CALLS = {};
-  let inSquad = false;
+  let n2 = 0;
   const FN = {
-    settle_squads: () => 0,
-    // The squad streak (0153): 3 weeks running, short of the target on the last open day.
-    my_squad_streak: () => !inSquad ? null : { squad_id: 'sq1', name: 'Iron Barkada', target: 9, current: 3, best: 5,
-      days_this_week: 4, needed: 5, days_left: 1, members: 3, at_risk: true, out_of_reach: false,
-      history: ['before', 'before', 'before', 'hit', 'hit', 'miss', 'hit', 'hit', 'miss', 'hit', 'hit', 'current'].map((state, i) => ({
-        week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10), days: state === 'hit' ? 10 : 4, state })) },
-    squad_streaks: () => [{ squad_name: 'Iron Barkada', current_streak: 3, is_mine: inSquad }, { squad_name: 'Morning Crew', current_streak: 7, is_mine: false }],
-    settle_gym_goals: () => 0,
-    join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
-    create_squad: () => { inSquad = true; return 'sq1'; },
-    leave_squad: () => { inSquad = false; return null; },
-    my_squad: () => !inSquad ? [] : [
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm2', first_name: 'Ana', days_this_week: 3, is_me: false },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm1', first_name: 'Lea', days_this_week: 1, is_me: true },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm3', first_name: 'Joy', days_this_week: 0, is_me: false }],
-    squad_board: () => [{ squad_name: 'Iron Barkada', members: 3, days: 4, weekly_target: 9, reached: false, is_mine: inSquad },
-      { squad_name: 'Morning Crew', members: 4, days: 12, weekly_target: 10, reached: true, is_mine: false }],
-    current_gym_goal: () => [{ id: 'g1', title: '1,000 training days in October', metric: 'training_days', target: 1000,
-      starts_on: dstr(-5), ends_on: dstr(20), reward_points: 50, reached: false, progress: 412, contributors: 88, mine: 2 }],
-    request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
-      const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
-      DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
-        created_at: new Date().toISOString(), closed_at: null, close_note: null, membership_plans: { name: plan.name, price: plan.price } });
-      return 'rr' + n; },
-    withdraw_renewal_request: () => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; }); return null; },
+    reserve_progress_photo: (b) => { const id = 'new' + (++n2); const p = `gym-1/m1/new${n2}.jpg`;
+      DB.progress_photos.unshift({ id, member_id: 'm1', path: p, pose: b.p_pose, taken_on: b.p_taken_on || dstr(0), note: b.p_note, created_at: new Date().toISOString() });
+      return [{ photo_id: id, path: p }]; },
+    set_share_photos: (b) => { DB.member_share_prefs[0].share_photos = b.p_share; return null; },
+    delete_progress_photo: () => null,
+    sync_gym_rooms: () => 0,
+    my_rooms: () => [ROOM],
+    room_badges: () => [],
+    room_classwork: () => [{ id: 'wp', kind: 'checkin', checkin_type: 'photo', title: 'Front photo, week 4', instructions: 'Same spot, same light.',
+      due_on: dstr(2), gym_workout_id: null, workout_name: null, created_at: iso(-1, 9, 0), whole_room: true, targets: 1, turned_in: 0,
+      late: 0, missing: 0, to_review: 0, my_status: 'assigned', my_answer_text: null, my_answer_number: null, my_return_comment: null, my_points: 0 }],
+    submit_checkin_photo: () => 's1',
   };
   const RPC = {
     refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
@@ -151,6 +155,7 @@ async (page) => {
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
+    my_booking_modes: [{ class_mode: 'off', pt_mode: 'instant' }],
     member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
       { exercise_id: 'e1', set_number: 2, reps: 8, weight_kg: 50, duration_seconds: null }],
   };
@@ -197,6 +202,18 @@ async (page) => {
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
+    // Private storage (0132): signed links, and uploads into reserved slots.
+    if (path.startsWith('/storage/v1/object/sign/')) {
+      if (req.method() === 'POST') {
+        const b = JSON.parse(req.postData() || '{}');
+        return json((b.paths || []).map((p) => ({ path: p, signedURL: `/object/sign/progress/${p}?token=t`, error: null })));
+      }
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    }
+    if (path.startsWith('/storage/v1/object/progress/')) {
+      UPLOADED.push(path.replace('/storage/v1/object/progress/', ''));
+      return json({ Key: path });
+    }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
     DB[t] = DB[t] ?? [];
@@ -238,40 +255,38 @@ async (page) => {
 
 
 
-  const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+  const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
-  // 1 - no squad yet: join with a code.
-  await go('/member/squad');
+
+  const pills = async () => page.evaluate(() => [...document.querySelectorAll('header button, [role="navigation"] button')]
+    .map((b) => b.innerText.trim()).filter(Boolean));
+  const strip = async (hub) => page.evaluate((h) => [...document.querySelectorAll(`[data-hub="${h}"] [role="tab"]`)]
+    .map((b) => b.innerText.trim()), hub);
+  const tap = async (name) => { await page.getByRole('button', { name, exact: true }).first().click(); await page.waitForTimeout(1200); };
+
+  await go('/member/book-class');
   let t = await text();
-  out.push('join and start offered: ' + (/Join a friend's team/i.test(t) && /Or start one/i.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Team code').fill('abcdef');
-  out.push('code typed in capitals: ' + ((await page.getByLabel('Team code').inputValue()) === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await page.waitForTimeout(1500);
-  out.push('join sent: ' + (CALLS.join_squad?.p_code === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
+  out.push('classes switched off: no Group classes tab: ' + (!/Group classes/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('…and the page opens on 1-on-1: ' + (/1-on-1/.test(t) ? 'yes' : 'MISSING'));
+  await shot('booking-modes-off');
+
+  RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'coach' }];
+  await go('/member/book-class?show=classes');
   t = await text();
-  out.push("the squad's streak: " + (/3\s*week team streak/.test(t) && /Ends tonight/.test(t) ? '3 weeks, ends tonight' : 'MISSING'));
-  out.push("the squad's week: " + (/4\s*\/ 9 days this week/.test(t) && /5 more between you today keeps the team streak alive/.test(t) ? '4 of 9, 5 more today' : 'MISSING'));
-  out.push("the squad's twelve weeks: " + ((await page.locator('.streak-week').count()) === 12 && (await page.locator('.streak-week--hit').count()) === 6 ? '6 reached' : 'MISSING'));
-  out.push("the board shows each squad's streak: " + (/Morning Crew/.test(t) && /🔥 7-week streak/.test(t) && /🔥 3-week streak/.test(t) ? 'yes' : 'MISSING'));
-  out.push('who has not trained yet: ' + (/Joy Not in yet this week/.test(t) ? 'Joy' : 'MISSING'));
-  out.push('invite code shown: ' + (/ABCDEF/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the squad board: ' + (/Morning Crew/.test(t) && /Target hit/.test(t) ? 'shown' : 'MISSING'));
-  out.push('the gym goal on the squad page: ' + (/1,000 training days in October/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad.png', fullPage: true });
-
-  // 2 - the gym goal on Today, with the member's own part.
-  await go('/member/home');
+  out.push('classes back on: the tab returns: ' + (/Group classes/.test(t) ? 'yes' : 'MISSING'));
+  const row = page.getByText('Sunrise HIIT').first();
+  const seen = await row.isVisible().catch(() => false);
+  if (!seen) {
+    // The class sits on tomorrow; pick that day in the week rail.
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    await page.getByRole('button', { name: new RegExp('^' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]) }).first().click().catch(() => {});
+    await page.waitForTimeout(800);
+  }
+  await page.getByText('Sunrise HIIT').first().click();
+  await page.waitForTimeout(900);
   t = await text();
-  out.push('gym goal on Today: ' + (/The whole gym/.test(t) && /412 of 1,000 training days/.test(t) ? 'shown' : 'MISSING'));
-  out.push('own contribution: ' + (/You added 2 — you get 50 points when it is reached/.test(t) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/squad-goal-today.png' });
-
-  // 3 - leaving.
-  await go('/member/squad');
-  await page.getByRole('button', { name: 'Leave the squad' }).click();
-  await page.waitForTimeout(1200);
-  out.push('leave sent: ' + ('leave_squad' in CALLS ? 'yes' : 'MISSING'));
-
+  out.push('instant: the confirm says it is confirmed at once: ' + (/Confirmed the moment you book/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…and the button says Book, not Request: ' + ((await page.getByRole('button', { name: /^Book$/ }).count()) > 0 && !/Request booking/.test(t) ? 'yes' : 'MISSING'));
+  await shot('booking-modes-instant');
   return out.join('\n');
 }

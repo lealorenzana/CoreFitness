@@ -29,11 +29,11 @@ export default function TraineeSquad({ memberId, firstName }: { memberId: string
       </p>
       {streak && streak.current > 0 && (
         <p style={{ fontSize: 12, marginTop: 2, color: streak.atRisk ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
-          {streak.current}-week squad streak{streak.atRisk ? ' — ends tonight' : ''}
+          {streak.current}-week team streak{streak.atRisk ? ' — ends tonight' : ''}
         </p>
       )}
       <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
-        {firstName} has trained {squad.memberDays} day{squad.memberDays === 1 ? '' : 's'} of it · {squad.members} in the squad
+        {firstName} has trained {squad.memberDays} day{squad.memberDays === 1 ? '' : 's'} of it · {squad.members} in the team
       </p>
     </div>
   );

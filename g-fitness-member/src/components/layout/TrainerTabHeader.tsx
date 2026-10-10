@@ -30,7 +30,8 @@ function titleFor(tab: TrainerTab, now: Date, fullName: string | undefined): [st
     case 'schedule':
       return ['Schedule', 'What you teach'];
     case 'bookings':
-      return ['Bookings', 'You decide these'];
+      // Not "you decide these": at some gyms the desk does (0180).
+      return ['Bookings', 'Requests for your time'];
     case 'profile':
       // The name arrives with the identity read; until then the line holds its
       // height empty rather than showing a placeholder name.

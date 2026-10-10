@@ -22,7 +22,7 @@ const check = (label, ok, detail = '') => {
 const one = async (sql) => (await db.query(sql)).rows[0];
 const tryExec = async (sql) => { try { await db.exec(sql); return null; } catch (e) { return describe(e); } };
 const as = (uid) => db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated;`);
-const owner = () => db.exec('reset role;');
+const owner = () => db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false);`);
 const q = (o) => `'${JSON.stringify(o).replace(/'/g, "''")}'::jsonb`;
 const propose = async (kind, payload) => (await one(`select create_ai_proposal('${kind}', ${q(payload)}, 'A change') as id`)).id;
 const tryPropose = (kind, payload) => tryExec(`select create_ai_proposal('${kind}', ${q(payload)}, 'A change')`);

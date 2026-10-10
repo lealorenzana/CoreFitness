@@ -137,8 +137,10 @@ export async function assignProgram(memberId: string, programId: string): Promis
  */
 export async function getProgramDayRoutine(dayId: string, workoutId: string, name: string | null): Promise<Routine | null> {
   const { data, error } = await supabase.rpc('program_day_targets', { p_day: dayId });
-  if (error) return getGymWorkoutRoutine(workoutId);
-  const rows = (data ?? []) as {
+  // No answer, or nothing computed for this day: run the workout as written
+  // rather than a player with no exercises in it.
+  if (error || !Array.isArray(data) || data.length === 0) return getGymWorkoutRoutine(workoutId);
+  const rows = data as {
     item_id: string; item_position: number; exercise_id: string; exercise_name: string | null;
     sets: number; reps: number | null; seconds: number | null; weight_kg: number | string | null; rest_seconds: number;
     progress_kind: string; prev_sets: number | null; prev_reps: number | null; prev_seconds: number | null; prev_weight_kg: number | string | null;

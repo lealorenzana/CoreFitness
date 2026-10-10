@@ -192,10 +192,14 @@ export interface BookingRow {
   rejected_at: string | null;
   approved_by: string | null;
   /** Who decided and in what capacity (0071). NULL before a decision, and on
-   *  rows decided before the column existed. 'system' is an automatic expiry. */
+   *  rows decided before the column existed. 'system' is automatic: an expiry,
+   *  or (0180) a booking confirmed at once at a gym that books instantly. */
   decided_by?: string | null;
   decided_by_role?: 'admin' | 'staff' | 'trainer' | 'system' | null;
   decided_at?: string | null;
+  /** Under "coach, then desk" (0180): the coach who accepted, and when. */
+  coach_ok_by?: string | null;
+  coach_ok_at?: string | null;
 }
 
 export interface AttendanceRow {

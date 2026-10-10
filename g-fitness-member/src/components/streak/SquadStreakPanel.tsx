@@ -22,7 +22,7 @@ export default function SquadStreakPanel({ s }: { s: SquadStreak }) {
       ? (s.current > 0 ? 'This week is out of reach now. A new team streak starts Monday.' : `${s.needed} more between you would have started a streak.`)
       : s.atRisk
         ? `${s.needed} more between you today keeps the team streak alive.`
-        : `${s.needed} more between you by Sunday${s.current > 0 ? ' keeps the streak going' : ' starts a squad streak'}.`;
+        : `${s.needed} more between you by Sunday${s.current > 0 ? ' keeps the streak going' : ' starts a team streak'}.`;
   return (
     <div className={`streak-hero streak-hero--${s.current > 0 ? 'flame' : 'out'}${s.atRisk ? ' streak-hero--risk' : ''}`}
       style={{ flexDirection: 'column', alignItems: 'stretch' }} aria-label="Your team's streak">

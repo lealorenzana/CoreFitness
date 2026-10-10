@@ -4,7 +4,7 @@ import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { Chip, NocButton, Panel, StatusPill } from '../../components/ui/noc';
 import { toast } from '../../components/ui/Toast';
-import { listTrainerBookings, updateBookingStatus } from '../../lib/api/bookings';
+import { getBookingModes, listTrainerBookings, updateBookingStatus, type BookingModes } from '../../lib/api/bookings';
 import { listTrainerPtSessions, setPtSessionStatus } from '../../lib/api/ptSessions';
 import { listMembers } from '../../lib/api/members';
 import { getCurrentTrainerId } from '../../services/trainerService';
@@ -62,6 +62,8 @@ interface Request {
   /** NULL for a class with no time on it — 0001 allows that. */
   startsAt: string | null;
   requestedAt: string;
+  /** Under "coach then desk" (0180): this coach has accepted; the desk confirms. */
+  coachOk: boolean;
 }
 
 /**
@@ -115,6 +117,10 @@ export default function TrainerBookings() {
   const [deciding, setDeciding] = useState<string | null>(null);
   /** The booking whose cancellation dialog is open, or null. */
   const [pendingCancel, setPendingCancel] = useState<Request | null>(null);
+  /** Who approves each kind at this gym (0180); 'coach' (0071) until read. */
+  const [modes, setModes] = useState<BookingModes>({ classMode: 'coach', ptMode: 'coach' });
+  useEffect(() => { void getBookingModes().then(setModes); }, []);
+  const modeOf = (req: Request) => (req.kind === 'class' ? modes.classMode : modes.ptMode);
 
   const load = useCallback(async (quiet = false) => {
     try {
@@ -142,6 +148,7 @@ export default function TrainerBookings() {
           status: b.status,
           startsAt: b.classes?.scheduled_at ?? null,
           requestedAt: b.requested_at,
+          coachOk: !!(b as { coach_ok_at?: string | null }).coach_ok_at,
         })),
         ...ptRows.map((s): Request => ({
           kind: 'pt',
@@ -151,6 +158,7 @@ export default function TrainerBookings() {
           status: s.status,
           startsAt: s.starts_at,
           requestedAt: s.requested_at,
+          coachOk: !!(s as { coach_ok_at?: string | null }).coach_ok_at,
         })),
       ].sort((a, b) => {
         // Pending first — this is a work queue, not an archive. Within pending,
@@ -208,7 +216,9 @@ export default function TrainerBookings() {
       }
 
       toast.success(
-        status === 'approved'
+        status === 'approved' && modeOf(req) === 'coach_desk'
+          ? 'Accepted — the front desk confirms it next.'
+          : status === 'approved'
           ? `Confirmed for ${names[req.memberId] ?? 'the member'}.`
           : `Declined. ${names[req.memberId] ?? 'The member'} has been told.`
       );
@@ -222,8 +232,10 @@ export default function TrainerBookings() {
 
   const filtered = filter === 'all' ? requests : requests.filter((r) => r.status === filter);
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
+  // Only what this coach can still decide (0180): a row the desk decides, or one
+  // they already accepted, is not theirs to be nudged about.
   const overdueCount = requests.filter(
-    (r) => r.status === 'pending' && isOverdue(r.requestedAt)
+    (r) => r.status === 'pending' && !r.coachOk && modeOf(r) !== 'desk' && modeOf(r) !== 'off' && isOverdue(r.requestedAt)
   ).length;
 
   // A centred "Loading…" collapses the layout and snaps it back open.
@@ -325,7 +337,16 @@ export default function TrainerBookings() {
                   </div>
                 )}
 
-                {req.status === 'pending' && (
+                {/* The gym chose who decides (0180): the desk alone, or the desk
+                    after this coach — then the row says so instead of offering
+                    buttons the database would refuse. */}
+                {req.status === 'pending' && (modeOf(req) === 'desk' || modeOf(req) === 'off' || req.coachOk) && (
+                  <p data-desk-decides style={{ marginTop: 11, paddingLeft: 50, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                    {req.coachOk ? 'You accepted — waiting for the front desk to confirm.' : 'The front desk decides this one at your gym.'}
+                  </p>
+                )}
+
+                {req.status === 'pending' && !req.coachOk && modeOf(req) !== 'desk' && modeOf(req) !== 'off' && (
                   <div className="flex" style={{ gap: 8, marginTop: 11, paddingLeft: 50 }}>
                     <NocButton variant="action" className="flex-1" disabled={busy} icon={<Check size={14} weight="bold" />}
                       onClick={() => decide(req, 'approved')} style={{ height: 40 }}>

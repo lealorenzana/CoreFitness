@@ -447,8 +447,10 @@ export async function listBookableClasses(memberId: string): Promise<BookableCla
   });
 }
 
-export async function bookClass(memberId: string, classId: string): Promise<void> {
-  await createBooking(memberId, classId);
+/** Returns what the booking became: 'approved' at a gym that confirms at once (0180), else 'pending'. */
+export async function bookClass(memberId: string, classId: string): Promise<string> {
+  const row = await createBooking(memberId, classId);
+  return String(row.status);
 }
 
 /**
@@ -495,14 +497,15 @@ export async function requestPt(input: {
   startsAt: string;
   durationMinutes: number;
   notes?: string;
-}): Promise<void> {
-  await requestPtSession({
+}): Promise<string> {
+  const row = await requestPtSession({
     trainerId: input.trainerId,
     memberId: input.memberId,
     startsAt: input.startsAt,
     durationMinutes: input.durationMinutes,
     notes: input.notes,
   });
+  return String(row.status);
 }
 
 /** Both kinds of booking, newest commitment first, for the member's own list. */

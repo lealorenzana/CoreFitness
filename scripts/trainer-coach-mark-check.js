@@ -267,10 +267,11 @@ async (page) => {
   out.push("the trainee's gym streak, and that it is at risk: " + (/Gym streak/.test(t) && /5 weeks running/.test(t)
     && /needs 2 more — every day left/.test(t) && /aims for 3 days a week · best 7 weeks/.test(t) ? 'yes' : 'MISSING'));
   out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
-  const marks = (t.match(/Built with the coach/g) || []).length;
+  // 0174: a routine the member's AI coach made reads "AI coach" (a human coach's reads as theirs).
+  const marks = (t.match(/AI coach/g) || []).length;
   out.push('the coach routine is marked, once: ' + (marks === 1 ? 'yes' : marks === 0 ? 'MISSING' : 'NO, ' + marks + ' marks'));
   // The mark sits on the coach's routine's row, not the member's.
-  const markedRow = await page.locator('div', { hasText: 'Built with the coach' }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
+  const markedRow = await page.locator('div', { hasText: /AI coach/ }).filter({ hasText: 'Coach push day' }).filter({ hasNotText: 'My pull day' }).count();
   out.push('the mark is on the coach row: ' + (markedRow > 0 ? 'yes' : 'MISSING'));
   const planMarks = (t.match(/Set by the coach/g) || []).length;
   out.push('the training plan marks the coach day, once: ' + (planMarks === 1 ? 'yes' : planMarks === 0 ? 'MISSING' : 'NO, ' + planMarks + ' marks'));
@@ -289,6 +290,6 @@ async (page) => {
   t = await text();
   out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
   out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
-  out.push('before 0145 nothing is marked: ' + (!/Built with the coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
+  out.push('before 0145 nothing is marked: ' + (!/AI coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));
   return out.join('\n');
 }

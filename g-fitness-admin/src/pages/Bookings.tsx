@@ -363,9 +363,16 @@ export default function Bookings() {
                             left silent rather than guessed: it means undecided,
                             or decided before this column existed, and neither
                             of those is "the front desk". */}
+                        {row.coachOkName && (
+                          <p data-coach-ok className="text-[10px] truncate font-semibold" style={{ color: 'var(--color-primary)' }}>
+                            {row.coachOkName} accepted — your turn to confirm
+                          </p>
+                        )}
                         {row.decidedByRole && (
                           <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                            {row.decidedByRole === 'system'
+                            {row.decidedByRole === 'system' && row.status === 'approved'
+                              ? 'Confirmed automatically — your gym books instantly'
+                              : row.decidedByRole === 'system'
                               ? 'Expired automatically — nobody answered in time'
                               : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${
                                   row.decidedByName ?? DECIDER_WORD[row.decidedByRole]

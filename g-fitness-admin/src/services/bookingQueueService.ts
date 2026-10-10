@@ -48,8 +48,9 @@ export interface QueueRow {
    *
    * 'trainer' is the interesting value: since 0071 a trainer decides their own
    * classes and sessions, so a screen that said "approved" without saying by
-   * whom would imply the desk did it. 'system' is an automatic expiry — nobody
-   * decided, the start time simply passed.
+   * whom would imply the desk did it. 'system' is automatic: a request
+   * declined because its start passed, or (0180) a booking confirmed the
+   * moment it was made at a gym that books instantly — the status tells which.
    *
    * NULL means undecided, or decided before 0071 added the column. Those are
    * different things and neither is "the desk did it", so the screen says
@@ -57,6 +58,8 @@ export interface QueueRow {
    */
   decidedByRole: 'admin' | 'staff' | 'trainer' | 'system' | null;
   decidedByName: string | null;
+  /** Under "coach, then desk" (0180): the coach has accepted; the gym confirms. */
+  coachOkName: string | null;
 }
 
 export interface QueueData {
@@ -136,6 +139,10 @@ export async function loadBookingQueue(): Promise<QueueData> {
     return out;
   };
 
+  /** The coach who accepted a row still waiting for the gym (0180), or null. */
+  const coachOk = (r: { status: string; coach_ok_at?: string | null; coach_ok_by?: string | null }): string | null =>
+    r.status === 'pending' && r.coach_ok_at ? (r.coach_ok_by ? names[r.coach_ok_by] ?? 'The coach' : 'The coach') : null;
+
   const rows: QueueRow[] = [
     ...classBookings.map((b): QueueRow => {
       const capacity = b.classes?.capacity ?? 0;
@@ -169,6 +176,7 @@ export async function loadBookingQueue(): Promise<QueueData> {
         warnings,
         decidedByRole: b.decided_by_role ?? null,
         decidedByName: b.decided_by ? names[b.decided_by] ?? null : null,
+        coachOkName: coachOk(b),
       };
     }),
     ...ptSessions.map((s): QueueRow => {
@@ -195,6 +203,7 @@ export async function loadBookingQueue(): Promise<QueueData> {
         warnings,
         decidedByRole: s.decided_by_role ?? null,
         decidedByName: s.decided_by ? names[s.decided_by] ?? null : null,
+        coachOkName: coachOk(s),
       };
     }),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));

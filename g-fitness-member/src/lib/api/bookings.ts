@@ -141,3 +141,22 @@ export async function updateBookingStatus(
     throw new Error('That booking could not be updated — it may already have been decided.');
   }
 }
+
+/** Who approves a booking at this gym, per kind (0180). */
+export type BookingMode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
+export interface BookingModes { classMode: BookingMode; ptMode: BookingMode }
+
+const MODES: BookingMode[] = ['instant', 'coach', 'desk', 'coach_desk', 'off'];
+
+/**
+ * The gym's choice for classes and for 1-on-1 (0180's `my_booking_modes`).
+ * Before 0180, or on a failed read, both read 'coach' — 0071's rule, which is
+ * what every gym had; the database decides either way.
+ */
+export async function getBookingModes(): Promise<BookingModes> {
+  const { data, error } = await supabase.rpc('my_booking_modes');
+  const row = (Array.isArray(data) ? data[0] : data) as { class_mode?: string; pt_mode?: string } | undefined;
+  const pick = (v?: string): BookingMode => (MODES.includes(v as BookingMode) ? (v as BookingMode) : 'coach');
+  if (error || !row) return { classMode: 'coach', ptMode: 'coach' };
+  return { classMode: pick(row.class_mode), ptMode: pick(row.pt_mode) };
+}

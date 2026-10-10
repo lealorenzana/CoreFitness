@@ -91,6 +91,10 @@ async (page) => {
   await page.setViewportSize({ width: 1280, height: 1500 });
   await page.goto('http://localhost:5174/activity', { waitUntil: 'domcontentloaded' });
   await page.getByText('Sold ₱150.00 to Mara Cruz').waitFor({ timeout: 15000 });
+  // Under a full run the rows arrive in more than one paint; wait for the last
+  // ones this reads rather than for the first.
+  await page.getByText(/First Aid/).first().waitFor({ timeout: 10000 }).catch(() => {});
+  await page.locator('[data-winback-group]').first().waitFor({ timeout: 10000 }).catch(() => {});
   let t = await text();
   out.push('the new events are listed: ' + (/Mara Cruz turned in "Leg day"/.test(t) && /12-week streak/.test(t) && /First Aid/.test(t) ? 'yes' : 'MISSING'));
   out.push('a day’s win-back sends are one line: ' + ((await page.locator('[data-winback-group]').count()) === 1 && /Win-back messages sent to 3 members/.test(t) && !/Member 2 a win-back/.test(t) ? 'yes' : 'MISSING'));

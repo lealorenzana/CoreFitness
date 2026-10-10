@@ -22,6 +22,7 @@ import {
   type ExperienceLevel,
   type Entitlement,
 } from '../services/bookingService';
+import { getBookingModes, type BookingModes } from '../lib/api/bookings';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import { listEvents, eventStatus, type EventRow } from '../lib/api/events';
@@ -279,8 +280,9 @@ function classMeta(c: BookableClass) {
  * Both halves of booking live here because they are one question for the
  * member — "when am I training next" — even though they are two tables: a group
  * class has a roster and a capacity, a PT session is one member and one coach in
- * one slot. Neither creates a confirmed booking; both start pending, and the
- * coach decides (0071).
+ * one slot. Who confirms is the gym's choice per kind (0180): at once, the
+ * coach, the desk, or the coach then the desk — or that kind is not booked in
+ * the app at all, and its tab is not shown.
  *
  * **Kept from the old screen, though the prototype drops them:** matching to
  * the member's experience level and the "For my level" filter; the weekly class
@@ -307,7 +309,16 @@ function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): st
 export default function BookClass() {
   const navigate = useNavigate();
   const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
-  const [filter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
+  const [chosenFilter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
+  /** The gym's booking choices (0180); 'coach' for both until read. */
+  const [modes, setModes] = useState<BookingModes>({ classMode: 'coach', ptMode: 'coach' });
+  useEffect(() => { void getBookingModes().then(setModes); }, []);
+  /** A kind the gym switched off is not a tab, and an old link to it lands on the next one. */
+  const offered: Filter[] = (['classes', 'pt', 'events'] as Filter[])
+    .filter((f) => !(f === 'classes' && modes.classMode === 'off') && !(f === 'pt' && modes.ptMode === 'off'));
+  const filter: Filter = offered.includes(chosenFilter) ? chosenFilter : offered[0];
+  const classInstant = modes.classMode === 'instant';
+  const ptInstant = modes.ptMode === 'instant';
   const [weekOffset, setWeekOffset] = useState<0 | 7>(0);
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -434,9 +445,9 @@ export default function BookClass() {
     if (!memberId || !confirmClass) return;
     setBusy(true);
     try {
-      await bookClass(memberId, confirmClass.id);
+      const became = await bookClass(memberId, confirmClass.id);
       setConfirmClass(null);
-      toast.success('Requested — you will be told when it is confirmed');
+      toast.success(became === 'approved' ? 'Booked — your seat is yours' : 'Requested — you will be told when it is confirmed');
       // Refresh the allowance alongside the list — "0 of 1 booked" still
       // showing after booking is worse than showing no allowance.
       const [refreshed, ent] = await Promise.all([listBookableClasses(memberId), getEntitlement(memberId)]);
@@ -474,7 +485,7 @@ export default function BookClass() {
     if (!memberId || !confirmSlot || !selectedTrainer) return;
     setBusy(true);
     try {
-      await requestPt({
+      const became = await requestPt({
         memberId,
         trainerId: selectedTrainer.id,
         startsAt: confirmSlot.startsAt,
@@ -483,7 +494,7 @@ export default function BookClass() {
       });
       setConfirmSlot(null);
       setNotes('');
-      toast.success('Requested — you will be told when it is confirmed');
+      toast.success(became === 'approved' ? 'Booked — it is in your schedule' : 'Requested — you will be told when it is confirmed');
       // The slot just taken must disappear for everyone, including us.
       setSlots(await listOpenPtSlots(selectedTrainer.id, 14, memberId ?? undefined));
     } catch (err) {
@@ -576,10 +587,10 @@ export default function BookClass() {
       <TextTabs<Filter>
         label="What to book"
         tabs={[
-          { id: 'classes', label: 'Group classes', icon: <UsersThree size={15} weight="bold" /> },
-          { id: 'pt', label: '1-on-1', icon: <User size={15} weight="bold" /> },
-          { id: 'events', label: 'Events', icon: <CalendarStar size={15} weight="bold" /> },
-        ]}
+          { id: 'classes' as Filter, label: 'Group classes', icon: <UsersThree size={15} weight="bold" /> },
+          { id: 'pt' as Filter, label: '1-on-1', icon: <User size={15} weight="bold" /> },
+          { id: 'events' as Filter, label: 'Events', icon: <CalendarStar size={15} weight="bold" /> },
+        ].filter((t) => offered.includes(t.id))}
         active={filter}
         onChange={changeFilter}
       />
@@ -781,7 +792,7 @@ export default function BookClass() {
                           title={`${s.durationMinutes} min with ${selectedTrainer.first_name}`}
                           dim={off}
                           meta={s.conflict !== null ? `Clashes with ${s.conflict}` : undefined}
-                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : 'Request'}
+                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : ptInstant ? 'Book' : 'Request'}
                           actionTone={off ? 'muted' : 'action'}
                           onClick={off ? undefined : () => setConfirmSlot(s)}
                           last={i === daySlots.length - 1}
@@ -834,8 +845,8 @@ export default function BookClass() {
         isOpen={confirmClass !== null}
         onClose={() => !busy && setConfirmClass(null)}
         title="Confirm your booking"
-        subtitle="Requested now, confirmed before your seat is held"
-        confirmLabel={busy ? 'Sending…' : 'Request booking'}
+        subtitle={classInstant ? 'Confirmed the moment you book' : 'Requested now, confirmed before your seat is held'}
+        confirmLabel={busy ? 'Sending…' : classInstant ? 'Book' : 'Request booking'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitClassBooking}>
@@ -854,7 +865,7 @@ export default function BookClass() {
               </div>
             ))}
             <p className="text-center" style={{ fontSize: 12.5, marginTop: 12, color: 'var(--color-text-muted)' }}>
-              Your seat is held once the booking is confirmed.
+              {classInstant ? 'Your seat is held as soon as you book.' : 'Your seat is held once the booking is confirmed.'}
             </p>
           </div>
         )}
@@ -884,9 +895,9 @@ export default function BookClass() {
       <Modal
         isOpen={confirmSlot !== null}
         onClose={() => !busy && setConfirmSlot(null)}
-        title="Request this session"
-        subtitle="Requested now, confirmed before it is booked"
-        confirmLabel={busy ? 'Sending…' : 'Request session'}
+        title={ptInstant ? 'Book this session' : 'Request this session'}
+        subtitle={ptInstant ? 'Confirmed the moment you book' : 'Requested now, confirmed before it is booked'}
+        confirmLabel={busy ? 'Sending…' : ptInstant ? 'Book session' : 'Request session'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitPtRequest}>
