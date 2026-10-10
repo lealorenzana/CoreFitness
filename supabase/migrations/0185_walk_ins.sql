@@ -243,26 +243,48 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- The platform sees guest visits as a number (0149's usage, plus 'guests').
+-- The platform sees guest visits as a number: 0149's body in full (so 0147's
+-- check of it still holds), plus 'guests'.
 -- ---------------------------------------------------------------------------
-do $$
-begin
-  if exists (select 1 from pg_proc where proname = 'platform_gym_usage')
-     and not exists (select 1 from pg_proc where proname = 'platform_gym_usage_v1') then
-    alter function platform_gym_usage(int) rename to platform_gym_usage_v1;
-  end if;
-end
-$$;
-revoke all on function platform_gym_usage_v1(int) from public, anon, authenticated;
 create or replace function platform_gym_usage(p_days int default 30)
 returns table (gym_id uuid, feature text, n bigint)
-language sql stable security definer set search_path = public as $$
-  select * from platform_gym_usage_v1(p_days)
-  union all
-  select v.gym_id, 'guests'::text, count(*)::bigint from guest_visits v
-   where is_platform_admin() and v.voided_at is null
-     and v.visited_at > now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365)))
-   group by v.gym_id;
+language plpgsql stable security definer set search_path = public as $$
+declare f record; v_days int := greatest(1, least(coalesce(p_days, 30), 365));
+begin
+  if not is_platform_admin() then return; end if;
+  for f in select * from (values
+      ('checkins', 'attendance', 'check_in_time'), ('classes', 'bookings', 'created_at'),
+      ('pt', 'pt_sessions', 'created_at'), ('workouts', 'workout_logs', 'created_at'),
+      ('programs', 'program_enrolments', 'created_at'), ('rooms', 'room_posts', 'created_at'),
+      ('chat', 'messages', 'created_at'), ('shop', 'shop_sales', 'created_at'),
+      ('rewards', 'reward_redemptions', 'created_at'), ('squads', 'squads', 'created_at'),
+      ('referrals', 'referrals', 'created_at'), ('photos', 'progress_photos', 'created_at'),
+      ('payments', 'payments', 'created_at')
+    ) as t(key, tbl, col) loop
+    if to_regclass('public.' || f.tbl) is null then continue; end if;
+    begin
+      return query execute format(
+        'select gym_id, %L::text, count(*)::bigint from %I where %I > now() - make_interval(days => %s) group by gym_id',
+        f.key, f.tbl, f.col, v_days);
+    exception when undefined_column then continue;
+    end;
+  end loop;
+  if to_regclass('public.ai_usage_days') is not null then
+    return query execute format(
+      'select gym_id, ''coach''::text, sum(messages)::bigint from ai_usage_days
+        where day > (now() at time zone ''Asia/Manila'')::date - %s group by gym_id', v_days);
+  end if;
+  return query execute format(
+    'select m.gym_id, ''assistant''::text, count(*)::bigint from assistant_messages m
+      where m.role = ''user'' and m.created_at > now() - make_interval(days => %s)
+        and coalesce(to_jsonb(m) ->> ''source'', ''assistant'') <> ''coach'' group by m.gym_id', v_days);
+  -- Walk-ins (0185): guest visits, not voided.
+  if to_regclass('public.guest_visits') is not null then
+    return query execute format(
+      'select gym_id, ''guests''::text, count(*)::bigint from guest_visits
+        where voided_at is null and visited_at > now() - make_interval(days => %s) group by gym_id', v_days);
+  end if;
+end;
 $$;
 revoke all on function platform_gym_usage(int) from public, anon;
 grant execute on function platform_gym_usage(int) to authenticated;
