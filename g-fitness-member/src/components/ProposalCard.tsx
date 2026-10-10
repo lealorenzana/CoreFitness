@@ -29,8 +29,17 @@ const KIND_LABEL: Record<string, string> = {
   'routine.create': 'New routine',
   'routine.replace': 'Change a routine',
   'schedule.set': 'Weekly plan',
-  'goal.create': 'New goal',
+  'goal.create': 'New target',
   'meals.set': 'Meal guide',
+  // 0177: the coach can book, cancel, plan weeks ahead and log what you did.
+  'booking.create': 'Book a class',
+  'booking.cancel': 'Cancel a booking',
+  'program.create': 'New program',
+  'log.create': 'Log a workout',
+};
+
+const REASON: Record<string, string> = {
+  schedule_conflict: 'Schedule conflict', changed_plans: 'Changed plans', mistake: 'Booked by mistake', personal_emergency: 'Personal emergency',
 };
 
 // Monday first: the order a training week is read in.
@@ -94,6 +103,36 @@ function detailLines(kind: string, payload: unknown, names: ProposalNames, t: T,
     }
     if (p.start_value != null) lines.push(`${t('Starting from')} ${fmt(p.start_value, t)}`);
     return { lead: typeof p.title === 'string' ? p.title : undefined, lines };
+  }
+  if (kind === 'booking.create') {
+    return { lines: [t('The gym’s booking rules still apply — some bookings wait for approval.')] };
+  }
+  if (kind === 'booking.cancel') {
+    const p = obj(payload);
+    return { lines: [`${t('Reason:')} ${t(REASON[String(p.reason_key)] ?? 'Changed plans')}`, t('A cancelled booking cannot be restored here.')] };
+  }
+  if (kind === 'program.create') {
+    const p = obj(payload) as { name?: string; weeks?: number; deload_every?: number | null; sessions?: { day_of_week: number; name: string; exercises: { exercise_id: string; target_sets: number; target_reps: number | null; target_weight_kg: number | null; target_seconds: number | null; progress_kind: string; progress_step: number }[] }[] };
+    const lines: string[] = [];
+    lines.push(`${p.weeks ?? '?'} ${t('weeks')}${p.deload_every ? ` · ${t('a lighter week every')} ${p.deload_every}` : ''}`);
+    for (const ses of [...(p.sessions ?? [])].sort((a, b) => WEEK.indexOf(a.day_of_week) - WEEK.indexOf(b.day_of_week))) {
+      const ex = ses.exercises.map((e) => {
+        const name = names.exercises.get(e.exercise_id) ?? t('an exercise');
+        const grow = e.progress_kind === 'weight' ? ` (+${e.progress_step} kg ${t('a week')})`
+          : e.progress_kind === 'reps' ? ` (+${e.progress_step} ${t('reps a week')})`
+          : e.progress_kind === 'sets' ? ` (+${e.progress_step} ${t('sets a week')})`
+          : e.progress_kind === 'seconds' ? ` (+${e.progress_step} s ${t('a week')})` : '';
+        return `${name}${grow}`;
+      }).join(', ');
+      lines.push(`${t(DAY[ses.day_of_week])} — ${ses.name}: ${ex}`);
+    }
+    return { lead: p.name, lines };
+  }
+  if (kind === 'log.create') {
+    const p = obj(payload) as { activity?: string; performed_on?: string; sets?: { exercise_id: string; reps: number | null; weight_kg: number | null; seconds: number | null }[] };
+    const lines = (p.sets ?? []).map((x, i) => `${i + 1}. ${names.exercises.get(x.exercise_id) ?? t('an exercise')} — ${x.seconds != null ? `${x.seconds} s` : `${x.reps ?? '—'} ${t('reps')}`}${x.weight_kg != null ? ` ${t('at')} ${x.weight_kg} kg` : ''}`);
+    if (p.performed_on) lines.unshift(date(p.performed_on));
+    return { lead: p.activity, lines };
   }
   return { lines: [] };
 }

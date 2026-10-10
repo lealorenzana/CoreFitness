@@ -13,7 +13,7 @@ export type CoachStatus = {
 export const SYSTEM_PROMPT = `You are the coach inside a gym's member app in the Philippines. You help one gym member train well: technique, how to structure training, recovery, motivation, and everyday eating habits.
 
 RULES YOU MUST NEVER BREAK
-1. Never state this gym's prices, plans, opening hours, address, class schedule, coaches' names or policies. You do not have them. Say the app shows them (Membership, Book a session) or the front desk can help.
+1. This gym's prices, plans, opening hours, closed days, address, house rules, classes and coaches come ONLY from get_gym_info. Call it before answering any such question, answer from what it returns, and if it does not say, say you do not know and that the front desk can help. Never guess or use general knowledge for these.
 2. Never give medical advice. If the member mentions pain, an injury, illness, medication, pregnancy or a health condition: tell them to stop anything that hurts and to see a coach at the gym or a doctor or physiotherapist, and do not change or substitute exercises because of it.
 3. Never give a calorie, kcal, macro or gram target, or a weight-loss number. Eating advice is about habits, food choices and portions by hand size (a palm of protein, a fist of rice, a thumb of fat), never numbers.
 4. Stay on fitness, training, recovery and everyday eating. Politely decline anything else.
@@ -24,7 +24,8 @@ HOW YOU WRITE
 Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so.
 
 HOW YOU CHANGE THINGS
-You can look up exercises this gym has, and — if the member let you read their training — their routines and weekly schedule. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.`;
+You can look up exercises this gym has, this gym's own facts (get_gym_info), the member's upcoming class bookings, and — if the member let you read their training — their routines, weekly schedule and progress (get_my_progress: workouts per week, records, readings, targets). When they ask how they are doing, call get_my_progress and explain in plain words what improved and what stalled, from those numbers only. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.
+You can also propose: booking one of the classes get_gym_info lists (propose_booking — the gym's own booking rules still decide), cancelling one of their bookings (propose_cancel_booking), a multi-week PROGRAM that gets harder each week (propose_program: 2–16 weeks, 1–6 days a week, each exercise adding weight, reps, sets or seconds each week, optionally a lighter week every few weeks), and logging a workout they say they did (propose_log, today or up to 30 days back). A workout is one session; a routine is a saved list they repeat; a program is weeks that build on each other — use these words that way. When they say they cannot come on a day, propose a schedule that moves it.`;
 
 // ---- the tools ------------------------------------------------------------------------------
 // Each is strict: every object closes its properties and requires all of them, and an optional
@@ -64,6 +65,94 @@ export const TOOLS = [
     description: "The member's weekly schedule: which days (0 Sunday to 6 Saturday) they train, the routine for each day, and the reminder time. Returns a note instead if the member has not let you read their training.",
     strict: true,
     input_schema: obj({}),
+  },
+  {
+    name: 'get_gym_info',
+    description: "This gym's own facts: name, address, phone, opening and closing time, closed days, membership plans with prices in pesos, house rules, the next 7 days of classes (with class_id, coach and seats left) and the coaches with their specialties. The only source for any of these.",
+    strict: true,
+    input_schema: obj({}),
+  },
+  {
+    name: 'get_my_progress',
+    description: "The member's progress: workouts per week for the last 8 weeks, visits in the last 30 days, recent personal records, recent body readings and their targets. Returns a note instead if the member has not let you read their training.",
+    strict: true,
+    input_schema: obj({}),
+  },
+  {
+    name: 'get_my_bookings',
+    description: "The member's upcoming class bookings, each with its booking_id, class, start time and status.",
+    strict: true,
+    input_schema: obj({}),
+  },
+  {
+    name: 'propose_booking',
+    description: 'Proposes booking the member into one class from get_gym_info. The gym\'s booking rules still decide (some bookings wait for approval). Nothing happens until the member taps Apply.',
+    strict: true,
+    input_schema: obj({ summary: SUMMARY, class_id: str('The class_id from get_gym_info.') }),
+  },
+  {
+    name: 'propose_cancel_booking',
+    description: 'Proposes cancelling one of the member\'s bookings from get_my_bookings. Nothing happens until the member taps Apply.',
+    strict: true,
+    input_schema: obj({
+      summary: SUMMARY,
+      booking_id: str('The booking_id from get_my_bookings.'),
+      reason_key: { type: 'string', enum: ['schedule_conflict', 'changed_plans', 'mistake', 'personal_emergency'], description: 'Why, in the member\'s words mapped to one of these.' },
+    }),
+  },
+  {
+    name: 'propose_program',
+    description: 'Proposes a multi-week program for the member that builds week on week. Every exercise must come from find_exercises. Nothing changes until the member taps Apply; their coach can see it.',
+    strict: true,
+    input_schema: obj({
+      summary: SUMMARY,
+      name: str('The program name, 1 to 60 characters.'),
+      weeks: { type: 'integer', description: 'How many weeks, 2 to 16.' },
+      deload_every: intOrNull('A lighter week every N weeks (3 to 8), or null for none.'),
+      notes: strOrNull('A short note for the member, or null.'),
+      sessions: {
+        type: 'array',
+        description: '1 to 6 training days a week, each day of the week at most once.',
+        items: obj({
+          day_of_week: { type: 'integer', enum: [0, 1, 2, 3, 4, 5, 6], description: '0 Sunday … 6 Saturday.' },
+          name: str('The day\'s name, e.g. "Legs", 1 to 40 characters.'),
+          exercises: {
+            type: 'array',
+            description: '1 to 12 exercises, in order.',
+            items: obj({
+              exercise_id: str('The id from find_exercises.'),
+              target_sets: { type: 'integer', description: 'Sets in week 1, 1 to 20.' },
+              target_reps: intOrNull('Reps in week 1, or null for a timed exercise.'),
+              target_weight_kg: numOrNull('Weight in kg in week 1, or null.'),
+              target_seconds: intOrNull('Seconds in week 1 for a timed exercise, or null.'),
+              rest_seconds: { type: 'integer', description: 'Rest between sets, 0 to 600.' },
+              progress_kind: { type: 'string', enum: ['none', 'weight', 'reps', 'sets', 'seconds'], description: 'What grows each week.' },
+              progress_step: { type: 'number', description: 'How much it grows each week, e.g. 2.5 (kg) or 1 (rep); 0 with none.' },
+            }),
+          },
+        }),
+      },
+    }),
+  },
+  {
+    name: 'propose_log',
+    description: 'Proposes logging a workout the member says they did. Every exercise must come from find_exercises. Nothing changes until the member taps Apply.',
+    strict: true,
+    input_schema: obj({
+      summary: SUMMARY,
+      performed_on: str('The day as YYYY-MM-DD, today or up to 30 days back.'),
+      activity: str('What the workout was, 1 to 60 characters, e.g. "Bench day".'),
+      sets: {
+        type: 'array',
+        description: '1 to 60 sets, in order.',
+        items: obj({
+          exercise_id: str('The id from find_exercises.'),
+          reps: intOrNull('Reps, or null for a timed set.'),
+          weight_kg: numOrNull('Weight in kg, or null.'),
+          seconds: intOrNull('Seconds for a timed set, or null.'),
+        }),
+      },
+    }),
   },
   {
     name: 'propose_routine',
@@ -197,6 +286,24 @@ export function toolCall(name: string, input: unknown): ToolCall {
       return { rpc: 'ai_coach_routines', args: {} };
     case 'get_my_schedule':
       return { rpc: 'ai_coach_schedule', args: {} };
+    case 'get_gym_info':
+      return { rpc: 'ai_coach_gym_info', args: {} };
+    case 'get_my_progress':
+      return { rpc: 'ai_coach_progress', args: {} };
+    case 'get_my_bookings':
+      return { rpc: 'ai_coach_bookings', args: {} };
+    case 'propose_booking':
+      return proposal('booking.create', { class_id: input.class_id });
+    case 'propose_cancel_booking':
+      return proposal('booking.cancel', { booking_id: input.booking_id, reason_key: input.reason_key });
+    case 'propose_program': {
+      const { summary: _s, ...rest } = input;
+      return proposal('program.create', rest);
+    }
+    case 'propose_log': {
+      const { summary: _s, ...rest } = input;
+      return proposal('log.create', rest);
+    }
     case 'propose_routine': {
       const { summary: _s, replace_routine_id, ...rest } = input;
       return replace_routine_id === null
@@ -219,7 +326,7 @@ export function toolResultText(rpc: string, data: unknown): string {
   if (rpc === 'create_ai_proposal') {
     return JSON.stringify({ proposal_id: data, status: 'Waiting on the member: they see a card with Apply or Discard. Nothing has changed yet.' });
   }
-  if ((rpc === 'ai_coach_routines' || rpc === 'ai_coach_schedule') && data === null) {
+  if ((rpc === 'ai_coach_routines' || rpc === 'ai_coach_schedule' || rpc === 'ai_coach_progress') && data === null) {
     return JSON.stringify({ note: 'The member has not let you read their training, so you cannot see this. Ask them instead.' });
   }
   if (rpc === 'ai_coach_exercises' && Array.isArray(data) && data.length === 0) {

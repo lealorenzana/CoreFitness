@@ -29,7 +29,8 @@ check('history keeps order and is capped at 10 turns',
     .messages.length <= 11);
 check('history never starts with an assistant turn',
   core.buildRequest('q', [{ role: 'assistant', content: 'x' }, { role: 'user', content: 'y' }], null).messages[0].role === 'user');
-check('the rules are in the prompt', /never state this gym's prices/i.test(core.SYSTEM_PROMPT)
+// 0177: gym facts come only from get_gym_info, and anything it does not say is "I don't know".
+check('the rules are in the prompt', /ONLY from get_gym_info/.test(core.SYSTEM_PROMPT) && /say you do not know/i.test(core.SYSTEM_PROMPT)
   && /calorie/i.test(core.SYSTEM_PROMPT) && /injur/i.test(core.SYSTEM_PROMPT));
 
 check('the profile injury rule is in the prompt', /has_injury is true/.test(core.SYSTEM_PROMPT));
@@ -40,8 +41,8 @@ check('a 1001-character question is refused', !core.validQuestion('x'.repeat(100
 // ---- Phase 3: the tools ----
 const tools = core.TOOLS ?? [];
 const names = tools.map((t) => t.name).sort().join(',');
-check('the seven tools are defined',
-  names === 'find_exercises,get_my_routines,get_my_schedule,propose_goal,propose_routine,propose_schedule', names);
+check('the thirteen tools are defined',
+  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_goal,propose_log,propose_program,propose_routine,propose_schedule', names);
 // Every object in a strict schema must close its properties and require every one of them.
 const closed = (s) => {
   if (!s || typeof s !== 'object') return true;
@@ -55,8 +56,17 @@ const closed = (s) => {
   return true;
 };
 check('every tool is strict, closed, and requires every property',
-  tools.length === 6 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+  tools.length === 13 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
+// 0177: the new tools map to their readers and proposals, and nothing else.
+const tc = (n, i) => core.toolCall(n, i);
+check('get_gym_info reads ai_coach_gym_info', tc('get_gym_info', {}).rpc === 'ai_coach_gym_info');
+check('get_my_progress reads ai_coach_progress', tc('get_my_progress', {}).rpc === 'ai_coach_progress');
+check('propose_booking becomes a booking.create proposal',
+  tc('propose_booking', { summary: 'Book HIIT', class_id: 'c1' }).args?.p_kind === 'booking.create');
+check('propose_program becomes a program.create proposal', tc('propose_program', { summary: 'A program', name: 'P', weeks: 4, deload_every: null, notes: null,
+  sessions: [{ day_of_week: 1, name: 'Legs', exercises: [{ exercise_id: 'e', target_sets: 3, target_reps: 8, target_weight_kg: 40, target_seconds: null, rest_seconds: 90, progress_kind: 'weight', progress_step: 2.5 }] }] }).args?.p_kind === 'program.create');
+check('progress without consent says so, not an error', /not let you read/.test(core.toolResultText('ai_coach_progress', null)));
 // Nullable values are anyOf [{ type }, { type: 'null' }] — never a type array, anywhere.
 const typeArrays = [];
 const nullables = [];
