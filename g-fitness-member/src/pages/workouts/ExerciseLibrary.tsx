@@ -11,6 +11,7 @@ import { listExercises, type Exercise } from '../../lib/api/workoutSets';
 import { lastSetsFor, listRoutines, type LastSet, type Routine } from '../../lib/api/routines';
 import { listExerciseMedia, type ExerciseMedia } from '../../lib/api/exerciseMedia';
 import ExerciseGuide from '../../components/workout/ExerciseGuide';
+import AtYourGym from '../../components/workout/AtYourGym';
 
 /**
  * The gym's exercise catalogue (0050), browsable — the same list the tracker
@@ -178,6 +179,7 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
             </div>
             <ExerciseGuide name={open.name} libraryCues={open.cues} librarySteps={open.steps}
               media={media.get(open.id) ?? null} />
+            <AtYourGym exerciseId={open.id} />
 
             {picking && (
               <div>

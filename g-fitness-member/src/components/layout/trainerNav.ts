@@ -94,6 +94,7 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
     // Coaching terms (0181): requests, Received, trainees and until when.
     { label: 'Coaching', path: '/trainer/coaching', icon: UsersThree, module: 'coaching' },
+    { label: 'Equipment', path: '/trainer/equipment', icon: Barbell, module: 'equipment' },
     { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },

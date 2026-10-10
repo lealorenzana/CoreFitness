@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -167,6 +167,8 @@ const NAV: Entry[] = [
       { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
       { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true, module: 'programs' },
       { label: 'Resources', path: '/resources', icon: BookOpen },
+      // The gym's equipment and members' problem reports (0184).
+      { label: 'Equipment', path: '/equipment', icon: Wrench, module: 'equipment' },
       // The trainers' rooms (0128): the desk reads and moderates.
       { label: 'Rooms', path: '/rooms', icon: MessagesSquare, module: 'rooms' },
     ],

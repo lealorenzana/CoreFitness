@@ -297,6 +297,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Routines', path: '/member/track' , module: 'progress' },
       { label: 'Programs', path: '/member/programs' , module: 'programs' },
       { label: 'Browse free workouts', path: '/member/workouts' },
+      { label: 'Equipment', path: '/member/equipment', module: 'equipment' },
     ],
   },
   {

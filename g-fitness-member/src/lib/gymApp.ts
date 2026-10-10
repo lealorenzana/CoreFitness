@@ -32,7 +32,9 @@ export type FeatureKey =
   | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
   | 'squads' | 'seasons' | 'quests' | 'referrals'
   // 0176: Targets (members' own goals), a child of Progress.
-  | 'targets';
+  | 'targets'
+  // 0184: the gym's equipment list.
+  | 'equipment';
 
 /**
  * What this gym calls its people and its sessions (0114).

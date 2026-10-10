@@ -30,7 +30,7 @@ const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
  */
 const MAX_EDGE = 1280;
 
-export type MediaKind = 'events' | 'challenges' | 'announcements' | 'resources' | 'logos';
+export type MediaKind = 'events' | 'challenges' | 'announcements' | 'resources' | 'logos' | 'equipment';
 
 /**
  * Shrink an image before upload.

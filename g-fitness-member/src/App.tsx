@@ -59,6 +59,7 @@ const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
 const BookClass = lazyPage(() => import('./pages/BookClass'));
 const MyCoach = lazyPage(() => import('./pages/MyCoach'));
 const GymMap = lazyPage(() => import('./pages/GymMap'));
+const Equipment = lazyPage(() => import('./pages/Equipment'));
 const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
 const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
@@ -237,6 +238,7 @@ function App() {
           <Route path="availability" element={<TrainerAvailability />} />
           <Route path="bookings" element={<TrainerBookings />} />
           <Route path="coaching" element={<TrainerCoaching />} />
+          <Route path="equipment" element={<Equipment />} />
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />
           <Route path="settings" element={<TrainerSettings />} />
@@ -269,6 +271,7 @@ function App() {
           <Route path="events" element={<Events />} />
           <Route path="trainers" element={<Trainers />} />
           <Route path="coach" element={<MyCoach />} />
+          <Route path="equipment" element={<Equipment />} />
           <Route path="book-class" element={<BookClass />} />
           <Route path="booking-history" element={<BookingHistory />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />
