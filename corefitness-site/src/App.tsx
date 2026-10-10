@@ -402,7 +402,9 @@ export default function App() {
                     <p className="line">{t.line}</p>
                     {(t.maxMembers !== null || t.includes.length > 0) && (
                       <ul>
-                        {t.maxMembers !== null && <li><Icon name="check" /> Up to {t.maxMembers.toLocaleString('en-PH')} members</li>}
+                        <li><Icon name="check" /> {t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
+                          {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</li>
+                        {t.aiMonthly !== null && <li><Icon name="check" /> {t.aiMonthly.toLocaleString('en-PH')} AI coach messages a month, more as you need them</li>}
                         {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
                       </ul>
                     )}
@@ -436,6 +438,8 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        <Testimonials />
 
         <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} /></div>
 
@@ -734,6 +738,44 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             <p className="note">We keep what you send here to answer you, and nothing else.</p>
           </div>
         </form>
+      </div>
+    </section>
+  );
+}
+
+interface Quote { id: string; quote: string; shown_name: string; shown_role: string | null; gym_name: string; logo_url: string | null }
+
+/**
+ * Words from gym owners (0188) — only ones Core Fitness approved, from gyms
+ * still on the service, and gone the moment an owner takes theirs down. With
+ * none, the section is not drawn at all: no placeholder praise.
+ */
+function Testimonials() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  useEffect(() => {
+    void (async () => {
+      if (!supabase) return;
+      const { data } = await supabase.rpc('public_testimonials');
+      if (Array.isArray(data)) setQuotes(data as Quote[]);
+    })();
+  }, []);
+  if (quotes.length === 0) return null;
+  return (
+    <section id="voices">
+      <div className="wrap">
+        <span className="eyebrow">From the owners</span>
+        <h2>In their words</h2>
+        <div className="voices">
+          {quotes.map((q) => (
+            <figure key={q.id} className="voice" data-reveal>
+              <blockquote>“{q.quote}”</blockquote>
+              <figcaption>
+                {q.logo_url ? <img src={q.logo_url} alt="" width={32} height={32} /> : <span className="mono" aria-hidden="true">{initials(q.gym_name)}</span>}
+                <span><b>{q.shown_name}</b>{q.shown_role ? <small>{q.shown_role}</small> : <small>{q.gym_name}</small>}</span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
       </div>
     </section>
   );

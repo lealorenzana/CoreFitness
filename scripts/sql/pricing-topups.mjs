@@ -109,6 +109,14 @@ await as(M1);
 check('a member sees no allowance', (await one(`select my_ai_allowance() a`)).a === null);
 check('…and cannot read the tables', (await all(`select * from ai_topups`)).length === 0 && (await all(`select * from gym_ai_credits`)).length === 0);
 
+await as(OWNER);
+check('a gym cannot price top-ups', !!(await tryExec(`select platform_set_topup(1000, 1)`)));
+await as(PA);
+await db.exec(`select platform_set_topup(1000, 1299)`);
+await as(OWNER);
+a = (await one(`select my_ai_allowance() a`)).a;
+check('the platform prices the pack, and the owner sees it', a.topup_messages === 1000 && Number(a.topup_price) === 1299);
+
 await owner();
 check('marker', (await one(`select migration_0189_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0189 checks passed');

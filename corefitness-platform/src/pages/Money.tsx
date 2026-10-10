@@ -5,6 +5,7 @@ import { Download, Receipt as ReceiptIcon } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import ReceiptSheet from '../components/ReceiptSheet';
 import PaymentClaims from '../components/PaymentClaims';
+import AiTopupClaims from '../components/AiTopupClaims';
 import DatePicker from '../components/DatePicker';
 import Pagination from '../components/Pagination';
 import { usePaged } from '../lib/usePaged';
@@ -82,6 +83,8 @@ export default function Money() {
       {receipt && <ReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
 
       <PaymentClaims onChanged={() => void load()} />
+      {/* 0189: AI coach messages gyms paid for, to verify like any payment. */}
+      <AiTopupClaims />
 
       {recording && (
         <RecordPayment

@@ -301,6 +301,9 @@ export default function Payments() {
   }
 
   const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;
+  // Autofill (E4): a renewal starts from how the member paid last time — rows are newest first.
+  const lastMethodByMember: Record<string, string> = {};
+  for (const p of payments) if (!(p.memberId in lastMethodByMember)) lastMethodByMember[p.memberId] = p.method;
 
   // Exactly the window's height (header 4rem + <main>'s padding 3rem), so the
   // records panel runs to the bottom edge and the pager sits there.
@@ -543,6 +546,7 @@ export default function Payments() {
         onSubmit={handleRecordPayment}
         planByMember={memberMembership}
         preset={preset}
+        lastMethodByMember={lastMethodByMember}
       />
       <DeclineDialog request={toDecline} onClose={() => setToDecline(null)} onDecline={decline} />
       {proof && (

@@ -40,6 +40,31 @@ update platform_plans set ai_monthly_cap = 300, blurb = coalesce(blurb, 'Everyth
 -- Every switch on every new tier.
 select sync_platform_plan_features();
 
+-- The website's price list (0108's), plus each tier's staff limit and AI allowance — the
+-- two things besides members that tell the tiers apart. New columns, so dropped and made again.
+drop function if exists platform_price_list();
+create function platform_price_list()
+returns table (key text, name text, blurb text,
+               price_monthly numeric, price_yearly numeric, trial_days int,
+               max_members int, includes text[], sort_order int,
+               max_staff int, ai_monthly_cap int)
+language sql stable security definer set search_path = public as $$
+  select p.key, p.name, p.blurb, p.price_monthly, p.price_yearly, p.trial_days,
+         p.max_members,
+         coalesce(array(
+           select f.label from platform_plan_features ppf
+             join platform_features f on f.key = ppf.feature_key
+            where ppf.plan_key = p.key and ppf.enabled
+            order by f.sort_order
+         ), '{}'::text[]),
+         p.sort_order, p.max_staff, p.ai_monthly_cap
+    from platform_plans p
+   where p.is_public and p.is_active
+   order by p.sort_order, p.name;
+$$;
+revoke all on function platform_price_list() from public;
+grant execute on function platform_price_list() to anon, authenticated;
+
 -- ---- E6: top-ups -------------------------------------------------------------------------------------------
 alter table platform_billing add column if not exists ai_topup_messages int not null default 500 check (ai_topup_messages between 50 and 100000);
 alter table platform_billing add column if not exists ai_topup_price numeric(10,2) not null default 699 check (ai_topup_price >= 0);
@@ -141,6 +166,27 @@ end;
 $$;
 revoke all on function platform_decide_topup(uuid, boolean, text) from public, anon;
 grant execute on function platform_decide_topup(uuid, boolean, text) to authenticated;
+
+/** The platform sets the pack: how many messages, at what price. */
+create or replace function platform_set_topup(p_messages int, p_price numeric) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_platform_admin() then raise exception 'Only the platform prices top-ups.' using errcode = '42501'; end if;
+  if p_messages is null or p_messages not between 50 and 100000 then raise exception 'A pack is 50 to 100,000 messages.'; end if;
+  if p_price is null or p_price < 0 then raise exception 'Give a price.'; end if;
+  update platform_billing set ai_topup_messages = p_messages, ai_topup_price = p_price;
+  perform platform_log(null, 'ai.topup_priced', 'AI top-ups: ' || p_messages || ' messages for ₱' || p_price, null);
+end;
+$$;
+revoke all on function platform_set_topup(int, numeric) from public, anon;
+grant execute on function platform_set_topup(int, numeric) to authenticated;
+
+create or replace function platform_topup_price() returns table (messages int, price numeric)
+language sql stable security definer set search_path = public as $$
+  select b.ai_topup_messages, b.ai_topup_price from platform_billing b where is_platform_admin() limit 1;
+$$;
+revoke all on function platform_topup_price() from public, anon;
+grant execute on function platform_topup_price() to authenticated;
 
 /** What Your app shows the owner: the month's allowance, what is used, top-ups left, the price of more. */
 create or replace function my_ai_allowance() returns jsonb

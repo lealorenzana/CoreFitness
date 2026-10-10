@@ -105,6 +105,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         { id: 'payment', title: '4. Plans, trials and paying', body: [
           'Prices are in Philippine pesos and are the ones on this site\'s Pricing section, which reads the same records your gym is billed from.',
           'You pay by the GCash, Maya or bank details shown in your gym app. Send us the reference number and a screenshot from Your plan → Pay Core Fitness; we check it and issue a receipt numbered CF-<year>-<number>. A reference can be claimed once.',
+          'Each plan includes a number of AI coach messages a month. More can be bought as prepaid top-ups at the price shown in your gym app; they are used only after the month\'s messages run out and do not expire. You are told at 80% and when they run out, and nothing is charged that you did not buy.',
           'If your plan includes a free trial and your gym has never paid, your access runs until the trial ends. After that it follows the same rule as any payment date.',
           `Your gym's owners are reminded in the gym app ${reminders} the date your current period ends.`,
         ] },
@@ -223,6 +224,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us.',
           'For billing: your plan, the references and screenshots you send for payments, and the receipts we issue.',
           'Support tickets, and a copy of each email we send, so we can show it was sent.',
+          'What you tell us from the gym app: ratings, ideas and problem reports (with a screenshot if you add one, kept private to your gym and us), and a testimonial — shown on this website only after we approve it, with the name you chose, and removed the moment you take it down.',
           'A log of actions taken in the gym and platform apps, such as a plan change or a support session.',
           'Counts of how much each gym uses each feature — never who did what.',
         ] },

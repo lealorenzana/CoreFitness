@@ -9,6 +9,7 @@ import {
 } from '../lib/api/support';
 import { revokeSupportAccess } from '../lib/api/gymApp';
 import { getGymContext } from '../lib/gymContext';
+import { screenshotLink, ticketExtras } from '../lib/api/feedback';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' };
@@ -39,7 +40,13 @@ export default function Support() {
   const [owner, setOwner] = useState(false);
   useEffect(() => { void getGymContext().then((c) => setOwner(c?.role === 'admin')); }, []);
 
-  const load = useCallback(async () => { setTickets(await myTickets()); }, []);
+  /** Which are bug reports, with their screenshots (0188). */
+  const [extras, setExtras] = useState<Map<string, { kind: string; screenshot: string | null }>>(new Map());
+  const load = useCallback(async () => {
+    const list = await myTickets();
+    setTickets(list);
+    if (list) setExtras(await ticketExtras(list.map((t) => t.id)));
+  }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const show = async (t: Ticket) => {
@@ -89,6 +96,7 @@ export default function Support() {
                   style={{ ...FIELD, borderColor: open?.id === t.id ? 'var(--color-primary)' : 'var(--color-border)' }}>
                   <p className="text-xs font-semibold text-white flex items-center gap-2">
                     <span className="flex-1 truncate">{t.subject}</span>
+                    {extras.get(t.id)?.kind === 'bug' && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-1" style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)' }} data-bug-badge><Bug size={10} /> BUG</span>}
                     {t.unread && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--color-secondary)', color: '#111' }}>NEW</span>}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: MUTED }}>
@@ -108,6 +116,12 @@ export default function Support() {
                 {open.status !== 'closed' && <Button size="sm" variant="ghost" disabled={busy}
                   onClick={() => void run(async () => { await closeTicket(open.id); setOpen({ ...open, status: 'closed' }); }, 'Closed')}>Mark solved</Button>}
               </div>
+              {extras.get(open.id)?.screenshot && (
+                <button type="button" className="text-[11px] underline mb-3" style={{ color: 'var(--color-primary)' }}
+                  onClick={() => void screenshotLink(extras.get(open.id)!.screenshot!).then((u) => u && window.open(u, '_blank', 'noopener'))}>
+                  Open the screenshot you sent
+                </button>
+              )}
               {access?.context?.message && (
                 <div className="rounded-lg px-3 py-2 mb-3 text-[11px] flex gap-2" style={{ ...FIELD, color: 'var(--color-text-secondary)' }}>
                   <Bug size={13} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-secondary)' }} />

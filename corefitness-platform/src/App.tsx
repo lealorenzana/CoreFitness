@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, Settings as SettingsIcon, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Settings as SettingsIcon, TrendingUp, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -13,6 +13,7 @@ import Plans from './pages/Plans';
 import Money from './pages/Money';
 import Growth from './pages/Growth';
 import Support from './pages/Support';
+import Feedback from './pages/Feedback';
 import Announcements from './pages/Announcements';
 import Bell from './components/Bell';
 import Capacity from './pages/Capacity';
@@ -48,6 +49,7 @@ const PAGES: Page[] = [
   { group: 'The service', path: '/usage', label: 'Usage', icon: Grid3x3, title: 'Usage', lede: 'Every gym against every feature — who uses what, and what nobody has found.' },
   { group: 'Talk to gyms', path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
   { group: 'Talk to gyms', path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
+  { group: 'Talk to gyms', path: '/feedback', label: 'Feedback', icon: MessageSquareHeart, title: 'Feedback', lede: 'What gyms think of Core Fitness: ratings, ideas and testimonials for the website.' },
   { group: 'Talk to gyms', path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
   { group: 'Run it', path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { group: 'Run it', path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
@@ -179,6 +181,7 @@ function Shell() {
                 <Route path="/money" element={<Money />} />
                 <Route path="/growth" element={<Growth />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/feedback" element={<Feedback />} />
                 <Route path="/support-access/:gymId" element={<SupportView />} />
                 <Route path="/announcements" element={<Announcements />} />
                 <Route path="/capacity" element={<Capacity />} />

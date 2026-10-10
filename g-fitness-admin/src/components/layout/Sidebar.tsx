@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy, MessageSquareHeart,
   Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -180,6 +180,8 @@ const NAV: Entry[] = [
   { label: 'Your plan', path: '/subscription', icon: CreditCard, adminOnly: true },
   // Talking to Core Fitness (0137): owner and desk.
   { label: 'Support', path: '/support', icon: LifeBuoy },
+  // Telling Core Fitness what works and what is missing (0188).
+  { label: 'Feedback', path: '/feedback', icon: MessageSquareHeart },
 ];
 
 /**
@@ -188,6 +190,7 @@ const NAV: Entry[] = [
  * so a new desk hire can find their way without asking.
  */
 const NAV_TIPS: Record<string, string> = {
+  '/feedback': 'Rate Core Fitness, ask for a feature, report a problem, or say a few words for its website',
   '/dashboard': 'Today at a glance: members, money, check-ins and what needs you',
   '/attendance': "Check people in and see who is in today. History has every day before",
   '/members': 'Everyone who belongs here: memberships, payments, approvals and archiving',

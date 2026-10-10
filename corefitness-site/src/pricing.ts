@@ -21,6 +21,9 @@ export interface Tier {
   includes: string[];
   trialDays: number | null;
   maxMembers: number | null;
+  /** 0189: staff accounts (null = no limit) and AI coach messages a month (null = not set). */
+  maxStaff: number | null;
+  aiMonthly: number | null;
 }
 
 /** A row of `public_plans()`, before it is turned into a Tier. */
@@ -34,6 +37,9 @@ export interface PublicPlanRow {
   max_members: number | null;
   includes: string[] | null;
   sort_order: number;
+  /** Absent before 0189. */
+  max_staff?: number | null;
+  ai_monthly_cap?: number | null;
 }
 
 /** numeric arrives as a string; an absent price must stay absent, never become 0. */
@@ -48,4 +54,6 @@ export const toTier = (row: PublicPlanRow): Tier => ({
   includes: row.includes ?? [],
   trialDays: row.trial_days,
   maxMembers: row.max_members,
+  maxStaff: row.max_staff ?? null,
+  aiMonthly: row.ai_monthly_cap ?? null,
 });

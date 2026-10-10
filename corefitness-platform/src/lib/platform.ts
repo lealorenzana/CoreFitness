@@ -685,6 +685,46 @@ export interface PaymentClaim {
 export const SITE = 'https://corefitness-site.vercel.app';
 export const statusLink = (token: string) => `${SITE}/#status/${token}`;
 
+// ---- AI coach top-ups (0189) --------------------------------------------------------------
+
+export interface AiTopupRow {
+  id: string; gym_id: string; gym_name: string; packs: number; messages: number; amount: number | string; reference: string;
+  proof_image: string | null; status: 'pending' | 'paid' | 'rejected'; reason: string | null; created_at: string; decided_at: string | null; balance: number;
+}
+export const aiTopups = () => call<AiTopupRow[]>('platform_ai_topups');
+export const decideTopup = (id: string, paid: boolean, reason: string | null) =>
+  call<void>('platform_decide_topup', { p_id: id, p_paid: paid, p_reason: reason });
+export const topupPrice = async () => ((await call<{ messages: number; price: number | string }[]>('platform_topup_price')) ?? [])[0] ?? null;
+export const setTopupPrice = (messages: number, price: number) => call<void>('platform_set_topup', { p_messages: messages, p_price: price });
+
+// ---- what gyms tell Core Fitness (0188) -------------------------------------------------
+
+export interface IdeaRow {
+  id: string; gym_id: string; gym_name: string; title: string; body: string | null;
+  status: 'open' | 'planned' | 'done' | 'not_now'; platform_note: string | null; created_at: string; decided_at: string | null;
+}
+export interface FeedbackData {
+  ratings: { gym_id: string; gym_name: string; stars: number; comment: string | null; created_at: string; current: boolean }[];
+  average: number | string | null;
+  ideas: IdeaRow[];
+  testimonials: { id: string; gym_name: string; quote: string; shown_name: string; shown_role: string | null;
+    status: 'pending' | 'approved' | 'declined'; created_at: string; decided_at: string | null }[];
+}
+export const feedback = () => call<FeedbackData>('platform_feedback');
+export const setIdea = (id: string, status: IdeaRow['status'], note: string | null) =>
+  call<void>('platform_set_feature_request', { p_id: id, p_status: status, p_note: note });
+export const setTestimonial = (id: string, approve: boolean) => call<void>('platform_set_testimonial', { p_id: id, p_approve: approve });
+/** Which tickets are bug reports, and their screenshots. Empty before 0188. */
+export async function ticketExtras(ids: string[]): Promise<Map<string, { kind: string; screenshot: string | null }>> {
+  if (!ids.length) return new Map();
+  try { return new Map((await call<{ id: string; kind: string; screenshot: string | null }[]>('ticket_extras', { p_ids: ids })).map((r) => [r.id, r])); }
+  catch { return new Map(); }
+}
+export async function supportScreenshot(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from('support').createSignedUrl(path, 300);
+  return data?.signedUrl ?? null;
+}
+
 // ---- applicant accounts and documents (0187) -------------------------------------------
 
 export interface DocKind { kind: string; label: string; needs_expiry: boolean; sort_order: number }

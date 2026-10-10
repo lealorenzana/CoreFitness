@@ -38,6 +38,7 @@ async (page) => {
   };
   const RPC = {
     list_gyms: () => [], platform_price_list: () => [], platform_public_terms: () => null,
+    public_testimonials: () => [{ id: 'q1', quote: 'Core Fitness changed how we run the desk.', shown_name: 'Gabby P.', shown_role: 'Owner, G Fitness', gym_name: 'G Fitness', logo_url: null }],
     submit_gym_application: (b) => { CALLS.push(['submit', b]); return TOKEN; },
     application_document_kinds: () => KINDS,
     my_applications: () => [APPLICATION],
@@ -76,6 +77,8 @@ async (page) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('http://localhost:5176/#apply', { waitUntil: 'domcontentloaded' });
   await page.locator('#gym_name').waitFor();
+  await page.locator('#voices').waitFor({ timeout: 8000 }).catch(() => {});
+  out.push('approved owners\' words are on the page: ' + (/Core Fitness changed how we run the desk\./.test(await page.locator('main').innerText()) && /Owner, G Fitness/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));
   out.push('the form asks for a password: ' + ((await page.locator('#password').count()) === 1 && (await page.locator('#password2').count()) === 1 ? 'yes' : 'MISSING'));
   await page.locator('#gym_name').fill('Iron Den');
   await page.locator('#owner_name').fill('Ana Maria Cruz');

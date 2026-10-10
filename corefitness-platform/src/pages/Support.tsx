@@ -6,7 +6,7 @@ import Tiles from '../components/Tiles';
 import SupportGrants from '../components/SupportGrants';
 import Pagination from '../components/Pagination';
 import { usePaged } from '../lib/usePaged';
-import {
+import { supportScreenshot, ticketExtras,
   CHANGED, explain, listTickets, replyTicket, requestTicketAccess, resolveTicket, setTicketStatus, ticketAccess, ticketThread,
   type PlatformTicket, type TicketAccess, type TicketMessage,
 } from '../lib/platform';
@@ -38,6 +38,9 @@ export default function Support() {
     catch (e) { setError(explain(e, '0137')); setTickets([]); }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  /** Bug reports and their screenshots (0188). */
+  const [extras, setExtras] = useState<Map<string, { kind: string; screenshot: string | null }>>(new Map());
+  useEffect(() => { void (async () => { if (tickets) setExtras(await ticketExtras(tickets.map((t) => t.id))); })(); }, [tickets]);
 
   const show = async (t: PlatformTicket) => {
     setOpen(t);
@@ -79,6 +82,7 @@ export default function Support() {
               style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 6, border: `1px solid ${open?.id === t.id ? 'var(--accent)' : 'var(--border-soft)'}`, background: 'var(--surface-raised)' }}>
               <span className="name" style={{ fontSize: 13.5, display: 'flex', gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.subject}</span>
+                {extras.get(t.id)?.kind === 'bug' && <span className="pill" data-bug-badge>Bug</span>}
                 {t.unread && <span className="pill warn">New</span>}
               </span>
               <span className="meta">{t.gym_name} · {t.opened_by_name} · {t.status === 'closed' ? 'closed' : t.last_from === 'gym' ? 'waiting for you' : 'answered'} · {when(t.updated_at)}</span>
@@ -101,6 +105,12 @@ export default function Support() {
                   {open.status === 'closed' ? 'Reopen' : 'Close'}
                 </button>
               </div>
+              {extras.get(open.id)?.screenshot && (
+                <button type="button" className="btn ghost" style={{ marginBottom: 10 }}
+                  onClick={() => void supportScreenshot(extras.get(open.id)!.screenshot!).then((u) => u && window.open(u, '_blank', 'noopener'))}>
+                  Open their screenshot
+                </button>
+              )}
               {access?.context?.message && (
                 <div className="card" style={{ padding: 12, marginBottom: 10 }}>
                   <span className="name" style={{ fontSize: 13 }}>Error report attached</span>

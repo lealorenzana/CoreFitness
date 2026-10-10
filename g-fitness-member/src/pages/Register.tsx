@@ -168,7 +168,10 @@ export default function Register() {
         let slug = params.get('join');
         if (invite && !slug) {
           const { data } = await supabase.rpc('peek_invitation', { p_token: invite });
-          slug = Array.isArray(data) && data[0] ? (data[0] as { slug: string }).slug : null;
+          const peeked = Array.isArray(data) && data[0] ? (data[0] as { slug: string; first_name: string | null }) : null;
+          slug = peeked?.slug ?? null;
+          // Autofill (E4): the name the gym invited them by, never over what they typed.
+          if (peeked?.first_name && !cancelled) setFormData((f) => (f.firstName ? f : { ...f, firstName: peeked.first_name! }));
         }
         if (slug) chosen = await gymBySlug(slug);
         if (!chosen) {

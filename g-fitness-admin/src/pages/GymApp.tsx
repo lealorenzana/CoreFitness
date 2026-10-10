@@ -17,6 +17,7 @@ import { uploadMedia } from '../lib/api/media';
 import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
 import AiCoachCard from '../components/AiCoachCard';
+import AiTopUps from '../components/AiTopUps';
 import ModuleSwitches from '../components/ModuleSwitches';
 import ThemePreview from '../components/ThemePreview';
 
@@ -410,6 +411,8 @@ export default function GymApp() {
       {/* Only where the gym's plan sells the assistant: a gym that cannot run the
           coach has no limits to set and no usage to read (the gym's plan hides). */}
       {tab === 'coach' && coach && coach.state !== 'not_sold' && <AiCoachCard switchedOff={!coach.enabled} />}
+      {/* 0189: the month's allowance and buying more. The owner only (the card draws nothing for anyone else). */}
+      {tab === 'coach' && coach && coach.state !== 'not_sold' && <AiTopUps />}
 
       {/* ---- how they join --------------------------------------------------- */}
       {tab === 'join' && <div className={card} style={cardStyle}>

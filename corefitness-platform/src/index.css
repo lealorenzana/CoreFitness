@@ -394,3 +394,10 @@ a.chip:hover { color: #fff; border-color: #3B2566; }
 .doc-reject { display: flex; gap: 8px; width: 100%; }
 .doc-reject input { flex: 1; min-width: 0; }
 button.chip { cursor: pointer; border: 0; font: inherit; }
+
+/* ---- Feedback (0188) ---- */
+.fb-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border-soft, rgba(255,255,255,.06)); }
+.fb-row:first-of-type { border-top: 0; }
+.fb-row .grow { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 260px; }
+.fb-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fb-actions input { min-width: 180px; }

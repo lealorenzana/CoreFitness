@@ -68,6 +68,7 @@ async (page) => {
   };
 
   const CALLS = {};
+  const TOPUPS = [];
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -96,6 +97,11 @@ async (page) => {
         LIMITS.daily = body.p_daily; LIMITS.monthly = body.p_monthly;
         return json(null);
       }
+      // 0189: the month's allowance and top-ups — the owner's only.
+      if (fn === 'my_ai_allowance') return json(STATE.role === 'admin' && !STATE.missing ? { monthly: 300, plan_monthly: 300, used: 240, credits: 0,
+        topup_messages: 500, topup_price: '699.00', topups: TOPUPS } : null);
+      if (fn === 'platform_payment_options') return json([{ id: 'pm1', kind: 'gcash', label: 'GCash', account_name: 'J. Dela Cruz', account_number: '0917 555 0101', qr_image: null, instructions: null, sort_order: 1, active: true }]);
+      if (fn === 'request_ai_topup') { TOPUPS.unshift({ id: 't9', messages: 500 * body.p_packs, amount: 699 * body.p_packs, reference: body.p_reference, status: 'pending', reason: null, created_at: new Date().toISOString() }); return json('t9'); }
       if (fn === 'my_support_grant') return json([]);
       return json(null);
     }
@@ -147,6 +153,18 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('Save sends both numbers: ' + (CALLS.set_ai_coach_limits?.p_daily === 20 && CALLS.set_ai_coach_limits?.p_monthly === 900 ? '20 / 900' : 'MISSING ' + JSON.stringify(CALLS.set_ai_coach_limits)));
   out.push('the saved limits come back: ' + ((await page.locator(`${CARD} #ai-daily`).inputValue()) === '20' ? 'yes' : 'MISSING'));
+
+  // ---- 0189: this month's allowance, and buying more -------------------------------------------
+  const TOP = '[data-ai-topups]';
+  const tt = async () => (await page.locator(TOP).innerText()).replace(/\s+/g, ' ');
+  out.push('the month’s allowance and what is used: ' + (/240 of 300 used/.test(await tt()) && /0 top-up messages left/.test(await tt()) ? 'yes' : 'MISSING'));
+  out.push('the price of more is the platform’s: ' + (/500 messages for ₱699/.test(await tt()) && /GCash 0917 555 0101/.test(await tt()) ? 'yes' : 'MISSING'));
+  await page.locator(TOP).getByLabel('Packs').selectOption('2');
+  await page.locator(TOP).getByLabel('Reference number').fill('GC 7777 1234');
+  await page.locator(TOP).getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(900);
+  out.push('two packs are sent with the reference: ' + (CALLS.request_ai_topup?.p_packs === 2 && CALLS.request_ai_topup?.p_reference === 'GC 7777 1234' ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.request_ai_topup)));
+  out.push('…and wait for Core Fitness: ' + (/1,000 messages · ₱1,398/.test(await tt()) && /Waiting for Core Fitness/.test(await tt()) ? 'yes' : 'MISSING'));
 
   // A figure the database would refuse is said in its own sentence, and nothing is sent.
   delete CALLS.set_ai_coach_limits;

@@ -35,9 +35,11 @@ interface RecordPaymentModalProps {
   planByMember: Record<string, MemberPlanInfo>;
   /** Opened from a renewal request (0091): the member and the amount filled in. */
   preset?: { memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string } | null;
+  /** memberId -> how they paid last time (lower case), so a renewal starts from it (E4). */
+  lastMethodByMember?: Record<string, string>;
 }
 
-export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset }: RecordPaymentModalProps) {
+export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset, lastMethodByMember }: RecordPaymentModalProps) {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
 
   useEffect(() => {
@@ -155,10 +157,14 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
     // Prefill the plan's price rather than leaving staff to type an amount blind.
     // Still editable — partial and advance payments are normal at a cash desk.
     const plan = planByMember[member.profile.id];
+    // …and how they paid last time, when it is one of the desk's methods.
+    const last = lastMethodByMember?.[member.profile.id];
+    const method = paymentMethods.find((m) => m.toLowerCase() === last) ?? formData.method;
     setFormData({
       ...formData,
       memberId: member.profile.id,
       amount: plan && plan.planPrice > 0 ? String(plan.planPrice) : formData.amount,
+      method,
     });
     setMemberSearch(`${member.profile.first_name} ${member.profile.last_name}`);
     setShowMemberDropdown(false);

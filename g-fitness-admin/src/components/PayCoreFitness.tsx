@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { showToast } from '../utils/toast';
 import DatePicker from './ui/DatePicker';
 import { todayKey } from '../utils/dates';
+import { shrinkImage as shrink } from '../utils/shrinkImage';
 import { claimPayment, myPaymentClaims, payOptions, type PayOption, type PaymentClaim } from '../lib/api/subscription';
 
 const MUTED = 'var(--color-text-muted)';
@@ -12,21 +13,6 @@ const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', {
 const day = (d: string) => new Date(d.length === 10 ? d + 'T00:00:00+08:00' : d)
   .toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
-/** A screenshot made small enough to send on a weak signal and keep in a row (0148). */
-async function shrink(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) throw new Error('Choose a picture of your receipt.');
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((ok, fail) => {
-      const i = new Image(); i.onload = () => ok(i); i.onerror = () => fail(new Error('That picture could not be read.')); i.src = url;
-    });
-    const scale = Math.min(1, 1100 / Math.max(img.width, img.height));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL('image/jpeg', 0.75);
-  } finally { URL.revokeObjectURL(url); }
-}
 
 /**
  * Paying Core Fitness from wherever the gym is (0148): the platform's GCash,
