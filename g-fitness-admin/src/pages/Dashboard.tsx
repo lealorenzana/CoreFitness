@@ -14,6 +14,7 @@ import { loadBookingQueue } from '../services/bookingQueueService';
 import { sweepStaleRequests } from '../lib/api/bookings';
 import { winbackSweep } from '../lib/api/retention';
 import { streakNudgeSweep } from '../lib/api/streak';
+import { runPermitReminders } from '../lib/api/applications';
 import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
@@ -213,6 +214,8 @@ export default function Dashboard() {
     void winbackSweep();
     // The weekly "keep your streak" message (0151), on the same daily open.
     void streakNudgeSweep();
+    // Renew the permit / clearance / ID (0187): each January and before one runs out. Owner only; never throws.
+    void runPermitReminders();
     // The same sweep the Bookings page runs first (0071), so a request it would
     // expire on opening is not counted here as still waiting. Never throws.
     (async () => {

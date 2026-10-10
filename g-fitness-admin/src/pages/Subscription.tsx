@@ -5,6 +5,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import GymReceiptSheet from '../components/GymReceiptSheet';
 import PayCoreFitness from '../components/PayCoreFitness';
+import ApplicationDocuments from '../components/ApplicationDocuments';
+import { myGymApplication, type GymApplication } from '../lib/api/applications';
 import { showToast } from '../utils/toast';
 import {
   getGymFeatures, getSubscription, gymReceipt, myGymPayments,
@@ -51,11 +53,14 @@ export default function Subscription() {
   const [features, setFeatures] = useState<GymFeature[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [receipt, setReceipt] = useState<GymReceipt | null>(null);
+  /** The application that made this gym (0187) — its business documents, renewed from here. */
+  const [application, setApplication] = useState<GymApplication | null>(null);
+  const loadApplication = async () => setApplication(await myGymApplication());
 
   useEffect(() => {
     void (async () => {
-      const [s, p, f] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures()]);
-      setSub(s); setPayments(p); setFeatures(f); setLoaded(true);
+      const [s, p, f, a] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures(), myGymApplication()]);
+      setSub(s); setPayments(p); setFeatures(f); setApplication(a); setLoaded(true);
     })();
   }, []);
 
@@ -133,6 +138,17 @@ export default function Subscription() {
           </div>
         </Card>
       </div>
+
+      {application && (
+        <Card className="!p-5" id="documents">
+          <p className="text-sm font-semibold text-white">Business documents</p>
+          <p className="text-xs mt-1" style={{ color: MUTED }}>
+            What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document
+            before it runs out — you are reminded.
+          </p>
+          <div className="mt-3"><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
+        </Card>
+      )}
 
       {features.length > 0 && (
         <Card className="!p-5">

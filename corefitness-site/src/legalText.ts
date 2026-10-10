@@ -32,7 +32,7 @@
  * anybody to agree: agreeing to a draft records nothing true. A site deployed
  * with newer, unpublished wording therefore calls *that wording* a draft.
  */
-export const VERSION = '2026-10-05';
+export const VERSION = '2026-10-11';
 
 export type DocKey = 'terms' | 'dpa' | 'privacy';
 
@@ -97,9 +97,10 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'Your gym keeps its own name, logo, colours, prices, refund tiers, freeze limits and waiver. They are yours to set, and the member app shows members what you set.',
         ] },
         { id: 'joining', title: '3. Applying and getting started', body: [
-          'You apply on this website and get a private link to your application. We read every application ourselves and answer on that link.',
-          'We may decline an application. If we do, the reason is shown on your link.',
-          'When we approve it, we create your owner account with a temporary password and give it to you directly. You then set the gym up in the gym app.',
+          'You apply on this website and make an account with your email and a password. You also get a private link to your application. We read every application ourselves and answer there, and by email when we can.',
+          'Before we approve a gym we check six documents you upload: your Mayor\'s or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner\'s valid government ID, and a photo of the gym\'s front. We tell you which we verified, and why we could not accept one.',
+          'We may decline an application, and you may call yours off. Either way it is shown to you, and you may ask us to delete the account you made: we then delete it and your documents.',
+          'When we approve it, the account you made becomes the gym\'s owner account. You then set the gym up in the gym app, and send a renewed permit each January and any document before it runs out.',
         ] },
         { id: 'payment', title: '4. Plans, trials and paying', body: [
           'Prices are in Philippine pesos and are the ones on this site\'s Pricing section, which reads the same records your gym is billed from.',
@@ -217,7 +218,8 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'If you are a member or a coach at a gym, your gym controls your data. Its Privacy Policy is in the member app, and we process your data only for your gym, under the Data Processing Agreement.',
         ] },
         { id: 'collect', title: '2. What we hold', body: [
-          'From an application: the gym\'s name and address, your name, email and phone, roughly how many members you have, the plan you chose, how you heard of us, how you prefer to be contacted, and the messages on your status link.',
+          'From an application: the gym\'s name and address, your name, email and phone, roughly how many members you have, the plan you chose, how you heard of us, how you prefer to be contacted, and the messages on your application.',
+          'The business documents you upload to be verified (permit, DTI or SEC registration, BIR 2303, barangay clearance, a photo of the gym\'s front and the owner\'s government ID), in private storage only you and the people who run Core Fitness can open, with what we decided about each.',
           'For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us.',
           'For billing: your plan, the references and screenshots you send for payments, and the receipts we issue.',
           'Support tickets, and a copy of each email we send, so we can show it was sent.',
@@ -239,6 +241,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         ] },
         { id: 'kept', title: '6. How long it is kept', body: [
           'Applications, approved or not, are kept as the record of what was asked and answered.',
+          'If we decline an application or you call it off, we delete your account and your documents when you ask; the application itself stays as the record. Documents of an approved gym are kept while it uses the service.',
           'Billing records are kept as long as the law requires financial records to be kept.',
           'Owner and staff accounts are kept while the gym uses the service, and archived — not erased — after, so the gym\'s history still makes sense.',
         ] },

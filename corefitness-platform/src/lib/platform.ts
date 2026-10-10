@@ -121,7 +121,7 @@ export interface Application {
   address: string | null;
   member_estimate: number | null;
   message: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
   reason: string | null;
   gym_id: string | null;
   created_at: string;
@@ -504,7 +504,7 @@ export const listEmails = (days = 30) => call<SentEmail[]>('platform_email_log',
 export async function sendEmail(m: {
   to: string; toName?: string | null; subject: string; body: string;
   kind: 'owner_credentials' | 'password_reset' | 'invitation'
-      | 'application_approved' | 'application_rejected' | 'test';
+      | 'application_approved' | 'application_rejected' | 'application_message' | 'application_documents' | 'test';
   gymId?: string | null;
 }): Promise<{ id: string; configured: boolean; status: string; error?: string; message?: string }> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -684,6 +684,67 @@ export interface PaymentClaim {
 /** The applicant's private status page on the website. */
 export const SITE = 'https://corefitness-site.vercel.app';
 export const statusLink = (token: string) => `${SITE}/#status/${token}`;
+
+// ---- applicant accounts and documents (0187) -------------------------------------------
+
+export interface DocKind { kind: string; label: string; needs_expiry: boolean; sort_order: number }
+export interface AppDocument {
+  id: string; kind: string; label: string; path: string; file_name: string | null; expires_on: string | null;
+  status: 'pending' | 'verified' | 'rejected' | 'replaced'; reason: string | null; uploaded_at: string; reviewed_at: string | null;
+}
+export interface DocSummary { application_id: string; verified: number; waiting: number; rejected: number; missing: string[] }
+
+export const documentKinds = async () =>
+  (await call<DocKind[]>('application_document_kinds')).sort((a, b) => a.sort_order - b.sort_order);
+export const applicationDocuments = (id: string) => call<AppDocument[]>('application_documents_of', { p_application: id });
+export const reviewDocument = (id: string, ok: boolean, reason: string | null) =>
+  call<void>('platform_review_document', { p_document: id, p_ok: ok, p_reason: reason });
+/** Per application: verified/waiting/rejected and what is still missing. Empty before 0187. */
+export async function documentSummaries(): Promise<Map<string, DocSummary>> {
+  try { return new Map((await call<DocSummary[]>('platform_application_documents_summary')).map((r) => [r.application_id, r])); }
+  catch { return new Map(); }
+}
+/** Which applications have an account behind them (0187). Empty before 0187. */
+export async function applicationAccounts(): Promise<Set<string>> {
+  try { return new Set((await call<{ application_id: string; has_account: boolean }[]>('platform_application_accounts')).filter((r) => r.has_account).map((r) => r.application_id)); }
+  catch { return new Set(); }
+}
+export async function documentUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from('applications').createSignedUrl(path, 300);
+  return data?.signedUrl ?? null;
+}
+/**
+ * The one hard delete (0187): a turned-down or called-off applicant's account.
+ * Their files go first (storage cannot be emptied from SQL), then the account;
+ * the application row stays as the platform's record.
+ */
+export async function deleteApplicant(app: Application): Promise<void> {
+  const docs = await applicationDocuments(app.id);
+  if (docs.length) {
+    const { error } = await supabase.storage.from('applications').remove(docs.map((d) => d.path));
+    if (error) throw new Error(error.message);
+  }
+  await call<void>('platform_delete_applicant', { p_application: app.id });
+}
+/**
+ * Mail the applicant (0187) — every answer, verdict and decision. Returns a line
+ * for the screen saying what happened; never throws, and never claims a send
+ * that did not happen: with no provider the record is kept and it says so.
+ */
+export async function emailApplicant(app: Application,
+  kind: 'application_message' | 'application_documents' | 'application_approved' | 'application_rejected',
+  subject: string, body: string): Promise<string> {
+  try {
+    const r = await sendEmail({
+      to: app.email, toName: app.owner_name, kind, subject: `${subject} — ${app.gym_name}`,
+      body: `Hi ${app.owner_name.split(' ')[0]},\n\n${body}\n\nRead and answer at ${SITE}/#account (sign in with the account you applied with).\n\n— Core Fitness`,
+    });
+    if (!r.configured) return `Not emailed — no mail provider is set up yet. ${app.owner_name.split(' ')[0]} sees it when they sign in.`;
+    return r.status === 'sent' ? `Emailed to ${app.email}.` : `The email to ${app.email} did not go: ${r.error ?? r.status}.`;
+  } catch (e) {
+    return `Not emailed: ${e instanceof Error ? e.message : 'unknown error'}.`;
+  }
+}
 
 /** 0156: the gym documents — which version is in effect, and which gyms have agreed to it. */
 export interface GymTermsRow {

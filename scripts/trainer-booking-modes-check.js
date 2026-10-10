@@ -65,7 +65,7 @@ async (page) => {
         coach_ok_by: 't1', coach_ok_at: iso(0, 8, 0) },
       // Coach, then desk, not yet accepted: the coach still decides first.
       { id: 'ptB', member_id: 'm1', trainer_id: 't1', starts_at: iso(5, 9, 0), duration_minutes: 60,
-        status: 'pending', notes: null, payment_id: null, requested_at: iso(-1, 10, 0), created_at: iso(-1, 10, 0),
+        status: 'pending', notes: null, payment_id: null, requested_at: iso(-2, 10, 0), created_at: iso(-2, 10, 0),
         coach_ok_by: null, coach_ok_at: null },
     ],
     cancellation_reasons: REASONS,

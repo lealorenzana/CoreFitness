@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
+import Account from './Account';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
 import PlacePicker from './PlacePicker';
@@ -27,6 +28,8 @@ const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
  */
 /** `#status/<token>`: an applicant's own page (0148). Read from the hash so it survives any static host. */
 const statusToken = () => /^#status\/([a-f0-9]{32,})$/i.exec(window.location.hash)?.[1] ?? null;
+/** `#account`: an applicant signed in (0187). */
+const isAccount = () => window.location.hash === '#account';
 
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
@@ -156,6 +159,7 @@ export default function App() {
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
   const [token, setToken] = useState(statusToken);
+  const [account, setAccount] = useState(isAccount);
   /** The plan a tier card's "Choose" put into the form. */
   const [chosen, setChosen] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -166,9 +170,9 @@ export default function App() {
   useEffect(() => {
     const on = () => {
       const t = statusToken();
-      setToken(t); setLegal(parseLegalHash(window.location.hash));
+      setToken(t); setLegal(parseLegalHash(window.location.hash)); setAccount(isAccount());
       // The status link is a page of its own: it opens at its top, not wherever the form was.
-      if (t) window.scrollTo({ top: 0 });
+      if (t || isAccount()) window.scrollTo({ top: 0 });
     };
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('hashchange', on);
@@ -181,7 +185,7 @@ export default function App() {
   // The section dots watch the page's sections — re-attached when the page comes back from a document,
   // and the header's "#pricing" from a document lands on Pricing once the page has rendered.
   useEffect(() => {
-    if (legal || token) return;
+    if (legal || token || account) return;
     const id = window.location.hash.slice(1);
     const target = id && !id.includes('/') ? document.getElementById(id) : null;
     if (target) target.scrollIntoView({ block: 'start' });
@@ -190,7 +194,7 @@ export default function App() {
     }, { rootMargin: '-45% 0px -50% 0px' });
     NAV.forEach(([nid]) => { const el = document.getElementById(nid); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, [legal, token]);
+  }, [legal, token, account]);
   /** null while loading; [] when the price list cannot be read at all. */
   const [tiers, setTiers] = useState<Tier[] | null>(null);
 
@@ -234,12 +238,13 @@ export default function App() {
           </nav>
           <span className="grow" />
           <a className="link-quiet hide-sm" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
+          <a className="link-quiet hide-sm" href="#account">My application</a>
           <a className="link-quiet" href={ADMIN_APP} aria-label="Gym sign in"><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>
           <a className="cta magnetic" href="#apply">Register</a>
         </div>
       </header>
 
-      <nav className="dots" aria-label="Jump to section" hidden={!!legal || !!token}>
+      <nav className="dots" aria-label="Jump to section" hidden={!!legal || !!token || account}>
         {NAV.map(([id, label]) => (
           <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}><span>{label}</span></a>
         ))}
@@ -247,7 +252,8 @@ export default function App() {
 
       <main id="top">
         {legal ? <><Legal doc={legal.doc} section={legal.section} /><SiteFooter /></>
-        : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></> : <>
+        : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></>
+        : account ? <><div className="wrap status-wrap"><Account /></div><SiteFooter /></> : <>
 
         <section className="hero" data-scroll>
           <div className="hero-bg" aria-hidden="true">
@@ -457,7 +463,10 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   const [form, setForm] = useState({
     gym_name: '', owner_name: '', email: '', phone: '', address: '', member_estimate: '', message: '',
     plan: '', billing: 'monthly', heard_from: '', heard_other: '', contact_pref: 'viber', contact_handle: '',
+    password: '', password2: '',
   });
+  /** What became of the account (0187): made (confirm the email), already there (sign in), or could not be made. */
+  const [acct, setAcct] = useState<'made' | 'exists' | 'failed' | null>(null);
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -477,7 +486,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** The place picker composes "street, town, province"; stable, so its effect does not loop. */
   const setAddress = useCallback((address: string) => setForm((f) => (f.address === address ? f : { ...f, address })), []);
 
-  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone];
+  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone, form.password];
   const done = needed.filter((v) => v.trim() !== '').length;
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -489,6 +498,8 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (!supabase) { setError('This page cannot reach Core Fitness right now. Please email us instead.'); return; }
     if (tiers.length > 0 && !form.plan) { setError('Choose a plan first — you can change it later.'); return; }
     if (IN_EFFECT && !agreed) { setError('Tick the box to agree to the terms for gyms before sending.'); return; }
+    if (form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
+    if (form.password !== form.password2) { setError('The two passwords do not match.'); return; }
     setState('sending');
     setError(null);
     const heard = form.heard_from === 'Other' ? form.heard_other.trim() || 'Other' : form.heard_from;
@@ -519,6 +530,21 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (IN_EFFECT && newToken) {
       try { await supabase.rpc('accept_gym_terms', { p_token: newToken, p_version: VERSION }); } catch { /* see above */ }
     }
+    // The account (0187): made after the application, carrying its token, so the
+    // database ties the two together — only when the email matches as well.
+    if (newToken) {
+      const [first, ...rest] = form.owner_name.trim().split(/\s+/);
+      const { data: su, error: suError } = await supabase.auth.signUp({
+        email: form.email.trim(), password: form.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}#account`,
+          data: { signup_source: 'gym_applicant', application_token: newToken, first_name: first ?? '', last_name: rest.join(' '), phone: form.phone.trim() },
+        },
+      });
+      // Supabase answers an address that already has an account with a user and no identities.
+      setAcct(suError ? (/registered|exists/i.test(suError.message) ? 'exists' : 'failed')
+        : su.user && (su.user.identities?.length ?? 0) === 0 ? 'exists' : 'made');
+    }
     setToken(newToken);
     setState('sent');
   };
@@ -534,6 +560,19 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             We read every application ourselves and will reach you by {CONTACT.find(([k]) => k === form.contact_pref)?.[1] ?? 'email'}{' '}
             or at <strong style={{ color: 'var(--text)' }}>{form.email}</strong>.
           </p>
+          {acct === 'made' && (
+            <p data-account-made><strong style={{ color: 'var(--text)' }}>Confirm your email.</strong> We sent a link to {form.email}. Once it is confirmed,
+              sign in at <a href="#account" style={{ color: 'var(--violet-text)' }}>My application</a> (or the gym app) to send your
+              business documents and follow our answer.</p>
+          )}
+          {acct === 'exists' && (
+            <p>You already have a Core Fitness account with {form.email}. <a href="#account" style={{ color: 'var(--violet-text)' }}>Sign in</a> with
+              it to send your business documents — the application is found by your email.</p>
+          )}
+          {acct === 'failed' && (
+            <p>Your application went in, but the account could not be made. <a href="#account" style={{ color: 'var(--violet-text)' }}>Make one</a> with
+              the same email to send your documents.</p>
+          )}
           {link && (
             <>
               <p><strong style={{ color: 'var(--text)' }}>Keep this link.</strong> It is your application's own page: where it stands,
@@ -618,7 +657,21 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
           </fieldset>
 
           <fieldset>
-            <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> How we stay in touch</legend>
+            <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> Your account</legend>
+            <p className="full note" style={{ marginTop: 0 }}>You sign in with your email and this password to follow your application, send your
+              business documents and — once you are in — run your gym. No temporary password to pass around.</p>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input id="password" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set('password')} />
+            </div>
+            <div className="field">
+              <label htmlFor="password2">Password again</label>
+              <input id="password2" type="password" required minLength={8} autoComplete="new-password" value={form.password2} onChange={set('password2')} />
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span className="num">{tiers.length > 0 ? 4 : 3}</span> How we stay in touch</legend>
             <div className="field">
               <label htmlFor="heard_from">How did you hear about Core Fitness?</label>
               <select id="heard_from" value={form.heard_from} onChange={set('heard_from')}>

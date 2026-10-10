@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
+import Documents, { type AppDocument } from './Documents';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -8,7 +9,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'n
 
 interface Pay { kind: string; label: string; account_name: string | null; account_number: string | null; qr_image: string | null; instructions: string | null }
 interface Status {
-  gym_name: string; owner_name: string; email: string; status: 'pending' | 'approved' | 'rejected';
+  gym_name: string; owner_name: string; email: string; status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
   reason: string | null; created_at: string; decided_at: string | null;
   plan: { key: string; name: string; price_monthly: string | null; price_yearly: string | null; trial_days: number | null } | null;
   billing: 'monthly' | 'yearly' | null; gym_slug: string | null; paid_until: string | null;
@@ -17,6 +18,10 @@ interface Status {
   messages: { from_platform: boolean; body: string; created_at: string; sent_method?: boolean; pay?: Pay | null }[];
   pay: Pay[] | null;
   contact: { name: string; email: string | null; phone: string | null } | null;
+  /** Signed in (0187): my_applications() adds these. */
+  id?: string;
+  documents?: AppDocument[];
+  missing?: string[];
 }
 
 const KIND: Record<string, string> = { gcash: 'GCash', maya: 'Maya', bank: 'Bank transfer', other: 'Payment' };
@@ -73,7 +78,10 @@ function PayCard({ m }: { m: Pay }) {
  * The link is the only key, like a gym's invitation: nothing here is readable
  * without it, and it shows nothing about anybody else.
  */
-export default function StatusPage({ token }: { token: string }) {
+export default function StatusPage({ token, accountId, onSignOut }: {
+  /** The private link (0148) — or, signed in (0187), the application's id. */
+  token?: string; accountId?: string; onSignOut?: () => void;
+}) {
   const [s, setS] = useState<Status | null | undefined>(undefined);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -84,16 +92,33 @@ export default function StatusPage({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     if (!supabase) { setS(null); return; }
+    if (accountId) {
+      const { data, error: e } = await supabase.rpc('my_applications');
+      if (e) { setError(e.message); setS(null); return; }
+      setS(((data ?? []) as Status[]).find((a) => a.id === accountId) ?? null);
+      return;
+    }
     const { data, error: e } = await supabase.rpc('application_status', { p_token: token });
     if (e) { setError(e.message); setS(null); return; }
     setS((data as Status | null) ?? null);
-  }, [token]);
+  }, [token, accountId]);
+  const [calling, setCalling] = useState(false);
+  const callOff = async () => {
+    if (!supabase || !accountId) return;
+    setBusy(true); setError(null);
+    const { error: e } = await supabase.rpc('withdraw_my_application', { p_application: accountId });
+    setBusy(false); setCalling(false);
+    if (e) { setError(e.message); return; }
+    await load();
+  };
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const post = async (text: string) => {
     if (!supabase || !text.trim()) return false;
     setBusy(true); setError(null);
-    const { error: e2 } = await supabase.rpc('application_reply', { p_token: token, p_body: text.trim() });
+    const { error: e2 } = accountId
+      ? await supabase.rpc('my_application_reply', { p_application: accountId, p_body: text.trim() })
+      : await supabase.rpc('application_reply', { p_token: token, p_body: text.trim() });
     setBusy(false);
     if (e2) { setError(e2.message); return false; }
     await load();
@@ -133,13 +158,16 @@ export default function StatusPage({ token }: { token: string }) {
   const sentMethods = s.messages.flatMap((m) => (m.pay ? [m.pay] : []));
   const methodsToName = s.pay?.length ? s.pay : sentMethods;
   const step = s.status === 'approved' ? 3 : 2;
-  const pill = s.status === 'approved' ? 'Let in' : s.status === 'rejected' ? 'Not this time' : 'Being read';
+  const pill = s.status === 'approved' ? 'Let in' : s.status === 'rejected' ? 'Not this time' : s.status === 'withdrawn' ? 'Called off' : 'Being read';
 
   return (
     <div className="status-page">
-      <a className="status-back" href="#top">← Core Fitness</a>
+      <div className="status-back-row">
+        <a className="status-back" href="#top">← Core Fitness</a>
+        {onSignOut && <button type="button" className="link-btn" onClick={onSignOut}>Sign out</button>}
+      </div>
       <div className="status-hero">
-        <span className="eyebrow">Your application · keep this link</span>
+        <span className="eyebrow">{accountId ? `Your application · signed in as ${s.email}` : 'Your application · keep this link'}</span>
         <h1 className="status-title">{s.gym_name}</h1>
         <p className="status-lede">
           <span className={`status-pill is-${s.status}`}>{pill}</span>
@@ -164,6 +192,11 @@ export default function StatusPage({ token }: { token: string }) {
               <p className="note">Want to start straight away? Ask us how to pay — we can send our GCash, Maya or bank details here and let you in once it arrives.</p>
             </div>
           )}
+          {s.status === 'withdrawn' && (
+            <div className="status-callout">
+              <p>You called this application off. You can still write to us below, or apply again whenever you like.</p>
+            </div>
+          )}
           {s.status === 'rejected' && (
             <div className="status-callout">
               <p>We cannot take {s.gym_name} on right now{s.reason ? `: ${s.reason}` : '.'} You can still write to us below.</p>
@@ -171,8 +204,10 @@ export default function StatusPage({ token }: { token: string }) {
           )}
           {s.status === 'approved' && (
             <div className="status-callout is-good">
-              <p><strong>{s.gym_name} is in.</strong> Sign in at <a href={ADMIN_APP}>the gym app</a> with your email and the temporary
-                password Core Fitness gives you (by email, a message here, text or a call), then set your gym up.
+              <p><strong>{s.gym_name} is in.</strong> Sign in at <a href={ADMIN_APP}>the gym app</a> with {accountId
+                ? 'this same email and password'
+                : 'the account you made when you applied (or, if you applied before accounts, the temporary password Core Fitness gives you)'},
+                then set your gym up.
                 {s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
               <a className="cta" href={ADMIN_APP}>Open the gym app</a>
             </div>
@@ -185,6 +220,17 @@ export default function StatusPage({ token }: { token: string }) {
                 reference number and a screenshot. We check it and confirm.</p>
               <div className="pay-grid">{s.pay.map((m) => <PayCard key={m.label + (m.account_number ?? '')} m={m} />)}</div>
             </>
+          )}
+
+          {s.id && s.documents && (s.status === 'pending' || s.status === 'approved') && (
+            <Documents applicationId={s.id} documents={s.documents} onChanged={load} locked={s.status !== 'pending'} />
+          )}
+          {!accountId && s.status === 'pending' && (
+            <div className="status-callout">
+              <p>Before we can let {s.gym_name} in, we check six business documents — your permit, DTI or SEC registration, BIR 2303,
+                barangay clearance, your ID and a photo of the gym's front. <a href="#account">Sign in</a> with the account you made when
+                you applied to send them.</p>
+            </div>
           )}
 
           <h2 className="status-h">Messages with Core Fitness</h2>
@@ -242,6 +288,17 @@ export default function StatusPage({ token }: { token: string }) {
             </form>
           )}
           {error && <p className="note bad" style={{ marginTop: 10 }}>{error}</p>}
+          {accountId && s.status === 'pending' && (
+            calling ? (
+              <div className="status-callout" style={{ marginTop: 18 }}>
+                <p>Call off {s.gym_name}'s application? We stop reviewing it. You can apply again later.</p>
+                <div className="cta-row">
+                  <button className="cta" type="button" disabled={busy} onClick={() => void callOff()}>Call it off</button>
+                  <button className="cta ghost" type="button" onClick={() => setCalling(false)}>Keep it</button>
+                </div>
+              </div>
+            ) : <button type="button" className="link-btn" style={{ marginTop: 18 }} onClick={() => setCalling(true)}>Call off this application</button>
+          )}
         </div>
 
         <aside className="status-side">
@@ -257,14 +314,14 @@ export default function StatusPage({ token }: { token: string }) {
             ) : <p>Not chosen yet — ask us which fits.</p>}
             {s.paid_until && <p className="note">Paid until {day(s.paid_until)}</p>}
           </div>
-          <div className="card">
+          {!accountId && <div className="card">
             <span className="side-label">This page</span>
             <p>Only someone with this link can open it. Bookmark it or keep it somewhere safe.</p>
             <button className="cta ghost" type="button" style={{ width: '100%' }}
               onClick={() => void navigator.clipboard.writeText(window.location.href).then(() => setCopied(true))}>
               {copied ? 'Link copied' : 'Copy this page’s link'}
             </button>
-          </div>
+          </div>}
           {s.contact && (s.contact.phone || s.contact.email) && (
             <div className="card">
               <span className="side-label">Reach us directly</span>

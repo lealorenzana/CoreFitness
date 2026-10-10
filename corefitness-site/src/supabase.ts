@@ -12,4 +12,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
  * Missing keys are not fatal here: the page is mostly words, and a gym reading
  * about the service should still see it. The form says it cannot send instead.
  */
-export const supabase = url && anonKey ? createClient(url, anonKey, { auth: { persistSession: false } }) : null;
+// Signed in only for an applicant's own page (#account, 0187); everything else is read as a stranger.
+export const supabase = url && anonKey
+  ? createClient(url, anonKey, { auth: { persistSession: true, storageKey: 'cf-site-applicant' } })
+  : null;

@@ -802,3 +802,25 @@ footer .links { display: flex; gap: 20px; }
   .lg-tabs a { flex: none; padding: 8px 13px; font-size: 13.5px; }
 }
 .lg-draft-note { margin-top: 24px !important; }
+
+/* ---- Applicant account (0187) ---- */
+.status-back-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--violet-text); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.account-form { max-width: 560px; margin-top: 18px; }
+.docs { margin-top: 26px; }
+.docs-count { font-size: 13px; font-weight: 500; color: var(--text-3); margin-left: 8px; }
+.doc-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.doc { border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 16px; background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.doc.is-verified { border-color: color-mix(in srgb, var(--violet-2) 55%, transparent); }
+.doc.is-rejected { border-color: color-mix(in srgb, var(--amber) 60%, transparent); }
+.doc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.doc-state { font-size: 12.5px; color: var(--text-3); }
+.doc.is-verified .doc-state { color: var(--violet-text); }
+.doc.is-rejected .doc-state { color: var(--amber); }
+.doc-meta { margin: 6px 0 0; font-size: 13px; color: var(--text-3); }
+.doc-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.doc-form input[type=file] { flex: 1 1 220px; max-width: 100%; height: auto; min-height: 0; padding: 6px 0; border: 0; background: none; box-shadow: none; font-size: 13px; color: var(--text-2); }
+.doc-form input[type=file]::file-selector-button { margin-right: 10px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--hairline-strong); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.doc-form .cta { margin-top: 0; height: 40px; padding: 0 16px; font-size: 13.5px; }
+.doc-exp { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.doc-exp select { width: auto; min-width: 76px; height: 38px; border-radius: 10px; border: 1px solid var(--hairline-strong); background: var(--surface); color: var(--text); padding: 0 10px; }

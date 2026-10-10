@@ -48,7 +48,9 @@ function json(body: unknown, status: number): Response {
 
 const KINDS = [
   "owner_credentials", "password_reset", "invitation",
-  "application_approved", "application_rejected", "test",
+  "application_approved", "application_rejected",
+  // 0187: the platform's answers to an applicant, and its verdict on their documents.
+  "application_message", "application_documents", "test",
 ];
 
 /** Plain text becomes a readable HTML body. No template engine, no images. */

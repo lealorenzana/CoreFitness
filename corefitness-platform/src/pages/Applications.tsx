@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
 import {
-  createGym, listApplications, rejectApplication, setGymPlan, slugFor, splitName, statusLink, type Application,
+  applicationAccounts, createGym, deleteApplicant, documentSummaries, emailApplicant, listApplications, rejectApplication,
+  setGymPlan, slugFor, splitName, statusLink, type Application, type DocSummary,
 } from '../lib/platform';
+import ApplicationDocs from '../components/ApplicationDocs';
 import ApplicationThread from '../components/ApplicationThread';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
@@ -18,8 +20,8 @@ const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 
-type Show = 'pending' | 'approved' | 'rejected' | 'all';
-type Dialog = { kind: 'in' | 'down' | 'talk'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
+type Show = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'all';
+type Dialog = { kind: 'in' | 'down' | 'talk' | 'docs' | 'delete'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
 
 /**
  * Gyms asking to join, from the website — in the admin app's layout
@@ -32,9 +34,16 @@ export default function Applications() {
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState<Show>('pending');
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  /** 0187: each application's documents, and which have an account behind them. */
+  const [docs, setDocs] = useState<Map<string, DocSummary>>(new Map());
+  const [accounts, setAccounts] = useState<Set<string>>(new Set());
+  const [mailNote, setMailNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try { setApps(await listApplications()); setError(null); }
+    try {
+      const [a, d, acc] = await Promise.all([listApplications(), documentSummaries(), applicationAccounts()]);
+      setApps(a); setDocs(d); setAccounts(acc); setError(null);
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load the applications'); }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
@@ -61,13 +70,14 @@ export default function Applications() {
       ]} />
 
       {error && <p className="err">{error}</p>}
+      {mailNote && <p className="meta" data-mail-note>{mailNote}</p>}
 
       <div className="split">
         <section className="card split-main">
           <div className="ov-head">
-            <h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : 'Every application'}</h2>
+            <h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : show === 'withdrawn' ? 'Called off' : 'Every application'}</h2>
             <div className="filters" style={{ marginLeft: 'auto' }}>
-              {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
+              {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['withdrawn', 'Called off'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
                 <button key={s} type="button" className={show === s ? 'on' : ''} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>
               ))}
             </div>
@@ -107,6 +117,18 @@ export default function Applications() {
                       </span>
                     )}
                     <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
+                    {/* 0187: the six documents, and whether there is an account to sign in with. */}
+                    {docs.has(app.id) && (
+                      <span className="chips">
+                        <button type="button" className={`chip${(docs.get(app.id)!.missing.length === 0) ? ' ok' : ''}`} data-docs-chip
+                          onClick={() => setDialog({ kind: 'docs', app })}
+                          data-tip={docs.get(app.id)!.missing.length ? `Still needed: ${docs.get(app.id)!.missing.join('; ')}` : 'All six verified and in date'}>
+                          <FileCheck2 size={12} /> Documents {6 - docs.get(app.id)!.missing.length}/6 verified
+                          {docs.get(app.id)!.waiting > 0 && <b className="unread">{docs.get(app.id)!.waiting} to check</b>}
+                        </button>
+                        <span className="chip muted">{accounts.has(app.id) ? 'Has an account' : 'No account — status link only'}</span>
+                      </span>
+                    )}
                     {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
                     {app.already_a_gym && <span className="meta" style={{ color: 'var(--warn)' }}>This email already owns a gym here. Letting them in again makes a second one.</span>}
                     {!!app.duplicates && app.duplicates > 0 && <span className="meta" style={{ color: 'var(--warn)' }}>Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
@@ -115,10 +137,20 @@ export default function Applications() {
                   </span>
                   {app.status === 'pending' ? (
                     <span className="actions">
-                      <button className="btn" onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
+                      {/* Approve waits for the documents (0187) — the database refuses it too. */}
+                      <button className="btn" disabled={!!docs.get(app.id)?.missing.length}
+                        data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first' : undefined}
+                        onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
                       <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
                     </span>
-                  ) : <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : 'Turned down'}</span>}
+                  ) : (
+                    <span className="actions">
+                      <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : app.status === 'withdrawn' ? 'Called off' : 'Turned down'}</span>
+                      {(app.status === 'rejected' || app.status === 'withdrawn') && accounts.has(app.id) && (
+                        <button className="btn ghost" onClick={() => setDialog({ kind: 'delete', app })}>Delete their account</button>
+                      )}
+                    </span>
+                  )}
                 </div>
               ))}
               <Pagination page={paged.page} perPage={paged.perPage} total={paged.total} noun={paged.total === 1 ? 'application' : 'applications'} onPage={paged.setPage} />
@@ -131,7 +163,8 @@ export default function Applications() {
             <h2 className="section-title"><Sparkles size={14} /> Letting a gym in</h2>
             <ol className="steps">
               <li><Link2 size={15} /><span><b>You pick its link</b>The address its members type: …/join/its-name.</span></li>
-              <li><KeyRound size={15} /><span><b>You name the owner</b>They get a temporary password, shown to you once.</span></li>
+              <li><FileCheck2 size={15} /><span><b>You verify their documents</b>Permit, DTI/SEC, BIR 2303, barangay clearance, the owner's ID and a photo of the gym's front — Let them in opens once all six are verified.</span></li>
+              <li><KeyRound size={15} /><span><b>You name the owner</b>An applicant with an account becomes the owner with the password they chose; anyone else gets a temporary one, shown to you once.</span></li>
               <li><Settings2 size={15} /><span><b>They set the gym up</b>Name, logo and colours at /admin/setup — none of Core Fitness's.</span></li>
               <li><Clock size={15} /><span><b>Their free trial runs</b>It ends on its own date; reminders go before it does.</span></li>
               <li><Copy size={15} /><span><b>They pay from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
@@ -179,6 +212,8 @@ export default function Applications() {
               // for is one more step, only if you choose it here.
               if (v.start && v.start !== TRIAL_FIRST && app.plan_key) await setGymPlan(gymId, app.plan_key, null);
               await load();
+              setMailNote(await emailApplicant(app, 'application_approved', `${app.gym_name} is in`,
+                `${app.gym_name} is in. Sign in at https://corefitness-admin.vercel.app with the email and password you chose when you applied, and set your gym up.`));
               // The gym exists; it has nobody in it. Straight on to the owner.
               setDialog({ kind: 'owner', gymId, app });
             }}
@@ -194,7 +229,11 @@ export default function Applications() {
             fields={[{ key: 'reason', label: 'Why', required: true, placeholder: 'Outside the area we can support for now' }]}
             confirmLabel="Turn them down"
             onCancel={close}
-            onConfirm={async (v) => { await rejectApplication(dialog.app.id, v.reason.trim()); setDialog(null); await load(); }}
+            onConfirm={async (v) => {
+              const app = dialog.app;
+              await rejectApplication(app.id, v.reason.trim()); setDialog(null); await load();
+              setMailNote(await emailApplicant(app, 'application_rejected', 'About your application', `We cannot take ${app.gym_name} on right now: ${v.reason.trim()}`));
+            }}
           />
         )}
       </Modal>
@@ -203,6 +242,25 @@ export default function Applications() {
         title={dialog?.kind === 'talk' ? `Messages with ${dialog.app.gym_name}` : ''}
         subtitle={dialog?.kind === 'talk' ? `${dialog.app.owner_name} · ${dialog.app.email}` : undefined}>
         {dialog?.kind === 'talk' && <ApplicationThread app={dialog.app} />}
+      </Modal>
+
+      <Modal open={dialog?.kind === 'docs'} onClose={() => { close(); void load(); }} size="md"
+        title={dialog?.kind === 'docs' ? `${dialog.app.gym_name}'s documents` : ''}
+        subtitle={dialog?.kind === 'docs' ? `${dialog.app.owner_name} · ${dialog.app.email}` : undefined}>
+        {dialog?.kind === 'docs' && <ApplicationDocs app={dialog.app} onChanged={() => void load()} />}
+      </Modal>
+
+      <Modal open={dialog?.kind === 'delete'} onClose={close} size="sm" label="Delete their account">
+        {dialog?.kind === 'delete' && (
+          <Ask
+            title={`Delete ${dialog.app.owner_name}'s account?`}
+            blurb={`They can no longer sign in, and their documents are deleted. ${dialog.app.gym_name}'s application stays in your records. This cannot be undone — they would apply again with a new account.`}
+            fields={[]}
+            confirmLabel="Delete the account"
+            onCancel={close}
+            onConfirm={async () => { await deleteApplicant(dialog.app); setDialog(null); await load(); }}
+          />
+        )}
       </Modal>
 
       <Modal open={dialog?.kind === 'owner'} onClose={close} size="md" label="Name the owner">

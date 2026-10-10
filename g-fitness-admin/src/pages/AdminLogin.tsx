@@ -6,6 +6,7 @@ import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
 import { supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
+import { myApplications } from '../lib/api/applications';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
 
 // Floating particles
@@ -98,6 +99,13 @@ export default function AdminLogin() {
       return;
     }
     if (ctx?.role !== 'admin' || ctx.status !== 'active') {
+      // Applied on the website (0187) and not let in yet: their application, not a refusal.
+      const apps = await myApplications().catch(() => []);
+      if (apps.length > 0) {
+        setIsLoading(false);
+        navigate('/admin/application');
+        return;
+      }
       await supabase.auth.signOut();
       clearGymContext();
       showToast('This account does not have admin access', 'error');

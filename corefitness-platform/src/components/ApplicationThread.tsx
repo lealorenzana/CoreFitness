@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Copy, Send, Wallet, X } from 'lucide-react';
 import {
-  applicationThread, CHANGED, explain, paymentMethods, replyApplication, sendApplicationPayment, statusLink,
+  applicationThread, CHANGED, emailApplicant, explain, paymentMethods, replyApplication, sendApplicationPayment, statusLink,
   type Application, type ApplicationMessage, type PaymentMethod,
 } from '../lib/platform';
 
@@ -22,6 +22,7 @@ export default function ApplicationThread({ app }: { app: Application }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mailNote, setMailNote] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const [methods, setMethods] = useState<PaymentMethod[] | null>(null);
   const [paying, setPaying] = useState(false);
@@ -43,7 +44,12 @@ export default function ApplicationThread({ app }: { app: Application }) {
     e.preventDefault();
     if (!body.trim()) return;
     setBusy(true);
-    try { await replyApplication(app.id, body.trim()); setBody(''); await load(); }
+    try {
+      const text = body.trim();
+      await replyApplication(app.id, text); setBody(''); await load();
+      // Every answer reaches their inbox too (0187), when mail is set up.
+      setMailNote(await emailApplicant(app, 'application_message', 'Core Fitness answered your application', text));
+    }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not send'); }
     finally { setBusy(false); }
   };
@@ -84,6 +90,7 @@ export default function ApplicationThread({ app }: { app: Application }) {
         ))}
         <div ref={end} />
       </div>
+      {mailNote && <p className="meta" data-mail-note>{mailNote}</p>}
       {error && <p className="err">{error}</p>}
       {paying && (
         <div className="pay-pick">

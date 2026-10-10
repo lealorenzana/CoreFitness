@@ -28,6 +28,8 @@ import JoinApproval from '../components/JoinApproval';
 import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
+import { myGymApplication } from '../lib/api/applications';
+
 
 /**
  * A gym's first day (redesigned 2026-10-04).
@@ -104,18 +106,19 @@ export default function Setup() {
 
   const load = useCallback(async () => {
     try {
-      const [ctx, settings, planRows, temp, app, mods] = await Promise.all([
+      const [ctx, settings, planRows, temp, app, mods, applied] = await Promise.all([
         getGymContext(true), getGymSettings(), listPlans(), mustChangePassword(), getGymApp(),
-        getGymModules().catch(() => [] as GymModule[]),
+        getGymModules().catch(() => [] as GymModule[]), myGymApplication(),
       ]);
       if (ctx?.onboarded) { window.location.assign('/dashboard'); return; }
       setGym({
         gym_name: settings?.gym_name ?? ctx?.gymName ?? '',
         short_name: settings?.short_name ?? '',
         tagline: settings?.tagline ?? '',
-        address: settings?.address ?? '',
-        phone: settings?.phone ?? '',
-        email: settings?.email ?? '',
+        // Empty settings fill from the application they sent (0187), never over what the gym has typed.
+        address: settings?.address || applied?.address || '',
+        phone: settings?.phone || applied?.phone || '',
+        email: settings?.email || applied?.email || '',
         opening_time: settings?.opening_time ?? '',
         closing_time: settings?.closing_time ?? '',
         accent: settings?.accent ?? 'violet',
