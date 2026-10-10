@@ -11,7 +11,7 @@ import FeatureLock from '../components/ui/FeatureLock';
 import Modal from '../components/ui/Modal';
 import GlassSheet from '../components/ui/GlassSheet';
 import { ExerciseGuideFor } from '../components/workout/ExerciseGuide';
-import { getGymWorkoutRoutine } from '../lib/api/programs';
+import { getGymWorkoutRoutine, getProgramDayRoutine } from '../lib/api/programs';
 import { setWasRecord } from '../lib/api/season';
 import { toast } from '../components/ui/Toast';
 import { Confetti, CountRing, Stepper, WorkoutBackdrop } from '../components/workout/WorkoutParts';
@@ -65,7 +65,8 @@ function targetLine(e: RoutineExercise): string {
     ? `${e.targetSeconds ?? '—'} s`
     : `${e.targetReps ?? '—'} reps${e.targetWeightKg != null ? ` @ ${e.targetWeightKg} kg` : ''}`;
   const rest = e.restSeconds > 0 ? ` · ${clock(e.restSeconds)} rest` : '';
-  return `${e.targetSets} × ${work}${rest}`;
+  // A program steps up each week (0173): say so, beside what last week asked.
+  return e.lastWeek ? `This week ${e.targetSets} × ${work} · ${e.lastWeek}${rest}` : `${e.targetSets} × ${work}${rest}`;
 }
 
 /**
@@ -243,7 +244,9 @@ function WorkoutRun() {
         if (!s.routineId && !s.gymWorkoutId) { navigate('/member/track/log', { replace: true }); return; }
         // A program day (0122) runs the gym's workout in the same player.
         const [r, serverSets, me] = await Promise.all([
-          s.routineId ? getRoutine(s.routineId) : getGymWorkoutRoutine(s.gymWorkoutId!),
+          s.routineId ? getRoutine(s.routineId)
+            : s.programDayId ? getProgramDayRoutine(s.programDayId, s.gymWorkoutId!, s.activity)
+            : getGymWorkoutRoutine(s.gymWorkoutId!),
           listSets(logId), getCurrentMemberId(),
         ]);
         // Anything logged offline last time is shown straight away and sent below.

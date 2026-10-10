@@ -387,8 +387,8 @@ async (page) => {
   // ── The coach's mark on the member's own screens ──
   await go('/member/track');
   let t = await text();
-  out.push('My routines marks the coach routine: ' + ((t.match(/Built with the coach/g) || []).length === 1 ? 'yes' : 'MISSING'));
-  out.push('the mark is on Arms day: ' + (await page.locator('button', { hasText: 'Arms day' }).filter({ hasText: 'Built with the coach' }).count() > 0 ? 'yes' : 'MISSING'));
+  out.push('My routines marks the coach routine: ' + ((t.match(/AI coach/g) || []).length >= 1 ? 'yes' : 'MISSING'));
+  out.push('the mark is on Arms day: ' + (await page.locator('button', { hasText: 'Arms day' }).filter({ hasText: 'AI coach' }).count() > 0 ? 'yes' : 'MISSING'));
   await go('/member/gym-plan');
   t = await text();
   out.push('Training plan marks the day the coach set: ' + ((t.match(/Set by the coach/g) || []).length === 1 ? 'yes' : 'MISSING ' + (t.match(/Set by the coach/g) || []).length));

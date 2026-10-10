@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { removeContentPhoto, uploadContentPhoto } from '../lib/api/exerciseMedia';
 import {
   copyStarterProgram, listPrograms, listWorkouts, saveProgram, saveWorkout, setProgramDay, setProgramPublished,
-  type GymProgram, type GymWorkout, type Level, type StarterKey, type WorkoutItem,
+  type GymProgram, type GymWorkout, type Level, type ProgressKind, type StarterKey, type WorkoutItem,
 } from '../lib/api/programs';
 
 /**
@@ -232,6 +232,8 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
   const [level, setLevel] = useState<Level>(program?.level ?? 'all_levels');
   const [weeks, setWeeks] = useState(program?.weeks ?? 4);
   const [premium, setPremium] = useState(program?.premium ?? false);
+  // A lighter week every N weeks (0173): back to week 1's load, so the body recovers.
+  const [deloadEvery, setDeloadEvery] = useState<number | null>(program?.deloadEvery ?? null);
   const [cover, setCover] = useState<string | null>(program?.coverUrl ?? null);
   const [busy, setBusy] = useState(false);
 
@@ -243,7 +245,7 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
 
   const save = () => run(async () => {
     if (!name.trim()) throw new Error('The program needs a name.');
-    const id = await saveProgram(program?.id ?? null, { name, description, coverUrl: cover, level, weeks, premium });
+    const id = await saveProgram(program?.id ?? null, { name, description, coverUrl: cover, level, weeks, premium, deloadEvery });
     const old = program?.coverUrl ?? null;
     if (old && old !== cover) await removeContentPhoto(old).catch(() => {});
     showToast('Program saved.', 'success');
@@ -306,6 +308,12 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
             <select value={weeks} onChange={(e) => setWeeks(Number(e.target.value))} aria-label="Weeks"
               className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}>
               {Array.from({ length: 16 }, (_, i) => i + 1).map((w) => <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>)}
+            </select>
+            <select value={deloadEvery ?? ''} onChange={(e) => setDeloadEvery(e.target.value ? Number(e.target.value) : null)}
+              aria-label="Lighter week" className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}
+              data-tip="A lighter week goes back to week 1's load, so the body recovers before the next step up">
+              <option value="">No lighter week</option>
+              {[3, 4, 5, 6].map((n) => <option key={n} value={n}>Lighter every {n === 3 ? '3rd' : `${n}th`} week</option>)}
             </select>
             <label className="flex items-center gap-2 text-xs text-white">
               <input type="checkbox" checked={premium} onChange={(e) => setPremium(e.target.checked)} aria-label="Premium members only" />
@@ -464,17 +472,48 @@ function WorkoutEditor({ workout, exercises, onSaved, onClose }: {
                 className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD} title="Rest, seconds" />
               <button onClick={() => setItems((prev) => prev.filter((_, k) => k !== i))} aria-label={`Remove row ${n}`}
                 className="p-1.5 rounded-lg" style={{ color: MUTED }}><Trash2 size={12} /></button>
+              {/* Progressive overload (0173): the starting load, and how much more each week. */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ gridColumn: '1 / -1', color: MUTED }} data-progression={n}>
+                {!isTimed && (
+                  <label className="flex items-center gap-1">Start at
+                    <input type="number" min={0} step={0.5} value={it.targetWeightKg ?? ''} aria-label={`Starting weight ${n}`} placeholder="kg"
+                      onChange={(e) => patch(i, { targetWeightKg: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="h-8 w-16 px-2 rounded-lg text-xs text-white" style={FIELD} /> kg
+                  </label>
+                )}
+                <label className="flex items-center gap-1">Each week
+                  <select value={it.progressKind} aria-label={`Each week ${n}`}
+                    onChange={(e) => patch(i, { progressKind: e.target.value as ProgressKind,
+                      progressStep: it.progressStep || (e.target.value === 'weight' ? 2.5 : e.target.value === 'seconds' ? 5 : 1) })}
+                    className="h-8 px-2 rounded-lg text-xs text-white" style={FIELD}>
+                    <option value="none">stays the same</option>
+                    {!isTimed && <option value="weight">add weight</option>}
+                    {!isTimed && <option value="reps">add reps</option>}
+                    <option value="sets">add sets</option>
+                    {isTimed && <option value="seconds">add seconds</option>}
+                  </select>
+                </label>
+                {it.progressKind !== 'none' && (
+                  <label className="flex items-center gap-1">+
+                    <input type="number" min={0} step={it.progressKind === 'weight' ? 0.5 : 1} value={it.progressStep} aria-label={`Step ${n}`}
+                      onChange={(e) => patch(i, { progressStep: Number(e.target.value) || 0 })}
+                      className="h-8 w-16 px-2 rounded-lg text-xs text-white" style={FIELD} />
+                    {it.progressKind === 'weight' ? 'kg' : it.progressKind === 'seconds' ? 's' : it.progressKind}
+                  </label>
+                )}
+              </div>
             </div>
           );
         })}
         {items.length > 0 && (
-          <p className="text-[10px]" style={{ color: MUTED }}>Sets · reps (or seconds) · rest in seconds</p>
+          <p className="text-[10px]" style={{ color: MUTED }}>Sets · reps (or seconds) · rest in seconds. In a program, "each week" makes every week build on the last.</p>
         )}
       </div>
 
       <div className="flex gap-2 mt-3">
         <Button size="sm" variant="outline"
-          onClick={() => setItems((prev) => [...prev, { exerciseId: '', targetSets: 3, targetReps: 10, targetSeconds: null, restSeconds: 90 }])}>
+          onClick={() => setItems((prev) => [...prev, { exerciseId: '', targetSets: 3, targetReps: 10, targetSeconds: null, restSeconds: 90,
+            targetWeightKg: null, progressKind: 'none', progressStep: 0 }])}>
           <Plus size={12} /> Add an exercise
         </Button>
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void save()}>Save workout</Button>

@@ -6,7 +6,9 @@ import { Eyebrow, ProgressBar, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { useFeatures } from '../hooks/useFeatures';
 import { isEnabled } from '../lib/api/planFeatures';
-import { listGymPrograms, programProgress, type ProgramSummary, type ProgressDay } from '../lib/api/programs';
+import { listGymPrograms, programProgress, programSourceLabel, type ProgramSummary, type ProgressDay } from '../lib/api/programs';
+import { useGymApp } from '../hooks/useGymApp';
+import { word } from '../lib/gymApp';
 import { getCurrentMemberId } from '../services/bookingService';
 
 const LEVEL: Record<string, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced', all_levels: 'All levels' };
@@ -21,6 +23,7 @@ const LEVEL: Record<string, string> = { beginner: 'Beginner', intermediate: 'Int
  * follow comes first, with how far through they are.
  */
 export default function Programs() {
+  const coachWord = word(useGymApp(), 'trainer', true);
   const navigate = useNavigate();
   const { features } = useFeatures();
   const [programs, setPrograms] = useState<ProgramSummary[] | null>(null);
@@ -63,7 +66,7 @@ export default function Programs() {
                 {p.coverUrl && <img src={p.coverUrl} alt="" style={{ width: '100%', aspectRatio: '16 / 7', objectFit: 'cover', display: 'block' }} />}
                 <div style={{ padding: 14 }}>
                   <div className="flex items-center justify-between" style={{ gap: 8 }}>
-                    <Eyebrow>{p.weeks} week{p.weeks === 1 ? '' : 's'} · {LEVEL[p.level] ?? p.level}</Eyebrow>
+                    <Eyebrow>{programSourceLabel(p, coachWord)} · {p.weeks} week{p.weeks === 1 ? '' : 's'} · {LEVEL[p.level] ?? p.level}</Eyebrow>
                     {locked ? <span className="inline-flex items-center" style={{ gap: 4, fontSize: 12, color: 'var(--color-text-muted)' }}><Lock size={13} aria-hidden /> Premium</span>
                       : mine ? <StatusPill label="Following" tone="structure" /> : null}
                   </div>

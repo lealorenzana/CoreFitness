@@ -1,6 +1,6 @@
 /**
  * The member app's navigation after the clean-up (2026-10-05): Train's rail is
- * four sections (My plan, Progress, Coaching, Challenges) instead of fifteen
+ * four sections (Workouts, Progress, Coaching, Challenges) instead of fifteen
  * pills; each section's tabs sit under the page title; a section reopens on the
  * tab last used; Progress has no Meals or Coach tab (coach notes live under
  * Coaching, and old ?tab=feedback links land there); and a screen's own tab
@@ -266,7 +266,7 @@ async (page) => {
   await go('/member/book-class');
   let t = await text();
   const rail = await pills();
-  out.push('Train has four sections: ' + (['My plan', 'Progress', 'Coaching', 'Challenges'].every((x) => rail.includes(x))
+  out.push('Train has four sections: ' + (['Workouts', 'Progress', 'Coaching', 'Challenges'].every((x) => rail.includes(x))
     && !rail.includes('Coach notes') && !rail.includes('Goals') && !rail.includes('Squad') ? 'yes' : 'MISSING ' + JSON.stringify(rail)));
   await shot('nav-train');
 
@@ -303,9 +303,10 @@ async (page) => {
   const pastOn = await page.getByRole('tab', { name: /^Past/ }).first().getAttribute('aria-selected').catch(() => null);
   out.push('My bookings keeps Past after Back: ' + (/show=past/.test(pastUrl) && pastOn === 'true' ? 'yes' : 'MISSING ' + pastUrl + ' ' + pastOn));
 
-  await go('/member/gym-plan');
+  // One Workouts section (2026-10-10): the week planner opens from Today, not as a tab.
+  await go('/member/track');
   tabs = await strip('plan');
-  out.push('My plan tabs: ' + (['This week', 'Programs', 'Routines', 'Free workouts'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  out.push('Workouts tabs: ' + (['Today', 'Routines', 'Programs', 'Browse'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   await shot('nav-plan');
   return out.join(String.fromCharCode(10));
 }

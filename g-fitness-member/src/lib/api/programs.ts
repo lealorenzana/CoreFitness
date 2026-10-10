@@ -26,6 +26,18 @@ export interface ProgramSummary {
   level: Level;
   weeks: number;
   premium: boolean;
+  /** 0173: the gym's, a coach's for this member, or the AI coach's. 'gym' before 0173. */
+  source: 'gym' | 'trainer' | 'ai';
+  authorName: string | null;
+  /** Lighter every Nth week (0173), or null. */
+  deloadEvery: number | null;
+}
+
+/** Where a program came from, as the member reads it. */
+export function programSourceLabel(p: Pick<ProgramSummary, 'source' | 'authorName'>, coachWord = 'Coach'): string {
+  if (p.source === 'ai') return 'AI coach';
+  if (p.source === 'trainer') return p.authorName ? `${coachWord} ${p.authorName}` : coachWord;
+  return 'Gym';
 }
 
 export interface ProgramDayRow { id: string; week: number; day: number; workoutId: string; workoutName: string }
@@ -38,24 +50,33 @@ export interface ProgressDay {
 interface ProgramRow {
   id: string; name: string; description: string | null; cover_url: string | null; level: Level;
   weeks: number; premium: boolean;
+  source?: string | null; deload_every?: number | null; author?: { first_name: string | null } | null;
 }
 const toSummary = (p: ProgramRow): ProgramSummary => ({
   id: p.id, name: p.name, description: p.description, coverUrl: p.cover_url, level: p.level,
   weeks: p.weeks, premium: p.premium,
+  source: p.source === 'trainer' ? 'trainer' : p.source === 'ai' ? 'ai' : 'gym',
+  authorName: p.author?.first_name ?? null, deloadEvery: p.deload_every ?? null,
 });
-const COLS = 'id, name, description, cover_url, level, weeks, premium';
+const BASE_COLS = 'id, name, description, cover_url, level, weeks, premium';
+// 0173's source, author and lighter week; before 0173 these columns do not exist.
+const COLS = `${BASE_COLS}, source, deload_every, author:profiles!gym_programs_author_id_fkey(first_name)`;
 
 /** Published programs. Empty before 0122, which reads as "the gym has none yet". */
 export async function listGymPrograms(): Promise<ProgramSummary[]> {
-  const { data, error } = await supabase.from('gym_programs').select(COLS)
+  const q = (cols: string) => supabase.from('gym_programs').select(cols)
     .eq('published', true).eq('hidden', false).order('created_at');
+  let res = await q(COLS);
+  if (res.error) res = await q(BASE_COLS);
+  const { data, error } = res;
   if (error) return [];
-  return ((data ?? []) as ProgramRow[]).map(toSummary);
+  return ((data ?? []) as unknown as ProgramRow[]).map(toSummary);
 }
 
 export async function getProgram(id: string): Promise<{ program: ProgramSummary; days: ProgramDayRow[] } | null> {
   const [p, d] = await Promise.all([
-    supabase.from('gym_programs').select(COLS).eq('id', id).maybeSingle(),
+    supabase.from('gym_programs').select(COLS).eq('id', id).maybeSingle()
+      .then(async (r) => (r.error ? supabase.from('gym_programs').select(BASE_COLS).eq('id', id).maybeSingle() : r)),
     supabase.from('gym_program_days').select('id, week, day, workout_id, gym_workouts (name)')
       .eq('program_id', id).order('week').order('day'),
   ]);
@@ -64,7 +85,7 @@ export async function getProgram(id: string): Promise<{ program: ProgramSummary;
   const days = ((d.data ?? []) as unknown as { id: string; week: number; day: number; workout_id: string;
     gym_workouts: { name: string } | null }[])
     .map((r) => ({ id: r.id, week: r.week, day: r.day, workoutId: r.workout_id, workoutName: r.gym_workouts?.name ?? 'Workout' }));
-  return { program: toSummary(p.data as ProgramRow), days };
+  return { program: toSummary(p.data as unknown as ProgramRow), days };
 }
 
 /** The member's active program, day by day. [] = not following one. */
@@ -107,6 +128,40 @@ export async function assignProgram(memberId: string, programId: string): Promis
  * A gym workout in the shape the player already runs. It is read-only to the
  * member — "Edit routine" has nothing to open — so `id` is the workout's.
  */
+/**
+ * A program day as the player runs it (0173): this week's targets, computed by
+ * the database (`program_day_targets`) — heavier, longer or more reps than last
+ * week, or week 1's load on a lighter week — with last week's beside each one
+ * that moved. Before 0173 the function does not exist and the day runs the
+ * workout as written, exactly as it did.
+ */
+export async function getProgramDayRoutine(dayId: string, workoutId: string, name: string | null): Promise<Routine | null> {
+  const { data, error } = await supabase.rpc('program_day_targets', { p_day: dayId });
+  if (error) return getGymWorkoutRoutine(workoutId);
+  const rows = (data ?? []) as {
+    item_id: string; item_position: number; exercise_id: string; exercise_name: string | null;
+    sets: number; reps: number | null; seconds: number | null; weight_kg: number | string | null; rest_seconds: number;
+    progress_kind: string; prev_sets: number | null; prev_reps: number | null; prev_seconds: number | null; prev_weight_kg: number | string | null;
+  }[];
+  const last = (r: typeof rows[number]): string | null => {
+    if (r.progress_kind === 'weight' && r.prev_weight_kg != null && Number(r.prev_weight_kg) !== Number(r.weight_kg)) return `last week ${Number(r.prev_weight_kg)} kg`;
+    if (r.progress_kind === 'reps' && r.prev_reps != null && r.prev_reps !== r.reps) return `last week ${r.prev_reps} reps`;
+    if (r.progress_kind === 'sets' && r.prev_sets != null && r.prev_sets !== r.sets) return `last week ${r.prev_sets} sets`;
+    if (r.progress_kind === 'seconds' && r.prev_seconds != null && r.prev_seconds !== r.seconds) return `last week ${r.prev_seconds} s`;
+    return null;
+  };
+  return {
+    id: workoutId, name: name ?? 'Program day', notes: null, position: 0, updatedAt: new Date().toISOString(), source: 'member',
+    authorName: null, editedByName: null, editedAt: null,
+    exercises: [...rows].sort((a, b) => a.item_position - b.item_position).map((r) => ({
+      id: r.item_id, exerciseId: r.exercise_id, customName: null, name: r.exercise_name ?? 'Exercise',
+      isTimed: r.seconds != null && r.reps == null,
+      targetSets: r.sets, targetReps: r.reps, targetWeightKg: r.weight_kg == null ? null : Number(r.weight_kg),
+      targetSeconds: r.seconds, restSeconds: r.rest_seconds, lastWeek: last(r),
+    })),
+  };
+}
+
 export async function getGymWorkoutRoutine(workoutId: string): Promise<Routine | null> {
   const { data, error } = await supabase.from('gym_workouts')
     .select(`id, name, notes, updated_at, gym_workout_items (id, position, exercise_id, target_sets, target_reps,
@@ -122,6 +177,7 @@ export async function getGymWorkoutRoutine(workoutId: string): Promise<Routine |
   };
   return {
     id: w.id, name: w.name, notes: w.notes, position: 0, updatedAt: w.updated_at, source: 'member',
+    authorName: null, editedByName: null, editedAt: null,
     exercises: [...w.gym_workout_items].sort((a, b) => a.position - b.position).map((i) => ({
       id: i.id, exerciseId: i.exercise_id, customName: null,
       name: i.exercises?.name ?? 'Exercise', isTimed: i.exercises?.is_timed ?? false,

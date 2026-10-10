@@ -163,7 +163,7 @@ export const RAILS: Record<TabId, Destination[]> = {
   // Four sections instead of fifteen pills (2026-10-05): each opens a HUBS
   // section whose own tabs hold the screens that used to be pills of their own.
   train: [
-    { label: 'My plan', path: '/member/gym-plan', icon: ClipboardText, hub: 'plan' },
+    { label: 'Workouts', path: '/member/workouts/today', icon: ClipboardText, hub: 'plan' },
     { label: 'Progress', path: '/member/progress', icon: ChartLineUp, hub: 'progress' },
     { label: 'Coaching', path: '/member/booking-history', icon: ChalkboardTeacher, hub: 'coaching' },
     { label: 'Challenges', path: '/member/challenges', icon: Trophy, hub: 'compete' },
@@ -194,11 +194,14 @@ export type HubId = 'plan' | 'progress' | 'coaching' | 'compete';
  * leaves the section rather than walking back through its tabs.
  */
 export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
-  { id: 'plan', label: 'My plan', tabs: [
-    { label: 'This week', path: '/member/gym-plan', module: 'progress' },
-    { label: 'Programs', path: '/member/programs', module: 'programs' },
+  // One Workouts section (2026-10-10): today's workout, the routines you
+  // repeat, the programs that build week on week, and the free library. The
+  // week planner (/member/gym-plan) opens from Today.
+  { id: 'plan', label: 'Workouts', tabs: [
+    { label: 'Today', path: '/member/workouts/today' },
     { label: 'Routines', path: '/member/track', module: 'progress' },
-    { label: 'Free workouts', path: '/member/workouts' },
+    { label: 'Programs', path: '/member/programs', module: 'programs' },
+    { label: 'Browse', path: '/member/workouts' },
   ] },
   { id: 'progress', label: 'Progress', tabs: [
     { label: 'Overview', path: '/member/progress', module: 'progress' },
@@ -282,13 +285,14 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
     ],
   },
   {
-    group: 'My plan',
+    group: 'Workouts',
     items: [
       { label: 'Book a session', path: '/member/book-class' , module: 'classes' },
-      { label: 'This week', path: '/member/gym-plan' , module: 'progress' },
-      { label: 'Programs', path: '/member/programs' , module: 'programs' },
+      { label: "Today's workout", path: '/member/workouts/today' },
+      { label: 'Plan your week', path: '/member/gym-plan' , module: 'progress' },
       { label: 'Routines', path: '/member/track' , module: 'progress' },
-      { label: 'Free workouts', path: '/member/workouts' },
+      { label: 'Programs', path: '/member/programs' , module: 'programs' },
+      { label: 'Browse free workouts', path: '/member/workouts' },
     ],
   },
   {

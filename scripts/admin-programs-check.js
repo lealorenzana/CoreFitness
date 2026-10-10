@@ -166,12 +166,16 @@ async (page) => {
   await page.getByRole('button', { name: 'Add an exercise' }).click();
   await page.getByLabel('Exercise 1').selectOption({ label: 'Plank' });
   await page.getByLabel('Seconds 1').fill('45');
+  // A program builds week on week (0173): the plank gets 5 seconds longer each week.
+  await page.getByLabel('Each week 1').selectOption('seconds');
+  await page.getByLabel('Step 1').fill('5');
   await page.getByRole('button', { name: 'Save workout' }).click();
   await page.waitForTimeout(1200);
   const w = SENT.workouts[SENT.workouts.length - 1] || {};
   out.push('workout sent: ' + (w.name === 'Core Finisher' ? 'Core Finisher' : 'MISSING'));
   const it = SENT.items[SENT.items.length - 1] || {};
   out.push('its exercise sent: ' + (it.exercise_id === 'ex-plank' && it.target_seconds === 45 ? 'Plank 45 s' : 'MISSING ' + JSON.stringify(it)));
+  out.push('…and how it steps up each week: ' + (it.progress_kind === 'seconds' && it.progress_step === 5 ? '+5 s a week' : 'MISSING ' + JSON.stringify(it)));
   t = await text();
   out.push('the saved workout lists its exercise: ' + (/Core Finisher 1 exercise/.test(t) ? '1 exercise' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-workouts.png', fullPage: true });

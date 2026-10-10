@@ -11,6 +11,8 @@
     { "file": "member-join-check.js", "app": "member" },
     { "file": "member-get-app-check.js", "app": "member" },
     { "file": "member-paging-check.js", "app": "member" },
+    { "file": "member-workouts-check.js", "app": "member" },
+    { "file": "member-program-targets-check.js", "app": "member" },
     { "file": "member-reset-password-check.js", "app": "member" },
     { "file": "waiver-check.js", "app": "member" },
     { "file": "exercise-guide-check.js", "app": "member" },

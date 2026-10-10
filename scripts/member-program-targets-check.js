@@ -1,19 +1,11 @@
 /**
- * A gym that switched parts of the system off, and chose its own colour (0141),
- * seen from a member's phone and then a trainer's.
+ * A program day runs this week's targets (0173). The player asks the database
+ * (`program_day_targets`) and shows, for an exercise that steps up, this week's
+ * number beside last week's — "This week 3 × 8 reps @ 42.5 kg · last week 40 kg".
+ * An exercise that stays the same says nothing extra.
  *
- * What CLAUDE.md calls "a control writing a flag nothing reads" is the failure
- * here: 0110 gave gyms nine switches, 0118-0133 added ten features none of them
- * reached, and the trainer app read none at all. So this asserts the *effect* of
- * each switch on the screens, not the switch:
- *   - the More sheet drops what is off and keeps what is on;
- *   - the Train tab falls back to the free library when classes are off;
- *   - the check-in block and the assistant bubble leave with their switches;
- *   - a typed or notified link to a switched-off screen says "Not at this gym";
- *   - the trainer's tabs and rail follow the same switches;
- *   - a colour code reaches the phone, adjusted until its text reads at 4.5:1.
- *
- * Setup copied from member-shop-check.js.
+ * Setup copied from workout-run-check.js; the open workout is a program day.
+ * Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -42,8 +34,7 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => {
     localStorage.setItem(k, JSON.stringify(s));
-    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com',
-      role: localStorage.getItem('__role') || 'member' }));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
   }, [KEY, session]);
 
   const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
@@ -75,8 +66,8 @@ async (page) => {
         target_reps: 12, target_weight_kg: 100, target_seconds: null, rest_seconds: 60 },
       { id: 'x3', routine_id: 'r1', position: 2, exercise_id: 'e3', custom_name: null, target_sets: 2,
         target_reps: null, target_weight_kg: null, target_seconds: 20, rest_seconds: 30 }],
-    workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
-      completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
+    workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Pull day', routine_id: null, gym_workout_id: 'gw1', program_day_id: 'pd2',
+      created_at: new Date(Date.now() - 6 * 60000).toISOString(), completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
     workout_sets: [],
     gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
@@ -88,15 +79,6 @@ async (page) => {
       { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
     ],
     saved_resources: [],
-    // The coach's roster (0082): one trainee.
-    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
-      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
-    gym_programs: [
-      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
-        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
-      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
-        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
-    ],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
       activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
@@ -129,22 +111,16 @@ async (page) => {
   }));
 
   const CALLS = {};
+  const SEEN = [];
   const FN = {
-    shop_catalog: () => [
-      { id: 'p1', name: 'Water 500ml', category: 'Drinks', description: null, price: 20, photo_url: null, availability: 'in_stock' },
-      { id: 'p2', name: 'Whey scoop', category: 'Supplements', description: 'Chocolate', price: 60, photo_url: null, availability: 'low' },
-      { id: 'p4', name: 'Pre-workout', category: 'Supplements', description: null, price: 80, photo_url: null, availability: 'sold_out' },
-    ],
+    request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
+      const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
+      DB.renewal_requests.push({ id: 'rr' + (++n), member_id: 'm1', plan_id: b.p_plan, note: b.p_note, status: 'open',
+        created_at: new Date().toISOString(), closed_at: null, close_note: null, membership_plans: { name: plan.name, price: plan.price } });
+      return 'rr' + n; },
+    withdraw_renewal_request: () => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; }); return null; },
   };
-  // Off: classes, rooms, chat, shop, squads, quests, the assistant and QR check-in.
-  // On: engagement (so Challenges stays), seasons and referrals inside it.
-  const MODULES = { front_desk: true, checkin: false, classes: false, coaching: true, engagement: true,
-    progress: true, assistant: false, push: true, analytics: true, shop: false, requests: true, chat: false,
-    rooms: false, programs: true, photos: true, squads: false, seasons: true, quests: false, referrals: true };
   const RPC = {
-    my_gym_app: [{ gym_id: 'gym-1', gym_name: 'Harbour Strength', slug: 'harbour', short_name: null, logo_url: null,
-      accent: '#1F8A70', accent_action: '#FFEE00', points_name: 'Points', points_name_short: 'points',
-      welcome_message: null, tagline: null, vocabulary: null, modules: MODULES }],
     refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
       has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
     gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
@@ -152,6 +128,12 @@ async (page) => {
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
+    // Week 2 of a program: squat +2.5 kg a week, plank the same.
+    program_day_targets: [
+      { item_id: 'i1', item_position: 0, exercise_id: 'e1', exercise_name: 'Barbell Squat', sets: 3, reps: 8, seconds: null, weight_kg: 42.5,
+        rest_seconds: 90, progress_kind: 'weight', prev_sets: 3, prev_reps: 8, prev_seconds: null, prev_weight_kg: 40 },
+      { item_id: 'i2', item_position: 1, exercise_id: 'e3', exercise_name: 'Plank', sets: 2, reps: null, seconds: 30, weight_kg: null,
+        rest_seconds: 30, progress_kind: 'none', prev_sets: 2, prev_reps: null, prev_seconds: 30, prev_weight_kg: null }],
     member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
       { exercise_id: 'e1', set_number: 2, reps: 8, weight_kg: 50, duration_seconds: null }],
   };
@@ -170,6 +152,7 @@ async (page) => {
       headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
 
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
+    if (path.startsWith('/rest/v1/')) SEEN.push(req.method() + ' ' + path.replace('/rest/v1/', '') + ' ' + params.filter(([k]) => k === 'select').map(([, v]) => v).join(''));
     if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
       // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
       // own profiles, so the sign-in gates see the role they always did.
@@ -194,7 +177,7 @@ async (page) => {
         const me = rows.find((p) => p.id === sub) || rows[0];
         return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
           role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
-          accent: '#1F8A70', accent_action: '#FFEE00', gym_count: 1 }] : []);
+          accent: 'violet', gym_count: 1 }] : []);
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
@@ -237,101 +220,11 @@ async (page) => {
     await page.waitForTimeout(1300);
   };
 
-
-
-  const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
-
-
-  const nav = async () => (await page.evaluate(() => document.querySelector('nav[aria-label="Main"]')?.innerText ?? '')).replace(/\s+/g, ' ');
-
-  // ---- the member ------------------------------------------------------------
-  await go('/member/home');
-  let t = await text();
-  const bar = await nav();
-  out.push('home loads: ' + (/Today/.test(bar) ? 'yes' : 'MISSING'));
-  out.push('check-in block gone with QR check-in: '
-    + ((await page.getByRole('button', { name: /Check in\. Show my code|Checked in today/ }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
-  out.push('assistant bubble gone with the assistant: '
-    + ((await page.getByRole('button', { name: 'Open the AI assistant' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
-
-  // The colour code, as the phone drew it.
-  const colours = await page.evaluate(() => {
-    const cs = getComputedStyle(document.documentElement);
-    const v = (n) => cs.getPropertyValue(n).trim();
-    const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    const lum = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-    return { primary: v('--color-primary'), text: v('--color-primary-300'), action: v('--color-secondary'),
-      actionText: v('--color-secondary-300'),
-      textRatio: ratio(v('--color-primary-300'), '#0B0B12'), actionRatio: ratio(v('--color-secondary-300'), '#0B0B12') };
-  });
-  out.push('brand colour drawn exactly: ' + (colours.primary.toUpperCase() === '#1F8A70' ? '#1F8A70' : 'MISSING (' + colours.primary + ')'));
-  out.push('its text shade reads: ' + (colours.textRatio >= 4.5 ? colours.text + ' ' + colours.textRatio.toFixed(1) + ':1' : 'MISSING readable text ' + colours.textRatio.toFixed(2)));
-  out.push('a too-light action colour is darkened for buttons, text still reads: '
-    + (colours.action && colours.action.toUpperCase() !== '#FFEE00' && colours.actionRatio >= 4.5
-      ? colours.action + ', text ' + colours.actionRatio.toFixed(1) + ':1' : 'MISSING (' + colours.action + ')'));
-  await page.screenshot({ path: 'shots/member-switches-home.png' });
-  // 2026-10-03: a gym that chose its colours still showed violet and amber in
-  // every glow, ring and gradient, because those were hard-coded. Nothing on
-  // Today may still paint Core Fitness's own two colours.
-  const leaks = await page.evaluate(() => {
-    const bad = /rgba?\(124, 58, 237|rgba?\(245, 158, 11|rgba?\(139, 92, 246|rgba?\(196, 181, 253|rgba?\(167, 139, 250/;
-    const props = ['color', 'backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'fill', 'stroke', 'outlineColor'];
-    const hits = [];
-    for (const el of document.querySelectorAll('body *')) {
-      const cs = getComputedStyle(el);
-      for (const p of props) if (bad.test(cs[p])) { hits.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)} ${p} ${cs[p].slice(0, 160)} [${(el.getAttribute('style') || '').slice(0, 160)}]`); break; }
-    }
-    return hits;
-  });
-  out.push('no Core Fitness violet or amber left on Today: ' + (leaks.length === 0 ? 'yes' : 'STILL SHOWN ' + leaks.slice(0, 6).join(' | ')));
-
-  // The More sheet.
-  await page.getByRole('button', { name: /^More/ }).first().click();
-  await page.waitForTimeout(700);
-  t = await text();
-  const gone = ['Shop', 'Messages', 'Rooms', 'Squad', 'My bookings'].filter((l) => new RegExp('\\b' + l + '\\b').test(t));
-  const kept = ['Challenges', 'Season', 'Invite a friend', 'Progress photos', 'Renew', 'Browse free workouts'].filter((l) => !t.includes(l));
-  out.push('More drops what is off: ' + (gone.length ? 'STILL SHOWN ' + gone.join(', ') : 'yes'));
-  out.push('More keeps what is on: ' + (kept.length ? 'MISSING ' + kept.join(', ') : 'yes'));
-  await page.screenshot({ path: 'shots/member-switches-more.png' });
-  await page.keyboard.press('Escape').catch(() => {});
-
-  // Train, with no classes to book, opens the free library.
-  await go('/member/home');
-  // Scoped to the tab bar: Today has a "Training plan" link that /^Train/ also matches.
-  await page.locator('nav[aria-label="Main"]').getByText('Train', { exact: true }).click();
-  await page.waitForTimeout(1000);
-  out.push('Train falls back to free workouts: ' + (page.url().includes('/member/workouts') ? 'yes' : 'NO (' + page.url() + ')'));
-
-  // A link that outlived the switch.
-  for (const [path, name] of [['/member/shop', 'the shop'], ['/member/rooms', 'coaching rooms'], ['/member/book-class', 'classes']]) {
-    await go(path);
-    t = await text();
-    out.push(path + ' says not at this gym: ' + (/Not at this gym/.test(t) && /Nothing of yours was deleted/.test(t) ? 'yes' : 'MISSING'));
-  }
-  await page.screenshot({ path: 'shots/member-switches-gate.png' });
-  await go('/member/challenges');
-  t = await text();
-  out.push('a switched-on screen is not gated: ' + (!/Not at this gym/.test(t) ? 'yes' : 'NO, gated'));
-  out.push('weekly quests hidden, challenges kept: ' + (!/This week's quests/.test(t) ? 'yes' : 'STILL SHOWN quests'));
-
-  // ---- the trainer -------------------------------------------------------------
-  ME.role = 'trainer';
-  await page.evaluate(() => localStorage.setItem('__role', 'trainer'));
-  await go('/trainer/home');
-  const tbar = await page.evaluate(() => [...document.querySelectorAll('nav a, nav button')].map((e) => e.innerText.trim()).filter(Boolean).join(' | '));
-  out.push('trainer tabs: ' + tbar);
-  out.push('trainer tabs drop Rooms and Schedule: ' + (!/\bRooms\b/.test(tbar) && !/\bSchedule\b/.test(tbar) ? 'yes' : 'STILL SHOWN'));
-  out.push('trainer keeps Home, Bookings, Profile: ' + (/Home/.test(tbar) && /Bookings/.test(tbar) && /Profile/.test(tbar) ? 'yes' : 'MISSING'));
-  t = await text();
-  out.push('trainer home has no Schedule link: ' + ((await page.getByRole('button', { name: 'Schedule' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
-  await page.screenshot({ path: 'shots/trainer-switches-home.png' });
-  await go('/trainer/rooms');
-  t = await text();
-  out.push('/trainer/rooms says not at this gym: ' + (/Not at this gym/.test(t) ? 'yes' : 'MISSING'));
-  await go('/trainer/messages');
-  t = await text();
-  out.push('/trainer/messages says not at this gym: ' + (/Not at this gym/.test(t) ? 'yes' : 'MISSING'));
-  return out.join('\n');
+  await go('/member/track/session/L1');
+  await page.waitForTimeout(800);
+  const t = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  out.push('the program day opens in the player: ' + (/Barbell Squat/.test(t) ? 'yes' : 'MISSING ' + SEEN.filter((x) => /workout_logs|program|gym_workouts/.test(x)).join(' | ')));
+  out.push("this week's target beside last week's: " + (/This week 3 × 8 reps @ 42\.5 kg · last week 40 kg/.test(t) ? 'yes' : 'MISSING ' + (t.match(/3 × [^·]*·[^·]*/) || [''])[0]));
+  await shot('program-targets');
+  return out.join(String.fromCharCode(10));
 }

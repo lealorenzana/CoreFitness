@@ -83,7 +83,7 @@ export interface MemberDetailForTrainer {
     coachDays: number[];
   } | null;
   /** Saved routines (0086) — under "workouts" sharing, like the logs they produce. */
-  routines: { id: string; name: string; exerciseCount: number; source: 'member' | 'coach' }[];
+  routines: { id: string; name: string; exerciseCount: number; source: 'member' | 'coach' | 'trainer' }[];
   /** Goal id → current value from `goal_current_value` (0087), the number the
    *  member's own Goals tab shows. Null where the database gives none. */
   goalValues: Record<string, number | null>;

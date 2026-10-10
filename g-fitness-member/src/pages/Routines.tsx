@@ -8,8 +8,10 @@ import FeatureLock from '../components/ui/FeatureLock';
 import { toast } from '../components/ui/Toast';
 import { getCurrentMemberId } from '../services/bookingService';
 import {
-  getOpenRoutineSession, listRoutines, routineSummary, startRoutineSession, type Routine,
+  getOpenRoutineSession, listRoutines, routineSourceLabel, routineSummary, startRoutineSession, type Routine,
 } from '../lib/api/routines';
+import { useGymApp } from '../hooks/useGymApp';
+import { word } from '../lib/gymApp';
 import { errorMessage } from '../utils/errorMessage';
 
 /**
@@ -21,6 +23,7 @@ import { errorMessage } from '../utils/errorMessage';
  */
 export default function Routines() {
   const navigate = useNavigate();
+  const trainerWord = word(useGymApp(), 'trainer', true);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof getOpenRoutineSession>>>(null);
@@ -66,8 +69,8 @@ export default function Routines() {
   };
 
   const title = (
-    <PageTitle back fallback="/member/home" title="My routines"
-      subtitle="Build a workout once, then let the app walk you through it" />
+    <PageTitle back fallback="/member/workouts/today" title="Routines"
+      subtitle="Saved workouts you repeat — yours, your coach's and the AI coach's" />
   );
 
   return (
@@ -121,10 +124,11 @@ export default function Routines() {
                             <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
                               {r.exercises.length === 0 ? 'No exercises yet — tap to add' : routineSummary(r)}
                             </span>
-                            {/* Applied from the coach's proposal (0145); editing it keeps it yours to change. */}
-                            {r.source === 'coach' && (
-                              <span className="block" style={{ marginTop: 5 }}><StatusPill label="Built with the coach" /></span>
-                            )}
+                            {/* Where it came from (2026-10-10): yours, the AI coach's (0145) or a coach's (0172). */}
+                            <span className="block" style={{ marginTop: 5 }} data-routine-source={r.source}>
+                              <StatusPill label={routineSourceLabel(r, trainerWord)} tone={r.source === 'member' ? 'muted' : 'structure'} />
+                              {r.editedByName && <span style={{ fontSize: 12, marginLeft: 8, color: 'var(--color-text-muted)' }}>Edited by {trainerWord} {r.editedByName}</span>}
+                            </span>
                           </span>
                         </button>
                         {r.exercises.length > 0 ? (

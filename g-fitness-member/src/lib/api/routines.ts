@@ -25,6 +25,8 @@ export interface RoutineExercise {
   restSeconds: number;
   /** From the catalogue, for display only (the run screen's backdrop). Absent on custom rows. */
   muscleGroup?: string | null;
+  /** A program day (0173): what last week asked for, when this week asks for more — "last week 40 kg". */
+  lastWeek?: string | null;
   equipment?: string | null;
 }
 
@@ -35,13 +37,28 @@ export interface Routine {
   position: number;
   exercises: RoutineExercise[];
   updatedAt: string;
-  /** 0145: 'coach' when the member applied the coach's proposal. 'member' before 0145. */
-  source: 'member' | 'coach';
+  /** 0145: 'coach' when the member applied the AI coach's proposal; 0172: 'trainer' when a coach wrote it. */
+  source: 'member' | 'coach' | 'trainer';
+  /** The coach who wrote it (source 'trainer'), first name. */
+  authorName: string | null;
+  /** 0172: a coach changed it — who and when ("Edited by Coach Ben"). */
+  editedByName: string | null;
+  editedAt: string | null;
+}
+
+/** Where a routine came from, as the member reads it (2026-10-10). */
+export function routineSourceLabel(r: Pick<Routine, 'source' | 'authorName'>, coachWord = 'Coach'): string {
+  if (r.source === 'coach') return 'AI coach';
+  if (r.source === 'trainer') return r.authorName ? `${coachWord} ${r.authorName}` : coachWord;
+  return 'Yours';
 }
 
 interface RoutineRow {
   id: string; name: string; notes: string | null; position: number; updated_at: string;
   source?: string | null;
+  edited_at?: string | null;
+  author?: { first_name: string | null } | null;
+  editor?: { first_name: string | null } | null;
   workout_routine_exercises: {
     id: string; position: number; exercise_id: string | null; custom_name: string | null;
     target_sets: number; target_reps: number | null; target_weight_kg: string | number | null;
@@ -54,7 +71,10 @@ const BASE_SELECT = `id, name, notes, position, updated_at,
   workout_routine_exercises (id, position, exercise_id, custom_name, target_sets, target_reps,
     target_weight_kg, target_seconds, rest_seconds, exercises (name, is_timed, muscle_group, equipment))`;
 // 0145's `source` first; before 0145 the column does not exist and the routine is the member's.
-const SELECT = `source, ${BASE_SELECT}`;
+const SELECT_0145 = `source, ${BASE_SELECT}`;
+// 0172's authorship: who wrote it, who last edited it. Falls back to 0145, then to the bare columns.
+const SELECT = `source, edited_at, author:profiles!workout_routines_author_id_fkey(first_name),
+  editor:profiles!workout_routines_edited_by_fkey(first_name), ${BASE_SELECT}`;
 
 function toRoutine(r: RoutineRow): Routine {
   return {
@@ -63,7 +83,10 @@ function toRoutine(r: RoutineRow): Routine {
     notes: r.notes,
     position: r.position,
     updatedAt: r.updated_at,
-    source: r.source === 'coach' ? 'coach' : 'member',
+    source: r.source === 'coach' ? 'coach' : r.source === 'trainer' ? 'trainer' : 'member',
+    authorName: r.author?.first_name ?? null,
+    editedByName: r.editor?.first_name ?? null,
+    editedAt: r.edited_at ?? null,
     exercises: [...(r.workout_routine_exercises ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((e) => ({
@@ -90,16 +113,20 @@ export async function listRoutines(memberId: string): Promise<Routine[]> {
     .eq('member_id', memberId)
     .order('position')
     .order('created_at');
-  const full = await q(SELECT);
-  const { data, error } = !full.error ? full : await q(BASE_SELECT);
+  let res = await q(SELECT);
+  if (res.error) res = await q(SELECT_0145);
+  if (res.error) res = await q(BASE_SELECT);
+  const { data, error } = res;
   if (error) throw error;
   return ((data ?? []) as unknown as RoutineRow[]).map(toRoutine);
 }
 
 export async function getRoutine(id: string): Promise<Routine | null> {
   const q = (cols: string) => supabase.from('workout_routines').select(cols).eq('id', id).maybeSingle();
-  const full = await q(SELECT);
-  const { data, error } = !full.error ? full : await q(BASE_SELECT);
+  let res = await q(SELECT);
+  if (res.error) res = await q(SELECT_0145);
+  if (res.error) res = await q(BASE_SELECT);
+  const { data, error } = res;
   if (error) throw error;
   return data ? toRoutine(data as unknown as RoutineRow) : null;
 }
@@ -213,6 +240,8 @@ export interface SessionHeader {
   routineId: string | null;
   /** A gym program day (0122) runs a gym workout instead of the member's routine. */
   gymWorkoutId: string | null;
+  /** The program day it runs (0122): its week decides the targets (0173). */
+  programDayId: string | null;
   activity: string | null;
   startedAt: string;
   completedAt: string | null;
@@ -220,8 +249,9 @@ export interface SessionHeader {
 
 export async function getSession(logId: string): Promise<SessionHeader | null> {
   const q = (cols: string) => supabase.from('workout_logs').select(cols).eq('id', logId).maybeSingle();
-  const full = await q('id, routine_id, gym_workout_id, activity, created_at, completed_at');
-  const { data, error } = !full.error ? full : await q('id, routine_id, activity, created_at, completed_at');
+  let res = await q('id, routine_id, gym_workout_id, program_day_id, activity, created_at, completed_at');
+  if (res.error) res = await q('id, routine_id, activity, created_at, completed_at');
+  const { data, error } = res;
   if (error) throw error;
   const row = data as unknown as Record<string, string | null> | null;
   return row
@@ -229,6 +259,7 @@ export async function getSession(logId: string): Promise<SessionHeader | null> {
         logId: row.id as string,
         routineId: row.routine_id ?? null,
         gymWorkoutId: row.gym_workout_id ?? null,
+        programDayId: row.program_day_id ?? null,
         activity: row.activity ?? null,
         startedAt: row.created_at as string,
         completedAt: row.completed_at ?? null,
