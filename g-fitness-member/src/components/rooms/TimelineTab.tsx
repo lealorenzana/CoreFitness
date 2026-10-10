@@ -5,7 +5,7 @@ import { TextArea } from '../ui/Field';
 import { toast } from '../ui/Toast';
 import { supabase } from '../../lib/supabaseClient';
 import { coachTimeline, type TimelineItem } from '../../lib/api/coachPlace';
-import { markRead, myConversations, openConversation, sendMessage, setMuted, type Conversation } from '../../lib/api/chat';
+import { listMessages, markRead, myConversations, openConversation, sendMessage, setMuted, type Conversation } from '../../lib/api/chat';
 import { roomPeople, type Room } from '../../lib/api/rooms';
 import { markFeedback } from '../../lib/api/trainerFeedback';
 import { useGymApp } from '../../hooks/useGymApp';
@@ -45,10 +45,22 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
   const marked = useRef(new Set<string>());
   const [doneNow, setDoneNow] = useState<Record<string, boolean>>({});
 
+  const otherForLoad = useRef<string | null>(null);
   const load = useCallback(async () => {
     const page = await coachTimeline(room.id);
-    setItems(page ?? null);
-    if (page && page.length < 30) setMore(false);
+    if (page) {
+      setItems(page);
+      if (page.length < 30) setMore(false);
+      return;
+    }
+    // Before 0174 there is no timeline: show the chat on its own rather than
+    // nothing, so a member is never cut off from their coach in between.
+    const withId = otherForLoad.current;
+    const c = withId ? (await myConversations())?.find((x) => x.otherId === withId) : undefined;
+    if (!c) { setItems(withId ? [] : null); setMore(false); return; }
+    const msgs = await listMessages(c.id).catch(() => []);
+    setItems([...msgs].reverse().map((m) => ({ kind: 'message' as const, id: m.id, at: m.createdAt, authorId: m.senderId, body: m.body, refId: c.id, extra: {} })));
+    setMore(false);
   }, [room.id]);
 
   // The conversation with the other person, marked read whenever the room is looked at.
@@ -79,6 +91,7 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
         if (m) o = { id: m.memberId, name: m.name };
       }
       if (!alive) return;
+      otherForLoad.current = o?.id ?? null;
       setMe(uid); setOther(o);
       await load();
     })();
