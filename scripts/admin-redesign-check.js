@@ -67,7 +67,7 @@ async (page) => {
     gym_settings: [{ id: true, gym_id: 'gym-1', gym_name: 'G Fitness', activity_options: ['Weight Training', 'Cardio', 'Strength Training'],
       day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: 1200, guest_nudge_visits: 3 }],
   };
-  const RPC = { guest_visits_on: [], my_gym_modules: [], my_gyms: [], my_announcements: [], my_gym_features: [] };
+  const RPC = { guest_visits_on: [], my_gym_modules: [], my_gyms: [], my_announcements: [], my_gym_features: [], list_invitations: [] };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -165,6 +165,23 @@ async (page) => {
   has('the row menu keeps every action', /View details/.test(menu) && /Edit member/.test(menu) && /(Suspend|Reactivate) account/.test(menu) && /Archive member/.test(menu));
   await page.keyboard.press('Escape');
   await page.screenshot({ path: 'shots/rd-members-menu.png' });
+
+  // ── Invitations ──
+  RPC.list_invitations = [
+    { id: 'i1', email: 'maria.reyes@gmail.com', first_name: 'Maria', last_name: 'Reyes', phone: null, role: 'member', token: 'tok1',
+      expires_at: iso(12), accepted_at: null, revoked_at: null, note: null, created_at: iso(-2), state: 'waiting' },
+    { id: 'i2', email: 'jdelacruz@yahoo.com', first_name: 'Juan', last_name: 'Dela Cruz', phone: null, role: 'member', token: 'tok2',
+      expires_at: iso(2), accepted_at: null, revoked_at: null, note: null, created_at: iso(-4), state: 'waiting' },
+  ];
+  t = await visit('/invitations', 'invitations');
+  has('three tiles', /Pending invitations/.test(t) && /Accepted this month/.test(t) && /Expiring soon/.test(t));
+  has('one person and a group, side by side', (await page.locator('[data-invite-one]').count()) === 1 && (await page.locator('[data-invite-group]').count()) === 1 && /Upload CSV/.test(t) && /Review invitations/.test(t));
+  has('the waiting list with Copy link, Email it, Withdraw', (await page.locator('[data-invite-row]').count()) === 2 && /Copy link/.test(t) && /Email it/.test(t) && /Withdraw/.test(t) && /2 pending/.test(t));
+  has('an invite expiring within 3 days is counted', /Expiring soon\s*1/.test(t));
+  await page.getByLabel('Paste your list').fill('ana@x.ph, Ana, Cruz\nnot-an-email');
+  await page.getByRole('button', { name: 'Review invitations' }).click(); await page.waitForTimeout(300);
+  has('Review shows who will be invited, and what cannot be used', /1 to invite as members, 1 that cannot be used/.test(await page.locator('[data-invite-review]').innerText().catch(() => '')) && (await page.getByRole('button', { name: /Invite 1 person/ }).count()) === 1);
+  await page.screenshot({ path: 'shots/rd-invitations-review.png', fullPage: true });
 
   return out.join('\n');
 }

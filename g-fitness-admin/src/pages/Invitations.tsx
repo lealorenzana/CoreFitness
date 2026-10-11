@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Mail, Upload, X } from 'lucide-react';
-import Button from '../components/ui/Button';
-import Pagination from '../components/ui/Pagination';
-import { PageSummary } from '../components/ui/kit';
+import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
 import { showToast } from '../utils/toast';
 import { getGymContext } from '../lib/gymContext';
@@ -10,28 +7,35 @@ import {
   emailInvitation, importInvites, inviteLink, inviteToGym, listInvitations, parseList, revokeInvitation,
   type ImportResult, type Invitation, type InviteRole, type ParsedRow,
 } from '../lib/api/invitations';
+import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, IconTile } from '../components/ui/rd';
+import type { Tone } from '../components/ui/rdTokens';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
+/** "2 days ago" / "In 12 days", from whole days. */
+const relDays = (iso: string, now: number) => {
+  const d = Math.round((new Date(iso).getTime() - now) / 86_400_000);
+  if (d === 0) return 'Today';
+  return d > 0 ? `In ${d} day${d === 1 ? '' : 's'}` : `${-d} day${d === -1 ? '' : 's'} ago`;
+};
+const ROLE: Record<InviteRole, string> = { member: 'Member', trainer: 'Coach', staff: 'Front desk' };
+const STATE_TONE: Record<Invitation['state'], Tone> = { waiting: 'violet', accepted: 'green', revoked: 'gray', expired: 'amber' };
+const STATE_LABEL: Record<Invitation['state'], string> = { waiting: 'Waiting', accepted: 'Joined', revoked: 'Withdrawn', expired: 'Expired' };
 
 /**
- * Bringing in the members a gym already has.
+ * Bringing in the members a gym already has (redesigned 2026-10-11 from the
+ * owner's mock-up): three counts, one person or a whole list side by side,
+ * and the invitations waiting to be accepted.
  *
- * A gym that joins Core Fitness does not start empty — it has two hundred
- * people who train there. Creating them one at a time at the desk was the only
- * thing that existed, so this screen exists to do the other two hundred.
- *
- * Invitations rather than accounts, deliberately: an account needs a password,
- * and a password the gym chooses is one the gym knows. An invitation lets each
- * member set their own, and it is addressed — accepting one requires signing in
- * with the address it was sent to, so a link that gets forwarded cannot be used
- * by whoever received it (0111).
- *
- * The gym hands out the link the way it already talks to its members, or presses
- * "Email it" — which says whether it went, and never implies an inbox it did not reach.
+ * Invitations rather than accounts, deliberately: each member sets their own
+ * password, and an invitation is addressed — accepting it needs the address it
+ * was sent to (0111). The gym hands out the link the way it already talks to
+ * its members, or presses "Email it", which says whether it went.
  */
 export default function Invitations() {
   const [rows, setRows] = useState<Invitation[] | null>(null);
+  /** Every invitation, for the counts above the page (the list below may be waiting-only). */
+  const [all, setAll] = useState<Invitation[]>([]);
   const paged = usePaged(rows ?? [], 20);
   const [showDone, setShowDone] = useState(false);
   const [role, setRole] = useState<InviteRole>('member');
@@ -45,11 +49,15 @@ export default function Invitations() {
   const [gym, setGym] = useState<{ id: string; name: string } | null>(null);
   const [mailing, setMailing] = useState<string | null>(null);
   const [mailed, setMailed] = useState<Record<string, string>>({});
+  const [reviewing, setReviewing] = useState(false);
+  /** Now, read once — never during a render. */
+  const [nowMs] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     try {
-      const [list, ctx] = await Promise.all([listInvitations(showDone), getGymContext()]);
+      const [list, every, ctx] = await Promise.all([listInvitations(showDone), listInvitations(true).catch(() => []), getGymContext()]);
       setRows(list);
+      setAll(every);
       setIsAdmin(ctx?.role === 'admin');
       setGym(ctx?.gymId && ctx.gymName ? { id: ctx.gymId, name: ctx.gymName } : null);
     } catch (e) {
@@ -63,6 +71,17 @@ export default function Invitations() {
   const parsed: ParsedRow[] = useMemo(() => (paste.trim() ? parseList(paste) : []), [paste]);
   const usable = parsed.filter((r) => !r.problem);
   const broken = parsed.filter((r) => r.problem);
+
+  const counts = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const soon = now.getTime() + 3 * 86_400_000;
+    return {
+      waiting: all.filter((r) => r.state === 'waiting').length,
+      acceptedThisMonth: all.filter((r) => r.state === 'accepted' && r.accepted_at && new Date(r.accepted_at).getTime() >= monthStart).length,
+      expiringSoon: all.filter((r) => r.state === 'waiting' && new Date(r.expires_at).getTime() <= soon).length,
+    };
+  }, [all]);
 
   const inviteOne = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,12 +105,11 @@ export default function Invitations() {
     setImporting(null);
     setResult(r);
     setPaste('');
+    setReviewing(false);
     await load();
   };
 
-  const onFile = async (file: File) => {
-    setPaste(await file.text());
-  };
+  const onFile = async (file: File) => { setPaste(await file.text()); setReviewing(true); setResult(null); };
 
   const copy = (text: string, key: string) => {
     void navigator.clipboard.writeText(text).then(() => {
@@ -120,222 +138,225 @@ export default function Invitations() {
       setMailing(null);
     }
   };
-
-  const card = 'rounded-xl border p-5';
-  const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color-surface)' };
-  const labelCls = 'block text-xs mb-1';
-  const labelStyle = { color: 'var(--color-text-secondary)' };
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
-  const inputStyle = {
-    borderColor: 'var(--color-border)', background: 'var(--color-bg)',
-    color: 'var(--color-text-primary)',
+  const withdraw = async (r: Invitation) => {
+    try { await revokeInvitation(r.id); await load(); }
+    catch (e) { showToast(e instanceof Error ? e.message : 'Could not withdraw it', 'error'); }
   };
 
+  const labelCls = 'block text-[14.5px] mb-2 font-medium';
+  const labelSt = { color: 'var(--color-text-primary)' };
+  const input = 'w-full h-12 rounded-xl px-4 text-[15px] text-white outline-none';
+  const inputSt = { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)' };
+  const muted = { color: 'var(--color-text-secondary)' };
+  const roleWord = role === 'member' ? 'members' : role === 'trainer' ? 'coaches' : 'front desk';
+
   return (
-    <div className="max-w-3xl space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Invitations</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          For the members you already have. Each person gets their own link, sets their own password,
-          and arrives already approved — no queue to work through.
-        </p>
+    <div className="flex flex-col gap-6" data-invitations>
+      <RdHeader title="Invitations" subtitle="Invite members and manage pending invites. Each person sets their own password and arrives already approved." />
+
+      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+        <StatTile icon={Users} label="Pending invitations" value={counts.waiting} sub="Invites waiting to be accepted"
+          onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
+        <StatTile icon={CheckCircle2} tone="green" label="Accepted this month" value={counts.acceptedThisMonth} sub="New members joined"
+          onClick={() => { setShowDone(true); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
+        <StatTile icon={Clock} tone="amber" label="Expiring soon" value={counts.expiringSoon} sub="Expires in 3 days or less"
+          onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
       </div>
 
-      {/* ---- one person ----------------------------------------------------- */}
-      <form className={card} style={cardStyle} onSubmit={inviteOne}>
-        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          Invite one person
-        </h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelCls} style={labelStyle} htmlFor="iv-email">Email</label>
-            <input id="iv-email" type="email" required className={input} style={inputStyle}
-              value={one.email} onChange={(e) => setOne({ ...one, email: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls} style={labelStyle} htmlFor="iv-first">First name (optional)</label>
-            <input id="iv-first" className={input} style={inputStyle}
-              value={one.firstName} onChange={(e) => setOne({ ...one, firstName: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls} style={labelStyle} htmlFor="iv-last">Last name (optional)</label>
-            <input id="iv-last" className={input} style={inputStyle}
-              value={one.lastName} onChange={(e) => setOne({ ...one, lastName: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls} style={labelStyle} htmlFor="iv-phone">Mobile (optional)</label>
-            <input id="iv-phone" className={input} style={inputStyle} placeholder="09XX XXX XXXX"
-              value={one.phone} onChange={(e) => setOne({ ...one, phone: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls} style={labelStyle} htmlFor="iv-role">Joining as</label>
-            <select id="iv-role" className={input} style={inputStyle} value={role}
-              onChange={(e) => setRole(e.target.value as InviteRole)}>
-              <option value="member">Member</option>
-              {/* The front desk brings members in; only an owner brings in a
-                  coach or more desk staff. The database enforces the same
-                  split, so a staff account never sees an option it cannot use. */}
-              {isAdmin && <option value="trainer">Coach</option>}
-              {isAdmin && <option value="staff">Front desk</option>}
-            </select>
-          </div>
-        </div>
-        <Button className="mt-4" type="submit" disabled={busy}>
-          {busy ? 'Inviting…' : 'Create invitation'}
-        </Button>
-      </form>
+      <div className="rd-invite-grid">
+        {/* ── One person ── */}
+        <RdCard className="p-6">
+          <form onSubmit={inviteOne} data-invite-one>
+            <div className="flex items-start gap-4">
+              <IconTile icon={UserPlus} size={52} />
+              <div>
+                <h2 className="text-[20px] font-semibold text-white">Invite one person</h2>
+                <p className="text-[14.5px]" style={muted}>Send a single invitation to a new member.</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={labelCls} style={labelSt} htmlFor="iv-email">Email</label>
+                <input id="iv-email" type="email" required className={input} style={inputSt} placeholder="name@example.com"
+                  value={one.email} onChange={(e) => setOne({ ...one, email: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelCls} style={labelSt} htmlFor="iv-first">First name (optional)</label>
+                <input id="iv-first" className={input} style={inputSt} placeholder="e.g. Maria"
+                  value={one.firstName} onChange={(e) => setOne({ ...one, firstName: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelCls} style={labelSt} htmlFor="iv-last">Last name (optional)</label>
+                <input id="iv-last" className={input} style={inputSt} placeholder="e.g. Santos"
+                  value={one.lastName} onChange={(e) => setOne({ ...one, lastName: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelCls} style={labelSt} htmlFor="iv-phone">Mobile (optional)</label>
+                <input id="iv-phone" className={input} style={inputSt} placeholder="09XX XXX XXXX"
+                  value={one.phone} onChange={(e) => setOne({ ...one, phone: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelCls} style={labelSt} htmlFor="iv-role">Joining as</label>
+                <select id="iv-role" className={input} style={{ ...inputSt, colorScheme: 'dark' }} value={role}
+                  onChange={(e) => setRole(e.target.value as InviteRole)}>
+                  <option value="member">Member</option>
+                  {/* Only an owner brings in a coach or more desk staff — the database enforces the same split. */}
+                  {isAdmin && <option value="trainer">Coach</option>}
+                  {isAdmin && <option value="staff">Front desk</option>}
+                </select>
+              </div>
+            </div>
+            <RdButton className="mt-6" variant="primary" icon={Send} type="submit" disabled={busy}>
+              {busy ? 'Inviting…' : 'Create invitation'}
+            </RdButton>
+          </form>
+        </RdCard>
 
-      {/* ---- a whole list --------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
-        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          Bring in your whole list
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          Paste from a spreadsheet, or choose a CSV file. One person per line — an email is all that
-          is needed, and a name and mobile are used if they are there. Nothing is sent until you have
-          seen what will happen.
-        </p>
+        {/* ── A whole list ── */}
+        <RdCard className="p-6" data-invite-group>
+          <div className="flex items-start gap-4 flex-wrap">
+            <IconTile icon={FileText} size={52} />
+            <div className="flex-1 min-w-[200px]">
+              <h2 className="text-[20px] font-semibold text-white">Invite a group</h2>
+              <p className="text-[14.5px]" style={muted}>Paste a spreadsheet or choose a CSV file. Nothing is sent until you review.</p>
+            </div>
+            <p className="text-[12.5px] flex items-start gap-2 px-3 py-2 rounded-xl max-w-[260px]" style={{ ...muted, border: '1px solid rgba(255,255,255,0.08)' }}>
+              <Info size={15} className="flex-none mt-0.5" /> You&rsquo;ll review every invitation, joining as {roleWord}, before any is sent.
+            </p>
+          </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-            <Upload size={14} /> Choose a CSV file
+          <label className="mt-5 flex flex-col items-center justify-center text-center rounded-2xl px-4 py-6 cursor-pointer transition-colors hover:bg-white/[0.02]"
+            style={{ border: '1.5px dashed rgba(139,92,246,0.5)', background: 'rgba(124,58,237,0.05)' }}>
+            <span className="flex items-center gap-2 text-[16px] font-semibold text-white"><FileText size={20} /> Choose a CSV file</span>
+            <span className="text-[13.5px] mt-1" style={muted}>Supports .csv files with email, name and mobile (optional)</span>
+            <span className="mt-3 h-10 px-4 rounded-xl inline-flex items-center gap-2 text-[14px] font-semibold" style={{ color: '#C4B5FD', border: '1px solid rgba(139,92,246,0.55)' }}>
+              <Upload size={16} /> Upload CSV
+            </span>
             <input type="file" accept=".csv,text/csv,text/plain" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }} />
           </label>
-          {paste && (
-            <Button variant="ghost" onClick={() => { setPaste(''); setResult(null); }}>
-              <X size={14} className="mr-1.5" /> Clear
-            </Button>
-          )}
-        </div>
 
-        <textarea
-          className="mt-3 w-full rounded-lg border px-3 py-2 text-sm"
-          style={{ ...inputStyle, minHeight: 110, resize: 'vertical' }}
-          placeholder={'maria@example.com, Maria, Santos, 09171234567\njuan@example.com, Juan, Dela Cruz'}
-          value={paste}
-          onChange={(e) => { setPaste(e.target.value); setResult(null); }}
-        />
+          <div className="flex items-center gap-3 my-4 text-[13.5px]" style={muted}>
+            <span className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} /> or paste your list
+            <span className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+          <textarea aria-label="Paste your list"
+            className="w-full rounded-xl px-4 py-3 text-[14.5px] text-white outline-none"
+            style={{ ...inputSt, minHeight: 104, resize: 'vertical' }}
+            placeholder={'maria@example.com, Maria, Santos, 09171234567\njuan@example.com, Juan, Dela Cruz'}
+            value={paste}
+            onChange={(e) => { setPaste(e.target.value); setResult(null); setReviewing(false); }} />
 
-        {parsed.length > 0 && (
-          <div className="mt-3">
-            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-              {usable.length} to invite as {role === 'member' ? 'members' : role === 'trainer' ? 'coaches' : 'front desk'}
-              {broken.length > 0 && `, ${broken.length} that cannot be used`}
-            </p>
-            {broken.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {broken.slice(0, 8).map((r) => (
-                  <li key={r.line} className="text-xs" style={{ color: 'var(--color-secondary)' }}>
-                    Line {r.line}: {r.problem}
-                  </li>
-                ))}
-                {broken.length > 8 && (
-                  <li className="text-xs" style={labelStyle}>…and {broken.length - 8} more</li>
-                )}
-              </ul>
+          <div className="mt-4 flex items-center gap-3 flex-wrap">
+            {!reviewing ? (
+              <RdButton variant="primary" icon={Users} disabled={parsed.length === 0} onClick={() => setReviewing(true)}>Review invitations</RdButton>
+            ) : (
+              <RdButton variant="primary" icon={Send} disabled={usable.length === 0 || importing !== null} onClick={() => void runImport()}>
+                {importing ? `Inviting… ${importing.done} of ${importing.total}` : `Invite ${usable.length} ${usable.length === 1 ? 'person' : 'people'}`}
+              </RdButton>
             )}
-            <Button className="mt-3" disabled={usable.length === 0 || importing !== null}
-              onClick={() => void runImport()}>
-              {importing
-                ? `Inviting… ${importing.done} of ${importing.total}`
-                : `Invite ${usable.length} ${usable.length === 1 ? 'person' : 'people'}`}
-            </Button>
-            {broken.length > 0 && (
-              <p className="mt-2 text-xs" style={labelStyle}>
-                The lines that cannot be used are skipped — the rest still go.
+            {paste && <RdButton variant="ghost" icon={X} onClick={() => { setPaste(''); setResult(null); setReviewing(false); }}>Clear</RdButton>}
+            <span className="text-[13.5px] inline-flex items-center gap-1.5" style={muted}><Lock size={14} /> Nothing is sent until you review.</span>
+          </div>
+
+          {reviewing && parsed.length > 0 && (
+            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }} data-invite-review>
+              <p className="text-[14.5px] text-white">
+                {usable.length} to invite as {roleWord}{broken.length > 0 && `, ${broken.length} that cannot be used`}
               </p>
-            )}
-          </div>
-        )}
-
-        {result && (
-          <div className="mt-4 rounded-lg border p-3.5"
-            style={{ borderColor: 'var(--color-primary)', background: 'var(--color-bg)' }}>
-            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-              {result.invited.length} invited{result.failed.length > 0 && `, ${result.failed.length} refused`}
-            </p>
-            {result.failed.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {result.failed.slice(0, 10).map((f) => (
-                  <li key={f.email} className="text-xs" style={labelStyle}>
-                    <strong style={{ color: 'var(--color-text-primary)' }}>{f.email}</strong> — {f.reason}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {result.invited.length > 0 && (
-              <Button variant="ghost" className="mt-3"
-                onClick={() => copy(
-                  result.invited.map((i) => `${i.email}\t${inviteLink(i.token)}`).join('\n'),
-                  'bulk',
-                )}>
-                <Copy size={14} className="mr-1.5" />
-                {copied === 'bulk' ? 'Copied' : 'Copy every link'}
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ---- the list ------------------------------------------------------- */}
-      <div className={card} style={cardStyle}>
-        <div className="flex items-center gap-3">
-          <h2 className="flex-1 text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            {showDone ? 'Every invitation' : 'Waiting to be accepted'}
-          </h2>
-          <Button variant="ghost" onClick={() => setShowDone((v) => !v)}>
-            {showDone ? 'Waiting only' : 'Show all'}
-          </Button>
-        </div>
-
-        {rows === null && <p className="mt-3 text-sm" style={labelStyle}>Loading…</p>}
-        {rows?.length === 0 && (
-          <p className="mt-3 text-sm" style={labelStyle}>
-            {showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
-          </p>
-        )}
-
-        <div className="mt-3 space-y-2">
-          {paged.visible.map((r) => (
-            <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3.5 py-2.5"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                  {[r.first_name, r.last_name].filter(Boolean).join(' ') || r.email}
-                </span>
-                <span className="block text-xs" style={labelStyle}>
-                  {r.email} · {r.role === 'member' ? 'member' : r.role === 'trainer' ? 'coach' : 'front desk'}
-                  {' · '}
-                  {r.state === 'waiting' ? `invited ${when(r.created_at)}, expires ${when(r.expires_at)}`
-                    : r.state === 'accepted' ? `joined ${when(r.accepted_at!)}`
-                    : r.state === 'revoked' ? 'withdrawn'
-                    : 'expired'}
-                </span>
-              </span>
-              {r.state === 'waiting' && (
-                <>
-                  <Button variant="ghost" onClick={() => copy(inviteLink(r.token), r.id)}>
-                    <Copy size={14} className="mr-1.5" /> {copied === r.id ? 'Copied' : 'Copy link'}
-                  </Button>
-                  <Button variant="ghost" disabled={!gym || mailing === r.id} onClick={() => void mail(r)}>
-                    <Mail size={14} className="mr-1.5" /> {mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'}
-                  </Button>
-                  <Button variant="ghost" onClick={() => void (async () => {
-                    try { await revokeInvitation(r.id); await load(); }
-                    catch (e) { showToast(e instanceof Error ? e.message : 'Could not withdraw it', 'error'); }
-                  })()}>Withdraw</Button>
-                </>
+              {usable.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1 max-h-40 overflow-y-auto">
+                  {usable.slice(0, 50).map((r) => (
+                    <li key={r.line} className="text-[13px]" style={muted}>{r.email}{r.firstName ? ` — ${[r.firstName, r.lastName].filter(Boolean).join(' ')}` : ''}</li>
+                  ))}
+                </ul>
+              )}
+              {broken.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {broken.slice(0, 8).map((r) => <li key={r.line} className="text-[13px]" style={{ color: '#FBBF24' }}>Line {r.line}: {r.problem}</li>)}
+                  {broken.length > 8 && <li className="text-[13px]" style={muted}>…and {broken.length - 8} more</li>}
+                  <li className="text-[13px] mt-1" style={muted}>The lines that cannot be used are skipped — the rest still go.</li>
+                </ul>
               )}
             </div>
-          ))}
-        </div>
-        <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
-            <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="invitations" />
-            <Pagination currentPage={paged.page} totalItems={paged.total} itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
-          </div>
+          )}
+
+          {result && (
+            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(139,92,246,0.45)' }}>
+              <p className="text-[14.5px] text-white">{result.invited.length} invited{result.failed.length > 0 && `, ${result.failed.length} refused`}</p>
+              {result.failed.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {result.failed.slice(0, 10).map((f) => (
+                    <li key={f.email} className="text-[13px]" style={muted}><strong className="text-white">{f.email}</strong> — {f.reason}</li>
+                  ))}
+                </ul>
+              )}
+              {result.invited.length > 0 && (
+                <RdButton className="mt-3" variant="soft" icon={Copy}
+                  onClick={() => copy(result.invited.map((i) => `${i.email}\t${inviteLink(i.token)}`).join('\n'), 'bulk')}>
+                  {copied === 'bulk' ? 'Copied' : 'Copy every link'}
+                </RdButton>
+              )}
+            </div>
+          )}
+        </RdCard>
       </div>
+
+      {/* ── The list ── */}
+      <RdCard className="overflow-hidden" id="waiting" data-invite-list>
+        <div className="flex items-center gap-4 p-5 flex-wrap">
+          <IconTile icon={Users} size={46} />
+          <div className="flex-1 min-w-[220px]">
+            <h2 className="text-[20px] font-semibold text-white">{showDone ? 'Every invitation' : 'Waiting to be accepted'}</h2>
+            <p className="text-[14px]" style={muted}>Invitations that are pending acceptance. Share the link again or withdraw anytime.</p>
+          </div>
+          {counts.waiting > 0 && <Pill tone="violet">{counts.waiting} pending</Pill>}
+          <button type="button" onClick={() => setShowDone((v) => !v)} className="text-[14.5px] font-semibold inline-flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
+            {showDone ? 'Waiting only' : 'View all'} <ArrowRight size={15} />
+          </button>
+        </div>
+        <RdTable head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
+          empty={rows === null ? <p className="py-10 text-center text-[14.5px]" style={muted}>Loading…</p>
+            : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
+                body="Invite one person or a whole list above — each gets their own link." /> : undefined}>
+          {paged.visible.map((r) => {
+            const soon = r.state === 'waiting' && new Date(r.expires_at).getTime() - nowMs <= 3 * 86_400_000;
+            const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
+            return (
+              <Tr key={r.id} data-invite-row>
+                <Td>
+                  <p className="text-[15px] text-white">{r.email}</p>
+                  {name && <p className="text-[13px]" style={muted}>{name}</p>}
+                </Td>
+                <Td>
+                  <p>{when(r.created_at)}</p>
+                  <p className="text-[13px]" style={muted}>{relDays(r.created_at, nowMs)}</p>
+                </Td>
+                <Td>
+                  {r.state === 'accepted' ? <><p>Joined</p><p className="text-[13px]" style={muted}>{when(r.accepted_at!)}</p></>
+                    : <><p>{when(r.expires_at)}</p><p className="text-[13px]" style={{ color: soon ? '#FBBF24' : 'var(--color-text-secondary)' }}>{r.state === 'waiting' ? relDays(r.expires_at, nowMs) : STATE_LABEL[r.state]}</p></>}
+                </Td>
+                <Td><Pill tone="gray">{ROLE[r.role]}</Pill></Td>
+                {showDone && <Td><Pill tone={STATE_TONE[r.state]}>{STATE_LABEL[r.state]}</Pill></Td>}
+                <Td align="right">
+                  {r.state === 'waiting' && (
+                    <div className="inline-flex items-center gap-1 flex-wrap justify-end">
+                      <RdButton size="sm" variant="ghost" icon={Copy} onClick={() => copy(inviteLink(r.token), r.id)} style={{ color: '#C4B5FD' }}>
+                        {copied === r.id ? 'Copied' : 'Copy link'}
+                      </RdButton>
+                      <RdButton size="sm" variant="ghost" icon={Mail} disabled={!gym || mailing === r.id} onClick={() => void mail(r)} style={{ color: '#C4B5FD' }}>
+                        {mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'}
+                      </RdButton>
+                      <RdButton size="sm" variant="ghost" icon={Trash2} onClick={() => void withdraw(r)} style={{ color: '#F87171' }}>Withdraw</RdButton>
+                    </div>
+                  )}
+                </Td>
+              </Tr>
+            );
+          })}
+        </RdTable>
+        <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="invitations" onPage={paged.setPage} />
+      </RdCard>
     </div>
   );
 }
