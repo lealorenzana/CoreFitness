@@ -122,6 +122,7 @@ async (page) => {
   }));
 
   const CALLS = {};
+  let DELAY = 0;
   const COACH_POSTS = [];
   // Consent already given, setup done (no `onboarded` reads as done): straight to the coach.
   const COACH = { gym_id: 'gym-1', allowed: true, reason: null, used_today: 3, daily_limit: 30,
@@ -201,13 +202,14 @@ async (page) => {
       if (!posted.question) return route.fulfill({ status: 400, contentType: 'application/json',
         headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"reason":"bad_question"}' });
       COACH_POSTS.push(posted);
+      if (DELAY) await new Promise((r) => setTimeout(r, DELAY));
       // The function stores the proposal (create_ai_proposal) and streams it beside the text.
       const r = REPLIES[Math.min(COACH_POSTS.length, REPLIES.length) - 1];
       PROPOSALS.push(r.proposal);
       const frame = (o) => `data: ${JSON.stringify(o)}\n\n`;
       return route.fulfill({ status: 200, contentType: 'text/event-stream',
         headers: { 'Access-Control-Allow-Origin': '*' },
-        body: (r.text ? frame({ type: 'text', text: r.text }) : '')
+        body: frame({ type: 'status', text: 'Creating your routine' }) + (r.text ? frame({ type: 'text', text: r.text }) : '')
           + frame({ type: 'proposal', id: r.proposal.id, kind: r.proposal.kind, summary: r.proposal.summary, payload: r.proposal.payload })
           + frame({ type: 'done' }) });
     }
@@ -296,8 +298,17 @@ async (page) => {
   const tap = async (id, name) => { await card(id).getByRole('button', { name, exact: true }).click(); await page.waitForTimeout(900); };
 
   await go('/member/chatbot');
+  // ── While the coach works, the reply says so (2026-10-11): never a blank wait. ──
+  DELAY = 2000;
+  await page.getByLabel('Your question').fill('Can you build me a push day?');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(1500);
+  const w = await page.locator('[data-coach-working]').innerText().catch(() => '');
+  out.push('while the coach works it says so: ' + (/Thinking/.test(w) ? 'yes' : 'MISSING ' + w));
+  await page.waitForTimeout(2200);
+  out.push('…and the note goes once the words arrive: ' + ((await page.locator('[data-coach-working]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  DELAY = 0;
   // ── A routine proposal arrives with the reply ──
-  await ask('Can you build me a push day?');
   let c = await cardText('P1');
   out.push('the reply text is shown: ' + (/Here is a push day to start with\./.test(await text()) ? 'yes' : 'MISSING'));
   out.push('the card shows the summary: ' + (/A push day with squats and planks/.test(c) ? 'yes' : 'MISSING'));

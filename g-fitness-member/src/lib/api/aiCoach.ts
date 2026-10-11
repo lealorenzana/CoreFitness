@@ -103,6 +103,7 @@ export async function setCoachConsent(readsData: boolean): Promise<void> {
 export async function askCoach(
   question: string, history: Turn[], onText: (chunk: string) => void,
   onProposal?: (p: ProposalFrame) => void,
+  onStatus?: (text: string) => void,
 ): Promise<{ ok: true } | { ok: false; reason: string; message: string }> {
   const busy = { ok: false as const, reason: 'busy', message: 'The coach is busy. Try again in a minute.' };
   try {
@@ -139,6 +140,7 @@ export async function askCoach(
         id?: string; kind?: string; summary?: string; payload?: unknown;
       };
       if (ev.type === 'text' && ev.text) onText(ev.text);
+      if (ev.type === 'status' && ev.text) onStatus?.(ev.text);
       if (ev.type === 'proposal' && ev.id && ev.kind) {
         onProposal?.({ id: ev.id, kind: ev.kind, summary: ev.summary ?? '', payload: ev.payload ?? {} });
       }

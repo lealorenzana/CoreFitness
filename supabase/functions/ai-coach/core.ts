@@ -33,6 +33,23 @@ You can also propose: booking one of the classes get_gym_info lists (propose_boo
 // ai_proposal_check) and its refusals are written for people, so ranges live there, not here.
 export const MAX_ROUNDS = 6;
 
+/** What the member sees while a tool runs — the coach "working", like an agent (2026-10-11). */
+export const TOOL_STATUS: Record<string, string> = {
+  find_exercises: 'Looking through the exercise library',
+  get_my_routines: 'Reading your routines',
+  get_my_schedule: 'Checking your week',
+  get_gym_info: 'Checking the gym\u2019s details',
+  get_my_progress: 'Looking at your progress',
+  get_my_bookings: 'Checking your bookings',
+  propose_booking: 'Preparing a booking',
+  propose_cancel_booking: 'Preparing the cancellation',
+  propose_program: 'Building your program',
+  propose_log: 'Writing up your workout',
+  propose_routine: 'Creating your routine',
+  propose_schedule: 'Planning your week',
+  propose_goal: 'Setting up your goal',
+};
+
 const str = (description: string) => ({ type: 'string', description });
 // Nullable as anyOf with a null branch, never a type array: the shape strict tool use documents.
 const orNull = (type: string, description: string) => ({ anyOf: [{ type }, { type: 'null' }], description });

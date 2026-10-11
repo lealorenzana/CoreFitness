@@ -5,7 +5,7 @@
 // service-role key is used for exactly one call, ai_record_usage(), because a
 // member who could write their own count could reset their own limit.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.129.0';
-import {
+import { TOOL_STATUS,
   buildRequest, MAX_ROUNDS, sse, statusToHttp, SYSTEM_PROMPT, TOOLS, toolCall, toolResultText, validQuestion,
   type CoachStatus, type Turn,
 } from './core.ts';
@@ -171,6 +171,7 @@ Deno.serve(async (req) => {
             betas: ['server-side-fallback-2026-07-01'],
             fallbacks: 'default',
           };
+          send(sse({ type: 'status', text: round === 0 ? 'Thinking' : 'Putting it together' }));
           const s = client.beta.messages.stream(params);
           upstream = s;
           roundIn = 0; roundOut = 0;
@@ -211,6 +212,7 @@ Deno.serve(async (req) => {
           const results: BetaToolResultBlockParam[] = [];
           for (const block of final.content) {
             if (block.type !== 'tool_use') continue;
+            send(sse({ type: 'status', text: TOOL_STATUS[block.name] ?? 'Working on it' }));
             results.push(await runTool(block.id, block.name, block.input));
           }
           if (cancelled) break;

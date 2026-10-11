@@ -109,6 +109,8 @@ function Assistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  /** What the coach is doing for a reply still being written (its status events), by message id. */
+  const [working, setWorking] = useState<Record<string, string | null>>({});
   /** The transcript — the one thing on this screen that scrolls. */
   const listRef = useRef<HTMLDivElement>(null);
   /** Whether the member is at (or near) the newest message; reading back up turns following off. */
@@ -351,14 +353,17 @@ function Assistant() {
         let streamed = '';
         let proposed = 0;
         setMessages((prev) => [...prev, { id: botId, text: '', sender: 'bot', source: 'coach' }]);
+        setWorking((w) => ({ ...w, [botId]: 'Thinking' }));
         setIsTyping(false);
         const result = await askCoach(trimmed, history, (chunk) => {
           streamed += chunk;
+          setWorking((w) => (w[botId] ? { ...w, [botId]: null } : w));
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: streamed } : m)));
         }, (proposal) => {
           proposed += 1;
           setCards((c) => ({ ...c, [botId]: [...(c[botId] ?? []), proposal] }));
-        });
+        }, (text) => setWorking((w) => ({ ...w, [botId]: text })));
+        setWorking((w) => { const n = { ...w }; delete n[botId]; return n; });
         if ((result.ok && streamed.trim()) || proposed > 0) {
           // A reply that proposed a change is the coach's, even with no text or a
           // stream that broke after the proposal: its card sits under this reply.
@@ -525,6 +530,7 @@ function Assistant() {
                 // a reply to read, not a second card. A proposal the coach made in
                 // this reply sits under it as the one card: something to decide.
                 <div className="w-full flex flex-col items-start" style={{ gap: 10 }}>
+                  {working[m.id] && <CoachWorking label={working[m.id]!} />}
                   {m.text && (
                     <div className="max-w-[88%]" style={{
                       paddingLeft: 12, fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)',
@@ -715,6 +721,27 @@ function Assistant() {
       <CoachChanges open={changesOpen} onClose={() => setChangesOpen(false)}
         names={names} decided={decided} onStatus={onDecided} onLoaded={onProposalsLoaded} />
       <CoachConsent open={askConsent} onChoose={(yes) => void onConsent(yes)} />
+    </div>
+  );
+}
+
+/**
+ * The coach at work, before and between its words (2026-10-11): a turning mark, what it is
+ * doing ("Thinking", "Checking your routines", "Creating your routine") with a shimmer, and the
+ * seconds so far — so a reply that takes a while never looks like nothing is happening.
+ */
+function CoachWorking({ label }: { label: string }) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setSecs((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div className="flex items-center" data-coach-working role="status" aria-live="polite"
+      style={{ gap: 10, paddingLeft: 12, borderLeft: '2px solid var(--color-primary)', minHeight: 24 }}>
+      <span className="coach-spark" aria-hidden />
+      <span className="coach-shimmer" style={{ fontSize: 13.5, fontWeight: 600 }}>{label}…</span>
+      {secs >= 2 && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{secs}s</span>}
     </div>
   );
 }
