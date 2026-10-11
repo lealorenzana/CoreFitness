@@ -172,7 +172,9 @@ const GLOBAL = [
   // 0191: payments to Core Fitness through PayMongo, and what they unlocked — definer functions only.
   'paymongo_checkouts', 'gym_theme_unlocks',
   // 0192: a gym's or coach's PayMongo connection — keys in the Vault, definer functions only.
-  'payment_accounts'];
+  'payment_accounts',
+  // 0194: a day pass bought in the app — read through definer functions only.
+  'day_passes'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
