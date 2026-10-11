@@ -101,14 +101,29 @@ check('…the member is told, and the desk', (await one(`select count(*)::int n 
 await service();
 check('the same webhook twice records nothing more', (await one(`select paymongo_settle('cs_ren', 'pay_ren', 80000) r`)).r === 'already settled');
 
-// A different plan: applied first, then paid.
+// 0193: a different plan while a paid one still runs is the desk's — refused online.
+await as(MEM);
+check('a switch mid-term is refused online, with the reason and the way', /You are on Monthly Test until .* switch plans at the desk/.test(
+  await tryExec(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}')`) ?? ''));
+// A checkout opened before that rule, and paid: the money is recorded, the plan is not changed.
+await owner();
+const legacy = (await one(`insert into paymongo_checkouts (account, gym_id, member_id, purpose, details, amount, description, checkout_session_id)
+  values ('${ACC_GYM}', '${GYM}', '${MEM}', 'membership', '{"plan_id":"${P_BIG}"}', 2100, 'Quarter Test', 'cs_legacy') returning id`)).id;
+await service();
+check('a mid-term switch paid anyway: recorded, left to the desk', /left to the desk/.test((await one(`select paymongo_settle('cs_legacy', 'pay_legacy', 210000, 'qrph') r`)).r));
+await owner();
+check('…the plan stays, the money is on record, and the desk is told', (await one(`select plan_id from memberships where member_id = '${MEM}'`)).plan_id === P_PLAN
+  && (await one(`select count(*)::int n from payments where notes like '%pay_legacy%' and notes like '%not applied%'`)).n === 1
+  && (await one(`select count(*)::int n from notifications where user_id = '${DESK}' and title = 'Plan switch paid online'`)).n === 1);
+// Once the plan has ended, a different plan is fine online.
+await db.exec(`update memberships set status = 'expired', expiry_date = manila_today() - 1 where member_id = '${MEM}'`);
 await as(MEM);
 const up = (await one(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}') p`)).p;
 await service();
 await db.exec(`select paymongo_attach('${up.id}', 'cs_up', 'https://x')`);
 await db.exec(`select paymongo_settle('cs_up', 'pay_up', 210000, 'card')`);
 await owner();
-check('a different plan is applied, then the term', (await one(`select plan_id from memberships where member_id = '${MEM}'`)).plan_id === P_BIG);
+check('after it ends, a different plan is bought online and applied', (await one(`select plan_id from memberships where member_id = '${MEM}'`)).plan_id === P_BIG);
 
 // ---- coaching ----
 await owner();
@@ -137,6 +152,6 @@ await as(MEM);
 check('…and a renewal online is refused, plainly', /not set up/.test(await tryExec(`select paymongo_prepare_member('membership')`) ?? ''));
 
 await owner();
-check('marker', (await one(`select migration_0192_applied() ok`)).ok === true);
+check('marker', (await one(`select migration_0192_applied() ok`)).ok === true && (await one(`select migration_0193_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0192 checks passed');
 process.exit(failures ? 1 : 0);

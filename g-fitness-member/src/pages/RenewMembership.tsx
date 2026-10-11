@@ -20,7 +20,7 @@ import Disclosure from '../components/ui/Disclosure';
 import GlassSheet from '../components/ui/GlassSheet';
 import PayOnline, { type PayOnlineValue } from '../components/PayOnline';
 import PayMongoPay from '../components/payments/PayMongoPay';
-import { gymOnlinePay, waitForPayment } from '../lib/api/paymongo';
+import { gymOnlinePay, reconcilePending, waitForPayment } from '../lib/api/paymongo';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
 import {
@@ -161,6 +161,13 @@ export default function RenewMembership() {
     setConfirming(state);
     if (state === 'paid') { setPaidLine(row ? `Paid ${row.description}` : null); toast.success('Payment received — your membership is renewed'); }
   }), []);
+  // A renewal paid earlier but not yet recorded (a late webhook, a closed phone) is checked with PayMongo on opening.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('paid')) return;
+    void reconcilePending('membership').then((paid) => {
+      if (paid.length) { setConfirming('paid'); setPaidLine(`Paid ${paid[0].description}`); toast.success('Payment received — your membership is renewed'); }
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -268,6 +275,15 @@ export default function RenewMembership() {
   };
 
   const canPayOnline = onlineOn && payMethods.length > 0 && !!selected && Number(selected.price) > 0;
+  /**
+   * 0193: a different plan while a paid one still runs is a switch, and a switch mid-term is the desk's
+   * (a refund or credit for the days left). Online pays only for the same plan then — or any plan once
+   * the current one has ended, or from the free tier. The database refuses it too.
+   */
+  const currentRunning = !!current && current.status === 'active'
+    && (current.never_expires || (!!current.expiry_date && new Date(`${current.expiry_date}T00:00:00`).getTime() >= new Date(new Date().toDateString()).getTime()))
+    && Number(current.membership_plans?.price ?? 0) > 0;
+  const switchMidTerm = !!selected && currentRunning && selected.id !== current?.plan_id;
   const paying = canPayOnline && payMode === 'online';
   const send = async () => {
     if (!selected) return;
@@ -631,7 +647,13 @@ export default function RenewMembership() {
               </div>
             }
           >
-            {selected && payMongo && Number(selected.price) > 0 && (
+            {selected && payMongo && Number(selected.price) > 0 && switchMidTerm && (
+              <p style={{ fontSize: 12.5, marginBottom: 14, color: 'var(--color-text-secondary)' }} data-switch-at-desk>
+                You are on {current?.membership_plans?.name} until {current?.expiry_date ? new Date(`${current.expiry_date}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', day: 'numeric' }) : 'it ends'}.
+                Paying online renews the plan you have; switching to {selected.name} now is done at the desk, so nothing you have paid is lost.
+              </p>
+            )}
+            {selected && payMongo && Number(selected.price) > 0 && !switchMidTerm && (
               <div style={{ marginBottom: 16 }}>
                 <PayMongoPay purpose="membership" details={{ plan_id: selected.id }} amount={peso(Number(selected.price))}
                   returnPath="/member/renew" note="GCash, Maya, card or online banking, straight to the gym. Your plan renews the moment it is paid." />

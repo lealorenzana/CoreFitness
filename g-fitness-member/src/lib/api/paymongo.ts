@@ -28,6 +28,28 @@ export async function gymOnlinePay(): Promise<{ gym: boolean; trainers: string[]
   return data as { gym: boolean; trainers: string[] };
 }
 
+
+/** Ask the server to check one checkout with PayMongo itself, and record it if paid. Never throws. */
+async function reconcile(id: string): Promise<boolean> {
+  try {
+    const { data } = await supabase.functions.invoke('paymongo-checkout', { body: { reconcile: id } });
+    return data?.status === 'paid';
+  } catch { return false; }
+}
+
+/**
+ * Payments of this member still pending from the last day, checked with PayMongo — a payment made
+ * while the webhook was late (or the phone closed) is recorded when they next open the screen.
+ * Returns the ones that turned out paid.
+ */
+export async function reconcilePending(purpose?: MemberPurpose): Promise<MemberCheckout[]> {
+  const { data } = await supabase.rpc('my_member_checkouts');
+  const pending = ((data ?? []) as MemberCheckout[]).filter((c) => c.status === 'pending' && (!purpose || c.purpose === purpose));
+  const paid: MemberCheckout[] = [];
+  for (const c of pending) if (await reconcile(c.id)) paid.push(c);
+  return paid;
+}
+
 export interface MemberCheckout {
   id: string; purpose: MemberPurpose; description: string; amount: number | string;
   status: 'pending' | 'paid' | 'expired' | 'failed'; method: string | null; created_at: string; paid_at: string | null;
@@ -44,6 +66,9 @@ export function waitForPayment(onState: (s: 'waiting' | 'paid' | 'slow', row: Me
   let stop = false; let tries = 0;
   onState('waiting', null);
   const look = async () => {
+    if (stop) return;
+    // Every other look also asks PayMongo directly, so a late webhook does not keep them waiting.
+    if (tries % 2 === 0) await reconcile(id);
     if (stop) return;
     const { data } = await supabase.rpc('my_member_checkouts');
     const row = ((data ?? []) as MemberCheckout[]).find((c) => c.id === id) ?? null;

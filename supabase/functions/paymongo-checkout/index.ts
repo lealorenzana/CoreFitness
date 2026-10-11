@@ -42,6 +42,36 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const platformKey = Deno.env.get("PAYMONGO_SECRET_KEY");
     if (body.probe) return json({ configured: !!platformKey });
+
+    // Back from PayMongo, the screen asks: was it paid? This asks PayMongo itself (not the screen, not
+    // the webhook) and records it the same way the webhook would — so a late or lost webhook never
+    // leaves a paid member waiting. Only the person who started the checkout may ask.
+    if (body.reconcile) {
+      const { data: c } = await service.from("paymongo_checkouts")
+        .select("id, account, status, checkout_session_id, member_id, created_by").eq("id", body.reconcile).maybeSingle();
+      if (!c || (c.member_id !== user.id && c.created_by !== user.id)) return json({ error: "Not your payment." }, 403);
+      if (c.status === "paid") return json({ status: "paid" });
+      if (!c.checkout_session_id) return json({ status: c.status });
+      let rkey = platformKey;
+      if (c.account !== "platform") {
+        const { data: acc } = await service.rpc("payment_account_secret", { p_account: c.account });
+        rkey = acc?.secret;
+      }
+      if (!rkey) return json({ status: c.status, error: "This account's key is not available." });
+      const r = await fetch(`https://api.paymongo.com/v1/checkout_sessions/${c.checkout_session_id}`, {
+        headers: { Authorization: "Basic " + btoa(rkey + ":") },
+      });
+      const sess = await r.json().catch(() => null);
+      if (!r.ok) return json({ status: c.status, error: sess?.errors?.[0]?.detail ?? `PayMongo answered ${r.status}` });
+      const paid = (sess?.data?.attributes?.payments ?? []).find((p: any) => p?.attributes?.status === "paid");
+      if (!paid) return json({ status: "unpaid", paymongo: sess?.data?.attributes?.status ?? null });
+      const { data: settled, error: sErr } = await service.rpc("paymongo_settle", {
+        p_session: c.checkout_session_id, p_payment: paid.id, p_amount_centavos: paid.attributes?.amount ?? 0,
+        p_method: sess.data.attributes.payment_method_used ?? paid.attributes?.source?.type ?? null,
+      });
+      if (sErr) return json({ status: c.status, error: `Paid at PayMongo, but not recorded: ${sErr.message}` }, 500);
+      return json({ status: "paid", result: settled });
+    }
     // A member pays their gym (or a coach) — 0192; a gym pays Core Fitness — 0191.
     const memberPays = ["membership", "coaching", "day_pass"].includes(body.purpose);
     if (!memberPays && !platformKey) {

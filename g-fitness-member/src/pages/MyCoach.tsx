@@ -9,7 +9,7 @@ import GlassSheet from '../components/ui/GlassSheet';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import PayMongoPay from '../components/payments/PayMongoPay';
-import { gymOnlinePay, waitForPayment } from '../lib/api/paymongo';
+import { gymOnlinePay, reconcilePending, waitForPayment } from '../lib/api/paymongo';
 import { errorMessage } from '../utils/errorMessage';
 import { addDays, todayKey } from '../utils/dates';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
@@ -54,6 +54,10 @@ export default function MyCoach() {
     setCoaches(c);
   }, []);
   // Back from PayMongo (?paid=…): the coaching starts here the moment it is confirmed (0192).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('paid')) return;
+    void reconcilePending('coaching').then((paid) => { if (paid.length) { toast.success('Payment received — your coaching has started'); void load(); } });
+  }, [load]);
   useEffect(() => waitForPayment((state, row) => {
     if (row && row.purpose !== 'coaching') return;
     if (state === 'paid') { setConfirming(null); toast.success('Payment received — your coaching has started'); void load(); }

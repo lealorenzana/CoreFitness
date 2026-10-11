@@ -217,17 +217,27 @@ async (page) => {
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1300);
   };
+  // 0193: on Premium mid-term, a different plan is the desk's — no online switch.
   await go('/member/renew');
   await page.getByRole('radio', { name: /Quarterly/ }).click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForTimeout(800);
+  out.push('mid-term, switching plans online is sent to the desk, with why: ' + ((await page.locator('[data-switch-at-desk]').count()) === 1
+    && (await page.locator('[data-paymongo-pay]').count()) === 0 && /switching to Quarterly now is done at the desk/.test(await page.locator('body').innerText()) ? 'yes' : 'MISSING'));
+
+  // Renewing the plan they have: one step, online.
+  await go('/member/renew');
+  await page.getByRole('radio', { name: /Premium/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.waitForTimeout(800);
   const btn = page.locator('[data-paymongo-pay]').getByRole('button');
-  out.push('the gym takes payments in the app: pay the plan in one step: ' + ((await btn.count()) === 1 && /Pay ₱4,200 now/.test(await btn.innerText()) ? 'yes' : 'MISSING'));
+  out.push('renewing the plan they have: one step, at its price: ' + ((await btn.count()) === 1 && /Pay ₱1,500 now/.test(await btn.innerText()) ? 'yes' : 'MISSING'));
   out.push('…the reference way stays beside it: ' + (/Pay now online/.test(await page.locator('body').innerText()) ? 'yes' : 'MISSING'));
   await btn.click();
   await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
-  out.push('…only the plan is sent — the price is the database\u2019s: ' + (CALLS.paymongo?.purpose === 'membership' && CALLS.paymongo?.details?.plan_id === 'p4'
+  out.push('…only the plan is sent — the price is the database\u2019s: ' + (CALLS.paymongo?.purpose === 'membership' && CALLS.paymongo?.details?.plan_id === 'p3'
     && !('amount' in (CALLS.paymongo ?? {})) && /\/member\/renew$/.test(CALLS.paymongo?.returnUrl ?? '') ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.paymongo)));
   await go('/member/renew?paid=co7');
   out.push('back from PayMongo it confirms, claiming nothing yet: ' + ((await page.locator('[data-renew-confirming]').count()) === 1 ? 'yes' : 'MISSING'));

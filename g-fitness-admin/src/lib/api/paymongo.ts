@@ -28,6 +28,15 @@ export function paymongoReady(): Promise<boolean> {
   return ready;
 }
 
+
+/** Ask the server to check one checkout with PayMongo itself, and record it if paid. Never throws. */
+async function reconcile(id: string): Promise<boolean> {
+  try {
+    const { data } = await supabase.functions.invoke('paymongo-checkout', { body: { reconcile: id } });
+    return data?.status === 'paid';
+  } catch { return false; }
+}
+
 export interface CheckoutRow {
   id: string; purpose: PlatformPurpose; description: string; amount: number | string;
   status: 'pending' | 'paid' | 'expired' | 'failed'; method: string | null; created_at: string; paid_at: string | null;
@@ -58,6 +67,9 @@ export function waitForPayment(onState: (s: 'waiting' | 'paid' | 'slow', row: Ch
   let stop = false; let tries = 0;
   onState('waiting', null);
   const look = async () => {
+    if (stop) return;
+    // Every other look also asks PayMongo directly, so a late webhook does not keep the owner waiting.
+    if (tries % 2 === 0) await reconcile(id);
     if (stop) return;
     const row = (await myCheckouts()).find((c) => c.id === id) ?? null;
     if (stop) return;
