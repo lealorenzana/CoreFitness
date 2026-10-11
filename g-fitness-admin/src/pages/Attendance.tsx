@@ -1,15 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { SectionTabs } from '../components/ui/kit';
-import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import Avatar from '../components/ui/Avatar';
-import Pagination from '../components/ui/Pagination';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
-  QrCode, UserCheck, Search, Calendar, TrendingUp, Camera, Undo2, Download,
-  Info, History, ChevronRight,
+  QrCode, UserPlus, Users, TrendingUp, Download, Undo2, Zap, Dumbbell, Sparkles, Calendar,
+  MonitorPlay, Tablet, Tag, History, ArrowRight, KeyRound,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { checkInCodeOf, formatCheckInCode } from '../utils/checkInCode';
@@ -17,28 +12,44 @@ import { todayKey, localDateKey, addDays } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
 import { supabase } from '../lib/supabaseClient';
 import { listMembers, type MemberWithProfile } from '../lib/api/members';
+import { listMemberships } from '../lib/api/memberships';
 import { listAttendanceBetween, deleteCheckIn } from '../lib/api/attendance';
 import { getGymSettings } from '../lib/api/settings';
 import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
 import type { AttendanceRow } from '../types/db';
+import {
+  RdHeader, RdCard, IconTile, Ring, StatTile, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td,
+  TableFooter, EmptyBlock, RailCard, RailAction, WithRail, Initials,
+} from '../components/ui/rd';
+import { ATTENDANCE_TABS, TONE, type Tone } from '../components/ui/rdTokens';
 
 const ITEMS_PER_PAGE = 10;
 
-/**
- * The two views of one section.
- *
- * Module level, not built during render: an array literal in the body is a new
- * object every pass, and this codebase has already paid for components declared
- * inside a render body.
- */
-const ATTENDANCE_TABS = [
-  { label: 'Today', to: '/attendance' },
-  { label: 'Walk-ins', to: '/attendance/walk-ins' },
-  { label: 'History', to: '/attendance-history' },
-];
+/** A membership's state, worded for the desk, with its pill colour. */
+function memberState(status: string | undefined): { label: string; tone: Tone } {
+  switch (status) {
+    case 'active': return { label: 'Active', tone: 'green' };
+    case 'frozen': return { label: 'Frozen', tone: 'amber' };
+    case 'expired': return { label: 'Expired', tone: 'amber' };
+    case 'cancelled': return { label: 'Cancelled', tone: 'gray' };
+    case 'pending': return { label: 'Awaiting payment', tone: 'amber' };
+    default: return { label: 'No plan', tone: 'gray' };
+  }
+}
 
+/**
+ * Attendance → Today: the desk (redesigned 2026-10-11 from the owner's mock-up).
+ *
+ * A hero with today's count and the share of the roster, Scan QR and Manual
+ * check-in; three tiles (QR, manual, the week's unique members); today's log
+ * with its filters, export and undo; and a rail for checking someone in fast —
+ * search, a typed code, the activity tag, and the door's own screens (kiosk,
+ * lobby TV). The log is today only; any other day is History.
+ */
 export default function Attendance() {
+  const navigate = useNavigate();
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
+  const [planOf, setPlanOf] = useState<Record<string, { plan: string; status: string }>>({});
   const [allAttendance, setAllAttendance] = useState<AttendanceRow[]>([]);
   const [adminId, setAdminId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +61,11 @@ export default function Attendance() {
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
+  // The log's own filters.
+  const [logMethod, setLogMethod] = useState<'all' | 'qr' | 'manual'>('all');
+  const [logPlan, setLogPlan] = useState('all');
+  const [logSearch, setLogSearch] = useState('');
+  const quickSearch = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -64,6 +80,12 @@ export default function Attendance() {
       setMembers(memberRows);
       setAllAttendance(attendanceRows);
       setAdminId(user?.id ?? null);
+      // Each member's current plan and state, for the log and the quick list. Optional:
+      // check-in never depends on it.
+      const ms = await listMemberships().catch(() => []);
+      const map: Record<string, { plan: string; status: string }> = {};
+      for (const m of ms) if (!map[m.member_id]) map[m.member_id] = { plan: m.membership_plans?.name ?? '—', status: m.status };
+      setPlanOf(map);
       // The gym's own activity list (0018). If settings can't be read the
       // picker simply doesn't appear — check-in must never depend on it.
       const settings = await getGymSettings().catch(() => null);
@@ -78,36 +100,22 @@ export default function Attendance() {
   // An IIFE, so no setState runs synchronously in the effect body.
   useEffect(() => { void (async () => { await loadData(); })(); }, []);
 
-  const memberNameById = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of members) map[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
+  const memberById = useMemo(() => {
+    const map: Record<string, MemberWithProfile> = {};
+    for (const m of members) map[m.profile.id] = m;
     return map;
   }, [members]);
+  const nameOf = (id: string) => {
+    const m = memberById[id];
+    return m ? `${m.profile.first_name} ${m.profile.last_name}` : 'Unknown member';
+  };
 
-  /*
-   * Both of these compared `check_in_time.slice(0, 10)` — the **UTC** date out of
-   * the timestamp text — against a `toISOString()` "today". Manila is UTC+8, so
-   * every check-in before 8am local was filed under the previous day. The gym
-   * opens early; a 6am visit is ordinary. The visible damage: "Today's Check-ins"
-   * read 0 until 8am, and the duplicate guard below compared the wrong day, so
-   * somebody who came at 7am and again at 9am was never flagged.
-   */
+  // Manila dates from utils/dates — never the UTC date out of the timestamp.
   const todayStr = todayKey();
   const todayAttendance = useMemo(
     () => allAttendance.filter((a) => localDateKey(a.check_in_time) === todayStr),
-    [allAttendance, todayStr]
+    [allAttendance, todayStr],
   );
-  /**
-   * The log is **today**, and only today.
-   *
-   * It used to carry its own day-stepper, month grid, per-day search and
-   * by-hour chart — a second, smaller copy of Attendance History sitting on top
-   * of the check-in desk. Two screens answering "who came in on the 14th?"
-   * differently is how they drift apart; this one is the desk, where the only
-   * day that exists is the one being worked. Every other day is one link away.
-   */
-  const logRecords = todayAttendance;
-
   /** Distinct members over the last 7 local days, ending today. */
   const weekUnique = useMemo(() => {
     const from = addDays(todayStr, -6);
@@ -118,6 +126,18 @@ export default function Attendance() {
     }
     return seen.size;
   }, [allAttendance, todayStr]);
+
+  const plans = useMemo(() => [...new Set(Object.values(planOf).map((p) => p.plan))].filter((p) => p !== '—').sort(), [planOf]);
+  const logRecords = useMemo(() => {
+    const q = logSearch.trim().toLowerCase();
+    return todayAttendance
+      .filter((r) => logMethod === 'all' || r.method === logMethod)
+      .filter((r) => logPlan === 'all' || planOf[r.member_id]?.plan === logPlan)
+      .filter((r) => !q || nameOf(r.member_id).toLowerCase().includes(q) || (r.activity ?? '').toLowerCase().includes(q))
+      .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayAttendance, logMethod, logPlan, logSearch, planOf, memberById]);
+  const page = Math.min(logPage, Math.max(1, Math.ceil(logRecords.length / ITEMS_PER_PAGE)));
 
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
     const result = await performCheckIn(member, method, {
@@ -147,18 +167,12 @@ export default function Attendance() {
     await doCheckIn(found.member, found.method);
   };
 
-  const handleManualCheckIn = (member: MemberWithProfile) => doCheckIn(member, 'manual');
-
-  /**
-   * Undo a check-in (0035). The desk scans the wrong person often enough that
-   * "permanent and uncorrectable" was not a workable answer — the row counted
-   * toward that member's training days and against the gym in Retention.
-   */
+  /** Undo a check-in (0035): the wrong person scanned. Only today's — what RLS allows. */
   const handleUndo = async () => {
     if (!toUndo) return;
     try {
       await deleteCheckIn(toUndo.id);
-      showToast(`Check-in removed for ${memberNameById[toUndo.member_id] ?? 'that member'}`, 'success');
+      showToast(`Check-in removed for ${nameOf(toUndo.member_id)}`, 'success');
       setToUndo(null);
       await loadData();
     } catch (err) {
@@ -166,28 +180,21 @@ export default function Attendance() {
     }
   };
 
-  /**
-   * Exports the day on screen. The shared `exportAttendanceToCSV` helper reads
-   * `record.date` / `record.time` / `record.memberName` — none of which exist on
-   * an `AttendanceRow` — so it would have written a file of empty columns, the
-   * same way the members export did. Built here from the real shape instead.
-   */
+  /** Exports what the log shows, built from the real row shape. */
   const exportLog = () => {
     if (logRecords.length === 0) return showToast('Nothing to export — nobody has checked in today', 'error');
     exportToCSV(
-      logRecords.map((r) => {
-        const at = new Date(r.check_in_time);
-        return {
-          Date: localDateKey(r.check_in_time),
-          Time: at.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
-          Member: memberNameById[r.member_id] ?? 'Unknown member',
-          'Check-in Code': formatCheckInCode(r.member_id),
-          Method: r.method,
-          Activity: r.activity ?? '',
-        };
-      }),
+      logRecords.map((r) => ({
+        Date: localDateKey(r.check_in_time),
+        Time: new Date(r.check_in_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
+        Member: nameOf(r.member_id),
+        'Check-in Code': formatCheckInCode(r.member_id),
+        Method: r.method,
+        Membership: planOf[r.member_id]?.plan ?? '',
+        Activity: r.activity ?? '',
+      })),
       `attendance_${todayStr}`,
-      false, // the day is already in the name
+      false,
     );
   };
 
@@ -202,353 +209,209 @@ export default function Attendance() {
     );
   });
 
-  const stats = [
-    { label: "Today", value: todayAttendance.length, icon: UserCheck, color: 'var(--color-primary)' },
-    { label: 'QR', value: todayAttendance.filter((a) => a.method === 'qr').length, icon: QrCode, color: 'var(--color-primary)' },
-    { label: 'Manual', value: todayAttendance.filter((a) => a.method === 'manual').length, icon: Search, color: 'var(--color-primary)' },
-    // Renamed. "Attendance Rate" implied a rate over time; it is the share of
-    // the roster that came in on the selected day, so it now says that.
-    { label: '% of roster', value: `${members.length ? Math.round((todayAttendance.length / members.length) * 100) : 0}%`, icon: TrendingUp, color: 'var(--color-secondary)' },
-    { label: '7-day unique', value: weekUnique, icon: Calendar, color: 'var(--color-secondary)' },
-  ];
-
   if (loading) {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading attendance…</div>;
   }
 
+  const qrCount = todayAttendance.filter((a) => a.method === 'qr').length;
+  const manualCount = todayAttendance.filter((a) => a.method === 'manual').length;
+  const share = members.length ? todayAttendance.length / members.length : null;
+  const todayLabel = new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const focusQuick = () => {
+    quickSearch.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    quickSearch.current?.querySelector('input')?.focus();
+  };
+
   return (
-    <div className="h-full flex flex-col gap-3 overflow-hidden" style={{ maxHeight: 'calc(100vh - 5rem)' }}>
-      {/* Header + Stats row */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-white">Attendance</h1>
-            <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Today's desk · QR scan or manual entry</p>
-          </div>
-          {/* One section, two views. This screen is the desk — today only — and
-              any other day belongs to History, which this page once duplicated
-              with its own day-stepper, month grid, search and hourly chart. */}
-          <SectionTabs tabs={ATTENDANCE_TABS} />
-        </div>
-        <div className="flex items-center gap-2">
-          {stats.map(s => {
-            const Icon = s.icon;
-            return (
-              <div key={s.label} className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <Icon size={12} style={{ color: s.color }} />
-                <span className="text-[9px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</span>
-                <span className="text-sm font-bold text-white">{s.value}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div className="flex flex-col gap-6" data-attendance-today>
+      <RdHeader title="Attendance" subtitle="Track member check-ins and keep your gym running strong." tabs={ATTENDANCE_TABS}
+        actions={(
+          <Link to="/attendance-history" className="h-12 px-4 rounded-xl inline-flex items-center gap-3 text-[15px] text-white"
+            style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }} data-tip="Another day? Open History">
+            <Calendar size={18} style={{ color: 'var(--color-text-secondary)' }} /> {todayLabel}
+          </Link>
+        )} />
 
-      {/* Activity applies to whichever check-in method is used next, so it sits
-          above both columns rather than being duplicated into each.
+      <WithRail rail={(
+        <>
+          <RailCard icon={Zap} title="Quick check-in" sub="Search for a member and check them in instantly.">
+            <div ref={quickSearch}>
+              <SearchField value={searchTerm} onChange={setSearchTerm} placeholder="Search members by name, email or code…" label="Search member" />
+            </div>
+            <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto pr-0.5" data-quick-list>
+              {filteredMembers.length === 0 ? (
+                <p className="text-[14px] py-3 text-center" style={{ color: 'var(--color-text-muted)' }}>No members found</p>
+              ) : filteredMembers.slice(0, searchTerm ? 20 : 4).map((m) => {
+                const st = memberState(planOf[m.profile.id]?.status);
+                const name = `${m.profile.first_name} ${m.profile.last_name}`;
+                return (
+                  <div key={m.profile.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
+                    <Initials name={name} photo={m.profile.photo_url} size={46} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14.5px] font-semibold text-white truncate">{name}</p>
+                      <p className="text-[12.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{m.profile.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11.5px] px-2 py-0.5 rounded-md" style={{ background: TONE[st.tone].bg, color: TONE[st.tone].fg }}>{st.label}</span>
+                        {/* The code the member reads off their phone — to confirm the right person. */}
+                        <span className="text-[11.5px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(m.profile.id)}</span>
+                      </div>
+                    </div>
+                    <RdButton variant="primary" size="sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</RdButton>
+                  </div>
+                );
+              })}
+            </div>
+            <Link to="/members" className="text-[14.5px] font-semibold inline-flex items-center justify-center gap-2 py-1" style={{ color: '#A78BFA' }}>
+              View all members <ArrowRight size={16} />
+            </Link>
+          </RailCard>
 
-          "Today's activity" read like a status — as if the gym were doing one
-          thing today. It is a *tag applied to the next check-in*, a different
-          claim, and that difference is why it looked pointless.
+          <RailCard icon={KeyRound} title="Have a code?" sub="The member finds it under their QR. A full member ID works too.">
+            <input type="text" placeholder="A3F 92B" value={qrInput} onChange={(e) => setQrInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleQRCheckIn()} aria-label="Check-in code"
+              className="w-full h-12 px-4 rounded-xl text-[16px] text-white text-center tracking-[0.3em] uppercase outline-none"
+              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)' }} />
+            <RdButton variant="soft" onClick={() => void handleQRCheckIn()}>Check in with this code</RdButton>
+          </RailCard>
 
-          It used to be a loose row of chips with a four-line paragraph
-          underneath, floating between the header and the columns with nothing
-          holding it together. Same control, now in its own strip with the
-          rationale on the hint icon: one line of chrome instead of five. */}
-      {activityOptions.length > 0 && (
-        <div className="flex items-center gap-2.5 flex-shrink-0 rounded-lg px-3 py-2"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <span className="text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap"
-            style={{ color: 'var(--color-text-muted)' }}>
-            Tag check-ins as
-          </span>
-
-          {/*
-            A dropdown, not thirty chips.
-
-            The gym has 29 activity options. As buttons they wrapped onto two
-            full rows and took more vertical space than the QR scanner — for an
-            optional tag that is left on "Not recorded" most of the day. Chips
-            are for a handful of choices you compare at a glance; this is a list
-            you pick one from, which is a select.
-
-            Amber when something is set, so an activity left on from an earlier
-            class is visible rather than silently tagging the next walk-in.
-          */}
-          <select
-            value={activity}
-            onChange={(e) => setActivity(e.target.value)}
-            aria-label="Tag the next check-in with an activity"
-            className="rounded-full px-3 h-7 text-[11px] font-semibold min-w-[180px]"
-            style={{
-              background: activity === '' ? 'var(--color-surface-high)' : 'var(--color-secondary)',
-              color: activity === '' ? 'var(--color-text-muted)' : '#000',
-              border: `1px solid ${activity === '' ? 'var(--color-border)' : 'var(--color-secondary)'}`,
-            }}
-          >
-            <option value="">Not recorded</option>
-            {activityOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-
-          {activity !== '' && (
-            <button onClick={() => setActivity('')}
-              className="text-[10px] font-semibold underline whitespace-nowrap"
-              style={{ color: 'var(--color-text-muted)' }}>
-              clear
-            </button>
+          {/* Applies to whichever check-in comes next — handy when a class arrives together.
+              A blank is honest; a default is fiction. Amber while set, so it is never left on unseen. */}
+          {activityOptions.length > 0 && (
+            <RailCard icon={Tag} tone="amber" title="Tag check-ins" sub="Optional. Applies to the next check-in, whichever way you take it, and fills the activity breakdown on History.">
+              <RdSelect value={activity} onChange={setActivity} label="Tag the next check-in with an activity">
+                <option value="">Not recorded</option>
+                {activityOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </RdSelect>
+              {activity !== '' && (
+                <div className="flex items-center justify-between">
+                  <Pill tone="amber" solidDot>Tagging: {activity}</Pill>
+                  <button type="button" onClick={() => setActivity('')} className="text-[13px] underline" style={{ color: 'var(--color-text-secondary)' }}>Clear</button>
+                </div>
+              )}
+            </RailCard>
           )}
 
-          <span
-            className="flex items-center gap-1 text-[10px] whitespace-nowrap cursor-help ml-auto"
-            style={{ color: 'var(--color-text-muted)' }}
-            data-tip={
-              'Optional, and it applies to the next check-in you take whichever way you take it — '
-              + 'handy when a class arrives together. '
-              + 'It is what fills the activity breakdown on Attendance history. Leave it on '
-              + '"Not recorded" for an ordinary walk-in rather than guessing: a blank is honest, '
-              + 'a default is fiction.'
-            }>
-            <Info size={11} /> applies to the next check-in
-          </span>
-        </div>
-      )}
-
-      {/* Two panels, not three.
-
-          Scanning a QR and typing a name are the same job — get this person
-          checked in — and they were two equal thirds of the screen, which
-          left the log, the thing anybody actually reads, squeezed into the
-          last third. The two ways in stack on the left; the record gets the
-          room. 2:3 of a five-column grid. */}
-      {/* Three tiles, sized to their jobs.
-
-          It was a 2:3 split of five columns with the two ways in stacked
-          inside the left half — which meant the QR panel and the member
-          list were the same width whatever they needed, and the whole
-          left column had to be re-reasoned about to change either. Same
-          bento as the dashboard now: twelve columns, six rows, each panel
-          placed on the grid rather than nested inside a flex column.
-
-          Scanning and the member list take half the column each: at two
-          rows the QR panel scrolled inside its own cell, which put the
-          Check In link under a scrollbar. The
-          log takes eight columns and the full height, because it is what
-          the desk actually reads. */}
-      <div
-        className="flex-1 min-h-0 grid gap-3"
-        style={{
-          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-          gridTemplateRows: 'repeat(6, minmax(0, 1fr))',
-        }}
-      >
-        {/* Scanning: two rows, top-left. */}
-        <div className="rounded-xl overflow-hidden flex flex-col"
-          style={{ gridColumn: '1 / 5', gridRow: '1 / 4',
-                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <QrCode size={13} style={{ color: 'var(--color-secondary)' }} />
-            <h3 className="text-[11px] font-semibold text-white">QR Code Scan</h3>
+          <RailCard icon={MonitorPlay} title="At the door" sub="Screens for the gym floor.">
+            {/* Self-service: members scan themselves in. The lobby TV: goal, records, boards, classes. */}
+            <RailAction icon={Tablet} label="Kiosk mode" onClick={() => navigate('/kiosk')} />
+            <RailAction icon={MonitorPlay} label="Lobby TV" onClick={() => navigate('/tv')} />
+          </RailCard>
+        </>
+      )}>
+        {/* ── The hero ── */}
+        <RdCard glow className="p-7 rd-hero" data-attendance-hero>
+          <div className="flex items-center gap-6 min-w-0">
+            <IconTile icon={Dumbbell} size={88} />
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold tracking-[0.14em]" style={{ color: '#A78BFA' }}>TODAY'S ATTENDANCE</p>
+              <p className="text-[42px] leading-none font-bold text-white mt-2 tabular-nums">{todayAttendance.length} checked in</p>
+              <p className="text-[17px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>Get members in, keep the momentum going.</p>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col items-center justify-center text-center space-y-3">
-            <QrCode size={36} style={{ color: 'var(--color-secondary)' }} />
+          <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="of roster" size={168} />
+          <div className="flex flex-col gap-4 min-w-0 rd-hero-side">
             <div>
-              <h3 className="text-white font-semibold text-xs">Scan Member QR</h3>
-              <p className="text-[9px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Use camera or enter code</p>
-            </div>
-            <Button onClick={() => setIsScannerOpen(true)} variant="primary" size="sm"
-              className="w-full flex items-center justify-center gap-1.5 !text-[10px]">
-              <Camera size={12} /> Open Camera
-            </Button>
-            {/* Self-service: members scan themselves in at the door. */}
-            <Link to="/kiosk" className="w-full text-center text-[10px] font-semibold py-1.5 rounded-lg"
-              style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
-              Kiosk mode
-            </Link>
-            {/* The lobby TV: the gym goal, records, boards and classes, for a screen in the gym. */}
-            <Link to="/tv" className="w-full text-center text-[10px] font-semibold py-1.5 rounded-lg"
-              style={{ border: '1px solid var(--color-border)', color: 'var(--color-secondary)' }}>
-              Lobby TV
-            </Link>
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-              <span className="text-[8px]" style={{ color: 'var(--color-text-muted)' }}>OR</span>
-              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-            </div>
-            <div className="w-full space-y-1.5">
-              <input type="text" placeholder="Check-in code, e.g. A3F 92B"
-                value={qrInput} onChange={(e) => setQrInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleQRCheckIn()}
-                className="w-full px-3 py-2 rounded-xl text-[11px] text-white text-center tracking-widest uppercase"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-              <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
-                The member finds this under their QR. A full member ID works too.
-              </p>
-              <Button onClick={() => handleQRCheckIn()} variant="ghost" size="sm" className="w-full !text-[10px]">
-                Check In
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* The member list: four rows, so it has room to scroll. */}
-        <div className="rounded-xl overflow-hidden flex flex-col min-h-0"
-          style={{ gridColumn: '1 / 5', gridRow: '4 / 7',
-                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="p-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <Search size={13} style={{ color: 'var(--color-primary)' }} />
-            <h3 className="text-[11px] font-semibold text-white">Manual Check-in</h3>
-          </div>
-          <div className="flex-1 overflow-hidden flex flex-col p-3">
-            <div className="relative flex-shrink-0 mb-2">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-              <input type="text" placeholder="Search member..."
-                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 rounded-xl text-[11px] text-white"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-dark-border">
-              {filteredMembers.length > 0 ? filteredMembers.slice(0, 20).map(member => (
-                <div key={member.profile.id} className="flex items-center justify-between p-2 rounded-lg"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar name={`${member.profile.first_name} ${member.profile.last_name}`}
-                      photoUrl={member.profile.photo_url} size={24} tone="secondary" />
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-white font-semibold truncate">{member.profile.first_name} {member.profile.last_name}</p>
-                      <p className="text-[8px] truncate" style={{ color: 'var(--color-text-muted)' }}>{member.profile.email}</p>
-                      {/* Same code the member reads off their phone — shown so
-                          the desk can confirm they matched the right person. */}
-                      <p className="text-[8px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>
-                        {formatCheckInCode(member.profile.id)}
-                      </p>
-                    </div>
-                  </div>
-                  <Button onClick={() => handleManualCheckIn(member)} variant="primary" size="sm" className="!text-[9px] !px-2 !py-1 !h-6">
-                    Check In
-                  </Button>
-                </div>
-              )) : (
-                <div className="text-center py-4 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>No members found</div>
+              <p className="text-[22px] font-bold text-white tabular-nums">{todayAttendance.length} / {members.length || '—'}</p>
+              <p className="text-[15px]" style={{ color: 'var(--color-text-secondary)' }}>members checked in today</p>
+              {todayAttendance.length === 0 && (
+                <p className="text-[14px] mt-2 inline-flex items-center gap-1.5" style={{ color: '#FBBF24' }}><Sparkles size={15} /> Be the first check-in today!</p>
               )}
             </div>
-          </div>
-        </div>
-
-
-        {/* The record — the whole right side, because it is what the desk reads. */}
-        <div className="rounded-xl overflow-hidden flex flex-col min-h-0"
-          style={{ gridColumn: '5 / 13', gridRow: '1 / 7',
-                   background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          {/* One line: what this is, how many, and the two things you can do
-              with it. The day-stepper, month grid, per-day search and by-hour
-              chart that used to live here all exist on Attendance History,
-              which is where a question about any day but today belongs. */}
-          <div className="p-2.5 flex-shrink-0 flex items-center justify-between gap-2"
-            style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar size={13} style={{ color: 'var(--color-secondary)' }} className="flex-shrink-0" />
-              <h3 className="text-[11px] font-semibold text-white truncate">Today&apos;s check-ins</h3>
-              <span className="text-[10px] tabular-nums px-1.5 rounded-full flex-shrink-0"
-                style={{
-                  background: 'var(--color-surface-high)',
-                  color: logRecords.length > 0 ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                }}>
-                {logRecords.length}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={exportLog} data-tip="Export today as CSV"
-                className="p-1.5 rounded-lg" style={{ color: 'var(--color-secondary)' }}>
-                <Download size={12} />
+            <div className="flex gap-3 flex-wrap">
+              <button type="button" onClick={() => setIsScannerOpen(true)} data-scan-qr
+                className="flex items-center gap-3 px-5 py-3 rounded-xl text-left text-white transition-all hover:brightness-110"
+                style={{ background: 'linear-gradient(180deg,#8B5CF6,#7C3AED)', boxShadow: '0 12px 30px -12px rgba(124,58,237,0.9)' }}>
+                <QrCode size={24} /><span><b className="block text-[15.5px]">Scan QR</b><small className="text-[12px] opacity-80">Open camera to scan</small></span>
               </button>
-              {/* Another day, a range, a member's own record, who is most
-                  regular — all one click away, and none of it duplicated here. */}
-              <Link to="/attendance-history"
-                className="flex items-center gap-1 pl-2 pr-1.5 h-6 rounded-lg text-[10px] font-semibold"
-                style={{
-                  background: 'var(--color-surface-high)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text-secondary)',
-                }}>
-                <History size={11} />
-                Other days
-                <ChevronRight size={10} />
-              </Link>
+              <button type="button" onClick={focusQuick}
+                className="flex items-center gap-3 px-5 py-3 rounded-xl text-left text-white transition-colors hover:bg-white/[0.06]"
+                style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
+                <UserPlus size={22} /><span><b className="block text-[15.5px]">Manual check-in</b><small className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Search and check-in</small></span>
+              </button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-            {logRecords.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-6">
-                <UserCheck size={24} style={{ color: 'var(--color-border)' }} className="mb-1" />
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  Nobody has checked in today yet
-                </p>
-              </div>
-            ) : (
-              <table className="w-full">
-                <thead className="sticky top-0" style={{ background: 'var(--color-surface)' }}>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {['Member', 'Time', 'Activity', 'Method', ''].map((h, i) => (
-                      <th key={h || i} className="text-left py-1.5 px-2 text-[8px] font-semibold uppercase tracking-wider"
-                        style={{ color: 'var(--color-text-muted)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {logRecords.slice((logPage - 1) * ITEMS_PER_PAGE, logPage * ITEMS_PER_PAGE).map(r => (
-                    <tr key={r.id} className="group" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td className="py-1.5 px-2">
-                        <p className="text-[10px] text-white font-semibold truncate">{memberNameById[r.member_id] ?? 'Unknown member'}</p>
-                      </td>
-                      <td className="py-1.5 px-2 text-[9px] whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
-                        {new Date(r.check_in_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      {/* The desk records this (0018) and the page never showed it
-                          back, so there was no way to tell whether it had stuck.
-                          A dash means nobody asked — not "no activity". */}
-                      <td className="py-1.5 px-2 text-[9px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                        {r.activity || '—'}
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <Badge variant={r.method === 'qr' ? 'QR' : 'Manual'}>
-                          {r.method === 'qr' ? 'QR' : 'Manual'}
-                        </Badge>
-                      </td>
-                      <td className="py-1.5 px-2">
-                        {/* Only today's rows are undoable — that is what the RLS
-                            policy allows, so offering it on older days would be a
-                            button that always fails. */}
-                        {localDateKey(r.check_in_time) === todayStr && (
-                          <button onClick={() => setToUndo(r)} data-tip="Undo this check-in"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ color: 'var(--color-secondary)' }}>
-                            <Undo2 size={11} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          {logRecords.length > 0 && (
-            <div className="flex-shrink-0 px-2 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-              <Pagination currentPage={logPage} totalItems={logRecords.length}
-                itemsPerPage={ITEMS_PER_PAGE} onPageChange={setLogPage} />
-            </div>
-          )}
-        </div>
-      </div>
+        </RdCard>
 
-      <QRScanner
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={(qrCode) => handleQRCheckIn(qrCode)}
-      />
+        {/* ── The tiles ── */}
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <StatTile icon={QrCode} label="QR Check-ins" value={qrCount} sub="via QR code scan today"
+            onClick={() => { setLogMethod(logMethod === 'qr' ? 'all' : 'qr'); setLogPage(1); }} active={logMethod === 'qr'} tip="Show only these in the log" />
+          <StatTile icon={UserPlus} label="Manual Check-ins" value={manualCount} sub="via admin check-in today"
+            onClick={() => { setLogMethod(logMethod === 'manual' ? 'all' : 'manual'); setLogPage(1); }} active={logMethod === 'manual'} tip="Show only these in the log" />
+          <StatTile icon={TrendingUp} tone="amber" label="7-Day Unique Members" value={weekUnique} sub="unique members in the last 7 days"
+            onClick={() => navigate('/attendance-history')} tip="Open History" />
+        </div>
+
+        {/* ── Today's log ── */}
+        <RdCard className="overflow-hidden" data-today-log>
+          <div className="flex items-center justify-between gap-3 flex-wrap p-5">
+            <div className="flex items-center gap-3">
+              <Users size={24} style={{ color: '#A78BFA' }} />
+              <h2 className="text-[20px] font-semibold text-white">Today's check-ins</h2>
+              <span className="text-[13px] px-2.5 py-0.5 rounded-full tabular-nums" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>{todayAttendance.length}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <RdSelect value={logMethod} onChange={(v) => { setLogMethod(v as typeof logMethod); setLogPage(1); }} label="Filter by method" className="w-[160px]">
+                <option value="all">All check-ins</option>
+                <option value="qr">QR scans</option>
+                <option value="manual">Manual</option>
+              </RdSelect>
+              <RdSelect value={logPlan} onChange={(v) => { setLogPlan(v); setLogPage(1); }} label="Filter by membership" className="w-[200px]">
+                <option value="all">All membership types</option>
+                {plans.map((p) => <option key={p} value={p}>{p}</option>)}
+              </RdSelect>
+              <div className="w-[220px]"><SearchField value={logSearch} onChange={(v) => { setLogSearch(v); setLogPage(1); }} placeholder="Search check-ins…" /></div>
+              <RdButton icon={Download} onClick={exportLog} data-tip="Export what the log shows as CSV">Export</RdButton>
+            </div>
+          </div>
+          <RdTable head={['#', 'Member', 'Time in', 'Method', 'Membership', 'Notes', { label: '', align: 'right' }]}
+            empty={logRecords.length === 0 ? (
+              <EmptyBlock icon={Users}
+                title={todayAttendance.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'}
+                body={todayAttendance.length === 0 ? 'When members check in, they’ll appear here.' : 'Clear a filter to see the rest of today.'}
+                action={todayAttendance.length === 0
+                  ? <RdButton variant="soft" icon={QrCode} onClick={() => setIsScannerOpen(true)}>Scan QR to get started</RdButton>
+                  : <RdButton onClick={() => { setLogMethod('all'); setLogPlan('all'); setLogSearch(''); }}>Clear filters</RdButton>} />
+            ) : undefined}>
+            {logRecords.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map((r, i) => {
+              const m = memberById[r.member_id];
+              const name = nameOf(r.member_id);
+              return (
+                <Tr key={r.id} data-log-row>
+                  <Td className="w-12" style={{ color: 'var(--color-text-secondary)' }}>{(page - 1) * ITEMS_PER_PAGE + i + 1}</Td>
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <Initials name={name} photo={m?.profile.photo_url} size={38} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white truncate">{name}</p>
+                        <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(r.member_id)}</p>
+                      </div>
+                    </div>
+                  </Td>
+                  <Td className="whitespace-nowrap">{new Date(r.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</Td>
+                  <Td>{r.method === 'qr' ? <Pill tone="violet" icon={QrCode}>Scanned</Pill> : <Pill tone="gray" icon={UserPlus}>Manual</Pill>}</Td>
+                  <Td style={{ color: 'var(--color-text-secondary)' }}>{planOf[r.member_id]?.plan ?? '—'}</Td>
+                  {/* The activity tag (0018). A dash means nobody asked — not "no activity". */}
+                  <Td style={{ color: 'var(--color-text-secondary)' }}>{r.activity || '—'}</Td>
+                  <Td align="right">
+                    {localDateKey(r.check_in_time) === todayStr && (
+                      <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => setToUndo(r)} data-tip="Undo this check-in">Undo</RdButton>
+                    )}
+                  </Td>
+                </Tr>
+              );
+            })}
+          </RdTable>
+          <div className="flex items-center justify-between flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <TableFooter page={page} perPage={ITEMS_PER_PAGE} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
+            <Link to="/attendance-history" className="text-[14px] font-semibold inline-flex items-center gap-1.5 px-4 py-4" style={{ color: '#A78BFA' }}>
+              <History size={15} /> Other days
+            </Link>
+          </div>
+        </RdCard>
+      </WithRail>
+
+      <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(qrCode) => handleQRCheckIn(qrCode)} />
 
       <ConfirmDialog
         isOpen={!!toUndo}
@@ -557,7 +420,7 @@ export default function Attendance() {
         title="Undo Check-in"
         message={
           toUndo
-            ? `Remove ${memberNameById[toUndo.member_id] ?? 'this member'}'s ${new Date(toUndo.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })} check-in? ` +
+            ? `Remove ${nameOf(toUndo.member_id)}'s ${new Date(toUndo.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })} check-in? ` +
               `Use this when the wrong member was scanned — the visit stops counting toward their training days and toward today's totals. They can simply check in again.`
             : ''
         }

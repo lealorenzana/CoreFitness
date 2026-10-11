@@ -2,29 +2,18 @@ import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
- * A month of check-ins at a glance.
+ * A month of check-ins at a glance (redesigned 2026-10-11 from the owner's
+ * mock-up): the month with arrows and Today, weekday names, a cell per day with
+ * a dot per check-in (up to three, then the number), the neighbouring months'
+ * days dimmed around it, the picked day filled, today outlined, and a
+ * Less → More legend under it.
  *
- * The desk could only ask "was there attendance on this exact day?", one day at
- * a time, by picking a date and looking at what came back. Answering "which
- * days did anyone come in?" meant stepping through the month. A month grid
- * answers it in one look, and answers the follow-up — *how many* — without a
- * second query.
+ * Presentation only, on purpose: it takes a `counts` map the page built,
+ * because the two attendance screens key their days differently and both are
+ * right for their own case (see the History page's Manila-date note).
  *
- * ## Presentation only, on purpose
- *
- * It takes a `counts` map that the page has already built, rather than deriving
- * dates itself. The two attendance screens key their days differently and both
- * are right for their own case: the desk screen uses `utils/dates.ts` (the
- * front-desk machine's calendar *is* Manila), while the history screen shifts
- * by +8h so a range still reads correctly from a browser somewhere else. A
- * component that re-derived the key would silently disagree with the table
- * underneath it for one of them, and the disagreement would be a day wide.
- *
- * ## Colour
- *
- * Violet carries the density (structure), amber marks the day you picked
- * (action) — the app's rule, and the reason the selected day stays legible at
- * every heat level instead of disappearing into the ramp.
+ * Violet carries the density; the picked day is filled violet and today is
+ * outlined — the day you are looking at must stay legible at every level.
  */
 
 export interface AttendanceCalendarProps {
@@ -40,20 +29,12 @@ export interface AttendanceCalendarProps {
   today: string;
   /** Hide the arrows when the parent drives the month itself. */
   navigable?: boolean;
-  /** Tighter cells, for the narrow log column. */
+  /** Tighter cells. */
   compact?: boolean;
 }
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-/** Violet ramp. Index 0 is "nobody came", which must not read as a low count. */
-const HEAT = [
-  'var(--color-surface-raised)',
-  'rgba(124, 58, 237, 0.28)',
-  'rgba(124, 58, 237, 0.50)',
-  'rgba(124, 58, 237, 0.74)',
-  'var(--color-primary)',
-];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOTS = ['rgba(139,92,246,0.35)', 'rgba(139,92,246,0.55)', 'rgba(139,92,246,0.75)', '#8B5CF6', '#A78BFA'];
 
 function shiftMonth(month: string, by: number): string {
   const [y, m] = month.split('-').map(Number);
@@ -66,6 +47,8 @@ function monthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
 }
 
+const keyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export default function AttendanceCalendar({
   month, counts, selected, onSelect, onMonthChange, today,
   navigable = true, compact = false,
@@ -74,26 +57,20 @@ export default function AttendanceCalendar({
     const [y, m] = month.split('-').map(Number);
     const first = new Date(y, m - 1, 1);
     const daysInMonth = new Date(y, m, 0).getDate();
-    const lead = first.getDay(); // 0 = Sunday, matching the header row
-
-    const cells: ({ key: string; day: number } | null)[] = [];
-    for (let i = 0; i < lead; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) {
-      cells.push({
-        key: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-        day: d,
-      });
-    }
-    // Pad to whole weeks so the grid does not change height month to month —
-    // a calendar that reflows by a row as you page through it is hard to aim at.
-    while (cells.length % 7 !== 0) cells.push(null);
+    const lead = first.getDay();
+    const cells: { key: string; day: number; inMonth: boolean }[] = [];
+    for (let i = lead; i > 0; i--) { const d = new Date(y, m - 1, 1 - i); cells.push({ key: keyOf(d), day: d.getDate(), inMonth: false }); }
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ key: keyOf(new Date(y, m - 1, d)), day: d, inMonth: true });
+    // Whole weeks, filled from the next month, so the grid keeps its shape.
+    let n = 1;
+    while (cells.length % 7 !== 0) { const d = new Date(y, m, n++); cells.push({ key: keyOf(d), day: d.getDate(), inMonth: false }); }
     return cells;
   }, [month]);
 
   const { peak, monthTotal, activeDays } = useMemo(() => {
     let peak = 0, monthTotal = 0, activeDays = 0;
     for (const c of grid) {
-      if (!c) continue;
+      if (!c.inMonth) continue;
       const n = counts[c.key] ?? 0;
       if (n > 0) { activeDays += 1; monthTotal += n; }
       if (n > peak) peak = n;
@@ -101,128 +78,92 @@ export default function AttendanceCalendar({
     return { peak, monthTotal, activeDays };
   }, [grid, counts]);
 
-  /** 0 for an empty day, then four bands of the month's own busiest day. */
   const level = (n: number) => {
-    if (n <= 0) return 0;
+    if (n <= 0) return -1;
     if (peak <= 1) return 4;
-    const share = n / peak;
-    if (share <= 0.25) return 1;
-    if (share <= 0.5) return 2;
-    if (share <= 0.75) return 3;
-    return 4;
+    return Math.min(4, Math.max(0, Math.ceil((n / peak) * 5) - 1));
   };
-
-  const cell = compact ? 'h-7 text-[11px]' : 'h-10 text-xs';
+  const h = compact ? 40 : 56;
+  const btn = 'w-11 h-11 rounded-xl grid place-items-center transition-colors hover:bg-white/5';
+  const btnSt = { border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-primary)' };
 
   return (
-    <div>
-      {/* ── Month header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-2">
-        {navigable ? (
-          <button
-            onClick={() => onMonthChange?.(shiftMonth(month, -1))}
-            aria-label="Previous month"
-            className="w-6 h-6 rounded-md flex items-center justify-center"
-            style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-          >
-            <ChevronLeft size={13} />
-          </button>
-        ) : <span />}
-
-        <div className="text-center leading-tight">
-          <p className="text-xs font-bold text-white">{monthLabel(month)}</p>
-          <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-            {monthTotal === 0
-              ? 'No check-ins'
-              : `${monthTotal} check-in${monthTotal === 1 ? '' : 's'} over ${activeDays} day${activeDays === 1 ? '' : 's'}`}
+    <div data-attendance-calendar>
+      <div className="flex items-center gap-3 mb-4">
+        {navigable && (
+          <>
+            <button type="button" onClick={() => onMonthChange?.(shiftMonth(month, -1))} aria-label="Previous month" className={btn} style={btnSt}><ChevronLeft size={18} /></button>
+            <button type="button" onClick={() => onMonthChange?.(shiftMonth(month, 1))} aria-label="Next month" className={btn} style={btnSt}><ChevronRight size={18} /></button>
+          </>
+        )}
+        <div className="min-w-0">
+          <p className="text-[21px] font-semibold text-white leading-tight">{monthLabel(month)}</p>
+          <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+            {monthTotal === 0 ? 'No check-ins' : `${monthTotal} check-in${monthTotal === 1 ? '' : 's'} over ${activeDays} day${activeDays === 1 ? '' : 's'}`}
           </p>
         </div>
-
-        {navigable ? (
-          <button
-            onClick={() => onMonthChange?.(shiftMonth(month, 1))}
-            aria-label="Next month"
-            className="w-6 h-6 rounded-md flex items-center justify-center"
-            style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}
-          >
-            <ChevronRight size={13} />
-          </button>
-        ) : <span />}
+        {navigable && today.slice(0, 7) !== month && (
+          <button type="button" onClick={() => onMonthChange?.(today.slice(0, 7))} className="ml-auto h-11 px-4 rounded-xl text-[14.5px] font-semibold text-white hover:bg-white/5"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>Today</button>
+        )}
       </div>
 
-      {/* ── Weekday header ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAYS.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-semibold"
-            style={{ color: 'var(--color-text-muted)' }}>
-            {d}
-          </div>
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        {WEEKDAYS.map((d) => (
+          <div key={d} className="text-center text-[13px] font-medium" style={{ color: 'var(--color-text-secondary)' }}>{d}</div>
         ))}
       </div>
 
-      {/* ── The month ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-7 gap-1">
-        {grid.map((c, i) => {
-          if (!c) return <div key={`pad-${i}`} className={cell} />;
-
-          const n = counts[c.key] ?? 0;
+      <div className="grid grid-cols-7 gap-1.5">
+        {grid.map((c) => {
+          const n = c.inMonth ? counts[c.key] ?? 0 : 0;
           const lv = level(n);
           const isFuture = c.key > today;
           const isToday = c.key === today;
           const isSelected = c.key === selected;
-
-          // A day nobody came to is still worth clicking — "show me that day"
-          // is a fair question, and the empty log answers it. A day that has
-          // not happened is not.
+          const usable = c.inMonth && !isFuture;
           return (
-            <button
-              key={c.key}
-              disabled={isFuture}
-              onClick={() => !isFuture && onSelect?.(c.key)}
-              title={isFuture ? undefined
+            <button key={c.key} type="button" disabled={!usable}
+              onClick={() => usable && onSelect?.(c.key)}
+              title={!usable ? undefined
                 : `${new Date(c.key + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long' })} — ${n} check-in${n === 1 ? '' : 's'}`}
               aria-label={`${c.day} ${monthLabel(month)}, ${n} check-in${n === 1 ? '' : 's'}`}
               aria-pressed={isSelected}
-              className={`${cell} rounded-md flex flex-col items-center justify-center leading-none transition-colors ${isFuture ? 'cursor-default' : 'cursor-pointer'}`}
+              className="rounded-xl flex flex-col items-center justify-center gap-1 transition-colors"
               style={{
-                background: isFuture ? 'transparent' : HEAT[lv],
-                border: `1px solid ${
-                  isSelected ? 'var(--color-secondary)'
-                  : isToday ? 'var(--color-text-secondary)'
-                  : lv === 0 ? 'var(--color-border)' : 'transparent'
-                }`,
-                // The second ring is what keeps a selected day visible on top of
-                // the darkest heat, where a 1px border is swallowed.
-                boxShadow: isSelected ? '0 0 0 1px var(--color-secondary)' : undefined,
-                color: isFuture ? 'var(--color-border)'
-                  : lv >= 2 ? '#fff'
-                  : 'var(--color-text-secondary)',
-                opacity: isFuture ? 0.45 : 1,
-              }}
-            >
-              <span className={`font-semibold tabular-nums ${isToday ? 'underline underline-offset-2' : ''}`}>
+                height: h,
+                background: isToday ? 'rgba(124,58,237,0.16)' : 'rgba(255,255,255,0.015)',
+                border: `1px solid ${isToday ? 'rgba(167,139,250,0.85)' : 'rgba(255,255,255,0.05)'}`,
+                cursor: usable ? 'pointer' : 'default',
+                opacity: c.inMonth ? (isFuture ? 0.4 : 1) : 0.3,
+              }}>
+              <span className="grid place-items-center tabular-nums text-[15px] font-medium rounded-full"
+                style={{
+                  width: 34, height: 34, color: '#fff',
+                  background: isSelected ? 'linear-gradient(180deg,#8B5CF6,#6D28D9)' : 'transparent',
+                  boxShadow: isSelected ? '0 6px 18px -6px rgba(124,58,237,0.9)' : undefined,
+                }}>
                 {c.day}
               </span>
-              {!compact && n > 0 && (
-                <span className="text-[9px] tabular-nums" style={{ opacity: 0.85 }}>{n}</span>
+              {n > 0 && (
+                n <= 3
+                  ? <span className="flex gap-1" aria-hidden>{Array.from({ length: n }, (_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: DOTS[Math.max(lv, 0)] }} />)}</span>
+                  : <span className="text-[11px] font-semibold tabular-nums" style={{ color: '#C4B5FD' }}>{n}</span>
               )}
             </button>
           );
         })}
       </div>
 
-      {/* ── Legend ───────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-          {peak > 0 ? `Busiest day: ${peak}` : 'Nothing recorded'}
+      <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
+        <span className="text-[14px]" style={{ color: 'var(--color-text-secondary)' }}>
+          {selected ? `${counts[selected] ?? 0} check-in${(counts[selected] ?? 0) === 1 ? '' : 's'} on ${new Date(selected + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : peak > 0 ? `Busiest day: ${peak}` : 'Nothing recorded'}
         </span>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Less</span>
-          {HEAT.map((bg, i) => (
-            <span key={i} className="w-3 h-3 rounded-sm" aria-hidden
-              style={{ background: bg, border: i === 0 ? '1px solid var(--color-border)' : 'none' }} />
-          ))}
-          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>More</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>Less</span>
+          {DOTS.map((bg) => <span key={bg} className="w-3 h-3 rounded-full" aria-hidden style={{ background: bg }} />)}
+          <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>More</span>
         </div>
       </div>
     </div>

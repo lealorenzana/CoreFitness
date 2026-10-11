@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SectionTabs } from '../components/ui/kit';
-import { motion } from 'framer-motion';
 import {
-  CalendarCheck, Search, Download, AlertTriangle, QrCode, Hand, Users, TrendingUp, X,
+  CalendarCheck, Download, AlertTriangle, QrCode, Users, BarChart3, X, ArrowRight, ArrowDown, ScanLine, Keyboard,
 } from 'lucide-react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
 import DatePicker from '../components/ui/DatePicker';
-import Pagination from '../components/ui/Pagination';
-import { PageSummary } from '../components/ui/kit';
+import { RdHeader, RdCard, StatTile, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, Initials } from '../components/ui/rd';
+import { ATTENDANCE_TABS } from '../components/ui/rdTokens';
 import { useGymFirstDay } from '../hooks/useGymFirstDay';
 import AttendanceCalendar from '../components/ui/AttendanceCalendar';
 import { exportToCSV } from '../utils/exportUtils';
@@ -51,18 +47,6 @@ const PAGE = 25;
 
 type Preset = '7' | '30' | '90' | 'custom';
 
-/**
- * The two views of one section.
- *
- * Module level, not built during render: an array literal in the body is a new
- * object every pass, and this codebase has already paid for components declared
- * inside a render body.
- */
-const ATTENDANCE_TABS = [
-  { label: 'Today', to: '/attendance' },
-  { label: 'Walk-ins', to: '/attendance/walk-ins' },
-  { label: 'History', to: '/attendance-history' },
-];
 
 export default function AttendanceHistory() {
   const [from, setFrom] = useState(manilaDate(-29));
@@ -70,7 +54,8 @@ export default function AttendanceHistory() {
   const firstDay = useGymFirstDay();
   const [preset, setPreset] = useState<Preset>('30');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
-  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [people, setPeople] = useState<Map<string, { name: string; photo: string | null; since: string | null }>>(new Map());
+  const [showAllTop, setShowAllTop] = useState(false);
   const [activities, setActivities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -93,8 +78,8 @@ export default function AttendanceHistory() {
       if (!alive) return;
       if (att === null) { setFailed(true); setLoading(false); return; }
       setRows(att);
-      setNames(new Map(members.map((m) =>
-        [m.profile.id, `${m.profile.first_name} ${m.profile.last_name}`.trim()])));
+      setPeople(new Map(members.map((m) =>
+        [m.profile.id, { name: `${m.profile.first_name} ${m.profile.last_name}`.trim(), photo: m.profile.photo_url ?? null, since: m.profile.created_at ?? null }])));
       setActivities(settings?.activity_options ?? []);
       setFailed(false);
       setLoading(false);
@@ -128,10 +113,10 @@ export default function AttendanceHistory() {
     return rows.filter((r) => {
       if (method && r.method !== method) return false;
       if (activity && r.activity !== activity) return false;
-      if (q && !(names.get(r.member_id) ?? '').toLowerCase().includes(q)) return false;
+      if (q && !(people.get(r.member_id)?.name ?? '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rows, search, activity, method, names]);
+  }, [rows, search, activity, method, people]);
 
   /** Manila calendar day of a check-in — the +8h shift, not `toISOString()`. */
   const dayOf = (iso: string) =>
@@ -154,7 +139,8 @@ export default function AttendanceHistory() {
     }
     const entries = Object.entries(byDay);
     const busiest = [...entries].sort((a, b) => b[1] - a[1])[0] ?? null;
-    const top = [...byMember.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topList = [...byMember.entries()].sort((a, b) => b[1] - a[1]);
+    const top = topList.slice(0, 5);
     const spanDays = Math.max(1,
       Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000) + 1);
     return {
@@ -165,6 +151,8 @@ export default function AttendanceHistory() {
       perDay: (inRange.length / spanDays).toFixed(1),
       busiest,
       top,
+      topList: topList.slice(0, 50),
+      topAll: topList.length,
       byDay,
       activeDays: entries.length,
       spanDays,
@@ -172,12 +160,12 @@ export default function AttendanceHistory() {
   }, [inRange, from, to]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
-  const visible = filtered.slice((page - 1) * PAGE, page * PAGE);
+  const current = Math.min(page, pages);
+  const visible = filtered.slice((current - 1) * PAGE, current * PAGE);
 
   const timeLabel = (iso: string) =>
-    new Date(iso).toLocaleString('en-PH', {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-    });
+    new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const rangeLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (loading) {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading attendance…</div>;
@@ -185,280 +173,178 @@ export default function AttendanceHistory() {
 
   if (failed) {
     return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5" style={{ color: 'var(--color-secondary)' }} />
-          <div>
-            <p className="text-xs font-semibold text-white">Couldn&apos;t load attendance</p>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              A connection problem, not an empty log — no check-in has been lost. Reload to try again.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <RdCard className="p-6">
+        <EmptyBlock icon={AlertTriangle} title="Couldn't load attendance"
+          body="A connection problem, not an empty log — no check-in has been lost. Reload to try again." />
+      </RdCard>
     );
   }
 
+  const exportRows = () => exportToCSV(
+    filtered.map((r) => ({
+      member: people.get(r.member_id)?.name ?? r.member_id,
+      when: timeLabel(r.check_in_time),
+      method: r.method,
+      activity: r.activity ?? '',
+    })),
+    `attendance-${from}-to-${to}`,
+  );
+  const presetBtn = (p: Preset, label: string) => (
+    <button key={p} type="button" onClick={() => applyPreset(p)} aria-pressed={preset === p}
+      className="h-11 px-4 rounded-xl text-[14.5px] font-semibold whitespace-nowrap transition-colors"
+      style={preset === p
+        ? { background: 'linear-gradient(180deg,#8B5CF6,#7C3AED)', color: '#fff', border: '1px solid rgba(167,139,250,0.6)' }
+        : { background: 'rgba(255,255,255,0.04)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      {label}
+    </button>
+  );
+
   return (
-    <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white">Attendance</h1>
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              The record: who came in, when, and how they checked in — over any range
-            </p>
-          </div>
-          <SectionTabs tabs={ATTENDANCE_TABS} />
-        </div>
-        <Button variant="secondary"
-          onClick={() => exportToCSV(
-            filtered.map((r) => ({
-              member: names.get(r.member_id) ?? r.member_id,
-              when: timeLabel(r.check_in_time),
-              method: r.method,
-              activity: r.activity ?? '',
-            })),
-            `attendance-${from}-to-${to}`
-          )}>
-          <Download size={15} /> Export {filtered.length}
-        </Button>
-      </motion.div>
+    <div className="flex flex-col gap-6" data-attendance-history>
+      <RdHeader title="Attendance" subtitle="Review check-ins across any date range." tabs={ATTENDANCE_TABS}
+        actions={<RdButton variant="primary" icon={Download} onClick={exportRows} data-tip="Export the check-ins shown below as CSV">Export {filtered.length}</RdButton>} />
 
-      {/* ── Range ────────────────────────────────────────────────────────── */}
-      <Card className="!p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex gap-1.5">
-            {([['7', 'Last 7 days'], ['30', 'Last 30'], ['90', 'Last 90']] as [Preset, string][])
-              .map(([p, label]) => (
-                <button key={p} onClick={() => applyPreset(p)}
-                  className="px-3 py-2 rounded-lg text-[11px] font-semibold"
-                  style={{
-                    background: preset === p ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                    border: `1px solid ${preset === p ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    color: preset === p ? '#fff' : 'var(--color-text-secondary)',
-                  }}>
-                  {label}
-                </button>
-              ))}
-          </div>
-          <label className="w-40">
-            <span className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>From</span>
-            <DatePicker mode="history" bounds={{ earliest: firstDay }} value={from} max={to}
-              onChange={(v) => { setFrom(v || from); setPreset('custom'); }} />
-          </label>
-          <label className="w-40">
-            <span className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>To</span>
-            <DatePicker mode="history" bounds={{ earliest: firstDay }} value={to} min={from}
-              onChange={(v) => { setTo(v || to); setPreset('custom'); }} />
-          </label>
+      {/* ── Range and filters ── */}
+      <RdCard className="p-4 flex flex-wrap items-end gap-4" data-history-range>
+        <div className="flex gap-2">
+          {presetBtn('7', 'Last 7 days')}{presetBtn('30', 'Last 30 days')}{presetBtn('90', 'Last 90 days')}
         </div>
+        <span className="hidden lg:block w-px self-stretch" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        <label className="w-44">
+          <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>From</span>
+          <DatePicker mode="history" bounds={{ earliest: firstDay }} value={from} max={to}
+            onChange={(v) => { setFrom(v || from); setPreset('custom'); }} />
+        </label>
+        <label className="w-44">
+          <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>To</span>
+          <DatePicker mode="history" bounds={{ earliest: firstDay }} value={to} min={from}
+            onChange={(v) => { setTo(v || to); setPreset('custom'); }} />
+        </label>
+        <div className="flex-1 min-w-[220px]"><SearchField value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search member…" /></div>
+        <RdSelect value={method} onChange={(v) => { setMethod(v as '' | 'qr' | 'manual'); setPage(1); }} label="Filter by method" className="w-[170px]">
+          <option value="">Any method</option>
+          <option value="qr">QR scan</option>
+          <option value="manual">Manual</option>
+        </RdSelect>
+        {activities.length > 0 && (
+          <RdSelect value={activity} onChange={(v) => { setActivity(v); setPage(1); }} label="Filter by activity" className="w-[190px]">
+            <option value="">Any activity</option>
+            {activities.map((a) => <option key={a} value={a}>{a}</option>)}
+          </RdSelect>
+        )}
+      </RdCard>
 
-        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3"
-          style={{ borderTop: '1px solid var(--color-border)' }}>
-          <div className="relative flex-1 min-w-[180px]">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--color-text-muted)' }} />
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search member…"
-              className="w-full h-9 pl-8 pr-3 rounded-lg text-xs text-white"
-              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
-          </div>
-          <select value={method} onChange={(e) => { setMethod(e.target.value as '' | 'qr' | 'manual'); setPage(1); }}
-            className="h-9 px-3 rounded-lg text-xs text-white"
-            style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-            <option value="">Any method</option>
-            <option value="qr">QR scan</option>
-            <option value="manual">Manual</option>
-          </select>
-          {activities.length > 0 && (
-            <select value={activity} onChange={(e) => { setActivity(e.target.value); setPage(1); }}
-              className="h-9 px-3 rounded-lg text-xs text-white"
-              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-              <option value="">Any activity</option>
-              {activities.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          )}
-        </div>
-      </Card>
-
-      {/* ── What the range says ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Check-ins', value: String(stats.total), icon: CalendarCheck },
-          { label: 'Unique members', value: String(stats.uniqueMembers), icon: Users },
-          { label: 'Average per day', value: stats.perDay, icon: TrendingUp },
-          { label: 'Scanned vs typed', value: `${stats.qr} / ${stats.manual}`, icon: QrCode },
-        ].map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--color-primary-light)' }}>
-                <Icon size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</p>
-                <p className="text-lg font-bold text-white tabular-nums">{s.value}</p>
-              </div>
-            </div>
-          );
-        })}
+      {/* ── What the range says ── */}
+      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))' }}>
+        <StatTile icon={CalendarCheck} label="Check-ins" value={stats.total} />
+        <StatTile icon={Users} label="Unique members" value={stats.uniqueMembers} />
+        <StatTile icon={BarChart3} label="Average per day" value={stats.perDay} />
+        <StatTile icon={QrCode} label="Scanned vs typed" value={`${stats.qr} / ${stats.manual}`}
+          onClick={() => { setMethod(method === 'qr' ? '' : 'qr'); setPage(1); }} tip="Show only scanned check-ins" active={method === 'qr'} />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {/* ── Which days anyone came in ──────────────────────────────────────
-            This was a row of thin bars, one per day. It showed the *shape* of a
-            range and nothing else: no weekday, no date you could point at, and
-            no way to open a day. "Which Tuesdays are dead?" and "was anyone in
-            on the 14th?" are the questions actually being asked, and a month
-            grid answers both without a query. */}
-        <Card className="!p-4 col-span-2">
-          <div className="flex items-baseline justify-between gap-3 mb-3">
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white">Days with check-ins</h3>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                {stats.activeDays} of {stats.spanDays} day{stats.spanDays === 1 ? '' : 's'} in range ·
-                {' '}click a day to open it
-              </p>
-            </div>
-            {stats.busiest && (
-              <p className="text-[10px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
-                Busiest:{' '}
-                {new Date(`${stats.busiest[0]}T00:00:00`)
-                  .toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-                {' '}({stats.busiest[1]})
-              </p>
-            )}
-          </div>
-
+      <div className="rd-history-grid">
+        {/* ── Which days anyone came in ── */}
+        <RdCard className="p-6">
           <AttendanceCalendar
             month={calMonth}
             counts={stats.byDay}
             selected={dayFilter}
             today={manilaDate()}
             onMonthChange={setCalMonth}
-            // Clicking the picked day again clears it, so the calendar is its
-            // own way back out rather than needing a separate reset.
+            // Clicking the picked day again clears it — the calendar is its own way back out.
             onSelect={(d) => { setDayFilter(dayFilter === d ? null : d); setPage(1); }}
           />
-
-          {/* An empty month outside the loaded range would otherwise read as
-              "nobody came in July" when July was simply never fetched. */}
+          <p className="text-[13px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+            {stats.activeDays} of {stats.spanDays} day{stats.spanDays === 1 ? '' : 's'} in range had check-ins
+            {stats.busiest ? ` · busiest ${new Date(`${stats.busiest[0]}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} (${stats.busiest[1]})` : ''} · click a day to open it
+          </p>
+          {/* An empty month outside the loaded range would read as "nobody came" when it was never fetched. */}
           {(calMonth < from.slice(0, 7) || calMonth > to.slice(0, 7)) && (
-            <p className="text-[10px] mt-2 flex items-center gap-1.5" style={{ color: 'var(--color-secondary)' }}>
-              <AlertTriangle size={11} />
-              This month is outside the range above, so it shows nothing. Widen the range to load it.
+            <p className="text-[13px] mt-2 flex items-center gap-1.5" style={{ color: 'var(--color-secondary)' }}>
+              <AlertTriangle size={14} /> This month is outside the range above, so it shows nothing. Widen the range to load it.
             </p>
           )}
-        </Card>
+        </RdCard>
 
-        {/* ── Who came most ──────────────────────────────────────────────── */}
-        <Card className="!p-4">
-          <h3 className="text-sm font-bold text-white mb-3">Most regular</h3>
-          {stats.top.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Nobody yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {stats.top.map(([id, n], i) => (
-                <div key={id} className="flex items-center gap-2.5">
-                  <span className="w-5 text-[10px] font-bold tabular-nums"
-                    style={{ color: 'var(--color-text-muted)' }}>{i + 1}</span>
-                  <span className="flex-1 text-xs text-white truncate">
-                    {names.get(id) ?? 'Unknown member'}
-                  </span>
-                  <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--color-primary)' }}>
-                    {n}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* ── The log ──────────────────────────────────────────────────────── */}
-      <Card className="!p-4">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-sm font-bold text-white whitespace-nowrap">
-              {filtered.length} check-in{filtered.length === 1 ? '' : 's'}
-            </h3>
-            {/* The log is narrowed to a day. Said out loud, with the way out
-                attached — a table quietly showing a subset is how "where did
-                everyone go?" starts. */}
-            {dayFilter && (
-              <button onClick={() => { setDayFilter(null); setPage(1); }}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold"
-                style={{
-                  background: 'var(--color-secondary-light)',
-                  color: 'var(--color-secondary)',
-                  border: '1px solid var(--color-secondary)',
-                }}>
-                {new Date(`${dayFilter}T00:00:00`).toLocaleDateString('en-PH',
-                  { weekday: 'short', day: 'numeric', month: 'short' })}
-                <X size={10} />
-              </button>
+        {/* ── Who came most ── */}
+        <RdCard className="p-6" data-most-regular>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-[21px] font-semibold text-white">Most regular</h3>
+            {stats.top.length > 0 && !showAllTop && stats.topAll > 5 && (
+              <button type="button" onClick={() => setShowAllTop(true)} className="text-[14.5px] font-semibold inline-flex items-center gap-1.5" style={{ color: '#A78BFA' }}>View all <ArrowRight size={15} /></button>
             )}
           </div>
-        </div>
-
-        {visible.length === 0 ? (
-          <p className="text-xs py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
-            No check-ins match those filters.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 520 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['Member', 'When', 'How', 'Activity'].map((h) => (
-                    <th key={h} className="text-left py-2 px-2 text-[10px] font-semibold uppercase"
-                      style={{ color: 'var(--color-text-muted)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td className="py-2 px-2 text-xs text-white">
-                      {names.get(r.member_id) ?? (
-                        // An archived member's rows stay in the log — deleting
-                        // history to tidy a name would be worse than this.
-                        <span style={{ color: 'var(--color-text-muted)' }}>Archived member</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-2 text-xs tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
-                      {timeLabel(r.check_in_time)}
-                    </td>
-                    <td className="py-2 px-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold inline-flex items-center gap-1"
-                        style={{
-                          background: r.method === 'qr' ? 'var(--color-primary-light)' : 'var(--color-surface-high)',
-                          color: r.method === 'qr' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        }}>
-                        {r.method === 'qr' ? <QrCode size={9} /> : <Hand size={9} />}
-                        {r.method === 'qr' ? 'Scanned' : 'By hand'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                      {/* Never invented. A check-in recorded before the field
-                          existed, or taken without picking one, says so. */}
-                      {r.activity ?? <span style={{ color: 'var(--color-text-muted)' }}>Not recorded</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
-              <PageSummary page={Math.min(page, pages)} perPage={PAGE} total={filtered.length} noun="check-ins" />
-              <Pagination currentPage={Math.min(page, pages)} totalItems={filtered.length} itemsPerPage={PAGE} onPageChange={setPage} />
+          <p className="text-[14px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Members with the most check-ins in this period.</p>
+          {stats.top.length === 0 ? (
+            <p className="text-[14px] mt-6" style={{ color: 'var(--color-text-muted)' }}>Nobody yet.</p>
+          ) : (
+            <div className="mt-4 flex flex-col">
+              {(showAllTop ? stats.topList : stats.top).map(([id, n], i) => {
+                const p = people.get(id);
+                return (
+                  <button key={id} type="button" onClick={() => { setSearch(p?.name ?? ''); setPage(1); }} data-tip="Show only their check-ins"
+                    className="flex items-center gap-3.5 py-3 text-left hover:bg-white/[0.02] rounded-xl px-1" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span className="w-6 text-[15px] tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{i + 1}</span>
+                    <Initials name={p?.name ?? '?'} photo={p?.photo} size={44} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15.5px] font-semibold text-white truncate">{p?.name ?? 'Archived member'}</span>
+                      {p?.since && <span className="block text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>Member since {new Date(p.since).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })}</span>}
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-[21px] font-bold tabular-nums" style={{ color: '#A78BFA' }}>{n}</span>
+                      <span className="block text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>visits</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+          )}
+        </RdCard>
+      </div>
+
+      {/* ── The log ── */}
+      <RdCard className="overflow-hidden" data-history-log>
+        <div className="flex items-center justify-between gap-3 flex-wrap p-5">
+          <div>
+            <h3 className="text-[21px] font-semibold text-white">Check-ins</h3>
+            <p className="text-[14px]" style={{ color: 'var(--color-text-secondary)' }}>
+              {filtered.length} check-in{filtered.length === 1 ? '' : 's'} • {rangeLabel(from)} – {rangeLabel(to)}
+            </p>
           </div>
-        )}
-      </Card>
+          {/* Narrowed to a day — said out loud, with the way out attached. */}
+          {dayFilter && (
+            <button type="button" onClick={() => { setDayFilter(null); setPage(1); }}
+              className="h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-[13.5px] font-semibold"
+              style={{ background: 'rgba(245,158,11,0.13)', color: '#FBBF24', border: '1px solid rgba(245,158,11,0.45)' }}>
+              {new Date(`${dayFilter}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short' })}
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <RdTable head={['Member', { label: <span className="inline-flex items-center gap-1">When <ArrowDown size={13} /></span> }, 'How', 'Activity']}
+          empty={visible.length === 0 ? <EmptyBlock icon={CalendarCheck} title="No check-ins match those filters." /> : undefined}>
+          {visible.map((r) => {
+            const p = people.get(r.member_id);
+            return (
+              <Tr key={r.id}>
+                <Td>
+                  <div className="flex items-center gap-3">
+                    <Initials name={p?.name ?? '?'} photo={p?.photo} size={34} />
+                    {/* An archived member's rows stay — deleting history to tidy a name would be worse. */}
+                    {p ? <span className="font-medium text-white">{p.name}</span> : <span style={{ color: 'var(--color-text-muted)' }}>Archived member</span>}
+                  </div>
+                </Td>
+                <Td className="tabular-nums whitespace-nowrap">{timeLabel(r.check_in_time)}</Td>
+                <Td>{r.method === 'qr' ? <Pill tone="violet" icon={ScanLine}>Scanned</Pill> : <Pill tone="gray" icon={Keyboard}>Typed</Pill>}</Td>
+                {/* Never invented: a check-in taken without picking one says so. */}
+                <Td>{r.activity ?? <span style={{ color: 'var(--color-text-muted)' }}>Not recorded</span>}</Td>
+              </Tr>
+            );
+          })}
+        </RdTable>
+        <TableFooter page={current} perPage={PAGE} total={filtered.length} noun="check-ins" onPage={setPage} />
+      </RdCard>
     </div>
   );
 }

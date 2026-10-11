@@ -292,3 +292,17 @@
   .receipt-sheet { background: #FFFFFF !important; }
   .receipt-paper { border-radius: 0 !important; padding: 0 !important; }
 }
+
+/* Redesign kit (components/ui/rd.tsx): a page beside its rail. */
+.rd-with-rail { display: grid; gap: 24px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1280px) { .rd-with-rail { grid-template-columns: minmax(0, 1fr) 330px; } }
+/* The hero card: words · ring · the side block, one row on a wide screen. */
+.rd-hero { display: grid; gap: 28px; align-items: center; grid-template-columns: minmax(0, 1fr); }
+.rd-hero-side { padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+@media (min-width: 1500px) {
+  .rd-hero { grid-template-columns: minmax(0, 1.25fr) auto minmax(0, 1fr); }
+  .rd-hero-side { padding: 0 0 0 28px; border-top: 0; border-left: 1px solid rgba(255,255,255,0.08); }
+}
+@media (min-width: 1500px) { .rd-hero.rd-hero-2 { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
+.rd-history-grid { display: grid; gap: 24px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1280px) { .rd-history-grid { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); } }

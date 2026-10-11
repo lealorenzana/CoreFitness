@@ -1,5 +1,4 @@
 import AddMemberWizard from '../components/members/AddMemberWizard';
-import Avatar from '../components/ui/Avatar';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import {
   declineMembershipRequest, listOpenMembershipRequests,
@@ -9,9 +8,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { useBranding } from '../hooks/useBranding';
 import { useSearchParams } from 'react-router-dom';
-import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import Pagination from '../components/ui/Pagination';
+import Popover from '../components/ui/Popover';
+import {
+  RdHeader, RdCard, IconTile, Ring, Bar, FilterChips, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter,
+  EmptyBlock, RailCard, RailAction, RailRow, TipCard, WithRail, Initials, DotMenu, type Chip,
+} from '../components/ui/rd';
+import type { Tone } from '../components/ui/rdTokens';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import MembershipActionDialog from '../components/ui/MembershipActionDialog';
 import MemberDetailDrawer from '../components/ui/MemberDetailDrawer';
@@ -21,7 +23,7 @@ import DatePicker from '../components/ui/DatePicker';
 import { formatDate, formatPhoneNumber } from '../utils/formatters';
 import { formatCheckInCode } from '../utils/checkInCode';
 import { exportMembersToCSV } from '../utils/exportUtils';
-import { Search, UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, EyeOff, Pause, Play, Ban, ArrowUp, ArrowDown, AlertTriangle, UserX, UserCheck, Link2 } from 'lucide-react';
+import { UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, Pause, Play, Ban, ArrowUp, ArrowDown, AlertTriangle, UserX, UserCheck, Link2, Zap } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listMembers,
@@ -81,21 +83,7 @@ const GENDERS = [
   { value: 'female', label: 'Female' },
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
-/** Fewest rows a page shows, even on a very short window. */
-const MIN_ROWS_PER_PAGE = 5;
 
-/**
- * All five membership statuses, mapped onto the design system's three tones.
- * Previously anything that wasn't `active` rendered as "Expired", so a frozen
- * membership and a cancelled one were indistinguishable from a lapsed one.
- */
-const MEMBERSHIP_BADGE: Record<MembershipStatus, string> = {
-  active: 'Active',
-  pending: 'Pending',
-  expired: 'Expired',
-  frozen: 'Standard',
-  cancelled: 'Cancelled',
-};
 
 /**
  * What the membership badge actually says.
@@ -106,8 +94,7 @@ const MEMBERSHIP_BADGE: Record<MembershipStatus, string> = {
  * One means "this member has not paid yet", the other means "this person cannot
  * log in until you approve them", and the roster gave them the same word.
  *
- * `MEMBERSHIP_BADGE` above is the Badge *variant* (its colour). This is the
- * text, and it is deliberately not the enum.
+ * The pill's colour is `statusTone`; this is its text, deliberately not the enum.
  */
 const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
   active: 'Active',
@@ -116,6 +103,10 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
   frozen: 'Frozen',
   cancelled: 'Cancelled',
 };
+
+/** Rows a page shows (the mock-up's ten). */
+const PER_PAGE = 10;
+type ChipKey = 'all' | 'active' | 'expiring' | 'pending' | 'approval' | 'expired' | 'suspended';
 
 /** Days of remaining membership below which the roster starts warning. */
 const EXPIRING_SOON_DAYS = 7;
@@ -151,44 +142,11 @@ export default function Members() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  /**
-   * The page holds as many whole rows as the screen has room for.
-   *
-   * Ten, fixed, left a screen-height of nothing under the table on a desktop
-   * and overflowed a laptop. So: the height of the scroll area below its
-   * header row, divided by a row's height. Both are read off the real layout
-   * by one ResizeObserver, in a callback rather than an effect, so nothing sets
-   * state during a render. It watches the table body as well as the scroll
-   * area, so it re-measures when the rows change and not only on a resize.
-   *
-   * The **median** row, not the first. A suspended member's row carries a badge
-   * and stands about ten pixels taller; dividing by it — it sorted first — left
-   * a gap of nearly a row on every screen.
-   */
-  const [bodyHeight, setBodyHeight] = useState(0);
-  const [rowHeight, setRowHeight] = useState(49);
-  const measureBody = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const measure = () => {
-      const head = el.querySelector('thead');
-      const h = el.clientHeight - (head ? head.getBoundingClientRect().height : 0);
-      setBodyHeight((prev) => (Math.abs(prev - h) < 1 ? prev : h));
-      const heights = [...el.querySelectorAll('tr[data-member-row]')]
-        .map((r) => r.getBoundingClientRect().height)
-        .filter((x) => x > 0)
-        .sort((a, b) => a - b);
-      if (heights.length) {
-        const median = heights[Math.floor(heights.length / 2)];
-        setRowHeight((prev) => (Math.abs(prev - median) < 0.5 ? prev : median));
-      }
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    const body = el.querySelector('tbody');
-    if (body) observer.observe(body);
-    return () => observer.disconnect();
-  }, []);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  /** The stat chips double as filters (the mock-up's row of counts). */
+  const [chip, setChip] = useState<ChipKey>('all');
+  const [planFilter, setPlanFilter] = useState('all');
+  /** The Filter button's panel: account status and sort. */
+  const [filterAnchor, setFilterAnchor] = useState<HTMLElement | null>(null);
   const [filters, setFilters] = useState({
     accountStatus: 'all' as 'all' | ProfileStatus,
     membershipStatus: 'all' as 'all' | MembershipStatus,
@@ -321,7 +279,17 @@ export default function Members() {
       filters.accountStatus === 'all' || m.accountStatus === filters.accountStatus;
     const matchesMembership =
       filters.membershipStatus === 'all' || m.membershipStatus === filters.membershipStatus;
-    return matchesSearch && matchesAccount && matchesMembership;
+    const matchesPlan = planFilter === 'all' || m.planName === planFilter;
+    const d = daysUntilExpiry(m);
+    const matchesChip =
+      chip === 'all' ? true
+      : chip === 'active' ? m.membershipStatus === 'active'
+      : chip === 'expiring' ? m.membershipStatus === 'active' && d != null && d >= 0 && d <= EXPIRING_SOON_DAYS
+      : chip === 'pending' ? m.membershipStatus === 'pending'
+      : chip === 'approval' ? m.accountStatus === 'pending_approval'
+      : chip === 'expired' ? m.membershipStatus === 'expired'
+      : m.accountStatus === 'suspended';
+    return matchesSearch && matchesAccount && matchesMembership && matchesPlan && matchesChip;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -348,13 +316,13 @@ export default function Members() {
     }
   });
 
-  const perPage = bodyHeight > 0
-    ? Math.max(MIN_ROWS_PER_PAGE, Math.floor(bodyHeight / rowHeight))
-    : 10;
+  const perPage = PER_PAGE;
   // Clamped here, not corrected in an effect: a taller window means fewer
   // pages, and the one that was open may no longer exist.
   const page = Math.min(currentPage, Math.max(1, Math.ceil(sorted.length / perPage)));
   const paginated = sorted.slice((page - 1) * perPage, page * perPage);
+
+  const planNames = [...new Set(members.map((m) => m.planName))].filter((p) => p !== '—').sort();
 
   const toggleSort = (key: SortKey) => {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
@@ -365,19 +333,6 @@ export default function Members() {
     const d = daysUntilExpiry(m);
     return m.membershipStatus === 'active' && d != null && d >= 0 && d <= EXPIRING_SOON_DAYS;
   }).length;
-
-  const stats = [
-    { label: 'Total', value: members.length },
-    { label: 'Active', value: members.filter((m) => m.membershipStatus === 'active').length },
-    { label: 'Expiring ≤7d', value: expiringSoon },
-    { label: 'Pending Payment', value: members.filter((m) => m.membershipStatus === 'pending').length },
-    // The one status that stops somebody using the app at all. It was loaded on
-    // every row and shown nowhere, so an account waiting on approval was
-    // indistinguishable from an active one at a glance.
-    { label: 'Awaiting approval', value: members.filter((m) => m.accountStatus === 'pending_approval').length },
-    { label: 'Expired', value: members.filter((m) => m.membershipStatus === 'expired').length },
-    { label: 'Suspended', value: members.filter((m) => m.accountStatus === 'suspended').length },
-  ];
 
   /**
    * Freeze, unfreeze, cancel — the three membership actions the front desk owns.
@@ -499,422 +454,282 @@ export default function Members() {
     }
   };
 
+  const statusTone = (s: MembershipStatus): Tone =>
+    s === 'active' ? 'violet' : s === 'cancelled' ? 'gray' : 'amber';
+  const activeCount = members.filter((m) => m.membershipStatus === 'active').length;
+  const pendingPayment = members.filter((m) => m.membershipStatus === 'pending').length;
+  const awaitingApproval = members.filter((m) => m.accountStatus === 'pending_approval').length;
+  const share = members.length ? activeCount / members.length : null;
+  const CHIPS: Chip<ChipKey>[] = [
+    { key: 'all', label: 'All', count: members.length },
+    { key: 'active', label: 'Active', count: activeCount, tone: 'green' },
+    { key: 'expiring', label: 'Expiring soon', count: expiringSoon, tone: 'amber' },
+    { key: 'pending', label: 'Payment due', count: pendingPayment, tone: 'red' },
+    { key: 'approval', label: 'Awaiting approval', count: awaitingApproval, tone: 'blue' },
+    { key: 'expired', label: 'Expired', count: members.filter((m) => m.membershipStatus === 'expired').length, tone: 'violet' },
+    { key: 'suspended', label: 'Suspended', count: members.filter((m) => m.accountStatus === 'suspended').length, tone: 'gray' },
+  ];
+  const pickChip = (k: ChipKey) => { setChip(k); setCurrentPage(1); };
+  const exportCsv = () => exportMembersToCSV(
+    sorted.map((m) => ({
+      fullName: m.fullName, email: m.email, phone: m.phone, address: m.address, dateOfBirth: m.dateOfBirth,
+      gender: m.gender, experienceLevel: m.experienceLevel, accountStatus: m.accountStatus, planName: m.planName,
+      membershipStatus: m.membershipStatus, expiryDate: m.expiryDate, neverExpires: m.membership?.never_expires ?? false,
+      joinedOn: m.joinedOn, emergencyContactName: m.emergencyContactName, emergencyContactPhone: m.emergencyContactPhone,
+      emergencyContactRelationship: m.emergencyContactRelationship, checkInCode: formatCheckInCode(m.id),
+    })),
+  );
+  const sortHead = (label: string, key: SortKey) => ({
+    label: (
+      <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1 uppercase tracking-wider"
+        style={{ color: sort.key === key ? '#C4B5FD' : 'inherit' }}>
+        {label}{sort.key === key && (sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+      </button>
+    ),
+  });
+
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col gap-3 overflow-hidden">
-      {/* ---- members asking to pause or stop (0118) ------------------------
-          Here rather than on its own screen because this is where the desk
-          already freezes and cancels people — and **granting is not a button**.
-          Freezing or cancelling the member the way the desk always has is what
-          closes the request (a trigger on membership_events). A "mark granted"
-          control would let the member read "granted" and still book. */}
-      {msRequests && msRequests.length > 0 && (
-        <div className="flex-shrink-0 rounded-xl border p-3"
-          style={{ borderColor: 'var(--color-secondary)', background: 'var(--color-surface)' }}>
-          <p className="text-xs font-bold text-white">
-            {msRequests.length === 1
-              ? 'A member is asking to pause or stop'
-              : `${msRequests.length} members are asking to pause or stop`}
-          </p>
-          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-            Open the member and freeze or cancel them as usual — that closes the request by
-            itself. Nothing has changed on their membership yet.
-          </p>
-          <div className="mt-2 space-y-1.5">
-            {msRequests.map((r) => (
-              <div key={r.id} className="rounded-lg px-3 py-2"
-                style={{ background: 'var(--color-surface-raised)' }}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-white">
-                      <strong>{r.memberName}</strong>
-                      {' '}D{' '}
-                      {r.kind === 'freeze'
-                        ? `pause for ${r.requestedDays} days`
-                        : 'cancel'}
-                      {r.planName ? ` (${r.planName})` : ''}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                      &ldquo;{r.reason}&rdquo;
-                      {r.expiryDate ? ` — term ends ${r.expiryDate}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-none">
-                    <Button size="sm" variant="outline"
-                      onClick={() => { setViewingId(r.memberId); }}>
-                      Open
-                    </Button>
-                    <Button size="sm" variant="ghost"
-                      onClick={() => { setDecliningId(r.id); setDeclineWhy(''); }}>
-                      Turn down
-                    </Button>
-                  </div>
-                </div>
-
-                {decliningId === r.id && (
-                  <form className="mt-2 flex items-center gap-2" onSubmit={(e) => {
-                    e.preventDefault();
-                    void (async () => {
-                      try {
-                        await declineMembershipRequest(r.id, declineWhy.trim());
-                        setDecliningId(null);
-                        await loadMsRequests();
-                        showToast('The member has been told.', 'success');
-                      } catch (err) {
-                        showToast(err instanceof Error ? err.message : 'That did not work', 'error');
-                      }
-                    })();
-                  }}>
-                    <input
-                      className="flex-1 rounded-lg border px-2.5 py-1.5 text-xs"
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)',
-                               color: 'var(--color-text-primary)' }}
-                      value={declineWhy} autoFocus maxLength={280}
-                      placeholder="Why? The member reads this."
-                      onChange={(e) => setDeclineWhy(e.target.value)} />
-                    <Button size="sm" type="submit" disabled={declineWhy.trim().length === 0}>
-                      Send
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setDecliningId(null)}>
-                      Cancel
-                    </Button>
-                  </form>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col gap-6" data-members>
       {showInvite && <InviteMembersPanel onClose={() => setShowInvite(false)} />}
 
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-white">Members</h1>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            {showArchived ? 'Archived members — history retained' : 'Manage and track gym members'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}>
-            {showArchived ? <><Eye size={14} /> Active Roster</> : <><EyeOff size={14} /> Archived</>}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowInvite(true)}>
-            <Link2 size={14} /> Invite link
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowPendingPanel(true)}>
-            <Clock size={14} /> Pending
-            {pendingCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: 'var(--color-secondary)', color: '#000' }}>
-                {pendingCount}
-              </span>
-            )}
-          </Button>
-          {/* Exports what is on screen — the filter and search are part of the
-              question being asked. No `as never[]` cast: the shape is checked. */}
-          <Button variant="outline" size="sm" onClick={() =>
-            exportMembersToCSV(
-              sorted.map((m) => ({
-                fullName: m.fullName,
-                email: m.email,
-                phone: m.phone,
-                address: m.address,
-                dateOfBirth: m.dateOfBirth,
-                gender: m.gender,
-                experienceLevel: m.experienceLevel,
-                accountStatus: m.accountStatus,
-                planName: m.planName,
-                membershipStatus: m.membershipStatus,
-                expiryDate: m.expiryDate,
-                neverExpires: m.membership?.never_expires ?? false,
-                joinedOn: m.joinedOn,
-                emergencyContactName: m.emergencyContactName,
-                emergencyContactPhone: m.emergencyContactPhone,
-                emergencyContactRelationship: m.emergencyContactRelationship,
-                checkInCode: formatCheckInCode(m.id),
-              }))
-            )
-          }>
-            <Download size={14} /> Export CSV
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => setIsAddOpen(true)}>
-            <UserPlus size={14} /> Add Member
-          </Button>
-        </div>
-      </div>
+      <RdHeader title={showArchived ? 'Archived members' : 'Members'}
+        subtitle={showArchived ? 'Archived members — history retained. Restore anyone from the row menu.' : 'Manage and track gym members.'}
+        actions={(
+          <>
+            <RdButton icon={Link2} onClick={() => setShowInvite(true)}>Invite link</RdButton>
+            <RdButton variant="primary" icon={UserPlus} onClick={() => setIsAddOpen(true)}>Add Member</RdButton>
+          </>
+        )} />
 
-      {/* Stats + Search */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {stats.map((s) => (
-            <div key={s.label} className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-              <Users size={12} style={{ color: 'var(--color-primary)' }} />
-              <span className="text-[10px] uppercase" style={{ color: 'var(--color-text-muted)' }}>{s.label}</span>
-              <span className="text-sm font-bold text-white">{s.value}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Search..." value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-44 pl-9 pr-3 h-8 rounded-full text-xs text-white"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
-          </div>
-          <div className="relative">
-            <Button variant="outline" size="sm" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
-              <Filter size={12} /> Filter
-            </Button>
-            {showFilterDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-64 rounded-xl shadow-2xl z-20 p-3 space-y-3"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <div>
-                  <label className="text-[10px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Account status</label>
-                  <select value={filters.accountStatus}
-                    onChange={(e) => { setFilters({ ...filters, accountStatus: e.target.value as typeof filters.accountStatus }); setCurrentPage(1); }}
-                    className="w-full px-2 py-1.5 rounded-lg text-white text-xs"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    <option value="all">All</option>
-                    <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
-                    <option value="pending_approval">Pending approval</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Membership</label>
-                  <select value={filters.membershipStatus}
-                    onChange={(e) => { setFilters({ ...filters, membershipStatus: e.target.value as typeof filters.membershipStatus }); setCurrentPage(1); }}
-                    className="w-full px-2 py-1.5 rounded-lg text-white text-xs"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    <option value="all">All</option>
-                    <option value="active">Active</option>
-                    <option value="pending">Pending payment</option>
-                    <option value="expired">Expired</option>
-                    <option value="frozen">Frozen</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-1"
-                    onClick={() => { setFilters({ accountStatus: 'all', membershipStatus: 'all' }); setShowFilterDropdown(false); setCurrentPage(1); }}>
-                    Clear
-                  </Button>
-                  <Button variant="primary" size="sm" className="flex-1" onClick={() => setShowFilterDropdown(false)}>Apply</Button>
-                </div>
+      <WithRail rail={(
+        <>
+          <RailCard icon={Zap} title="Quick actions" sub="Common member management tools.">
+            {/* Exports what is on screen — the filter and search are part of the question. */}
+            <RailAction icon={Download} label="Export CSV" onClick={exportCsv} />
+            <RailAction icon={showArchived ? Eye : Archive} label={showArchived ? 'Active roster' : 'Archived members'}
+              onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); setChip('all'); }} />
+            <RailAction icon={Clock} label={`Pending sign-ups${pendingCount ? ` · ${pendingCount}` : ''}`} onClick={() => setShowPendingPanel(true)} />
+          </RailCard>
+          <RailCard icon={AlertTriangle} tone="amber" title="Needs attention" sub="Members that need your action.">
+            <RailRow tone="amber" label="Expiring soon" count={expiringSoon} onClick={() => pickChip('expiring')} />
+            <RailRow tone="red" label="Payment due" count={pendingPayment} onClick={() => pickChip('pending')} />
+            {awaitingApproval > 0 && <RailRow tone="blue" label="Awaiting approval" count={awaitingApproval} onClick={() => pickChip('approval')} />}
+            {pendingCount > 0 && <RailRow tone="blue" label="Sign-ups to review" count={pendingCount} onClick={() => setShowPendingPanel(true)} />}
+            {msRequests && msRequests.length > 0 && <RailRow tone="amber" label="Asking to pause or stop" count={msRequests.length}
+              onClick={() => document.getElementById('ms-requests')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />}
+          </RailCard>
+          <TipCard>Keep your members active by following up on expiring members and pending payments.</TipCard>
+        </>
+      )}>
+        {/* ── The hero ── */}
+        {!showArchived && (
+          <RdCard glow className="p-7 rd-hero" data-members-hero>
+            <div className="flex items-center gap-6 min-w-0">
+              <IconTile icon={Users} size={88} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[36px] leading-none font-bold text-white tabular-nums">{members.length} members</p>
+                <p className="text-[16px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+                  {activeCount} active{share !== null ? ` • ${Math.round(share * 100)}% of total` : ''}
+                </p>
+                <div className="mt-4 max-w-md"><Bar value={share} /></div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </div>
+            <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="Active" size={140} />
+            <div className="min-w-0 rd-hero-side">
+              <p className="text-[26px] font-bold text-white tabular-nums">{activeCount} active</p>
+              <p className="text-[15.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {expiringSoon > 0 ? `${expiringSoon} expiring within ${EXPIRING_SOON_DAYS} days — follow up early.` : 'Keep the momentum going.'}
+              </p>
+            </div>
+          </RdCard>
+        )}
 
-      {/* Table. The card fills the rest of the screen and the page size is
-          worked out from that space (see `measureBody`), so the rows reach the
-          pager instead of stopping at ten above an empty screen. `min-h-0` on
-          both levels keeps a stray extra row scrolling inside the card rather
-          than pushing the pager off the bottom. */}
-      <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-        <div ref={measureBody} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-          <table className="w-full table-fixed">
-            <thead className="sticky top-0 z-10" style={{ background: 'var(--color-surface)' }}>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                {([
-                  { label: 'Member', key: 'name' as SortKey, w: 'w-[22%]' },
-                  { label: 'Contact', key: null, w: 'w-[24%]' },
-                  { label: 'Plan', key: 'plan' as SortKey, w: 'w-[13%]' },
-                  { label: 'Membership', key: 'membership' as SortKey, w: 'w-[13%]' },
-                  { label: 'Expiry', key: 'expiry' as SortKey, w: 'w-[14%]' },
-                  { label: 'Actions', key: null, w: 'w-[14%]' },
-                ]).map((h) => (
-                  <th key={h.label} className={`text-left py-2 px-3 text-[10px] font-semibold uppercase tracking-wider ${h.w}`}
-                    style={{ color: 'var(--color-text-muted)' }}>
-                    {h.key ? (
-                      <button onClick={() => toggleSort(h.key!)} className="inline-flex items-center gap-1 uppercase tracking-wider"
-                        style={{ color: sort.key === h.key ? 'var(--color-secondary)' : 'inherit' }}>
-                        {h.label}
-                        {sort.key === h.key && (sort.dir === 'asc' ? <ArrowUp size={9} /> : <ArrowDown size={9} />)}
-                      </button>
-                    ) : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="py-10 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading members…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-10 text-center">
-                    <Users size={20} style={{ color: 'var(--color-primary)' }} className="mx-auto mb-2" />
-                    <p className="text-xs text-white font-semibold">
-                      {showArchived ? 'No archived members' : 'No members yet'}
-                    </p>
-                    {!showArchived && (
-                      <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                        Approve a pending registration, or use Add Member for a walk-in.
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              ) : paginated.map((m) => {
-                const daysLeft = daysUntilExpiry(m);
-                const lapsingSoon =
-                  m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
-                return (
-                <tr key={m.id} data-member-row
-                  className="transition-colors group cursor-pointer" style={{ borderBottom: '1px solid var(--color-border)' }}
-                  onClick={() => setViewingId(m.id)}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-raised)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <Avatar name={m.fullName} photoUrl={m.photoUrl} size={32} />
+        {/* ── Members asking to pause or stop (0118) ──
+            Granting is not a button: freezing or cancelling the member the way the desk
+            always has is what closes the request (a trigger on membership_events). */}
+        {msRequests && msRequests.length > 0 && (
+          <RdCard className="p-5" id="ms-requests" style={{ borderColor: 'rgba(245,158,11,0.45)' }} data-ms-requests>
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={22} style={{ color: '#FBBF24' }} />
+              <h2 className="text-[18px] font-semibold text-white">
+                {msRequests.length === 1 ? 'A member is asking to pause or stop' : `${msRequests.length} members are asking to pause or stop`}
+              </h2>
+            </div>
+            <p className="text-[14px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Open the member and freeze or cancel them as usual — that closes the request by itself. Nothing has changed on their membership yet.
+            </p>
+            <div className="mt-3 flex flex-col gap-2.5">
+              {msRequests.map((r) => (
+                <div key={r.id} className="rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Initials name={r.memberName} size={38} />
                       <div className="min-w-0">
-                        <p className="text-sm text-white font-semibold leading-tight truncate">{m.fullName}</p>
-                        {/* Under the name, not beside it: a badge on the same
-                            line stole enough width to truncate "Conrad Connie"
-                            to "Conrad…", and the name is the column.
+                        <p className="text-[14.5px] text-white"><strong>{r.memberName}</strong> — {r.kind === 'freeze' ? `pause for ${r.requestedDays} days` : 'cancel'}{r.planName ? ` (${r.planName})` : ''}</p>
+                        <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>&ldquo;{r.reason}&rdquo;{r.expiryDate ? ` — term ends ${r.expiryDate}` : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RdButton size="sm" variant="soft" onClick={() => setViewingId(r.memberId)}>Open</RdButton>
+                      <RdButton size="sm" variant="ghost" onClick={() => { setDecliningId(r.id); setDeclineWhy(''); }}>Turn down</RdButton>
+                    </div>
+                  </div>
+                  {decliningId === r.id && (
+                    <form className="mt-3 flex items-center gap-2" onSubmit={(e) => {
+                      e.preventDefault();
+                      void (async () => {
+                        try {
+                          await declineMembershipRequest(r.id, declineWhy.trim());
+                          setDecliningId(null);
+                          await loadMsRequests();
+                          showToast('The member has been told.', 'success');
+                        } catch (err) {
+                          showToast(err instanceof Error ? err.message : 'That did not work', 'error');
+                        }
+                      })();
+                    }}>
+                      <input className="flex-1 h-10 rounded-xl px-3 text-[14px] text-white outline-none"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}
+                        value={declineWhy} autoFocus maxLength={280} placeholder="Why? The member reads this."
+                        onChange={(e) => setDeclineWhy(e.target.value)} />
+                      <RdButton size="sm" variant="primary" type="submit" disabled={declineWhy.trim().length === 0}>Send</RdButton>
+                      <RdButton size="sm" variant="ghost" onClick={() => setDecliningId(null)}>Cancel</RdButton>
+                    </form>
+                  )}
+                </div>
+              ))}
+            </div>
+          </RdCard>
+        )}
 
-                            Said in words either way. This used to render as a
-                            lowercase enum appended to the experience level —
-                            "beginner · pending_approval" — where the one status
-                            that stops somebody opening the app read as a
-                            footnote about their training. */}
+        <FilterChips items={CHIPS} value={chip} onChange={pickChip} />
+
+        {/* ── Search and filters ── */}
+        <div className="flex items-center gap-3 flex-wrap" data-members-toolbar>
+          <SearchField value={searchTerm} onChange={(v) => { setSearchTerm(v); setCurrentPage(1); }}
+            placeholder="Search members by name, email, phone or check-in code…" label="Search members" />
+          <RdSelect value={planFilter} onChange={(v) => { setPlanFilter(v); setCurrentPage(1); }} label="Filter by plan" className="w-[210px]">
+            <option value="all">All plans</option>
+            {planNames.map((p) => <option key={p} value={p}>{p}</option>)}
+          </RdSelect>
+          <RdSelect value={filters.membershipStatus} onChange={(v) => { setFilters({ ...filters, membershipStatus: v as typeof filters.membershipStatus }); setCurrentPage(1); }}
+            label="Filter by membership" className="w-[210px]">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Awaiting payment</option>
+            <option value="expired">Expired</option>
+            <option value="frozen">Frozen</option>
+            <option value="cancelled">Cancelled</option>
+          </RdSelect>
+          <RdButton icon={Filter} onClick={(e) => setFilterAnchor(filterAnchor ? null : e.currentTarget)} aria-expanded={!!filterAnchor}
+            variant={filters.accountStatus !== 'all' ? 'soft' : 'secondary'}>Filter</RdButton>
+          <Popover anchor={filterAnchor} open={!!filterAnchor} onClose={() => setFilterAnchor(null)} width={280}>
+            <div className="p-4 flex flex-col gap-3">
+              <label className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>Account status
+                <RdSelect value={filters.accountStatus} onChange={(v) => { setFilters({ ...filters, accountStatus: v as typeof filters.accountStatus }); setCurrentPage(1); }}
+                  label="Account status" className="w-full mt-1">
+                  <option value="all">All</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="pending_approval">Pending approval</option>
+                </RdSelect>
+              </label>
+              <label className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>Sort by
+                <RdSelect value={`${sort.key}:${sort.dir}`} onChange={(v) => { const [key, dir] = v.split(':'); setSort({ key: key as SortKey, dir: dir as 'asc' | 'desc' }); setCurrentPage(1); }}
+                  label="Sort by" className="w-full mt-1">
+                  <option value="name:asc">Name, A–Z</option>
+                  <option value="name:desc">Name, Z–A</option>
+                  <option value="expiry:asc">Expiry, soonest first</option>
+                  <option value="expiry:desc">Expiry, latest first</option>
+                  <option value="joined:desc">Newest members</option>
+                  <option value="joined:asc">Oldest members</option>
+                  <option value="plan:asc">Plan</option>
+                  <option value="membership:asc">Membership status</option>
+                </RdSelect>
+              </label>
+              <div className="flex gap-2">
+                <RdButton size="sm" variant="ghost" className="flex-1" onClick={() => {
+                  setFilters({ accountStatus: 'all', membershipStatus: 'all' }); setPlanFilter('all'); setChip('all'); setSearchTerm(''); setFilterAnchor(null); setCurrentPage(1);
+                }}>Clear all</RdButton>
+                <RdButton size="sm" variant="primary" className="flex-1" onClick={() => setFilterAnchor(null)}>Done</RdButton>
+              </div>
+            </div>
+          </Popover>
+        </div>
+
+        {/* ── The roster ── */}
+        <RdCard className="overflow-hidden" data-members-table>
+          <RdTable head={[sortHead('Member', 'name'), 'Contact', sortHead('Plan', 'plan'), sortHead('Status', 'membership'), sortHead('Expiry', 'expiry'), { label: 'Actions', align: 'right' }]}
+            empty={loading ? <p className="py-12 text-center text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading members…</p>
+              : filtered.length === 0 ? (
+                <EmptyBlock icon={Users} title={members.length === 0 ? (showArchived ? 'No archived members' : 'No members yet') : 'No members match these filters'}
+                  body={members.length === 0 ? (showArchived ? undefined : 'Approve a pending registration, or use Add Member for a walk-in.') : 'Clear a filter or the search to see everyone.'}
+                  action={members.length > 0 ? <RdButton onClick={() => { setChip('all'); setPlanFilter('all'); setSearchTerm(''); setFilters({ accountStatus: 'all', membershipStatus: 'all' }); }}>Clear filters</RdButton> : undefined} />
+              ) : undefined}>
+            {!loading && paginated.map((m) => {
+              const daysLeft = daysUntilExpiry(m);
+              const lapsingSoon = m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
+              const frozenOnce = (m.membership?.freeze_count ?? 0) >= 1;
+              return (
+                <Tr key={m.id} data-member-row onClick={() => setViewingId(m.id)}>
+                  <Td>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <Initials name={m.fullName} photo={m.photoUrl} size={44} />
+                      <div className="min-w-0">
+                        <p className="text-[15.5px] text-white font-semibold truncate">{m.fullName}</p>
+                        {/* Said in words, under the name: the one status that stops somebody opening the app. */}
                         {m.accountStatus === 'pending_approval' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold"
-                            style={{ color: 'var(--color-secondary)' }}>
-                            <Clock size={9} /> Awaiting approval
-                          </span>
+                          <span className="inline-flex items-center gap-1 text-[13px] font-medium" style={{ color: '#93C5FD' }}><Clock size={13} /> Awaiting approval</span>
                         ) : m.accountStatus === 'suspended' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold"
-                            style={{ color: 'var(--color-secondary)' }}>
-                            <Ban size={9} /> Suspended
-                          </span>
+                          <span className="inline-flex items-center gap-1 text-[13px] font-medium" style={{ color: '#FBBF24' }}><Ban size={13} /> Suspended</span>
                         ) : (
-                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                            {m.experienceLevel || 'no level set'}
-                          </p>
+                          <p className="text-[13px] truncate capitalize" style={{ color: 'var(--color-text-secondary)' }}>{m.experienceLevel || 'no level set'}</p>
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <p className="text-xs text-white truncate">{m.email}</p>
-                    <p className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>
-                      {m.phone ? formatPhoneNumber(m.phone) : '—'}
-                    </p>
-                  </td>
-                  <td className="py-2.5 px-3"><p className="text-xs text-white truncate">{m.planName}</p></td>
-                  <td className="py-2.5 px-3">
-                    {m.membershipStatus ? (
-                      <Badge variant={MEMBERSHIP_BADGE[m.membershipStatus]}>{MEMBERSHIP_LABEL[m.membershipStatus]}</Badge>
-                    ) : (
-                      <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>none</span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    {/* No expiry date has two meanings (0024): a lifetime plan,
-                        or a membership that was never activated. The dash must
-                        not stand for both. */}
-                    <p className="text-xs text-white">
-                      {m.expiryDate
-                        ? formatDate(m.expiryDate)
-                        : m.membership?.never_expires
-                          ? 'Never'
-                          : '—'}
-                    </p>
-                    {/* Renewal is the whole business. A date alone makes staff do
-                        the arithmetic; this says how long is left. */}
+                  </Td>
+                  <Td>
+                    <p className="text-[14.5px] text-white truncate max-w-[260px]">{m.email}</p>
+                    <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>{m.phone ? formatPhoneNumber(m.phone) : '—'}</p>
+                  </Td>
+                  <Td>{m.planName}</Td>
+                  <Td>{m.membershipStatus ? <Pill tone={statusTone(m.membershipStatus)}>{MEMBERSHIP_LABEL[m.membershipStatus]}</Pill>
+                    : <span className="text-[13.5px]" style={{ color: 'var(--color-text-muted)' }}>none</span>}</Td>
+                  <Td>
+                    {/* No expiry has two meanings (0024): a lifetime plan, or one never activated. */}
+                    <p className="text-[14.5px]">{m.expiryDate ? formatDate(m.expiryDate) : m.membership?.never_expires ? 'Never' : '—'}</p>
                     {lapsingSoon && (
-                      <p className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-secondary)' }}>
-                        <AlertTriangle size={9} />
-                        {daysLeft === 0 ? 'expires today' : `${daysLeft}d left`}
+                      <p className="text-[12.5px] flex items-center gap-1" style={{ color: '#FBBF24' }}>
+                        <AlertTriangle size={12} /> {daysLeft === 0 ? 'expires today' : `${daysLeft}d left`}
                       </p>
                     )}
-                  </td>
-                  <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                    {/*
-                      Approve sits OUTSIDE the hover group on purpose.
-
-                      Every other action here is a maintenance job you go looking
-                      for, so revealing them on hover keeps the roster quiet.
-                      Approval is the opposite: it is the one thing blocking a
-                      real person from using the app they signed up for, and it
-                      was reachable only through a modal that reads a *different*
-                      table — so a member sitting in the roster at
-                      `pending_approval` could not be approved from this screen
-                      at all. It is now a labelled button on their row.
-                    */}
-                    {!showArchived && m.accountStatus === 'pending_approval' && (
-                      <button
-                        onClick={() => handleApprove(m)}
-                        data-tip={`Let ${m.firstName} sign in`}
-                        className="mb-1 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 whitespace-nowrap"
-                        style={{ background: 'var(--color-secondary)', color: '#000' }}
-                      >
-                        <UserCheck size={11} /> Approve
-                      </button>
-                    )}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {!showArchived && m.membership && (
-                        m.membershipStatus === 'frozen' ? (
-                          <button onClick={() => handleUnfreeze(m)} data-tip="Resume membership — frozen days are added back to the expiry"
-                            className="p-1.5 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                            <Play size={11} />
-                          </button>
-                        ) : m.membershipStatus === 'active' ? (
-                          <>
-                            {/* One freeze per period (0018). Showing it spent, rather
-                                than hiding the button, explains why it's unavailable —
-                                the database will refuse a second one anyway. */}
-                            <button onClick={() => setToFreeze(m)}
-                              disabled={(m.membership?.freeze_count ?? 0) >= 1}
-                              data-tip={(m.membership?.freeze_count ?? 0) >= 1
-                                ? 'Already frozen once this period — resets on renewal'
-                                : 'Freeze membership'}
-                              className="p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-                              style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
-                              <Pause size={11} />
-                            </button>
-                            <button onClick={() => setToCancel(m)} data-tip="Cancel membership"
-                              className="p-1.5 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                              <Ban size={11} />
-                            </button>
-                          </>
-                        ) : null
+                  </Td>
+                  <Td align="right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex items-center gap-2">
+                      {/* Approve is not hidden in the menu: it is what blocks a real person from the app. */}
+                      {!showArchived && m.accountStatus === 'pending_approval' && (
+                        <RdButton size="sm" variant="amber" icon={UserCheck} onClick={() => void handleApprove(m)} data-tip={`Let ${m.firstName} sign in`}>Approve</RdButton>
                       )}
-                      {!showArchived && (
-                        <>
-                          <button onClick={() => setEditing(m)} data-tip="Edit member"
-                            className="p-1.5 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                            <Edit2 size={11} />
-                          </button>
-                          <button onClick={() => setToSuspend(m)}
-                            data-tip={m.accountStatus === 'suspended' ? 'Reactivate account' : 'Suspend account'}
-                            className="p-1.5 rounded-full"
-                            style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                            {m.accountStatus === 'suspended' ? <UserCheck size={11} /> : <UserX size={11} />}
-                          </button>
-                        </>
-                      )}
-                      <button onClick={() => setToArchive(m)} data-tip={showArchived ? 'Restore member' : 'Archive member'}
-                        className="p-1.5 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                        <Archive size={11} />
-                      </button>
+                      <DotMenu label={`Actions for ${m.fullName}`} items={[
+                        { label: 'View details', icon: Eye, onClick: () => setViewingId(m.id) },
+                        { label: 'Resume membership', icon: Play, onClick: () => void handleUnfreeze(m), hidden: showArchived || !m.membership || m.membershipStatus !== 'frozen' },
+                        { label: frozenOnce ? 'Freeze (used this period)' : 'Freeze membership', icon: Pause, onClick: () => setToFreeze(m),
+                          hidden: showArchived || !m.membership || m.membershipStatus !== 'active', disabled: frozenOnce },
+                        { label: 'Cancel membership', icon: Ban, onClick: () => setToCancel(m), tone: 'warn', hidden: showArchived || !m.membership || m.membershipStatus !== 'active' },
+                        { label: 'Edit member', icon: Edit2, onClick: () => setEditing(m), hidden: showArchived },
+                        { label: m.accountStatus === 'suspended' ? 'Reactivate account' : 'Suspend account', icon: m.accountStatus === 'suspended' ? UserCheck : UserX,
+                          onClick: () => setToSuspend(m), tone: m.accountStatus === 'suspended' ? undefined : 'warn', hidden: showArchived },
+                        { label: showArchived ? 'Restore member' : 'Archive member', icon: Archive, onClick: () => setToArchive(m), tone: showArchived ? undefined : 'danger' },
+                      ]} />
                     </div>
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex-shrink-0 px-3 py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <Pagination currentPage={page} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setCurrentPage} />
-        </div>
-      </div>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </RdTable>
+          <TableFooter page={page} perPage={PER_PAGE} total={filtered.length} noun={showArchived ? 'archived members' : 'members'} onPage={setCurrentPage} />
+        </RdCard>
+      </WithRail>
 
       {/* The whole member record, opened by clicking a row. Reloads the roster
           behind it after any write, so a payment taken in the drawer moves the
@@ -1185,8 +1000,8 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+          className="w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+          style={{ background: 'radial-gradient(120% 80% at 0% 0%, rgba(124,58,237,0.16), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.25)' }}
           onClick={(e) => e.stopPropagation()}>
           <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <div>
@@ -1205,15 +1020,8 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
 function ModalFooter({ onClose, onSubmit, saving, submitLabel }: { onClose: () => void; onSubmit: () => void; saving: boolean; submitLabel: string }) {
   return (
     <div className="flex items-center gap-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-      <button onClick={onClose} className="flex-1 py-2.5 rounded-full font-semibold text-sm"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-        Cancel
-      </button>
-      <button onClick={onSubmit} disabled={saving}
-        className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black disabled:opacity-60"
-        style={{ background: 'var(--color-secondary)' }}>
-        {saving ? 'Saving…' : submitLabel}
-      </button>
+      <RdButton className="flex-1" onClick={onClose}>Cancel</RdButton>
+      <RdButton className="flex-1" variant="primary" onClick={onSubmit} disabled={saving}>{saving ? 'Saving…' : submitLabel}</RdButton>
     </div>
   );
 }
