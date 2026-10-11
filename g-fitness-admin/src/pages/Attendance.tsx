@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
+import { useFitRows } from '../hooks/useFitRows';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
   QrCode, UserPlus, Users, TrendingUp, Download, Undo2, Zap, Dumbbell, Sparkles, Calendar,
@@ -19,7 +20,7 @@ import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
 import type { AttendanceRow } from '../types/db';
 import {
   RdHeader, RdCard, IconTile, Ring, StatTile, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td,
-  TableFooter, EmptyBlock, RailCard, RailAction, WithRail, Initials,
+  TableFooter, EmptyBlock, RailCard, RailAction, FitBody, Initials,
 } from '../components/ui/rd';
 import { ATTENDANCE_TABS, TONE, type Tone } from '../components/ui/rdTokens';
 
@@ -66,6 +67,8 @@ export default function Attendance() {
   const [logPlan, setLogPlan] = useState('all');
   const [logSearch, setLogSearch] = useState('');
   const quickSearch = useRef<HTMLDivElement>(null);
+  /** Rows that fit the log's own box — the page never scrolls (2026-10-11). */
+  const fit = useFitRows(ITEMS_PER_PAGE);
 
   const loadData = async () => {
     setLoading(true);
@@ -137,7 +140,8 @@ export default function Attendance() {
       .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayAttendance, logMethod, logPlan, logSearch, planOf, memberById]);
-  const page = Math.min(logPage, Math.max(1, Math.ceil(logRecords.length / ITEMS_PER_PAGE)));
+  const perPage = fit.perPage;
+  const page = Math.min(logPage, Math.max(1, Math.ceil(logRecords.length / perPage)));
 
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
     const result = await performCheckIn(member, method, {
@@ -223,7 +227,7 @@ export default function Attendance() {
   };
 
   return (
-    <div className="flex flex-col gap-6" data-attendance-today>
+    <div className="rd-fit" data-attendance-today>
       <RdHeader title="Attendance" subtitle="Track member check-ins and keep your gym running strong." tabs={ATTENDANCE_TABS}
         actions={(
           <Link to="/attendance-history" className="h-12 px-4 rounded-xl inline-flex items-center gap-3 text-[15px] text-white"
@@ -232,21 +236,21 @@ export default function Attendance() {
           </Link>
         )} />
 
-      <WithRail rail={(
+      <FitBody rail={(
         <>
           <RailCard icon={Zap} title="Quick check-in" sub="Search for a member and check them in instantly.">
             <div ref={quickSearch}>
               <SearchField value={searchTerm} onChange={setSearchTerm} placeholder="Search members by name, email or code…" label="Search member" />
             </div>
-            <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto pr-0.5" data-quick-list>
+            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-0.5" data-quick-list>
               {filteredMembers.length === 0 ? (
                 <p className="text-[14px] py-3 text-center" style={{ color: 'var(--color-text-muted)' }}>No members found</p>
-              ) : filteredMembers.slice(0, searchTerm ? 20 : 4).map((m) => {
+              ) : filteredMembers.slice(0, searchTerm ? 20 : 3).map((m) => {
                 const st = memberState(planOf[m.profile.id]?.status);
                 const name = `${m.profile.first_name} ${m.profile.last_name}`;
                 return (
-                  <div key={m.profile.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
-                    <Initials name={name} photo={m.profile.photo_url} size={46} />
+                  <div key={m.profile.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
+                    <Initials name={name} photo={m.profile.photo_url} size={40} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[14.5px] font-semibold text-white truncate">{name}</p>
                       <p className="text-[12.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{m.profile.email}</p>
@@ -299,52 +303,51 @@ export default function Attendance() {
         </>
       )}>
         {/* ── The hero ── */}
-        <RdCard glow className="p-7 rd-hero" data-attendance-hero>
+        <RdCard glow className="px-6 py-4 rd-hero rd-hero-tight" data-attendance-hero>
           <div className="flex items-center gap-6 min-w-0">
-            <IconTile icon={Dumbbell} size={88} />
+            <IconTile icon={Dumbbell} size={64} />
             <div className="min-w-0">
               <p className="text-[13px] font-semibold tracking-[0.14em]" style={{ color: '#A78BFA' }}>TODAY'S ATTENDANCE</p>
-              <p className="text-[42px] leading-none font-bold text-white mt-2 tabular-nums">{todayAttendance.length} checked in</p>
-              <p className="text-[17px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>Get members in, keep the momentum going.</p>
+              <p className="text-[32px] leading-none font-bold text-white mt-1.5 tabular-nums">{todayAttendance.length} checked in</p>
+              <p className="text-[15px] mt-2" style={{ color: 'var(--color-text-secondary)' }}>Get members in, keep the momentum going.</p>
             </div>
           </div>
-          <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="of roster" size={168} />
-          <div className="flex flex-col gap-4 min-w-0 rd-hero-side">
+          <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="of roster" size={110} />
+          <div className="flex flex-col gap-3 min-w-0 rd-hero-side">
             <div>
-              <p className="text-[22px] font-bold text-white tabular-nums">{todayAttendance.length} / {members.length || '—'}</p>
-              <p className="text-[15px]" style={{ color: 'var(--color-text-secondary)' }}>members checked in today</p>
+              <p className="text-[20px] font-bold text-white tabular-nums">{todayAttendance.length} / {members.length || '—'} <span className="text-[14px] font-normal" style={{ color: 'var(--color-text-secondary)' }}>members checked in today</span></p>
               {todayAttendance.length === 0 && (
                 <p className="text-[14px] mt-2 inline-flex items-center gap-1.5" style={{ color: '#FBBF24' }}><Sparkles size={15} /> Be the first check-in today!</p>
               )}
             </div>
-            <div className="flex gap-3 flex-wrap">
-              <button type="button" onClick={() => setIsScannerOpen(true)} data-scan-qr
-                className="flex items-center gap-3 px-5 py-3 rounded-xl text-left text-white transition-all hover:brightness-110"
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setIsScannerOpen(true)} data-scan-qr data-tip="Open the camera to scan a member's code"
+                className="flex items-center gap-2 px-3.5 h-11 rounded-xl text-white transition-all hover:brightness-110"
                 style={{ background: 'linear-gradient(180deg,#8B5CF6,#7C3AED)', boxShadow: '0 12px 30px -12px rgba(124,58,237,0.9)' }}>
-                <QrCode size={24} /><span><b className="block text-[15.5px]">Scan QR</b><small className="text-[12px] opacity-80">Open camera to scan</small></span>
+                <QrCode size={20} /><b className="text-[14.5px] whitespace-nowrap">Scan QR</b>
               </button>
               <button type="button" onClick={focusQuick}
-                className="flex items-center gap-3 px-5 py-3 rounded-xl text-left text-white transition-colors hover:bg-white/[0.06]"
+                className="flex items-center gap-2 px-3.5 h-11 rounded-xl text-white transition-colors hover:bg-white/[0.06]" data-tip="Search a member and check them in"
                 style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
-                <UserPlus size={22} /><span><b className="block text-[15.5px]">Manual check-in</b><small className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Search and check-in</small></span>
+                <UserPlus size={19} /><b className="text-[14.5px] whitespace-nowrap">Manual check-in</b>
               </button>
             </div>
           </div>
         </RdCard>
 
         {/* ── The tiles ── */}
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-          <StatTile icon={QrCode} label="QR Check-ins" value={qrCount} sub="via QR code scan today"
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          <StatTile icon={QrCode} label="QR Check-ins" compact value={qrCount} sub="via QR code scan today"
             onClick={() => { setLogMethod(logMethod === 'qr' ? 'all' : 'qr'); setLogPage(1); }} active={logMethod === 'qr'} tip="Show only these in the log" />
-          <StatTile icon={UserPlus} label="Manual Check-ins" value={manualCount} sub="via admin check-in today"
+          <StatTile icon={UserPlus} label="Manual Check-ins" compact value={manualCount} sub="via admin check-in today"
             onClick={() => { setLogMethod(logMethod === 'manual' ? 'all' : 'manual'); setLogPage(1); }} active={logMethod === 'manual'} tip="Show only these in the log" />
-          <StatTile icon={TrendingUp} tone="amber" label="7-Day Unique Members" value={weekUnique} sub="unique members in the last 7 days"
+          <StatTile icon={TrendingUp} tone="amber" label="7-Day Unique Members" compact value={weekUnique} sub="unique members in the last 7 days"
             onClick={() => navigate('/attendance-history')} tip="Open History" />
         </div>
 
         {/* ── Today's log ── */}
-        <RdCard className="overflow-hidden" data-today-log>
-          <div className="flex items-center justify-between gap-3 flex-wrap p-5">
+        <RdCard className="overflow-hidden rd-fit-fill" data-today-log>
+          <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5">
             <div className="flex items-center gap-3">
               <Users size={24} style={{ color: '#A78BFA' }} />
               <h2 className="text-[20px] font-semibold text-white">Today's check-ins</h2>
@@ -364,21 +367,21 @@ export default function Attendance() {
               <RdButton icon={Download} onClick={exportLog} data-tip="Export what the log shows as CSV">Export</RdButton>
             </div>
           </div>
-          <RdTable head={['#', 'Member', 'Time in', 'Method', 'Membership', 'Notes', { label: '', align: 'right' }]}
+          <RdTable boxRef={fit.ref} head={['#', 'Member', 'Time in', 'Method', 'Membership', 'Notes', { label: '', align: 'right' }]}
             empty={logRecords.length === 0 ? (
-              <EmptyBlock icon={Users}
+              <EmptyBlock icon={Users} compact
                 title={todayAttendance.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'}
                 body={todayAttendance.length === 0 ? 'When members check in, they’ll appear here.' : 'Clear a filter to see the rest of today.'}
                 action={todayAttendance.length === 0
                   ? <RdButton variant="soft" icon={QrCode} onClick={() => setIsScannerOpen(true)}>Scan QR to get started</RdButton>
                   : <RdButton onClick={() => { setLogMethod('all'); setLogPlan('all'); setLogSearch(''); }}>Clear filters</RdButton>} />
             ) : undefined}>
-            {logRecords.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map((r, i) => {
+            {logRecords.slice((page - 1) * perPage, page * perPage).map((r, i) => {
               const m = memberById[r.member_id];
               const name = nameOf(r.member_id);
               return (
-                <Tr key={r.id} data-log-row>
-                  <Td className="w-12" style={{ color: 'var(--color-text-secondary)' }}>{(page - 1) * ITEMS_PER_PAGE + i + 1}</Td>
+                <Tr key={r.id} data-log-row style={{ height: logRecords.length > perPage ? fit.rowHeight : undefined }}>
+                  <Td className="w-12" style={{ color: 'var(--color-text-secondary)' }}>{(page - 1) * perPage + i + 1}</Td>
                   <Td>
                     <div className="flex items-center gap-3">
                       <Initials name={name} photo={m?.profile.photo_url} size={38} />
@@ -403,13 +406,13 @@ export default function Attendance() {
             })}
           </RdTable>
           <div className="flex items-center justify-between flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <TableFooter page={page} perPage={ITEMS_PER_PAGE} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
+            <TableFooter page={page} perPage={perPage} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
             <Link to="/attendance-history" className="text-[14px] font-semibold inline-flex items-center gap-1.5 px-4 py-4" style={{ color: '#A78BFA' }}>
               <History size={15} /> Other days
             </Link>
           </div>
         </RdCard>
-      </WithRail>
+      </FitBody>
 
       <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(qrCode) => handleQRCheckIn(qrCode)} />
 

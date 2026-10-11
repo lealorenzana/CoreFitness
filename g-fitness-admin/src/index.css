@@ -308,3 +308,33 @@
 @media (min-width: 1280px) { .rd-history-grid { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); } }
 .rd-invite-grid { display: grid; gap: 24px; align-items: start; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1280px) { .rd-invite-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); } }
+
+/* Fit pages (2026-10-11): from 1280px wide the page holds the screen — no page scroll — and only
+   its own boxes scroll (the table, the rail). Narrower, everything flows as before. */
+.rd-fit { display: flex; flex-direction: column; gap: 16px; }
+.rd-fit-grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+.rd-fit-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.rd-fit-rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.rd-fit-fill { display: flex; flex-direction: column; }
+.rd-fit-scroll { overflow-x: auto; }
+.rd-fit-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--color-surface); }
+.rd-fit-split { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1280px) {
+  .rd-fit { height: 100%; overflow: hidden; }
+  .rd-fit-grid { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) 320px; }
+  .rd-fit-main { min-height: 0; }
+  .rd-fit-rail { min-height: 0; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; }
+  .rd-fit-fill { flex: 1; min-height: 0; }
+  .rd-fit-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .rd-fit-split { flex: 1; min-height: 0; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); }
+  .rd-fit-split > * { min-height: 0; }
+}
+@media (min-width: 1280px) { .rd-hero.rd-hero-tight { grid-template-columns: minmax(0, 1.3fr) auto minmax(0, 1fr); gap: 22px; } .rd-hero-tight .rd-hero-side { padding: 0 0 0 22px; border-top: 0; border-left: 1px solid rgba(255,255,255,0.08); } }
+/* Notifications (2026-10-11): live alerts · messages · reading pane, each its own scrolling box. */
+.rd-inbox-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .rd-inbox-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .rd-inbox-grid > [data-messages] { grid-column: span 2; } }
+@media (min-width: 1280px) {
+  .rd-inbox-grid { flex: 1; min-height: 0; grid-template-columns: 300px minmax(0, 1fr) minmax(340px, 400px); }
+  .rd-inbox-grid > * { min-height: 0; }
+  .rd-inbox-grid > [data-messages] { grid-column: auto; }
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
+import { useFitRows } from '../hooks/useFitRows';
 import { showToast } from '../utils/toast';
 import { getGymContext } from '../lib/gymContext';
 import {
@@ -36,7 +37,10 @@ export default function Invitations() {
   const [rows, setRows] = useState<Invitation[] | null>(null);
   /** Every invitation, for the counts above the page (the list below may be waiting-only). */
   const [all, setAll] = useState<Invitation[]>([]);
-  const paged = usePaged(rows ?? [], 20);
+  /** Rows that fit the list's own box — the page never scrolls (2026-10-11). */
+  const fit = useFitRows(10);
+  const paged = usePaged(rows ?? [], fit.perPage);
+  const [way, setWay] = useState<'one' | 'group'>('one');
   const [showDone, setShowDone] = useState(false);
   const [role, setRole] = useState<InviteRole>('member');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -151,30 +155,36 @@ export default function Invitations() {
   const roleWord = role === 'member' ? 'members' : role === 'trainer' ? 'coaches' : 'front desk';
 
   return (
-    <div className="flex flex-col gap-6" data-invitations>
+    <div className="rd-fit" data-invitations>
       <RdHeader title="Invitations" subtitle="Invite members and manage pending invites. Each person sets their own password and arrives already approved." />
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-        <StatTile icon={Users} label="Pending invitations" value={counts.waiting} sub="Invites waiting to be accepted"
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+        <StatTile icon={Users} label="Pending invitations" compact value={counts.waiting} sub="Invites waiting to be accepted"
           onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
-        <StatTile icon={CheckCircle2} tone="green" label="Accepted this month" value={counts.acceptedThisMonth} sub="New members joined"
+        <StatTile icon={CheckCircle2} tone="green" label="Accepted this month" compact value={counts.acceptedThisMonth} sub="New members joined"
           onClick={() => { setShowDone(true); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
-        <StatTile icon={Clock} tone="amber" label="Expiring soon" value={counts.expiringSoon} sub="Expires in 3 days or less"
+        <StatTile icon={Clock} tone="amber" label="Expiring soon" compact value={counts.expiringSoon} sub="Expires in 3 days or less"
           onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
       </div>
 
-      <div className="rd-invite-grid">
+      <div className="rd-fit-split">
+        <RdCard className="flex flex-col min-h-0 overflow-hidden" data-invite-ways>
+          <div className="flex gap-2 p-3" role="tablist" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            {([['one', 'Invite one person', UserPlus], ['group', 'Invite a group', FileText]] as const).map(([k, label, Icon]) => (
+              <button key={k} type="button" role="tab" aria-selected={way === k} onClick={() => setWay(k)} data-way={k}
+                className="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
+                style={way === k ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
+                  : { border: '1px solid transparent', color: 'var(--color-text-secondary)' }}>
+                <Icon size={17} /> {label}
+              </button>
+            ))}
+          </div>
+          <div className="rd-fit-scroll p-5">
         {/* ── One person ── */}
-        <RdCard className="p-6">
+        {way === 'one' && (
           <form onSubmit={inviteOne} data-invite-one>
-            <div className="flex items-start gap-4">
-              <IconTile icon={UserPlus} size={52} />
-              <div>
-                <h2 className="text-[20px] font-semibold text-white">Invite one person</h2>
-                <p className="text-[14.5px]" style={muted}>Send a single invitation to a new member.</p>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <p className="text-[14.5px]" style={muted}>Send a single invitation to a new member.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelCls} style={labelSt} htmlFor="iv-email">Email</label>
                 <input id="iv-email" type="email" required className={input} style={inputSt} placeholder="name@example.com"
@@ -210,22 +220,16 @@ export default function Invitations() {
               {busy ? 'Inviting…' : 'Create invitation'}
             </RdButton>
           </form>
-        </RdCard>
+        )}
 
         {/* ── A whole list ── */}
-        <RdCard className="p-6" data-invite-group>
-          <div className="flex items-start gap-4 flex-wrap">
-            <IconTile icon={FileText} size={52} />
-            <div className="flex-1 min-w-[200px]">
-              <h2 className="text-[20px] font-semibold text-white">Invite a group</h2>
-              <p className="text-[14.5px]" style={muted}>Paste a spreadsheet or choose a CSV file. Nothing is sent until you review.</p>
-            </div>
-            <p className="text-[12.5px] flex items-start gap-2 px-3 py-2 rounded-xl max-w-[260px]" style={{ ...muted, border: '1px solid rgba(255,255,255,0.08)' }}>
-              <Info size={15} className="flex-none mt-0.5" /> You&rsquo;ll review every invitation, joining as {roleWord}, before any is sent.
-            </p>
-          </div>
+        {way === 'group' && (
+        <div data-invite-group>
+          <p className="text-[13px] flex items-start gap-2" style={muted}>
+            <Info size={15} className="flex-none mt-0.5" /> Paste a spreadsheet or choose a CSV file. You&rsquo;ll review every invitation, joining as {roleWord}, before any is sent.
+          </p>
 
-          <label className="mt-5 flex flex-col items-center justify-center text-center rounded-2xl px-4 py-6 cursor-pointer transition-colors hover:bg-white/[0.02]"
+          <label className="mt-4 flex flex-col items-center justify-center text-center rounded-2xl px-4 py-5 cursor-pointer transition-colors hover:bg-white/[0.02]"
             style={{ border: '1.5px dashed rgba(139,92,246,0.5)', background: 'rgba(124,58,237,0.05)' }}>
             <span className="flex items-center gap-2 text-[16px] font-semibold text-white"><FileText size={20} /> Choose a CSV file</span>
             <span className="text-[13.5px] mt-1" style={muted}>Supports .csv files with email, name and mobile (optional)</span>
@@ -299,13 +303,15 @@ export default function Invitations() {
               )}
             </div>
           )}
+        </div>
+        )}
+          </div>
         </RdCard>
-      </div>
 
       {/* ── The list ── */}
-      <RdCard className="overflow-hidden" id="waiting" data-invite-list>
-        <div className="flex items-center gap-4 p-5 flex-wrap">
-          <IconTile icon={Users} size={46} />
+      <RdCard className="overflow-hidden rd-fit-fill" id="waiting" data-invite-list>
+        <div className="flex items-center gap-4 px-5 py-3.5 flex-wrap">
+          <IconTile icon={Users} size={42} />
           <div className="flex-1 min-w-[220px]">
             <h2 className="text-[20px] font-semibold text-white">{showDone ? 'Every invitation' : 'Waiting to be accepted'}</h2>
             <p className="text-[14px]" style={muted}>Invitations that are pending acceptance. Share the link again or withdraw anytime.</p>
@@ -315,7 +321,7 @@ export default function Invitations() {
             {showDone ? 'Waiting only' : 'View all'} <ArrowRight size={15} />
           </button>
         </div>
-        <RdTable head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
+        <RdTable boxRef={fit.ref} head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
           empty={rows === null ? <p className="py-10 text-center text-[14.5px]" style={muted}>Loading…</p>
             : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
                 body="Invite one person or a whole list above — each gets their own link." /> : undefined}>
@@ -323,31 +329,28 @@ export default function Invitations() {
             const soon = r.state === 'waiting' && new Date(r.expires_at).getTime() - nowMs <= 3 * 86_400_000;
             const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
             return (
-              <Tr key={r.id} data-invite-row>
+              <Tr key={r.id} data-invite-row style={{ height: (rows?.length ?? 0) > paged.perPage ? fit.rowHeight : undefined }}>
                 <Td>
                   <p className="text-[15px] text-white">{r.email}</p>
                   {name && <p className="text-[13px]" style={muted}>{name}</p>}
                 </Td>
                 <Td>
-                  <p>{when(r.created_at)}</p>
+                  <p className="whitespace-nowrap">{when(r.created_at)}</p>
                   <p className="text-[13px]" style={muted}>{relDays(r.created_at, nowMs)}</p>
                 </Td>
                 <Td>
-                  {r.state === 'accepted' ? <><p>Joined</p><p className="text-[13px]" style={muted}>{when(r.accepted_at!)}</p></>
-                    : <><p>{when(r.expires_at)}</p><p className="text-[13px]" style={{ color: soon ? '#FBBF24' : 'var(--color-text-secondary)' }}>{r.state === 'waiting' ? relDays(r.expires_at, nowMs) : STATE_LABEL[r.state]}</p></>}
+                  {r.state === 'accepted' ? <><p className="whitespace-nowrap">Joined</p><p className="text-[13px]" style={muted}>{when(r.accepted_at!)}</p></>
+                    : <><p className="whitespace-nowrap">{when(r.expires_at)}</p><p className="text-[13px]" style={{ color: soon ? '#FBBF24' : 'var(--color-text-secondary)' }}>{r.state === 'waiting' ? relDays(r.expires_at, nowMs) : STATE_LABEL[r.state]}</p></>}
                 </Td>
                 <Td><Pill tone="gray">{ROLE[r.role]}</Pill></Td>
                 {showDone && <Td><Pill tone={STATE_TONE[r.state]}>{STATE_LABEL[r.state]}</Pill></Td>}
                 <Td align="right">
                   {r.state === 'waiting' && (
-                    <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-                      <RdButton size="sm" variant="ghost" icon={Copy} onClick={() => copy(inviteLink(r.token), r.id)} style={{ color: '#C4B5FD' }}>
-                        {copied === r.id ? 'Copied' : 'Copy link'}
-                      </RdButton>
-                      <RdButton size="sm" variant="ghost" icon={Mail} disabled={!gym || mailing === r.id} onClick={() => void mail(r)} style={{ color: '#C4B5FD' }}>
-                        {mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'}
-                      </RdButton>
-                      <RdButton size="sm" variant="ghost" icon={Trash2} onClick={() => void withdraw(r)} style={{ color: '#F87171' }}>Withdraw</RdButton>
+                    <div className="inline-flex items-center gap-1.5 justify-end">
+                      {/* Icon buttons with their words as labels and tips — three labelled buttons stacked made every row tall. */}
+                      <IconAct label={copied === r.id ? 'Copied' : 'Copy link'} icon={copied === r.id ? CheckCircle2 : Copy} onClick={() => copy(inviteLink(r.token), r.id)} />
+                      <IconAct label={mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'} icon={Mail} disabled={!gym || mailing === r.id} onClick={() => void mail(r)} />
+                      <IconAct label="Withdraw" icon={Trash2} danger onClick={() => void withdraw(r)} />
                     </div>
                   )}
                 </Td>
@@ -357,6 +360,18 @@ export default function Invitations() {
         </RdTable>
         <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="invitations" onPage={paged.setPage} />
       </RdCard>
+      </div>
     </div>
+  );
+}
+
+/** A square action with its words as the label and the tip. */
+function IconAct({ label, icon: Icon, onClick, disabled, danger }: { label: string; icon: typeof Copy; onClick: () => void; disabled?: boolean; danger?: boolean }) {
+  return (
+    <button type="button" aria-label={label} data-tip={label} onClick={onClick} disabled={disabled}
+      className="w-10 h-10 rounded-xl grid place-items-center transition-colors hover:bg-white/5 disabled:opacity-40"
+      style={{ border: '1px solid rgba(255,255,255,0.08)', color: danger ? '#F87171' : '#C4B5FD' }}>
+      <Icon size={17} />
+    </button>
   );
 }

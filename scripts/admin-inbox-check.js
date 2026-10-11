@@ -128,5 +128,21 @@ async (page) => {
   await page.waitForTimeout(700);
   out.push('Mark all as read: ' + (NOTES.filter((n) => !n.archived_at).every((n) => n.read) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-inbox.png' });
+  // The 2026-10-11 redesign: three boxes that hold the screen, a reading pane, kinds.
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.locator('[data-inbox-tab="all"]').click();
+  await page.waitForTimeout(400);
+  const scrolls = await page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 0; });
+  out.push('the page does not scroll; each box scrolls itself: ' + (scrolls <= 2 ? 'yes' : 'MISSING ' + scrolls));
+  out.push('the overview has the ring and the kinds: ' + ((await page.locator('[data-overview] [data-ring]').count()) >= 1 && (await page.locator('[data-kind]').count()) >= 1 ? 'yes' : 'MISSING'));
+  out.push('messages are grouped by day: ' + (/Today/.test(await page.locator('[data-inbox-list]').innerText()) ? 'yes' : 'MISSING'));
+  await page.locator('[data-inbox-row]').filter({ hasText: 'AI coach' }).locator('button').nth(0).click();
+  await page.waitForTimeout(500);
+  out.push('a message opens in the reading pane, with its page named: ' + ((await page.locator('[data-opened]').count()) === 1 && /Open Your app/.test(await page.locator('[data-open-page]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-inbox-open.png' });
+  await page.getByRole('button', { name: 'Close message' }).click();
+  await page.locator('[data-kind="system"]').click();
+  await page.waitForTimeout(300);
+  out.push('a kind narrows the list: ' + ((await page.locator('[data-inbox-row]').count()) >= 1 && (await page.getByRole('button', { name: /Show every kind/ }).count()) === 1 ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

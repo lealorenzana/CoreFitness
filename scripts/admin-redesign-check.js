@@ -152,7 +152,9 @@ async (page) => {
   has('hero with members, the bar and the ring', (await page.locator('[data-members-hero] [data-ring]').count()) === 1 && /12 members/.test(t));
   has('chips with counts', (await page.locator('[data-rd-chips] [data-chip]').count()) === 7 && /Payment due/.test(t) && /Awaiting approval/.test(t));
   has('search, plans, statuses and Filter', /All plans/.test(t) && /All statuses/.test(t) && /Filter/.test(t));
-  has('ten rows and pill pagination', (await page.locator('[data-member-row]').count()) === 10 && /Showing 1–10 of 12 members/.test(t));
+  const noScroll = async () => page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 999; });
+  const rowsShown = await page.locator('[data-member-row]').count();
+  has('the page does not scroll; the table pages by what fits', (await noScroll()) <= 2 && rowsShown >= 3 && new RegExp(`Showing 1–${rowsShown} of 12 members`).test(t));
   has('rail: quick actions, needs attention, tip', /Quick actions/.test(t) && /Export CSV/.test(t) && /Archived members/.test(t) && /Needs attention/.test(t) && /Tip/.test(t));
   has('kept: Invite link and Add Member', /Invite link/.test(t) && /Add Member/.test(t));
   await page.locator('[data-chip="approval"]').click(); await page.waitForTimeout(300);
@@ -175,8 +177,12 @@ async (page) => {
   ];
   t = await visit('/invitations', 'invitations');
   has('three tiles', /Pending invitations/.test(t) && /Accepted this month/.test(t) && /Expiring soon/.test(t));
-  has('one person and a group, side by side', (await page.locator('[data-invite-one]').count()) === 1 && (await page.locator('[data-invite-group]').count()) === 1 && /Upload CSV/.test(t) && /Review invitations/.test(t));
-  has('the waiting list with Copy link, Email it, Withdraw', (await page.locator('[data-invite-row]').count()) === 2 && /Copy link/.test(t) && /Email it/.test(t) && /Withdraw/.test(t) && /2 pending/.test(t));
+  has('the page does not scroll', (await page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 999; })) <= 2);
+  has('one person and a group, as two tabs beside the list', (await page.locator('[data-invite-one]').count()) === 1 && (await page.locator('[data-invite-list]').count()) === 1);
+  await page.locator('[data-way="group"]').click(); await page.waitForTimeout(250);
+  t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  has('the group tab: upload and review', (await page.locator('[data-invite-group]').count()) === 1 && /Upload CSV/.test(t) && /Review invitations/.test(t));
+  has('the waiting list with Copy link, Email it, Withdraw', (await page.locator('[data-invite-row]').count()) === 2 && (await page.getByRole('button', { name: 'Copy link' }).count()) === 2 && (await page.getByRole('button', { name: 'Email it' }).count()) === 2 && (await page.getByRole('button', { name: 'Withdraw' }).count()) === 2 && /2 pending/.test(t));
   has('an invite expiring within 3 days is counted', /Expiring soon\s*1/.test(t));
   await page.getByLabel('Paste your list').fill('ana@x.ph, Ana, Cruz\nnot-an-email');
   await page.getByRole('button', { name: 'Review invitations' }).click(); await page.waitForTimeout(300);

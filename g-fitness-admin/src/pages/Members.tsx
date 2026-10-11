@@ -9,9 +9,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useBranding } from '../hooks/useBranding';
 import { useSearchParams } from 'react-router-dom';
 import Popover from '../components/ui/Popover';
+import { useFitRows } from '../hooks/useFitRows';
 import {
   RdHeader, RdCard, IconTile, Ring, Bar, FilterChips, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter,
-  EmptyBlock, RailCard, RailAction, RailRow, TipCard, WithRail, Initials, DotMenu, type Chip,
+  EmptyBlock, RailCard, RailAction, RailRow, TipCard, FitBody, Initials, DotMenu, type Chip,
 } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -142,6 +143,8 @@ export default function Members() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  /** Rows that fit the table's own box (the page never scrolls, 2026-10-11). */
+  const fit = useFitRows(PER_PAGE);
   /** The stat chips double as filters (the mock-up's row of counts). */
   const [chip, setChip] = useState<ChipKey>('all');
   const [planFilter, setPlanFilter] = useState('all');
@@ -316,7 +319,7 @@ export default function Members() {
     }
   });
 
-  const perPage = PER_PAGE;
+  const perPage = fit.perPage;
   // Clamped here, not corrected in an effect: a taller window means fewer
   // pages, and the one that was open may no longer exist.
   const page = Math.min(currentPage, Math.max(1, Math.ceil(sorted.length / perPage)));
@@ -489,7 +492,7 @@ export default function Members() {
   });
 
   return (
-    <div className="flex flex-col gap-6" data-members>
+    <div className="rd-fit" data-members>
       {showInvite && <InviteMembersPanel onClose={() => setShowInvite(false)} />}
 
       <RdHeader title={showArchived ? 'Archived members' : 'Members'}
@@ -501,7 +504,7 @@ export default function Members() {
           </>
         )} />
 
-      <WithRail rail={(
+      <FitBody rail={(
         <>
           <RailCard icon={Zap} title="Quick actions" sub="Common member management tools.">
             {/* Exports what is on screen — the filter and search are part of the question. */}
@@ -518,37 +521,11 @@ export default function Members() {
             {msRequests && msRequests.length > 0 && <RailRow tone="amber" label="Asking to pause or stop" count={msRequests.length}
               onClick={() => document.getElementById('ms-requests')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />}
           </RailCard>
-          <TipCard>Keep your members active by following up on expiring members and pending payments.</TipCard>
-        </>
-      )}>
-        {/* ── The hero ── */}
-        {!showArchived && (
-          <RdCard glow className="p-7 rd-hero" data-members-hero>
-            <div className="flex items-center gap-6 min-w-0">
-              <IconTile icon={Users} size={88} />
-              <div className="min-w-0 flex-1">
-                <p className="text-[36px] leading-none font-bold text-white tabular-nums">{members.length} members</p>
-                <p className="text-[16px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-                  {activeCount} active{share !== null ? ` • ${Math.round(share * 100)}% of total` : ''}
-                </p>
-                <div className="mt-4 max-w-md"><Bar value={share} /></div>
-              </div>
-            </div>
-            <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="Active" size={140} />
-            <div className="min-w-0 rd-hero-side">
-              <p className="text-[26px] font-bold text-white tabular-nums">{activeCount} active</p>
-              <p className="text-[15.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-                {expiringSoon > 0 ? `${expiringSoon} expiring within ${EXPIRING_SOON_DAYS} days — follow up early.` : 'Keep the momentum going.'}
-              </p>
-            </div>
-          </RdCard>
-        )}
-
         {/* ── Members asking to pause or stop (0118) ──
             Granting is not a button: freezing or cancelling the member the way the desk
             always has is what closes the request (a trigger on membership_events). */}
         {msRequests && msRequests.length > 0 && (
-          <RdCard className="p-5" id="ms-requests" style={{ borderColor: 'rgba(245,158,11,0.45)' }} data-ms-requests>
+          <RdCard className="p-4" id="ms-requests" style={{ borderColor: 'rgba(245,158,11,0.45)' }} data-ms-requests>
             <div className="flex items-center gap-3">
               <AlertTriangle size={22} style={{ color: '#FBBF24' }} />
               <h2 className="text-[18px] font-semibold text-white">
@@ -601,8 +578,33 @@ export default function Members() {
             </div>
           </RdCard>
         )}
+          <TipCard>Keep your members active by following up on expiring members and pending payments.</TipCard>
+        </>
+      )}>
+        {/* ── The hero ── */}
+        {!showArchived && (
+          <RdCard glow className="px-6 py-4 rd-hero rd-hero-tight" data-members-hero>
+            <div className="flex items-center gap-6 min-w-0">
+              <IconTile icon={Users} size={64} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[30px] leading-none font-bold text-white tabular-nums">{members.length} members</p>
+                <p className="text-[15px] mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                  {activeCount} active{share !== null ? ` • ${Math.round(share * 100)}% of total` : ''}
+                </p>
+                <div className="mt-3 max-w-md"><Bar value={share} /></div>
+              </div>
+            </div>
+            <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="Active" size={104} />
+            <div className="min-w-0 rd-hero-side">
+              <p className="text-[22px] font-bold text-white tabular-nums">{activeCount} active</p>
+              <p className="text-[15.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {expiringSoon > 0 ? `${expiringSoon} expiring within ${EXPIRING_SOON_DAYS} days — follow up early.` : 'Keep the momentum going.'}
+              </p>
+            </div>
+          </RdCard>
+        )}
 
-        <FilterChips items={CHIPS} value={chip} onChange={pickChip} />
+        <FilterChips items={CHIPS} value={chip} onChange={pickChip} compact />
 
         {/* ── Search and filters ── */}
         <div className="flex items-center gap-3 flex-wrap" data-members-toolbar>
@@ -658,8 +660,8 @@ export default function Members() {
         </div>
 
         {/* ── The roster ── */}
-        <RdCard className="overflow-hidden" data-members-table>
-          <RdTable head={[sortHead('Member', 'name'), 'Contact', sortHead('Plan', 'plan'), sortHead('Status', 'membership'), sortHead('Expiry', 'expiry'), { label: 'Actions', align: 'right' }]}
+        <RdCard className="overflow-hidden rd-fit-fill" data-members-table>
+          <RdTable boxRef={fit.ref} head={[sortHead('Member', 'name'), 'Contact', sortHead('Plan', 'plan'), sortHead('Status', 'membership'), sortHead('Expiry', 'expiry'), { label: 'Actions', align: 'right' }]}
             empty={loading ? <p className="py-12 text-center text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading members…</p>
               : filtered.length === 0 ? (
                 <EmptyBlock icon={Users} title={members.length === 0 ? (showArchived ? 'No archived members' : 'No members yet') : 'No members match these filters'}
@@ -671,10 +673,10 @@ export default function Members() {
               const lapsingSoon = m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
               const frozenOnce = (m.membership?.freeze_count ?? 0) >= 1;
               return (
-                <Tr key={m.id} data-member-row onClick={() => setViewingId(m.id)}>
+                <Tr key={m.id} data-member-row onClick={() => setViewingId(m.id)} style={{ height: filtered.length > perPage ? fit.rowHeight : undefined }}>
                   <Td>
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <Initials name={m.fullName} photo={m.photoUrl} size={44} />
+                      <Initials name={m.fullName} photo={m.photoUrl} size={40} />
                       <div className="min-w-0">
                         <p className="text-[15.5px] text-white font-semibold truncate">{m.fullName}</p>
                         {/* Said in words, under the name: the one status that stops somebody opening the app. */}
@@ -727,9 +729,9 @@ export default function Members() {
               );
             })}
           </RdTable>
-          <TableFooter page={page} perPage={PER_PAGE} total={filtered.length} noun={showArchived ? 'archived members' : 'members'} onPage={setCurrentPage} />
+          <TableFooter page={page} perPage={perPage} total={filtered.length} noun={showArchived ? 'archived members' : 'members'} onPage={setCurrentPage} />
         </RdCard>
-      </WithRail>
+      </FitBody>
 
       {/* The whole member record, opened by clicking a row. Reloads the roster
           behind it after any write, so a payment taken in the drawer moves the
@@ -825,20 +827,21 @@ export default function Members() {
               className="fixed inset-0 bg-black/70 z-50" onClick={closePendingPanel} />
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
-                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                className="w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[86vh]" data-pending-dialog
+                style={{ background: 'radial-gradient(120% 70% at 0% 0%, rgba(124,58,237,0.20), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)' }}
                 onClick={(e) => e.stopPropagation()}>
-                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--color-primary-light)' }}>
-                      <Clock size={16} style={{ color: 'var(--color-primary)' }} />
-                    </div>
+                <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="flex items-center gap-4">
+                    <IconTile icon={Clock} size={52} />
                     <div>
-                      <h2 className="text-lg font-bold text-white">Pending Registrations</h2>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Approve or reject member registrations</p>
+                      <div className="flex items-center gap-2.5">
+                        <h2 className="text-[22px] font-bold text-white">Pending registrations</h2>
+                        {pendingCount > 0 && <Pill tone="violet">{pendingCount} waiting</Pill>}
+                      </div>
+                      <p className="text-[14px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>People who signed up in the app and are waiting for you. Approving lets them in on the free plan.</p>
                     </div>
                   </div>
-                  <button aria-label="Close" onClick={closePendingPanel} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-muted)' }}>
+                  <button aria-label="Close" onClick={closePendingPanel} className="w-10 h-10 grid place-items-center rounded-xl hover:bg-white/5 flex-none" style={{ color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <X size={18} />
                   </button>
                 </div>
@@ -1090,6 +1093,7 @@ function PendingRegistrationsList({
   /** id -> name, so the row can say which plan they asked about. */
   const [planNames, setPlanNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     Promise.all([listPendingRegistrations(), listPlans()])
@@ -1119,59 +1123,52 @@ function PendingRegistrationsList({
     }
   };
 
+  const q = search.trim().toLowerCase();
+  const shown = q ? pendingList.filter((r) => `${r.first_name} ${r.last_name} ${r.email}`.toLowerCase().includes(q)) : pendingList;
+
   if (loading) {
-    return <div className="p-8 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</div>;
+    return <div className="p-10 text-center text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading…</div>;
   }
 
   if (pendingList.length === 0) {
-    return (
-      <div className="p-8 text-center">
-        <CheckCircle size={32} className="mx-auto mb-3" style={{ color: 'var(--color-primary)' }} />
-        <p className="text-sm font-semibold text-white">All caught up!</p>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>No pending registrations to review.</p>
-      </div>
-    );
+    return <EmptyBlock icon={CheckCircle} title="All caught up!" body="No pending registrations to review." />;
   }
 
   return (
-    <div className="p-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border space-y-2.5">
-      {pendingList.map((reg, i) => (
-        <motion.div key={reg.id}
-          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-          className="flex items-center gap-3 p-3 rounded-xl"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
-            style={{ background: 'var(--color-primary)' }}>
-            {reg.first_name[0]}{reg.last_name[0]}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-white font-semibold truncate">{reg.first_name} {reg.last_name}</p>
-            <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{reg.email}</p>
-            <span className="text-[9px] block" style={{ color: 'var(--color-text-muted)' }}>
-              Registered {new Date(reg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-            {/* What approving actually grants, and what they came in wanting.
-                The tick used to give whatever plan they tapped during signup —
-                a paid one, to somebody who has handed over nothing — so the
-                admin was selling Premium by clicking Approve without being told
-                that is what the button did. */}
-            <span className="text-[9px] block mt-0.5" style={{ color: 'var(--color-primary)' }}>
-              Approving starts them on the free plan
-              {reg.requested_plan_id && planNames[reg.requested_plan_id]
-                ? ` — they asked about ${planNames[reg.requested_plan_id]}`
-                : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => handleApprove(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }} data-tip="Approve">
-              <CheckCircle size={16} />
-            </button>
-            <button onClick={() => handleReject(reg)} className="p-2 rounded-full" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }} data-tip="Reject">
-              <XCircle size={16} />
-            </button>
-          </div>
-        </motion.div>
-      ))}
-    </div>
+    <>
+      {pendingList.length > 4 && (
+        <div className="px-6 pt-4"><SearchField value={search} onChange={setSearch} placeholder="Find a sign-up by name or email…" label="Find a sign-up" /></div>
+      )}
+      <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 flex flex-col gap-3" data-pending-list>
+        {shown.length === 0 && <p className="text-center py-6 text-[14px]" style={{ color: 'var(--color-text-muted)' }}>Nobody matches “{search}”.</p>}
+        {shown.map((reg, i) => {
+          const asked = reg.requested_plan_id ? planNames[reg.requested_plan_id] : null;
+          const name = `${reg.first_name} ${reg.last_name}`;
+          return (
+            <motion.div key={reg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+              className="flex items-center gap-4 p-4 rounded-2xl" data-pending-row
+              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <Initials name={name} size={48} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[16px] font-semibold text-white truncate">{name}</p>
+                <p className="text-[13.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{reg.email}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className="text-[12.5px] inline-flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                    <Clock size={13} /> Registered {new Date(reg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  {/* What approving grants, and what they came in wanting: approving never sells a paid plan. */}
+                  <span className="text-[12px] px-2 py-0.5 rounded-md" style={{ background: 'rgba(124,58,237,0.14)', color: '#C4B5FD' }}>Starts on the free plan</span>
+                  {asked && <span className="text-[12px] px-2 py-0.5 rounded-md" style={{ background: 'rgba(245,158,11,0.12)', color: '#FBBF24' }}>Asked about {asked}</span>}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 flex-none">
+                <RdButton size="sm" variant="primary" icon={CheckCircle} onClick={() => void handleApprove(reg)}>Approve</RdButton>
+                <RdButton size="sm" variant="amber" icon={XCircle} onClick={() => void handleReject(reg)}>Reject</RdButton>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </>
   );
 }

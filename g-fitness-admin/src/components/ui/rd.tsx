@@ -118,8 +118,8 @@ export function Ring({ value, label, sub, size = 132, tone = 'violet' }: {
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#${id})`} strokeWidth={stroke} strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c * (1 - v)} style={{ transition: 'stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)' }} />
+        {v > 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#${id})`} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - v)} style={{ transition: 'stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)' }} />}
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
@@ -144,17 +144,17 @@ export function Bar({ value, tone = 'violet' }: { value: number | null; tone?: T
 
 // ─── Stat tiles ──────────────────────────────────────────────────────────────
 
-export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, tip, active }: {
+export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, tip, active, compact }: {
   icon: LucideIcon; tone?: Tone; label: string; value: React.ReactNode; sub?: React.ReactNode;
-  onClick?: () => void; tip?: string; active?: boolean;
+  onClick?: () => void; tip?: string; active?: boolean; compact?: boolean;
 }) {
   const body = (
     <>
-      <IconTile icon={icon} tone={tone} size={60} />
+      <IconTile icon={icon} tone={tone} size={compact ? 46 : 60} />
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-[15px] font-medium" style={{ color: 'var(--color-text-primary)' }}>{label}</span>
-        <span className="block text-[30px] leading-tight font-bold text-white tabular-nums">{value}</span>
-        {sub && <span className="block text-[13px]" style={{ color: SECOND }}>{sub}</span>}
+        <span className={`block ${compact ? 'text-[13.5px]' : 'text-[15px]'} font-medium truncate`} style={{ color: 'var(--color-text-primary)' }}>{label}</span>
+        <span className={`block ${compact ? 'text-[24px]' : 'text-[30px]'} leading-tight font-bold text-white tabular-nums`}>{value}</span>
+        {sub && <span className={`block ${compact ? 'text-[12px]' : 'text-[13px]'} truncate`} style={{ color: SECOND }}>{sub}</span>}
       </span>
       {onClick && <ChevronRight size={18} style={{ color: SECOND }} className="flex-none" />}
     </>
@@ -164,9 +164,9 @@ export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, ti
     border: active ? '1px solid rgba(139, 92, 246, 0.55)' : CARD_LINE,
   };
   return onClick ? (
-    <button type="button" onClick={onClick} data-tip={tip} className="rounded-2xl p-5 flex items-center gap-4 text-left transition-transform hover:-translate-y-0.5" style={style}>{body}</button>
+    <button type="button" onClick={onClick} data-tip={tip} className={`rounded-2xl ${compact ? 'px-4 py-3 gap-3' : 'p-5 gap-4'} flex items-center text-left transition-transform hover:-translate-y-0.5 min-w-0`} style={style}>{body}</button>
   ) : (
-    <div data-tip={tip} className="rounded-2xl p-5 flex items-center gap-4" style={style}>{body}</div>
+    <div data-tip={tip} className={`rounded-2xl ${compact ? 'px-4 py-3 gap-3' : 'p-5 gap-4'} flex items-center min-w-0`} style={style}>{body}</div>
   );
 }
 
@@ -174,14 +174,14 @@ export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, ti
 
 export interface Chip<K extends string> { key: K; label: string; count?: number | null; tone?: Tone }
 
-export function FilterChips<K extends string>({ items, value, onChange }: { items: Chip<K>[]; value: K; onChange: (k: K) => void }) {
+export function FilterChips<K extends string>({ items, value, onChange, compact }: { items: Chip<K>[]; value: K; onChange: (k: K) => void; compact?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 flex-wrap" data-rd-chips role="tablist">
+    <div className={`flex items-center gap-2 ${compact ? 'flex-nowrap overflow-x-auto pb-0.5' : 'flex-wrap'}`} style={compact ? { scrollbarWidth: 'none' } : undefined} data-rd-chips role="tablist">
       {items.map((c) => {
         const on = c.key === value;
         return (
           <button key={c.key} type="button" role="tab" aria-selected={on} onClick={() => onChange(c.key)} data-chip={c.key}
-            className="h-12 px-4 rounded-xl inline-flex items-center gap-2.5 text-[15px] transition-colors"
+            className={`${compact ? 'h-10 px-3.5 text-[14px]' : 'h-12 px-4 text-[15px]'} flex-none rounded-xl inline-flex items-center gap-2.5 whitespace-nowrap transition-colors`}
             style={{
               background: on ? 'rgba(124, 58, 237, 0.2)' : CARD_BG,
               border: `1px solid ${on ? 'rgba(139, 92, 246, 0.75)' : 'rgba(255,255,255,0.07)'}`,
@@ -189,7 +189,7 @@ export function FilterChips<K extends string>({ items, value, onChange }: { item
             }}>
             {c.tone && <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE[c.tone].dot }} />}
             <span style={{ color: on ? '#EDE9FE' : SECOND }}>{c.label}</span>
-            {c.count != null && <b className="text-[17px] tabular-nums text-white">{c.count}</b>}
+            {c.count != null && <b className={`${compact ? 'text-[15px]' : 'text-[17px]'} tabular-nums text-white`}>{c.count}</b>}
           </button>
         );
       })}
@@ -301,11 +301,13 @@ export function DotMenu({ items, label = 'More actions' }: { items: MenuItem[]; 
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
-export function RdTable({ head, children, empty }: {
+export function RdTable({ head, children, empty, boxRef }: {
   head: (string | { label: React.ReactNode; className?: string; align?: 'right' | 'center' })[]; children: React.ReactNode; empty?: React.ReactNode;
+  /** Fit pages: the table scrolls in its own box, measured by useFitRows. */
+  boxRef?: (el: HTMLElement | null) => void;
 }) {
   return (
-    <div className="overflow-x-auto" data-rd-table>
+    <div ref={boxRef} className={boxRef ? 'rd-fit-scroll' : 'overflow-x-auto'} data-rd-table>
       <table className="w-full border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
@@ -379,10 +381,10 @@ export function TableFooter({ page, perPage, total, noun, onPage }: { page: numb
   );
 }
 
-export function EmptyBlock({ icon: Icon, title, body, action }: { icon: LucideIcon; title: string; body?: React.ReactNode; action?: React.ReactNode }) {
+export function EmptyBlock({ icon: Icon, title, body, action, compact }: { icon: LucideIcon; title: string; body?: React.ReactNode; action?: React.ReactNode; compact?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-14 px-6" data-rd-empty>
-      <Icon size={52} strokeWidth={1.4} style={{ color: 'rgba(196, 181, 253, 0.55)' }} />
+    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-6' : 'py-14'} px-6`} data-rd-empty>
+      <Icon size={compact ? 40 : 52} strokeWidth={1.4} style={{ color: 'rgba(196, 181, 253, 0.55)' }} />
       <p className="text-[17px] font-semibold text-white mt-4">{title}</p>
       {body && <p className="text-[14.5px] mt-1.5 max-w-md" style={{ color: SECOND }}>{body}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -467,3 +469,17 @@ export function Initials({ name, photo, size = 44, tone }: { name: string; photo
       background: bg, color: bg === '#F59E0B' ? '#1A1205' : '#fff' }}>{init}</span>
   );
 }
+
+/**
+ * A fit page's body (2026-10-11): from 1280px wide it holds the screen — the main column and the
+ * rail each scroll in their own box, never the page. Pair with `rd-fit` on the page root.
+ */
+export function FitBody({ children, rail }: { children: React.ReactNode; rail?: React.ReactNode }) {
+  return (
+    <div className="rd-fit-grid" data-fit-body style={rail ? undefined : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
+      <div className="rd-fit-main">{children}</div>
+      {rail && <aside className="rd-fit-rail">{rail}</aside>}
+    </div>
+  );
+}
+
