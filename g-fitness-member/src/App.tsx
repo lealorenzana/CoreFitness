@@ -28,7 +28,7 @@ const Refer = lazyPage(() => import('./pages/Refer'));
 const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
-const TrainerRooms = lazyPage(() => import('./pages/trainer/TrainerRooms'));
+const TrainerHub = lazyPage(() => import('./pages/trainer/TrainerHub'));
 const ProgressPhotos = lazyPage(() => import('./pages/ProgressPhotos'));
 const CoachPlaceRedirect = lazyPage(() => import('./pages/CoachPlaceRedirect'));
 const ShopMenu = lazyPage(() => import('./pages/ShopMenu'));
@@ -223,12 +223,14 @@ function App() {
           }
         >
           <Route index element={<Navigate to="/trainer/home" replace />} />
-          <Route path="home" element={<TrainerHome />} />
+          {/* The hub, Discord style (2026-10-11): Messages, the rooms rail, the coach at the bottom. */}
+          <Route path="home" element={<TrainerHub />} />
+          <Route path="today" element={<TrainerHome />} />
           <Route path="members" element={<TrainerMembers />} />
           {/* A coach writes or edits their trainee's routine (0174). */}
           <Route path="members/:memberId/routine/:routineId" element={<RoutineEditor />} />
           {/* Rooms (0128/0129): the trainer's Google Classroom. */}
-          <Route path="rooms" element={<TrainerRooms />} />
+          <Route path="rooms" element={<TrainerHub />} />
           <Route path="rooms/:roomId" element={<Room />} />
           <Route path="rooms/:roomId/work/:assignmentId" element={<AssignmentDetail />} />
           {/* Chat with a trainee lives in your 1-on-1 room with them (0174); old links land there. */}

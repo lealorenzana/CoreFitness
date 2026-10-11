@@ -319,14 +319,17 @@ async (page) => {
   // ---- the trainer -------------------------------------------------------------
   ME.role = 'trainer';
   await page.evaluate(() => localStorage.setItem('__role', 'trainer'));
+  // The hub (2026-10-11): no tab bar — rooms on the rail, tools on the profile's toolbar.
   await go('/trainer/home');
-  const tbar = await page.evaluate(() => [...document.querySelectorAll('nav a, nav button')].map((e) => e.innerText.trim()).filter(Boolean).join(' | '));
-  out.push('trainer tabs: ' + tbar);
-  out.push('trainer tabs drop Rooms and Schedule: ' + (!/\bRooms\b/.test(tbar) && !/\bSchedule\b/.test(tbar) ? 'yes' : 'STILL SHOWN'));
-  out.push('trainer keeps Home, Bookings, Profile: ' + (/Home/.test(tbar) && /Bookings/.test(tbar) && /Profile/.test(tbar) ? 'yes' : 'MISSING'));
-  t = await text();
-  out.push('trainer home has no Schedule link: ' + ((await page.getByRole('button', { name: 'Schedule' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('trainer hub draws no rooms or New group when rooms are off: ' + ((await page.locator('[data-rail-room]').count()) === 0
+    && (await page.getByRole('button', { name: 'New group' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('trainer hub keeps Messages, Requests and the coach panel: ' + ((await page.locator('[data-rail-home]').count()) === 1
+    && (await page.getByRole('button', { name: 'Requests' }).count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-switches-home.png' });
+  await go('/trainer/profile');
+  const tools = await page.evaluate(() => document.querySelector('[data-trainer-toolbar]')?.innerText.replace(/\s+/g, ' ') ?? '');
+  out.push('trainer tools: ' + tools);
+  out.push('trainer tools drop Schedule when classes are off: ' + (!/Schedule/.test(tools) && /Settings/.test(tools) ? 'yes' : 'STILL SHOWN'));
   await go('/trainer/rooms');
   t = await text();
   out.push('/trainer/rooms says not at this gym: ' + (/Not at this gym/.test(t) ? 'yes' : 'MISSING'));

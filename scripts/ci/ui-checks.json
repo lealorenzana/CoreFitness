@@ -13,6 +13,7 @@
     { "file": "member-google-check.js", "app": "member" },
     { "file": "member-renew-paymongo-check.js", "app": "member" },
     { "file": "trainer-sign-in-check.js", "app": "member" },
+    { "file": "trainer-hub-check.js", "app": "member" },
     { "file": "member-gym-finder-check.js", "app": "member" },
     { "file": "member-booking-modes-check.js", "app": "member" },
     { "file": "trainer-booking-modes-check.js", "app": "member" },

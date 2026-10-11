@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { GearSix } from '@phosphor-icons/react';
+import { ArrowLeft, GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
 import { IconButton } from './TabHeader';
@@ -91,6 +91,12 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
         </div>
       )}
 
+      {!isHome && (
+        <button type="button" onClick={() => navigate('/trainer/home')} aria-label="Back to messages" data-hub-back
+          className="flex items-center noc-press" style={{ gap: 6, marginBottom: 10, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          <ArrowLeft size={17} /> Messages
+        </button>
+      )}
       <div className="flex items-start justify-between" style={{ gap: 12 }}>
         <h1 key={tab.id} className="noc-rise min-w-0">
           <span className="screen-title block">{line1}</span>

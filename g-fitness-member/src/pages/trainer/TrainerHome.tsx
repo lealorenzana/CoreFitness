@@ -11,7 +11,7 @@ import {
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { BookingStatus } from '../../types/db';
 import { errorMessage } from '../../utils/errorMessage';
-import { Page } from '../../components/ui/page';
+import { Page, PageTitle } from '../../components/ui/page';
 import ReviewNudge from '../../components/rooms/ReviewNudge';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
@@ -127,6 +127,8 @@ export default function TrainerHome() {
 
   return (
     <Page>
+      <PageTitle back fallback="/trainer/home" title="Your day"
+        subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} />
       <PushPrompt />
       {/* ── The lead panel ─────────────────────────────────────────────────
           What needs you, when something does (amber — something to do);

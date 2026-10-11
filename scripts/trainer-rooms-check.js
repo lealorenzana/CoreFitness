@@ -294,22 +294,23 @@ async (page) => {
 
   await go('/trainer/rooms');
   let t = await text();
-  out.push('Rooms tab in the bar: ' + ((await page.locator('nav').getByText('Rooms', { exact: true }).count()) > 0 ? 'shown' : 'MISSING'));
-  out.push('to review first: ' + (/1 to review/.test(t) && /Ana Reyes · Leg day/.test(t) ? 'shown' : 'MISSING'));
-  // Discord layout (2026-10-10): rooms are round pictures on the rail, grouped by kind.
+  // The hub, Discord style (2026-10-11): no tab bar; Messages, then the rooms rail.
+  out.push('no tab bar: ' + ((await page.locator('nav[aria-label="Main"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('Messages first, with what waits for a comment: ' + (/Messages/.test(t) && /1 turned in, waiting for your comment/.test(t) && /Ana Reyes · Leg day/.test(t) ? 'shown' : 'MISSING'));
   const rail = await page.evaluate(() => [...document.querySelectorAll('[data-rail-room]')].map((b) => b.getAttribute('aria-label')));
   out.push('class and group rooms on the rail: ' + (rail.includes('Morning HIIT') && rail.includes('8-week fat loss') ? 'shown' : 'MISSING ' + JSON.stringify(rail)));
-  out.push('grouped Classes / 1-on-1 / Groups: ' + ((await page.locator('[data-rail-group="class"]').count()) === 1 && (await page.locator('[data-rail-group="group"]').count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('all my members kept, once: ' + ((await page.getByText('All my members', { exact: true }).count()) === 1 ? 'one tap away' : 'MISSING'));
-  out.push('the coach and their status in the corner: ' + ((await page.locator('[data-presence]').count()) === 1 ? 'shown' : 'MISSING'));
+  out.push('1-on-1 trainees are in Messages, not the rail: ' + ((await page.locator('[data-rail-group="pt"]').count()) === 0 && (await page.locator('[data-dm-row], [data-dm-empty]').count()) > 0 ? 'yes' : 'MISSING'));
+  out.push('Members one tap away: ' + ((await page.getByRole('button', { name: 'Members' }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('the coach floating at the bottom with status and bell: ' + ((await page.locator('[data-user-panel][data-presence]').count()) === 1 && (await page.getByRole('button', { name: 'Notifications' }).count()) === 1 ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-rooms.png' });
 
-  // A room on the rail opens its channels; a channel opens the room over the list.
+  // A room on the rail opens its channels; a channel opens the room full screen.
   await page.locator('[data-rail-room="rm1"]').click();
   await page.waitForTimeout(500);
   const chans = await page.evaluate(() => [...document.querySelectorAll('[data-channels] button')].map((b) => b.textContent.trim()));
-  out.push('a room lists its channels: ' + (chans.some((c) => /# Stream/.test(c)) && chans.some((c) => /# Classwork/.test(c)) ? 'yes' : 'MISSING ' + JSON.stringify(chans)));
-  await page.locator('[data-channels] button', { hasText: '# Stream' }).click();
+  out.push('a room lists its channels: ' + (chans.some((c) => /#\s*stream/.test(c)) && chans.some((c) => /#\s*classwork/.test(c)) ? 'yes' : 'MISSING ' + JSON.stringify(chans)));
+  await page.screenshot({ path: 'shots/trainer-hub-room.png' });
+  await page.locator('[data-channels] button', { hasText: 'stream' }).click();
   await page.waitForTimeout(1300);
   t = await text();
   out.push('opens the room: ' + (/\/trainer\/rooms\/rm1$/.test(page.url()) ? 'rm1' : 'MISSING ' + page.url()));

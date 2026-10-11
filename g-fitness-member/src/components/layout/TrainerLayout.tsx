@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
-import TrainerBottomNav from './TrainerBottomNav';
+import TrainerToolbar from './TrainerToolbar';
 import TrainerTabHeader from './TrainerTabHeader';
 import { trainerTabRootFor } from './trainerNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
@@ -16,9 +16,11 @@ import ModuleGate from '../ModuleGate';
 /**
  * The trainer shell — the member shell's structure (Nocturne), top to bottom:
  *
- *   header   — only on the five tab roots: greeting or title, bell, Settings, rail
- *   <main>   — the one scroller
- *   bar      — Home · Members · Schedule · Bookings · Profile, in flow
+ *   hub      — /trainer/home and /trainer/rooms are TrainerHub, Discord style:
+ *              a rail of rooms, Messages, and the coach floating at the bottom
+ *   header   — Schedule, Bookings and Profile: a Back to the hub, the title, the rail
+ *   <main>   — the one scroller; every other screen is full screen with Back
+ *   toolbar  — on Profile only: Schedule · Hours · Coaching · Library · Settings
  *
  * It used to be a floating dock over the scroller with a lone bell row above
  * every screen, and a framer fade — the pieces the member app replaced
@@ -31,7 +33,10 @@ import ModuleGate from '../ModuleGate';
 export default function TrainerLayout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
-  const root = trainerTabRootFor(location.pathname);
+  // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
+  const hub = location.pathname === '/trainer/home' || location.pathname === '/trainer/rooms';
+  const root = hub ? null : trainerTabRootFor(location.pathname);
+  const isProfile = location.pathname === '/trainer/profile';
 
   useScrollMemory(mainRef, location.pathname + location.search);
 
@@ -48,11 +53,12 @@ export default function TrainerLayout() {
       <main
         ref={mainRef}
         className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative"
-        style={{
+        style={hub ? { backgroundColor: 'var(--color-bg)' } : {
           backgroundColor: 'var(--color-bg)',
           paddingLeft: 'var(--gutter)',
           paddingRight: 'var(--gutter)',
           paddingTop: root ? 4 : 'var(--gutter)',
+          paddingBottom: isProfile ? 96 : undefined,
         }}
       >
         {/* CSS entrance, keyed on the path — never framer's rAF-driven
@@ -66,7 +72,8 @@ export default function TrainerLayout() {
         </div>
       </main>
 
-      <TrainerBottomNav />
+      {/* No tab bar (2026-10-11): the hub is home; the coach's tools ride on their profile. */}
+      {isProfile && <TrainerToolbar />}
 
       {/* Same component as the member shell — it grades by the caller's role. */}
       <AchievementWatcher />

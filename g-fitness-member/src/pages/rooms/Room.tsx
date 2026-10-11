@@ -36,7 +36,7 @@ export default function Room() {
   }, [roomId]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const fallback = mode === 'trainer' ? `/trainer/rooms?room=${roomId}` : '/member/rooms';
+  const fallback = mode === 'trainer' ? (room?.kind === 'pt' ? '/trainer/home' : `/trainer/rooms?room=${roomId}`) : '/member/rooms';
   if (room === undefined) return <Page><PageTitle back fallback={fallback} title="Room" /><SkeletonList /></Page>;
   if (room === null) {
     return (
