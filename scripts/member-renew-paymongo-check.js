@@ -224,7 +224,9 @@ async (page) => {
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForTimeout(800);
   out.push('mid-term, switching plans online is sent to the desk, with why: ' + ((await page.locator('[data-switch-at-desk]').count()) === 1
-    && (await page.locator('[data-paymongo-pay]').count()) === 0 && /switching to Quarterly now is done at the desk/.test(await page.locator('body').innerText()) ? 'yes' : 'MISSING'));
+    && /switching to Quarterly now is done at the desk/.test(await page.locator('body').innerText()) ? 'yes' : 'MISSING'));
+  out.push('…and offers to renew Premium online instead, right there: ' + ((await page.locator('[data-renew-current-instead] [data-paymongo-pay]').count()) === 1
+    && /Renew Premium instead — pay ₱1,500 now/.test(await page.locator('[data-renew-current-instead]').innerText()) ? 'yes' : 'MISSING'));
 
   // Renewing the plan they have: one step, online.
   await go('/member/renew');

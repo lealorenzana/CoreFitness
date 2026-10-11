@@ -653,6 +653,14 @@ export default function RenewMembership() {
                 Paying online renews the plan you have; switching to {selected.name} now is done at the desk, so nothing you have paid is lost.
               </p>
             )}
+            {selected && payMongo && switchMidTerm && current && Number(current.membership_plans?.price ?? 0) > 0 && (
+              <div style={{ marginBottom: 16 }} data-renew-current-instead>
+                <PayMongoPay purpose="membership" details={{ plan_id: current.plan_id }} amount={peso(Number(current.membership_plans?.price ?? 0))}
+                  label={`Renew ${current.membership_plans?.name} instead — pay ${peso(Number(current.membership_plans?.price ?? 0))} now`}
+                  returnPath="/member/renew" note={`Renews ${current.membership_plans?.name} instead — it runs on from your end date. GCash, Maya, card or QRPh, straight to the gym.`} />
+                <p style={{ fontSize: 12, marginTop: 12, color: 'var(--color-text-muted)' }}>Or, for {selected.name}:</p>
+              </div>
+            )}
             {selected && payMongo && Number(selected.price) > 0 && !switchMidTerm && (
               <div style={{ marginBottom: 16 }}>
                 <PayMongoPay purpose="membership" details={{ plan_id: selected.id }} amount={peso(Number(selected.price))}
