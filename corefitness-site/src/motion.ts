@@ -47,8 +47,24 @@ export function useMotionEngine() {
 
     // --- scroll-driven custom properties -------------------------------------------------
     let frame = 0;
+    // Scroll speed, for the marquee's lean (--vel): eased back to 0 when the scroll stops.
+    let lastY = window.scrollY, vel = 0, settle = 0;
+    const ease = () => {
+      settle = 0;
+      vel *= 0.85;
+      if (Math.abs(vel) < 0.2) vel = 0;
+      root.style.setProperty('--vel', vel.toFixed(2));
+      if (vel !== 0) settle = requestAnimationFrame(ease);
+    };
     const paint = () => {
       frame = 0;
+      if (!still) {
+        const dy = window.scrollY - lastY;
+        lastY = window.scrollY;
+        vel = Math.max(-30, Math.min(30, dy));
+        root.style.setProperty('--vel', vel.toFixed(2));
+        if (!settle) settle = requestAnimationFrame(ease);
+      }
       const vh = window.innerHeight;
       const max = root.scrollHeight - vh;
       root.style.setProperty('--page', String(max > 0 ? clamp(window.scrollY / max) : 0));
@@ -106,6 +122,7 @@ export function useMotionEngine() {
     return () => {
       io.disconnect(); mo.disconnect();
       if (frame) cancelAnimationFrame(frame);
+      if (settle) cancelAnimationFrame(settle);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       document.removeEventListener('pointermove', onMove);

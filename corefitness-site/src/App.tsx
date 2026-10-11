@@ -6,6 +6,7 @@ import Account from './Account';
 import { GoogleButton } from './google';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
+import { Catalogue, Manifesto, Phone3D, Scrub } from './Showcase';
 import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
@@ -52,7 +53,7 @@ const TICKER = ['QR check-in', 'Cash & GCash', 'AI coach', 'Class timetable', 'W
 /** "Nine parts." — the heading counts the cards, so adding one can never leave it wrong. */
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 
-const NAV: [string, string][] = [['top', 'Start'], ['day', 'A day'], ['features', 'Features'], ['floor', 'The floor'], ['how', 'How'], ['pricing', 'Pricing'], ['apply', 'Apply']];
+const NAV: [string, string][] = [['top', 'Start'], ['day', 'A day'], ['features', 'Features'], ['inside', 'Everything'], ['floor', 'The floor'], ['how', 'How'], ['pricing', 'Pricing'], ['apply', 'Apply']];
 
 /** Splits a line into words that rise one after another (CSS staggers by --w). */
 const Words = ({ text, from = 0 }: { text: string; from?: number }) => (
@@ -302,9 +303,15 @@ export default function App() {
           </div>
         </div>
 
+        <Manifesto />
+
         <Story />
 
         <FeatureTrack />
+
+        <Phone3D />
+
+        <Scrub />
 
         <section className="photo-band" id="floor" data-scroll>
           <div className="pb-img" aria-hidden="true"><img src="/gfit-coaches.webp" alt="" loading="lazy" /></div>
@@ -318,6 +325,8 @@ export default function App() {
           </div>
           <p className="photo-credit">Photo: the coaches of G Fitness, Mamburao</p>
         </section>
+
+        <Catalogue />
 
         <section className="stats-sec">
           <div className="wrap">
@@ -377,9 +386,9 @@ export default function App() {
                 </div>
               )}
             </div>
-            <p className="section-lede">Paid from wherever your gym is — send the reference from the gym app and we confirm it. Cancel by telling us.</p>
+            <p className="section-lede">Pay in the gym app — QRPh, GCash, Maya or card, confirmed the moment it is paid — or send a bank or GCash reference and we confirm it. Cancel by telling us.</p>
             <div className="pay-note">
-              {['GCash', 'Maya', 'Bank transfer'].map((m) => <span className="pill" key={m}><Icon name="cash" /> {m}</span>)}
+              {['QRPh', 'GCash', 'Maya', 'Card', 'Bank transfer'].map((m) => <span className="pill" key={m}><Icon name="cash" /> {m}</span>)}
             </div>
             {tiers?.length === 0 && (
               <p className="note bad" style={{ marginTop: 24 }}>
@@ -401,7 +410,7 @@ export default function App() {
                     {!showYear && t.yearly !== null && t.yearly > 0 && <p className="yearly">or {peso(t.yearly)} a year</p>}
                     {yearly && !showYear && t.monthly !== 0 && t.monthly !== null && <p className="yearly">Monthly only</p>}
                     <p className="line">{t.line}</p>
-                    {(t.maxMembers !== null || t.includes.length > 0) && (
+                    {(t.maxMembers !== null || t.aiMonthly !== null || t.includes.length > 0) && (
                       <ul>
                         <li><Icon name="check" /> {t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
                           {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</li>
