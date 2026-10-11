@@ -7,6 +7,7 @@ import { keepAppUpdated } from './lib/appUpdate';
 import { installErrorReporter } from './lib/errorReporter';
 import { forgetGymWhenAccountChanges } from './lib/accountWatch';
 import ErrorBoundary from './components/ErrorBoundary';
+import { feelLikeAnApp } from './lib/appFeel';
 
 // Registers the service worker and reloads onto a new deploy — see appUpdate.ts.
 keepAppUpdated();
@@ -14,6 +15,8 @@ keepAppUpdated();
 installErrorReporter('member');
 // A new account never inherits the last one's gym — see accountWatch.ts.
 forgetGymWhenAccountChanges();
+// No browser long-press menu on pictures — see appFeel.ts.
+feelLikeAnApp();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

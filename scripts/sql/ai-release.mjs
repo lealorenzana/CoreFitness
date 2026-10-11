@@ -56,7 +56,13 @@ check('a message inside the allowance gives back no top-up', (await credits()) =
 
 await as(M1);
 check('a member cannot give messages back', !!(await tryExec(`select ai_release_message('${GYM}', '${M1}')`)));
+check('a member cannot write a coach error', !!(await tryExec(`select ai_log_error('${GYM}', 400, 'x')`)));
 await owner();
-check('marker', (await one(`select migration_0195_applied() ok`)).ok === true);
+await db.exec(`select ai_log_error('${GYM}', 400, '${'y'.repeat(500)}')`);
+check('0196: a failure is written down, trimmed', (await one(`select length(message) n, status from ai_coach_errors order by at desc limit 1`)).n === 400);
+await as(M1);
+check('…and a member cannot read it', !!(await tryExec(`select * from platform_ai_errors()`)));
+await owner();
+check('marker', (await one(`select migration_0195_applied() ok`)).ok === true && (await one(`select migration_0196_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0195 checks passed');
 process.exit(failures ? 1 : 0);

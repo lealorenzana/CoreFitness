@@ -273,8 +273,8 @@ export default function App() {
                 <em><Words text="give your members an app." from={3} /></em>
               </h1>
               <p className="lede">
-                Memberships, cash payments, QR check-in, classes and coaches — with a phone app your
-                members actually install. Built for a real gym in Mamburao, and open to yours.
+                Memberships, payments in cash or in the app, QR check-in, classes, coaches and an AI coach —
+                with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.
               </p>
               <div className="cta-row">
                 <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
@@ -284,10 +284,10 @@ export default function App() {
             <div className="hero-visual" aria-hidden="true">
               <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
               <img src="/logo-320.webp" alt="" width={320} height={320} />
-              <span className="orbit o1"><Icon name="qr" /> QR check-in</span>
-              <span className="orbit o2"><Icon name="cash" /> Cash or GCash, with receipts</span>
-              <span className="orbit o3"><Icon name="globe" /> English · Filipino</span>
-              <span className="orbit o4"><Icon name="phone" /> Android app</span>
+              <span className="orbit o1"><Icon name="sparkle" /> An AI coach that plans their training</span>
+              <span className="orbit o2"><Icon name="cash" /> Paid in the app · QRPh, GCash, Maya</span>
+              <span className="orbit o3"><Icon name="message" /> A coach app built like a chat</span>
+              <span className="orbit o4"><Icon name="qr" /> QR check-in and a kiosk</span>
             </div>
           </div>
           <a className="scroll-cue" href="#day" aria-label="Scroll to the story"><Icon name="mouse" /><span>Scroll</span></a>
@@ -654,7 +654,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
         {google ? (
           <p className="note google-note" data-google-apply>Applying as <strong>{google.email}</strong> with Google — step {gstep} of {gSteps}.</p>
         ) : (
-          <GoogleButton hash="#apply" label="Apply with Google — fills in your name and email" />
+          <GoogleButton hash="#apply" label="Apply with Google" hint="Fills in your name and email, then asks the rest one step at a time." divider="or fill it in yourself" />
         )}
         <form className="apply" onSubmit={submit}>
           {tiers.length > 0 && shows(1) && (

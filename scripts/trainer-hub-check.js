@@ -79,6 +79,25 @@ async (page) => {
   out.push('no tab bar: ' + ((await page.locator('nav[aria-label="Main"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.screenshot({ path: 'shots/trainer-hub-messages.png' });
 
+  // Holding a room on the rail opens its settings — never the browser's menu.
+  const room = page.locator('[data-rail-room="rm1"]');
+  const box = await room.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(700); await page.mouse.up();
+  await page.waitForTimeout(500);
+  const sheet = page.locator('[data-room-settings]');
+  out.push('holding a room opens its settings: ' + ((await sheet.count()) === 1 && /Close this room/.test(await sheet.innerText()) && /People/.test(await sheet.innerText()) ? 'yes' : 'MISSING'));
+  out.push('…and the hold did not also open the room: ' + (!/room=rm1/.test(page.url()) ? 'yes' : 'OPENED'));
+  await page.screenshot({ path: 'shots/trainer-hub-hold.png' });
+  const blocked = await page.evaluate(() => {
+    const img = document.createElement('img'); document.body.appendChild(img);
+    const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); img.dispatchEvent(ev); img.remove();
+    return ev.defaultPrevented;
+  });
+  out.push('no browser menu on a long-pressed picture: ' + (blocked ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape');
+  await go('/trainer/home');
+
   await page.locator('[data-dm-row]').filter({ hasText: 'Lea Lorenzana' }).click();
   await page.waitForURL(/\/trainer\/rooms\/pt1/, { timeout: 8000 }).catch(() => {});
   out.push('a trainee opens your 1-on-1 room with them: ' + (/\/trainer\/rooms\/pt1/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));

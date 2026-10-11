@@ -11,7 +11,8 @@ import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { supabase } from '../../lib/supabaseClient';
-import { createGroup, myRoomPhotos, myRooms, reviewQueue, setRoomPhoto, syncRooms, type ReviewItem, type Room } from '../../lib/api/rooms';
+import { createGroup, deleteRoom, myRoomPhotos, myRooms, reviewQueue, setArchived, setRoomPhoto, syncRooms, updateRoom, type ReviewItem, type Room } from '../../lib/api/rooms';
+import { useLongPress } from '../../hooks/useLongPress';
 import { myConversations, type Conversation } from '../../lib/api/chat';
 import { uploadContentPhoto } from '../../lib/api/exerciseMedia';
 import { myPresence, setMyPresence, PRESENCE_LABEL, type Presence } from '../../lib/api/presence';
@@ -68,6 +69,8 @@ export default function TrainerHub() {
   const [creating, setCreating] = useState(params.get('new') === '1');
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
+  /** A room held on the rail: its settings sheet. */
+  const [held, setHeld] = useState<Room | null>(null);
 
   const load = useCallback(async () => {
     await syncRooms();
@@ -124,7 +127,7 @@ export default function TrainerHub() {
           return (
             <div key={k} className="flex flex-col items-center" style={{ gap: 10 }} data-rail-group={k}>
               {list.map((r) => (
-                <RailButton key={r.id} label={r.name} on={open?.id === r.id} onClick={() => select(r.id)} badge={r.toReview} room={r.id}>
+                <RailButton key={r.id} label={r.name} on={open?.id === r.id} onClick={() => select(r.id)} onLong={() => setHeld(r)} badge={r.toReview} room={r.id}>
                   <RoomPicture name={r.name} photo={photos.get(r.id) ?? null} />
                 </RailButton>
               ))}
@@ -263,6 +266,9 @@ export default function TrainerHub() {
         </div>
       </GlassSheet>
 
+      <RoomSettingsSheet room={held} photo={held ? photos.get(held.id) ?? null : null} onClose={() => setHeld(null)}
+        onChanged={() => { setHeld(null); void load(); }} onPhoto={(id, url) => setPhotos((m) => new Map(m).set(id, url))} />
+
       <NewGroupSheet open={creating} onClose={() => { setCreating(false); if (params.get('new')) setParams({}, { replace: true }); }} />
     </div>
   );
@@ -283,12 +289,15 @@ function Badge({ n }: { n: number }) {
   );
 }
 
-function RailButton({ label, on, onClick, badge, room, dataAttr, children }: {
-  label: string; on: boolean; onClick: () => void; badge?: number; room?: string; dataAttr?: string; children: React.ReactNode;
+function RailButton({ label, on, onClick, onLong, badge, room, dataAttr, children }: {
+  label: string; on: boolean; onClick: () => void; onLong?: () => void; badge?: number; room?: string; dataAttr?: string; children: React.ReactNode;
 }) {
+  // Hold a room for its settings, as in Discord (never the browser's image menu).
+  const lp = useLongPress(() => onLong?.());
   return (
-    <button type="button" onClick={onClick} aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined}
-      className="relative flex-none noc-press" style={{ width: 46, height: 46 }}>
+    <button type="button" onClick={() => { if (!lp.consumed()) onClick(); }} {...(onLong ? lp.handlers : {})}
+      aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined}
+      className="relative flex-none noc-press select-none" style={{ width: 46, height: 46, WebkitTouchCallout: 'none' }}>
       {/* Discord's pill: a bar at the edge marks the open one. */}
       <span aria-hidden className="absolute" style={{ left: -11, top: on ? 8 : 19, width: 4, height: on ? 30 : 8, borderRadius: 4,
         background: on ? 'var(--color-text-primary)' : 'transparent', transition: 'all .15s' }} />
@@ -298,11 +307,11 @@ function RailButton({ label, on, onClick, badge, room, dataAttr, children }: {
   );
 }
 
-function RoomPicture({ name, photo }: { name: string; photo: string | null }) {
-  if (photo) return <img src={photo} alt="" style={{ width: 46, height: 46, objectFit: 'cover' }} />;
+function RoomPicture({ name, photo, size = 46 }: { name: string; photo: string | null; size?: number }) {
+  if (photo) return <img src={photo} alt="" draggable={false} style={{ width: size, height: size, objectFit: 'cover', pointerEvents: 'none' }} />;
   const parts = name.replace(/[·|]/g, ' ').split(/\s+/).filter(Boolean);
   return (
-    <span className="grid place-items-center" style={{ width: 46, height: 46, fontSize: 13, fontWeight: 800, color: '#fff',
+    <span className="grid place-items-center" style={{ width: size, height: size, fontSize: size > 50 ? 16 : 13, fontWeight: 800, color: '#fff',
       background: 'color-mix(in srgb, var(--color-primary) 55%, #1a1726)' }}>
       {(parts.slice(0, 2).map((p) => p[0]).join('') || '?').toUpperCase()}
     </span>
@@ -456,6 +465,68 @@ function NewGroupSheet({ open, onClose }: { open: boolean; onClose: () => void }
             placeholder="Two check-ins a week, one workout, weigh-in on Mondays." />
         </Field>
       </div>
+    </GlassSheet>
+  );
+}
+
+/** Held on the rail: the room's own settings (2026-10-11), like a Discord server's. */
+function RoomSettingsSheet({ room, photo, onClose, onChanged, onPhoto }: {
+  room: Room | null; photo: string | null; onClose: () => void; onChanged: () => void; onPhoto: (id: string, url: string) => void;
+}) {
+  const navigate = useNavigate();
+  const file = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [shown, setShown] = useState<string | null>(null);
+  if (room && shown !== room.id) { setShown(room.id); setName(room.name); }
+  const mine = !!room?.isMine;
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    setBusy(true);
+    try { await fn(); toast.success(ok); onChanged(); }
+    catch (e) { toast.error(errorMessage(e, 'That did not work')); }
+    finally { setBusy(false); }
+  };
+  const pick = async (f: File | undefined) => {
+    if (!f || !room) return;
+    try { const url = await uploadContentPhoto(f); await setRoomPhoto(room.id, url); onPhoto(room.id, url); toast.success('Room picture set.'); }
+    catch (e) { toast.error(errorMessage(e, 'Could not set the picture')); }
+  };
+  const row = (label: string, onClick: () => void, tone?: 'action') => (
+    <button type="button" disabled={busy} onClick={onClick} className="w-full text-left noc-press disabled:opacity-50"
+      style={{ padding: '13px 14px', borderRadius: 12, fontSize: 15, fontWeight: 600, background: 'var(--color-surface)',
+        color: tone === 'action' ? 'var(--color-secondary)' : 'var(--color-text-primary)' }}>{label}</button>
+  );
+  return (
+    <GlassSheet open={room !== null} onClose={onClose} title={room?.name ?? ''}
+      subtitle={room ? `${room.kind === 'class' ? 'Class room' : 'Coaching group'} · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}` : undefined}>
+      {room && (
+        <div className="flex flex-col" style={{ gap: 8, padding: '0 var(--gutter) 16px' }} data-room-settings>
+          <div className="flex items-center" style={{ gap: 12, marginBottom: 6 }}>
+            <span className="overflow-hidden flex-none" style={{ width: 56, height: 56, borderRadius: 18 }}><RoomPicture name={room.name} photo={photo} size={56} /></span>
+            {mine && <NocButton variant="ghost" onClick={() => file.current?.click()}>Change picture</NocButton>}
+            <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
+          </div>
+          {mine && room.kind === 'group' && (
+            <div className="flex items-end" style={{ gap: 8 }}>
+              <Field label="Name"><TextInput value={name} maxLength={80} aria-label="Room name" onChange={(e) => setName(e.target.value)} /></Field>
+              <NocButton variant="action" disabled={busy || name.trim().length < 2 || name.trim() === room.name}
+                onClick={() => void run(() => updateRoom(room.id, { name: name.trim() }), 'Renamed.')}>Save</NocButton>
+            </div>
+          )}
+          {row(room.kind === 'group' ? 'People and join code' : 'People', () => { onClose(); navigate(`/trainer/rooms/${room.id}?tab=people`); })}
+          {row('Classwork', () => { onClose(); navigate(`/trainer/rooms/${room.id}?tab=classwork`); })}
+          {mine && row(room.commentsOn ? 'Turn comments off' : 'Turn comments on',
+            () => void run(() => updateRoom(room.id, { commentsOn: !room.commentsOn }), room.commentsOn ? 'Comments are off.' : 'Comments are on.'))}
+          {mine && row('Close this room', () => {
+            if (!window.confirm(`Close "${room.name}"? It stays readable, and nothing new can be posted.`)) return;
+            void run(() => setArchived(room.id, true), 'The room is closed.');
+          })}
+          {mine && room.kind === 'group' && row('Delete this group', () => {
+            if (!window.confirm(`Delete "${room.name}"? Its posts, comments and classwork are deleted for everyone. This cannot be undone.`)) return;
+            void run(() => deleteRoom(room.id), 'The group was deleted.');
+          }, 'action')}
+        </div>
+      )}
     </GlassSheet>
   );
 }

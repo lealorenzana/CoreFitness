@@ -232,7 +232,21 @@ Deno.serve(async (req) => {
           await rpc('ai_release_message', `Bearer ${SERVICE}`, SERVICE, { p_gym: status.gym_id, p_member: member.id })
             .catch((e) => console.error('ai-coach release', String(e)));
         }
-        send(sse({ type: 'error', reason: 'busy', message: 'The coach is busy. Try again in a minute.' }));
+        // Written down (0196) so the platform can read why, and said plainly when it is not a passing outage.
+        const code = err instanceof Anthropic.APIError ? (err.status ?? null) : null;
+        const text = err instanceof Anthropic.APIError ? err.message : String(err);
+        if (!cancelled) {
+          await rpc('ai_log_error', `Bearer ${SERVICE}`, SERVICE, { p_gym: status.gym_id, p_status: code, p_message: text })
+            .catch(() => undefined);
+        }
+        const why = code === 401 || code === 403
+          ? 'The coach is switched off for now: its AI key was refused. The gym has been told.'
+          : /credit balance|billing|purchase credits/i.test(text)
+            ? 'The coach is paused: the AI account behind it has run out of credit. The gym has been told.'
+            : code === 400 || code === 404 || code === 422
+              ? 'The coach could not answer this one because of a setup problem on our side. It has been reported.'
+              : 'The coach is busy. Try again in a minute.';
+        send(sse({ type: 'error', reason: 'busy', message: why }));
       } finally {
         // The message was counted at the claim; this adds the tokens, even for a stream cut short.
         // Recorded once, summed over every round.

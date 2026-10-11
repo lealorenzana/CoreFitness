@@ -965,3 +965,12 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 @media (max-width: 640px) { .grid.tiers { grid-template-columns: minmax(0, 1fr); } }
 .grid.tiers .price { font-size: clamp(30px, 2.5vw, 42px); white-space: nowrap; }
 .grid.tiers .price small { white-space: nowrap; }
+
+/* Apply with Google: one clear line, a quiet hint, and a divider before the form. */
+.google-wrap { margin: 6px 0 22px; }
+.google-btn { height: 50px; white-space: nowrap; font-size: 15px; transition: transform .15s var(--ease), box-shadow .2s; }
+.google-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 26px -12px rgba(255, 255, 255, .45); }
+.google-btn span { overflow: hidden; text-overflow: ellipsis; }
+.google-hint { margin: 8px 0 0; text-align: center; font-size: 12.5px; color: var(--text-3); }
+.google-or { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.google-or::before, .google-or::after { content: ''; flex: 1; height: 1px; background: var(--hairline-strong); }

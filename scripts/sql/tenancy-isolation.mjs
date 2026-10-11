@@ -173,6 +173,8 @@ const GLOBAL = [
   'paymongo_checkouts', 'gym_theme_unlocks',
   // 0192: a gym's or coach's PayMongo connection — keys in the Vault, definer functions only.
   'payment_accounts',
+  // 0196: why the AI coach failed — for the platform, definer functions only, no policy.
+  'ai_coach_errors',
   // 0194: a day pass bought in the app — read through definer functions only.
   'day_passes'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'

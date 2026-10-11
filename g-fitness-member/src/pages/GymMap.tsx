@@ -83,14 +83,19 @@ export default function GymMap() {
     if (here) L.circleMarker([here.lat, here.lng], { radius: 6, color: '#fff', weight: 2, fillColor: '#2563EB', fillOpacity: 1 }).addTo(g);
     for (const o of osm) {
       if (gyms.some((x) => x.latitude != null && Math.abs(x.latitude - o.latitude) < 0.0015 && Math.abs(x.longitude! - o.longitude) < 0.0015)) continue;
-      L.circleMarker([o.latitude, o.longitude], { radius: 8, color: KIND.osm.color, weight: 2, dashArray: KIND.osm.dash, fillOpacity: 0.1 })
-        .on('click', () => setPicked({ kind: 'osm', gym: o })).addTo(g);
+      const om = L.circleMarker([o.latitude, o.longitude], { radius: 9, color: KIND.osm.color, weight: 2, dashArray: KIND.osm.dash, fillOpacity: 0.1 })
+        .on('click', () => setPicked({ kind: 'osm', gym: o }));
+      // Every dot says which gym it is (2026-10-11: a bare dot told nobody anything).
+      if (o.name) om.bindTooltip(o.name, { permanent: true, direction: 'right', offset: [10, 0], className: 'gym-label gym-label-osm' });
+      om.addTo(g);
     }
     for (const x of gyms) {
       if (x.latitude == null || x.longitude == null) continue;
       const k = KIND[x.join_policy];
-      L.circleMarker([x.latitude, x.longitude], { radius: 10, color: '#fff', weight: 2, fillColor: k.color, fillOpacity: 1 })
-        .on('click', () => setPicked({ kind: 'gym', gym: x })).addTo(g);
+      L.circleMarker([x.latitude, x.longitude], { radius: 11, color: '#fff', weight: 2, fillColor: k.color, fillOpacity: 1 })
+        .on('click', () => setPicked({ kind: 'gym', gym: x }))
+        .bindTooltip(x.name, { permanent: true, direction: 'right', offset: [12, 0], className: 'gym-label', interactive: true })
+        .addTo(g);
     }
   }, [gyms, osm, here, mapTick]);
 

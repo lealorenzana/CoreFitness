@@ -18,7 +18,7 @@ export function GoogleMark() {
  * again afterwards (#apply or #account); the account is the applicant's, and
  * an application sent from its address is found by it.
  */
-export function GoogleButton({ hash, label }: { hash: string; label: string }) {
+export function GoogleButton({ hash, label, hint, divider }: { hash: string; label: string; hint?: string; divider?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const go = async () => {
@@ -35,9 +35,11 @@ export function GoogleButton({ hash, label }: { hash: string; label: string }) {
   return (
     <div className="google-wrap">
       <button type="button" className="google-btn" disabled={busy} onClick={() => void go()} data-google-button>
-        <GoogleMark /> {busy ? 'Opening Google…' : label}
+        <GoogleMark /> <span>{busy ? 'Opening Google…' : label}</span>
       </button>
+      {hint && <p className="google-hint">{hint}</p>}
       {error && <p className="note bad">{error}</p>}
+      {divider && <div className="google-or" aria-hidden="true"><span>{divider}</span></div>}
     </div>
   );
 }
