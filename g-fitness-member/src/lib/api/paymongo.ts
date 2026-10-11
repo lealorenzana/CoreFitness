@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
  * never sent from here — the database prices it — and nothing counts as paid
  * until PayMongo's signed webhook says so.
  */
-export type MemberPurpose = 'membership' | 'coaching';
+export type MemberPurpose = 'membership' | 'coaching' | 'day_pass';
 
 /** Opens PayMongo's checkout page (this tab leaves the app). */
 export async function payOnline(purpose: MemberPurpose, details: Record<string, unknown>, returnPath: string): Promise<void> {
@@ -48,6 +48,14 @@ export async function reconcilePending(purpose?: MemberPurpose): Promise<MemberC
   const paid: MemberCheckout[] = [];
   for (const c of pending) if (await reconcile(c.id)) paid.push(c);
   return paid;
+}
+
+/** Today's day pass, and whether one can be bought here (0194). Null before 0194. */
+export interface DayPassState { today: boolean; on: boolean; price: number | string | null; classes: boolean; online: boolean; needed: boolean }
+export async function myDayPass(): Promise<DayPassState | null> {
+  const { data, error } = await supabase.rpc('my_day_pass');
+  if (error) return null;
+  return data as DayPassState;
 }
 
 export interface MemberCheckout {

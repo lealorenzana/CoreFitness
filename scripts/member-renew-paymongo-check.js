@@ -104,6 +104,8 @@ async (page) => {
   }));
 
   const CALLS = {};
+  // 0194: my_day_pass, held in Node so the route handler reads it.
+  const DAY = { today: false, on: true, price: 150, classes: true, online: true, needed: false };
   const FN = {
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
       const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
@@ -150,6 +152,7 @@ async (page) => {
     }
     if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
       if (fn === 'gym_online_pay') return json({ gym: true, trainers: [] });
+      if (fn === 'my_day_pass') return json(DAY);
       if (fn === 'my_member_checkouts') return json(RENEW_PAID ? [{ id: 'co7', purpose: 'membership', description: 'Quarterly — G Fitness', amount: '4200',
         status: 'paid', method: 'gcash', created_at: new Date().toISOString(), paid_at: new Date().toISOString() }] : []);
       // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
@@ -246,6 +249,22 @@ async (page) => {
   RENEW_PAID = true;
   await page.waitForTimeout(3000);
   out.push('…then says the membership is renewed: ' + (/Your membership is renewed/.test(await page.locator('main').innerText()) && !page.url().includes('paid=') ? 'yes' : 'MISSING'));
+  out.push('with a running plan, no day pass is offered: ' + ((await page.locator('[data-day-pass-buy]').count()) === 0 ? 'yes' : 'MISSING'));
+
+  // 0194: lapsed — "Just today?" buys a day pass at the gym's price.
+  DAY.needed = true;
+  await go('/member/renew');
+  const dp = page.locator('[data-day-pass-buy]');
+  out.push('lapsed, a day pass is offered at the gym\u2019s price: ' + ((await dp.count()) === 1
+    && /Day pass — pay ₱150 now/.test(await dp.innerText()) && /book a class held today/.test(await dp.innerText()) ? 'yes' : 'MISSING'));
+  delete CALLS.paymongo;
+  await dp.getByRole('button').click();
+  await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
+  out.push('…only the purpose is sent, no amount: ' + (CALLS.paymongo?.purpose === 'day_pass' && !('amount' in (CALLS.paymongo ?? {})) ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.paymongo)));
+  DAY.today = true;
+  await go('/member/renew');
+  out.push('bought: today\u2019s pass is ready, and no second is offered: ' + ((await page.locator('[data-day-pass-today]').count()) === 1
+    && (await page.locator('[data-day-pass-buy]').count()) === 0 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-renew-paymongo.png' });
   return out.join(String.fromCharCode(10));
 }

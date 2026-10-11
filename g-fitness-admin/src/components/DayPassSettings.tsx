@@ -12,6 +12,20 @@ import { showToast } from '../utils/toast';
 export default function DayPassSettings() {
   const [f, setF] = useState<{ on: boolean; day: string; pack5: string; pack10: string; nudge: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  /** 0194: a guest with a day pass bought in the app may book a class that day. null = before 0194. */
+  const [classes, setClasses] = useState<boolean | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const { data, error } = await supabase.from('gym_settings').select('day_pass_classes').maybeSingle();
+      if (!error && data) setClasses(!!(data as { day_pass_classes: boolean }).day_pass_classes);
+    })();
+  }, []);
+  const toggleClasses = async (on: boolean) => {
+    setClasses(on);
+    const { error } = await supabase.rpc('set_day_pass_classes', { p_on: on });
+    if (error) { setClasses(!on); showToast(error.message, 'error'); return; }
+    showToast(on ? 'Day-pass guests can book a class that day' : 'Day-pass guests cannot book classes', 'success');
+  };
 
   useEffect(() => {
     void (async () => {
@@ -66,6 +80,18 @@ export default function DayPassSettings() {
         {money('pack5', '5-visit pack', 'Empty: not sold')}
         {money('pack10', '10-visit pack', 'Empty: not sold')}
       </div>
+      {classes !== null && (
+        <label className="flex items-start gap-3 cursor-pointer" data-day-pass-classes>
+          <input type="checkbox" checked={classes} disabled={!f.on} onChange={(e) => void toggleClasses(e.target.checked)} className="mt-1"
+            aria-label="Day-pass guests may book a class that day" />
+          <span>
+            <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Day-pass guests may book a class that day</span>
+            <span className="block text-xs mt-0.5" style={muted}>
+              Someone who buys a day pass in the app (where you take payments in the app) can book a class held the same day. No plan, no weekly limit; your waiver still applies.
+            </span>
+          </span>
+        </label>
+      )}
       <label className="block text-xs" style={muted}>Suggest a membership after
         <span className="flex items-center gap-1.5 mt-1">
           <input aria-label="Visits before suggesting a membership" className="w-20 rounded-lg border px-3 py-2 text-sm" style={style} inputMode="numeric"

@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabaseClient';
 import { getBalance } from '../lib/api/points';
 import { getMembersByCheckInCode, getMemberByQrCode, type MemberWithProfile } from '../lib/api/members';
 import { recordCheckIn } from '../lib/api/attendance';
@@ -186,11 +187,15 @@ export async function performCheckIn(
   const first = member.profile.first_name;
   if (opts.alreadyInToday) return { ok: false, reason: 'duplicate', message: `${first} already checked in today` };
   const membership = await getCurrentMembership(member.profile.id).catch(() => null);
-  if (!membership) return { ok: false, reason: 'membership', message: `${first} has no membership on file` };
+  // A day pass bought in the app (0194) lets someone in for today, membership or not.
+  const dayPass = !membership || !membershipIsUsable(membership.status, membership.expiry_date, membership.never_expires)
+    ? await supabase.rpc('member_has_day_pass', { p_member: member.profile.id }).then(({ data }) => data === true, () => false)
+    : false;
+  if (!membership && !dayPass) return { ok: false, reason: 'membership', message: `${first} has no membership on file` };
   // membershipIsUsable covers the cases a plain status check gets wrong: a
   // *cancelled* membership still admits the member until expiry (they paid for
   // those days), and a *frozen* one doesn't, however far off its expiry is.
-  if (!membershipIsUsable(membership.status, membership.expiry_date, membership.never_expires)) {
+  if (!dayPass && membership && !membershipIsUsable(membership.status, membership.expiry_date, membership.never_expires)) {
     return {
       ok: false,
       reason: 'membership',

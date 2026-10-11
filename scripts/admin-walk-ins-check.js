@@ -79,6 +79,7 @@ async (page) => {
       }
       if (fn === 'void_guest_visit') { CALLS.push([fn, body]); VISITS.forEach((v) => { if (v.id === body.p_visit) v.voided = true; }); return json(null); }
       if (fn === 'set_day_pass_settings') { CALLS.push([fn, body]); return json(null); }
+      if (fn === 'set_day_pass_classes') { CALLS.push([fn, body]); return json(null); }
       if (fn === 'open_equipment_reports') return json([{ id: 'r1', equipment_id: 'q1', equipment_name: 'Leg press', location_note: '2nd floor',
         status: 'available', note: 'The seat pin is stuck', member_name: 'Lea Lorenzana', created_at: new Date().toISOString() }]);
       if (fn === 'set_equipment_status') { CALLS.push([fn, body]); return json(null); }
@@ -106,7 +107,7 @@ async (page) => {
     if (t in PEOPLE) return json(PEOPLE[t]);
     if (t === 'gym_settings') {
       const row = { id: true, gym_id: g.gym_id, gym_name: g.gym_name, short_name: g.short_name, logo_url: null, address: 'Mamburao',
-        join_approval: 'desk', min_age: 16, day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: null, guest_nudge_visits: 3,
+        join_approval: 'desk', min_age: 16, day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: null, guest_nudge_visits: 3, day_pass_classes: false,
         class_booking_approval: 'coach', pt_booking_approval: 'coach' };
       return json(one ? row : [row]);
     }
@@ -155,5 +156,10 @@ async (page) => {
   await page.waitForTimeout(700);
   c = CALLS.find(([f]) => f === 'set_day_pass_settings');
   out.push('the owner sets the prices together: ' + (c && c[1].p_on === true && c[1].p_day === 150 && c[1].p_pack10 === 1200 && c[1].p_nudge === 3 ? 'yes' : 'MISSING ' + JSON.stringify(c)));
+  // 0194: the owner's switch for day-pass guests booking a class that day.
+  await page.locator('[data-day-pass-classes] input').check();
+  await page.waitForTimeout(500);
+  c = CALLS.find(([f]) => f === 'set_day_pass_classes');
+  out.push('the owner lets day-pass guests book a class that day: ' + (c && c[1].p_on === true ? 'yes' : 'MISSING ' + JSON.stringify(c)));
   return out.join('\n');
 }

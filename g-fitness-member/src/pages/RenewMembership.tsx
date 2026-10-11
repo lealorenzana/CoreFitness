@@ -20,7 +20,7 @@ import Disclosure from '../components/ui/Disclosure';
 import GlassSheet from '../components/ui/GlassSheet';
 import PayOnline, { type PayOnlineValue } from '../components/PayOnline';
 import PayMongoPay from '../components/payments/PayMongoPay';
-import { gymOnlinePay, reconcilePending, waitForPayment } from '../lib/api/paymongo';
+import { gymOnlinePay, myDayPass, reconcilePending, waitForPayment, type DayPassState } from '../lib/api/paymongo';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
 import {
@@ -155,11 +155,17 @@ export default function RenewMembership() {
   const [payMongo, setPayMongo] = useState(false);
   useEffect(() => { void gymOnlinePay().then((p) => setPayMongo(!!p?.gym)); }, []);
   const [confirming, setConfirming] = useState<'waiting' | 'slow' | 'paid' | null>(null);
+  /** Just today (0194): a day pass for someone without a running membership. */
+  const [dayPass, setDayPass] = useState<DayPassState | null>(null);
+  useEffect(() => { void myDayPass().then(setDayPass); }, [confirming]);
   const [paidLine, setPaidLine] = useState<string | null>(null);
   useEffect(() => waitForPayment((state, row) => {
-    if (row && row.purpose !== 'membership') return;
+    if (row && row.purpose !== 'membership' && row.purpose !== 'day_pass') return;
     setConfirming(state);
-    if (state === 'paid') { setPaidLine(row ? `Paid ${row.description}` : null); toast.success('Payment received — your membership is renewed'); }
+    if (state === 'paid') {
+      setPaidLine(row ? `Paid ${row.description}` : null);
+      toast.success(row?.purpose === 'day_pass' ? 'Payment received — your day pass is ready' : 'Payment received — your membership is renewed');
+    }
   }), []);
   // A renewal paid earlier but not yet recorded (a late webhook, a closed phone) is checked with PayMongo on opening.
   useEffect(() => {
@@ -383,13 +389,30 @@ export default function RenewMembership() {
   return (
     <Page>
       <PageTitle back fallback="/member/membership" title="Plans" subtitle="Renew, upgrade or change your plan" />
+      {/* Just today (0194): a day pass, for someone without a running membership. */}
+      {dayPass?.today && (
+        <div className="mt-3" data-day-pass-today><Panel>
+          <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>
+            <b>Your day pass for today is ready.</b> Show your check-in code at the desk{dayPass.classes ? ', and you can book a class held today' : ''}.
+          </p>
+        </Panel></div>
+      )}
+      {dayPass && !dayPass.today && dayPass.on && dayPass.needed && dayPass.online && Number(dayPass.price) > 0 && (
+        <div className="mt-3" data-day-pass-buy><Panel>
+          <p style={{ fontSize: 13.5, marginBottom: 10, color: 'var(--color-text-secondary)' }}>
+            <b style={{ color: 'var(--color-text-primary)' }}>Just today?</b> A day pass lets you in today{dayPass.classes ? ' and book a class held today' : ''}.
+          </p>
+          <PayMongoPay purpose="day_pass" details={{}} amount={peso(Number(dayPass.price))} returnPath="/member/renew"
+            label={`Day pass — pay ${peso(Number(dayPass.price))} now`} note="Valid for today only. QRPh, GCash, Maya or card, straight to the gym." />
+        </Panel></div>
+      )}
       {/* Back from PayMongo (0192): confirmed here, the moment PayMongo says so. */}
       {confirming && (
         <div className="mt-3" data-renew-confirming><Panel>
           {confirming === 'paid' ? (
             <div className="flex items-center" style={{ gap: 10 }}>
               <Check size={18} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
-              <span className="flex-1" style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Payment received{paidLine ? ` — ${paidLine.replace(/^Paid /, '')}` : ''}. Your membership is renewed.</span>
+              <span className="flex-1" style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Payment received{paidLine ? ` — ${paidLine.replace(/^Paid /, '')}` : ''}.{/^Paid Day pass/.test(paidLine ?? '') ? '' : ' Your membership is renewed.'}</span>
               <NocButton variant="ghost" onClick={() => navigate('/member/membership')}>See it</NocButton>
             </div>
           ) : (
