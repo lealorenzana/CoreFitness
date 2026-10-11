@@ -30,6 +30,7 @@ async (page) => {
   const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
   const CALLS = [];
   let PAID = false;
+  let COLOURS_PAID = false;
   const VISITS = [];
   const SETTINGS = { modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee: 'gym_priced' };
   const COACHINGS = [
@@ -64,9 +65,13 @@ async (page) => {
       const body = JSON.parse(req.postData() || '{}');
       if (fn === 'my_gym_billing') return json([{ plan_key: 'starter', plan_name: 'Starter', blurb: null, price_monthly: '1499', price_yearly: '14990',
         paid_until: ymd(-3), days_left: 3, lock_reason: null, max_members: 100, members: 10, max_staff: 3, staff: 1 }]);
-      if (fn === 'my_theme_state') return json({ custom_colours: false, price: '499' });
-      if (fn === 'my_paymongo_checkouts') return json(PAID ? [{ id: 'co1', purpose: 'gym_subscription', description: 'Starter plan, 1 month', amount: '1499',
-        status: 'paid', method: 'gcash', created_at: new Date().toISOString(), paid_at: new Date().toISOString() }] : []);
+      if (fn === 'my_theme_state') return json({ custom_colours: COLOURS_PAID, price: '499' });
+      if (fn === 'my_paymongo_checkouts') return json([
+        ...(PAID ? [{ id: 'co1', purpose: 'gym_subscription', description: 'Starter plan, 1 month', amount: '1499',
+          status: 'paid', method: 'gcash', created_at: new Date().toISOString(), paid_at: new Date().toISOString() }] : []),
+        ...(COLOURS_PAID ? [{ id: 'co2', purpose: 'custom_colours', description: 'Custom colours (one-time)', amount: '499',
+          status: 'paid', method: 'card', created_at: new Date().toISOString(), paid_at: new Date().toISOString() }] : []),
+      ]);
       if (fn === 'my_gym_context') return json([{ gym_id: g.gym_id, gym_name: g.gym_name, slug: g.slug, role: 'admin',
         status: 'active', lock_reason: null, short_name: g.short_name, logo_url: null, accent: g.accent, gym_count: 1,
         onboarded: true, onboarding_step: null, gym_state: 'live' }]);
@@ -159,5 +164,15 @@ async (page) => {
   await page.locator('[data-buy-colours]').first().click();
   await page.waitForTimeout(800);
   out.push('…bought through PayMongo: ' + (CALLS.some((x) => x[0] === 'checkout' && x[1].purpose === 'custom_colours') ? 'yes' : 'MISSING'));
+
+  // ---- back from PayMongo: unlocked in place, no reload ----
+  await page.goto('http://localhost:5174/gym-app?tab=look&paid=co2', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-colours-confirming]').waitFor({ timeout: 10000 }).catch(() => {});
+  out.push('back from PayMongo it says it is confirming: ' + ((await page.locator('[data-colours-confirming]').count()) === 1 ? 'yes' : 'MISSING'));
+  COLOURS_PAID = true;
+  await page.locator('[aria-label="Colour code"]').first().waitFor({ timeout: 10000 }).catch(() => {});
+  out.push('the moment PayMongo confirms, the colour code opens — no reload: ' + ((await page.locator('[aria-label="Colour code"]').count()) >= 1
+    && (await page.locator('[data-buy-colours]').count()) === 0 ? 'yes' : 'MISSING'));
+  out.push('…and the address loses its ?paid= mark: ' + (!page.url().includes('paid=') ? 'yes' : 'NO ' + page.url()));
   return out.join('\n');
 }

@@ -44,3 +44,33 @@ export async function themeState(): Promise<{ custom_colours: boolean; price: nu
   if (error) return null;
   return data as { custom_colours: boolean; price: number | string | null };
 }
+
+/**
+ * Back from PayMongo (?paid=<checkout id>): PayMongo's signed confirmation
+ * usually lands a few seconds after the person does. This waits for it —
+ * every 2 seconds for up to a minute — and calls `onPaid` the moment the row
+ * is paid, so the screen updates itself without a reload. Returns a stop
+ * function. The ?paid= mark is removed once settled, so a refresh is clean.
+ */
+export function waitForPayment(onState: (s: 'waiting' | 'paid' | 'slow', row: CheckoutRow | null) => void): () => void {
+  const id = new URLSearchParams(window.location.search).get('paid');
+  if (!id) return () => {};
+  let stop = false; let tries = 0;
+  onState('waiting', null);
+  const look = async () => {
+    if (stop) return;
+    const row = (await myCheckouts()).find((c) => c.id === id) ?? null;
+    if (stop) return;
+    if (row?.status === 'paid') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('paid');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+      onState('paid', row);
+      return;
+    }
+    if (++tries >= 30) { onState('slow', row); return; }
+    window.setTimeout(() => void look(), 2000);
+  };
+  void look();
+  return () => { stop = true; };
+}

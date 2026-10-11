@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { payOnline, themeState } from '../lib/api/paymongo';
+import { payOnline, themeState, waitForPayment } from '../lib/api/paymongo';
 import { showToast } from '../utils/toast';
 import { ACCENTS } from '../lib/accents';
 import { contrast, isColourCode, rampFor } from '../lib/gymTheme';
@@ -49,11 +49,21 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
    * code has it unlocked, so it is never taken away here.
    */
   const [locked, setLocked] = useState<{ price: number } | null>(null);
+  /** Back from PayMongo: confirming, then unlocked in place — no reload (0191). */
+  const [confirming, setConfirming] = useState<'waiting' | 'slow' | null>(null);
   useEffect(() => {
     let cancelled = false;
     void themeState().then((t) => { if (!cancelled && t && !t.custom_colours) setLocked({ price: Number(t.price ?? 0) }); });
-    return () => { cancelled = true; };
-  }, []);
+    const stopWaiting = waitForPayment((state, row) => {
+      if (cancelled || (row && row.purpose !== 'custom_colours')) return;
+      if (state === 'paid') {
+        setConfirming(null); setLocked(null);
+        // Only one picker on the page says it out loud.
+        if (idPrefix.endsWith('accent')) showToast('Payment received — custom colours are yours', 'success');
+      } else setConfirming(state);
+    });
+    return () => { cancelled = true; stopWaiting(); };
+  }, [idPrefix]);
   const [buying, setBuying] = useState(false);
   const buy = async () => {
     setBuying(true);
@@ -119,6 +129,11 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
         )}
       </div>
 
+      {confirming && idPrefix.endsWith('accent') && (
+        <p className="mt-2 text-xs" style={{ color: 'var(--color-text-secondary)' }} data-colours-confirming>
+          {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet. If you were charged, it unlocks here shortly — or ask in Support.'}
+        </p>
+      )}
       {draft !== '' && !isColourCode(draft) && (
         <p className="mt-2 text-xs" style={{ color: 'var(--color-warning, #D97706)' }}>
           A colour code is # and six characters, like #1F8A70.

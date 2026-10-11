@@ -5,7 +5,7 @@ import { showToast } from '../utils/toast';
 import { shrinkImage } from '../utils/shrinkImage';
 import { payOptions, type PayOption } from '../lib/api/subscription';
 import { aiAllowance, buyTopUp, type AiAllowance } from '../lib/api/aiTopups';
-import { payOnline, paymongoReady } from '../lib/api/paymongo';
+import { payOnline, paymongoReady, waitForPayment } from '../lib/api/paymongo';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: '#fff' };
@@ -41,6 +41,13 @@ export default function AiTopUps() {
     setA(x); setOpts(o ?? []);
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  /** Back from PayMongo: the new messages appear the moment the payment is confirmed (0191). */
+  const [confirming, setConfirming] = useState<'waiting' | 'slow' | null>(null);
+  useEffect(() => waitForPayment((state, row) => {
+    if (row && row.purpose !== 'ai_topup') return;
+    if (state === 'paid') { setConfirming(null); showToast(`Payment received — ${row?.description ?? 'messages added'}`, 'success'); void load(); }
+    else setConfirming(state);
+  }), [load]);
 
   if (a === undefined) return null;
   if (a === null) return null; // before 0189, or not the owner: nothing to buy here
@@ -59,6 +66,11 @@ export default function AiTopUps() {
   return (
     <Card className="!p-5 mt-4" data-ai-topups>
       <p className="text-sm font-semibold text-white flex items-center gap-2"><Sparkles size={15} /> Messages this month</p>
+      {confirming && (
+        <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }} data-topup-confirming>
+          {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet — the messages appear here once it does.'}
+        </p>
+      )}
       <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-high)' }} aria-hidden>
         <div className="h-full" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
       </div>

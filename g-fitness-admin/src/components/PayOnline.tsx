@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CreditCard } from 'lucide-react';
 import Card from './ui/Card';
 import { showToast } from '../utils/toast';
-import { myCheckouts, payOnline, paymongoReady, type CheckoutRow } from '../lib/api/paymongo';
+import { payOnline, paymongoReady, waitForPayment, type CheckoutRow } from '../lib/api/paymongo';
 import { getGymBilling } from '../lib/api/subscription';
 
 const MUTED = 'var(--color-text-muted)';
@@ -27,18 +27,12 @@ export default function PayOnline({ onPaid }: { onPaid: () => void }) {
   const [returned, setReturned] = useState<CheckoutRow | null | 'waiting'>(paidId ? 'waiting' : null);
 
   useEffect(() => { void paymongoReady().then(setOn); }, []);
-  useEffect(() => {
-    if (!paidId) return;
-    let tries = 0; let stop = false;
-    const look = async () => {
-      const row = (await myCheckouts()).find((c) => c.id === paidId) ?? null;
-      if (stop) return;
-      if (row?.status === 'paid') { setReturned(row); onPaid(); return; }
-      if (++tries < 15) window.setTimeout(() => void look(), 2000); else setReturned(row);
-    };
-    void look();
-    return () => { stop = true; };
-  }, [paidId, onPaid]);
+  // The same wait as the other payments (lib/api/paymongo): updated the moment PayMongo confirms.
+  useEffect(() => waitForPayment((state, row) => {
+    if (row && row.purpose !== 'gym_subscription') return;
+    if (state === 'paid') { setReturned(row); onPaid(); }
+    else if (state === 'slow') setReturned(row);
+  }), [onPaid]);
 
   const pay = async (months: number) => {
     setBusy(months);
