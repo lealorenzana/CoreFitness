@@ -31,6 +31,7 @@ async (page) => {
   const CALLS = [];
   let PAID = false;
   let COLOURS_PAID = false;
+  let GYM_ACC = null;
   const VISITS = [];
   const SETTINGS = { modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee: 'gym_priced' };
   const COACHINGS = [
@@ -53,6 +54,13 @@ async (page) => {
     const json = (b) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-0/1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     const one = req.headers()['accept']?.includes('vnd.pgrst.object');
+    if (path.startsWith('/functions/v1/paymongo-connect')) {
+      const b = JSON.parse(req.postData() || '{}');
+      CALLS.push(['connect', b]);
+      if (b.disconnect) { GYM_ACC = null; return json({ disconnected: true }); }
+      GYM_ACC = { connected: true, live: false, key_last4: b.secretKey.slice(-4), connected_at: new Date().toISOString() };
+      return json({ connected: true, live: false, key_last4: b.secretKey.slice(-4) });
+    }
     if (path.startsWith('/functions/v1/paymongo-checkout')) {
       const b = JSON.parse(req.postData() || '{}');
       if (b.probe) return json({ configured: true });
@@ -65,6 +73,9 @@ async (page) => {
       const body = JSON.parse(req.postData() || '{}');
       if (fn === 'my_gym_billing') return json([{ plan_key: 'starter', plan_name: 'Starter', blurb: null, price_monthly: '1499', price_yearly: '14990',
         paid_until: ymd(-3), days_left: 3, lock_reason: null, max_members: 100, members: 10, max_staff: 3, staff: 1 }]);
+      if (fn === 'my_payment_account') return json(GYM_ACC);
+      if (fn === 'gym_online_payments') return json(GYM_ACC ? [{ id: 'gp1', member_name: 'Lea Lorenzana', purpose: 'membership', description: 'Monthly — G Fitness',
+        amount: '800', status: 'paid', method: 'gcash', paid_at: new Date().toISOString() }] : []);
       if (fn === 'my_theme_state') return json({ custom_colours: COLOURS_PAID, price: '499' });
       if (fn === 'my_paymongo_checkouts') return json([
         ...(PAID ? [{ id: 'co1', purpose: 'gym_subscription', description: 'Starter plan, 1 month', amount: '1499',
@@ -174,5 +185,22 @@ async (page) => {
   out.push('the moment PayMongo confirms, the colour code opens — no reload: ' + ((await page.locator('[aria-label="Colour code"]').count()) >= 1
     && (await page.locator('[data-buy-colours]').count()) === 0 ? 'yes' : 'MISSING'));
   out.push('…and the address loses its ?paid= mark: ' + (!page.url().includes('paid=') ? 'yes' : 'NO ' + page.url()));
+
+  // ---- 0192: the gym connects its own PayMongo account ----
+  await page.goto('http://localhost:5174/gym-app?tab=pay', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-gym-paymongo]').waitFor({ timeout: 10000 });
+  const connectBtn = page.getByRole('button', { name: 'Connect PayMongo' });
+  out.push('Your app has an Online payments tab to connect PayMongo: ' + ((await connectBtn.count()) === 1 ? 'yes' : 'MISSING'));
+  await page.getByLabel('PayMongo secret key').fill('not-a-key');
+  out.push('…which only takes a PayMongo secret key: ' + (await connectBtn.isDisabled() ? 'yes' : 'NO'));
+  await page.getByLabel('PayMongo secret key').fill('sk_test_FAKEfakeFAKE1234');
+  await connectBtn.click();
+  await page.locator('[data-paymongo-connected]').waitFor({ timeout: 10000 }).catch(() => {});
+  const cc = CALLS.find((x) => x[0] === 'connect' && !x[1].disconnect);
+  out.push('the key goes to the connect function for the gym: ' + (cc && cc[1].kind === 'gym' && cc[1].secretKey === 'sk_test_FAKEfakeFAKE1234' ? 'yes' : 'MISSING'));
+  const ct = await page.locator('[data-gym-paymongo]').innerText();
+  out.push('connected: test mode and the last four — never the key: ' + (/test mode — no real money, key ending 1234/.test(ct) && !ct.includes('sk_test_FAKE') ? 'yes' : 'MISSING ' + ct.slice(0, 200)));
+  out.push('…and what members paid in the app is listed: ' + (/Lea Lorenzana/.test(ct) && /₱800/.test(ct) ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-gym-paymongo.png', fullPage: true });
   return out.join('\n');
 }

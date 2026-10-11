@@ -115,6 +115,7 @@ async (page) => {
       if (fn === 'coaching_settings') return json([{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'trainer_direct' }]);
       if (fn === 'my_coachings') return json(COACHINGS);
       if (fn === 'coaching_sweep') return json(0);
+      if (fn === 'my_payment_account') return json(null);
       if (['respond_coaching', 'confirm_coaching_payment', 'invite_coaching'].includes(fn)) { CC.push([fn, cb]); return json('ok'); }
       if (fn === 'cancel_booking') { cancelCall = req.postData() ?? ''; return json(null); }
       return json(fn in RPC ? RPC[fn] : null);
@@ -151,5 +152,7 @@ async (page) => {
   t = await text();
   out.push('how members pay this coach, and that the gym never sees it: ' + (/How members pay you/.test(t) && /0917 000 1111/.test(t) && /never sees this money/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-coaching.png', fullPage: true });
+  out.push('a coach paid directly can connect their own PayMongo: ' + ((await page.locator('[data-connect-paymongo]').count()) === 1
+    && /Get paid online/.test(await page.locator('[data-connect-paymongo]').innerText()) ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

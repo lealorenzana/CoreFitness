@@ -29,7 +29,7 @@ const sections: LegalSection[] = [
     body: [
       'Your name, email, phone, address and date of birth, and an emergency contact.',
       'Your check-in code, and every check-in made with it.',
-      'Payments recorded at the desk — amount, method and date. No card or bank details, because the gym does not take them.',
+      'Payments — amount, method and date, whether recorded at the desk or paid in the app. No card or bank details: the gym never receives them.',
       'Anything you choose to log: workouts, measurements, goals, and how you rate a coach.',
       'If your gym asks you to sign its waiver: which version you signed and when, and your answers to the seven health questions that come with it. Health answers are sensitive personal information under RA 10173, and are treated as such below.',
       'If you turn on notifications, the token your phone needs to receive them. You can turn it off again in Settings.',
@@ -62,7 +62,7 @@ const sections: LegalSection[] = [
     body: [
       'No advertising, and no advertising identifiers.',
       'No analytics or usage tracking, and no third-party tracking scripts.',
-      'No payment processor — you pay the gym in cash at the desk or, where it offers it, from your own GCash, Maya or bank app. If you pay that way, the reference number and the screenshot you send are kept with your request, seen only by the gym\'s owner and front desk, to confirm it.',
+      'Paying in the app — only where your gym has connected PayMongo, a licensed payment company. PayMongo then receives what the payment needs: your name, email, the amount and how you pay (card details go to PayMongo only, never to the gym or this app). Otherwise you pay the gym in cash at the desk or, where it offers it, from your own GCash, Maya or bank app; if you pay that way, the reference number and the screenshot you send are kept with your payment record.',
       'The in-app assistant answers questions about your membership, bookings and the gym from fixed rules, in the app. At gyms and on plans that include the AI coach, questions the rules cannot answer are sent to Anthropic, the company that runs the model, to be answered. The coach sees your first name, goals, experience level, routines, your weekly plan and how often you have trained lately, only if you say yes when it first asks (Settings changes it); it never sees your health questionnaire (PAR-Q) or waiver answers, payments, contact details, chats with coaches or photos. What you tell the coach when it sets you up — your goal, experience, how often and how long you train, your equipment, what you enjoy or avoid, and whether something hurts (a yes or no, never the details) — is kept for the coach and sent to Anthropic with each question you ask it, even if you do not let it read your training. Your conversations are kept in the gym\'s database, visible only to you, and you can delete them. The coach can suggest changes to your routines, your weekly plan and your goals; nothing changes until you tap Apply, and you can undo a change afterwards. The gym\'s coaches and front desk can see which of your routines and plan days were made by the coach (a small mark on them), never your conversation. Meal guides were removed on 5 October 2026; one you applied before then is kept only in your own data export, and nobody else sees it.',
     ],
   },

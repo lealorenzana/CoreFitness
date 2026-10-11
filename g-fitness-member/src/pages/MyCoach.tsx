@@ -8,6 +8,8 @@ import DateField from '../components/ui/DateField';
 import GlassSheet from '../components/ui/GlassSheet';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
+import PayMongoPay from '../components/payments/PayMongoPay';
+import { gymOnlinePay, waitForPayment } from '../lib/api/paymongo';
 import { errorMessage } from '../utils/errorMessage';
 import { addDays, todayKey } from '../utils/dates';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
@@ -33,6 +35,10 @@ export default function MyCoach() {
   const [coaches, setCoaches] = useState<PublicTrainer[]>([]);
   const [methods, setMethods] = useState<TrainerPaymentMethod[]>([]);
   const [reference, setReference] = useState('');
+  /** Who takes coaching payments online (0192): the gym, and which coaches. */
+  const [onlinePay, setOnlinePay] = useState<{ gym: boolean; trainers: string[] } | null>(null);
+  useEffect(() => { void gymOnlinePay().then(setOnlinePay); }, []);
+  const [confirming, setConfirming] = useState<'waiting' | 'slow' | null>(null);
   const [busy, setBusy] = useState(false);
   const [standinOpen, setStandinOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -47,6 +53,12 @@ export default function MyCoach() {
     setList(l);
     setCoaches(c);
   }, []);
+  // Back from PayMongo (?paid=…): the coaching starts here the moment it is confirmed (0192).
+  useEffect(() => waitForPayment((state, row) => {
+    if (row && row.purpose !== 'coaching') return;
+    if (state === 'paid') { setConfirming(null); toast.success('Payment received — your coaching has started'); void load(); }
+    else setConfirming(state);
+  }), [load]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const mine = (list ?? []).filter((c) => c.iAm === 'member');
@@ -127,6 +139,20 @@ export default function MyCoach() {
                   ))
               ) : (
                 <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Pay at the front desk, or pay the gym online and send the reference below.</p>
+              )}
+              {/* Online (0192): to the gym's own PayMongo, or the coach's when they are paid directly. */}
+              {current.price != null && Number(current.price) > 0 && onlinePay && (current.feeMode === 'trainer_direct'
+                ? onlinePay.trainers.includes(current.trainerId) : current.feeMode === 'gym_priced' && onlinePay.gym) && (
+                <div style={{ marginTop: 10 }}>
+                  <PayMongoPay purpose="coaching" details={{ coaching_id: current.id }} amount={peso(current.price)} returnPath="/member/coach"
+                    note={current.feeMode === 'trainer_direct' ? `Straight to ${current.trainerName.split(' ')[0]}, through PayMongo. Your coaching starts the moment it is paid.` : undefined} />
+                  <p style={{ fontSize: 12, marginTop: 10, color: 'var(--color-text-muted)' }}>Or pay another way and send the reference:</p>
+                </div>
+              )}
+              {confirming && (
+                <p style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }} data-coaching-confirming>
+                  {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet — it updates here once it does.'}
+                </p>
               )}
               {current.status === 'payment_sent' ? (
                 <p style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }}>

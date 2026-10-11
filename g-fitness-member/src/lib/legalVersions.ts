@@ -7,8 +7,8 @@
  * here, in the same commit** — the old wording stays in git history under the
  * old date, which is what makes an agreement to it mean something.
  */
-export const TERMS_VERSION = '2026-10-05';   // members may pay by GCash, Maya or bank (0167)
-export const PRIVACY_VERSION = '2026-10-11';   // signing up and in with Google (0190)
+export const TERMS_VERSION = '2026-10-11';   // paying in the app through PayMongo (0192)
+export const PRIVACY_VERSION = '2026-10-11';   // Google sign-in (0190); PayMongo payments (0192)
 
 export type LegalDocument = 'member_terms' | 'member_privacy';
 

@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/Toast';
 import { Field, Select, TextInput } from '../../components/ui/Field';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../../components/ui/noc';
+import ConnectPayMongo from '../../components/payments/ConnectPayMongo';
 import { errorMessage } from '../../utils/errorMessage';
 import { listMembers } from '../../lib/api/members';
 import {
@@ -173,6 +174,8 @@ export default function TrainerCoaching() {
         </div>
       )}
 
+      {/* 0192: paid directly, a coach may take payments online into their own PayMongo account. */}
+      {direct && me && <ConnectPayMongo />}
       {direct && me && (
         <div data-pay-methods>
           <SectionHead title="How members pay you" />

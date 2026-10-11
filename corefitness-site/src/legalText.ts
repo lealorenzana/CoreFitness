@@ -105,6 +105,8 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         { id: 'payment', title: '4. Plans, trials and paying', body: [
           'Prices are in Philippine pesos and are the ones on this site\'s Pricing section, which reads the same records your gym is billed from.',
           'You pay by the GCash, Maya or bank details shown in your gym app. Send us the reference number and a screenshot from Your plan → Pay Core Fitness; we check it and issue a receipt numbered CF-<year>-<number>. A reference can be claimed once.',
+          'You can also pay online through PayMongo, a licensed payment company — by QRPh (scan with GCash, Maya or your bank app), or card and e-wallets where offered — from Your plan. The payment counts the moment PayMongo confirms it to us, and the receipt is issued the same way.',
+          'Your gym may connect its own PayMongo account so its members pay it in the app. That money goes to your account, never through Core Fitness; your agreement with PayMongo is your own, and Core Fitness only records what PayMongo confirms.',
           'Each plan includes a number of AI coach messages a month. More can be bought as prepaid top-ups at the price shown in your gym app; they are used only after the month\'s messages run out and do not expire. You are told at 80% and when they run out, and nothing is charged that you did not buy.',
           'If your plan includes a free trial and your gym has never paid, your access runs until the trial ends. After that it follows the same rule as any payment date.',
           `Your gym's owners are reminded in the gym app ${reminders} the date your current period ends.`,
@@ -188,6 +190,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'Vercel — serves the apps and this website.',
           'GitHub — holds the encrypted weekly backups.',
           'Anthropic — answers questions sent to the AI coach, only at gyms whose plan includes it and only for members who agree to it in the app.',
+          'PayMongo — takes payments made online: a gym\'s payments to Core Fitness, and, only for a gym that connects its own PayMongo account, its members\' payments to it. PayMongo receives what that payment needs (name, email, the amount and the payment details); card details go to PayMongo only, never to Core Fitness or the gym.',
           'Resend — sends account emails such as an owner\'s first password, when email is switched on.',
           'Your members\' phone or browser maker (Google, Apple, Mozilla) — delivers notifications to members who turn them on.',
           'We will tell you in the gym app before adding a service that processes your members\' data.',

@@ -30,8 +30,14 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("POST only", { status: 405 });
   const raw = await req.text();
   const account = new URL(req.url).searchParams.get("account") ?? "platform";
-  // Part 1 has one account: Core Fitness's own. (Part 2 reads a gym's secret from the Vault.)
-  const secret = account === "platform" ? Deno.env.get("PAYMONGO_WEBHOOK_SECRET") : undefined;
+  const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Core Fitness's own account (0191), or a gym's / coach's — its webhook secret from the Vault (0192).
+  let secret: string | undefined;
+  if (account === "platform") secret = Deno.env.get("PAYMONGO_WEBHOOK_SECRET");
+  else if (/^[0-9a-f-]{36}$/i.test(account)) {
+    const { data: acc } = await service.rpc("payment_account_secret", { p_account: account });
+    secret = acc?.webhook_secret ?? undefined;
+  }
   if (!secret) return new Response("webhook not configured", { status: 503 });
 
   const header = req.headers.get("Paymongo-Signature") ?? "";
@@ -52,7 +58,6 @@ Deno.serve(async (req) => {
   if (!session?.id || !payment?.id) return new Response("no payment in event", { status: 200 });
   const method = session.attributes.payment_method_used ?? payment.attributes?.source?.type ?? null;
 
-  const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data, error } = await service.rpc("paymongo_settle", {
     p_session: session.id, p_payment: payment.id, p_amount_centavos: payment.attributes?.amount ?? 0, p_method: method,
   });

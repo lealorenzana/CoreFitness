@@ -40,27 +40,43 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Sign in first." }, 401);
 
     const body = await req.json().catch(() => ({}));
-    const key = Deno.env.get("PAYMONGO_SECRET_KEY");
-    if (body.probe) return json({ configured: !!key });
-    if (!key) return json({ configured: false, error: "Online payment is not set up yet. Send the reference and a screenshot instead." });
+    const platformKey = Deno.env.get("PAYMONGO_SECRET_KEY");
+    if (body.probe) return json({ configured: !!platformKey });
+    // A member pays their gym (or a coach) — 0192; a gym pays Core Fitness — 0191.
+    const memberPays = ["membership", "coaching", "day_pass"].includes(body.purpose);
+    if (!memberPays && !platformKey) {
+      return json({ configured: false, error: "Online payment is not set up yet. Send the reference and a screenshot instead." });
+    }
 
     // 1. The database prepares the row and decides the price (as the caller, so its rules apply).
-    const { data: prepared, error: prepError } = await caller.rpc("paymongo_prepare_platform", {
+    const { data: prepared, error: prepError } = await caller.rpc(memberPays ? "paymongo_prepare_member" : "paymongo_prepare_platform", {
       p_purpose: body.purpose, p_details: body.details ?? {},
     });
     if (prepError) return json({ error: prepError.message }, 400);
     const { data: row, error: rowError } = await service.rpc("paymongo_checkout_for", { p_id: prepared.id });
     if (rowError || !row) return json({ error: rowError?.message ?? "Could not prepare the payment." }, 400);
 
+    // Whose PayMongo account takes the money: Core Fitness's, or the gym's / coach's own (from the Vault).
+    let key = platformKey;
+    if (row.account !== "platform") {
+      const { data: acc } = await service.rpc("payment_account_secret", { p_account: row.account });
+      if (!acc?.active || !acc?.secret) return json({ configured: false, error: "This gym's online payments are switched off. Pay at the desk." });
+      key = acc.secret;
+    }
+
     // 2. PayMongo opens the session.
-    const back = safeUrl(body.returnUrl, "https://corefitness-admin.vercel.app/subscription");
+    const back = safeUrl(body.returnUrl, memberPays ? "https://corefitness-gym.vercel.app/member/membership" : "https://corefitness-admin.vercel.app/subscription");
     const sep = back.includes("?") ? "&" : "?";
-    const res = await fetch("https://api.paymongo.com/v1/checkout_sessions", {
+    // QRPh first (0192): one QR that GCash, Maya and every bank app can scan, and often the first method a new
+    // PayMongo account has active. An account without the others enabled gets a retry with QRPh alone.
+    const wanted = (Deno.env.get("PAYMONGO_PAYMENT_METHODS") ?? "qrph,gcash,paymaya,card,grab_pay,dob")
+      .split(",").map((m) => m.trim()).filter(Boolean);
+    const open = (methods: string[]) => fetch("https://api.paymongo.com/v1/checkout_sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Basic " + btoa(key + ":") },
+      headers: { "Content-Type": "application/json", Authorization: "Basic " + btoa(key! + ":") },
       body: JSON.stringify({ data: { attributes: {
         line_items: [{ name: row.description, amount: row.amount_centavos, currency: "PHP", quantity: 1 }],
-        payment_method_types: ["gcash", "paymaya", "card", "grab_pay", "dob"],
+        payment_method_types: methods,
         description: row.description,
         reference_number: row.id,
         send_email_receipt: true, show_description: true, show_line_items: true,
@@ -69,6 +85,12 @@ Deno.serve(async (req) => {
         metadata: { checkout_id: row.id, account: row.account },
       } } }),
     });
+    let res = await open(wanted);
+    if (!res.ok && res.status < 500 && wanted.length > 1 && wanted.includes("qrph")) {
+      const first = await res.clone().json().catch(() => null);
+      const why = JSON.stringify(first?.errors ?? "");
+      if (/payment_method|not (enabled|activated|available)|inactive/i.test(why)) res = await open(["qrph"]);
+    }
     const out = await res.json().catch(() => null);
     if (!res.ok || !out?.data?.id) {
       const detail = out?.errors?.[0]?.detail ?? `PayMongo answered ${res.status}`;

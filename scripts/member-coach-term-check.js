@@ -155,6 +155,10 @@ async (page) => {
   const FN = {
     coaching_settings: () => [{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'trainer_direct' }],
     my_coachings: () => (STATE.status ? [coachingRow()] : []),
+    // 0192: this coach takes payments online into their own PayMongo account.
+    gym_online_pay: () => ({ gym: false, trainers: ['t1'] }),
+    my_member_checkouts: () => (STATE.coachPaid ? [{ id: 'co9', purpose: 'coaching', description: 'Coaching, 1 month with Rae Santos', amount: '1500',
+      status: 'paid', method: 'gcash', created_at: iso(0, 9, 0), paid_at: iso(0, 9, 1) }] : []),
     request_coaching: () => { STATE.status = 'requested'; return 'k1'; },
     submit_coaching_payment: () => { STATE.status = 'payment_sent'; return null; },
     set_coaching_standin: () => 'sd1',
@@ -227,6 +231,10 @@ async (page) => {
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
+    if (path.startsWith('/functions/v1/paymongo-checkout')) {
+      CALLS.paymongo = JSON.parse(req.postData() || '{}');
+      return json({ configured: true, url: 'https://checkout.paymongo.test/cs_coach', id: 'co9' });
+    }
     // Private storage (0132): signed links, and uploads into reserved slots.
     if (path.startsWith('/storage/v1/object/sign/')) {
       if (req.method() === 'POST') {
@@ -313,6 +321,22 @@ async (page) => {
   await page.waitForTimeout(1000);
   out.push('the reference is sent: ' + (CALLS.submit_coaching_payment?.p_reference === 'GC-55512' ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach-pay.png' });
+
+  // ---- 0192: pay the coach online, straight to their PayMongo ----
+  await page.route('https://checkout.paymongo.test/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>PayMongo</h1>' }));
+  await go('/member/coach');
+  const payBtn = page.locator('[data-paymongo-pay]').getByRole('button');
+  out.push('a coach paid directly can be paid online, at the coaching\u2019s price: ' + ((await payBtn.count()) === 1 && /Pay ₱1,500 now/.test(await payBtn.innerText()) ? 'yes' : 'MISSING'));
+  await payBtn.click();
+  await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
+  out.push('…only the coaching is sent — the price is the database\u2019s: ' + (CALLS.paymongo?.purpose === 'coaching' && CALLS.paymongo?.details?.coaching_id === 'k1'
+    && !('amount' in (CALLS.paymongo ?? {})) ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.paymongo)));
+  await go('/member/coach?paid=co9');
+  STATE.coachPaid = true; STATE.status = 'active';
+  await page.waitForFunction(() => !location.search.includes('paid='), null, { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  out.push('back from PayMongo, it updates in place once confirmed: ' + (!page.url().includes('paid=') && /Payment received/.test(await text()) ? 'yes' : 'MISSING'));
+  STATE.status = 'awaiting_payment';
 
   // ---- active, coach on leave: pick a stand-in ----
   STATE.status = 'active';

@@ -106,7 +106,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'membership',
     title: '1. Your membership',
-    body: 'Membership gives you access to the gym during posted opening hours. Membership is paid at the front desk in cash or — where your gym has turned it on — by GCash, Maya or bank transfer into the gym’s own account, which the desk confirms by hand before your plan changes. Nothing in this app takes payment or holds card details: you pay in your own GCash or bank app, and the app only carries the reference number and the screenshot you choose to send. What the app shows you is the record of what the desk entered.',
+    body: 'Membership gives you access to the gym during posted opening hours. Membership is paid at the front desk in cash or — where your gym has turned it on — by GCash, Maya or bank transfer into the gym’s own account, which the desk confirms by hand before your plan changes. Where your gym has connected PayMongo, a licensed payment company, you can also pay in the app — by QRPh (scan with GCash, Maya or your bank app), or card and e-wallets where offered. That money goes to the gym’s own PayMongo account, and your plan changes the moment PayMongo confirms it. The app never sees or keeps card details. What the app shows you is the record of what was paid.',
   },
   {
     id: 'freezing',

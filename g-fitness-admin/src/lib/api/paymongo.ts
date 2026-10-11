@@ -74,3 +74,30 @@ export function waitForPayment(onState: (s: 'waiting' | 'paid' | 'slow', row: Ch
   void look();
   return () => { stop = true; };
 }
+
+// ---- the gym's own PayMongo account (0192) ------------------------------------------------------------
+export interface GymAccount { connected: boolean; live: boolean; key_last4: string; connected_at: string }
+export interface GymOnlinePayment {
+  id: string; member_name: string | null; purpose: string; description: string; amount: number | string;
+  status: string; method: string | null; paid_at: string | null;
+}
+/** null = not connected; undefined = before 0192. */
+export async function gymPaymentAccount(): Promise<GymAccount | null | undefined> {
+  const { data, error } = await supabase.rpc('my_payment_account', { p_kind: 'gym' });
+  if (error) return undefined;
+  return (data as GymAccount | null) ?? null;
+}
+export async function gymOnlinePayments(): Promise<GymOnlinePayment[]> {
+  const { data, error } = await supabase.rpc('gym_online_payments');
+  if (error) return [];
+  return (data ?? []) as GymOnlinePayment[];
+}
+async function connectCall(body: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase.functions.invoke('paymongo-connect', { body });
+  if (error) {
+    const b = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(b?.error ?? 'Could not reach PayMongo. Try again.');
+  }
+}
+export const connectGymPayMongo = (secretKey: string, publicKey: string) => connectCall({ kind: 'gym', secretKey, publicKey });
+export const disconnectGymPayMongo = () => connectCall({ kind: 'gym', disconnect: true });

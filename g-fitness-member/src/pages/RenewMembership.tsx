@@ -19,6 +19,8 @@ import { Chip, Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../com
 import Disclosure from '../components/ui/Disclosure';
 import GlassSheet from '../components/ui/GlassSheet';
 import PayOnline, { type PayOnlineValue } from '../components/PayOnline';
+import PayMongoPay from '../components/payments/PayMongoPay';
+import { gymOnlinePay, waitForPayment } from '../lib/api/paymongo';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
 import {
@@ -149,6 +151,16 @@ export default function RenewMembership() {
     void (async () => { setPayMethods(await listGymPayMethods()); })();
   }, [onlineOn]);
   const [now] = useState(() => Date.now());
+  /** The gym takes payments into its own PayMongo account (0192): renew in one step, recorded at once. */
+  const [payMongo, setPayMongo] = useState(false);
+  useEffect(() => { void gymOnlinePay().then((p) => setPayMongo(!!p?.gym)); }, []);
+  const [confirming, setConfirming] = useState<'waiting' | 'slow' | 'paid' | null>(null);
+  const [paidLine, setPaidLine] = useState<string | null>(null);
+  useEffect(() => waitForPayment((state, row) => {
+    if (row && row.purpose !== 'membership') return;
+    setConfirming(state);
+    if (state === 'paid') { setPaidLine(row ? `Paid ${row.description}` : null); toast.success('Payment received — your membership is renewed'); }
+  }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -355,6 +367,22 @@ export default function RenewMembership() {
   return (
     <Page>
       <PageTitle back fallback="/member/membership" title="Plans" subtitle="Renew, upgrade or change your plan" />
+      {/* Back from PayMongo (0192): confirmed here, the moment PayMongo says so. */}
+      {confirming && (
+        <div className="mt-3" data-renew-confirming><Panel>
+          {confirming === 'paid' ? (
+            <div className="flex items-center" style={{ gap: 10 }}>
+              <Check size={18} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
+              <span className="flex-1" style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Payment received{paidLine ? ` — ${paidLine.replace(/^Paid /, '')}` : ''}. Your membership is renewed.</span>
+              <NocButton variant="ghost" onClick={() => navigate('/member/membership')}>See it</NocButton>
+            </div>
+          ) : (
+            <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+              {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet. If you were charged, it shows on your membership shortly — or ask the desk.'}
+            </p>
+          )}
+        </Panel></div>
+      )}
 
       {loading ? (
         <SkeletonList count={3} />
@@ -603,6 +631,13 @@ export default function RenewMembership() {
               </div>
             }
           >
+            {selected && payMongo && Number(selected.price) > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <PayMongoPay purpose="membership" details={{ plan_id: selected.id }} amount={peso(Number(selected.price))}
+                  returnPath="/member/renew" note="GCash, Maya, card or online banking, straight to the gym. Your plan renews the moment it is paid." />
+                <p style={{ fontSize: 12, marginTop: 12, color: 'var(--color-text-muted)' }}>Or:</p>
+              </div>
+            )}
             {selected && canPayOnline && (
               <div className="flex" style={{ gap: 8, marginBottom: 14 }} role="group" aria-label="How you will pay">
                 <Chip label="Pay at the desk" on={payMode === 'desk'} onClick={() => setPayMode('desk')} />

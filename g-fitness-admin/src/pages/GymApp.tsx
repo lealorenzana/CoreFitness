@@ -18,6 +18,7 @@ import { refreshGymWords } from '../hooks/useGymWords';
 import JoinPoster from '../components/JoinPoster';
 import AiCoachCard from '../components/AiCoachCard';
 import AiTopUps from '../components/AiTopUps';
+import GymPayMongo from '../components/GymPayMongo';
 import ModuleSwitches from '../components/ModuleSwitches';
 import ThemePreview from '../components/ThemePreview';
 
@@ -45,8 +46,8 @@ const MEMBER_APP = 'https://corefitness-gym.vercel.app';
  * Core Fitness plan does not include — offering a switch that would be refused
  * is a control writing a flag nothing honours (CLAUDE.md).
  */
-const APP_TABS: [AppTab, string][] = [['look', 'Look'], ['words', 'Words'], ['runs', 'What you run'], ['coach', 'AI coach'], ['join', 'How members join']];
-type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join';
+const APP_TABS: [AppTab, string][] = [['look', 'Look'], ['words', 'Words'], ['runs', 'What you run'], ['coach', 'AI coach'], ['join', 'How members join'], ['pay', 'Online payments']];
+type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join' | 'pay';
 
 export default function GymApp() {
   const [params, setParams] = useSearchParams();
@@ -413,6 +414,8 @@ export default function GymApp() {
       {tab === 'coach' && coach && coach.state !== 'not_sold' && <AiCoachCard switchedOff={!coach.enabled} />}
       {/* 0189: the month's allowance and buying more. The owner only (the card draws nothing for anyone else). */}
       {tab === 'coach' && coach && coach.state !== 'not_sold' && <AiTopUps />}
+      {/* 0192: the gym's own PayMongo account — members pay in the app, straight to the gym. */}
+      {tab === 'pay' && <GymPayMongo />}
 
       {/* ---- how they join --------------------------------------------------- */}
       {tab === 'join' && <div className={card} style={cardStyle}>
