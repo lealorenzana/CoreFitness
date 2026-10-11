@@ -39,6 +39,10 @@ const orNull = (type: string, description: string) => ({ anyOf: [{ type }, { typ
 const strOrNull = (description: string) => orNull('string', description);
 const intOrNull = (description: string) => orNull('integer', description);
 const numOrNull = (description: string) => orNull('number', description);
+/** Strict tools allow at most this many nullable (union) parameters across ALL tools together. */
+export const MAX_STRICT_UNIONS = 16;
+const zeroNull = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
+const blankNull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
 const obj = (properties: Record<string, unknown>) => ({
   type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
 });
@@ -108,8 +112,8 @@ export const TOOLS = [
       summary: SUMMARY,
       name: str('The program name, 1 to 60 characters.'),
       weeks: { type: 'integer', description: 'How many weeks, 2 to 16.' },
-      deload_every: intOrNull('A lighter week every N weeks (3 to 8), or null for none.'),
-      notes: strOrNull('A short note for the member, or null.'),
+      deload_every: { type: 'integer', description: 'A lighter week every N weeks (3 to 8), or 0 for none.' },
+      notes: str('A short note for the member, or an empty string for none.'),
       sessions: {
         type: 'array',
         description: '1 to 6 training days a week, each day of the week at most once.',
@@ -122,9 +126,9 @@ export const TOOLS = [
             items: obj({
               exercise_id: str('The id from find_exercises.'),
               target_sets: { type: 'integer', description: 'Sets in week 1, 1 to 20.' },
-              target_reps: intOrNull('Reps in week 1, or null for a timed exercise.'),
-              target_weight_kg: numOrNull('Weight in kg in week 1, or null.'),
-              target_seconds: intOrNull('Seconds in week 1 for a timed exercise, or null.'),
+              target_reps: { type: 'integer', description: 'Reps in week 1, or 0 for a timed exercise.' },
+              target_weight_kg: { type: 'number', description: 'Weight in kg in week 1, or 0 for none.' },
+              target_seconds: { type: 'integer', description: 'Seconds in week 1 for a timed exercise, or 0 for none.' },
               rest_seconds: { type: 'integer', description: 'Rest between sets, 0 to 600.' },
               progress_kind: { type: 'string', enum: ['none', 'weight', 'reps', 'sets', 'seconds'], description: 'What grows each week.' },
               progress_step: { type: 'number', description: 'How much it grows each week, e.g. 2.5 (kg) or 1 (rep); 0 with none.' },
@@ -147,9 +151,9 @@ export const TOOLS = [
         description: '1 to 60 sets, in order.',
         items: obj({
           exercise_id: str('The id from find_exercises.'),
-          reps: intOrNull('Reps, or null for a timed set.'),
-          weight_kg: numOrNull('Weight in kg, or null.'),
-          seconds: intOrNull('Seconds for a timed set, or null.'),
+          reps: { type: 'integer', description: 'Reps, or 0 for a timed set.' },
+          weight_kg: { type: 'number', description: 'Weight in kg, or 0 for none.' },
+          seconds: { type: 'integer', description: 'Seconds for a timed set, or 0 for none.' },
         }),
       },
     }),
@@ -297,12 +301,23 @@ export function toolCall(name: string, input: unknown): ToolCall {
     case 'propose_cancel_booking':
       return proposal('booking.cancel', { booking_id: input.booking_id, reason_key: input.reason_key });
     case 'propose_program': {
+      // The schema has no nullable fields (strict tools allow only 16 across all tools — 0177's
+      // first version had 19 and Anthropic refused every request); 0 / "" mean none here.
       const { summary: _s, ...rest } = input;
-      return proposal('program.create', rest);
+      const sessions = Array.isArray(rest.sessions) ? rest.sessions.map((d: Record<string, unknown>) => ({
+        ...d,
+        exercises: Array.isArray(d.exercises) ? d.exercises.map((x: Record<string, unknown>) => ({
+          ...x, target_reps: zeroNull(x.target_reps), target_weight_kg: zeroNull(x.target_weight_kg), target_seconds: zeroNull(x.target_seconds),
+        })) : d.exercises,
+      })) : rest.sessions;
+      return proposal('program.create', { ...rest, deload_every: zeroNull(rest.deload_every), notes: blankNull(rest.notes), sessions });
     }
     case 'propose_log': {
       const { summary: _s, ...rest } = input;
-      return proposal('log.create', rest);
+      const sets = Array.isArray(rest.sets) ? rest.sets.map((x: Record<string, unknown>) => ({
+        ...x, reps: zeroNull(x.reps), weight_kg: zeroNull(x.weight_kg), seconds: zeroNull(x.seconds),
+      })) : rest.sets;
+      return proposal('log.create', { ...rest, sets });
     }
     case 'propose_routine': {
       const { summary: _s, replace_routine_id, ...rest } = input;

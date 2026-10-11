@@ -58,14 +58,26 @@ const closed = (s) => {
 check('every tool is strict, closed, and requires every property',
   tools.length === 13 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
+// Anthropic refuses a request whose strict tools carry more than 16 union (nullable) parameters
+// in total — 0177 shipped 19 and every coach message failed as "busy" for a day.
+const unions = (s) => !s || typeof s !== 'object' ? 0
+  : (s.anyOf || Array.isArray(s.type) ? 1 : 0) + Object.values(s.properties ?? {}).reduce((n, v) => n + unions(v), 0) + (s.items ? unions(s.items) : 0);
+const unionTotal = tools.filter((t) => t.strict).reduce((n, t) => n + unions(t.input_schema), 0);
+check(`strict tools stay within Anthropic's union limit (${unionTotal} of ${core.MAX_STRICT_UNIONS})`, unionTotal <= core.MAX_STRICT_UNIONS && tools.filter((t) => t.strict).length <= 20, String(unionTotal));
+const prog = core.toolCall('propose_program', { summary: 's', name: 'P', weeks: 4, deload_every: 0, notes: '',
+  sessions: [{ day_of_week: 1, name: 'Legs', exercises: [{ exercise_id: 'e', target_sets: 3, target_reps: 0, target_weight_kg: 0, target_seconds: 45, rest_seconds: 60, progress_kind: 'seconds', progress_step: 5 }] }] }).args?.p_payload;
+check('a program\'s 0 / "" become none (left out) before the database sees them', prog?.deload_every == null && prog?.notes == null
+  && prog?.sessions?.[0]?.exercises?.[0]?.target_reps == null && prog?.sessions?.[0]?.exercises?.[0]?.target_seconds === 45, JSON.stringify(prog));
+const logp = core.toolCall('propose_log', { summary: 's', performed_on: '2026-10-11', activity: 'Bench', sets: [{ exercise_id: 'e', reps: 8, weight_kg: 0, seconds: 0 }] }).args?.p_payload;
+check('a logged set\'s 0s become none', logp?.sets?.[0]?.reps === 8 && logp?.sets?.[0]?.weight_kg == null && logp?.sets?.[0]?.seconds == null, JSON.stringify(logp));
 // 0177: the new tools map to their readers and proposals, and nothing else.
 const tc = (n, i) => core.toolCall(n, i);
 check('get_gym_info reads ai_coach_gym_info', tc('get_gym_info', {}).rpc === 'ai_coach_gym_info');
 check('get_my_progress reads ai_coach_progress', tc('get_my_progress', {}).rpc === 'ai_coach_progress');
 check('propose_booking becomes a booking.create proposal',
   tc('propose_booking', { summary: 'Book HIIT', class_id: 'c1' }).args?.p_kind === 'booking.create');
-check('propose_program becomes a program.create proposal', tc('propose_program', { summary: 'A program', name: 'P', weeks: 4, deload_every: null, notes: null,
-  sessions: [{ day_of_week: 1, name: 'Legs', exercises: [{ exercise_id: 'e', target_sets: 3, target_reps: 8, target_weight_kg: 40, target_seconds: null, rest_seconds: 90, progress_kind: 'weight', progress_step: 2.5 }] }] }).args?.p_kind === 'program.create');
+check('propose_program becomes a program.create proposal', tc('propose_program', { summary: 'A program', name: 'P', weeks: 4, deload_every: 0, notes: '',
+  sessions: [{ day_of_week: 1, name: 'Legs', exercises: [{ exercise_id: 'e', target_sets: 3, target_reps: 8, target_weight_kg: 40, target_seconds: 0, rest_seconds: 90, progress_kind: 'weight', progress_step: 2.5 }] }] }).args?.p_kind === 'program.create');
 check('progress without consent says so, not an error', /not let you read/.test(core.toolResultText('ai_coach_progress', null)));
 // Nullable values are anyOf [{ type }, { type: 'null' }] — never a type array, anywhere.
 const typeArrays = [];

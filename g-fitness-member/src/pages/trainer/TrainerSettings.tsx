@@ -9,6 +9,7 @@ import { getMyPrefs, updateMyPrefs, DEFAULT_PREFS, type NotificationPrefs } from
 import { getGymSettings, type GymSettingsRow } from '../../lib/api/settings';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
+import SignInMethods from '../../components/account/SignInMethods';
 
 const APP_VERSION = '1.0.0';
 
@@ -175,6 +176,8 @@ export default function TrainerSettings() {
           </div>
         </section>
       ))}
+
+      <SignInMethods returnPath="/trainer/settings" />
 
       <section>
         <SectionHead title="About" meta="Core Fitness trainer app" />

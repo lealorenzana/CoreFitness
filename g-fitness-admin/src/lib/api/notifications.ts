@@ -1,6 +1,9 @@
 import { supabase } from '../supabaseClient';
 import type { NotificationRow } from '../../types/db';
 
+/** Fired after the Notifications page changes read/archived state, so the bell re-reads at once. */
+export const INBOX_CHANGED = 'inbox-changed';
+
 /** Everything the user has, archived included. The full-list screen filters. */
 export async function listNotifications(userId: string): Promise<NotificationRow[]> {
   const { data, error } = await supabase

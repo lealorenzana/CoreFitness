@@ -527,7 +527,13 @@ export default function Login() {
           {/* Google (0190): an account already in a gym signs straight in; a new one goes on to finish joining. */}
           <div className="space-y-2" data-login-google>
             <p className="text-center text-[11px]" style={{ color: 'var(--color-text-muted)' }}>or</p>
-            <GoogleButton next={`/login${window.location.search}`} />
+            {/* The Trainer tab says so, so a Google account linked to nothing is turned back, not made a member. */}
+            <GoogleButton next={isTrainer ? '/login?as=trainer' : `/login${window.location.search}`} />
+            {isTrainer && (
+              <p className="text-center text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                First time? Sign in with your email, then link Google in Settings → Sign-in methods.
+              </p>
+            )}
           </div>
 
           {/* Footer */}

@@ -41,6 +41,12 @@ export default function AuthCallback() {
         navigate(`/invite/${invite}`, { replace: true });
         return;
       }
+      if ((!state || state.gyms === 0) && new URL(next, window.location.origin).searchParams.get('as') === 'trainer') {
+        // From the Trainer tab, a Google account that is not linked to a trainer: never a new member.
+        await logout();
+        setMessage('This Google account is not linked to a trainer account. Sign in with your email and password, then link Google in Settings → Sign-in methods.');
+        return;
+      }
       if (!state || state.gyms === 0) {
         // A new account: the sign-up form finishes it.
         navigate(next.startsWith('/register') ? next : `/join${invite ? `?invite=${invite}` : ''}`, { replace: true });

@@ -15,6 +15,7 @@ import { sweepStaleRequests } from '../lib/api/bookings';
 import { winbackSweep } from '../lib/api/retention';
 import { streakNudgeSweep } from '../lib/api/streak';
 import { runPermitReminders } from '../lib/api/applications';
+import PinGymChip from '../components/PinGymChip';
 import { formatCurrency } from '../utils/formatters';
 import {
   dashboardService,
@@ -312,6 +313,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <PinGymChip />
           {pendingSignups > 0 && (
             <button
               onClick={() => navigate('/members?pending=1')}

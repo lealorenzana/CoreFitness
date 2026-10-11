@@ -223,8 +223,14 @@ Deno.serve(async (req) => {
         }
       } catch (err) {
         // Never the raw error: it can carry request details. Log for the gym.
+        // The API's own error text says why (a refused schema, a model name, billing) and carries no secrets.
         if (!cancelled) {
-          console.error('ai-coach upstream', err instanceof Anthropic.APIError ? err.status : 'network');
+          console.error('ai-coach upstream', err instanceof Anthropic.APIError ? `${err.status} ${err.message}` : `network ${String(err)}`);
+        }
+        // Nothing reached the member: give the message back (0195; before it, the call just fails).
+        if (!spoke && doneIn + roundIn === 0) {
+          await rpc('ai_release_message', `Bearer ${SERVICE}`, SERVICE, { p_gym: status.gym_id, p_member: member.id })
+            .catch((e) => console.error('ai-coach release', String(e)));
         }
         send(sse({ type: 'error', reason: 'busy', message: 'The coach is busy. Try again in a minute.' }));
       } finally {

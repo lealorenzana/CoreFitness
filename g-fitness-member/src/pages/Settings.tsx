@@ -23,6 +23,7 @@ import { loadCoachDirectory, type CoachCard } from '../services/coachDirectorySe
 import { logout } from '../utils/auth';
 import { getCoachStatus, setCoachConsent } from '../lib/api/aiCoach';
 import { saveLanguagePreference, useLanguage, useT, type Lang } from '../lib/i18n';
+import SignInMethods from '../components/account/SignInMethods';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; label: string; description: string }[] = [
@@ -468,6 +469,8 @@ export default function Settings() {
           />
         </section>
       )}
+
+      <SignInMethods returnPath="/member/settings" />
 
       {/* ── Your data (RA 10173) ── */}
       <section>

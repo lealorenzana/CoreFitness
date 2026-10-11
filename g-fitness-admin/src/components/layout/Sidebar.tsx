@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy, MessageSquareHeart,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '../ui/sonner';
@@ -89,6 +89,8 @@ const isGroup = (e: Entry): e is Group => 'children' in e;
  */
 const NAV: Entry[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  // The owner's and desk's own inbox: alerts plus every message sent to them.
+  { label: 'Notifications', path: '/inbox', icon: Inbox },
 
   // Today's desk and the historical record are one section with two tabs
   // (SectionTabs), so this is one row rather than a drawer holding two. First
@@ -207,6 +209,7 @@ const NAV_TIPS: Record<string, string> = {
   '/challenges': "Challenges members join for points: this month's and the weekly quests",
   '/rewards': 'Rewards members can spend points on, and requests to approve',
   '/achievements': 'Badges members earn, and the rules that award them',
+  '/inbox': 'What needs you now, and every message sent to you — read, unread and archived',
   '/notifications': 'Announcements and events: what the gym tells its members',
   '/exercises': "The exercise library: your gym's own photos, cues and hidden exercises",
   '/programs': "Multi-week programs members follow, built by you",

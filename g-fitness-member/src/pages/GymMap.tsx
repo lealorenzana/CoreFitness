@@ -33,6 +33,7 @@ export default function GymMap() {
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
   const [gyms, setGyms] = useState<FinderGym[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [osm, setOsm] = useState<OsmGym[]>([]);
   const [here, setHere] = useState<Here | null>(passed);
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -43,6 +44,7 @@ export default function GymMap() {
   useEffect(() => {
     void (async () => {
       setGyms(await gymFinder());
+      setLoaded(true);
       const h = passed ?? await getHere(false);
       if (h) setHere(h);
     })();
@@ -104,6 +106,8 @@ export default function GymMap() {
     if (g.join_policy === 'code') { navigate('/join'); return; }
     navigate(`/join/${g.slug}`);
   };
+  const pinned = gyms.filter((x) => x.latitude != null && x.longitude != null).length;
+  const unpinned = gyms.length - pinned;
   const label = !picked ? '' : picked.kind === 'osm' ? 'Suggest this gym'
     : picked.gym.join_policy === 'closed' && !refFromUrl() ? 'Directions' : picked.gym.join_policy === 'code' ? 'I have a code' : 'Join';
 
@@ -126,6 +130,18 @@ export default function GymMap() {
           </div>
         ))}
       </div>
+      {/* Gyms that have not pinned their spot are not drawn — say so, and send to the list (0182). */}
+      {loaded && unpinned > 0 && !picked && (
+        <div data-unpinned className="absolute rounded-2xl" style={{ left: 12, right: 64, bottom: 'calc(env(safe-area-inset-bottom) + 16px)', zIndex: 500,
+          padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-separator)' }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+            {pinned === 0 ? 'No gym has pinned its spot on the map yet.' : `${unpinned} ${unpinned === 1 ? 'gym has' : 'gyms have'} not pinned their spot yet.`}
+          </p>
+          <button type="button" onClick={() => navigate('/join')} style={{ fontSize: 13, marginTop: 4, color: 'var(--color-secondary-300, #FBBF24)', fontWeight: 600 }}>
+            See every gym in the list
+          </button>
+        </div>
+      )}
       <GlassSheet open={picked !== null} onClose={() => setPicked(null)}
         title={picked ? (picked.kind === 'osm' ? picked.gym.name ?? 'A gym' : picked.gym.name) : ''}
         subtitle={picked ? (picked.kind === 'osm' ? 'Not on Core Fitness yet' : KIND[picked.gym.join_policy].label) : undefined}

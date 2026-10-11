@@ -602,7 +602,8 @@ export default function Settings() {
                 </Button>
 
                 {/* Its own save: the pin is not part of the form above (0182). */}
-                <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}><GymLocationPicker /></div>
+                <div id="location" ref={(el) => { if (el && window.location.hash === '#location') setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }}
+                  className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}><GymLocationPicker /></div>
               </div>
             )}
 

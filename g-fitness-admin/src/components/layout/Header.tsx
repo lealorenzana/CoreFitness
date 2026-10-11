@@ -1,7 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBranding } from '../../hooks/useBranding';
 import { useState, useEffect } from 'react';
-import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin } from 'lucide-react';
+import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, MapPin, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
+import { listBellNotifications, setRead, INBOX_CHANGED } from '../../lib/api/notifications';
+import type { NotificationRow } from '../../types/db';
 import { dashboardService, type HeaderAlert } from '../../services/dashboardService';
 import { getMyProfile, MY_PROFILE_CHANGED } from '../../lib/api/profiles';
 import Avatar from '../ui/Avatar';
@@ -32,6 +36,9 @@ export default function Header() {
   const brand = useBranding();
   const [showNotifications, setShowNotifications] = useState(false);
   const [alerts, setAlerts] = useState<HeaderAlert[]>([]);
+  const navigate = useNavigate();
+  /** Messages sent to this person (the notifications rows) — unread ones ride in the bell too. */
+  const [messages, setMessages] = useState<NotificationRow[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
@@ -47,10 +54,15 @@ export default function Header() {
         // A failed poll must not wipe what is already on screen, and must not
         // invent an "all caught up" state the data does not support.
       }
+      try {
+        const uid = (await supabase.auth.getUser()).data.user?.id;
+        if (uid) { const m = await listBellNotifications(uid); if (!cancelled) setMessages(m.filter((n) => !n.read)); }
+      } catch { /* same rule as above */ }
     };
     load();
     const interval = setInterval(load, 30000);
-    return () => { cancelled = true; clearInterval(interval); };
+    window.addEventListener(INBOX_CHANGED, load);
+    return () => { cancelled = true; clearInterval(interval); window.removeEventListener(INBOX_CHANGED, load); };
   }, []);
 
   // Real signed-in identity. This used to be a hardcoded "Admin / Super Admin",
@@ -72,7 +84,7 @@ export default function Header() {
   }, []);
 
   const visible = alerts.filter((a) => !dismissed.has(a.id));
-  const unreadCount = visible.length;
+  const unreadCount = visible.length + messages.length;
 
   return (
     <header
@@ -147,6 +159,27 @@ export default function Header() {
                   </div>
 
                   <div className="max-h-[440px] overflow-y-auto">
+                    {messages.slice(0, 5).map((n) => (
+                      <button key={n.id} data-bell-message
+                        onClick={() => {
+                          void setRead([n.id], true).then(() => window.dispatchEvent(new Event(INBOX_CHANGED))).catch(() => {});
+                          setShowNotifications(false);
+                          navigate(n.action_url && n.action_url.startsWith('/') && !/^\/(member|trainer)\b/.test(n.action_url) ? n.action_url : '/inbox');
+                        }}
+                        className="w-full text-left p-4 transition-colors flex items-start gap-3"
+                        style={{ borderBottom: `1px solid ${BORDER}`, background: 'transparent' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = PRIMARY_LIGHT)}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: PRIMARY_LIGHT }}>
+                          <Mail size={16} style={{ color: PRIMARY }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white">{n.title}</p>
+                          {n.message && <p className="text-xs mt-1" style={{ color: TEXT_SECOND }}>{n.message}</p>}
+                        </div>
+                      </button>
+                    ))}
                     {visible.length > 0 ? visible.map((n) => {
                       const Icon = ICONS[n.kind];
                       const high = n.priority === 'high';
@@ -172,7 +205,7 @@ export default function Header() {
                           </div>
                         </button>
                       );
-                    }) : (
+                    }) : messages.length > 0 ? null : (
                       <div className="p-10 text-center">
                         <Bell size={36} className="mx-auto mb-3" style={{ color: TEXT_MUTED }} />
                         <p className="text-sm" style={{ color: TEXT_SECOND }}>You're all caught up</p>
@@ -180,21 +213,27 @@ export default function Header() {
                     )}
                   </div>
 
-                  {visible.length > 0 && (
+                  {(
                     <div
-                      className="p-3 flex items-center justify-center"
+                      className="p-3 flex items-center justify-between"
                       style={{ borderTop: `1px solid ${BORDER}`, background: SURFACE }}
                     >
+                      <button onClick={() => { setShowNotifications(false); navigate('/inbox'); }} data-bell-see-all
+                        className="text-xs font-semibold" style={{ color: PRIMARY }}>
+                        See all notifications
+                      </button>
                       {/* Dismiss hides for this session only. These are live
                           conditions, not messages — an expiring membership is
                           still expiring tomorrow, so it returns on reload. */}
-                      <button
-                        onClick={() => setDismissed(new Set(alerts.map((a) => a.id)))}
-                        className="text-xs font-medium"
-                        style={{ color: PRIMARY }}
-                      >
-                        Dismiss for now
-                      </button>
+                      {visible.length > 0 && (
+                        <button
+                          onClick={() => setDismissed(new Set(alerts.map((a) => a.id)))}
+                          className="text-xs font-medium"
+                          style={{ color: TEXT_MUTED }}
+                        >
+                          Dismiss alerts for now
+                        </button>
+                      )}
                     </div>
                   )}
                 </motion.div>
