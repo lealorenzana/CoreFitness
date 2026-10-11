@@ -114,7 +114,7 @@ export default function PaymentHistory() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/membership" title="Payments" subtitle="Recorded at the desk — the gym takes cash" />
+      <PageTitle back fallback="/member/membership" title="Payments" subtitle="Paid at the desk, or in the app" />
 
       {loading ? <SkeletonList /> : (
         <>

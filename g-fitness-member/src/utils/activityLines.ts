@@ -42,7 +42,9 @@ export function toLines(rows: ActivityRow[]): Line[] {
           : a.status === 'fulfilled' ? 'Collected at the desk' : 'Approved — collect at the desk',
         amount: `−${a.points}`, tone: 'var(--color-text-muted)', base: '', count: 1, points: 0 });
     } else if (a.kind === 'paid') {
-      out.push({ key: `p:${a.at}`, at: a.at, kind: a.kind, title: `Payment · ${a.method}`, sub: 'Recorded at the desk',
+      out.push({ key: `p:${a.at}`, at: a.at, kind: a.kind, title: `Payment · ${a.method}`,
+        // Paid in the app through PayMongo (0192) is not something the desk recorded.
+        sub: /^PayMongo/i.test(a.method ?? '') ? 'Paid in the app' : 'Recorded at the desk',
         amount: peso(a.amount), tone: 'var(--color-text-primary)', base: '', count: 1, points: 0 });
     } else {
       out.push({ key: `m:${a.at}`, at: a.at, kind: a.kind, title: a.title, sub: a.note, amount: '',
