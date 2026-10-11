@@ -8,7 +8,7 @@
  * old date, which is what makes an agreement to it mean something.
  */
 export const TERMS_VERSION = '2026-10-05';   // members may pay by GCash, Maya or bank (0167)
-export const PRIVACY_VERSION = '2026-10-05';   // meal guides removed; online payment references (2026-10-05)
+export const PRIVACY_VERSION = '2026-10-11';   // signing up and in with Google (0190)
 
 export type LegalDocument = 'member_terms' | 'member_privacy';
 

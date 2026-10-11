@@ -1,3 +1,4 @@
+import { signupState } from '../lib/api/google';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
@@ -46,6 +47,8 @@ export default function JoinGym() {
   const [suggested, setSuggested] = useState<Set<string>>(new Set());
   const [mine, setMine] = useState<Set<string>>(new Set());
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  /** Signed in (Google, 0190) but in no gym: still a new member, who finishes signing up. */
+  const [newAccount, setNewAccount] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   /**
@@ -74,6 +77,8 @@ export default function JoinGym() {
       const { data: { session } } = await supabase.auth.getSession();
       setSignedIn(!!session);
       if (session) setMine(new Set((await myGyms()).map((g) => g.gym_id)));
+      // Signed in with Google and in no gym yet (0190): joining is the sign-up form, finished without a password.
+      if (session) setNewAccount(((await signupState())?.gyms ?? 1) === 0);
       await load(slug ?? '', !!slug);
     })();
   }, [load, slug]);
@@ -147,7 +152,7 @@ export default function JoinGym() {
       toast.info(`${gym.name} creates its members' accounts at the front desk. Visit the gym, or ask a member to invite you.`);
       return;
     }
-    if (!signedIn) {
+    if (!signedIn || newAccount) {
       // No account yet: sign up into this gym, keeping the friend's code.
       // The slug rides along: a gym joined by link or code is not in the
       // public list Register would otherwise look it up in.

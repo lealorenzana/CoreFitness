@@ -14,6 +14,8 @@ async (page) => {
   const TOKEN = 'b'.repeat(64);
   const APP = 'a1870000-0000-4000-8000-0000000000aa';
   const CALLS = [];
+  /** Set for the Google part (0190): the session the auth endpoint hands back. */
+  let GOOGLE = null;
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
   const exp = Math.floor(Date.now() / 1000) + 3600;
   const USER = { id: 'u-ana', aud: 'authenticated', role: 'authenticated', email: 'ana@ironden.ph', user_metadata: {}, app_metadata: {}, identities: [{ id: 'i1' }], created_at: iso(3) };
@@ -62,9 +64,9 @@ async (page) => {
     const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b) });
     if (url.pathname.endsWith('/signup')) { CALLS.push(['signup', JSON.parse(req.postData() || '{}')]); return json(USER); }
     if (url.pathname.endsWith('/token')) {
-      return json({ access_token: JWT, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r1', user: USER });
+      return json(GOOGLE ? GOOGLE : { access_token: JWT, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r1', user: USER });
     }
-    if (url.pathname.endsWith('/user')) return json(USER);
+    if (url.pathname.endsWith('/user')) return json(GOOGLE ? GOOGLE.user : USER);
     if (url.pathname.endsWith('/logout')) return route.fulfill({ status: 204, body: '' });
     return json({});
   });
@@ -152,6 +154,41 @@ async (page) => {
   await page.waitForTimeout(200);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   out.push('no sideways scroll on a phone: ' + (overflow <= 0 ? 'yes' : 'NO, ' + overflow + 'px'));
+  await page.evaluate(() => localStorage.clear());
+
+  // ---- 0190: applying with Google — filled in, no password, one step at a time ----
+  const GUSER = { ...USER, id: 'u-g', email: 'gabby.owner@gmail.com', app_metadata: { provider: 'google' }, user_metadata: { full_name: 'Gabby Owner' } };
+  const GSESSION = { access_token: JWT, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r2', user: GUSER };
+  CALLS.length = 0;
+  await page.setViewportSize({ width: 1280, height: 900 });
+  GOOGLE = GSESSION;
+  // Signed in as the Google account (what the PKCE return leaves behind), then the form.
+  await page.goto('about:blank');
+  await page.goto('http://localhost:5176/#account', { waitUntil: 'domcontentloaded' });
+  await page.locator('#acc-email').fill('gabby.owner@gmail.com');
+  await page.locator('#acc-password').fill('x-test');
+  await page.locator('form.account-form button[type=submit]').click();
+  await page.waitForTimeout(1200);
+  await page.goto('about:blank');
+  await page.goto('http://localhost:5176/#apply', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-google-apply]').waitFor({ timeout: 10000 }).catch(async () => { throw new Error('no google mode: ' + JSON.stringify(await page.evaluate(() => Object.keys(localStorage))) + ' ' + (await page.locator('#apply').innerText()).slice(0, 160)); });
+  out.push('applying with Google says who, and that it goes step by step: ' + (/Applying as gabby\.owner@gmail\.com with Google — step 1 of 2/.test(await page.locator('#apply').innerText()) ? 'yes' : 'MISSING'));
+  out.push('the name and email come from Google, the email fixed: ' + ((await page.locator('#owner_name').inputValue()) === 'Gabby Owner'
+    && (await page.locator('#email').inputValue()) === 'gabby.owner@gmail.com' && (await page.locator('#email').getAttribute('readonly')) !== null ? 'yes' : 'MISSING'));
+  out.push('no password to choose: ' + ((await page.locator('#password').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('one step at a time: ' + ((await page.locator('#heard_from').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await page.locator('[data-google-next]').click();
+  await page.waitForTimeout(200);
+  out.push('Next waits for the gym\u2019s details: ' + (/Fill in the gym/.test(await page.locator('#apply').innerText()) ? 'yes' : 'MISSING'));
+  await page.locator('#gym_name').fill('Owner Gym');
+  await page.locator('#phone').fill('09175550000');
+  await page.locator('[data-google-next]').click();
+  await page.locator('#heard_from').waitFor({ timeout: 5000 });
+  await page.locator('form.apply button[type=submit]').click();
+  await page.locator('[data-account-google]').waitFor({ timeout: 8000 });
+  const gs = CALLS.find((c) => c[0] === 'submit');
+  out.push('sent under the Google address, and no second account made: ' + (gs && gs[1].p_email === 'gabby.owner@gmail.com' && gs[1].p_owner_name === 'Gabby Owner'
+    && !CALLS.some((c) => c[0] === 'signup') ? 'yes' : 'MISSING ' + JSON.stringify(gs)));
   await page.evaluate(() => localStorage.clear());
   return out.join('\n');
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import StatusPage from './Status';
+import { GoogleButton } from './google';
 
 interface Mine { id: string; gym_name: string; status: string; created_at: string }
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -119,6 +120,7 @@ function SignIn() {
       <p className="status-lede">{making
         ? 'Use the email you applied with. Once you confirm it, your application appears here.'
         : 'With the email and password you chose when you registered your gym.'}</p>
+      {!making && <div className="account-form"><GoogleButton hash="#account" label="Continue with Google" /></div>}
       <form className="apply account-form" onSubmit={submit}>
         <div className="field">
           <label htmlFor="acc-email">Email</label>

@@ -14,5 +14,6 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
  */
 // Signed in only for an applicant's own page (#account, 0187); everything else is read as a stranger.
 export const supabase = url && anonKey
-  ? createClient(url, anonKey, { auth: { persistSession: true, storageKey: 'cf-site-applicant' } })
+  // PKCE (0190): Google returns ?code=…, which leaves this site's #apply / #account addresses alone.
+  ? createClient(url, anonKey, { auth: { persistSession: true, storageKey: 'cf-site-applicant', flowType: 'pkce' } })
   : null;

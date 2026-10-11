@@ -43,11 +43,19 @@ export const login = async (email: string, password: string): Promise<LoginResul
   if (error || !data.user) {
     return { success: false, error: error?.message ?? 'Invalid email or password' };
   }
+  return finishSignIn(data.user.id);
+};
 
+/**
+ * What happens after any sign-in — a password, or Google (0190): the profile,
+ * the legacy user cache and the role in the current gym. Signs out and says so
+ * when the account has no profile.
+ */
+export const finishSignIn = async (userId: string): Promise<LoginResult> => {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', data.user.id)
+    .eq('id', userId)
     .single();
   if (profileError || !profile) {
     await supabase.auth.signOut();

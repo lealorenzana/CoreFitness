@@ -835,3 +835,10 @@ footer .links { display: flex; gap: 20px; }
 .voice figcaption .mono { display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--violet-2); color: #fff; }
 .voice figcaption span { display: flex; flex-direction: column; font-size: 13.5px; }
 .voice figcaption small { color: var(--text-3); font-size: 12.5px; }
+
+/* ---- Google (0190) ---- */
+.google-wrap { margin: 0 0 18px; }
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 48px; border-radius: 12px;
+  border: 1px solid var(--hairline-strong); background: #fff; color: #1f1f1f; font: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer; }
+.google-btn:disabled { opacity: .6; cursor: default; }
+.google-note { margin: 0 0 18px; }

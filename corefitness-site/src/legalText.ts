@@ -221,7 +221,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         { id: 'collect', title: '2. What we hold', body: [
           'From an application: the gym\'s name and address, your name, email and phone, roughly how many members you have, the plan you chose, how you heard of us, how you prefer to be contacted, and the messages on your application.',
           'The business documents you upload to be verified (permit, DTI or SEC registration, BIR 2303, barangay clearance, a photo of the gym\'s front and the owner\'s government ID), in private storage only you and the people who run Core Fitness can open, with what we decided about each.',
-          'For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us.',
+          'For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us. If you apply or sign in with Google, Google tells us your name, email address and picture, and nothing else.',
           'For billing: your plan, the references and screenshots you send for payments, and the receipts we issue.',
           'Support tickets, and a copy of each email we send, so we can show it was sent.',
           'What you tell us from the gym app: ratings, ideas and problem reports (with a screenshot if you add one, kept private to your gym and us), and a testimonial — shown on this website only after we approve it, with the name you chose, and removed the moment you take it down.',

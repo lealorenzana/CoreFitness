@@ -9,6 +9,7 @@ import Layout from './components/layout/Layout';
 import TrainerLayout from './components/layout/TrainerLayout';
 import Login from './pages/Login';
 const Register = lazyPage(() => import('./pages/Register'));
+const AuthCallback = lazyPage(() => import('./pages/AuthCallback'));
 const GetApp = lazyPage(() => import('./pages/GetApp'));
 const ForgotPassword = lazyPage(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazyPage(() => import('./pages/ResetPassword'));
@@ -204,6 +205,8 @@ function App() {
         <Route path="/forgot-password" element={<StandalonePage><ForgotPassword /></StandalonePage>} />
         <Route path="/reset-password" element={<StandalonePage><ResetPassword /></StandalonePage>} />
         <Route path="/register" element={<Register />} />
+        {/* Where Google sends an account back (0190). */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
         {/* The page a gym sends members to: the Android download and how to join. */}
         <Route path="/get-app" element={<StandalonePage><GetApp /></StandalonePage>} />
         <Route path="/onboarding" element={<Onboarding />} />

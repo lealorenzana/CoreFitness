@@ -10,6 +10,7 @@
     { "file": "gym-picker-check.js", "app": "member" },
     { "file": "member-join-check.js", "app": "member" },
     { "file": "member-joining-rules-check.js", "app": "member" },
+    { "file": "member-google-check.js", "app": "member" },
     { "file": "member-gym-finder-check.js", "app": "member" },
     { "file": "member-booking-modes-check.js", "app": "member" },
     { "file": "trainer-booking-modes-check.js", "app": "member" },

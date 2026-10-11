@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { toTier, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Account from './Account';
+import { GoogleButton } from './google';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
 import PlacePicker from './PlacePicker';
@@ -470,7 +471,23 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     password: '', password2: '',
   });
   /** What became of the account (0187): made (confirm the email), already there (sign in), or could not be made. */
-  const [acct, setAcct] = useState<'made' | 'exists' | 'failed' | null>(null);
+  const [acct, setAcct] = useState<'made' | 'exists' | 'failed' | 'google' | null>(null);
+  /**
+   * Applying with Google (0190): the name and email come from Google, there is
+   * no password, and the rest is asked one step at a time.
+   */
+  const [google, setGoogle] = useState<{ email: string; name: string } | null>(null);
+  const [gstep, setGstep] = useState(1);
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user;
+      if (!u || !u.email || u.app_metadata?.provider !== 'google') return;
+      const name = String(u.user_metadata?.full_name ?? u.user_metadata?.name ?? '');
+      setGoogle({ email: u.email, name });
+      setForm((f) => ({ ...f, email: u.email!, owner_name: f.owner_name || name }));
+    });
+  }, []);
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -490,7 +507,16 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** The place picker composes "street, town, province"; stable, so its effect does not loop. */
   const setAddress = useCallback((address: string) => setForm((f) => (f.address === address ? f : { ...f, address })), []);
 
-  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone, form.password];
+  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone, ...(google ? [] : [form.password])];
+  /** The steps when applying with Google: plan (if any), the gym, how we stay in touch. */
+  const gSteps = tiers.length > 0 ? 3 : 2;
+  const shows = (n: number) => !google || gstep === (tiers.length > 0 ? n : n - 1);
+  const stepOk = (): string | null => {
+    const at = tiers.length > 0 ? gstep : gstep + 1;
+    if (at === 1 && !form.plan) return 'Choose a plan first — you can change it later.';
+    if (at === 2 && (!form.gym_name.trim() || !form.owner_name.trim() || !form.phone.trim())) return 'Fill in the gym\u2019s name, your name and your mobile number.';
+    return null;
+  };
   const done = needed.filter((v) => v.trim() !== '').length;
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -502,8 +528,8 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (!supabase) { setError('This page cannot reach Core Fitness right now. Please email us instead.'); return; }
     if (tiers.length > 0 && !form.plan) { setError('Choose a plan first — you can change it later.'); return; }
     if (IN_EFFECT && !agreed) { setError('Tick the box to agree to the terms for gyms before sending.'); return; }
-    if (form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
-    if (form.password !== form.password2) { setError('The two passwords do not match.'); return; }
+    if (!google && form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
+    if (!google && form.password !== form.password2) { setError('The two passwords do not match.'); return; }
     setState('sending');
     setError(null);
     const heard = form.heard_from === 'Other' ? form.heard_other.trim() || 'Other' : form.heard_from;
@@ -536,7 +562,10 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     }
     // The account (0187): made after the application, carrying its token, so the
     // database ties the two together — only when the email matches as well.
-    if (newToken) {
+    if (newToken && google) {
+      // Signed in with Google already: the application is found by its address on My application.
+      setAcct('google');
+    } else if (newToken) {
       const [first, ...rest] = form.owner_name.trim().split(/\s+/);
       const { data: su, error: suError } = await supabase.auth.signUp({
         email: form.email.trim(), password: form.password,
@@ -564,6 +593,10 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             We read every application ourselves and will reach you by {CONTACT.find(([k]) => k === form.contact_pref)?.[1] ?? 'email'}{' '}
             or at <strong style={{ color: 'var(--text)' }}>{form.email}</strong>.
           </p>
+          {acct === 'google' && (
+            <p data-account-google><strong style={{ color: 'var(--text)' }}>You are signed in with Google.</strong> Open{' '}
+              <a href="#account" style={{ color: 'var(--violet-text)' }}>My application</a> to send your business documents and follow our answer.</p>
+          )}
           {acct === 'made' && (
             <p data-account-made><strong style={{ color: 'var(--text)' }}>Confirm your email.</strong> We sent a link to {form.email}. Once it is confirmed,
               sign in at <a href="#account" style={{ color: 'var(--violet-text)' }}>My application</a> (or the gym app) to send your
@@ -606,8 +639,13 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
           <div className="meter-bar"><span style={{ width: `${(done / needed.length) * 100}%` }} /></div>
           <small>{done === needed.length ? 'Ready to send' : `${done} of ${needed.length} required answers`}</small>
         </div>
+        {google ? (
+          <p className="note google-note" data-google-apply>Applying as <strong>{google.email}</strong> with Google — step {gstep} of {gSteps}.</p>
+        ) : (
+          <GoogleButton hash="#apply" label="Apply with Google — fills in your name and email" />
+        )}
         <form className="apply" onSubmit={submit}>
-          {tiers.length > 0 && (
+          {tiers.length > 0 && shows(1) && (
             <fieldset>
               <legend><span className="num">1</span> Which plan?</legend>
               <div className="full">
@@ -632,7 +670,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             </fieldset>
           )}
 
-          <fieldset>
+          {shows(2) && <fieldset>
             <legend><span className="num">{tiers.length > 0 ? 2 : 1}</span> About your gym</legend>
             <div className="field">
               <label htmlFor="gym_name">Gym name</label>
@@ -644,7 +682,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             </div>
             <div className="field">
               <label htmlFor="email">Email</label>
-              <input id="email" type="email" required maxLength={120} autoComplete="email" value={form.email} onChange={set('email')} />
+              <input id="email" type="email" required maxLength={120} autoComplete="email" value={form.email} onChange={set('email')} readOnly={!!google} />
             </div>
             <div className="field">
               <label htmlFor="phone">Mobile number</label>
@@ -658,9 +696,9 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
               <label htmlFor="member_estimate">Members you have now, roughly</label>
               <input id="member_estimate" type="number" inputMode="numeric" min={0} max={100000} value={form.member_estimate} onChange={set('member_estimate')} />
             </div>
-          </fieldset>
+          </fieldset>}
 
-          <fieldset>
+          {!google && <fieldset>
             <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> Your account</legend>
             <p className="full note" style={{ marginTop: 0 }}>You sign in with your email and this password to follow your application, send your
               business documents and — once you are in — run your gym. No temporary password to pass around.</p>
@@ -672,10 +710,10 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
               <label htmlFor="password2">Password again</label>
               <input id="password2" type="password" required minLength={8} autoComplete="new-password" value={form.password2} onChange={set('password2')} />
             </div>
-          </fieldset>
+          </fieldset>}
 
-          <fieldset>
-            <legend><span className="num">{tiers.length > 0 ? 4 : 3}</span> How we stay in touch</legend>
+          {shows(3) && <fieldset>
+            <legend><span className="num">{google ? (tiers.length > 0 ? 3 : 2) : tiers.length > 0 ? 4 : 3}</span> How we stay in touch</legend>
             <div className="field">
               <label htmlFor="heard_from">How did you hear about Core Fitness?</label>
               <select id="heard_from" value={form.heard_from} onChange={set('heard_from')}>
@@ -706,8 +744,18 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
               <textarea id="message" maxLength={1000} value={form.message}
                 onChange={(e) => setForm({ ...form, message: e.target.value })} />
             </div>
-          </fieldset>
+          </fieldset>}
 
+          {google && gstep < gSteps && (
+            <div className="submit-row">
+              {gstep > 1 && <button className="cta ghost" type="button" onClick={() => { setError(null); setGstep(gstep - 1); }}>Back</button>}
+              <button className="cta" type="button" data-google-next onClick={() => { const e = stepOk(); setError(e); if (!e) setGstep(gstep + 1); }}>Next</button>
+              {error && <p className="note bad" role="alert">{error}</p>}
+            </div>
+          )}
+
+          {(!google || gstep === gSteps) && <>
+          {google && gstep > 1 && <button className="cta ghost" type="button" onClick={() => { setError(null); setGstep(gstep - 1); }}>Back</button>}
           <div className="hp" aria-hidden="true">
             <label htmlFor="website">Leave this empty</label>
             <input id="website" tabIndex={-1} autoComplete="off" value={trap} onChange={(e) => setTrap(e.target.value)} />
@@ -737,6 +785,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             </button>
             <p className="note">We keep what you send here to answer you, and nothing else.</p>
           </div>
+          </>}
         </form>
       </div>
     </section>

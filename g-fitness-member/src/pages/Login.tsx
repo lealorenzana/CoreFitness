@@ -9,6 +9,7 @@ import AuthBackground from '../components/ui/AuthBackground';
 import BrandMark from '../components/ui/BrandMark';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { login, logout } from '../utils/auth';
+import GoogleButton from '../components/ui/GoogleButton';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { isOnboardingComplete } from '../services/bookingService';
 
@@ -522,6 +523,12 @@ export default function Login() {
               </motion.button>
             </div>
           </motion.form>
+
+          {/* Google (0190): an account already in a gym signs straight in; a new one goes on to finish joining. */}
+          <div className="space-y-2" data-login-google>
+            <p className="text-center text-[11px]" style={{ color: 'var(--color-text-muted)' }}>or</p>
+            <GoogleButton next={`/login${window.location.search}`} />
+          </div>
 
           {/* Footer */}
           <div className="text-center space-y-1.5">

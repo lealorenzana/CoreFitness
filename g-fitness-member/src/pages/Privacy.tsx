@@ -54,7 +54,7 @@ const sections: LegalSection[] = [
   {
     id: 'where',
     title: '4. Where it is kept',
-    body: 'In a hosted PostgreSQL database (Supabase, Singapore region) reached over HTTPS, with the app itself served from Vercel. Access is enforced per row in the database, so a screen that forgets to filter still cannot show you somebody else\'s records. Your password is never stored by the gym — it is held, hashed, by the authentication service.',
+    body: 'In a hosted PostgreSQL database (Supabase, Singapore region) reached over HTTPS, with the app itself served from Vercel. Access is enforced per row in the database, so a screen that forgets to filter still cannot show you somebody else\'s records. Your password is never stored by the gym — it is held, hashed, by the authentication service. If you sign up or sign in with Google, Google tells us your name, email address and profile picture, and nothing else; there is then no password with us at all, and the rest of your details are the ones you type in.',
   },
   {
     id: 'not',

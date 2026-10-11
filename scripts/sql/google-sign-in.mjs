@@ -85,6 +85,13 @@ check('…and finds it', (await one(`select jsonb_array_length(my_applications()
 await owner();
 check('…and gets a profile with no gym, so it can be made the owner', (await one(`select active_gym_id is null ok from profiles where id = '${G4}'`))?.ok === true
   && (await one(`select count(*)::int n from gym_roles where user_id = '${G4}'`)).n === 0);
+const G5 = id('06');
+await google(G5, 'eli@gmail.com', 'Eli', 'Go');
+await as(G5);
+await db.exec(`select ensure_my_profile(); select ensure_my_profile();`);
+await owner();
+check('an invited Google account gets a profile with its email and no gym, once', (await one(`select email, active_gym_id from profiles where id = '${G5}'`))?.email === 'eli@gmail.com'
+  && (await one(`select count(*)::int n from gym_roles where user_id = '${G5}'`)).n === 0);
 check('marker', (await one(`select migration_0190_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0190 checks passed');
 process.exit(failures ? 1 : 0);

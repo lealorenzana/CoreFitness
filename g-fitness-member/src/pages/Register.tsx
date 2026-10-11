@@ -17,6 +17,10 @@ import type { MembershipPlanRow } from '../types/db';
 import BirthDateField from '../components/ui/BirthDateField';
 import { ageFrom, birthDateProblem, PHONE_RE } from '../utils/profileRules';
 import { refFromUrl } from '../lib/api/referrals';
+import { finishSignup, signupState, type SignupState } from '../lib/api/google';
+import { TERMS_VERSION, PRIVACY_VERSION } from '../lib/legalVersions';
+import { finishSignIn, logout } from '../utils/auth';
+import GoogleButton from '../components/ui/GoogleButton';
 
 /**
  * Member sign-up, as a three-step onboarding flow.
@@ -139,8 +143,26 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
+  /**
+   * Signed in with Google and not in a gym yet (0190): the same steps, with
+   * Google's name filled in and no email or password to choose — the account
+   * is finished by finish_signup(), under the same joining rule.
+   */
+  const [google, setGoogle] = useState<SignupState | null>(null);
 
   useEffect(() => { setOverlayRoot(getOverlayRoot()); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const st = await signupState();
+      if (cancelled || !st || st.gyms > 0) return;
+      setGoogle(st);
+      setFormData((f) => ({ ...f, firstName: f.firstName || st.first_name || '', lastName: f.lastName || st.last_name || '', email: st.email ?? f.email }));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Real plans. A failed load leaves the step saying so instead of offering a
   // price the gym never set.
@@ -254,6 +276,8 @@ export default function Register() {
       return true;
     }
     if (which === 3) {
+      // Google already proved the address, and there is no password to choose.
+      if (google) return true;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim()))
         return fail('Please enter a valid email address');
       if (await isEmailTaken(formData.email))
@@ -282,6 +306,37 @@ export default function Register() {
     if (step < STEPS.length) { go(step + 1); return; }
 
     setIsLoading(true);
+    if (google) {
+      try {
+        if (!gym) throw new Error('Choose your gym first.');
+        const way = await finishSignup({
+          gymId: gym.id, joinVia: viaLink ? 'link' : 'list', referralCode: refFromUrl() ?? null,
+          firstName: formData.firstName.trim(), lastName: formData.lastName.trim(), phone: formData.phone.trim() || undefined,
+          dateOfBirth: formData.dateOfBirth, guardianName: needsGuardian ? formData.guardianName.trim() : undefined,
+          gender: formData.gender || undefined, address: formData.address.trim() || undefined,
+          emergencyName: formData.emergencyName.trim() || undefined, emergencyPhone: formData.emergencyPhone.trim() || undefined,
+          emergencyRelationship: formData.emergencyRelationship.trim() || undefined,
+          requestedPlanId: formData.selectedPlanId || undefined, termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION,
+        });
+        setIsLoading(false);
+        if (way === 'desk') {
+          await logout();
+          navigate('/login', { replace: true, state: { pendingApproval: true } });
+          return;
+        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await finishSignIn(session.user.id);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.removeItem('trainerMode');
+        navigate('/onboarding', { replace: true });
+      } catch (err) {
+        setIsLoading(false);
+        const message = err instanceof Error ? err.message : 'Could not finish signing up';
+        showErrorToast({ type: 'validation', message, details: '' });
+        if (/phone|name|birth|age/i.test(message)) go(1);
+      }
+      return;
+    }
     try {
       const { signedIn } = await registerMember({
         // The gym this account joins (0100). Left out on a one-gym platform,
@@ -477,6 +532,17 @@ export default function Register() {
                       This is the name the gym will see on your membership.
                     </p>
                   </div>
+                  {/* Google first (0190): it fills the name and the sign-in; these steps ask the rest. */}
+                  {!google ? (
+                    <div className="space-y-2">
+                      <GoogleButton next={window.location.pathname + window.location.search} label="Sign up with Google" />
+                      <p className="text-center text-[11px]" style={{ color: 'var(--color-text-muted)' }}>or fill these in and choose a password</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }} data-google-filled>
+                      Filled in from your Google account ({google.email}). Check your name, then answer the rest.
+                    </p>
+                  )}
 
                   {deskOnly && (
                     <div data-desk-only className="rounded-2xl px-4 py-3 text-xs leading-relaxed"
@@ -618,6 +684,14 @@ export default function Register() {
                   exit={{ opacity: 0, x: -24 * direction }} transition={{ duration: 0.22 }}
                   className="space-y-4 pb-4"
                 >
+                  {google ? (
+                    <div data-google-account>
+                      <h1 className="display text-2xl text-white leading-tight">Your sign-in</h1>
+                      <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        You sign in with Google as <b className="text-white">{google.email}</b>. No password to remember.
+                      </p>
+                    </div>
+                  ) : (<>
                   <div>
                     <h1 className="display text-2xl text-white leading-tight">Set up your sign-in</h1>
                     <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
@@ -704,6 +778,7 @@ export default function Register() {
                       </button>
                     </div>
                   </div>
+                  </>)}
                 </motion.div>
               )}
 

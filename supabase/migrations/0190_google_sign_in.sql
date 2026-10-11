@@ -127,6 +127,31 @@ $$;
 revoke all on function finish_signup(uuid, text, text, text, text, text, text, date, text, text, text, text, text, text, uuid, text, text) from public, anon;
 grant execute on function finish_signup(uuid, text, text, text, text, text, text, date, text, text, text, text, text, text, uuid, text, text) to authenticated;
 
+/**
+ * A profile with no gym for an account Google made, so an invitation (which
+ * checks the profile's email, 0111) can be accepted. Does nothing when the
+ * account already has one. The role comes from the invitation, never from here.
+ */
+create or replace function ensure_my_profile() returns void
+language plpgsql security definer set search_path = public as $$
+declare u auth.users; v_meta jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in first.' using errcode = '42501'; end if;
+  if exists (select 1 from profiles where id = auth.uid()) then return; end if;
+  select * into u from auth.users where id = auth.uid();
+  v_meta := coalesce(u.raw_user_meta_data, '{}'::jsonb);
+  insert into profiles (id, role, first_name, last_name, email, status, active_gym_id)
+  values (auth.uid(), 'member',
+          coalesce(nullif(v_meta->>'given_name', ''), nullif(split_part(coalesce(v_meta->>'full_name', v_meta->>'name', ''), ' ', 1), ''), 'New'),
+          coalesce(nullif(v_meta->>'family_name', ''), 'Member'), u.email, 'active', null)
+  on conflict (id) do nothing;
+  -- 0097's mirror trigger files a gym-less profile under Gym #1; this one belongs to no gym yet.
+  delete from gym_roles where user_id = auth.uid();
+end;
+$$;
+revoke all on function ensure_my_profile() from public, anon;
+grant execute on function ensure_my_profile() to authenticated;
+
 -- ---- applicants signing in with Google ---------------------------------------------------------------
 -- 0187's my_applications(), plus: an account Google made (no profile) that
 -- finds an application gets a profile with no gym, as the apply form's does.
