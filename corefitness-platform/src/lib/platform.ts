@@ -685,6 +685,17 @@ export interface PaymentClaim {
 export const SITE = 'https://corefitness-site.vercel.app';
 export const statusLink = (token: string) => `${SITE}/#status/${token}`;
 
+// ---- PayMongo, part 1 (0191) ---------------------------------------------------------------
+
+export interface OnlinePaymentRow {
+  id: string; gym_id: string | null; gym_name: string | null; purpose: string; description: string; amount: number | string;
+  status: 'paid' | 'expired' | 'failed' | 'pending'; method: string | null; payment_id: string | null; created_at: string; paid_at: string | null;
+}
+export const onlinePayments = () => call<OnlinePaymentRow[]>('platform_paymongo_checkouts');
+export const setColoursPrice = (price: number) => call<void>('platform_set_custom_colours_price', { p_price: price });
+/** The custom-colours price (platform_billing has no read policy; a definer reader). */
+export const themePrice = () => call<number | string | null>('platform_custom_colours_price');
+
 // ---- AI coach top-ups (0189) --------------------------------------------------------------
 
 export interface AiTopupRow {

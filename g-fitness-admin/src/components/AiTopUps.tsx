@@ -5,6 +5,7 @@ import { showToast } from '../utils/toast';
 import { shrinkImage } from '../utils/shrinkImage';
 import { payOptions, type PayOption } from '../lib/api/subscription';
 import { aiAllowance, buyTopUp, type AiAllowance } from '../lib/api/aiTopups';
+import { payOnline, paymongoReady } from '../lib/api/paymongo';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: '#fff' };
@@ -26,6 +27,14 @@ export default function AiTopUps() {
   const [reference, setReference] = useState('');
   const [proof, setProof] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** PayMongo switched on (0191): pay for the packs online, recorded the moment it is paid. */
+  const [online, setOnline] = useState(false);
+  useEffect(() => { void paymongoReady().then(setOnline); }, []);
+  const payNow = async () => {
+    setBusy(true);
+    try { await payOnline('ai_topup', { packs }, '/gym-app?tab=coach'); }
+    catch (e) { setBusy(false); showToast(e instanceof Error ? e.message : 'Could not open the payment', 'error'); }
+  };
 
   const load = useCallback(async () => {
     const [x, o] = await Promise.all([aiAllowance(), payOptions()]);
@@ -63,6 +72,16 @@ export default function AiTopUps() {
 
       <div className="mt-4 rounded-xl p-3" style={{ background: 'var(--color-surface)' }}>
         <p className="text-xs font-semibold text-white">Buy more — {a.topup_messages.toLocaleString('en-PH')} messages for {peso(a.topup_price)}</p>
+        {online && (
+          <div className="mt-2 flex flex-wrap items-center gap-2" data-topup-online>
+            <select value={packs} onChange={(e) => setPacks(Number(e.target.value))} aria-label="Packs to pay online" className="rounded-lg px-2 py-1.5 text-xs" style={FIELD}>
+              {[1, 2, 3, 4, 5, 10].map((n) => <option key={n} value={n}>{(n * a.topup_messages).toLocaleString('en-PH')} messages · {peso(n * Number(a.topup_price))}</option>)}
+            </select>
+            <button type="button" disabled={busy} onClick={() => void payNow()} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+              style={{ background: 'var(--color-secondary)', color: '#111' }}>{busy ? 'Opening PayMongo…' : 'Pay online — added at once'}</button>
+            <span className="text-[11px] w-full" style={{ color: MUTED }}>Or pay by transfer and send the reference:</span>
+          </div>
+        )}
         {opts.length > 0 ? (
           <p className="text-[11px] mt-1" style={{ color: MUTED }}>
             Pay {peso(Number(a.topup_price) * packs)} to {opts.map((o) => `${o.label}${o.account_number ? ` ${o.account_number}` : ''}`).join(' or ')}, then send the reference.

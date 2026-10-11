@@ -276,8 +276,12 @@ export default function Register() {
       return true;
     }
     if (which === 3) {
-      // Google already proved the address, and there is no password to choose.
-      if (google) return true;
+      // Google already proved the address; a password is still chosen, so either way signs in.
+      if (google) {
+        if (formData.password.length < 8) return fail('Your password needs at least 8 characters');
+        if (formData.password !== formData.confirmPassword) return fail('The passwords do not match');
+        return true;
+      }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim()))
         return fail('Please enter a valid email address');
       if (await isEmailTaken(formData.email))
@@ -324,6 +328,9 @@ export default function Register() {
           navigate('/login', { replace: true, state: { pendingApproval: true } });
           return;
         }
+        // The password they chose, so this account signs in with email too.
+        const { error: pwError } = await supabase.auth.updateUser({ password: formData.password });
+        if (pwError) showErrorToast({ type: 'validation', message: 'You are signed up, but the password was not saved', details: pwError.message });
         const { data: { session } } = await supabase.auth.getSession();
         if (session) await finishSignIn(session.user.id);
         localStorage.setItem('isLoggedIn', 'true');
@@ -688,7 +695,8 @@ export default function Register() {
                     <div data-google-account>
                       <h1 className="display text-2xl text-white leading-tight">Your sign-in</h1>
                       <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
-                        You sign in with Google as <b className="text-white">{google.email}</b>. No password to remember.
+                        You sign in with Google as <b className="text-white">{google.email}</b>. Choose a password too, so you can
+                        also sign in with your email and password.
                       </p>
                     </div>
                   ) : (<>
@@ -702,6 +710,7 @@ export default function Register() {
                   <Field label="Email" icon={Mail} type="email" value={formData.email}
                     placeholder="you@example.com" autoComplete="email" inputMode="email"
                     onChange={(e: any) => update('email', e.target.value)} />
+                  </>)}
 
                   <div>
                     <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
@@ -778,7 +787,6 @@ export default function Register() {
                       </button>
                     </div>
                   </div>
-                  </>)}
                 </motion.div>
               )}
 

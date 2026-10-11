@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { payOnline, themeState } from '../lib/api/paymongo';
+import { showToast } from '../utils/toast';
 import { ACCENTS } from '../lib/accents';
 import { contrast, isColourCode, rampFor } from '../lib/gymTheme';
 
@@ -41,6 +43,23 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
     setDraft(code);
     if (isColourCode(code)) onChange(code.toUpperCase());
   };
+  /**
+   * 0191: a gym's own colour code is a one-time purchase; the presets stay free.
+   * null = not known yet, or before 0191 (nothing locked). A gym already on a
+   * code has it unlocked, so it is never taken away here.
+   */
+  const [locked, setLocked] = useState<{ price: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void themeState().then((t) => { if (!cancelled && t && !t.custom_colours) setLocked({ price: Number(t.price ?? 0) }); });
+    return () => { cancelled = true; };
+  }, []);
+  const [buying, setBuying] = useState(false);
+  const buy = async () => {
+    setBuying(true);
+    try { await payOnline('custom_colours', {}, window.location.pathname + window.location.search); }
+    catch (e) { setBuying(false); showToast(e instanceof Error ? e.message : 'Could not open the payment', 'error'); }
+  };
 
   return (
     <div>
@@ -68,7 +87,16 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
             }} />
         ))}
         {/* The gym's own colour. The native picker and the code box edit the
-            same thing; either one is enough. */}
+            same thing; either one is enough. Locked until bought (0191). */}
+        {locked && !custom ? (
+          <button type="button" onClick={() => void buy()} disabled={buying} data-buy-colours
+            className="flex items-center gap-2 rounded-full border-2 px-3 h-9 text-xs font-semibold disabled:opacity-60"
+            data-tip="Presets are free. Your own colour codes are a one-time purchase, paid online."
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+            <span className="h-5 w-5 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)' }} />
+            {buying ? 'Opening PayMongo…' : `Your own colour · ₱${locked.price.toLocaleString('en-PH')} once`}
+          </button>
+        ) : (
         <label className="flex items-center gap-2 rounded-full border-2 pl-1 pr-3 h-9 text-xs cursor-pointer"
           data-tip="Your own brand colour — pick it or type its code"
           style={{
@@ -88,6 +116,7 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
             className="w-[72px] bg-transparent text-xs outline-none"
             style={{ color: 'var(--color-text-primary)' }} />
         </label>
+        )}
       </div>
 
       {draft !== '' && !isColourCode(draft) && (

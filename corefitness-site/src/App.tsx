@@ -507,7 +507,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
   /** The place picker composes "street, town, province"; stable, so its effect does not loop. */
   const setAddress = useCallback((address: string) => setForm((f) => (f.address === address ? f : { ...f, address })), []);
 
-  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone, ...(google ? [] : [form.password])];
+  const needed = [...(tiers.length > 0 ? [form.plan] : []), form.gym_name, form.owner_name, form.email, form.phone, form.password];
   /** The steps when applying with Google: plan (if any), the gym, how we stay in touch. */
   const gSteps = tiers.length > 0 ? 3 : 2;
   const shows = (n: number) => !google || gstep === (tiers.length > 0 ? n : n - 1);
@@ -528,8 +528,9 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     if (!supabase) { setError('This page cannot reach Core Fitness right now. Please email us instead.'); return; }
     if (tiers.length > 0 && !form.plan) { setError('Choose a plan first — you can change it later.'); return; }
     if (IN_EFFECT && !agreed) { setError('Tick the box to agree to the terms for gyms before sending.'); return; }
-    if (!google && form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
-    if (!google && form.password !== form.password2) { setError('The two passwords do not match.'); return; }
+    // A password even with Google, so the account can also sign in with email and password.
+    if (form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
+    if (form.password !== form.password2) { setError('The two passwords do not match.'); return; }
     setState('sending');
     setError(null);
     const heard = form.heard_from === 'Other' ? form.heard_other.trim() || 'Other' : form.heard_from;
@@ -563,8 +564,10 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
     // The account (0187): made after the application, carrying its token, so the
     // database ties the two together — only when the email matches as well.
     if (newToken && google) {
-      // Signed in with Google already: the application is found by its address on My application.
-      setAcct('google');
+      // Signed in with Google already: the application is found by its address on My application,
+      // and the password lets the same account sign in with email too.
+      const { error: pwError } = await supabase.auth.updateUser({ password: form.password });
+      setAcct(pwError ? 'failed' : 'google');
     } else if (newToken) {
       const [first, ...rest] = form.owner_name.trim().split(/\s+/);
       const { data: su, error: suError } = await supabase.auth.signUp({
@@ -594,7 +597,7 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             or at <strong style={{ color: 'var(--text)' }}>{form.email}</strong>.
           </p>
           {acct === 'google' && (
-            <p data-account-google><strong style={{ color: 'var(--text)' }}>You are signed in with Google.</strong> Open{' '}
+            <p data-account-google><strong style={{ color: 'var(--text)' }}>You are signed in with Google</strong> — and your password works too. Open{' '}
               <a href="#account" style={{ color: 'var(--violet-text)' }}>My application</a> to send your business documents and follow our answer.</p>
           )}
           {acct === 'made' && (
@@ -698,10 +701,11 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             </div>
           </fieldset>}
 
-          {!google && <fieldset>
+          {(!google || shows(3)) && <fieldset>
             <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> Your account</legend>
-            <p className="full note" style={{ marginTop: 0 }}>You sign in with your email and this password to follow your application, send your
-              business documents and — once you are in — run your gym. No temporary password to pass around.</p>
+            <p className="full note" style={{ marginTop: 0 }}>{google
+              ? 'You can sign in with Google. Choose a password as well, so you can also sign in with your email and password.'
+              : 'You sign in with your email and this password to follow your application, send your business documents and — once you are in — run your gym. No temporary password to pass around.'}</p>
             <div className="field">
               <label htmlFor="password">Password</label>
               <input id="password" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set('password')} />

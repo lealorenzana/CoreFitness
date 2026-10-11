@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarClock, Check, CreditCard, Crown, Receipt, ShieldCheck, Users, X } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import GymReceiptSheet from '../components/GymReceiptSheet';
 import PayCoreFitness from '../components/PayCoreFitness';
+import PayOnline from '../components/PayOnline';
 import ApplicationDocuments from '../components/ApplicationDocuments';
 import { myGymApplication, type GymApplication } from '../lib/api/applications';
 import { showToast } from '../utils/toast';
@@ -57,12 +58,15 @@ export default function Subscription() {
   const [application, setApplication] = useState<GymApplication | null>(null);
   const loadApplication = async () => setApplication(await myGymApplication());
 
+  /** Bumped when PayMongo confirms a payment (0191), so the date and receipts reload. */
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     void (async () => {
       const [s, p, f, a] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures(), myGymApplication()]);
       setSub(s); setPayments(p); setFeatures(f); setApplication(a); setLoaded(true);
     })();
-  }, []);
+  }, [tick]);
+  const reloadAfterPay = useCallback(() => setTick((t) => t + 1), []);
 
   const open = async (id: string) => {
     try { const r = await gymReceipt(id); if (r) setReceipt(r); }
@@ -170,6 +174,7 @@ export default function Subscription() {
         </Card>
       )}
 
+      {billed && <PayOnline onPaid={reloadAfterPay} />}
       {billed ? <PayCoreFitness priceMonthly={sub.price_monthly} /> : (
         <Card className="!p-4 flex items-center gap-3">
           <CalendarClock size={16} style={{ color: MUTED }} />

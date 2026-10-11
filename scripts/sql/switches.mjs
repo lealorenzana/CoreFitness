@@ -72,6 +72,10 @@ check('nor can a member', !!(await tryExec(`select set_gym_module('squads', fals
 check('a member\'s phone still reads every switch', Object.keys(await phone()).length >= 19);
 
 // ---- the gym's own colour --------------------------------------------------------------------------
+// 0191: a colour code is a one-time purchase; this gym has bought it.
+if ((await one(`select to_regclass('public.gym_theme_unlocks') is not null ok`)).ok) {
+  await db.exec(`reset role; insert into gym_theme_unlocks (gym_id, theme_key, how) values ('${GYM}', 'custom_colours', 'platform') on conflict do nothing;`);
+}
 await as(OWNER);
 check('a colour code is accepted, stored in one case', !(await tryExec(`select save_gym_look('#1f8a70', '#f4a261', null)`))
   && (await one(`select accent, accent_action from gym_settings where gym_id = '${GYM}'`)).accent === '#1F8A70');

@@ -66,6 +66,7 @@ async (page) => {
     if (url.pathname.endsWith('/token')) {
       return json(GOOGLE ? GOOGLE : { access_token: JWT, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r1', user: USER });
     }
+    if (url.pathname.endsWith('/user') && req.method() === 'PUT') { CALLS.push(['setpw', JSON.parse(req.postData() || '{}')]); return json(GOOGLE ? GOOGLE.user : USER); }
     if (url.pathname.endsWith('/user')) return json(GOOGLE ? GOOGLE.user : USER);
     if (url.pathname.endsWith('/logout')) return route.fulfill({ status: 204, body: '' });
     return json({});
@@ -175,7 +176,7 @@ async (page) => {
   out.push('applying with Google says who, and that it goes step by step: ' + (/Applying as gabby\.owner@gmail\.com with Google — step 1 of 2/.test(await page.locator('#apply').innerText()) ? 'yes' : 'MISSING'));
   out.push('the name and email come from Google, the email fixed: ' + ((await page.locator('#owner_name').inputValue()) === 'Gabby Owner'
     && (await page.locator('#email').inputValue()) === 'gabby.owner@gmail.com' && (await page.locator('#email').getAttribute('readonly')) !== null ? 'yes' : 'MISSING'));
-  out.push('no password to choose: ' + ((await page.locator('#password').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('the password waits for the last step: ' + ((await page.locator('#password').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   out.push('one step at a time: ' + ((await page.locator('#heard_from').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.locator('[data-google-next]').click();
   await page.waitForTimeout(200);
@@ -184,11 +185,15 @@ async (page) => {
   await page.locator('#phone').fill('09175550000');
   await page.locator('[data-google-next]').click();
   await page.locator('#heard_from').waitFor({ timeout: 5000 });
+  out.push('…where it is asked, so email and password sign in too: ' + ((await page.locator('#password').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('#password').fill('test-only-pw-1');
+  await page.locator('#password2').fill('test-only-pw-1');
   await page.locator('form.apply button[type=submit]').click();
   await page.locator('[data-account-google]').waitFor({ timeout: 8000 });
   const gs = CALLS.find((c) => c[0] === 'submit');
   out.push('sent under the Google address, and no second account made: ' + (gs && gs[1].p_email === 'gabby.owner@gmail.com' && gs[1].p_owner_name === 'Gabby Owner'
     && !CALLS.some((c) => c[0] === 'signup') ? 'yes' : 'MISSING ' + JSON.stringify(gs)));
+  out.push('…and the password is set on the Google account: ' + (CALLS.some((c) => c[0] === 'setpw' && c[1].password === 'test-only-pw-1') ? 'yes' : 'MISSING'));
   await page.evaluate(() => localStorage.clear());
   return out.join('\n');
 }
