@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { todayKey } from '../utils/dates';
+import WalkInGuide from '../components/WalkInGuide';
 
 const ATTENDANCE_TABS = [
   { label: 'Today', to: '/attendance' },
@@ -99,6 +100,7 @@ export default function WalkIns() {
         <h1 className="text-xl font-bold text-white">Attendance</h1>
         <div className="mt-3"><SectionTabs tabs={ATTENDANCE_TABS} /></div>
       </div>
+      <WalkInGuide />
 
       {prices === undefined ? <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>
         : !canSell ? (

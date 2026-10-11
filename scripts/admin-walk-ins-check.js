@@ -124,6 +124,8 @@ async (page) => {
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/attendance/walk-ins', { waitUntil: 'domcontentloaded' });
   await page.locator('[data-walkin-form]').waitFor({ timeout: 15000 });
+  out.push('the desk has the guide, folded: ' + ((await page.locator('[data-walkin-guide]').count()) === 1
+    && (await page.locator('[data-walkin-guide]').evaluate((d) => !d.open)) ? 'yes' : 'MISSING'));
   let t = await text();
   out.push("the gym's prices on the buttons, and no 10-visit pack it does not sell: " + (/Day pass · ₱150/.test(t) && /5-visit pack · ₱650/.test(t) && !/10-visit pack/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Guest name').fill('Ben Reyes');
@@ -151,6 +153,11 @@ async (page) => {
   await page.getByRole('button', { name: /^Walk-ins$/ }).first().waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: /^Walk-ins$/ }).first().click();
   await page.locator('[data-day-pass-settings]').waitFor({ timeout: 8000 });
+  const guide = page.locator('[data-walkin-guide]');
+  out.push('Settings explains the two ways, open: ' + ((await guide.count()) === 1 && (await guide.evaluate((d) => d.open))
+    && /Walk-in at the desk/.test(await guide.innerText()) && /Day pass in the app/.test(await guide.innerText())
+    && /Your app → Online payments/.test(await guide.innerText()) ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-walk-in-guide.png', fullPage: true });
   await page.getByLabel('10-visit pack').fill('1200');
   await page.locator('[data-save-day-pass]').click();
   await page.waitForTimeout(700);

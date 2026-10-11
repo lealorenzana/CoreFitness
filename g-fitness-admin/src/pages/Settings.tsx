@@ -9,6 +9,7 @@ import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
 import DayPassSettings from '../components/DayPassSettings';
+import WalkInGuide from '../components/WalkInGuide';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Avatar from '../components/ui/Avatar';
@@ -632,9 +633,10 @@ export default function Settings() {
                 <div>
                   <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Day passes and walk-ins</h2>
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    Guests who are not members, recorded at the desk under Attendance → Walk-ins.
+                    For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves.
                   </p>
                 </div>
+                <WalkInGuide open />
                 <DayPassSettings />
               </div>
             )}
