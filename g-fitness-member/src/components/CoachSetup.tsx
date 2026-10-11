@@ -119,7 +119,7 @@ export default function CoachSetup({ onDone, onSkip, failed }: {
           const t = a.value as { likes: string; avoid: string };
           const parts = [t.likes.trim() && `I enjoy ${t.likes.trim()}`, t.avoid.trim() && `I'd rather avoid ${t.avoid.trim()}`].filter(Boolean);
           said = parts.length ? parts.join(' · ') : 'Nothing in particular';
-        } else if (s.kind === 'yesno') said = a.value ? 'Yes' : 'No';
+        } else if (s.kind === 'yesno') said = a.value ? 'Yes, something hurts' : 'No, nothing hurts';
         else if (s.kind === 'multi') said = optLabel(s, a.value as string[]);
         else said = a.label;
         return (
@@ -167,8 +167,8 @@ export default function CoachSetup({ onDone, onSkip, failed }: {
 
       {cur?.kind === 'yesno' && (
         <div className="flex flex-wrap" style={{ gap: 8 }}>
-          <Chip label="No" onClick={() => answer({ label: 'No', value: false })} />
-          <Chip label="Yes" onClick={() => answer({ label: 'Yes', value: true })} />
+          <Chip label="No, nothing hurts" onClick={() => answer({ label: 'No, nothing hurts', value: false })} />
+          <Chip label="Yes, something hurts" onClick={() => answer({ label: 'Yes, something hurts', value: true })} />
         </div>
       )}
 

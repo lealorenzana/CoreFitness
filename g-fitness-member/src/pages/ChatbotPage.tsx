@@ -366,8 +366,9 @@ function Assistant() {
           source = 'coach';
           if (!streamed.trim()) setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer } : m)));
         } else {
-          // The rules' answer stands, with the coach's reason under it when it has one.
-          answer = result.ok ? answer : `${answer}\n\n${result.message}`;
+          // The coach could not answer: say only why. (Its reason under the rules' "I don't
+          // have an answer for that one" list read as two failures at once.)
+          answer = result.ok ? answer : result.message;
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text: answer, source: 'rules' } : m)));
         }
         updateCoach((c) => (c ? { ...c, used_today: c.used_today + (source === 'coach' ? 1 : 0) } : c));

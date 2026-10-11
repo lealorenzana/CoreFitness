@@ -261,7 +261,7 @@ async (page) => {
   out.push('the injury question shows: ' + (/Does anything hurt at the moment, or do you have an injury\?/.test(t) ? 'yes' : 'MISSING'));
   out.push('no text box for the injury: ' + (await page.getByLabel('Your question').count() === 1 && (await page.locator('input').count()) === 1 ? 'yes' : 'NO, an extra field'));
   out.push('nothing reached the function before the end: ' + (COACH_POSTS.length === 0 && SAVED.length === 0 ? 'yes' : 'NO'));
-  await tap('Yes');
+  await tap('Yes, something hurts');
   t = await text();
   out.push('the referral sentence shows: ' + (/please have a coach at the gym or a physiotherapist look at it first/.test(t) ? 'yes' : 'MISSING'));
   await page.waitForTimeout(2500);

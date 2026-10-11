@@ -41,6 +41,14 @@ const intOrNull = (description: string) => orNull('integer', description);
 const numOrNull = (description: string) => orNull('number', description);
 /** Strict tools allow at most this many nullable (union) parameters across ALL tools together. */
 export const MAX_STRICT_UNIONS = 16;
+/**
+ * The proposal tools with nested lists (a program's weeks and days, a log's sets, a routine's
+ * exercises, a schedule's days) are NOT strict: Anthropic compiles every strict schema into one
+ * grammar, and with these four it answered 400 "The compiled grammar is too large" to every
+ * request (2026-10-10 → 11; read from ai_coach_errors, 0196). Their inputs are still checked in
+ * full by `mismatch()` before anything runs, and a bad one goes back to the model as an error.
+ */
+export const LOOSE_TOOLS = ['propose_program', 'propose_log', 'propose_routine', 'propose_schedule'];
 const zeroNull = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
 const blankNull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
 const obj = (properties: Record<string, unknown>) => ({
@@ -107,7 +115,7 @@ export const TOOLS = [
   {
     name: 'propose_program',
     description: 'Proposes a multi-week program for the member that builds week on week. Every exercise must come from find_exercises. Nothing changes until the member taps Apply; their coach can see it.',
-    strict: true,
+    strict: false,
     input_schema: obj({
       summary: SUMMARY,
       name: str('The program name, 1 to 60 characters.'),
@@ -141,7 +149,7 @@ export const TOOLS = [
   {
     name: 'propose_log',
     description: 'Proposes logging a workout the member says they did. Every exercise must come from find_exercises. Nothing changes until the member taps Apply.',
-    strict: true,
+    strict: false,
     input_schema: obj({
       summary: SUMMARY,
       performed_on: str('The day as YYYY-MM-DD, today or up to 30 days back.'),
@@ -161,7 +169,7 @@ export const TOOLS = [
   {
     name: 'propose_routine',
     description: 'Proposes a new routine, or a new version of one of their routines (replace_routine_id). Nothing changes until the member taps Apply on the card.',
-    strict: true,
+    strict: false,
     input_schema: obj({
       summary: SUMMARY,
       replace_routine_id: strOrNull("The id of one of the member's routines (from get_my_routines) to replace, or null for a new routine."),
@@ -185,7 +193,7 @@ export const TOOLS = [
   {
     name: 'propose_schedule',
     description: "Proposes the member's whole weekly schedule (it replaces their current one when applied). Nothing changes until the member taps Apply on the card.",
-    strict: true,
+    strict: false,
     input_schema: obj({
       summary: SUMMARY,
       days: {

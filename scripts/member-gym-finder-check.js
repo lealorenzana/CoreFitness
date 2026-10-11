@@ -86,5 +86,19 @@ async (page) => {
     .map((p) => { const r = p.getBoundingClientRect(); return Math.hypot(r.x + r.width / 2 - innerWidth / 2, r.y + r.height / 2 - innerHeight / 2); })[0]);
   out.push('the map opens centred on the phone: ' + (near != null && near < 120 ? 'yes' : 'NO ' + near));
   await page.screenshot({ path: 'shots/member-gym-map.png' });
+  // Tapping a dot opens that gym's card (a bare dot that did nothing on a phone, 2026-10-11).
+  const dot = await page.evaluate(() => {
+    const p = [...document.querySelectorAll('path.leaflet-interactive')].find((x) => x.getAttribute('fill') === '#7C3AED');
+    if (!p) return null; const r = p.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+  if (dot) await page.mouse.click(dot.x, dot.y);
+  await page.waitForTimeout(800);
+  t = await text();
+  out.push('tapping a dot opens its gym: ' + (/Near Open Gym/.test(t) && (await page.getByRole('button', { name: 'Join', exact: true }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/member-gym-map-tap.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(500);
+  await page.locator('.leaflet-tooltip.gym-label', { hasText: 'Mid Desk' }).click({ force: true }).catch(() => {});
+  await page.waitForTimeout(800);
+  out.push('tapping a name opens its gym too: ' + (/Front desk only/.test(await page.locator('body').innerText()) && (await page.getByRole('button', { name: /Directions/ }).count()) >= 1 ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

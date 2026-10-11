@@ -38,11 +38,15 @@ export default function GlassSheet({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  const root = document.getElementById('phone-overlay-root');
-  if (!open || !root) return null;
+  // Outside the app shell (the gym map, /join/map) there is no overlay root: the sheet then
+  // covers the window itself. It used to return nothing there — tapping a gym on the map
+  // opened no card at all (2026-10-11).
+  const shellRoot = document.getElementById('phone-overlay-root');
+  const root = shellRoot ?? document.body;
+  if (!open) return null;
 
   return createPortal(
-    <div className="absolute inset-0 flex flex-col justify-end pointer-events-auto" style={{ zIndex: 120 }}>
+    <div className={`${shellRoot ? 'absolute' : 'fixed'} inset-0 flex flex-col justify-end pointer-events-auto`} style={{ zIndex: shellRoot ? 120 : 2000 }}>
       <div aria-hidden className="absolute inset-0" style={SCRIM} onClick={onClose} />
       <div
         role="dialog"

@@ -55,8 +55,9 @@ const closed = (s) => {
   if (s.items) return closed(s.items);
   return true;
 };
-check('every tool is strict, closed, and requires every property',
-  tools.length === 13 && tools.every((t) => t.strict === true && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+check('every tool is closed and requires every property; all but the four big proposals are strict',
+  tools.length === 13 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+check('a loose tool is still checked in full before it runs', 'error' in core.toolCall('propose_log', { summary: 's', performed_on: '2026-10-11', activity: 'x', sets: [{ exercise_id: 'e', reps: 8 }] }));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
 // Anthropic refuses a request whose strict tools carry more than 16 union (nullable) parameters
 // in total — 0177 shipped 19 and every coach message failed as "busy" for a day.
