@@ -183,5 +183,31 @@ async (page) => {
   has('Review shows who will be invited, and what cannot be used', /1 to invite as members, 1 that cannot be used/.test(await page.locator('[data-invite-review]').innerText().catch(() => '')) && (await page.getByRole('button', { name: /Invite 1 person/ }).count()) === 1);
   await page.screenshot({ path: 'shots/rd-invitations-review.png', fullPage: true });
 
+  // ── Trainers ──
+  TABLES.trainer_credentials = [
+    { id: 'c1', trainer_id: 't0', title: 'NASM Corrective Exercise', file_path: 't0/nasm.jpg', mime_type: 'image/jpeg', size_bytes: 120000, status: 'verified',
+      uploaded_at: iso(-40), reviewed_at: iso(-39), review_note: null, issuer: 'NASM', credential_number: 'CES-1', issued_on: day(-400), expires_on: day(300),
+      trainer_profiles: { profiles: { first_name: 'Bianca', last_name: 'Soriano', photo_url: null } } },
+    { id: 'c2', trainer_id: 't0', title: 'First Aid & CPR', file_path: 't0/cpr.pdf', mime_type: 'application/pdf', size_bytes: 80000, status: 'pending',
+      uploaded_at: iso(-1), reviewed_at: null, review_note: null, issuer: 'Red Cross', credential_number: null, issued_on: null, expires_on: null,
+      trainer_profiles: { profiles: { first_name: 'Bianca', last_name: 'Soriano', photo_url: null } } },
+  ];
+  TABLES.trainer_availability = [{ id: 'av1', trainer_id: 't0', day_of_week: 1, start_time: '08:00', end_time: '12:00' },
+    { id: 'av2', trainer_id: 't1', day_of_week: 3, start_time: '08:00', end_time: '12:00' }];
+  t = await visit('/trainers', 'trainers');
+  has('four tiles, with credentials to review', /On roster/.test(t) && /Bookable/.test(t) && /Credentials to review/.test(t));
+  has('the table: specialty, credentials, rating, windows, status', (await page.locator('[data-trainer-row]').count()) === 3 && /Rehab & Injury Prevention/.test(t) && /1 verified/.test(t) && /Needs review · 1/.test(t) && /windows?/.test(t) && /Active/.test(t));
+  has('kept: Edit, Suspend, Archived, Monthly totals, Add trainer', /Edit/.test(t) && /Suspend/.test(t) && /Archived/.test(t) && /Monthly totals/.test(t) && /Add trainer/.test(t));
+  await page.locator('[data-trainer-row] [data-dot-menu]').first().click(); await page.waitForTimeout(300);
+  has('Archive and the rest in the row menu', /Archive trainer/.test(await page.locator('[role="menu"]').innerText().catch(() => '')) && /View profile/.test(await page.locator('[role="menu"]').innerText().catch(() => '')));
+  await page.keyboard.press('Escape');
+  await page.getByLabel('Select Bianca Soriano').check(); await page.waitForTimeout(200);
+  has('ticking rows offers bulk suspend and archive', (await page.locator('[data-trainer-bulk]').count()) === 1 && /1 selected/.test(await page.locator('[data-trainer-bulk]').innerText()));
+  await page.screenshot({ path: 'shots/rd-trainers-selected.png' });
+
+  t = await visit('/trainers?view=credentials', 'credentials');
+  has('credentials: tiles, chips and certificate cards', /Waiting for review/.test(t) && /Expiring or lapsed/.test(t) && (await page.locator('[data-credential-tile]').count()) === 2);
+  has('kept: Verify and Reject on a waiting certificate, and the way back', /Verify/.test(t) && /Reject/.test(t) && /Back to trainers/.test(t));
+
   return out.join('\n');
 }

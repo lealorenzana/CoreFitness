@@ -4,10 +4,8 @@ import {
   FileText, Check, X, AlertTriangle, ShieldCheck, Clock, ChevronLeft, ChevronRight,
   ExternalLink, ImageOff, RotateCw, Award,
 } from 'lucide-react';
-import Avatar from '../ui/Avatar';
-import Pagination from '../ui/Pagination';
-import { PageHeader, StatTiles, Chips, EmptyState, PageSummary } from '../ui/kit';
-import { useFillGrid } from '../../hooks/useFillGrid';
+import { RdCard, StatTile, FilterChips, Pill, RdButton, EmptyBlock, TableFooter, Initials } from '../ui/rd';
+import type { Tone } from '../ui/rdTokens';
 import { assertWrote } from '../../lib/api/mutate';
 import { showToast } from '../../utils/toast';
 import { supabase } from '../../lib/supabaseClient';
@@ -99,13 +97,6 @@ function validityLine(row: Row): { text: string; warn: boolean } | null {
  *  the request itself not getting through — the two call for different fixes. */
 interface Signed { url: string | null; at: number; reason?: 'missing' | 'failed' }
 
-/**
- * A card's smallest comfortable height: a 120px preview over the ~140px of
- * title, dates and buttons. Rows are counted from this, then share the height
- * that is really there, so the previews grow into the room instead of a row
- * of cards sitting above an empty half-screen.
- */
-const TILE_MIN_PX = 262;
 
 const SIGN_SECONDS = 300;
 const RESIGN_AFTER_MS = 240_000;
@@ -206,15 +197,10 @@ function Preview({ row, signed, broken, large, onRetry, onBroken }: {
   );
 }
 
+const PILL: Record<Row['status'], Tone> = { pending: 'amber', verified: 'violet', rejected: 'red' };
 function StatusChip({ status }: { status: Row['status'] }) {
   const t = TONE[status];
-  const Icon = t.icon;
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold"
-      style={{ background: t.bg, color: t.fg }}>
-      <Icon size={10} /> {t.label}
-    </span>
-  );
+  return <span style={{ backdropFilter: 'blur(6px)' }}><Pill tone={PILL[status]} icon={t.icon}>{t.label}</Pill></span>;
 }
 
 /** One certificate card: the document on top, who and what beneath it. */
@@ -232,72 +218,62 @@ function CredentialTile({ row, signed, broken, busy, onView, onVerify, onReject,
   const name = trainerName(row);
   const size = fileSize(row.size_bytes);
   return (
-    <div className="rounded-xl overflow-hidden flex flex-col"
-      style={{ background: 'var(--color-surface-high)', border: `1px solid ${row.status === 'pending' ? 'var(--color-secondary)' : BORDER}` }}>
+    <RdCard className="overflow-hidden flex flex-col" data-credential-tile
+      style={{ borderColor: row.status === 'pending' ? 'rgba(245,158,11,0.5)' : undefined }}>
       <div role="button" tabIndex={0} onClick={onView}
         onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}
         title={`View ${row.title}`}
-        className="relative flex-1 min-h-[120px] cursor-pointer group" style={{ background: 'var(--color-bg)' }}>
+        className="relative h-[190px] cursor-pointer group" style={{ background: 'rgba(0,0,0,0.25)' }}>
         <Preview row={row} signed={signed} broken={broken} onRetry={onRetry} onBroken={onBroken} />
-        <span className="absolute top-2 left-2"><StatusChip status={row.status} /></span>
-        <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded"
+        <span className="absolute top-3 left-3"><StatusChip status={row.status} /></span>
+        <span className="absolute top-3 right-3 text-[11px] font-bold px-2 py-1 rounded-lg"
           style={{ background: 'rgba(0,0,0,0.65)', color: '#fff' }}>
           {fileKind(row)}
         </span>
         <span className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ background: 'linear-gradient(transparent 55%, rgba(0,0,0,0.55))' }}>
-          <span className="text-[10px] font-semibold text-white">Click to view full size</span>
+          <span className="text-[13px] font-semibold text-white">Click to view full size</span>
         </span>
       </div>
 
       {/* Its own height only — the preview above is what takes the room a
           taller row gives, so a bigger screen shows a bigger certificate. */}
-      <div className="p-3 flex-shrink-0 flex flex-col gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Avatar name={name || row.title} photoUrl={row.trainer_profiles?.profiles?.photo_url ?? null} size={28} tone="secondary" />
+      <div className="p-4 flex-1 flex flex-col gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Initials name={name || row.title} photo={row.trainer_profiles?.profiles?.photo_url ?? null} size={38} tone="amber" />
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold text-white truncate" title={row.title}>{row.title}</p>
+            <p className="text-[15px] font-semibold text-white truncate" title={row.title}>{row.title}</p>
             {/* A missed lookup renders nothing, never a stand-in name. */}
-            {name && <p className="text-[10px] truncate" style={{ color: 'var(--color-primary)' }}>{name}</p>}
+            {name && <p className="text-[13px] truncate" style={{ color: '#A78BFA' }}>{name}</p>}
           </div>
         </div>
-        <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
+        <p className="text-[13px]" style={{ color: TEXT_SECOND }}>
           Uploaded {dateFmt.format(new Date(row.uploaded_at))}{size && ` · ${size}`}
         </p>
         {validityLine(row) && (
-          <p className="text-[11px] truncate" style={{ color: validityLine(row)!.warn ? 'var(--color-secondary)' : TEXT_SECOND }}>{validityLine(row)!.text}</p>
+          <p className="text-[13px] truncate" style={{ color: validityLine(row)!.warn ? '#FBBF24' : TEXT_SECOND }}>{validityLine(row)!.text}</p>
         )}
         {row.review_note && (
-          <p className="text-[10px] truncate" style={{ color: 'var(--color-secondary)' }} title={row.review_note}>
+          <p className="text-[13px] truncate" style={{ color: '#FBBF24' }} title={row.review_note}>
             “{row.review_note}”
           </p>
         )}
-        <div className="mt-auto flex gap-1.5">
+        <div className="mt-auto pt-1 flex gap-2">
           {row.status === 'pending' ? (
             <>
-              <button onClick={onVerify} disabled={busy}
-                className="flex-1 h-8 rounded-lg text-[11px] font-bold disabled:opacity-50"
-                style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                <Check size={12} className="inline mr-1" />Verify
-              </button>
+              <RdButton size="sm" variant="primary" icon={Check} className="flex-1" onClick={onVerify} disabled={busy}>Verify</RdButton>
               {/* Opens the viewer with the reason box: a rejection the trainer
                   cannot understand is a dead end — they re-upload the same file. */}
-              <button onClick={onReject} disabled={busy}
-                className="flex-1 h-8 rounded-lg text-[11px] font-semibold disabled:opacity-50"
-                style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                <X size={12} className="inline mr-1" />Reject
-              </button>
+              <RdButton size="sm" variant="amber" icon={X} className="flex-1" onClick={onReject} disabled={busy}>Reject</RdButton>
             </>
           ) : (
-            <button onClick={onView}
-              className="flex-1 h-8 rounded-lg text-[11px] font-semibold"
-              style={{ background: 'var(--color-surface)', color: TEXT_SECOND, border: `1px solid ${BORDER}` }}>
+            <RdButton size="sm" className="flex-1" onClick={onView}>
               View{row.reviewed_at && ` · reviewed ${dateFmt.format(new Date(row.reviewed_at))}`}
-            </button>
+            </RdButton>
           )}
         </div>
       </div>
-    </div>
+    </RdCard>
   );
 }
 
@@ -361,8 +337,8 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6"
       style={{ background: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={row.title}
-        className="w-full max-w-6xl h-full max-h-[90vh] rounded-2xl overflow-hidden flex"
-        style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}
+        className="w-full max-w-6xl h-full max-h-[90vh] rounded-3xl overflow-hidden flex"
+        style={{ background: 'radial-gradient(120% 80% at 100% 0%, rgba(124,58,237,0.14), transparent 50%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex-1 min-w-0 relative" style={{ background: 'var(--color-bg)' }}>
           <Preview row={row} signed={signed} broken={broken} large onRetry={onRetry} onBroken={onBroken} />
@@ -370,7 +346,7 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
           {navButton('right', onNext)}
         </div>
 
-        <aside className="w-80 flex-shrink-0 flex flex-col gap-4 p-5 overflow-y-auto"
+        <aside className="w-[340px] flex-shrink-0 flex flex-col gap-4 p-6 overflow-y-auto"
           style={{ borderLeft: `1px solid ${BORDER}` }}>
           <div className="flex items-center justify-between gap-2">
             <StatusChip status={row.status} />
@@ -388,18 +364,18 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
           </div>
 
           <div>
-            <p className="text-base font-bold text-white leading-snug">{row.title}</p>
+            <p className="text-[19px] font-bold text-white leading-snug">{row.title}</p>
             {name && (
-              <div className="flex items-center gap-2 mt-2">
-                <Avatar name={name} photoUrl={row.trainer_profiles?.profiles?.photo_url ?? null} size={26} tone="secondary" />
-                <span className="text-xs" style={{ color: 'var(--color-primary)' }}>{name}</span>
+              <div className="flex items-center gap-2.5 mt-2">
+                <Initials name={name} photo={row.trainer_profiles?.profiles?.photo_url ?? null} size={32} tone="amber" />
+                <span className="text-[14px]" style={{ color: '#A78BFA' }}>{name}</span>
               </div>
             )}
           </div>
 
           <dl className="space-y-1.5">
             {details.map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-3 text-xs">
+              <div key={k} className="flex justify-between gap-3 text-[13.5px]">
                 <dt style={{ color: TEXT_MUTED }}>{k}</dt>
                 <dd className="text-right" style={{ color: TEXT_SECOND }}>{v}</dd>
               </div>
@@ -414,10 +390,7 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
           )}
 
           {signed?.url && (
-            <button onClick={onOpenTab} className="h-9 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
-              style={{ background: 'var(--color-surface-high)', color: TEXT_SECOND, border: `1px solid ${BORDER}` }}>
-              <ExternalLink size={13} /> Open in a new tab
-            </button>
+            <RdButton size="sm" icon={ExternalLink} onClick={onOpenTab}>Open in a new tab</RdButton>
           )}
 
           <div className="mt-auto space-y-2">
@@ -432,30 +405,14 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
                     className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none resize-none"
                     style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }} />
                   <div className="flex gap-2">
-                    <button onClick={() => setRejecting(false)} disabled={busy}
-                      className="flex-1 h-9 rounded-lg text-xs font-semibold"
-                      style={{ background: 'var(--color-surface-high)', color: TEXT_SECOND }}>
-                      Back
-                    </button>
-                    <button onClick={() => onDecide('rejected', note)} disabled={busy || !note.trim()}
-                      className="flex-1 h-9 rounded-lg text-xs font-bold disabled:opacity-50"
-                      style={{ background: 'var(--color-secondary)', color: '#000' }}>
-                      Reject
-                    </button>
+                    <RdButton size="sm" className="flex-1" onClick={() => setRejecting(false)} disabled={busy}>Back</RdButton>
+                    <RdButton size="sm" variant="amber" className="flex-1" onClick={() => onDecide('rejected', note)} disabled={busy || !note.trim()}>Reject</RdButton>
                   </div>
                 </>
               ) : (
                 <div className="flex gap-2">
-                  <button onClick={() => onDecide('verified', '')} disabled={busy}
-                    className="flex-1 h-10 rounded-lg text-xs font-bold disabled:opacity-50"
-                    style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                    <Check size={13} className="inline mr-1" />Verify
-                  </button>
-                  <button onClick={() => setRejecting(true)} disabled={busy}
-                    className="flex-1 h-10 rounded-lg text-xs font-semibold disabled:opacity-50"
-                    style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                    <X size={13} className="inline mr-1" />Reject
-                  </button>
+                  <RdButton variant="primary" icon={Check} className="flex-1" onClick={() => onDecide('verified', '')} disabled={busy}>Verify</RdButton>
+                  <RdButton variant="amber" icon={X} className="flex-1" onClick={() => setRejecting(true)} disabled={busy}>Reject</RdButton>
                 </div>
               )
             ) : (
@@ -491,10 +448,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   const [viewing, setViewing] = useState<{ id: string; rejecting: boolean } | null>(null);
   const [signed, setSigned] = useState<Record<string, Signed>>({});
   const [broken, setBroken] = useState<Record<string, true>>({});
-  // Destructured: the compiler lint treats an object whose member is passed as
-  // a `ref` as a ref itself, and would refuse the read of `perPage`.
-  const { measure: measureGrid, perPage: fillPerPage, rows: gridRows } = useFillGrid(6, 1, TILE_MIN_PX);
-  const perPage = compact ? 4 : fillPerPage;
+  const perPage = compact ? 4 : 8;
 
   /** Pure fetch, no state. Keeps every setState behind an await in the caller,
    *  which is what react-hooks/set-state-in-effect is asking for. */
@@ -646,82 +600,60 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   };
 
   return (
-    // Exactly the window's height (header 4rem + <main>'s padding 3rem): the
-    // cards fill the middle and the pager sits at the bottom edge.
-    <div className={compact ? 'flex flex-col gap-3' : 'h-[calc(100vh-7rem)] flex flex-col gap-4'} data-credential-review={compact ? 'trainer' : 'all'}>
+    <div className="flex flex-col gap-5" data-credential-review={compact ? 'trainer' : 'all'}>
       {compact ? (rows.length > 1 && (
-        <Chips value={filter} onChange={setFilter} options={[
-          { value: 'all', label: 'All', count: rows.length },
-          { value: 'pending', label: 'Waiting', count: counts.pending },
-          { value: 'verified', label: 'Verified', count: counts.verified },
+        <FilterChips value={filter} onChange={setFilter} items={[
+          { key: 'all' as Filter, label: 'All', count: rows.length },
+          { key: 'pending' as Filter, label: 'Waiting', count: counts.pending, tone: 'amber' as const },
+          { key: 'verified' as Filter, label: 'Verified', count: counts.verified, tone: 'violet' as const },
         ]} />
       )) : (<>
-      <PageHeader
-        title="Trainer credentials"
-        subtitle="Certificates trainers upload from the app — look at the document, then verify or reject it"
-        actions={
-          <Chips value={filter} onChange={setFilter} options={[
-            { value: 'all', label: 'All', count: rows.length },
-            { value: 'pending', label: 'Waiting', count: counts.pending },
-            { value: 'verified', label: 'Verified', count: counts.verified },
-            { value: 'rejected', label: 'Rejected', count: counts.rejected },
-            { value: 'expiring', label: 'Expiring', count: counts.expiring },
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          <StatTile icon={Clock} tone={counts.pending > 0 ? 'amber' : 'violet'} label="Waiting for review" value={loading ? '—' : counts.pending}
+            onClick={() => setFilter('pending')} active={filter === 'pending'} />
+          <StatTile icon={ShieldCheck} label="Verified" value={loading ? '—' : counts.verified} onClick={() => setFilter('verified')} active={filter === 'verified'} />
+          <StatTile icon={X} tone="red" label="Rejected" value={loading ? '—' : counts.rejected} onClick={() => setFilter('rejected')} active={filter === 'rejected'} />
+          <StatTile icon={Clock} tone={counts.expiring > 0 ? 'amber' : 'violet'} label="Expiring or lapsed" value={loading ? '—' : counts.expiring}
+            onClick={() => setFilter('expiring')} active={filter === 'expiring'}
+            tip="Verified credentials that run out within 30 days, or already have — members stop seeing one the day it lapses" />
+        </div>
+        <FilterChips value={filter} onChange={setFilter} items={[
+            { key: 'all' as Filter, label: 'All', count: rows.length },
+            { key: 'pending' as Filter, label: 'Waiting', count: counts.pending, tone: 'amber' as const },
+            { key: 'verified' as Filter, label: 'Verified', count: counts.verified, tone: 'violet' as const },
+            { key: 'rejected' as Filter, label: 'Rejected', count: counts.rejected, tone: 'red' as const },
+            { key: 'expiring' as Filter, label: 'Expiring', count: counts.expiring, tone: 'amber' as const },
           ]} />
-        }
-      />
-
-      <StatTiles items={[
-        { label: 'Waiting for review', value: loading ? '—' : counts.pending, icon: Clock, tone: counts.pending > 0 ? 'secondary' : 'primary' },
-        { label: 'Verified', value: loading ? '—' : counts.verified, icon: ShieldCheck },
-        { label: 'Rejected', value: loading ? '—' : counts.rejected, icon: X },
-        { label: 'Expiring or lapsed', value: loading ? '—' : counts.expiring, icon: Clock, tone: counts.expiring > 0 ? 'secondary' : 'primary',
-          onClick: () => setFilter('expiring'), tooltip: 'Verified credentials that run out within 30 days, or already have — members stop seeing one the day it lapses' },
-      ]} />
       </>)}
 
       {loading ? (
-        <p className="text-sm" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
+        <p className="text-[14.5px]" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
       ) : failed ? (
-        <EmptyState icon={AlertTriangle} title="Couldn't load credentials"
-          hint="A connection problem, not an empty list — nothing has been reviewed or missed. Reload to try again." />
+        <RdCard><EmptyBlock icon={AlertTriangle} title="Couldn't load credentials"
+          body="A connection problem, not an empty list — nothing has been reviewed or missed. Reload to try again." /></RdCard>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Award} title="No certificates uploaded yet"
-          hint={trainerId ? 'This coach adds them under Profile → Edit profile in the app; they appear here to verify.'
-            : 'Trainers add these from their own profile screen in the phone app.'} />
+        <RdCard><EmptyBlock icon={Award} title="No certificates uploaded yet"
+          body={trainerId ? 'This coach adds them under Profile → Edit profile in the app; they appear here to verify.'
+            : 'Trainers add these from their own profile screen in the phone app.'} /></RdCard>
       ) : shown.length === 0 ? (
-        <EmptyState icon={FileText} title={`No ${filter === 'pending' ? 'waiting' : filter} credentials`}
-          hint="Try another filter — the rest are still on All." />
+        <RdCard><EmptyBlock icon={FileText} title={`No ${filter === 'pending' ? 'waiting' : filter} credentials`}
+          body="Try another filter — the rest are still on All." /></RdCard>
       ) : (
-        // Measured by `useFillGrid`: height from the page, never from the
-        // cards; scrolls rather than clips; a stable gutter so a scrollbar
-        // appearing cannot change the column count.
-        <div ref={compact ? undefined : measureGrid} className={compact ? '' : 'flex-1 min-h-0 overflow-y-auto'} style={compact ? undefined : { scrollbarGutter: 'stable' }}>
-          {/* CardGrid's columns, with rows that share the box's height — see
-              TILE_MIN_PX. Never below a card's minimum, so a very short
-              window scrolls the box rather than squashing the cards. */}
-          <div className={compact ? 'grid gap-3' : 'grid gap-3 h-full'}
-            style={{
-              gridTemplateColumns: compact ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(auto-fill, minmax(250px, 1fr))',
-              gridTemplateRows: compact ? undefined : `repeat(${gridRows}, minmax(${TILE_MIN_PX}px, 1fr))`,
-            }}>
-            {pageRows.map((r) => (
-              <CredentialTile key={r.id} row={r}
-                signed={signed[r.file_path]} broken={!!broken[r.file_path]} busy={busy === r.id}
-                onView={() => openView(r)}
-                onVerify={() => decide(r, 'verified', '')}
-                onReject={() => openView(r, true)}
-                onRetry={() => retry(r.file_path)}
-                onBroken={() => markBroken(r.file_path)} />
-            ))}
-          </div>
+        <div className="grid gap-5" style={{ gridTemplateColumns: compact ? 'repeat(auto-fill, minmax(230px, 1fr))' : 'repeat(auto-fill, minmax(270px, 1fr))' }}>
+          {pageRows.map((r) => (
+            <CredentialTile key={r.id} row={r}
+              signed={signed[r.file_path]} broken={!!broken[r.file_path]} busy={busy === r.id}
+              onView={() => openView(r)}
+              onVerify={() => decide(r, 'verified', '')}
+              onReject={() => openView(r, true)}
+              onRetry={() => retry(r.file_path)}
+              onBroken={() => markBroken(r.file_path)} />
+          ))}
         </div>
       )}
 
       {!loading && shown.length > 0 && (
-        <div className="flex items-center justify-between">
-          <PageSummary page={page} perPage={perPage} total={shown.length} noun="credentials" />
-          <Pagination currentPage={page} totalItems={shown.length} itemsPerPage={perPage} onPageChange={setPage} />
-        </div>
+        <RdCard><TableFooter page={page} perPage={perPage} total={shown.length} noun="credentials" onPage={setPage} /></RdCard>
       )}
 
       {viewRow && viewing && (

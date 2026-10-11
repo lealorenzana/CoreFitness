@@ -5,20 +5,14 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { addDays, todayKey } from '../utils/dates';
 import { useCallback, useEffect, useState } from 'react';
-import Badge from '../components/ui/Badge';
-import Avatar from '../components/ui/Avatar';
-import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import Pagination from '../components/ui/Pagination';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
 import TrainerMonthTotals from '../components/ui/TrainerMonthTotals';
 import {
-  PageHeader, StatTiles, EmptyState, CardGrid, TileCard, OpenChevron,
-  SearchBox, PageSummary,
-} from '../components/ui/kit';
+  RdHeader, RdCard, StatTile, SearchField, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, Initials, DotMenu,
+} from '../components/ui/rd';
 import { usePaged } from '../hooks/usePaged';
-import { useFillGrid } from '../hooks/useFillGrid';
-import { CalendarRange, UserPlus, X, Edit2, Archive, UserX, UserCheck, Clock, Star, Users, ShieldCheck } from 'lucide-react';
+import { CalendarRange, UserPlus, X, Archive, UserX, UserCheck, Star, Users, ShieldCheck, Shield, Plus, Pencil, Eye, CalendarDays, AlertCircle, ArrowLeft, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
@@ -83,6 +77,9 @@ function toList(value: string): string[] | null {
   return items.length > 0 ? items : null;
 }
 
+const TRAINERS_PER_PAGE = 8;
+type TSortKey = 'name' | 'specialty' | 'credentials' | 'rating' | 'windows' | 'status';
+
 const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
 const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
 
@@ -109,6 +106,10 @@ export default function Trainers() {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   /** trainer id → certificates waiting for the owner's decision: "Needs review" on the card. */
   const [pending, setPending] = useState<Map<string, number>>(new Map());
+  /** Ticked rows, for suspending or archiving several at once. */
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState<'suspend' | 'archive' | 'restore' | null>(null);
+  const [tSort, setTSort] = useState<{ key: TSortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   // Credentials are a view of this page (2026-10-10), in the address so /credentials can land on it.
   const [params, setParams] = useSearchParams();
   const reviewing = params.get('view') === 'credentials';
@@ -207,19 +208,25 @@ export default function Trainers() {
     );
   });
 
-  // As many whole rows of cards as the window has room for — a fixed twelve
-  // was two and a half rows with half a screen of nothing underneath.
-  // Destructured: the compiler lint treats an object whose member is passed
-  // as a `ref` as a ref itself, and would refuse the read of `perPage`.
-  const { measure: measureRoster, perPage: rosterPerPage } = useFillGrid(12);
-  const paged = usePaged(visible, rosterPerPage);
+  const sortedTrainers = [...visible].sort((a, b) => {
+    const dir = tSort.dir === 'asc' ? 1 : -1;
+    switch (tSort.key) {
+      case 'specialty': return dir * a.specialization.localeCompare(b.specialization);
+      case 'credentials': return dir * ((verified.get(a.id)?.length ?? 0) - (verified.get(b.id)?.length ?? 0));
+      case 'rating': return dir * ((a.gymAverage ?? -1) - (b.gymAverage ?? -1));
+      case 'windows': return dir * (a.bookableWindows - b.bookableWindows);
+      case 'status': return dir * a.status.localeCompare(b.status);
+      default: return dir * a.name.localeCompare(b.name);
+    }
+  });
+  const paged = usePaged(sortedTrainers, TRAINERS_PER_PAGE);
 
   /**
    * Suspend / reactivate / archive.
    *
-   * None of this existed: a coach who left the gym stayed on the roster with a
-   * working login forever, and the only lever was editing their name. Archive
-   * keeps every class and session they ever ran — a delete would orphan them.
+   * A coach who left the gym stayed on the roster with a working login forever
+   * until these existed. Archive keeps every class and session they ever ran —
+   * a delete would orphan them.
    */
   const changeStatus = async (trainer: TrainerDisplay, status: ProfileStatus, message: string) => {
     try {
@@ -232,6 +239,19 @@ export default function Trainers() {
       showToast(err instanceof Error ? err.message : 'Could not update that account', 'error');
     }
   };
+  /** The same, for every coach ticked in the table — one confirmation with the real count. */
+  const runBulk = async () => {
+    if (!bulk) return;
+    const chosen = trainers.filter((t) => picked.has(t.id));
+    const next: ProfileStatus = bulk === 'suspend' ? 'suspended' : bulk === 'archive' ? 'archived' : 'active';
+    let done = 0;
+    for (const t of chosen) {
+      try { await setTrainerStatus(t.id, next); done += 1; } catch { /* counted below */ }
+    }
+    showToast(`${done} of ${chosen.length} ${bulk === 'suspend' ? 'suspended' : bulk === 'archive' ? 'archived' : 'restored'}`, done === chosen.length ? 'success' : 'error');
+    setBulk(null); setPicked(new Set());
+    await loadTrainers();
+  };
 
   const openEdit = (trainer: TrainerDisplay) => {
     setEditErrors({});
@@ -243,8 +263,7 @@ export default function Trainers() {
       phone: trainer.phone || '',
       bio: trainer.bio || '',
       availability: trainer.availabilityDays,
-      // Arrays edit as one comma-separated line. `!= null` on the number: a
-      // trainer in their first year stores 0, and `|| ''` would blank it.
+      // `!= null` on the number: a trainer in their first year stores 0, and `|| ''` would blank it.
       yearsExperience: trainer.yearsExperience != null ? String(trainer.yearsExperience) : '',
       certifications: trainer.certifications.join(', '),
       focusAreas: trainer.focusAreas.join(', '),
@@ -257,16 +276,11 @@ export default function Trainers() {
     const next: Record<string, string> = {};
     if (!editForm.name.trim()) next.name = 'Required.';
     if (!editForm.specialty.trim()) next.specialty = 'Required.';
-
-    // Mirrors the CHECK constraint in 0041. Validated here as well because a
-    // constraint violation arrives as "new row violates check constraint
-    // trainer_profiles_years_sane", which is not a sentence to put in front of
-    // someone who typed a birth year into a duration field.
+    // Mirrors the CHECK constraint in 0041, said as a sentence rather than a constraint name.
     const editYears = editForm.yearsExperience.trim() === '' ? null : Number(editForm.yearsExperience);
     if (editYears != null && (!Number.isInteger(editYears) || editYears < 0 || editYears > 70)) {
       next.yearsExperience = 'Whole number, 0-70.';
     }
-
     setEditErrors(next);
     if (Object.keys(next).length > 0) {
       showToast(
@@ -282,11 +296,7 @@ export default function Trainers() {
 
     setSaving(true);
     try {
-      await updateProfile(editForm.id, {
-        first_name: firstName,
-        last_name: lastName,
-        phone: editForm.phone || null,
-      });
+      await updateProfile(editForm.id, { first_name: firstName, last_name: lastName, phone: editForm.phone || null });
       await updateTrainerProfile(editForm.id, {
         specialization: editForm.specialty,
         bio: editForm.bio || null,
@@ -306,237 +316,190 @@ export default function Trainers() {
     }
   };
 
-  // The page is exactly the window's height (header 4rem + <main>'s padding
-  // 3rem), so the roster area in the middle takes what is left and the pager
-  // sits at the bottom edge instead of wherever the last card happened to end.
   const waitingTotal = [...pending.values()].reduce((a, b) => a + b, 0);
   if (reviewing) {
     return (
-      <div className="flex flex-col gap-3">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => setReviewing(false)}>← Back to trainers</Button>
-        </div>
+      <div className="flex flex-col gap-6" data-credentials-view>
+        <RdHeader title="Credentials" subtitle="Coaches' certificates: look at each document, then verify or reject it."
+          actions={<RdButton icon={ArrowLeft} onClick={() => setReviewing(false)}>Back to trainers</RdButton>} />
         <CredentialReview onChanged={loadTrainers} />
       </div>
     );
   }
 
+  const sortHead = (label: string, key: TSortKey, align?: 'right') => ({
+    align,
+    label: (
+      <button type="button" onClick={() => setTSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))}
+        className="inline-flex items-center gap-1.5 normal-case tracking-normal text-[14.5px] font-semibold" style={{ color: tSort.key === key ? '#fff' : 'var(--color-text-primary)' }}>
+        {label}{tSort.key === key ? (tSort.dir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ChevronsUpDown size={13} style={{ color: 'var(--color-text-muted)' }} />}
+      </button>
+    ),
+  });
+  const pageIds = paged.visible.map((t) => t.id);
+  const allOnPage = pageIds.length > 0 && pageIds.every((id) => picked.has(id));
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
+    <div className="flex flex-col gap-6" data-trainers>
       <TrainerMonthTotals isOpen={showTotals} onClose={() => setShowTotals(false)} />
-      <PageHeader
-        title="Trainers"
-        subtitle={showArchived ? 'Archived trainers — classes and sessions retained' : 'Who coaches here, and who members can actually book'}
-        actions={
+      <RdHeader
+        title={showArchived ? 'Archived trainers' : 'Trainers'}
+        subtitle={showArchived ? 'Archived trainers — classes and sessions retained.' : 'Who coaches here, and who members can actually book.'}
+        actions={(
           <>
-            <SearchBox value={search} onChange={setSearch} placeholder="Search name or specialty…" width={210} />
-            <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
-              <Archive size={14} /> {showArchived ? 'Active roster' : 'Archived'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowTotals(true)}>
-              <CalendarRange size={14} /> Monthly totals
-            </Button>
-            <Button variant={waitingTotal > 0 ? 'secondary' : 'outline'} size="sm" onClick={() => setReviewing(true)}
-              data-tip="Coaches' certificates: look at each document, then verify or reject it">
-              <ShieldCheck size={14} /> Credentials{waitingTotal > 0 ? ` · ${waitingTotal} to review` : ''}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
-              <UserPlus size={14} /> Add trainer
-            </Button>
+            <div className="w-[300px]"><SearchField value={search} onChange={(v) => { setSearch(v); paged.setPage(1); }} placeholder="Search name or specialty…" /></div>
+            <RdButton icon={Archive} onClick={() => { setShowArchived((v) => !v); setPicked(new Set()); }}>{showArchived ? 'Active roster' : 'Archived'}</RdButton>
+            <RdButton icon={CalendarRange} onClick={() => setShowTotals(true)}>Monthly totals</RdButton>
+            <RdButton variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>Add trainer</RdButton>
           </>
-        }
-      />
+        )} />
 
-      {/* Stats. "Bookable" counts real trainer_availability windows — the old
-          "Availability Set" counted the free-text weekday blurb, which produces
-          no slots, so it reported trainers as available who could not be booked.
+      {/* "Bookable" counts real trainer_availability windows — the weekday blurb produces no slots. */}
+      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))' }}>
+        <StatTile icon={Users} label="On roster" value={trainers.length} />
+        <StatTile icon={UserCheck} tone="green" label="Active" value={trainers.filter((t) => t.status === 'active').length} />
+        <StatTile icon={CalendarDays} tone={trainers.some((t) => t.bookableWindows === 0) ? 'amber' : 'violet'} label="Bookable"
+          value={trainers.filter((t) => t.bookableWindows > 0).length}
+          sub={trainers.some((t) => t.bookableWindows === 0) ? `${trainers.filter((t) => t.bookableWindows === 0).length} with no hours set` : undefined} />
+        <StatTile icon={ShieldCheck} tone="amber" label="Credentials to review" value={waitingTotal} onClick={() => setReviewing(true)}
+          tip="Coaches' certificates: look at each document, then verify or reject it" active={waitingTotal > 0} />
+      </div>
 
-          These were three tiles on a `grid-cols-3`, so three small numbers were
-          stretched across the whole page. They are numbers; they need ~140px. */}
-      <StatTiles items={[
-        { label: 'On the roster', value: trainers.length, icon: Users },
-        { label: 'Active', value: trainers.filter((t) => t.status === 'active').length, icon: UserCheck },
-        {
-          label: 'Bookable',
-          value: trainers.filter((t) => t.bookableWindows > 0).length,
-          icon: Clock,
-          // Amber when somebody has no hours set: that trainer cannot be booked
-          // at all, which is a thing to go and fix.
-          tone: trainers.some((t) => t.bookableWindows === 0) ? 'secondary' : 'primary',
-        },
-      ]} />
+      {picked.size > 0 && (
+        <RdCard className="px-5 py-3 flex items-center gap-3 flex-wrap" data-trainer-bulk>
+          <span className="text-[15px] font-semibold text-white">{picked.size} selected</span>
+          {!showArchived && <RdButton size="sm" variant="amber" icon={UserX} onClick={() => setBulk('suspend')}>Suspend</RdButton>}
+          <RdButton size="sm" icon={Archive} onClick={() => setBulk(showArchived ? 'restore' : 'archive')}>{showArchived ? 'Restore' : 'Archive'}</RdButton>
+          <RdButton size="sm" variant="ghost" onClick={() => setPicked(new Set())}>Clear</RdButton>
+        </RdCard>
+      )}
 
-      {/* The roster.
-
-          Two things changed. It was `grid-cols-2`, so a gym with one trainer
-          drew an 830px card with a full-width amber button in it; `CardGrid`
-          lays out ~320px columns, so one trainer is one card-sized card. And
-          the card itself is the button — "View Profile" was a bar across the
-          bottom of every card repeating what clicking the card should do. The
-          three icon actions stay, revealed on hover, so the common case (open
-          the profile) is one click anywhere and the rarer ones are still one
-          click too. */}
-      {loading ? (
-        <p className="text-center py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading trainers…</p>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={showArchived ? Archive : UserPlus}
-          title={search ? 'No trainer matches' : showArchived ? 'No archived trainers' : 'No trainers yet'}
-          hint={
-            search
-              ? `Nothing matches “${search}”.`
-              : showArchived
-                ? 'Archived trainers keep every class and session they ever ran.'
-                : 'Add a coach and they get a login for the trainer app.'
-          }
-          action={!search && !showArchived
-            ? <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}><UserPlus size={14} /> Add trainer</Button>
-            : undefined}
-        />
-      ) : (
-        // `useFillGrid` measures this box, so it must take its height from the
-        // page (flex-1 min-h-0), never from the cards. It scrolls rather than
-        // clips if a row of taller cards lands on one page; the stable gutter
-        // stops a scrollbar appearing from changing the column count.
-        <div ref={measureRoster} className="flex-1 min-h-0 overflow-y-auto"
-          style={{ scrollbarGutter: 'stable' }}>
-        <CardGrid min={320}>
-          {paged.visible.map((trainer) => (
-            <TileCard key={trainer.id} onClick={() => setViewingId(trainer.id)}
-              dim={trainer.status !== 'active'} title={`Open ${trainer.name}'s profile`}>
-              <div className="flex items-start gap-3">
-                <Avatar name={trainer.name} photoUrl={trainer.photoUrl} size={44} tone="secondary" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-[13px] font-bold text-white truncate">{trainer.name}</h3>
-                    {trainer.status !== 'active' && (
-                      <Badge variant="Suspended" className="!text-[9px] !px-1.5 !py-0">{trainer.status.replace('_', ' ')}</Badge>
-                    )}
+      <RdCard className="overflow-hidden" data-trainers-table>
+        <RdTable head={[
+          { label: <input type="checkbox" aria-label="Select this page" checked={allOnPage}
+              onChange={(e) => setPicked((s) => { const n = new Set(s); pageIds.forEach((id) => (e.target.checked ? n.add(id) : n.delete(id))); return n; })} />, className: 'w-12' },
+          sortHead('Trainer', 'name'), sortHead('Specialty', 'specialty'), sortHead('Credentials', 'credentials'), sortHead('Rating', 'rating'),
+          sortHead('Booking windows', 'windows'), sortHead('Status', 'status'), { label: <span className="normal-case tracking-normal text-[14.5px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Actions</span> },
+        ]}
+          empty={loading ? <p className="text-center py-12 text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading trainers…</p>
+            : visible.length === 0 ? (
+              <EmptyBlock icon={showArchived ? Archive : UserPlus}
+                title={search ? 'No trainer matches' : showArchived ? 'No archived trainers' : 'No trainers yet'}
+                body={search ? `Nothing matches “${search}”.` : showArchived ? 'Archived trainers keep every class and session they ever ran.' : 'Add a coach and they get a login for the trainer app.'}
+                action={!search && !showArchived ? <RdButton variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>Add trainer</RdButton> : undefined} />
+            ) : undefined}>
+          {!loading && paged.visible.map((trainer) => {
+            const list = verified.get(trainer.id) ?? [];
+            const soon = list.filter((c) => c.expiresOn && c.expiresOn <= addDays(todayKey(), 30)).length;
+            const waiting = pending.get(trainer.id) ?? 0;
+            const found = goalsFor({ specialization: trainer.specialization, bio: trainer.bio,
+              achievements: trainer.achievements, focus_areas: trainer.focusAreas, certifications: trainer.certifications });
+            const statusTone = trainer.status === 'active' ? 'green' : trainer.status === 'suspended' ? 'amber' : 'gray';
+            return (
+              <Tr key={trainer.id} data-trainer-row onClick={() => setViewingId(trainer.id)} style={{ opacity: trainer.status !== 'active' && !showArchived ? 0.8 : 1 }}>
+                <Td onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" aria-label={`Select ${trainer.name}`} checked={picked.has(trainer.id)} onChange={() => toggle(trainer.id)} />
+                </Td>
+                <Td>
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <Initials name={trainer.name} photo={trainer.photoUrl} size={50} tone="amber" />
+                    <div className="min-w-0">
+                      <p className="text-[16px] font-semibold text-white truncate">{trainer.name}</p>
+                      <p className="text-[13px] truncate max-w-[220px]" style={{ color: 'var(--color-text-secondary)' }}>{trainer.email}</p>
+                    </div>
                   </div>
-                  <p className="text-[11px] truncate" style={{ color: 'var(--color-primary)' }}>
-                    {trainer.specialization}
-                  </p>
-                  {(verified.get(trainer.id)?.length ?? 0) > 0 && (() => {
-                    const list = verified.get(trainer.id)!;
-                    const soon = list.filter((c) => c.expiresOn && c.expiresOn <= addDays(todayKey(), 30)).length;
-                    return (
-                      <p className="text-[10px] mt-0.5 inline-flex items-center gap-1 font-semibold"
-                        style={{ color: soon ? 'var(--color-secondary)' : 'var(--color-primary)' }}
-                        data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}${soon ? ` — ${soon} expiring within 30 days` : ''}`}>
-                        <ShieldCheck size={11} /> {list.length} verified{soon ? ` · ${soon} expiring` : ''}
-                      </p>
-                    );
-                  })()}
-                  {(pending.get(trainer.id) ?? 0) > 0 && (
-                    <p className="text-[10px] mt-0.5 inline-flex items-center gap-1 font-semibold" data-needs-review
-                      style={{ color: 'var(--color-secondary)' }}
-                      data-tip="Certificates waiting for you — open the coach to verify or reject them">
-                      <ShieldCheck size={11} /> Needs review · {pending.get(trainer.id)}
-                    </p>
-                  )}
-                  <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{trainer.email}</p>
+                </Td>
+                <Td>
+                  <p className="text-[15px]" style={{ color: '#A78BFA' }}>{trainer.specialization}</p>
                   {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
-                  {(() => {
-                    const found = goalsFor({ specialization: trainer.specialization, bio: trainer.bio,
-                      achievements: trainer.achievements, focus_areas: trainer.focusAreas, certifications: trainer.certifications });
-                    return (
-                      <p className="text-[10px] truncate mt-0.5" style={{ color: found.length ? 'var(--color-text-secondary)' : 'var(--color-secondary)' }}
-                        data-tip="Goals members can pick under Coaches → Find your coach">
-                        {found.length ? `Found under: ${found.map((f) => f.goal.label).join(', ')}` : 'Not matched to any member goal yet'}
-                      </p>
-                    );
-                  })()}
-                </div>
-                <OpenChevron />
-              </div>
-
-              {/* Member ratings (0042). The average is withheld below three
-                  ratings for the admin too — showing the gym a number the
-                  member app hides would turn a policy into a display trick,
-                  and it is the version that would get repeated to the coach. */}
-              <div className="mt-2.5 flex items-center gap-3 text-[10px]">
-                <span className="flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                  <Star size={10} style={{ color: 'var(--color-secondary)' }} fill="currentColor" />
-                  {/* The gym's own figure, shown whatever the count. The
-                      trailing note says what members currently see, so nobody
-                      quotes an internal average back as a public one. */}
-                  {trainer.gymAverage != null
-                    ? `${trainer.gymAverage.toFixed(1)}${
-                        trainer.ratingAverage == null ? ' · not public yet' : ''
-                      }`
-                    : 'No evaluations'}
-                </span>
-                {/* Whether members can actually book this trainer. The weekday
-                    blurb is a label with no times — showing only that made
-                    every trainer look bookable. */}
-                <span className="flex items-center gap-1"
-                  style={{ color: trainer.bookableWindows > 0 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                  <Clock size={10} />
-                  {trainer.bookableWindows > 0
-                    ? `${trainer.bookableWindows} window${trainer.bookableWindows === 1 ? '' : 's'}`
-                    : 'No hours set'}
-                </span>
-              </div>
-
-              {trainer.availabilityDays.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {trainer.availabilityDays.map((day) => (
-                    <span key={day} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                      {day.slice(0, 3)}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Always visible, deliberately.
-                  Revealing these on hover reserves the space anyway — the card
-                  keeps a blank strip so it does not resize under the cursor —
-                  so hiding them buys nothing and costs you having to discover
-                  them. They are quiet instead: surface-coloured, small, and
-                  clearly secondary to the card itself, which is the button.
-                  `stopPropagation` keeps them from also opening the profile. */}
-              <div className="mt-2.5 flex gap-1.5">
-                {!showArchived && (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(trainer); }}
-                      className="px-2 h-7 rounded-lg text-[10px] font-semibold" data-tip="Edit trainer"
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      <Edit2 size={11} className="inline mr-1" />Edit
+                  <p className="text-[12px] mt-0.5 truncate max-w-[200px]" style={{ color: found.length ? 'var(--color-text-muted)' : '#FBBF24' }}
+                    data-tip="Goals members can pick under Coaches → Find your coach">
+                    {found.length ? `Found under: ${found.map((f) => f.goal.label).join(', ')}` : 'Not matched to a member goal yet'}
+                  </p>
+                </Td>
+                <Td>
+                  {list.length > 0 ? (
+                    <p className="text-[14.5px] inline-flex items-center gap-1.5" style={{ color: soon ? '#FBBF24' : '#A78BFA' }}
+                      data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}${soon ? ` — ${soon} expiring within 30 days` : ''}`}>
+                      <ShieldCheck size={17} /> {list.length} verified{soon ? ` · ${soon} expiring` : ''}
+                    </p>
+                  ) : waiting === 0 ? (
+                    <>
+                      <p className="text-[14.5px] inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}><Shield size={17} /> Not matched</p>
+                      <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>No credentials yet</p>
+                    </>
+                  ) : null}
+                  {waiting > 0 && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setReviewing(true); }} data-needs-review
+                      className="text-[14px] inline-flex items-center gap-1.5 mt-0.5 font-medium whitespace-nowrap" style={{ color: '#FBBF24' }}
+                      data-tip="Certificates waiting for you — verify or reject them">
+                      <AlertCircle size={15} /> Needs review · {waiting}
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); setToSuspend(trainer); }}
-                      data-tip={trainer.status === 'suspended' ? 'Reactivate account' : 'Suspend account'}
-                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
-                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                      {trainer.status === 'suspended'
-                        ? <><UserCheck size={11} className="inline mr-1" />Reactivate</>
-                        : <><UserX size={11} className="inline mr-1" />Suspend</>}
-                    </button>
-                  </>
-                )}
-                <button onClick={(e) => { e.stopPropagation(); setToArchive(trainer); }}
-                  data-tip={showArchived ? 'Restore trainer' : 'Archive trainer'}
-                  className="px-2 h-7 rounded-lg text-[10px] font-semibold"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-                  <Archive size={11} className="inline mr-1" />{showArchived ? 'Restore' : 'Archive'}
-                </button>
-              </div>
-            </TileCard>
-          ))}
-        </CardGrid>
-        </div>
-      )}
-
-      {/* A roster is small until it isn't; this one has no ceiling without it. */}
-      {visible.length > 0 && (
-        <div className="flex items-center justify-between mt-auto">
-          <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="trainers" />
-          <Pagination currentPage={paged.page} totalItems={paged.total}
-            itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
-        </div>
-      )}
+                  )}
+                </Td>
+                <Td>
+                  {/* The gym's own figure, whatever the count; "Not public" says what members see. */}
+                  <p className="text-[15px] font-semibold text-white inline-flex items-center gap-1.5">
+                    <Star size={17} fill={trainer.gymAverage != null ? '#F59E0B' : 'none'} style={{ color: '#F59E0B' }} />
+                    {trainer.gymAverage != null ? trainer.gymAverage.toFixed(1) : '—'}
+                  </p>
+                  <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+                    {trainer.gymAverage == null ? 'No evaluations' : trainer.ratingAverage == null ? 'Not public' : 'Public'}
+                  </p>
+                </Td>
+                <Td>
+                  <p className="text-[15px] inline-flex items-center gap-2" style={{ color: trainer.bookableWindows > 0 ? '#A78BFA' : '#FBBF24' }}>
+                    <CalendarDays size={18} />
+                    {trainer.bookableWindows > 0 ? `${trainer.bookableWindows} window${trainer.bookableWindows === 1 ? '' : 's'}` : 'No hours set'}
+                  </p>
+                  {trainer.availabilityDays.length > 0 && (
+                    <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{trainer.availabilityDays.map((d) => d.slice(0, 3)).join(' · ')}</p>
+                  )}
+                </Td>
+                <Td><Pill tone={statusTone} solidDot>{trainer.status === 'active' ? 'Active' : trainer.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}</Pill></Td>
+                <Td onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2">
+                    {!showArchived && (
+                      <>
+                        <RdButton size="sm" variant="soft" icon={Pencil} onClick={() => openEdit(trainer)}>Edit</RdButton>
+                        <RdButton size="sm" variant="amber" icon={trainer.status === 'suspended' ? UserCheck : UserX} onClick={() => setToSuspend(trainer)}>
+                          {trainer.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                        </RdButton>
+                      </>
+                    )}
+                    {showArchived && <RdButton size="sm" icon={Archive} onClick={() => setToArchive(trainer)}>Restore</RdButton>}
+                    <DotMenu label={`More for ${trainer.name}`} items={[
+                      { label: 'View profile', icon: Eye, onClick: () => setViewingId(trainer.id) },
+                      { label: 'Archive trainer', icon: Archive, onClick: () => setToArchive(trainer), tone: 'danger', hidden: showArchived },
+                      { label: 'Review credentials', icon: ShieldCheck, onClick: () => setReviewing(true) },
+                      { label: 'Monthly totals', icon: CalendarRange, onClick: () => setShowTotals(true) },
+                    ]} />
+                  </div>
+                </Td>
+              </Tr>
+            );
+          })}
+        </RdTable>
+        <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun={showArchived ? 'archived trainers' : 'trainers'} onPage={paged.setPage} />
+      </RdCard>
 
       <TrainerDetailDrawer trainerId={viewingId} onClose={() => setViewingId(null)} onChanged={loadTrainers} />
+
+      <ConfirmDialog
+        isOpen={bulk !== null}
+        onClose={() => setBulk(null)}
+        onConfirm={() => void runBulk()}
+        title={bulk === 'suspend' ? 'Suspend trainers' : bulk === 'archive' ? 'Archive trainers' : 'Restore trainers'}
+        message={bulk === 'suspend'
+          ? `Suspend ${picked.size} trainer${picked.size === 1 ? '' : 's'}? They cannot log in to the trainer app; classes and booked sessions stay as they are. Reversible at any time.`
+          : bulk === 'archive'
+            ? `Archive ${picked.size} trainer${picked.size === 1 ? '' : 's'}? They drop off the roster and cannot log in; every class and session they ran is kept.`
+            : `Restore ${picked.size} trainer${picked.size === 1 ? '' : 's'} to the active roster? They can log in again.`}
+        confirmText={bulk === 'suspend' ? 'Suspend' : bulk === 'archive' ? 'Archive' : 'Restore'}
+        type={bulk === 'restore' ? 'info' : bulk === 'archive' ? 'danger' : 'warning'}
+      />
+
 
       <ConfirmDialog
         isOpen={!!toSuspend}
@@ -598,8 +561,8 @@ export default function Trainers() {
                 initial={{ opacity: 0, scale: 0.95, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
+                className="w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+                style={{ background: 'radial-gradient(120% 80% at 0% 0%, rgba(124,58,237,0.16), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.25)' }}
                 onClick={e => e.stopPropagation()}>
                 <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <div>
@@ -728,16 +691,8 @@ export default function Trainers() {
                   </FormField>
                 </div>
                 <div className="p-5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <button onClick={() => setShowEditModal(false)}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm transition-colors"
-                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    Cancel
-                  </button>
-                  <button onClick={handleSaveEdit} disabled={saving}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black transition-colors disabled:opacity-60"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    {saving ? 'Saving…' : 'Save Changes'}
-                  </button>
+                  <RdButton className="flex-1" onClick={() => setShowEditModal(false)}>Cancel</RdButton>
+                  <RdButton className="flex-1" variant="primary" onClick={handleSaveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</RdButton>
                 </div>
               </motion.div>
             </div>
