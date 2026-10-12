@@ -322,7 +322,8 @@ function StatusPill({ gym }: { gym: PlatformGym }) {
   return gym.lock_reason ? (
     <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended'
       : gym.lock_reason === 'archived' ? 'Archived'
-      : gym.lock_reason === 'cancelled' ? 'Left Core Fitness' : 'Overdue — read-only'}</span>
+      : gym.lock_reason === 'cancelled' ? 'Left Core Fitness'
+      : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
   ) : (
     <span className="pill ok"><span className="dot" />{setupState(gym) ? 'Setting up' : 'Live'}</span>
   );

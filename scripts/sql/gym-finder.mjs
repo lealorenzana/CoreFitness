@@ -60,7 +60,8 @@ const rows = await all(`select * from gym_finder(null)`);
 const desk = rows.find((r) => r.id === GYM2);
 check('signed out, the finder lists a front-desk-only gym too, saying so', desk?.join_policy === 'closed', JSON.stringify(desk));
 check('…with its address, never its join code', desk?.address === 'Mamburao, Occidental Mindoro' && !('join_code' in desk));
-check('…and the pinned gym has its place', rows.some((r) => r.id === GYM && Number(r.latitude) > 13));
+// 0198: Gym #1 is the platform's own test gym — pinned or not, never listed.
+check('Gym #1 (the platform’s test gym) is never listed', !rows.some((r) => r.id === GYM));
 check('a search matches the address', (await all(`select id from gym_finder('Occidental')`)).some((r) => r.id === GYM2));
 check("OpenStreetMap's gyms are readable by anyone", (await one(`select count(*)::int n from osm_gyms where osm_id = 'node/1'`)).n === 1);
 check('…and written by no one through the API', (await tryExec(`insert into osm_gyms (osm_id, name, latitude, longitude, tile) values ('node/2', 'Fake', 1, 1, 'x')`)) !== null);

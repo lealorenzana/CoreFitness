@@ -26,8 +26,8 @@ export interface GymContext {
   slug: string | null;
   role: GymRole | null;
   status: GymStatus | null;
-  /** Set when the gym is read-only: 'suspended' or 'overdue'. */
-  lockReason: 'suspended' | 'overdue' | null;
+  /** Set when the gym is read-only: 'suspended' or 'overdue' — or stopped: 'trial_ended' (0198). */
+  lockReason: 'suspended' | 'overdue' | 'trial_ended' | null;
   shortName: string | null;
   logoUrl: string | null;
   accent: string;
@@ -60,7 +60,7 @@ let cached: Promise<GymContext | null> | null = null;
 
 interface ContextRow {
   gym_id: string; gym_name: string; slug: string; role: GymRole; status: GymStatus;
-  lock_reason: 'suspended' | 'overdue' | null; short_name: string | null; logo_url: string | null;
+  lock_reason: 'suspended' | 'overdue' | 'trial_ended' | null; short_name: string | null; logo_url: string | null;
   accent: string | null; gym_count: number; onboarded?: boolean;
   onboarding_step?: string | null; gym_state?: string | null;
 }

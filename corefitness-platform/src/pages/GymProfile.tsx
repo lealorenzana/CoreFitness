@@ -96,7 +96,7 @@ export default function GymProfile() {
             <span className="meta">/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
           </span>
           {gym.lock_reason
-            ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : 'Overdue — read-only'}</span>
+            ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
             : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
           <SupportDoor gymId={gym.id} />
           <ExportGym gymId={gym.id} gymName={gym.name} />
@@ -122,7 +122,9 @@ export default function GymProfile() {
       <section className="card" style={{ marginTop: 16 }} data-card="billing">
         <h2 className="section-title"><Clock size={14} /> Billing</h2>
         <p className="meta">
-          {gym.paid_until
+          {gym.paid_until && Number(gym.paid_total) === 0 && gym.plan === 'trial'
+            ? <>Free trial until {day(gym.paid_until)}. The next day the app stops for the gym, its staff and its members (no grace days) until it pays for a plan. Change the date to shorten or lengthen the trial.</>
+            : gym.paid_until
             ? <>Covered until {day(gym.paid_until)}. After that and the grace days, the gym goes read-only until a payment is verified.</>
             : <>No billing — this gym has no covered-until date, so nothing is ever due and it never locks. Start billing to give it a date; its owner is told, and reminded before it.</>}
         </p>

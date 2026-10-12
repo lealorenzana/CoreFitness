@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar, { useSidebarCollapsed } from './Sidebar';
 import Header from './Header';
@@ -7,17 +7,28 @@ import TooltipLayer from '../ui/TooltipLayer';
 import SubscriptionBanner from '../SubscriptionBanner';
 import AnnouncementBanner from '../AnnouncementBanner';
 import GymTermsBanner from '../GymTermsBanner';
+import TrialEnded from '../TrialEnded';
+import { getGymContext, type GymContext } from '../../lib/gymContext';
 
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
   const { collapsed, toggle } = useSidebarCollapsed();
+  // 0198: a gym whose free trial has ended gets its plan page and nothing else.
+  const [ctx, setCtx] = useState<GymContext | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getGymContext().then((c) => { if (alive) setCtx(c); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo(0, 0);
     }
   }, [location.pathname]);
+
+  if (ctx?.lockReason === 'trial_ended') return <TrialEnded ctx={ctx} />;
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-bg)' }}>

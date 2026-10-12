@@ -23,7 +23,7 @@ export interface GymBilling {
   paid_until: string | null;
   /** Negative is overdue. NULL when no date has ever been set. */
   days_left: number | null;
-  lock_reason: 'suspended' | 'overdue' | null;
+  lock_reason: 'suspended' | 'overdue' | 'trial_ended' | null;
   max_members: number | null;
   members: number;
   max_staff: number | null;
@@ -74,10 +74,13 @@ export function subscriptionWarning(b: GymBilling | null, graceDays = 7, onTrial
   // 0139: a gym that has never paid is on its free trial, and is told so in those words.
   if (onTrial && b.lock_reason === null && b.days_left !== null) {
     const d = Math.abs(b.days_left), s = d === 1 ? '' : 's';
-    if (b.days_left < 0) return { tone: 'warn', text: `Your free trial ended ${d} day${s} ago. The gym goes read-only ${graceDays + 1 + b.days_left} day${graceDays + 1 + b.days_left === 1 ? '' : 's'} from now unless it moves to a paid plan.` };
-    if (b.days_left <= 7) return { tone: 'info', text: `Your free trial ends ${b.days_left === 0 ? 'today' : `in ${d} day${s}`}. Pay Core Fitness for a plan to keep everything running.` };
+    // 0198: a trial has no grace — the day after it ends, the app stops for everyone.
+    if (b.days_left <= 7) return { tone: b.days_left <= 1 ? 'warn' : 'info', text: `Your free trial ends ${b.days_left === 0 ? 'today' : `in ${d} day${s}`}. The day after, the app stops for you, your staff and your members until you choose a plan.` };
   }
 
+  if (b.lock_reason === 'trial_ended') {
+    return { tone: 'warn', text: 'Your free trial has ended, so the app is paused for everyone at your gym. Choose a plan to open it again — nothing is deleted.' };
+  }
   if (b.lock_reason === 'suspended') {
     return { tone: 'warn', text: 'Core Fitness has suspended this gym, so the system is read-only. Contact us to sort it out.' };
   }

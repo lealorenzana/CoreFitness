@@ -11,6 +11,7 @@ import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
+import GymPaused from '../ui/GymPaused';
 import ModuleGate from '../ModuleGate';
 
 /**
@@ -42,6 +43,11 @@ export default function TrainerLayout() {
 
   // The gym's colour and name, and whether it is read-only (0104).
   const gym = useGymBrand();
+
+  // The gym's free trial has ended (0198): the app stops for coaches too.
+  if (gym?.lockReason === 'trial_ended') {
+    return <PhoneChassis><GymPaused ctx={gym} role="trainer" /></PhoneChassis>;
+  }
 
   return (
     <PhoneChassis>

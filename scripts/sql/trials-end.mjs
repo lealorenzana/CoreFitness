@@ -35,7 +35,7 @@ await db.exec(`reset role;
 // ---- 1. a new gym ---------------------------------------------------------------------------
 await as(PA);
 const fresh = (await one(`select create_gym('Iron Temple', 'iron-temple') as id`)).id;
-check('a gym let in on the free trial ends in 30 days', (await left(fresh)) === 30, String(await left(fresh)));
+check('a gym let in on the free trial ends in 7 days (0198)', (await left(fresh)) === 7, String(await left(fresh)));
 
 // ---- 2. the migration's backfill, on rows it never saw ----------------------------------------
 await db.exec(`reset role; set session_replication_role = replica;
@@ -48,7 +48,8 @@ await db.exec(`reset role; set session_replication_role = replica;
   update gyms set plan = 'trial', paid_until = null where id = '${GYM_1}';
   set session_replication_role = origin;
   select settle_trial_dates();`);
-check('a 10-day-old trial keeps its 20 days', (await left('d0000000-0000-4000-8000-000000000001')) === 20);
+// 0198 made the trial 7 days: a 10-day-old one is past it, so it gets the 14 days' notice.
+check('a 10-day-old trial (past 7 days) gets 14 days of notice', (await left('d0000000-0000-4000-8000-000000000001')) === 14);
 check('a trial that ran out long ago gets 14 days of notice, not a lock', (await left('d0000000-0000-4000-8000-000000000002')) === 14);
 check('a gym that ever paid is not touched', (await left('d0000000-0000-4000-8000-000000000003')) === null);
 check('a plan with no trial is not touched', (await left('d0000000-0000-4000-8000-000000000004')) === null);
@@ -58,7 +59,7 @@ await db.exec(`reset role; update gyms set plan = 'premium' where id = '${GYM_1}
 // ---- 3. moving onto a trial ------------------------------------------------------------------
 await as(PA);
 await db.exec(`select set_gym_plan('d0000000-0000-4000-8000-000000000004', 'trial')`);
-check('moved onto the trial plan, never paid: the trial starts', (await left('d0000000-0000-4000-8000-000000000004')) === 30);
+check('moved onto the trial plan, never paid: the trial starts', (await left('d0000000-0000-4000-8000-000000000004')) === 7);
 await db.exec(`select set_gym_plan('d0000000-0000-4000-8000-000000000003', 'premium'); select set_gym_plan('d0000000-0000-4000-8000-000000000003', 'trial')`);
 check('a gym that paid before gets no free trial', (await left('d0000000-0000-4000-8000-000000000003')) === null);
 

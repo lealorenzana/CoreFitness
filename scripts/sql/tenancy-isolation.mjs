@@ -426,6 +426,8 @@ check('a suspended gym can still read', (await one('select count(*)::int as n fr
 check('a suspended gym cannot write', !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
 check('a suspended gym cannot edit', (await db.query(`update events set title = 'x'`)).affectedRows === 0);
 check('the lock reason says suspended', (await one('select gym_lock_reason() as r')).r === 'suspended');
+// A gym that has paid once (0198: a never-paid trial stops with no grace).
+await asOwner(); await db.exec(`insert into gym_payments (gym_id, amount, covers_until, receipt_no) values ('${GYM_B}', 999, current_date - 8, 'CF-TEST-ISO')`);
 await setGymB(`status = 'active', paid_until = current_date - 8`);
 check('8 days past paid-until is read-only', !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
 check('the lock reason says overdue', (await one('select gym_lock_reason() as r')).r === 'overdue');
@@ -1105,9 +1107,10 @@ check('a name for the points longer than a label is refused',
   !!(await fails("select save_gym_words('" + 'x'.repeat(40) + "', null, null)")));
 
 await as(P.adminA);
-check('a gym is listed to strangers while it is open', await (async () => {
+// 0198: Gym #1 is the platform's own test gym and is never listed, open or not.
+check('Gym #1 (the platform’s test gym) is never on the public list', await (async () => {
   await as(P.outsider);
-  return (await db.query('select * from list_gyms(null)')).rows.some((g) => g.slug === 'core-fitness');
+  return !(await db.query('select * from list_gyms(null)')).rows.some((g) => g.slug === 'core-fitness');
 })());
 check('a gym that chooses the code door leaves the public list', await (async () => {
   await as(P.adminA);

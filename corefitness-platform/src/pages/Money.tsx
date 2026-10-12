@@ -142,6 +142,7 @@ export default function Money() {
                 {' · '}{g.members} member{g.members === 1 ? '' : 's'}
                 {' · '}
                 {g.lock_reason === 'suspended' ? 'suspended by you'
+                  : g.lock_reason === 'trial_ended' ? `free trial ended ${day(g.paid_until)} — paused until it pays`
                   : g.days_left < -grace ? `read-only — ${-g.days_left} days past ${day(g.paid_until)}`
                   : g.days_left < 0 ? `${-g.days_left} days late — read-only in ${grace + 1 + g.days_left} more`
                   : g.days_left === 0 ? 'due today'

@@ -15,7 +15,7 @@ export interface PlatformGym {
   /** A key in `platform_plans` (0108), not one of three fixed words any more. */
   plan: string;
   paid_until: string | null;
-  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
+  lock_reason: 'suspended' | 'overdue' | 'trial_ended' | 'archived' | 'cancelled' | null;
   members: number;
   staff: number;
   created_at: string;
@@ -99,7 +99,7 @@ export interface GymDue {
   plan: string;
   paid_until: string;
   days_left: number;
-  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
+  lock_reason: 'suspended' | 'overdue' | 'trial_ended' | 'archived' | 'cancelled' | null;
   members: number;
 }
 
@@ -359,7 +359,7 @@ export interface GymDetail {
   id: string; name: string; slug: string; status: string;
   plan: string; plan_name: string | null;
   paid_until: string | null; days_left: number | null;
-  lock_reason: 'suspended' | 'overdue' | 'archived' | 'cancelled' | null;
+  lock_reason: 'suspended' | 'overdue' | 'trial_ended' | 'archived' | 'cancelled' | null;
   created_at: string; onboarded_at: string | null;
   members: number; staff: number; owners: number; trainers: number;
   classes: number; checkins_30d: number; payments_30d: number;

@@ -15,6 +15,7 @@ import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { loadLanguagePreference } from '../../lib/i18n';
 import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
+import GymPaused from '../ui/GymPaused';
 import ModuleGate from '../ModuleGate';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
@@ -97,6 +98,11 @@ export default function Layout() {
       if (id) await loadLanguagePreference(id).catch(() => undefined);
     })();
   }, []);
+
+  // The gym's free trial has ended (0198): the app stops, said once, calmly.
+  if (gym?.lockReason === 'trial_ended') {
+    return <PhoneChassis><GymPaused ctx={gym} role="member" /></PhoneChassis>;
+  }
 
   return (
     <PhoneChassis>

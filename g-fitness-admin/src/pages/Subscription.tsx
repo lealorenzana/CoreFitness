@@ -9,6 +9,7 @@ import PayOnline from '../components/PayOnline';
 import ApplicationDocuments from '../components/ApplicationDocuments';
 import { myGymApplication, type GymApplication } from '../lib/api/applications';
 import { showToast } from '../utils/toast';
+import { getGymContext } from '../lib/gymContext';
 import {
   getGymFeatures, getSubscription, gymReceipt, myGymPayments,
   type GymFeature, type GymReceipt, type GymReceiptRow, type GymSubscription,
@@ -22,6 +23,9 @@ type State = { tone: 'good' | 'soon' | 'bad' | 'none'; title: string; lines: str
 
 /** Every state the page can be in, said in words — including the ones with no date at all. */
 function explain(sub: GymSubscription): State {
+  if (sub.lock_reason === 'trial_ended') return { tone: 'bad', title: 'The free trial has ended', lines: [
+    `It ended on ${sub.paid_until ? day(sub.paid_until) : 'its last day'}. The app is paused for everyone at the gym until a plan is paid.`,
+    'Pay online below and it opens again in about a minute, or send a reference and it opens once Core Fitness confirms it. Nothing is deleted.'] };
   if (sub.lock_reason === 'suspended') return { tone: 'bad', title: 'Suspended by Core Fitness', lines: ['Everything is read-only until Core Fitness reactivates the gym. Nothing is deleted. Ask in Support why.'] };
   if (sub.lock_reason === 'overdue') return { tone: 'bad', title: 'Read-only until it is paid', lines: [`The plan ran out on ${sub.paid_until ? day(sub.paid_until) : 'its due date'} and the ${sub.grace_days}-day grace has passed.`, 'Members and staff can still sign in and look; nothing can change until a payment is confirmed. Nothing is deleted.'] };
   if (!sub.paid_until) {
@@ -32,7 +36,7 @@ function explain(sub: GymSubscription): State {
   const d = sub.days_left ?? 0;
   if (sub.on_trial) {
     return d >= 0
-      ? { tone: d <= 7 ? 'soon' : 'good', title: `Free trial — ${d} day${d === 1 ? '' : 's'} left`, lines: [`Free until ${day(sub.paid_until)}. To keep everything open after that, pay for the plan before then.`, `If it is not paid, the gym goes read-only on ${sub.read_only_on ? day(sub.read_only_on) : 'the day after the grace'} — nothing is deleted.`] }
+      ? { tone: d <= 7 ? 'soon' : 'good', title: `Free trial — ${d} day${d === 1 ? '' : 's'} left`, lines: [`Free until ${day(sub.paid_until)}. To keep everything open after that, pay for the plan before then.`, `If no plan is paid by then, the app stops for you, your staff and your members on ${sub.read_only_on ? day(sub.read_only_on) : 'the next day'} — nothing is deleted.`] }
       : { tone: 'bad', title: `The free trial ended ${-d} day${d === -1 ? '' : 's'} ago`, lines: [`Read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'} unless it is paid.`] };
   }
   if (d < 0) return { tone: 'bad', title: `${-d} day${d === -1 ? '' : 's'} overdue`, lines: [`Covered until ${day(sub.paid_until)}; the grace runs ${sub.grace_days} days after the due date.`, `Read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'} unless a payment is confirmed first.`] };
@@ -64,6 +68,11 @@ export default function Subscription() {
     void (async () => {
       const [s, p, f, a] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures(), myGymApplication()]);
       setSub(s); setPayments(p); setFeatures(f); setApplication(a); setLoaded(true);
+      // 0198: paid at last — the trial's lock is gone, so the whole app comes back.
+      if (s && s.lock_reason === null && (await getGymContext())?.lockReason === 'trial_ended') {
+        await getGymContext(true);
+        window.location.assign('/');
+      }
     })();
   }, [tick]);
   const reloadAfterPay = useCallback(() => setTick((t) => t + 1), []);

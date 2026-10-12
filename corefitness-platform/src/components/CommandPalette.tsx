@@ -147,7 +147,7 @@ export default function CommandPalette({ pages }: { pages: { path: string; label
     for (const p of pages) add({ key: 'p' + p.path, group: 'Screens', icon: p.icon, label: p.label, hint: p.lede, to: p.path }, [p.label, p.lede]);
     if (s) {
       for (const g of gyms) {
-        const state = g.lock_reason === 'suspended' ? 'suspended' : g.lock_reason === 'overdue' ? 'overdue read-only'
+        const state = g.lock_reason === 'suspended' ? 'suspended' : g.lock_reason === 'overdue' ? 'overdue read-only' : g.lock_reason === 'trial_ended' ? 'trial ended paused'
           : g.days_left !== null && g.days_left < 0 ? 'overdue' : g.owners === 0 ? 'no owner unclaimed' : !g.onboarded ? 'not set up' : 'live active';
         add({ key: 'g' + g.id, group: 'Gyms', icon: Building2, label: g.name,
           hint: `${g.plan_name ?? g.plan} · ${g.members} member${g.members === 1 ? '' : 's'} · ${state.split(' ')[0]}`, to: `/gyms/${g.id}` },

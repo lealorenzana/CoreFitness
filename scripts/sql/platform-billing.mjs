@@ -84,6 +84,8 @@ await setPaid(GYM_A, 0);
 await as(P.memA);
 check('any page load in the gym sweeps it: due today', (await one(`select billing_reminders_sweep() as n`)).n === 1);
 await setPaid(GYM_A, 7);
+// Gym B is a 7-day trial (0198) — move it off a reminder day so only the scope is tested.
+await setPaid(GYM_B, 20);
 await as(P.ownerB);
 check('another gym\'s owner sweeps only their own', (await one(`select billing_reminders_sweep() as n`)).n === 0);
 await setPaid(GYM_A, -12);
