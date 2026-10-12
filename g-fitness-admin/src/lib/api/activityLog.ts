@@ -65,6 +65,8 @@ export interface ActivityQuery {
   search?: string;
   /** Hide the rows 0037 reconstructed from pre-existing timestamps. */
   liveOnly?: boolean;
+  /** Leave out automatic win-back sends — the log shows them as one summary (2026-10-12). */
+  excludeWinback?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -105,6 +107,7 @@ export async function listActivity(q: ActivityQuery = {}): Promise<ActivityPage>
   if (q.from)      query = query.gte('occurred_at', q.from);
   if (q.before)    query = query.lt('occurred_at', q.before);
   if (q.liveOnly)  query = query.eq('reconstructed', false);
+  if (q.excludeWinback) query = query.neq('action', 'winback.sent');
   if (q.search?.trim()) {
     // `%` and `_` are wildcards in ilike; a member searching for "50%" must not
     // accidentally match everything.
@@ -115,6 +118,28 @@ export async function listActivity(q: ActivityQuery = {}): Promise<ActivityPage>
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: data ?? [], total: count ?? null };
+}
+
+/**
+ * The automatic win-back sends in a range, for the log's one summary line.
+ *
+ * They were folded into a line per day *on each page* — but the page was cut by
+ * rows, so a day's 9 sends read "5 members" on one page and "4 members" on the
+ * next, and a page of 8 rows showed two lines. They are read apart now, whole.
+ */
+export async function listWinbacks(q: { from?: string; search?: string }): Promise<ActivityFeedRow[]> {
+  let query = supabase.from('activity_feed').select('*')
+    .eq('action', 'winback.sent')
+    .order('occurred_at', { ascending: false })
+    .limit(500);
+  if (q.from) query = query.gte('occurred_at', q.from);
+  if (q.search?.trim()) {
+    const safe = q.search.trim().replace(/[%_\\]/g, (c) => `\\${c}`);
+    query = query.ilike('summary', `%${safe}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as ActivityFeedRow[];
 }
 
 /** Everything that ever happened to one member — for their detail page. */

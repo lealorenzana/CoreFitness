@@ -353,3 +353,7 @@
   .rd-shop-shelf { flex: 1; min-height: 0; }
   .rd-shop-today { flex: none; max-height: 30%; }
 }
+/* Activity's reload line (2026-10-12): the rows stay put, a light runs across the top. */
+@keyframes activity-progress { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.activity-progress { animation: activity-progress 0.9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .activity-progress { animation: none; width: 100%; opacity: 0.6; } }

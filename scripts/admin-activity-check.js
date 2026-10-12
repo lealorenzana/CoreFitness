@@ -66,7 +66,10 @@ async (page) => {
       const or = u.searchParams.get('or');
       ASKED.push(or ?? '');
       const prefixes = or ? [...or.matchAll(/action\.ilike\.([a-z_.]+)%/g)].map((m) => m[1]) : null;
-      const all = prefixes ? ROWS.filter((r) => prefixes.some((p) => r.action.startsWith(p))) : ROWS;
+      const act = u.searchParams.get('action');   // eq.winback.sent (the summary) / neq.winback.sent (the page)
+      const byAct = act === 'eq.winback.sent' ? ROWS.filter((r) => r.action === 'winback.sent')
+        : act === 'neq.winback.sent' ? ROWS.filter((r) => r.action !== 'winback.sent') : ROWS;
+      const all = prefixes ? byAct.filter((r) => prefixes.some((p) => r.action.startsWith(p))) : byAct;
       // One page, as PostgREST answers range(): offset/limit honoured, the total in Content-Range.
       const off = Number(u.searchParams.get('offset') ?? 0);
       const lim = Number(u.searchParams.get('limit') ?? all.length);
@@ -123,5 +126,28 @@ async (page) => {
   t = await text();
   out.push('Rewards & streaks: ' + (/12-week streak/.test(t) && !/Leg day/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-activity.png' });
+
+  // The flicker the owner filmed (2026-10-12): every click flashed the skeleton
+  // and the rows in turn, because re-measuring a row changed the page size and
+  // the query loaded again. After the first page: no skeleton, ever, and one
+  // fetch per click — the rows stay on screen, dimmed, while the next arrives.
+  await page.evaluate(() => {
+    window.__skeletons = 0; window.__emptied = 0;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-activity-skeleton]')) window.__skeletons++;
+      const list = document.querySelector('[data-activity-list]');
+      if (list && !list.querySelector('[data-activity-row], [data-winback-group], [data-rd-empty]')) window.__emptied++;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  const before = ASKED.length;
+  for (const g of ['Payments', 'Shop', 'Coaching', 'Everything', 'Rewards & streaks', 'Shop']) {
+    await page.getByRole('button', { name: g, exact: true }).click();
+    await page.waitForTimeout(250);
+  }
+  await page.waitForTimeout(1200);
+  const flick = await page.evaluate(() => ({ skeletons: window.__skeletons, emptied: window.__emptied }));
+  out.push('clicking filters never flashes the skeleton or empties the list: ' + (flick.skeletons === 0 && flick.emptied === 0 ? 'yes' : 'MISSING ' + JSON.stringify(flick)));
+  const fetches = ASKED.length - before;
+  out.push('one fetch per click, no reload loop: ' + (fetches <= 8 ? `yes (${fetches} requests for 6 clicks, the win-back summary included)` : 'MISSING ' + fetches));
   return out.join(String.fromCharCode(10));
 }
