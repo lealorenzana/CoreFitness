@@ -16,3 +16,7 @@ export const ATTENDANCE_TABS = [
   { label: 'Walk-ins', to: '/attendance/walk-ins' },
   { label: 'History', to: '/attendance-history' },
 ];
+
+/** The kit's text input (rd.tsx RdField wraps it). */
+export const RD_INPUT = 'w-full h-11 px-3.5 rounded-xl text-[14.5px] text-white outline-none focus:ring-2 focus:ring-violet-500/40';
+export const RD_INPUT_STYLE = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', colorScheme: 'dark' } as const;

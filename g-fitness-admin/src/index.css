@@ -338,3 +338,18 @@
   .rd-inbox-grid > * { min-height: 0; }
   .rd-inbox-grid > [data-messages] { grid-column: auto; }
 }
+/* Two equal boxes that share the rest of a fit page (2026-10-12: Rewards' requests, Bookings…). */
+.rd-fit-two { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .rd-fit-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (min-width: 1280px) { .rd-fit-two { flex: 1; min-height: 0; } .rd-fit-two > * { min-height: 0; } }
+/* Shop's till (2026-10-12): the shelf over today's sales, the ticket beside them. */
+.rd-shop-sell { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.rd-shop-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 1024px) { .rd-shop-sell { grid-template-columns: minmax(0, 1fr) 340px; } }
+@media (min-width: 1280px) {
+  .rd-shop-sell { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) 360px; }
+  .rd-shop-sell > * { min-height: 0; }
+  .rd-shop-left { min-height: 0; }
+  .rd-shop-shelf { flex: 1; min-height: 0; }
+  .rd-shop-today { flex: none; max-height: 30%; }
+}

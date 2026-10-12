@@ -1,4 +1,5 @@
 import { assertWrote } from './mutate';
+import { todayKey } from '../../utils/dates';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -31,6 +32,12 @@ export interface Reward {
   costPoints: number;
   /** NULL = unlimited. 0 = genuinely out of stock, which is not the same thing. */
   stock: number | null;
+  /** 0197: the gym's photo, its category, featured first, a last day, a per-member monthly limit. */
+  imageUrl: string | null;
+  category: string | null;
+  featured: boolean;
+  availableUntil: string | null;
+  perMemberMonthly: number | null;
 }
 
 export interface Redemption {
@@ -93,19 +100,29 @@ export async function listLedger(memberId: string, limit = 50): Promise<LedgerEn
 }
 
 export async function listRewards(): Promise<Reward[]> {
-  const { data, error } = await supabase
-    .from('rewards')
-    .select('id, name, description, cost_points, stock')
-    .eq('is_active', true)
-    .order('cost_points');
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    name: r.name as string,
-    description: r.description as string | null,
-    costPoints: r.cost_points as number,
-    stock: r.stock as number | null,
-  }));
+  const base = 'id, name, description, cost_points, stock';
+  // 0197's columns; before it is pasted the old ones still read.
+  let res = await supabase.from('rewards').select(`${base}, image_url, category, featured, available_until, per_member_monthly`)
+    .eq('is_active', true).order('cost_points');
+  if (res.error) res = await supabase.from('rewards').select(base).eq('is_active', true).order('cost_points') as typeof res;
+  if (res.error) throw res.error;
+  const today = todayKey();
+  return ((res.data ?? []) as Record<string, unknown>[])
+    .map((r) => ({
+      id: r.id as string,
+      name: r.name as string,
+      description: r.description as string | null,
+      costPoints: r.cost_points as number,
+      stock: r.stock as number | null,
+      imageUrl: (r.image_url as string | null) ?? null,
+      category: (r.category as string | null) ?? null,
+      featured: !!r.featured,
+      availableUntil: (r.available_until as string | null) ?? null,
+      perMemberMonthly: (r.per_member_monthly as number | null) ?? null,
+    }))
+    // A reward past its last day is gone (the database refuses it anyway); featured ones lead.
+    .filter((r) => !r.availableUntil || r.availableUntil >= today)
+    .sort((a, b) => Number(b.featured) - Number(a.featured) || a.costPoints - b.costPoints);
 }
 
 export async function listMyRedemptions(memberId: string): Promise<Redemption[]> {

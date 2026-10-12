@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import Card from '../components/ui/Card';
-import { PageHeader } from '../components/ui/kit';
+import { AlertTriangle, BarChart3, Package, ShoppingCart } from 'lucide-react';
+import { RdHeader, RdCard, PageTabs } from '../components/ui/rd';
 import ReceiptSheet from '../components/ReceiptSheet';
 import ShopSell from '../components/shop/ShopSell';
 import ShopProducts from '../components/shop/ShopProducts';
@@ -24,6 +23,9 @@ type Tab = 'sell' | 'products' | 'sales';
  * the cash and see the change, print or save the receipt. Products (owner):
  * photos, prices, categories, stock moved only by deliveries and counts.
  * Sales: totals, best sellers and every sale, for any dates.
+ *
+ * 2026-10-12: the kit's look, and it holds the screen — each section is boxes
+ * that scroll themselves; the till's Record never scrolls out of reach.
  */
 export default function Shop() {
   const [tab, setTab] = useState<Tab>('sell');
@@ -56,12 +58,10 @@ export default function Shop() {
   if (products === null) return <div className="text-sm" style={{ color: MUTED }}>Loading the shop…</div>;
   if (products === undefined) {
     return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5" style={{ color: 'var(--color-secondary)' }} />
-          <p className="text-xs text-white">The shop is not switched on yet — migration 0133 is not live on this database.</p>
-        </div>
-      </Card>
+      <RdCard className="p-5 flex items-start gap-3">
+        <AlertTriangle size={18} style={{ color: '#FBBF24' }} />
+        <p className="text-[14px] text-white">The shop is not switched on yet — migration 0133 is not live on this database.</p>
+      </RdCard>
     );
   }
 
@@ -69,23 +69,19 @@ export default function Shop() {
   const low = products.filter((p) => p.active && p.trackStock && p.stock <= p.lowStockAt);
 
   return (
-    <div className="space-y-4">
-      <PageHeader
+    <div className="rd-fit" data-shop>
+      <RdHeader
         title="Shop"
         subtitle={<>
-          Counter sales today: {formatCurrency(live.reduce((s, x) => s + x.total, 0))} · {live.length} {live.length === 1 ? 'sale' : 'sales'}
-          {low.length > 0 && <button type="button" className="ml-1 underline" style={{ color: 'var(--color-secondary)' }} onClick={() => setTab('products')}>· {low.length} running low</button>}
+          Counter sales today: <b className="text-white">{formatCurrency(live.reduce((s, x) => s + x.total, 0))}</b> — {live.length} {live.length === 1 ? 'sale' : 'sales'}
+          {low.length > 0 && <> — <button type="button" className="underline" style={{ color: '#FBBF24' }} onClick={() => setTab('products')}>{low.length} running low</button></>}
         </>}
         actions={
-          <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} role="tablist" aria-label="Shop sections">
-            {(['sell', 'products', 'sales'] as Tab[]).map((t) => (
-              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold capitalize"
-                style={{ background: tab === t ? 'var(--color-primary)' : 'transparent', color: tab === t ? '#fff' : 'var(--color-text-secondary)' }}>
-                {t}
-              </button>
-            ))}
-          </div>
+          <PageTabs<Tab> label="Shop sections" value={tab} onChange={setTab} tabs={[
+            { key: 'sell', label: 'Sell', icon: ShoppingCart },
+            { key: 'products', label: 'Products', icon: Package, count: low.length },
+            { key: 'sales', label: 'Sales', icon: BarChart3 },
+          ]} />
         }
       />
 

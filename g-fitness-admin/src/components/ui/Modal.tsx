@@ -53,6 +53,7 @@ export default function Modal({
               animate={{ opacity: 1, scale: 1,    y: 0 }}
               exit={{    opacity: 0, scale: 0.96, y: 12 }}
               transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+              role="dialog" aria-modal="true" aria-label={title}
               className="w-full rounded-2xl shadow-2xl flex flex-col overflow-hidden my-8"
               style={{
                 maxWidth: SIZE[size],

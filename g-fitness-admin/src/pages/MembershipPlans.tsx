@@ -1,10 +1,10 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
-  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, OpenChevron,
-} from '../components/ui/kit';
+  RdHeader, RdCard, StatTile, RdButton, RdSelect, Pill, DotMenu, EmptyBlock, RdField,
+} from '../components/ui/rd';
+import { TONE, RD_INPUT, RD_INPUT_STYLE, type Tone } from '../components/ui/rdTokens';
 import { Plus, Edit2, Trash2, X, Check, Users, Banknote, CreditCard } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
@@ -39,6 +39,13 @@ const emptyForm = {
   ptPerMonth: '',
 };
 
+const SECOND = 'var(--color-text-secondary)';
+const MUTED = 'var(--color-text-muted)';
+
+/**
+ * Membership plans, 2026-10-12: fits the screen — tiles, a strip of compact plan
+ * cards, and "What each plan unlocks" filling the rest in a box that scrolls itself.
+ */
 export default function MembershipPlans() {
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [activeMembersByPlan, setActiveMembersByPlan] = useState<Record<string, number>>({});
@@ -52,6 +59,7 @@ export default function MembershipPlans() {
   const [form, setForm] = useState(emptyForm);
   const [featureLines, setFeatureLines] = useState<string[]>([]);
   const [newFeature, setNewFeature] = useState('');
+  const [toDelete, setToDelete] = useState<MembershipPlanRow | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -178,15 +186,6 @@ export default function MembershipPlans() {
    * is about to change tier.
    */
   const handleDelete = async (plan: MembershipPlanRow) => {
-    const onPlan = totalMembersByPlan[plan.id] ?? 0;
-    const consequence = onPlan > 0
-      ? `\n\n${onPlan} membership${onPlan === 1 ? '' : 's'} will move to the free plan. `
-        + 'They keep their current dates and status; what changes is what the plan '
-        + 'lets them do.'
-      : '';
-
-    if (!window.confirm(`Delete "${plan.name}"?${consequence}`)) return;
-
     try {
       const result = await retirePlan(plan.id);
       showToast(
@@ -214,350 +213,190 @@ export default function MembershipPlans() {
     setFeatureLines(featureLines.filter((_, i) => i !== index));
   };
 
-  /**
-   * The tier chip's two colours.
-   *
-   * This returned one colour and the chip built its background by appending
-   * "20" for alpha — `${color}20`. That works on a hex literal and is silently
-   * meaningless on a custom property: `var(--color-text-muted)20` is not a
-   * colour, so the browser dropped the declaration and the Free chip rendered
-   * with **no background at all**, which is why "FREE" looked like stray text
-   * next to two proper chips. Both halves are named now.
-   */
-  const getTierStyle = (tier: PlanTier): { color: string; background: string } => {
-    switch (tier) {
-      case 'free': return { color: 'var(--color-text-secondary)', background: 'var(--color-surface-high)' };
-      case 'freemium': return { color: 'var(--color-primary)', background: 'var(--color-primary-light)' };
-      case 'premium': return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' };
-      // Pro is retired (0060) but the enum value cannot be dropped, so a row
-      // may survive. It keeps Premium's amber rather than introducing a third
-      // hue — the app has two, and a new colour per tier is how a palette
-      // drifts. Deleting this case would render a surviving Pro plan grey.
-      case 'pro': return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)' };
-      default: return { color: 'var(--color-text-secondary)', background: 'var(--color-surface-high)' };
-    }
-  };
+  const tierTone = (tier: PlanTier): Tone => (tier === 'free' ? 'gray' : tier === 'freemium' ? 'violet' : 'amber');
+  const tierWord = (tier: PlanTier) => (tier === 'freemium' ? 'Trial' : tier === 'pro' ? 'Pro (retired)' : tier[0].toUpperCase() + tier.slice(1));
 
   const totalRevenue = plans.reduce((sum, p) => sum + p.price * (activeMembersByPlan[p.id] ?? 0), 0);
   const totalMembers = plans.reduce((sum, p) => sum + (activeMembersByPlan[p.id] ?? 0), 0);
+  const selling = plans.filter((p) => p.is_active && !p.price_unset);
+  const unpriced = plans.filter((p) => p.price_unset).length;
 
   if (loading) {
-    return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading plans…</div>;
+    return <div className="text-sm" style={{ color: MUTED }}>Loading plans…</div>;
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Membership plans"
-        subtitle="What the gym sells, and what each plan unlocks"
-        actions={
-          <Button variant="secondary" size="sm" onClick={openAdd}>
-            <Plus size={15} /> Create plan
-          </Button>
-        }
-      />
+    <div className="rd-fit" data-plans>
+      <RdHeader title="Membership plans" subtitle="What the gym sells, and what each plan unlocks in the members' app."
+        actions={<RdButton variant="primary" icon={Plus} onClick={openAdd}>Create plan</RdButton>} />
 
-      <StatTiles items={[
-        { label: 'Plans', value: plans.length, icon: Banknote },
-        { label: 'Members on a plan', value: totalMembers, icon: Users },
-        { label: 'Monthly revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote, tone: 'secondary' },
-        { label: 'Average price', value: plans.length ? `₱${Math.round(plans.reduce((s, p) => s + p.price, 0) / plans.length).toLocaleString()}` : '₱0', icon: Banknote },
-      ]} />
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatTile compact icon={CreditCard} label="Plans on sale" value={selling.length} sub={unpriced ? `${unpriced} still need a price` : `${plans.length - selling.length} retired`} tone={unpriced ? 'amber' : 'violet'} />
+        <StatTile compact icon={Users} label="Members on a plan" value={totalMembers} sub="active memberships" />
+        <StatTile compact icon={Banknote} label="Monthly value" value={`₱${totalRevenue.toLocaleString()}`} sub="price × active members" />
+        <StatTile compact icon={Banknote} label="Average price" value={selling.length ? `₱${Math.round(selling.reduce((s, p) => s + p.price, 0) / selling.length).toLocaleString()}` : '₱0'} sub="of plans on sale" />
+      </div>
 
-      {/* Says so when the numbers are the old client-side tally rather than a
-          count from the database — that tally is what reported "0 members" for
-          a plan somebody was on, and an admin about to delete one deserves to
-          know which number they are looking at. */}
-      {!loading && !countsAreServerSide && (
-        <div className="rounded-xl px-4 py-2.5 text-[11px]"
-          style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-          Member counts are being tallied in the browser and only recognise memberships
-          marked active — a plan may have more on it than shown. Run migration 0062 to
-          count them in the database.
+      {/* Says so when the numbers are the old client-side tally rather than a count from the database. */}
+      {!countsAreServerSide && (
+        <p className="rounded-xl px-4 py-2 text-[12.5px]" style={{ background: TONE.violet.bg, color: '#DDD6FE' }}>
+          Member counts are tallied in the browser and only recognise memberships marked active — run migration 0062 to count them in the database.
+        </p>
+      )}
+
+      {/* The catalogue: one compact card per plan, in a strip that scrolls itself. */}
+      {plans.length === 0 ? (
+        <RdCard className="rd-fit-fill">
+          <EmptyBlock icon={CreditCard} title="No plans yet" body="Nothing can be sold, and nobody can be approved onto a free tier, until one exists."
+            action={<RdButton variant="primary" icon={Plus} onClick={openAdd}>Create the first plan</RdButton>} />
+        </RdCard>
+      ) : (
+        <div className="grid gap-3 max-h-[236px] overflow-y-auto pr-1 flex-none" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', scrollbarWidth: 'thin' }} data-plan-cards>
+          {plans.map((plan) => {
+            const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
+            const activeMembers = activeMembersByPlan[plan.id] ?? 0;
+            const totalOnPlan = totalMembersByPlan[plan.id] ?? 0;
+            return (
+              <RdCard key={plan.id} className="p-4 flex flex-col gap-2" style={{ opacity: plan.is_active ? 1 : 0.6 }} data-plan-card={plan.name}>
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[15.5px] font-semibold text-white truncate">{plan.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Pill tone={tierTone(plan.tier)}>{tierWord(plan.tier)}</Pill>
+                      {!plan.is_active && <Pill tone="gray">Retired</Pill>}
+                    </div>
+                  </div>
+                  <DotMenu label={`More for ${plan.name}`} items={[
+                    { label: 'Edit', icon: Edit2, onClick: () => openEdit(plan) },
+                    { label: 'Delete', icon: Trash2, onClick: () => setToDelete(plan), tone: 'danger' },
+                  ]} />
+                </div>
+                <div className={`flex gap-1.5 ${plan.price_unset ? 'flex-col' : 'items-baseline'}`}>
+                  {plan.price_unset
+                    ? <span className="text-[14px] font-semibold" data-price-unset style={{ color: TONE.amber.fg }}>Set a price — members do not see it yet</span>
+                    : <span className="text-[24px] leading-none font-bold text-white tabular-nums">₱{plan.price.toLocaleString()}</span>}
+                  <span className="text-[12.5px]" style={{ color: MUTED }}>/ {durationLabel(plan.duration_days)}</span>
+                </div>
+                {features.length > 0 && (
+                  <p className="text-[12.5px] truncate flex items-center gap-1.5" style={{ color: SECOND }} data-tip={features.join(' — ')}>
+                    <Check size={13} className="flex-none" style={{ color: TONE.amber.fg }} />
+                    {features[0]}{features.length > 1 ? ` +${features.length - 1} more` : ''}
+                  </p>
+                )}
+                <div className="mt-auto pt-2 flex items-center gap-3 text-[12.5px]" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ color: MUTED }}><b className="text-white">{activeMembers}</b> active</span>
+                  {/* Only when they differ: a lapsed or pending membership still holds the plan. */}
+                  {totalOnPlan > activeMembers && <span style={{ color: '#C4B5FD' }}><b>{totalOnPlan}</b> any status</span>}
+                  <span className="ml-auto font-semibold tabular-nums" style={{ color: TONE.amber.fg }}>₱{(plan.price * activeMembers).toLocaleString()}</span>
+                </div>
+              </RdCard>
+            );
+          })}
         </div>
       )}
 
-      {/* The catalogue.
-
-          It was `grid-cols-2`, so the gym's three plans drew two 800px cards
-          and one orphan. Three plans is three cards; `CardGrid` gives them a
-          column each and leaves the rest of the row alone. The card is now the
-          button — clicking it edits, which is what the pencil icon did. */}
-      <Section title="The catalogue" icon={CreditCard} count={plans.length}>
-        {plans.length === 0 ? (
-          <EmptyState
-            icon={CreditCard}
-            title="No plans yet"
-            hint="Nothing can be sold, and nobody can be approved onto a free tier, until one exists."
-            action={<Button variant="secondary" size="sm" onClick={openAdd}><Plus size={14} /> Create the first plan</Button>}
-          />
-        ) : (
-          <CardGrid min={280}>
-            {plans.map((plan) => {
-              const features = (plan.description ?? '').split('\n').filter((l) => l.trim().length > 0);
-              const activeMembers = activeMembersByPlan[plan.id] ?? 0;
-              const totalOnPlan = totalMembersByPlan[plan.id] ?? 0;
-              return (
-                <TileCard key={plan.id} dim={!plan.is_active}
-                  onClick={() => openEdit(plan)} title={`Edit ${plan.name}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="text-[13px] font-bold text-white truncate">{plan.name}</h3>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase"
-                          style={getTierStyle(plan.tier)}>
-                          {plan.tier}
-                        </span>
-                        {!plan.is_active && (
-                          <Badge variant="Inactive" className="!text-[9px] !px-1.5 !py-0">Retired</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <OpenChevron />
-                  </div>
-
-                  <div className="flex items-baseline gap-1 mt-2.5">
-                    {plan.price_unset
-                      ? <span className="text-sm font-semibold" data-price-unset style={{ color: 'var(--color-secondary)' }}>Set a price — members do not see it yet</span>
-                      : <span className="text-xl font-bold text-white tabular-nums">₱{plan.price}</span>}
-                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                      / {durationLabel(plan.duration_days)}
-                    </span>
-                  </div>
-
-                  {features.length > 0 && (
-                    <div className="space-y-1 mt-2">
-                      {features.slice(0, 3).map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
-                          <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-                          <span className="flex-1 line-clamp-1">{feature}</span>
-                        </div>
-                      ))}
-                      {features.length > 3 && (
-                        <p className="text-[9px] pl-4" style={{ color: 'var(--color-text-muted)' }}>
-                          +{features.length - 3} more
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-2.5 pt-2.5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                      <span className="font-bold text-white">{activeMembers}</span> active
-                    </span>
-                    {/* Only shown when they differ. "Active Members 0" on a plan
-                        somebody is on is what made deleting it fail with no
-                        explanation — a lapsed or pending membership is still a
-                        real row holding the plan in place. */}
-                    {totalOnPlan > activeMembers && (
-                      <span className="text-[10px]" style={{ color: 'var(--color-primary)' }}>
-                        <span className="font-bold">{totalOnPlan}</span> any status
-                      </span>
-                    )}
-                    <span className="text-[10px] ml-auto font-bold" style={{ color: 'var(--color-secondary)' }}>
-                      ₱{(plan.price * activeMembers).toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-1.5 mt-2.5">
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(plan); }}
-                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      <Edit2 size={11} className="inline mr-1" />Edit
-                    </button>
-                    {/* Deleting is retire_plan() (0062/0063): every membership
-                        moves to the free tier first, so this never raises the
-                        foreign key the screen could only call "failed". */}
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(plan); }}
-                      className="px-2 h-7 rounded-lg text-[10px] font-semibold"
-                      style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                      <Trash2 size={11} className="inline mr-1" />Delete
-                    </button>
-                  </div>
-                </TileCard>
-              );
-            })}
-          </CardGrid>
-        )}
-      </Section>
-
-      {/* What each plan unlocks in the member app (0049). Below the grid rather
-          than inside the edit modal: it is a comparison across plans, and the
-          gym reads it as one table when deciding what a tier is worth. */}
+      {/* What each plan unlocks in the member app (0049) — a comparison across plans, read as one table. */}
       {plans.length > 0 && <PlanFeatureMatrix plans={plans} onPlanChanged={() => void loadData()} />}
 
-      {/* Create/Edit Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 z-50" onClick={() => setShowModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
-                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                onClick={e => e.stopPropagation()}>
-                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <h2 className="text-lg font-bold text-white">{editingPlan ? 'Edit Plan' : 'Create Membership Plan'}</h2>
-                  <button onClick={() => setShowModal(false)} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
-                </div>
-                <div className="p-5 space-y-3 max-h-[500px] overflow-y-auto">
-                  <div>
-                    <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Plan Name *</label>
-                    <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                      placeholder="e.g. Premium Plan"
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Tier *</label>
-                      <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value as PlanTier })}
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        {/* The tier is a label and a set of seeding defaults —
-                            never a rulebook. What a plan actually includes is
-                            the fields below plus the feature matrix, so naming
-                            a plan "Premium" grants nothing on its own. */}
-                        <option value="free">Free</option>
-                        <option value="freemium">Freemium — trial, one per member</option>
-                        <option value="premium">Premium</option>
-                        {/* Pro was retired in 0060 and is no longer offered.
-                            Postgres cannot drop an enum value, so a Pro row can
-                            still exist — and a <select> whose value matches no
-                            option renders as the first one, which would turn
-                            "edit this plan's price" into "silently move it to
-                            Free" on save. Offered only while editing a plan
-                            that is already on it. */}
-                        {form.tier === 'pro' && (
-                          <option value="pro">Pro / VIP (retired)</option>
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Price (₱) *</label>
-                      <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                        placeholder="1200"
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </div>
-                    <div>
-                      <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Duration</label>
-                      <select value={form.durationMonths} onChange={e => setForm({ ...form, durationMonths: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        <option value="1">1 month</option>
-                        <option value="3">3 months</option>
-                        <option value="6">6 months</option>
-                        <option value="12">12 months</option>
-                        {/* Stored as duration_days = NULL (0024). The free tier
-                            used to fake this with 3650 days, which the member
-                            app then counted down from. */}
-                        <option value={NEVER}>Never expires</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>Status</label>
-                    <select value={form.isActive ? 'Active' : 'Inactive'} onChange={e => setForm({ ...form, isActive: e.target.value === 'Active' })}
-                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                  {/* Entitlements — what this plan actually lets a member do.
-                      Enforced by triggers in migration 0017, not just here, so
-                      these switches are the real rules rather than a description. */}
-                  <div className="rounded-xl p-3 space-y-3"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    <div>
-                      <p className="text-xs font-semibold text-white">What this plan includes</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                        Enforced when a member books. Leave a limit blank for unlimited.
-                      </p>
-                    </div>
+      {/* Deleting is retire_plan() (0062/0063): every membership moves to the free tier first. The
+          confirmation says what happens to real people, because "Delete this plan?" does not. */}
+      <ConfirmDialog
+        isOpen={!!toDelete}
+        onClose={() => setToDelete(null)}
+        onConfirm={() => { const p = toDelete; setToDelete(null); if (p) void handleDelete(p); }}
+        title={toDelete ? `Delete ${toDelete.name}` : 'Delete plan'}
+        message={toDelete ? ((totalMembersByPlan[toDelete.id] ?? 0) > 0
+          ? `${totalMembersByPlan[toDelete.id]} membership${totalMembersByPlan[toDelete.id] === 1 ? '' : 's'} will move to the free plan. They keep their dates and status; what changes is what the plan lets them do.`
+          : 'Nobody is on it. It disappears from the catalogue.') : ''}
+        confirmText="Delete"
+        type="danger"
+      />
 
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="text-xs text-white flex-1">Can book group classes</label>
-                      <select value={form.canBookClasses ? 'yes' : 'no'}
-                        onChange={e => setForm({ ...form, canBookClasses: e.target.value === 'yes' })}
-                        className="px-3 py-1.5 rounded-lg text-white text-xs"
-                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                      </select>
-                      <input type="number" min="1" value={form.classesPerWeek}
-                        disabled={!form.canBookClasses}
-                        onChange={e => setForm({ ...form, classesPerWeek: e.target.value })}
-                        placeholder="∞ / week"
-                        className="w-24 px-3 py-1.5 rounded-lg text-white text-xs disabled:opacity-40"
-                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="text-xs text-white flex-1">Can book personal training</label>
-                      <select value={form.canBookPt ? 'yes' : 'no'}
-                        onChange={e => setForm({ ...form, canBookPt: e.target.value === 'yes' })}
-                        className="px-3 py-1.5 rounded-lg text-white text-xs"
-                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                      </select>
-                      <input type="number" min="1" value={form.ptPerMonth}
-                        disabled={!form.canBookPt}
-                        onChange={e => setForm({ ...form, ptPerMonth: e.target.value })}
-                        placeholder="∞ / month"
-                        className="w-24 px-3 py-1.5 rounded-lg text-white text-xs disabled:opacity-40"
-                        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs block mb-2" style={{ color: 'var(--color-text-muted)' }}>Features *</label>
-                    <div className="flex gap-2 mb-2">
-                      <input value={newFeature} onChange={e => setNewFeature(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && addFeature()}
-                        placeholder="Add a feature..."
-                        className="flex-1 px-4 py-2 rounded-xl text-white text-sm"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                      <button onClick={addFeature}
-                        className="px-4 py-2 rounded-xl text-sm font-semibold text-black"
-                        style={{ background: 'var(--color-secondary)' }}>
-                        Add
-                      </button>
-                    </div>
-                    <div className="space-y-1.5">
-                      {featureLines.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg"
-                          style={{ background: 'var(--color-bg)' }}>
-                          <Check size={12} style={{ color: 'var(--color-secondary)' }} />
-                          <span className="flex-1 text-xs text-white">{feature}</span>
-                          <button onClick={() => removeFeature(idx)} style={{ color: 'var(--color-text-muted)' }}>
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <button onClick={() => setShowModal(false)}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm"
-                    style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    Cancel
-                  </button>
-                  <button onClick={handleSave}
-                    className="flex-1 py-2.5 rounded-full font-semibold text-sm text-black"
-                    style={{ background: 'var(--color-secondary)' }}>
-                    {editingPlan ? 'Save Changes' : 'Create Plan'}
-                  </button>
-                </div>
-              </motion.div>
+      {/* Create / edit */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg"
+        title={editingPlan ? 'Edit plan' : 'Create a membership plan'}
+        subtitle="The tier is a label and a starting point — what a plan includes is set below and in the table."
+        footer={<>
+          <RdButton variant="ghost" onClick={() => setShowModal(false)}>Cancel</RdButton>
+          <RdButton variant="primary" onClick={handleSave}>{editingPlan ? 'Save changes' : 'Create plan'}</RdButton>
+        </>}>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)' }}>
+          <div className="space-y-3.5">
+            <RdField label="Plan name">
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Premium Plan" className={RD_INPUT} style={RD_INPUT_STYLE} />
+            </RdField>
+            <div className="grid grid-cols-2 gap-3">
+              <RdField label="Tier">
+                {/* Pro was retired in 0060; offered only while editing a plan already on it — a
+                    <select> whose value matches no option would silently save it as the first one. */}
+                <RdSelect label="Tier" value={form.tier} onChange={(v) => setForm({ ...form, tier: v as PlanTier })} className="w-full">
+                  <option value="free">Free</option>
+                  <option value="freemium">Trial — one per member</option>
+                  <option value="premium">Premium</option>
+                  {form.tier === 'pro' && <option value="pro">Pro / VIP (retired)</option>}
+                </RdSelect>
+              </RdField>
+              <RdField label="Price (₱)">
+                <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="1200" className={RD_INPUT} style={RD_INPUT_STYLE} />
+              </RdField>
             </div>
-          </>
-        )}
-      </AnimatePresence>
+            <div className="grid grid-cols-2 gap-3">
+              <RdField label="Length">
+                {/* Never expires is duration_days = NULL (0024). */}
+                <RdSelect label="Length" value={form.durationMonths} onChange={(v) => setForm({ ...form, durationMonths: v })} className="w-full">
+                  <option value="1">1 month</option>
+                  <option value="3">3 months</option>
+                  <option value="6">6 months</option>
+                  <option value="12">12 months</option>
+                  <option value={NEVER}>Never expires</option>
+                </RdSelect>
+              </RdField>
+              <RdField label="Status">
+                <RdSelect label="Status" value={form.isActive ? 'Active' : 'Inactive'} onChange={(v) => setForm({ ...form, isActive: v === 'Active' })} className="w-full">
+                  <option value="Active">On sale</option>
+                  <option value="Inactive">Retired</option>
+                </RdSelect>
+              </RdField>
+            </div>
+            {/* Entitlements — enforced by triggers in 0017 when a member books, not just shown here. */}
+            <div className="rounded-xl p-3.5 space-y-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div>
+                <p className="text-[14px] font-semibold text-white">Bookings this plan allows</p>
+                <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>Enforced when a member books. Leave a limit blank for unlimited.</p>
+              </div>
+              {([['canBookClasses', 'classesPerWeek', 'Group classes', '∞ a week'], ['canBookPt', 'ptPerMonth', '1-on-1 sessions', '∞ a month']] as const).map(([flag, limit, label, ph]) => (
+                <div key={flag} className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 flex-1 text-[13.5px] text-white cursor-pointer">
+                    <input type="checkbox" className="accent-violet-500" checked={form[flag]} onChange={(e) => setForm({ ...form, [flag]: e.target.checked })} /> {label}
+                  </label>
+                  <input type="number" min="1" value={form[limit]} disabled={!form[flag]} aria-label={`${label} limit`}
+                    onChange={(e) => setForm({ ...form, [limit]: e.target.value })} placeholder={ph}
+                    className="w-28 h-10 px-3 rounded-lg text-[13.5px] text-white disabled:opacity-40 outline-none" style={RD_INPUT_STYLE} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>What members read on the plan</span>
+            <div className="flex gap-2 mb-2">
+              <input value={newFeature} onChange={(e) => setNewFeature(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFeature(); } }}
+                placeholder="e.g. Unlimited gym access" className={RD_INPUT} style={RD_INPUT_STYLE} aria-label="Add a feature line" />
+              <RdButton variant="amber" onClick={addFeature}>Add</RdButton>
+            </div>
+            <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+              {featureLines.length === 0 && <p className="text-[12.5px] py-3" style={{ color: MUTED }}>At least one line is needed — it is what a member sees when choosing.</p>}
+              {featureLines.map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <Check size={14} style={{ color: TONE.amber.fg }} />
+                  <span className="flex-1 text-[13.5px] text-white">{feature}</span>
+                  <button type="button" onClick={() => removeFeature(idx)} aria-label={`Remove ${feature}`} style={{ color: MUTED }}><X size={15} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

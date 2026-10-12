@@ -1,24 +1,24 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   renderSchedulePng, scheduleToCsv, downloadBlob, type ScheduleSlot,
 } from '../utils/exportSchedule';
 import { useBranding } from '../hooks/useBranding';
 import { supabase } from '../lib/supabaseClient';
 import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import Button from '../components/ui/Button';
-import {
-  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, Chips,
-} from '../components/ui/kit';
-import Input from '../components/ui/Input';
+import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Popover from '../components/ui/Popover';
 import TimePicker from '../components/ui/TimePicker';
 import {
-  Plus, X, Trash2, RefreshCw, Dumbbell, RotateCcw,
-  AlertTriangle, CalendarDays, Filter, Clock,
+  RdHeader, RdCard, StatTile, PageTabs, RdSelect, RdButton, Pill, EmptyBlock, Initials, RdField,
+} from '../components/ui/rd';
+import { TONE, RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
+import {
+  Plus, Trash2, RefreshCw, Dumbbell, RotateCcw,
+  AlertTriangle, CalendarDays, CalendarCheck, Clock, Users,
   Image as ImageIcon, FileDown,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { todayKey } from '../utils/dates';
 import {
   listClassTemplates, createClassTemplate, deactivateClassTemplate, updateClassTemplate,
   generateClassInstances, DAY_NAMES, type ClassTemplateRow,
@@ -45,24 +45,17 @@ import type { ClassLevel } from '../types/db';
  * Generation runs on load rather than on a schedule: the free tier has no cron
  * worker, and it's idempotent, so visiting the page keeps the next few weeks
  * populated without any background infrastructure.
+ *
+ * 2026-10-12: the kit's look, fitted to the screen — the board, the sessions
+ * and the hours each scroll in their own box.
  */
 
 const LEVELS: ClassLevel[] = ['all_levels', 'beginner', 'intermediate', 'advanced'];
 const WEEKS_AHEAD = 4;
 
-/** Labelled form row. A bare number box tells nobody what the number means. */
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wide block mb-1"
-        style={{ color: 'var(--color-text-muted)' }}>
-        {label}
-        {hint && <span className="normal-case font-normal tracking-normal opacity-70"> · {hint}</span>}
-      </span>
-      {children}
-    </label>
-  );
-}
+const SECOND = 'var(--color-text-secondary)';
+const MUTED = 'var(--color-text-muted)';
+const LINE = '1px solid rgba(255,255,255,0.06)';
 
 const emptyTemplate = {
   name: '', trainerId: '', level: 'all_levels' as ClassLevel, capacity: '20',
@@ -113,6 +106,8 @@ export default function Schedule() {
   const [toDeleteHours, setToDeleteHours] = useState<TrainerAvailabilityRow | null>(null);
   const [trainerFilter, setTrainerFilter] = useState('all');
   /** The gym's own hours (0013) — what makes an out-of-hours class detectable. */
+  const [clashAnchor, setClashAnchor] = useState<HTMLElement | null>(null);
+  const [clashOpen, setClashOpen] = useState(false);
   const [hours, setHours] = useState<{ open: string | null; close: string | null }>({ open: null, close: null });
 
   // Clashes are derived, never stored — a stored flag goes stale the moment
@@ -308,8 +303,6 @@ export default function Schedule() {
     }
   };
 
-  const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
-
   const visibleTemplates = trainerFilter === 'all'
     ? templates
     : templates.filter((t) => (trainerFilter === 'unassigned' ? t.trainer_id == null : t.trainer_id === trainerFilter));
@@ -355,7 +348,7 @@ export default function Schedule() {
         showToast('Could not draw the timetable image.', 'error');
         return;
       }
-      downloadBlob(blob, `timetable-${new Date().toISOString().slice(0, 10)}.png`);
+      downloadBlob(blob, `timetable-${todayKey()}.png`);
       showToast('Timetable image downloaded.', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Export failed', 'error');
@@ -368,338 +361,220 @@ export default function Schedule() {
       showToast('There are no active classes to export.', 'error');
       return;
     }
-    // \ufeff so Excel opens it as UTF-8. Without it a peso sign or an accented
+    // The BOM (\ufeff) so Excel opens it as UTF-8. Without it a peso sign or an accented
     // trainer name arrives mangled, which is how most "the export is broken"
     // reports start.
     const blob = new Blob(['\ufeff' + scheduleToCsv(slots)], {
       type: 'text/csv;charset=utf-8',
     });
-    downloadBlob(blob, `timetable-${new Date().toISOString().slice(0, 10)}.csv`);
+    downloadBlob(blob, `timetable-${todayKey()}.csv`);
     showToast('Timetable spreadsheet downloaded.', 'success');
   };
 
-  // The timetable tab is exactly the window's height (header 4rem + <main>'s
-  // padding 3rem) so the board fills it; the two list tabs scroll as before.
+  const activeCount = templates.filter((t) => t.active).length;
+  const fullSoon = sessions.filter((s) => s.capacity > 0 && s.booked >= s.capacity).length;
+  const byTrainer = trainers
+    .map((t) => ({ t, rows: availability.filter((a) => a.trainer_id === t.profile.id).sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time)) }))
+    .filter((x) => x.rows.length > 0);
+  const noHours = trainers.filter((t) => !availability.some((a) => a.trainer_id === t.profile.id));
+
+  /*
+    "Refresh" runs the same generate_class_instances the page load runs — the
+    timetable is a weekly *pattern*, members book dated sessions made from it,
+    four weeks ahead. Idempotent; it reports the outcome every time, including
+    "already up to date". PNG and CSV draw from the same data as the board.
+  */
   return (
-    <div className={tab === 'timetable' ? 'h-[calc(100vh-7rem)] flex flex-col gap-4' : 'space-y-4'}>
-      <PageHeader
-        title="Schedule"
-        subtitle="Weekly timetable and trainer working hours"
-        actions={
-          <>
-          {/*
-            What this button is for, and why it says "Refresh" now.
+    <div className="rd-fit" data-schedule>
+      <RdHeader title="Schedule" subtitle="The weekly timetable members book from, and each coach's 1-on-1 hours."
+        actions={<>
+          <RdButton size="sm" variant="ghost" icon={ImageIcon} onClick={handleExportPng} data-tip="Download the week as an image, sized for printing">PNG</RdButton>
+          <RdButton size="sm" variant="ghost" icon={FileDown} onClick={handleExportCsv} data-tip="Download the week as a spreadsheet">CSV</RdButton>
+          <RdButton size="sm" icon={RefreshCw} onClick={() => load(true)} disabled={loading}>Refresh</RdButton>
+          <RdButton size="sm" variant="primary" icon={Plus} onClick={openAdd}>Add class</RdButton>
+        </>} />
 
-            The Class Timetable is a weekly *pattern* — "Yoga, Mondays, 6am".
-            Members cannot book a pattern; they book a dated session. Opening
-            this page calls `generate_class_instances`, which walks four weeks
-            forward and creates the dated sessions each active template is
-            missing. It is idempotent, so it creates only what is absent.
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatTile compact icon={Dumbbell} label="Classes" value={activeCount} sub={`${templates.length - activeCount} retired`} active={tab === 'timetable'} onClick={() => setTab('timetable')} />
+        <StatTile compact icon={CalendarDays} label="Sessions, next 14 days" value={sessions.length} sub={fullSoon ? `${fullSoon} already full` : 'none full yet'} active={tab === 'sessions'} onClick={() => setTab('sessions')} />
+        <StatTile compact icon={Clock} label="Coach hours set" value={availability.length} sub={noHours.length ? `${noHours.length} coach${noHours.length === 1 ? ' has' : 'es have'} none` : 'every coach has hours'} tone={noHours.length ? 'amber' : 'violet'} active={tab === 'hours'} onClick={() => setTab('hours')} />
+        <span ref={setClashAnchor} className="grid">
+          <StatTile compact icon={AlertTriangle} label="Clashes" value={conflicts.length} tone={conflicts.length ? 'amber' : 'violet'}
+            sub={conflicts.length ? 'click to see each one' : 'none — the week is clear'}
+            onClick={conflicts.length ? () => setClashOpen((v) => !v) : undefined} />
+        </span>
+      </div>
 
-            The button ran that same page load. Labelled "Regenerate sessions"
-            it promised a manual action for something that had already happened
-            the moment the screen opened — and because the confirmation banner
-            only appeared when the count was above zero, the ordinary case
-            (nothing to create) looked like a button that did nothing at all.
-
-            It is a refresh, it says so, and it now reports the outcome every
-            time — including "already up to date".
-          */}
-          {/* Two formats, two real uses: a sheet to pin up, and rows to open
-              in Excel. Both draw from the same data as the calendar rather than
-              screenshotting it — see utils/exportSchedule.ts for why. */}
-          <Button variant="ghost" size="sm" onClick={handleExportPng}
-            data-tip="Download the week as an image, sized for printing">
-              <ImageIcon size={14} className="mr-1.5" /> PNG
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleExportCsv}
-            data-tip="Download the week as a spreadsheet">
-              <FileDown size={14} className="mr-1.5" /> CSV
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => load(true)} disabled={loading}>
-              <RefreshCw size={14} className="mr-1.5" /> Refresh
-            </Button>
-            {tab === 'timetable' && (
-              <Button variant="primary" size="sm" onClick={openAdd}>
-                <Plus size={15} className="mr-1" /> Add class
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      {/* The numbers and the two notices share one row. Stacked, they took
-          about 200px above the timetable — enough to push the evening band
-          off the bottom of the board, and the stat tiles only need 600px of
-          the width anyway. */}
-      {!loading && (
-      <div className="flex items-start gap-3 flex-wrap">
-      {/* The four numbers the desk is asked for, sized to the numbers. */}
-        <StatTiles items={[
-          { label: 'Classes', value: templates.filter((t) => t.active).length, icon: Dumbbell },
-          { label: 'Sessions ahead', value: sessions.length, icon: CalendarDays },
-          { label: 'Trainer hours set', value: availability.length, icon: Clock },
-          {
-            label: 'Clashes',
-            value: conflicts.length,
-            icon: AlertTriangle,
-            tone: conflicts.length > 0 ? 'secondary' : 'primary',
-          },
-        ]} />
-
-      <div className="flex-1 min-w-[320px] space-y-2">
-      {/* Says how far ahead members can book, which is the fact the front desk
-          is actually asked. The old banner only appeared when new sessions had
-          just been created, so on a normal visit this said nothing. */}
-        <div className="rounded-xl px-3 py-2 flex items-center justify-between gap-3"
-          style={{ background: 'var(--color-primary-light)' }}>
-          <p className="text-[11px]" style={{ color: 'var(--color-primary)' }}>
-            {templates.filter((t) => t.active).length === 0
-              ? 'No active classes on the timetable, so there is nothing to schedule yet.'
-              : bookableThrough
-                ? <>Members can book through <b>{bookableThrough}</b> — {WEEKS_AHEAD} weeks of sessions are generated from the timetable below.</>
-                : 'Add an active class to the timetable and its sessions are generated automatically.'}
-          </p>
-          {generated !== null && (
-            <span className="text-[10px] font-semibold whitespace-nowrap px-2 py-1 rounded-full"
-              style={{ background: 'var(--color-surface)', color: 'var(--color-primary)' }}>
-              {generated > 0 ? `+${generated} new` : 'Up to date'}
-            </span>
-          )}
-        </div>
-
-      {/* Clashes, stated plainly. Nothing stopped one trainer being booked onto
-          two classes at the same hour, or two classes sharing a room — and both
-          go on to generate real sessions members can book. */}
-      {conflicts.length > 0 && (
-        <div className="rounded-xl px-3 py-2 space-y-0.5"
-          style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
-          <p className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: 'var(--color-secondary)' }}>
-            <AlertTriangle size={12} />
-            {conflicts.length} timetable clash{conflicts.length === 1 ? '' : 'es'}
+      {/* The clashes, stated plainly, one click from the tile that counts them. */}
+      <Popover anchor={clashAnchor} open={clashOpen && conflicts.length > 0} onClose={() => setClashOpen(false)} width={420}>
+        <div className="p-4" data-clashes>
+          <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: TONE.amber.fg }}>
+            <AlertTriangle size={15} /> {conflicts.length} timetable clash{conflicts.length === 1 ? '' : 'es'}
           </p>
           {conflicts.map((c: Conflict, i) => (
-            <p key={`${c.a}-${c.b}-${c.kind}-${i}`} className="text-[10px]" style={{ color: 'var(--color-secondary)' }}>
-              · {c.message}
-            </p>
+            <p key={`${c.a}-${c.b}-${c.kind}-${i}`} className="text-[13px] mt-1.5" style={{ color: 'var(--color-text-primary)' }}>{c.message}</p>
           ))}
+          <p className="text-[12px] mt-2.5" style={{ color: MUTED }}>Clashing classes are amber on the board — click one to change its time, coach or room.</p>
         </div>
-      )}
-      </div>
-      </div>
-      )}
+      </Popover>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Chips
-          value={tab}
-          onChange={(v) => setTab(v as typeof tab)}
-          options={[
-            { value: 'timetable', label: 'Timetable', count: templates.filter((t) => t.active).length },
-            { value: 'sessions', label: 'Upcoming sessions', count: sessions.length },
-            { value: 'hours', label: 'Trainer hours', count: availability.length },
-          ]}
-        />
-
+        <PageTabs<TabId> label="Schedule sections" value={tab} onChange={setTab} tabs={[
+          { key: 'timetable', label: 'Timetable', icon: CalendarDays },
+          { key: 'sessions', label: 'Upcoming sessions', icon: Users },
+          { key: 'hours', label: 'Coach hours', icon: Clock },
+        ]} />
+        {/* How far ahead members can book — the fact the desk is asked. */}
+        {!loading && (
+          <p className="flex-1 min-w-[260px] text-[13px] flex items-center gap-2" style={{ color: SECOND }} data-bookable>
+            <CalendarCheck size={15} style={{ color: '#C4B5FD' }} />
+            {activeCount === 0
+              ? 'No active classes, so nothing to book yet.'
+              : bookableThrough
+                ? <span>Members can book through <b className="text-white">{bookableThrough}</b> — {WEEKS_AHEAD} weeks are made from the timetable{generated ? ` (+${generated} new)` : ''}.</span>
+                : 'Add an active class and its sessions are made automatically.'}
+          </p>
+        )}
         {tab !== 'hours' && (
-          <div className="flex items-center gap-1.5">
-            <Filter size={12} style={{ color: 'var(--color-text-muted)' }} />
-            <select value={trainerFilter} onChange={(e) => setTrainerFilter(e.target.value)}
-              aria-label="Filter by trainer"
-              className="rounded-lg px-3 h-9 text-[11px] text-white"
-              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-              <option value="all">All trainers</option>
-              <option value="unassigned">Unassigned</option>
-              {trainers.map((t) => (
-                <option key={t.profile.id} value={t.profile.id}>
-                  {t.profile.first_name} {t.profile.last_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <RdSelect label="Filter by trainer" value={trainerFilter} onChange={setTrainerFilter} className="w-[220px]">
+            <option value="all">All coaches</option>
+            <option value="unassigned">Unassigned</option>
+            {trainers.map((t) => <option key={t.profile.id} value={t.profile.id}>{t.profile.first_name} {t.profile.last_name}</option>)}
+          </RdSelect>
         )}
       </div>
 
       {loading ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+        <p className="text-[14px]" style={{ color: MUTED }}>Loading…</p>
       ) : tab === 'timetable' ? (
         visibleTemplates.length === 0 ? (
-          <Section title="Class timetable" icon={Dumbbell}>
-            <EmptyState
-              icon={Dumbbell}
-              title={templates.length === 0 ? 'No classes on the timetable' : 'No classes for that trainer'}
-              hint={templates.length === 0
-                ? 'Add one and the dated sessions members book are generated from it automatically.'
-                : 'Clear the filter to see the whole week.'}
-              action={templates.length === 0
-                ? <Button variant="primary" size="sm" onClick={openAdd}><Plus size={14} /> Add class</Button>
-                : undefined}
-            />
-          </Section>
+          <RdCard className="rd-fit-fill">
+            <EmptyBlock icon={Dumbbell}
+              title={templates.length === 0 ? 'No classes on the timetable' : 'No classes for that coach'}
+              body={templates.length === 0 ? 'Add one and the dated sessions members book are made from it automatically.' : 'Clear the filter to see the whole week.'}
+              action={templates.length === 0 ? <RdButton variant="primary" icon={Plus} onClick={openAdd}>Add class</RdButton> : undefined} />
+          </RdCard>
         ) : (
-          /*
-            A week, laid out like a calendar.
-
-            Two shapes have been wrong here. First, one column per day stacked
-            vertically with each day's classes in a `grid-cols-2` — a single
-            class meant a half-width card and an empty half. Then seven columns
-            of stacked cards, which fixed the emptiness but still answered the
-            wrong question: a list per day tells you *what* is on, and a
-            timetable is asked *when*. "Is 6pm free on Wednesday?" needed
-            counting down a column and reading times one by one.
-
-            Then an hour grid, which answered "when" but drew a one-hour class
-            as a 30px sliver in a 5am-11pm grid of empty lines — unreadable
-            without hovering. Now: days across, morning / afternoon / evening
-            down, every class a card you can read, and a free cell says Free.
-            See CalendarWeek.
-          */
-          <CalendarWeek
-            templates={visibleTemplates}
-            flagged={flagged}
-            trainerName={trainerName}
-            onEdit={openEdit}
-            onRetire={setToRetire}
-          />
+          <CalendarWeek templates={visibleTemplates} flagged={flagged} trainerName={trainerName} onEdit={openEdit} onRetire={setToRetire} />
         )
       ) : tab === 'sessions' ? (
-        /* The plan versus what it actually produced. The page used to show only
-           the recurring templates, so "is Saturday's class full?" was a question
-           the front desk could not answer from here at all. */
-        visibleSessions.length === 0 ? (
-          <Section title="Upcoming sessions" icon={CalendarDays}>
-            <EmptyState
-              icon={CalendarDays}
-              title="No sessions in the next 14 days"
-              /* "hit Regenerate sessions" named a button that no longer exists —
-                 it is Refresh now, and it runs on page load anyway. */
-              hint="Add an active class to the timetable; its dated sessions are generated automatically."
-            />
-          </Section>
-        ) : (
-          <div className="space-y-3">
-            {Object.entries(
+        /* The plan versus what it actually produced: is Saturday's class full? */
+        <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-sessions>
+          <div className="rd-fit-scroll">
+            {visibleSessions.length === 0 ? (
+              <EmptyBlock compact icon={CalendarDays} title="No sessions in the next 14 days"
+                body="Add an active class to the timetable; its dated sessions are made automatically." />
+            ) : Object.entries(
               visibleSessions.reduce<Record<string, UpcomingSession[]>>((acc, s) => {
-                const d = new Date(s.startsAt);
-                const label = d.toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long' });
+                const label = new Date(s.startsAt).toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long' });
                 (acc[label] ||= []).push(s);
                 return acc;
-              }, {})
+              }, {}),
             ).map(([label, items]) => (
               <div key={label}>
-                <p className="text-[10px] font-bold uppercase mb-1.5" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-                {/* Was `grid-cols-2`: a day with one session drew an 800px card
-                    and left 800px blank beside it. */}
-                <CardGrid min={270}>
-                  {items.map((s) => {
-                    const full = s.booked >= s.capacity;
-                    const pct = s.capacity > 0 ? Math.min(100, (s.booked / s.capacity) * 100) : 0;
-                    return (
-                      <TileCard key={s.id} accent={full}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-white truncate">{s.name}</p>
-                            <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                              {new Date(s.startsAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                              {' · '}{s.durationMinutes}m · {trainerName(s.trainerId)}
-                              {s.location ? ` · ${s.location}` : ''}
-                            </p>
-                          </div>
-                          <span className="text-[11px] font-bold flex-shrink-0"
-                            style={{ color: full ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
-                            {s.booked}/{s.capacity}
-                            {(waitingByClass.get(s.id) ?? 0) > 0 && (
-                              <span className="block text-[10px] font-semibold" style={{ color: 'var(--color-secondary)' }}>
-                                +{waitingByClass.get(s.id)} waiting
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--color-border)' }}>
-                          <div className="h-full rounded-full"
-                            style={{ width: `${pct}%`, background: full ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
-                        </div>
-                      </TileCard>
-                    );
-                  })}
-                </CardGrid>
+                <p className="px-4 py-2 text-[13px] font-semibold sticky top-0 z-[1]" style={{ color: SECOND, background: 'var(--color-surface)', borderBottom: LINE }}>
+                  {label} <span className="font-normal" style={{ color: MUTED }}>— {items.length} session{items.length === 1 ? '' : 's'}</span>
+                </p>
+                {items.map((s) => {
+                  const full = s.capacity > 0 && s.booked >= s.capacity;
+                  const waiting = waitingByClass.get(s.id) ?? 0;
+                  return (
+                    <div key={s.id} className="flex items-center gap-4 px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} data-session-row>
+                      <span className="w-[86px] text-[14px] font-semibold tabular-nums" style={{ color: '#C4B5FD' }}>
+                        {new Date(s.startsAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[14.5px] font-semibold text-white truncate">{s.name}</span>
+                        <span className="block text-[12.5px] truncate" style={{ color: MUTED }}>
+                          {trainerName(s.trainerId)} — {s.durationMinutes} min{s.location ? ` — ${s.location}` : ''}
+                        </span>
+                      </span>
+                      <span className="w-[180px] hidden md:block">
+                        <span className="block h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                          <span className="block h-full rounded-full" style={{ width: `${s.capacity > 0 ? Math.min(100, (s.booked / s.capacity) * 100) : 0}%`,
+                            background: full ? 'linear-gradient(90deg,#F59E0B,#FBBF24)' : 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                        </span>
+                      </span>
+                      <span className="w-[70px] text-right text-[14px] font-bold tabular-nums" style={{ color: full ? TONE.amber.fg : 'var(--color-text-primary)' }}>{s.booked}/{s.capacity}</span>
+                      <span className="w-[110px] flex justify-end">
+                        {waiting > 0 ? <Pill tone="amber">+{waiting} waiting</Pill> : full ? <Pill tone="amber">Full</Pill> : null}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
-        )
+        </RdCard>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="rd-fit-two" data-hours>
           {/* Add hours */}
-          <div className="rounded-xl p-4 space-y-3" style={panel}>
-            <div>
-              <h2 className="text-sm font-bold text-white">Add Working Hours</h2>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                Personal-training slots are generated from these.
-              </p>
+          <RdCard className="flex flex-col min-h-0 overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: LINE }}>
+              <h2 className="text-[16px] font-semibold text-white">Add working hours</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: SECOND }}>1-on-1 slots members can book are made from these.</p>
             </div>
-            <select value={hoursForm.trainerId} onChange={(e) => setHoursForm({ ...hoursForm, trainerId: e.target.value })}
-              className="w-full rounded-xl px-3 py-2.5 text-white text-xs"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              <option value="">Select trainer…</option>
-              {trainers.map((t) => (
-                <option key={t.profile.id} value={t.profile.id}>
-                  {t.profile.first_name} {t.profile.last_name}
-                </option>
-              ))}
-            </select>
-            <select value={hoursForm.dayOfWeek} onChange={(e) => setHoursForm({ ...hoursForm, dayOfWeek: e.target.value })}
-              aria-label="Day of week"
-              className="w-full rounded-xl px-3 py-2.5 text-white text-xs"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              {DAY_NAMES.map((d, i) => <option key={d} value={i}>{d}</option>)}
-            </select>
-            <div className="grid grid-cols-3 gap-2">
-              <Field label="From">
-                <TimePicker value={hoursForm.start} onChange={(v) => setHoursForm({ ...hoursForm, start: v })} />
-              </Field>
-              <Field label="Until">
-                <TimePicker value={hoursForm.end} onChange={(v) => setHoursForm({ ...hoursForm, end: v })} />
-              </Field>
-              <Field label="Slot (min)">
-                <Input type="number" min="15" step="15" value={hoursForm.slot}
-                  style={{ background: 'var(--color-bg)' }}
-                  onChange={(e) => setHoursForm({ ...hoursForm, slot: e.target.value })} />
-              </Field>
-            </div>
-            <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
-              This window is chopped into slots of that length, and members book one slot at a time.
-            </p>
-            <Button variant="primary" onClick={handleAddHours} disabled={saving}>
-              {saving ? 'Adding…' : 'Add Hours'}
-            </Button>
-          </div>
-
-          {/* Existing hours */}
-          <div className="rounded-xl p-4 space-y-2" style={panel}>
-            <h2 className="text-sm font-bold text-white">Current Hours</h2>
-            {availability.length === 0 ? (
-              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                No working hours set — no PT slots can be offered yet.
-              </p>
-            ) : (
-              <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
-                {availability.map((a) => (
-                  <div key={a.id} className="flex items-center gap-2 p-2.5 rounded-lg"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold text-white truncate">{trainerName(a.trainer_id)}</p>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        {DAY_NAMES[a.day_of_week]} · {clock(a.start_time)}–{clock(a.end_time)} · {a.slot_minutes}m slots
-                      </p>
-                    </div>
-                    <button onClick={() => setToDeleteHours(a)} data-tip="Remove these hours"
-                      style={{ color: 'var(--color-secondary)' }}>
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+            <div className="rd-fit-scroll p-5 space-y-3.5">
+              <RdSelect label="Coach" value={hoursForm.trainerId} onChange={(v) => setHoursForm({ ...hoursForm, trainerId: v })} className="w-full">
+                <option value="">Select a coach…</option>
+                {trainers.map((t) => <option key={t.profile.id} value={t.profile.id}>{t.profile.first_name} {t.profile.last_name}</option>)}
+              </RdSelect>
+              <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Day of week">
+                {DAY_NAMES.map((d, i) => (
+                  <button key={d} type="button" onClick={() => setHoursForm({ ...hoursForm, dayOfWeek: String(i) })} aria-pressed={hoursForm.dayOfWeek === String(i)}
+                    className="h-10 px-3.5 rounded-xl text-[13.5px] font-semibold"
+                    style={hoursForm.dayOfWeek === String(i) ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
+                      : { color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}>{d.slice(0, 3)}</button>
                 ))}
               </div>
-            )}
-          </div>
+              <div className="grid grid-cols-3 gap-3">
+                <RdField label="From"><TimePicker value={hoursForm.start} onChange={(v) => setHoursForm({ ...hoursForm, start: v })} /></RdField>
+                <RdField label="Until"><TimePicker value={hoursForm.end} onChange={(v) => setHoursForm({ ...hoursForm, end: v })} /></RdField>
+                <RdField label="Slot (minutes)">
+                  <input type="number" min="15" step="15" value={hoursForm.slot} onChange={(e) => setHoursForm({ ...hoursForm, slot: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
+                </RdField>
+              </div>
+              <p className="text-[12.5px]" style={{ color: MUTED }}>This window is cut into slots of that length, and members book one slot at a time.</p>
+              <RdButton variant="primary" icon={Plus} onClick={handleAddHours} disabled={saving}>{saving ? 'Adding…' : 'Add hours'}</RdButton>
+              {noHours.length > 0 && (
+                <p className="text-[12.5px] rounded-xl px-3 py-2.5" style={{ color: TONE.amber.fg, background: TONE.amber.bg, border: `1px solid ${TONE.amber.line}` }}>
+                  No hours yet, so no 1-on-1 can be booked with: {noHours.map((t) => `${t.profile.first_name} ${t.profile.last_name}`).join(', ')}.
+                </p>
+              )}
+            </div>
+          </RdCard>
+
+          {/* Existing hours, grouped by coach: one glance answers "when is Rae free?" */}
+          <RdCard className="flex flex-col min-h-0 overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: LINE }}>
+              <h2 className="text-[16px] font-semibold text-white">Current hours</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: SECOND }}>{availability.length} window{availability.length === 1 ? '' : 's'} across {byTrainer.length} coach{byTrainer.length === 1 ? '' : 'es'}</p>
+            </div>
+            <div className="rd-fit-scroll p-4 space-y-3">
+              {byTrainer.length === 0 ? (
+                <EmptyBlock compact icon={Clock} title="No working hours set" body="No 1-on-1 slots can be offered yet." />
+              ) : byTrainer.map(({ t, rows }) => (
+                <div key={t.profile.id} className="rounded-xl p-3" style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <Initials name={`${t.profile.first_name} ${t.profile.last_name}`} photo={t.profile.photo_url} size={30} />
+                    <p className="text-[14.5px] font-semibold text-white flex-1 truncate">{t.profile.first_name} {t.profile.last_name}</p>
+                    <span className="text-[12px]" style={{ color: MUTED }}>{rows.length} window{rows.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {rows.map((a) => (
+                      <div key={a.id} className="flex items-center gap-3 px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.025)' }}>
+                        <span className="w-12 text-[13px] font-semibold" style={{ color: '#C4B5FD' }}>{DAY_NAMES[a.day_of_week].slice(0, 3)}</span>
+                        <span className="flex-1 text-[13.5px] text-white tabular-nums">{clock(a.start_time)} – {clock(a.end_time)}</span>
+                        <span className="text-[12px]" style={{ color: MUTED }}>{a.slot_minutes}-min slots</span>
+                        <button type="button" onClick={() => setToDeleteHours(a)} data-tip="Remove these hours" aria-label={`Remove ${DAY_NAMES[a.day_of_week]} ${clock(a.start_time)} hours`}
+                          className="w-8 h-8 rounded-lg grid place-items-center hover:bg-white/[0.06]" style={{ color: TONE.amber.fg }}><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </RdCard>
         </div>
       )}
 
@@ -707,11 +582,11 @@ export default function Schedule() {
         isOpen={!!toRetire}
         onClose={() => setToRetire(null)}
         onConfirm={handleRetire}
-        title={toRetire?.active ? 'Retire Class' : 'Reactivate Class'}
+        title={toRetire?.active ? 'Retire class' : 'Reactivate class'}
         message={
           toRetire?.active
-            ? `Retire "${toRetire?.name}"? It stops generating new sessions, but every session already scheduled from it stays exactly as it is — including anyone who has booked. Reversible at any time.`
-            : `Put "${toRetire?.name}" back on the timetable? It starts generating sessions again from the next regeneration.`
+            ? `Retire "${toRetire?.name}"? It stops making new sessions, but every session already scheduled from it stays exactly as it is — including anyone who has booked. Reversible at any time.`
+            : `Put "${toRetire?.name}" back on the timetable? It starts making sessions again from the next refresh.`
         }
         confirmText={toRetire?.active ? 'Retire' : 'Reactivate'}
         type={toRetire?.active ? 'warning' : 'info'}
@@ -721,7 +596,7 @@ export default function Schedule() {
         isOpen={!!toDeleteHours}
         onClose={() => setToDeleteHours(null)}
         onConfirm={handleDeleteHours}
-        title="Remove Working Hours"
+        title="Remove working hours"
         message={
           toDeleteHours
             ? `Remove ${trainerName(toDeleteHours.trainer_id)}'s ${DAY_NAMES[toDeleteHours.day_of_week]} ${clock(toDeleteHours.start_time)}–${clock(toDeleteHours.end_time)}? No new 1-on-1 slots will be offered in that window. Sessions already booked in it are not cancelled — handle those at the desk.`
@@ -731,105 +606,57 @@ export default function Schedule() {
         type="danger"
       />
 
-      {/* Add / edit class template modal */}
-      {createPortal(
-        <AnimatePresence>
-          {showTemplateModal && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setShowTemplateModal(false)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200]" />
-              <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="w-full max-w-md rounded-2xl overflow-hidden"
-                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                  onClick={(e) => e.stopPropagation()}>
-                  <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                      <h2 className="text-base font-bold text-white">{editingTemplate ? 'Edit Class' : 'Add Class'}</h2>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        {editingTemplate
-                          ? 'Changes apply to sessions generated from now on.'
-                          : 'Repeats weekly. Sessions are generated automatically.'}
-                      </p>
-                    </div>
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white">
-                      <X size={20} />
-                    </button>
-                  </div>
-                  {/* Every field carries a visible label. Placeholders alone don't
-                      work here: each numeric field ships with a sensible default,
-                      and a placeholder only renders while the input is empty — so
-                      "Capacity" and "Minutes" were never once shown to anyone. */}
-                  <div className="p-5 space-y-3 max-h-[65vh] overflow-y-auto">
-                    <Field label="Class name">
-                      <Input type="text" value={templateForm.name} placeholder="e.g. Morning HIIT"
-                        onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })} />
-                    </Field>
-                    <Field label="Trainer">
-                      <select value={templateForm.trainerId}
-                        onChange={(e) => setTemplateForm({ ...templateForm, trainerId: e.target.value })}
-                        className="w-full rounded-xl px-3 py-2.5 text-white text-sm"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        <option value="">Unassigned</option>
-                        {trainers.map((t) => (
-                          <option key={t.profile.id} value={t.profile.id}>
-                            {t.profile.first_name} {t.profile.last_name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Repeats every">
-                        <select value={templateForm.dayOfWeek}
-                          onChange={(e) => setTemplateForm({ ...templateForm, dayOfWeek: e.target.value })}
-                          className="w-full rounded-xl px-3 py-2.5 text-white text-sm"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                          {DAY_NAMES.map((d, i) => <option key={d} value={i}>{d}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Start time">
-                        <TimePicker value={templateForm.startTime}
-                          onChange={(v) => setTemplateForm({ ...templateForm, startTime: v })} />
-                      </Field>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Capacity" hint="Max members per session">
-                        <Input type="number" min="1" value={templateForm.capacity}
-                          onChange={(e) => setTemplateForm({ ...templateForm, capacity: e.target.value })} />
-                      </Field>
-                      <Field label="Duration" hint="Minutes">
-                        <Input type="number" min="15" step="15" value={templateForm.duration}
-                          onChange={(e) => setTemplateForm({ ...templateForm, duration: e.target.value })} />
-                      </Field>
-                    </div>
-                    <Field label="Level" hint="Members see a “For you” badge on a match">
-                      <select value={templateForm.level}
-                        onChange={(e) => setTemplateForm({ ...templateForm, level: e.target.value as ClassLevel })}
-                        className="w-full rounded-xl px-3 py-2.5 text-white text-sm capitalize"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        {LEVELS.map((l) => <option key={l} value={l}>{l.replace('_', ' ')}</option>)}
-                      </select>
-                    </Field>
-                    <Field label="Location">
-                      <Input type="text" value={templateForm.location} placeholder="e.g. Studio A"
-                        onChange={(e) => setTemplateForm({ ...templateForm, location: e.target.value })} />
-                    </Field>
-                  </div>
-                  <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <Button variant="ghost" className="flex-1" onClick={() => setShowTemplateModal(false)}>Cancel</Button>
-                    <Button variant="primary" className="flex-1" onClick={handleSaveTemplate} disabled={saving}>
-                      {saving ? 'Saving…' : editingTemplate ? 'Save Changes' : 'Add Class'}
-                    </Button>
-                  </div>
-                </motion.div>
-              </div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+      {/* Add / edit a class. Every field carries a visible label: each numeric field ships
+          with a default, and a placeholder only shows while the box is empty. */}
+      <Modal isOpen={showTemplateModal} onClose={() => setShowTemplateModal(false)} size="md"
+        title={editingTemplate ? 'Edit class' : 'Add class'}
+        subtitle={editingTemplate ? 'Changes apply to sessions made from now on.' : 'Repeats weekly. Sessions are made automatically.'}
+        footer={<>
+          <RdButton variant="ghost" onClick={() => setShowTemplateModal(false)}>Cancel</RdButton>
+          <RdButton variant="primary" onClick={handleSaveTemplate} disabled={saving}>{saving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Add class'}</RdButton>
+        </>}>
+        <div className="space-y-3.5">
+          <RdField label="Class name">
+            <input type="text" value={templateForm.name} placeholder="e.g. Morning HIIT" onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
+          </RdField>
+          <RdField label="Coach">
+            <RdSelect label="Coach" value={templateForm.trainerId} onChange={(v) => setTemplateForm({ ...templateForm, trainerId: v })} className="w-full">
+              <option value="">Unassigned</option>
+              {trainers.map((t) => <option key={t.profile.id} value={t.profile.id}>{t.profile.first_name} {t.profile.last_name}</option>)}
+            </RdSelect>
+          </RdField>
+          <div>
+            <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>Repeats every</span>
+            <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Repeats every">
+              {DAY_NAMES.map((d, i) => (
+                <button key={d} type="button" onClick={() => setTemplateForm({ ...templateForm, dayOfWeek: String(i) })} aria-pressed={templateForm.dayOfWeek === String(i)}
+                  className="h-10 px-3 rounded-xl text-[13.5px] font-semibold"
+                  style={templateForm.dayOfWeek === String(i) ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
+                    : { color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}>{d.slice(0, 3)}</button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <RdField label="Start time"><TimePicker value={templateForm.startTime} onChange={(v) => setTemplateForm({ ...templateForm, startTime: v })} /></RdField>
+            <RdField label="Minutes">
+              <input type="number" min="15" step="15" value={templateForm.duration} onChange={(e) => setTemplateForm({ ...templateForm, duration: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
+            </RdField>
+            <RdField label="Capacity">
+              <input type="number" min="1" value={templateForm.capacity} onChange={(e) => setTemplateForm({ ...templateForm, capacity: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
+            </RdField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <RdField label="Level" hint="Members see a “For you” badge on a match">
+              <RdSelect label="Level" value={templateForm.level} onChange={(v) => setTemplateForm({ ...templateForm, level: v as ClassLevel })} className="w-full">
+                {LEVELS.map((l) => <option key={l} value={l}>{l === 'all_levels' ? 'All levels' : l[0].toUpperCase() + l.slice(1)}</option>)}
+              </RdSelect>
+            </RdField>
+            <RdField label="Room">
+              <input type="text" value={templateForm.location} placeholder="e.g. Studio A" onChange={(e) => setTemplateForm({ ...templateForm, location: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
+            </RdField>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -845,20 +672,12 @@ function minutesOfDay(t: string): number {
  *
  * Third shape, and the reasons the first two failed are why this one looks the
  * way it does. A plain list per day said *what* was on but not *when* things
- * were free. The hour grid that replaced it answered "when" — and drew a 5am to
- * 11pm grid in which a one-hour class was a 30px sliver holding 10px text, most
- * of the screen empty lines, and nothing readable without hovering.
- *
- * So the week is split into three bands everyone already thinks in — morning,
- * afternoon, evening — and every class is a card big enough to read at a
- * glance: its time range, name, coach, level, room and size. "Is Wednesday
- * evening free?" is one cell, and it says **Free** when it is. Bands get room
- * in proportion to how busy they are, so a quiet afternoon does not take the
- * same height as a packed evening, and the board fills the panel it is given.
- *
- * Clashes stay loud: an amber card with a "Clash" chip, the same classes the
- * banner above lists. Retired classes stay visible, dimmed, so restoring one is
- * a click here rather than a hunt.
+ * were free. The hour grid that replaced it drew a one-hour class as a 30px
+ * sliver. So the week is split into three bands everyone already thinks in —
+ * morning, afternoon, evening — and every class is a card big enough to read at
+ * a glance. "Is Wednesday evening free?" is one cell, and it says **Free**.
+ * Bands get room in proportion to how busy they are. Clashes stay loud: an amber
+ * card with a "Clash" chip. Retired classes stay visible, dimmed.
  */
 const BANDS = [
   { id: 'morning',   label: 'Morning',   range: 'before 12 PM', from: 0,       to: 12 * 60 },
@@ -886,58 +705,38 @@ function ClassCard({ t, clashing, trainer, onEdit, onRetire }: {
   onEdit: () => void;
   onRetire: () => void;
 }) {
-  const accent = !t.active ? 'var(--color-border)' : clashing ? 'var(--color-secondary)' : 'var(--color-primary)';
-  const chip = 'text-[9px] font-semibold px-1.5 rounded leading-4';
-  // One muted line rather than a row of chips: chips wrapped to two rows on a
-  // 200px column and made every card twice the height it needed to be, so the
-  // evening band fell off the bottom of the board.
+  const tone = !t.active ? TONE.gray : clashing ? TONE.amber : TONE.violet;
   const meta = [
     t.level !== 'all_levels' ? t.level[0].toUpperCase() + t.level.slice(1) : null,
     `${t.duration_minutes} min`,
     `${t.capacity} spots`,
     t.location,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' — ');
   return (
     // A div, not a <button>: a button centres its content, and this card is
     // left-aligned text with a button of its own inside it.
     <div role="button" tabIndex={0} onClick={onEdit}
       onKeyDown={(e) => { if (e.key === 'Enter') onEdit(); }}
-      data-tip={`Edit ${t.name} — ${trainer} · ${meta}`}
-      className="rounded-lg px-2 py-1.5 cursor-pointer transition-colors"
-      style={{
-        background: !t.active ? 'var(--color-surface-high)'
-          : clashing ? 'var(--color-secondary-light)' : 'var(--color-primary-light)',
-        borderLeft: `3px solid ${accent}`,
-        opacity: t.active ? 1 : 0.6,
-      }}>
+      data-tip={`Edit ${t.name} — ${trainer} — ${meta}`}
+      className="rounded-xl px-2.5 py-2 cursor-pointer transition-all hover:brightness-125"
+      style={{ background: tone.bg, borderLeft: `3px solid ${tone.dot}`, opacity: t.active ? 1 : 0.6 }}>
       <div className="flex items-start justify-between gap-1">
-        {/* The flags ride on the time line, which never truncates — on the
-            name line a long class name would push them out of sight. */}
-        <p className="text-[11px] font-bold tabular-nums leading-tight flex items-center gap-1.5 flex-wrap"
-          style={{ color: clashing ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
+        {/* The flags ride on the time line, which never truncates. */}
+        <p className="text-[12px] font-bold tabular-nums leading-tight flex items-center gap-1.5 flex-wrap" style={{ color: tone.fg }}>
           {timeRange(t.start_time, t.duration_minutes)}
-          {clashing && (
-            <span className={chip} style={{ background: 'var(--color-secondary)', color: '#000' }}>Clash</span>
-          )}
-          {!t.active && (
-            <span className={chip} style={{ background: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>Retired</span>
-          )}
+          {clashing && <span className="text-[10.5px] font-semibold px-1.5 rounded leading-4" style={{ background: '#F59E0B', color: '#1A1205' }}>Clash</span>}
+          {!t.active && <span className="text-[10.5px] font-semibold px-1.5 rounded leading-4" style={{ background: 'rgba(255,255,255,0.12)', color: SECOND }}>Retired</span>}
         </p>
-        {/* Always visible: hover-only actions have to be discovered first. */}
-        <button onClick={(e) => { e.stopPropagation(); onRetire(); }}
+        <button type="button" onClick={(e) => { e.stopPropagation(); onRetire(); }}
           data-tip={t.active ? 'Retire this class' : 'Put this class back on the timetable'}
           aria-label={t.active ? `Retire ${t.name}` : `Restore ${t.name}`}
-          className="w-5 h-5 -mt-0.5 -mr-0.5 rounded flex items-center justify-center flex-shrink-0"
-          style={{ color: 'var(--color-text-muted)' }}>
-          {t.active ? <Trash2 size={11} /> : <RotateCcw size={11} />}
+          className="w-6 h-6 -mt-0.5 -mr-0.5 rounded-md grid place-items-center flex-shrink-0 hover:bg-white/10" style={{ color: MUTED }}>
+          {t.active ? <Trash2 size={12} /> : <RotateCcw size={12} />}
         </button>
       </div>
-      <p className="text-[12px] font-semibold text-white leading-snug truncate">{t.name}</p>
-      {/* Coach and length only; level, size and room are in the hover tip and
-          one click away in the editor. Three lines keep a busy band's cards
-          short enough for all three bands to fit on a laptop screen. */}
-      <p className="text-[10px] truncate leading-snug" style={{ color: 'var(--color-text-secondary)' }}>
-        {trainer}<span style={{ color: 'var(--color-text-muted)' }}> · {t.duration_minutes} min</span>
+      <p className="text-[13.5px] font-semibold text-white leading-snug truncate mt-0.5">{t.name}</p>
+      <p className="text-[12px] truncate leading-snug" style={{ color: SECOND }}>
+        {trainer}<span style={{ color: MUTED }}> — {t.capacity} spots</span>
       </p>
     </div>
   );
@@ -950,8 +749,7 @@ function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
   onEdit: (t: ClassTemplateRow) => void;
   onRetire: (t: ClassTemplateRow) => void;
 }) {
-  // Read once, in an initialiser: a clock read during render is impure, and a
-  // tab left open past midnight is fixed by the next visit, not by a timer.
+  // Read once, in an initialiser: a clock read during render is impure.
   const [today] = useState(() => new Date().getDay());
 
   const cell = (dow: number, band: (typeof BANDS)[number]) => templates
@@ -961,67 +759,47 @@ function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
     })
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-  // Each band's share of the height follows its busiest day, so a band with
-  // four classes stacked on a Monday gets the room they need. Never below 0.6,
-  // so a free band still reads as a row and not a crease.
+  // Each band's share of the height follows its busiest day; never below 0.6.
   const weights = BANDS.map((b) => Math.max(0.6, ...DAY_NAMES.map((_, dow) => cell(dow, b).length)));
 
   return (
-    <Section title="Class timetable" icon={CalendarDays}
-      hint="click a class to edit it · empty cells are free time"
-      className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-dark-border">
+    <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill p-3" data-board>
+      <div className="flex-1 min-h-0 overflow-auto" style={{ scrollbarWidth: 'thin' }}>
         <div className="grid gap-1.5 min-w-[1000px] min-h-full"
           style={{
-            gridTemplateColumns: '92px repeat(7, minmax(0, 1fr))',
+            gridTemplateColumns: '96px repeat(7, minmax(0, 1fr))',
             gridTemplateRows: `auto ${weights.map((w) => `minmax(max-content, ${w}fr)`).join(' ')}`,
           }}>
-          {/* Day headings share the grid's own columns, so they cannot drift
-              out of line with the cells below when a scrollbar appears. */}
           <div />
           {DAY_NAMES.map((day, dow) => {
             const n = templates.filter((t) => t.day_of_week === dow).length;
             const isToday = dow === today;
             return (
-              <div key={day} className="text-center rounded-lg py-1.5"
-                style={{
-                  background: isToday ? 'var(--color-primary-light)' : 'transparent',
-                  border: `1px solid ${isToday ? 'var(--color-primary)' : 'transparent'}`,
-                }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide"
-                  style={{ color: isToday ? 'var(--color-primary)' : n > 0 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
+              <div key={day} className="text-center rounded-xl py-2"
+                style={{ background: isToday ? TONE.violet.bg : 'transparent', border: `1px solid ${isToday ? TONE.violet.line : 'transparent'}` }}>
+                <p className="text-[13px] font-semibold" style={{ color: isToday ? '#EDE9FE' : n > 0 ? 'var(--color-text-primary)' : MUTED }}>
                   {day.slice(0, 3)}{isToday && ' · today'}
                 </p>
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  {n === 0 ? 'no classes' : `${n} class${n === 1 ? '' : 'es'}`}
-                </p>
+                <p className="text-[11.5px]" style={{ color: MUTED }}>{n === 0 ? 'no classes' : `${n} class${n === 1 ? '' : 'es'}`}</p>
               </div>
             );
           })}
 
           {BANDS.map((band) => (
             <Fragment key={band.id}>
-              <div className="rounded-lg px-2 py-2 flex flex-col justify-center"
-                style={{ background: 'var(--color-surface-high)' }}>
-                <p className="text-[11px] font-bold text-white">{band.label}</p>
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{band.range}</p>
+              <div className="rounded-xl px-2.5 py-2 flex flex-col justify-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <p className="text-[13px] font-semibold text-white">{band.label}</p>
+                <p className="text-[11.5px]" style={{ color: MUTED }}>{band.range}</p>
               </div>
               {DAY_NAMES.map((day, dow) => {
                 const items = cell(dow, band);
                 return (
-                  <div key={`${band.id}-${day}`} className="rounded-lg p-1.5 space-y-1.5"
-                    style={{
-                      background: dow === today ? 'rgba(124,58,237,0.06)' : 'var(--color-surface)',
-                      border: '1px solid var(--color-border)',
-                    }}>
+                  <div key={`${band.id}-${day}`} className="rounded-xl p-1.5 space-y-1.5"
+                    style={{ background: dow === today ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.012)', border: '1px solid rgba(255,255,255,0.05)' }}>
                     {items.length === 0 ? (
-                      <div className="h-full min-h-[40px] flex items-center justify-center text-[10px]"
-                        style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>
-                        Free
-                      </div>
+                      <div className="h-full min-h-[40px] flex items-center justify-center text-[12px]" style={{ color: MUTED, opacity: 0.6 }}>Free</div>
                     ) : items.map((t) => (
-                      <ClassCard key={t.id} t={t} clashing={flagged.has(t.id)}
-                        trainer={trainerName(t.trainer_id)}
+                      <ClassCard key={t.id} t={t} clashing={flagged.has(t.id)} trainer={trainerName(t.trainer_id)}
                         onEdit={() => onEdit(t)} onRetire={() => onRetire(t)} />
                     ))}
                   </div>
@@ -1031,6 +809,6 @@ function CalendarWeek({ templates, flagged, trainerName, onEdit, onRetire }: {
           ))}
         </div>
       </div>
-    </Section>
+    </RdCard>
   );
 }

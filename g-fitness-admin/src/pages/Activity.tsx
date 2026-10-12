@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  History, Search, Calendar, CreditCard, CheckSquare, IdCard, Users,
-  CalendarDays, Filter, X, ChevronRight, AlertTriangle, Archive,
+  History, Calendar, CreditCard, CheckSquare, IdCard, Users,
+  CalendarDays, X, ChevronRight, AlertTriangle, Archive,
   ShoppingBag, Dumbbell, Trophy, BadgeCheck,
 } from 'lucide-react';
-import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
-import Pagination from '../components/ui/Pagination';
-import { PageSummary } from '../components/ui/kit';
+import {
+  RdHeader, RdCard, RdSelect, RdButton, SearchField, TableFooter, EmptyBlock, FitBody, IconTile,
+} from '../components/ui/rd';
+import { TONE } from '../components/ui/rdTokens';
 import { showErrorToast } from '../utils/toast';
 import { dateKey, addDays } from '../utils/dates';
 import {
@@ -28,15 +28,13 @@ import type { ActivityFeedRow, UserRole } from '../types/db';
  *
  * Admin only, deliberately. Front-desk staff cannot see this page or the table
  * behind it: the point of the log is that the owner can review a shift.
+ *
+ * 2026-10-12: the kit's look — the filters in a rail, the entries in a box that
+ * pages by what fits, the pager pinned under it.
  */
 
 const SURFACE        = 'var(--color-surface)';
-const SURFACE_RAISED = 'var(--color-surface-raised)';
-const BORDER         = 'var(--color-border)';
-const PRIMARY        = 'var(--color-primary)';
-const PRIMARY_LIGHT  = 'var(--color-primary-light)';
-const SECONDARY      = 'var(--color-secondary)';
-const SECONDARY_BG   = 'var(--color-secondary-light)';
+const LINE           = 'rgba(255,255,255,0.06)';
 const TEXT_SECOND    = 'var(--color-text-secondary)';
 const TEXT_MUTED     = 'var(--color-text-muted)';
 
@@ -279,212 +277,116 @@ export default function Activity() {
     setGroup(null); setRole(null); setActorId(''); setSearch(''); setLiveOnly(false);
   };
 
-  const chip = (active: boolean): React.CSSProperties => ({
-    background: active ? PRIMARY : SURFACE_RAISED,
-    border: `1px solid ${active ? PRIMARY : BORDER}`,
-    color: active ? '#FFFFFF' : TEXT_SECOND,
+  /** One rail filter: a full-width row, violet when on. */
+  const railBtn = (on: boolean): React.CSSProperties => ({
+    background: on ? TONE.violet.bg : 'transparent',
+    border: `1px solid ${on ? TONE.violet.line : 'transparent'}`,
+    color: on ? '#EDE9FE' : TEXT_SECOND,
   });
 
-  // Exactly the window's height (header 4rem + <main>'s padding 3rem): the
-  // filters on top, the entries in the middle taking the rest, and the pager
-  // pinned to the bottom edge. <main> already pads the page, so no `p-6` here —
-  // it had been padded twice, which is why this page sat indented.
+  const rail = (
+    <RdCard className="p-3" data-activity-filters>
+      <p className="text-[12.5px] font-semibold px-2 pt-1 pb-2" style={{ color: TEXT_MUTED }}>What happened</p>
+      <div className="flex flex-col gap-0.5">
+        <button type="button" onClick={() => setGroup(null)} className="h-9 px-2.5 rounded-lg text-[13.5px] font-medium flex items-center gap-2.5 text-left" style={railBtn(group === null)}>
+          <History size={15} /> Everything
+        </button>
+        {GROUPS.map((g) => (
+          <button key={g.id} type="button" onClick={() => setGroup(group === g.id ? null : g.id)}
+            className="h-9 px-2.5 rounded-lg text-[13.5px] font-medium flex items-center gap-2.5 text-left" style={railBtn(group === g.id)}>
+            <g.icon size={15} /> {g.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[12.5px] font-semibold px-2 pt-4 pb-2" style={{ color: TEXT_MUTED }}>Who did it</p>
+      <div className="flex flex-col gap-0.5">
+        {ROLE_FILTERS.map((r) => (
+          <button key={r.id} type="button" onClick={() => setRole(role === r.id ? null : r.id)}
+            className="h-9 px-2.5 rounded-lg text-[13.5px] font-medium text-left" style={railBtn(role === r.id)}>
+            {r.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+        <button type="button" onClick={() => setLiveOnly(!liveOnly)} aria-pressed={liveOnly}
+          className="w-full h-9 px-2.5 rounded-lg text-[13.5px] font-medium text-left" style={railBtn(liveOnly)}
+          data-tip="Hide entries reconstructed from data that predates the log">
+          Recorded live only
+        </button>
+      </div>
+    </RdCard>
+  );
+
+  // The filters ride in the rail; the entries take the rest and page by what fits.
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-          <History size={22} style={{ color: PRIMARY }} />
-          Activity log
-        </h1>
-        <p className="text-sm mt-1" style={{ color: TEXT_SECOND }}>
-          Every change to a booking, payment, check-in, membership, account, plan or
-          class — recorded by the database itself, from whichever app it came from.
-        </p>
-      </motion.div>
+    <div className="rd-fit" data-activity>
+      <RdHeader title="Activity log"
+        subtitle="Every change to a booking, payment, check-in, membership, account, plan or class — recorded by the database itself." />
 
       {unavailable ? (
-        <Card>
-          <div className="py-12 text-center">
-            <Archive size={38} className="mx-auto mb-3" style={{ color: TEXT_MUTED }} />
-            <p className="text-sm text-white font-medium">The activity log is not available yet</p>
-            <p className="text-xs mt-2 max-w-md mx-auto" style={{ color: TEXT_SECOND }}>
-              Migration <span className="font-mono">0037_activity_log.sql</span> creates the
-              table and its triggers. Run it in the Supabase SQL editor, then reload this page.
-              Until then nothing is being recorded.
-            </p>
-          </div>
-        </Card>
+        <RdCard className="rd-fit-fill">
+          <EmptyBlock icon={Archive} title="The activity log is not available yet"
+            body={<>Migration <span className="font-mono">0037_activity_log.sql</span> creates the table and its triggers. Run it in the Supabase SQL editor, then reload. Until then nothing is being recorded.</>} />
+        </RdCard>
       ) : (
-        <>
-          <Card>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div
-                  className="flex items-center gap-2 h-9 px-3 rounded-lg flex-1 min-w-[220px]"
-                  style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
-                >
-                  <Search size={14} style={{ color: TEXT_MUTED }} />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search the log — a name, a class, an amount…"
-                    className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[var(--color-text-muted)]"
-                  />
-                  {search && (
-                    <button onClick={() => setSearch('')} style={{ color: TEXT_MUTED }} aria-label="Clear search">
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-
-                <select
-                  value={range}
-                  onChange={(e) => setRange(e.target.value as RangeId)}
-                  className="h-9 px-3 rounded-lg text-sm outline-none"
-                  style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, color: TEXT_SECOND, colorScheme: 'dark' }}
-                >
-                  {RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                </select>
-
-                <select
-                  value={actorId}
-                  onChange={(e) => setActorId(e.target.value)}
-                  className="h-9 px-3 rounded-lg text-sm outline-none max-w-[190px]"
-                  style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, color: TEXT_SECOND, colorScheme: 'dark' }}
-                >
-                  <option value="">Anyone</option>
-                  {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-
-                {filtersActive && (
-                  <button
-                    onClick={clearFilters}
-                    className="h-9 px-3 rounded-lg text-sm flex items-center gap-1.5"
-                    style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}`, color: TEXT_SECOND }}
-                  >
-                    <X size={13} /> Clear
-                  </button>
-                )}
+        <FitBody rail={rail}>
+          <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-activity-list>
+            <div className="flex flex-wrap items-center gap-2.5 px-4 py-3" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="flex-1 min-w-[220px]">
+                <SearchField value={search} onChange={setSearch} placeholder="Search the log — a name, a class, an amount" label="Search the log" />
               </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Filter size={13} style={{ color: TEXT_MUTED }} />
-                <button
-                  onClick={() => setGroup(null)}
-                  className="h-7 px-2.5 rounded-full text-xs font-medium transition-colors"
-                  style={chip(group === null)}
-                >
-                  Everything
-                </button>
-                {GROUPS.map((g) => (
-                  <button
-                    key={g.id}
-                    onClick={() => setGroup(group === g.id ? null : g.id)}
-                    className="h-7 px-2.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
-                    style={chip(group === g.id)}
-                  >
-                    <g.icon size={12} /> {g.label}
-                  </button>
-                ))}
-
-                <span className="w-px h-5 mx-1" style={{ background: BORDER }} />
-
-                {ROLE_FILTERS.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => setRole(role === r.id ? null : r.id)}
-                    className="h-7 px-2.5 rounded-full text-xs font-medium transition-colors"
-                    style={chip(role === r.id)}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-
-                <span className="w-px h-5 mx-1" style={{ background: BORDER }} />
-
-                <button
-                  onClick={() => setLiveOnly(!liveOnly)}
-                  className="h-7 px-2.5 rounded-full text-xs font-medium transition-colors"
-                  style={chip(liveOnly)}
-                  data-tip="Hide entries reconstructed from data that predates the log"
-                >
-                  Recorded live only
-                </button>
-              </div>
+              <RdSelect label="When" value={range} onChange={(v) => setRange(v as RangeId)} className="w-[160px]">
+                {RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              </RdSelect>
+              <RdSelect label="Who" value={actorId} onChange={setActorId} className="w-[190px]">
+                <option value="">Anyone</option>
+                {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </RdSelect>
+              {filtersActive && <RdButton size="sm" variant="ghost" icon={X} onClick={clearFilters}>Clear</RdButton>}
             </div>
-          </Card>
 
-          {/* `display` via style, not a `flex` class: `cn()` inside Card runs
-              tailwind-merge, which has dropped a bare `flex` here before. */}
-          <Card className="flex-1 min-h-0" style={{ display: 'flex', flexDirection: 'column' }}>
-            <p className="text-xs mb-3 flex-shrink-0" style={{ color: TEXT_MUTED }}>
-              {/* `total` is null only if Postgres declined to count. Say so
-                  rather than printing the page size as if it were the total. */}
-              {loading
-                ? 'Loading…'
-                : total === null
-                  ? `Showing ${rows.length}`
-                  : `${total.toLocaleString()} ${total === 1 ? 'entry' : 'entries'}`}
-            </p>
-
-            {/* Measured by `measureList`. Always mounted — loading, empty or
-                full — so the page size is known before the first fetch lands. */}
-            <div ref={measureList} className="flex-1 min-h-0 overflow-y-auto pr-1">
+            {/* Measured by `measureList`. Always mounted — loading, empty or full — so the page
+                size is known before the first fetch lands. */}
+            <div ref={measureList} className="flex-1 min-h-0 overflow-y-auto px-4" style={{ scrollbarWidth: 'thin' }}>
             {loading ? (
-              <div className="space-y-2 py-2">
+              <div className="space-y-2 py-3">
                 {Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-lg animate-pulse" style={{ background: SURFACE_RAISED }} />
+                  <div key={i} className="h-12 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
                 ))}
               </div>
             ) : rows.length === 0 ? (
-              <div className="py-14 text-center">
-                <History size={38} className="mx-auto mb-3" style={{ color: TEXT_MUTED }} />
-                <p className="text-sm" style={{ color: TEXT_SECOND }}>
-                  {filtersActive || range !== 'all'
-                    ? 'Nothing recorded that matches these filters'
-                    : 'Nothing recorded yet'}
-                </p>
-                {(filtersActive || range !== 'all') && (
-                  <button
-                    onClick={() => { clearFilters(); setRange('all'); }}
-                    className="text-xs mt-2.5 font-medium"
-                    style={{ color: PRIMARY }}
-                  >
-                    Show everything
-                  </button>
-                )}
-              </div>
+              <EmptyBlock compact icon={History}
+                title={filtersActive || range !== 'all' ? 'Nothing recorded that matches these filters' : 'Nothing recorded yet'}
+                action={(filtersActive || range !== 'all')
+                  ? <RdButton size="sm" variant="soft" onClick={() => { clearFilters(); setRange('all'); }}>Show everything</RdButton>
+                  : undefined} />
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 pb-2">
                   {days.map((day) => (
                     <div key={day.key}>
-                      <p data-activity-day
-                        className="text-xs font-semibold uppercase tracking-wide pb-2 mb-1 sticky top-0 z-10"
-                        style={{ color: TEXT_MUTED, background: SURFACE, borderBottom: `1px solid ${BORDER}` }}
-                      >
+                      <p data-activity-day className="text-[12.5px] font-semibold py-2 sticky top-0 z-10"
+                        style={{ color: TEXT_SECOND, background: SURFACE, borderBottom: `1px solid ${LINE}` }}>
                         {day.label}
                       </p>
 
                       {day.winback.length > 0 && (
-                        <div data-winback-group className="py-2.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        <div data-winback-group className="py-2.5" style={{ borderBottom: `1px solid ${LINE}` }}>
                           <button type="button" className="flex items-start gap-3 w-full text-left"
                             onClick={() => setOpenWinback(openWinback === day.key ? null : day.key)} aria-expanded={openWinback === day.key}>
-                            <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: PRIMARY_LIGHT }}>
-                              <History size={14} style={{ color: PRIMARY }} />
-                            </span>
+                            <IconTile icon={History} size={32} />
                             <span className="flex-1 min-w-0">
-                              <span className="block text-sm text-white">
+                              <span className="block text-[14px] text-white">
                                 Win-back messages sent to {day.winback.length} {day.winback.length === 1 ? 'member' : 'members'}
                               </span>
-                              <span className="block text-xs mt-1" style={{ color: TEXT_MUTED }}>
-                                Automatic, at most one a member a month · {openWinback === day.key ? 'hide who' : 'show who'}
+                              <span className="block text-[12px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                                Automatic, at most one a member a month — {openWinback === day.key ? 'hide who' : 'show who'}
                               </span>
                             </span>
                           </button>
                           {openWinback === day.key && (
                             <ul className="mt-2 ml-11 space-y-1">
                               {day.winback.map((w) => (
-                                <li key={w.id} className="text-xs" style={{ color: TEXT_SECOND }}>{w.summary}</li>
+                                <li key={w.id} className="text-[12.5px]" style={{ color: TEXT_SECOND }}>{w.summary}</li>
                               ))}
                             </ul>
                           )}
@@ -503,74 +405,36 @@ export default function Activity() {
                             role={href ? 'button' : undefined}
                             tabIndex={href ? 0 : undefined}
                             onKeyDown={(e) => { if (href && e.key === 'Enter') navigate(href); }}
-                            className="flex items-start gap-3 py-2.5 group"
-                            style={{
-                              borderBottom: `1px solid ${BORDER}`,
-                              cursor: href ? 'pointer' : 'default',
-                            }}
+                            className="flex items-center gap-3 py-2.5 px-1 -mx-1 rounded-lg group transition-colors hover:bg-white/[0.02]"
+                            style={{ borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: href ? 'pointer' : 'default' }}
                           >
-                            <span
-                              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                              style={{ background: notable ? SECONDARY_BG : PRIMARY_LIGHT }}
-                            >
-                              {notable
-                                ? <AlertTriangle size={14} style={{ color: SECONDARY }} />
-                                : <Icon size={14} style={{ color: PRIMARY }} />}
-                            </span>
-
+                            <IconTile icon={notable ? AlertTriangle : Icon} tone={notable ? 'amber' : 'violet'} size={32} />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white">{row.summary}</p>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className="text-xs" style={{ color: TEXT_MUTED }}>
-                                  {timeFmt.format(new Date(row.occurred_at))}
-                                </span>
-                                <span className="text-xs" style={{ color: TEXT_MUTED }}>·</span>
-                                <span className="text-xs" style={{ color: TEXT_MUTED }}>
-                                  {verbOf(row.action)}
-                                </span>
-
-                                {/* Actor. Rendered only when known — a
-                                    reconstructed row often has none, and
-                                    "System" would be a guess about who acted. */}
+                              <p className="text-[14px] text-white truncate">{row.summary}</p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[12px]" style={{ color: TEXT_MUTED }}>
+                                <span className="tabular-nums">{timeFmt.format(new Date(row.occurred_at))}</span>
+                                <span>—</span>
+                                <span>{verbOf(row.action)}</span>
+                                {/* Actor, only when known — "System" would be a guess about who acted. */}
                                 {row.actor_name ? (
                                   <span className="flex items-center gap-1.5">
-                                    <span className="text-xs" style={{ color: TEXT_MUTED }}>·</span>
+                                    <span>—</span>
                                     <Avatar name={row.actor_name} photoUrl={row.actor_photo_url} size={16} />
-                                    <span className="text-xs" style={{ color: TEXT_SECOND }}>
+                                    <span style={{ color: TEXT_SECOND }}>
                                       {row.actor_name}
-                                      {row.actor_role && (
-                                        <span style={{ color: TEXT_MUTED }}>
-                                          {' '}({row.actor_role === 'staff' ? 'front desk' : row.actor_role})
-                                        </span>
-                                      )}
+                                      {row.actor_role && <span style={{ color: TEXT_MUTED }}> ({row.actor_role === 'staff' ? 'front desk' : row.actor_role})</span>}
                                     </span>
                                   </span>
-                                ) : row.reconstructed ? null : (
-                                  <>
-                                    <span className="text-xs" style={{ color: TEXT_MUTED }}>·</span>
-                                    <span className="text-xs" style={{ color: TEXT_MUTED }}>actor unknown</span>
-                                  </>
-                                )}
-
+                                ) : row.reconstructed ? null : <><span>—</span><span>actor unknown</span></>}
                                 {row.reconstructed && (
-                                  <span
-                                    className="text-xs px-1.5 py-0.5 rounded"
-                                    style={{ background: SURFACE_RAISED, color: TEXT_MUTED, border: `1px solid ${BORDER}` }}
-                                    data-tip="Reconstructed from timestamps that predate the log. The time is real; the actor was not recorded at the time."
-                                  >
+                                  <span className="px-1.5 rounded" style={{ border: `1px solid ${LINE}` }}
+                                    data-tip="Reconstructed from timestamps that predate the log. The time is real; the actor was not recorded at the time.">
                                     reconstructed
                                   </span>
                                 )}
                               </div>
                             </div>
-
-                            {href && (
-                              <ChevronRight
-                                size={15}
-                                className="flex-shrink-0 mt-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                style={{ color: TEXT_MUTED }}
-                              />
-                            )}
+                            {href && <ChevronRight size={16} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: TEXT_MUTED }} />}
                           </div>
                         );
                       })}
@@ -580,22 +444,17 @@ export default function Activity() {
             )}
             </div>
 
-            {/* The pager, outside the scrolling list, so it is always on
-                screen — it used to sit under forty entries, a long scroll down. */}
-            {!loading && total !== null && total > 0 && (
-              <div className="flex items-center justify-between gap-3 pt-3 mt-3 flex-shrink-0"
-                style={{ borderTop: `1px solid ${BORDER}` }}>
-                <PageSummary page={page} perPage={pageSize} total={total} noun={total === 1 ? 'entry' : 'entries'} />
-                <Pagination
-                  currentPage={page}
-                  totalItems={total}
-                  itemsPerPage={pageSize}
-                  onPageChange={setPage}
-                />
+            {/* The pager, outside the scrolling list, so it is always on screen. `total` is null
+                only if Postgres declined to count — then the page says how many it shows. */}
+            {!loading && total !== null && total > 0 ? (
+              <div style={{ borderTop: `1px solid ${LINE}` }}>
+                <TableFooter page={page} perPage={pageSize} total={total} noun={total === 1 ? 'entry' : 'entries'} onPage={setPage} />
               </div>
-            )}
-          </Card>
-        </>
+            ) : !loading && total === null && rows.length > 0 ? (
+              <p className="text-[13px] px-4 py-3" style={{ color: TEXT_MUTED, borderTop: `1px solid ${LINE}` }}>Showing {rows.length}</p>
+            ) : null}
+          </RdCard>
+        </FitBody>
       )}
     </div>
   );

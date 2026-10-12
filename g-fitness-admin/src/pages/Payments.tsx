@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useFillGrid } from '../hooks/useFillGrid';
-import Button from '../components/ui/Button';
-import Avatar from '../components/ui/Avatar';
-import Pagination from '../components/ui/Pagination';
+import { useFitRows } from '../hooks/useFitRows';
 import RecordPaymentModal, { type RecordPaymentInput } from '../components/ui/RecordPaymentModal';
 import ViewReceiptModal from '../components/ui/ViewReceiptModal';
 import DetailSheet, { SheetRow } from '../components/ui/DetailSheet';
 import {
-  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, OpenChevron,
-  Chips, PageSummary,
-} from '../components/ui/kit';
+  RdHeader, RdCard, StatTile, PageTabs, FilterChips, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter,
+  EmptyBlock, FitBody, Initials,
+} from '../components/ui/rd';
+import { TONE } from '../components/ui/rdTokens';
+import { todayKey } from '../utils/dates';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { Banknote, CheckCircle, XCircle, Clock, Download, Plus, Send } from 'lucide-react';
+import { Banknote, CalendarRange, ChevronRight, Clock, Download, Plus, Receipt as ReceiptIcon, Send } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
 import { listMembers } from '../lib/api/members';
@@ -52,6 +51,16 @@ interface MemberGroup {
   lastPayment: string;
 }
 
+const SECOND = 'var(--color-text-secondary)';
+const MUTED = 'var(--color-text-muted)';
+const LINE = '1px solid rgba(255,255,255,0.06)';
+const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
+
+/**
+ * Payments, 2026-10-12: fits the screen — tiles, Records (by member, or every
+ * payment) paged by what fits, Coming to renew as its own tab, and End of day
+ * in the rail so the drawer is always one glance away.
+ */
 export default function Payments() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,13 +68,12 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  /**
-   * Whole rows of tiles, as many as the window has room for. The column count
-   * follows the width (six on one desktop, five on another) and the row count
-   * follows the height — a fixed two rows left half the screen empty below the
-   * pager. Both are read off the browser's own layout by `useFillGrid`.
-   */
-  const { measure: measureRecords, perPage } = useFillGrid(12);
+  /** Rows that fit the records box — the page never scrolls. */
+  const fit = useFitRows(10);
+  const [tab, setTab] = useState<'records' | 'renew'>('records');
+  const [view, setView] = useState<'members' | 'all'>('members');
+  const [q, setQ] = useState('');
+  const [nowMs] = useState(() => Date.now());
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   // memberId -> the member's current plan, for the Record Payment form
@@ -174,10 +182,6 @@ export default function Payments() {
     }, {})
   );
 
-  // Clamped here rather than corrected in an effect: widening the window can
-  // shrink the page count under whatever page is open.
-  const page = Math.min(currentPage, Math.max(1, Math.ceil(memberGroups.length / perPage)));
-  const paginatedGroups = memberGroups.slice((page - 1) * perPage, page * perPage);
 
 
   const handleRecordPayment = async (data: RecordPaymentInput) => {
@@ -280,213 +284,193 @@ export default function Payments() {
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    if (status === 'completed') return { color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: '1px solid rgba(124,58,237,0.30)' };
-    if (status === 'pending') return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' };
-    return { color: 'var(--color-secondary)', background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' };
-  };
+  const methodWord = (m: string) => (m === 'gcash' ? 'GCash' : m === 'maya' ? 'Maya' : m ? m[0].toUpperCase() + m.slice(1) : '—');
+  const fmtDate = (ymd: string) => new Date(ymd.length === 10 ? `${ymd}T00:00:00` : ymd).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const methodIcon: Record<string, string> = { cash: '💵' };
-
-  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-  const stats = [
-    { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: Banknote, color: 'var(--color-primary)' },
-    { label: 'Completed', value: payments.filter(p => p.status === 'completed').length, icon: CheckCircle, color: 'var(--color-primary)' },
-    { label: 'Pending', value: payments.filter(p => p.status === 'pending').length, icon: Clock, color: 'var(--color-secondary)' },
-    { label: 'Failed', value: payments.filter(p => p.status === 'failed').length, icon: XCircle, color: 'var(--color-secondary)' },
-  ];
+  const completed = payments.filter((p) => p.status === 'completed');
+  const totalRevenue = completed.reduce((s, p) => s + p.amount, 0);
+  const monthKey = todayKey().slice(0, 7);
+  const thisMonth = completed.filter((p) => p.date.slice(0, 7) === monthKey).reduce((s, p) => s + p.amount, 0);
+  const pendingCount = payments.filter((p) => p.status === 'pending').length;
 
   if (loading) {
-    return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading payments…</div>;
+    return <div className="text-sm" style={{ color: MUTED }}>Loading payments…</div>;
   }
 
   const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;
   // Autofill (E4): a renewal starts from how the member paid last time — rows are newest first.
   const lastMethodByMember: Record<string, string> = {};
   for (const p of payments) if (!(p.memberId in lastMethodByMember)) lastMethodByMember[p.memberId] = p.method;
+  const flat = payments.filter((p) => (filterStatus === 'all' || p.status === filterStatus)
+    && (!q.trim() || `${p.memberName} ${p.plan} ${p.invoiceNumber}`.toLowerCase().includes(q.trim().toLowerCase())));
+  const groupsShown = memberGroups.filter((g) => !q.trim() || g.memberName.toLowerCase().includes(q.trim().toLowerCase()));
+  const rowsTotal = view === 'members' ? groupsShown.length : flat.length;
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(rowsTotal / fit.perPage)));
+  const slice = <T,>(list: T[]) => list.slice((page - 1) * fit.perPage, page * fit.perPage);
+  const rowH = rowsTotal > fit.perPage ? fit.rowHeight : undefined;
+  const reqCount = requests?.length ?? 0;
 
-  // Exactly the window's height (header 4rem + <main>'s padding 3rem), so the
-  // records panel runs to the bottom edge and the pager sits there.
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
-      <PageHeader
-        title="Payments"
-        subtitle="Cash taken at the desk, grouped by member"
-        actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => exportPaymentsToCSV(payments)}>
-              <Download size={14} /> Export
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(true)}>
-              <Plus size={15} /> Record payment
-            </Button>
-          </>
-        }
-      />
+    <div className="rd-fit" data-payments>
+      <RdHeader title="Payments" subtitle="Money taken at the desk and online, by member — and the drawer at closing time."
+        actions={<>
+          <RdButton icon={Download} onClick={() => exportPaymentsToCSV(payments)}>Export</RdButton>
+          <RdButton variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>Record payment</RdButton>
+        </>} />
 
-      {/* ── Coming to renew (0091) ── a member tapped "Tell the desk I'm coming".
-          Recording the payment closes the request by itself; the only desk
-          action of its own is Decline. */}
-      {requests && requests.length > 0 && (
-        <Section title="Coming to renew" icon={Send} count={requests.length}
-          hint="closes itself when you record their payment">
-          <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-            {requests.map((r) => {
-              const current = memberMembership[r.memberId];
-              const planChange = current && current.planName !== r.planName;
-              const hours = Math.max(0, Math.round((Date.parse(new Date().toISOString()) - Date.parse(r.createdAt)) / 3_600_000));
-              return (
-                <div key={r.id} className="rounded-xl p-3 flex flex-col gap-2"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid rgba(245,158,11,0.35)' }}>
-                  <div className="flex items-center gap-2.5">
-                    <Avatar name={r.memberName} photoUrl={r.photoUrl} size={34} tone="secondary" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] text-white font-semibold truncate">{r.memberName}</p>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        {hours < 1 ? 'just now' : hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`}
-                        {r.note ? ` · ${r.note}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--color-secondary)' }}>
-                      {r.planPrice > 0 ? `₱${r.planPrice.toLocaleString()}` : 'Free'}
-                    </span>
-                  </div>
-                  {r.paid && (
-                    <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2" data-online-pay
-                      style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
-                      {r.paid.proof && (
-                        <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="See the screenshot"
-                          className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
-                          <img src={r.paid.proof} alt="" className="h-full w-full object-cover" />
-                        </button>
-                      )}
-                      <p className="text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)' }}>
-                        <span className="text-white font-semibold">Paid ₱{r.paid.amount.toLocaleString()} by {r.paid.method}</span>
-                        <br />Ref <span className="font-mono text-white">{r.paid.reference}</span>
-                        {r.paid.paidOn ? ` · ${r.paid.paidOn}` : ''} — check it reached your account, then record it.
-                      </p>
-                    </div>
-                  )}
-                  <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-                    Wants <span className="text-white font-semibold">{r.planName}</span>
-                    {current ? <> · on {current.planName} now</> : ' · no membership yet'}
-                  </p>
-                  {planChange && (
-                    <p className="text-[10px]" style={{ color: 'var(--color-secondary)' }}>
-                      A plan change: switch them to {r.planName} in Members → Membership first, then record the payment.
-                    </p>
-                  )}
-                  <div className="flex gap-1.5">
-                    <Button variant="secondary" size="sm" disabled={!!planChange || !current}
-                      onClick={() => recordForRequest(r)}>
-                      <Banknote size={13} /> Record payment
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setToDecline(r)}>Decline</Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatTile compact icon={Banknote} label="Total collected" value={peso(totalRevenue)} sub={`${completed.length} completed payments`} />
+        <StatTile compact icon={CalendarRange} label="This month" value={peso(thisMonth)} sub="by the day it was paid" />
+        <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Pending" value={pendingCount} sub="waiting to be confirmed"
+          active={filterStatus === 'pending'} onClick={() => { setTab('records'); setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending'); setCurrentPage(1); }} />
+        <StatTile compact icon={Send} tone={reqCount ? 'amber' : 'violet'} label="Coming to renew" value={reqCount} sub="asked in the app"
+          active={tab === 'renew'} onClick={() => setTab('renew')} />
+      </div>
 
-      <StatTiles items={stats.map((s) => ({
-        label: s.label,
-        value: s.value,
-        icon: s.icon,
-        tone: s.color === 'var(--color-secondary)' ? 'secondary' : 'primary',
-      }))} />
+      <FitBody rail={<>
+        {/* The drawer at closing time (0095). Re-reads whenever payments change. */}
+        <CashCloseout refreshKey={payments} />
+      </>}>
+        <div className="flex items-center gap-3 flex-wrap">
+          <PageTabs<'records' | 'renew'> label="Payments sections" value={tab} onChange={setTab} tabs={[
+            { key: 'records', label: 'Records', icon: Banknote },
+            { key: 'renew', label: 'Coming to renew', icon: Send, count: reqCount },
+          ]} />
+        </div>
 
-      {/* The drawer at closing time (0095). Re-reads whenever payments change,
-          so a payment recorded just now is in "should be in the drawer". */}
-      <CashCloseout refreshKey={payments} />
-
-      {/* The member list.
-
-          Clicking a member used to unfold an eight-column table *inside* the
-          list, pushing every member below it down the page — and the table was
-          wider than the space it had, so Invoice and Actions fought for room.
-          The row now opens a sheet: the list stays where it is, and the columns
-          become labelled lines with space to breathe. */}
-      <Section
-        title="Payment records" icon={Banknote} count={memberGroups.length}
-        hint="click a member to see their receipts"
-        className="flex-1 min-h-0 flex flex-col"
-        actions={
-          <Chips
-            value={filterStatus}
-            // Back to page one with the filter — in the handler, not an effect.
-            onChange={(v) => { setFilterStatus(v); setCurrentPage(1); }}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'completed', label: 'Completed', count: payments.filter((p) => p.status === 'completed').length },
-              { value: 'pending', label: 'Pending', count: payments.filter((p) => p.status === 'pending').length },
-              { value: 'failed', label: 'Failed', count: payments.filter((p) => p.status === 'failed').length },
-            ]}
-          />
-        }
-      >
-        {memberGroups.length === 0 ? (
-          <EmptyState
-            icon={Banknote}
-            title={filterStatus === 'all' ? 'No payments recorded' : `No ${filterStatus} payments`}
-            hint={filterStatus === 'all'
-              ? 'Every peso taken at the desk is recorded here.'
-              : 'Try another filter — the money is still on the All tab.'}
-            action={filterStatus === 'all'
-              ? <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(true)}><Plus size={14} /> Record one</Button>
-              : undefined}
-          />
+        {tab === 'records' ? (
+          <RdCard className="overflow-hidden rd-fit-fill" data-records>
+            <div className="flex items-center gap-2.5 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>
+              <FilterChips<'all' | 'completed' | 'pending' | 'failed'> compact value={filterStatus}
+                onChange={(v) => { setFilterStatus(v); setCurrentPage(1); }} items={[
+                  { key: 'all', label: 'All', count: payments.length },
+                  { key: 'completed', label: 'Completed', count: completed.length },
+                  { key: 'pending', label: 'Pending', count: pendingCount, tone: pendingCount ? 'amber' : undefined },
+                  { key: 'failed', label: 'Failed', count: payments.filter((p) => p.status === 'failed').length },
+                ]} />
+              <div className="flex-1 min-w-[180px]"><SearchField value={q} onChange={(v) => { setQ(v); setCurrentPage(1); }} placeholder="Member, plan or invoice" /></div>
+              <RdSelect label="Show" value={view} onChange={(v) => { setView(v as 'members' | 'all'); setCurrentPage(1); }} className="w-[170px]">
+                <option value="members">By member</option>
+                <option value="all">Every payment</option>
+              </RdSelect>
+            </div>
+            {view === 'members' ? (
+              <RdTable boxRef={fit.ref} head={['Member', 'Payments', 'Total paid', 'Last paid', { label: '', align: 'right' }]}
+                empty={groupsShown.length === 0 ? (
+                  <EmptyBlock compact icon={Banknote} title={filterStatus === 'all' ? 'No payments recorded' : `No ${filterStatus} payments`}
+                    body={filterStatus === 'all' ? 'Every peso taken at the desk is recorded here.' : 'Try another filter — the money is still under All.'}
+                    action={filterStatus === 'all' ? <RdButton variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>Record one</RdButton> : undefined} />
+                ) : undefined}>
+                {slice(groupsShown).map((group) => {
+                  const owing = group.payments.filter((p) => p.status === 'pending').length;
+                  return (
+                    <Tr key={group.memberId} onClick={() => setExpandedMember(group.memberId)} style={{ height: rowH }} data-member-row>
+                      <Td>
+                        <span className="flex items-center gap-3 min-w-0">
+                          <Initials name={group.memberName} photo={group.photoUrl} size={34} />
+                          <span className="font-semibold text-white truncate">{group.memberName}</span>
+                        </span>
+                      </Td>
+                      <Td style={{ color: SECOND }}>
+                        {group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}
+                        {owing > 0 && <span style={{ color: TONE.amber.fg }}> — {owing} pending</span>}
+                      </Td>
+                      <Td><span className="font-semibold text-white tabular-nums">{peso(group.totalPaid)}</span></Td>
+                      <Td style={{ color: SECOND }}>{fmtDate(group.lastPayment)}</Td>
+                      <Td align="right"><ChevronRight size={17} style={{ color: MUTED }} className="inline" /></Td>
+                    </Tr>
+                  );
+                })}
+              </RdTable>
+            ) : (
+              <RdTable boxRef={fit.ref} head={['Paid on', 'Member', 'Plan', 'Method', 'Amount', 'Status', { label: '', align: 'right' }]}
+                empty={flat.length === 0 ? <EmptyBlock compact icon={Banknote} title="No payments match" /> : undefined}>
+                {slice(flat).map((p) => (
+                  <Tr key={p.id} style={{ height: rowH }} data-payment-row>
+                    <Td className="whitespace-nowrap" style={{ color: SECOND }}>{fmtDate(p.date)}</Td>
+                    <Td><span className="font-semibold text-white truncate block max-w-[170px]">{p.memberName}</span></Td>
+                    <Td><span className="block truncate max-w-[170px]" style={{ color: SECOND }}>{p.plan}</span></Td>
+                    <Td style={{ color: SECOND }}>{methodWord(p.method)}</Td>
+                    <Td><span className="font-semibold text-white tabular-nums">{peso(p.amount)}</span></Td>
+                    <Td><Pill tone={p.status === 'completed' ? 'violet' : 'amber'} solidDot>{p.status === 'completed' ? 'Completed' : p.status === 'pending' ? 'Pending' : 'Failed'}</Pill></Td>
+                    <Td align="right">
+                      <span className="inline-flex gap-1">
+                        {p.status === 'pending' && <RdButton size="sm" variant="primary" onClick={() => confirmPayment(p.id)}>Confirm</RdButton>}
+                        <button type="button" aria-label={`Receipt ${p.invoiceNumber}`} data-tip={`Receipt ${p.invoiceNumber}`}
+                          onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}
+                          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06]" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><ReceiptIcon size={15} /></button>
+                      </span>
+                    </Td>
+                  </Tr>
+                ))}
+              </RdTable>
+            )}
+            <TableFooter page={page} perPage={fit.perPage} total={rowsTotal} noun={view === 'members' ? 'members' : 'payments'} onPage={setCurrentPage} />
+          </RdCard>
         ) : (
-          <>
-            {/* Measured by `useFillGrid`: height from the panel, never from
-                the tiles; scrolls rather than clips; stable gutter so a
-                scrollbar cannot change the column count. */}
-            <div ref={measureRecords} className="flex-1 min-h-0 overflow-y-auto"
-              style={{ scrollbarGutter: 'stable' }}>
-            <CardGrid min={280}>
-              {paginatedGroups.map((group) => {
-                const owing = group.payments.filter((p) => p.status === 'pending').length;
-                return (
-                  <TileCard key={group.memberId} accent={owing > 0}
-                    onClick={() => setExpandedMember(group.memberId)}
-                    title={`Open ${group.memberName}'s payments`}>
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={group.memberName} photoUrl={group.photoUrl}
-                        size={36} tone="secondary" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] text-white font-semibold truncate">{group.memberName}</p>
-                        <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                          {group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}
-                          {owing > 0 && (
-                            <span style={{ color: 'var(--color-secondary)' }}> · {owing} pending</span>
-                          )}
+          /* ── Coming to renew (0091) ── a member tapped "Tell the desk I'm coming". Recording the
+             payment closes the request by itself; the only desk action of its own is Decline. */
+          <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-renew>
+            <div className="px-4 py-3" style={{ borderBottom: LINE }}>
+              <p className="text-[15px] font-semibold text-white">Coming to renew</p>
+              <p className="text-[12.5px]" style={{ color: SECOND }}>Each closes itself when you record their payment.</p>
+            </div>
+            <div className="rd-fit-scroll p-4">
+              {!requests || requests.length === 0 ? (
+                <EmptyBlock compact icon={Send} title="Nobody is on the way" body="When a member taps “Tell the desk I’m coming” in the app, they show here." />
+              ) : (
+                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                  {requests.map((r) => {
+                    const current = memberMembership[r.memberId];
+                    const planChange = current && current.planName !== r.planName;
+                    const hours = Math.max(0, Math.round((nowMs - Date.parse(r.createdAt)) / 3_600_000));
+                    return (
+                      <div key={r.id} className="rounded-xl p-3.5 flex flex-col gap-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${TONE.amber.line}` }}>
+                        <div className="flex items-center gap-2.5">
+                          <Initials name={r.memberName} photo={r.photoUrl} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[14px] text-white font-semibold truncate">{r.memberName}</p>
+                            <p className="text-[12px]" style={{ color: MUTED }}>
+                              {hours < 1 ? 'just now' : hours < 24 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`}
+                              {r.note ? ` — ${r.note}` : ''}
+                            </p>
+                          </div>
+                          <span className="text-[15px] font-bold tabular-nums" style={{ color: TONE.amber.fg }}>{r.planPrice > 0 ? peso(r.planPrice) : 'Free'}</span>
+                        </div>
+                        {r.paid && (
+                          <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2" data-online-pay style={{ background: TONE.violet.bg, border: `1px solid ${TONE.violet.line}` }}>
+                            {r.paid.proof && (
+                              <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="See the screenshot" className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
+                                <img src={r.paid.proof} alt="" className="h-full w-full object-cover" />
+                              </button>
+                            )}
+                            <p className="text-[12px] leading-snug" style={{ color: SECOND }}>
+                              <span className="text-white font-semibold">Paid {peso(r.paid.amount)} by {r.paid.method}</span>
+                              <br />Ref <span className="font-mono text-white">{r.paid.reference}</span>
+                              {r.paid.paidOn ? `, ${r.paid.paidOn}` : ''} — check it reached your account, then record it.
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-[12.5px]" style={{ color: SECOND }}>
+                          Wants <span className="text-white font-semibold">{r.planName}</span>
+                          {current ? <> — on {current.planName} now</> : ' — no membership yet'}
                         </p>
+                        {planChange && (
+                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>A plan change: switch them to {r.planName} in Members → Membership first, then record the payment.</p>
+                        )}
+                        <div className="flex gap-1.5">
+                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!!planChange || !current} onClick={() => recordForRequest(r)}>Record payment</RdButton>
+                          <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
+                        </div>
                       </div>
-                      <OpenChevron />
-                    </div>
-                    <div className="mt-2.5 flex items-baseline justify-between">
-                      <span className="text-base font-bold text-white tabular-nums">
-                        ₱{group.totalPaid.toLocaleString()}
-                      </span>
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        last {new Date(group.lastPayment).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </div>
-                  </TileCard>
-                );
-              })}
-            </CardGrid>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-between mt-3">
-              <PageSummary page={page} perPage={perPage}
-                total={memberGroups.length} noun="members" />
-              <Pagination currentPage={page} totalItems={memberGroups.length}
-                itemsPerPage={perPage} onPageChange={setCurrentPage} />
-            </div>
-          </>
+          </RdCard>
         )}
-      </Section>
+      </FitBody>
 
       {/* One member's receipts, floating over the list. */}
       <DetailSheet
@@ -494,46 +478,32 @@ export default function Payments() {
         onClose={() => setExpandedMember(null)}
         title={openGroup?.memberName ?? ''}
         subtitle={openGroup
-          ? `₱${openGroup.totalPaid.toLocaleString()} across ${openGroup.payments.length} payment${openGroup.payments.length === 1 ? '' : 's'}`
+          ? `${peso(openGroup.totalPaid)} across ${openGroup.payments.length} payment${openGroup.payments.length === 1 ? '' : 's'}`
           : undefined}
       >
         <div className="space-y-2">
           {openGroup?.payments.map((p) => (
-            <div key={p.id} className="rounded-xl p-3"
-              style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+            <div key={p.id} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-base font-bold text-white tabular-nums">₱{p.amount.toLocaleString()}</p>
-                  {/* 0045 makes invoice_number NOT NULL, so this is the real
-                      stored identifier — never one invented at render time. */}
-                  <p className="text-[10px] font-mono" style={{ color: 'var(--color-text-muted)' }}>
-                    {p.invoiceNumber}
-                  </p>
+                  <p className="text-[17px] font-bold text-white tabular-nums">{peso(p.amount)}</p>
+                  {/* 0045 makes invoice_number NOT NULL: the real stored identifier. */}
+                  <p className="text-[12px] font-mono" style={{ color: MUTED }}>{p.invoiceNumber}</p>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase flex-shrink-0"
-                  style={getStatusStyle(p.status)}>{p.status}</span>
+                <Pill tone={p.status === 'completed' ? 'violet' : 'amber'} solidDot>{p.status === 'completed' ? 'Completed' : p.status === 'pending' ? 'Pending' : 'Failed'}</Pill>
               </div>
-
               <div className="mt-2 space-y-0.5">
                 <SheetRow label="Plan">{p.plan}</SheetRow>
-                <SheetRow label="Method">{methodIcon[p.method] || '💰'} {p.method}</SheetRow>
+                <SheetRow label="Method">{methodWord(p.method)}</SheetRow>
                 {/* paid_on, not created_at — the day the cash changed hands. */}
                 <SheetRow label="Paid on">{new Date(p.date).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
                 {p.dueDate && (
                   <SheetRow label="Covers until">{new Date(`${p.dueDate}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'long', year: 'numeric' })}</SheetRow>
                 )}
               </div>
-
               <div className="flex gap-1.5 mt-2.5">
-                <Button variant="ghost" size="sm"
-                  onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}>
-                  View receipt
-                </Button>
-                {p.status === 'pending' && (
-                  <Button variant="secondary" size="sm" onClick={() => confirmPayment(p.id)}>
-                    Confirm
-                  </Button>
-                )}
+                <RdButton variant="ghost" size="sm" icon={ReceiptIcon} onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}>View receipt</RdButton>
+                {p.status === 'pending' && <RdButton variant="primary" size="sm" onClick={() => confirmPayment(p.id)}>Confirm</RdButton>}
               </div>
             </div>
           ))}

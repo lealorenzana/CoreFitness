@@ -3,6 +3,7 @@ import { moduleOn, useGymModules } from '../hooks/useGymModules';
 import { updatePlan } from '../lib/api/membershipPlans';
 import { Check, Lock, AlertTriangle } from 'lucide-react';
 import Card from './ui/Card';
+import { RdCard } from './ui/rd';
 import { showToast } from '../utils/toast';
 import {
   listFeatures, listPlanFeatures, setPlanFeature,
@@ -157,33 +158,26 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
   }
 
   return (
-    <Card className="!p-4">
-      <div className="flex items-start gap-2 mb-4">
-        <Lock size={14} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-        <div>
-          <h3 className="text-sm font-bold text-white">What each plan unlocks</h3>
-          <p className="text-[10px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            Members on a plan without a tick see the feature explained and locked, not
-            hidden — so they can see what upgrading gets them. Class and personal
-            training limits are set per plan above. Hover a row for what it does; a row
-            marked &ldquo;off at your gym&rdquo; is switched off on Your app.
-            A new plan starts from its tier's defaults and can be changed here.
+    <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-plan-matrix>
+      <div className="flex items-start gap-2.5 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <Lock size={18} className="mt-0.5 flex-shrink-0" style={{ color: '#C4B5FD' }} />
+        <div className="min-w-0">
+          <h3 className="text-[16px] font-semibold text-white">What each plan unlocks</h3>
+          <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+            A member on a plan without a tick sees the feature locked and explained, never hidden — it is what upgrading gets them.
+            Hover a row for what it does; &ldquo;off at your gym&rdquo; means it is switched off on Your app.
           </p>
         </div>
       </div>
 
-      {/* Wide content scrolls inside its own container — the page must not. */}
-      <div className="overflow-x-auto">
-        <table className="w-full" style={{ minWidth: 460, borderCollapse: 'collapse' }}>
+      {/* Wide content scrolls inside its own box — the page must not. */}
+      <div className="rd-fit-scroll px-4 pb-3">
+        <table className="w-full" style={{ minWidth: 460, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th className="text-left pb-2 pr-3 text-[10px] font-semibold uppercase"
-                  style={{ color: 'var(--color-text-muted)' }}>
-                Feature
-              </th>
+              <th className="text-left py-2.5 pr-3 text-[12.5px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Feature</th>
               {plans.map((p) => (
-                <th key={p.id} className="pb-2 px-2 text-[10px] font-semibold text-center"
-                    style={{ color: 'var(--color-text-secondary)', minWidth: 84 }}>
+                <th key={p.id} className="py-2.5 px-2 text-[13px] font-semibold text-center" style={{ color: 'var(--color-text-primary)', minWidth: 96 }}>
                   {p.name}
                 </th>
               ))}
@@ -195,7 +189,7 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
               if (rows.length === 0) return [];
               return [
                 <tr key={`g-${group}`} data-matrix-group={group}>
-                  <td colSpan={plans.length + 1} className="pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>{group}</td>
+                  <td colSpan={plans.length + 1} className="pt-4 pb-1.5 text-[12.5px] font-semibold" style={{ color: '#C4B5FD' }}>{group}</td>
                 </tr>,
                 ...rows.map((f) => ({ f, off: !moduleOn(modules, SWITCH_OF[f.key]) })),
               ];
@@ -203,30 +197,29 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
               if (!('f' in (row as object))) return row as React.ReactElement;
               const { f, off } = row as { f: FeatureDef; off: boolean };
               return (
-              <tr key={f.key} style={{ borderTop: '1px solid var(--color-border)', opacity: off ? 0.55 : 1 }} data-matrix-row={f.key}>
-                <td className="py-2.5 pr-3 align-top" data-tip={f.description}>
-                  <p className="text-xs font-semibold text-white">{f.label}{off && <span className="ml-1.5 text-[10px] font-normal" style={{ color: 'var(--color-secondary)' }}>· off at your gym</span>}</p>
-                  <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                    {f.description}
-                  </p>
+              <tr key={f.key} className="hover:bg-white/[0.02]" style={{ opacity: off ? 0.55 : 1 }} data-matrix-row={f.key}>
+                <td className="py-2 pr-3 align-middle" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} data-tip={f.description}>
+                  <p className="text-[13.5px] font-medium text-white">{f.label}{off && <span className="ml-1.5 text-[12px] font-normal" style={{ color: '#FBBF24' }}>· off at your gym</span>}</p>
+                  <p className="text-[12px] mt-0.5 line-clamp-1" style={{ color: 'var(--color-text-muted)' }}>{f.description}</p>
                 </td>
                 {plans.map((p) => {
                   const on = isOn(p.id, f.key);
                   const busy = saving === `${p.id}:${f.key}`;
                   return (
-                    <td key={p.id} className="py-2.5 px-2 text-center align-top">
+                    <td key={p.id} className="py-2 px-2 text-center align-middle" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                       <button
+                        type="button"
                         onClick={() => toggle(p.id, f.key)}
                         disabled={busy}
                         aria-pressed={on}
                         aria-label={`${f.label} on ${p.name}`}
-                        className="w-6 h-6 rounded-md inline-flex items-center justify-center disabled:opacity-50"
+                        className="w-7 h-7 rounded-lg inline-flex items-center justify-center disabled:opacity-50 transition-colors"
                         style={{
-                          background: on ? 'var(--color-primary)' : 'transparent',
-                          border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                          background: on ? 'linear-gradient(180deg,#8B5CF6,#7C3AED)' : 'transparent',
+                          border: `1px solid ${on ? 'rgba(167,139,250,0.7)' : 'rgba(255,255,255,0.14)'}`,
                         }}
                       >
-                        {on && <Check size={13} style={{ color: '#fff' }} />}
+                        {on && <Check size={14} style={{ color: '#fff' }} />}
                       </button>
                     </td>
                   );
@@ -237,6 +230,6 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
           </tbody>
         </table>
       </div>
-    </Card>
+    </RdCard>
   );
 }

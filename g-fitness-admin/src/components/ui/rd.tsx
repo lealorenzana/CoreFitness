@@ -483,3 +483,40 @@ export function FitBody({ children, rail }: { children: React.ReactNode; rail?: 
   );
 }
 
+
+/**
+ * In-page sections as one segmented bar (role=tab buttons, not links): the page
+ * keeps its own state, usually in `?tab=`. A count shows in amber when something waits.
+ */
+export function PageTabs<K extends string>({ tabs, value, onChange, label }: {
+  tabs: { key: K; label: string; count?: number; icon?: LucideIcon }[]; value: K; onChange: (k: K) => void; label: string;
+}) {
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-xl flex-wrap" role="tablist" aria-label={label} data-page-tabs
+      style={{ background: 'rgba(255,255,255,0.025)', border: CARD_LINE, width: 'fit-content', maxWidth: '100%' }}>
+      {tabs.map((t) => {
+        const on = t.key === value;
+        const Icon = t.icon;
+        return (
+          <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => onChange(t.key)} data-tab={t.key}
+            className="h-9 px-3.5 rounded-lg text-[14px] font-semibold inline-flex items-center gap-2 whitespace-nowrap transition-colors"
+            style={on ? { background: 'rgba(124,58,237,0.25)', color: '#EDE9FE', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.55)' } : { color: SECOND }}>
+            {Icon && <Icon size={15} />}{t.label}
+            {t.count ? <span className="text-[11.5px] tabular-nums px-1.5 rounded-full" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>{t.count}</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A labelled field in the kit's look — a text input, number or textarea. */
+export function RdField({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
+      {children}
+      {hint && <span className="block text-[12px] mt-1" style={{ color: MUTED }}>{hint}</span>}
+    </label>
+  );
+}

@@ -439,10 +439,13 @@ and Activity take their page size from the space they are given.
 - **The page is exactly the window's height**: `h-[calc(100vh-7rem)] flex flex-col` — the header is
   4rem and `<main>` pads 3rem, so `5rem` overran by 32px on every such page. The list sits in a
   `flex-1 min-h-0 overflow-y-auto` box and the pager comes after it, pinned to the bottom edge.
-- **`hooks/useFillGrid.ts`** counts whole rows for a card grid: columns from the grid's own
-  template, rows from the box's height over the **median** tile (a taller tile would lose a row).
-  Destructure it — `const { measure, perPage } = useFillGrid(12)` — because the compiler lint
-  treats an object whose member is passed as a `ref` as a ref, and refuses the read of `perPage`.
+- **Fit pages (2026-10-11/12, the owner's rule: no page scroll, no dead space).** The root is `rd-fit`,
+  the body `FitBody` (main column + 320px rail, each scrolling itself) or `rd-fit-two` / a card with
+  `rd-fit-fill`; a table passes `boxRef={fit.ref}` from **`hooks/useFitRows.ts`**, which pages by
+  the rows that fit (the box's height over the **median** natural row) and returns `rowHeight` so
+  the last row meets the footer. A table must also fit sideways — cap long cells (`max-w-[…]
+  truncate`) and make secondary row actions icon buttons with an `aria-label` and `data-tip`.
+  `useFillGrid` (card grids) is gone with the Payments tiles it served.
 - **Stretching tiles pass `tileHeight`.** Credentials' rows share the height (`repeat(rows, 1fr)`)
   so the certificate previews grow; measuring a stretched tile only reports the current row count
   back, so it counts from the card's minimum instead and uses the returned `rows`.

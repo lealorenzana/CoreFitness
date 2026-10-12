@@ -122,7 +122,7 @@ async (page) => {
   await page.getByText('Payments to confirm').waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
   t = await text();
-  out.push('the Coaching page: a payment to confirm, with its reference: ' + (/Lea Lorenzana · Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the Coaching page: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
   out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /^Confirm$/ }).click();
   await page.waitForTimeout(800);

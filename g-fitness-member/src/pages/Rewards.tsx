@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { pointsWord } from '../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Gift, Package, PushPin, Storefront, WarningCircle } from '@phosphor-icons/react';
+import { CaretRight, Gift, Package, PushPin, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
 import FeatureLock from '../components/ui/FeatureLock';
 import GlassSheet from '../components/ui/GlassSheet';
 import RedemptionRow from '../components/ui/RedemptionRow';
@@ -34,6 +34,9 @@ import { SkeletonList } from '../components/ui/Skeleton';
  * `points_earn` and `points_redeem` are separately gated (0049). The rules
  * come from the table, never a sentence typed here.
  */
+/** A last day in words — "Oct 31". */
+const untilWords = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+
 export default function Rewards() {
   const gymApp = useGymApp();
   const navigate = useNavigate();
@@ -224,12 +227,27 @@ export default function Rewards() {
                     <button key={r.id} onClick={() => { setOpen(r); setConfirming(false); }}
                       className="w-full flex items-center text-left noc-row"
                       style={{ gap: 12, padding: '14px 0', borderBottom: i === rewards.length - 1 ? 'none' : '1px solid var(--color-separator)' }}>
-                      <span className="flex-none grid place-items-center orb-cell" aria-hidden
-                        style={{ width: 42, height: 42, borderRadius: 12, color: canGet ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
-                        {r.id === target?.id ? <PushPin size={18} weight="fill" /> : <Gift size={18} />}
-                      </span>
+                      {r.imageUrl ? (
+                        <span className="flex-none relative" aria-hidden style={{ width: 52, height: 52 }}>
+                          <img src={r.imageUrl} alt="" className="w-full h-full object-cover" style={{ borderRadius: 12 }} />
+                          {r.id === target?.id && <span className="absolute -top-1 -right-1 grid place-items-center" style={{ width: 20, height: 20, borderRadius: 10, background: 'var(--color-secondary)', color: '#1A1205' }}><PushPin size={11} weight="fill" /></span>}
+                        </span>
+                      ) : (
+                        <span className="flex-none grid place-items-center orb-cell" aria-hidden
+                          style={{ width: 42, height: 42, borderRadius: 12, color: canGet ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
+                          {r.id === target?.id ? <PushPin size={18} weight="fill" /> : <Gift size={18} />}
+                        </span>
+                      )}
                       <span className="flex-1 min-w-0">
-                        <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
+                        <span className="flex items-center" style={{ gap: 6 }}>
+                          <span className="truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
+                          {r.featured && <Star size={13} weight="fill" className="flex-none" style={{ color: 'var(--color-secondary)' }} aria-label="Featured" />}
+                        </span>
+                        {(r.category || r.availableUntil) && (
+                          <span className="block truncate" style={{ fontSize: 12, marginTop: 1, color: 'var(--color-text-muted)' }}>
+                            {[r.category, r.availableUntil ? `until ${untilWords(r.availableUntil)}` : null].filter(Boolean).join(' — ')}
+                          </span>
+                        )}
                         <span className="block" style={{ fontSize: 12, marginTop: 2, color: out ? 'var(--color-text-muted)' : canGet ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
                           {r.costPoints.toLocaleString()} points
                           {out ? ' · sold out' : canGet ? ' · you can get this' : balance != null ? ` · ${(r.costPoints - balance).toLocaleString()} to go` : ''}
@@ -322,6 +340,16 @@ export default function Rewards() {
       >
         {sheetReward && (
           <div className="flex flex-col" style={{ gap: 14 }}>
+            {sheetReward.imageUrl && (
+              <img src={sheetReward.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 10', borderRadius: 16 }} />
+            )}
+            {(sheetReward.availableUntil || sheetReward.perMemberMonthly) && (
+              <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                {sheetReward.availableUntil ? `Available until ${untilWords(sheetReward.availableUntil)}.` : ''}
+                {sheetReward.availableUntil && sheetReward.perMemberMonthly ? ' ' : ''}
+                {sheetReward.perMemberMonthly ? `Up to ${sheetReward.perMemberMonthly} a month for each member.` : ''}
+              </p>
+            )}
             {sheetReward.description && (
               <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>{sheetReward.description}</p>
             )}

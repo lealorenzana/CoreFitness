@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
+import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import Pagination from '../components/ui/Pagination';
 import {
-  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard,
-  SearchBox, Chips, Toolbar, PageSummary,
-} from '../components/ui/kit';
+  RdHeader, RdCard, StatTile, FilterChips, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock,
+  FitBody, RailCard, RailRow, RailAction, TipCard, Initials,
+} from '../components/ui/rd';
+import { TONE, type Tone } from '../components/ui/rdTokens';
 import { usePaged } from '../hooks/usePaged';
+import { useFitRows } from '../hooks/useFitRows';
 import {
   CheckCircle, XCircle, Clock, Calendar, User, Dumbbell, AlertTriangle,
-  RotateCcw, Users,
+  RotateCcw, ShieldCheck, Settings2,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -35,9 +35,19 @@ import type { BookingStatus } from '../types/db';
  * read-only; RLS enforces that, this page is the other side of it.
  *
  * Row assembly and the pre-approval checks live in `bookingQueueService`.
+ *
+ * 2026-10-12: one table paged by what fits, the bulk bar above it, and a rail
+ * with what needs chasing and who approves at this gym. Nothing scrolls the page.
  */
 
-/** Statuses map onto the design system's three tones — no greens, no reds. */
+const SECOND = 'var(--color-text-secondary)';
+const MUTED = 'var(--color-text-muted)';
+const LINE = '1px solid rgba(255,255,255,0.06)';
+const STATUS_TONE: Record<BookingStatus, Tone> = { pending: 'amber', approved: 'violet', rejected: 'gray', cancelled: 'gray' };
+type BookingMode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
+const MODE_WORD: Record<BookingMode, string> = { instant: 'Instant', coach: 'Coach', desk: 'Desk', coach_desk: 'Coach, then desk', off: 'Off' };
+
+/** Statuses as the desk says them. */
 const STATUS_BADGE: Record<BookingStatus, string> = {
   pending: 'Pending',
   approved: 'Confirmed',
@@ -86,7 +96,20 @@ export default function Bookings() {
     );
   }, [rows, filter, kindFilter, search]);
 
-  const paged = usePaged(visible, 12);
+  /** Rows that fit the queue's own box — the page never scrolls (2026-10-12). */
+  const fit = useFitRows(10);
+  const paged = usePaged(visible, fit.perPage);
+  const navigate = useNavigate();
+  /** Who approves, per kind (0180) — read so the rail can say it. Null before 0180. */
+  const [modes, setModes] = useState<{ class: BookingMode; pt: BookingMode } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const { data, error } = await supabase.from('gym_settings').select('class_booking_approval, pt_booking_approval').maybeSingle();
+      if (error || !data) return;
+      const r = data as { class_booking_approval: BookingMode | null; pt_booking_approval: BookingMode | null };
+      setModes({ class: r.class_booking_approval ?? 'coach', pt: r.pt_booking_approval ?? 'coach' });
+    })();
+  }, []);
 
   // Bulk selection deliberately spans the whole filtered queue, not just the
   // page you can see: "select all 20 pending" after a weekend should mean all
@@ -235,233 +258,179 @@ export default function Bookings() {
 
   const pendingCount = rows.filter((r) => r.status === 'pending').length;
   const flaggedCount = rows.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
+  const count = (s: 'all' | BookingStatus) => (s === 'all' ? rows.length : rows.filter((r) => r.status === s).length);
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+  const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+
+  const rail = (
+    <>
+      {/* Bookings the escalation ladder has been shouting about (0071), with somewhere to act.
+          It renders nothing when nothing waits. */}
+      <BookingAttentionPanel onChanged={load} />
+      {modes && (
+        <RailCard icon={ShieldCheck} title="Who approves here" sub="Set in Settings → Bookings (0180).">
+          <RailRow tone="violet" label="Classes" count={MODE_WORD[modes.class]} />
+          <RailRow tone="amber" label="1-on-1" count={MODE_WORD[modes.pt]} />
+          <RailAction icon={Settings2} label="Change who approves" onClick={() => navigate('/settings?tab=bookings')} />
+        </RailCard>
+      )}
+      <TipCard>
+        A warning never blocks — a full class, a lapsed membership or a plan that does not cover it is for you to weigh. Ticking rows lets you decide a whole weekend at once.
+      </TipCard>
+    </>
+  );
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Bookings"
-        subtitle="Class bookings and personal-training requests, in one queue"
-        actions={<SearchBox value={search} onChange={setSearch} placeholder="Member, class or trainer…" width={230} />}
-      />
+    <div className="rd-fit" data-bookings>
+      <RdHeader title="Bookings" subtitle="Class bookings and 1-on-1 requests, in one queue."
+        actions={<div className="w-[300px]"><SearchField value={search} onChange={setSearch} placeholder="Member, class or coach" /></div>} />
 
-      <StatTiles items={[
-        { label: 'Awaiting approval', value: pendingCount, icon: Clock, tone: pendingCount > 0 ? 'secondary' : 'primary',
-          onClick: () => setFilter('pending') },
-        { label: 'Need checking', value: flaggedCount, icon: AlertTriangle,
-          tone: flaggedCount > 0 ? 'secondary' : 'primary', onClick: () => setFilter('pending') },
-        { label: 'Classes', value: rows.filter((r) => r.kind === 'class').length, icon: Dumbbell,
-          onClick: () => setKindFilter('class') },
-        { label: 'Personal training', value: rows.filter((r) => r.kind === 'pt').length, icon: User,
-          onClick: () => setKindFilter('pt') },
-      ]} />
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Awaiting approval" value={pendingCount} sub="decide or remind"
+          active={filter === 'pending' && kindFilter === 'all'} onClick={() => { setFilter('pending'); setKindFilter('all'); }} />
+        <StatTile compact icon={AlertTriangle} tone={flaggedCount ? 'amber' : 'violet'} label="Need checking" value={flaggedCount} sub="pending with a warning"
+          onClick={() => { setFilter('pending'); setKindFilter('all'); }} />
+        <StatTile compact icon={Dumbbell} label="Classes" value={rows.filter((r) => r.kind === 'class').length} sub="seats in timetabled classes"
+          active={kindFilter === 'class'} onClick={() => setKindFilter(kindFilter === 'class' ? 'all' : 'class')} />
+        <StatTile compact icon={User} label="1-on-1" value={rows.filter((r) => r.kind === 'pt').length} sub="sessions with a coach"
+          active={kindFilter === 'pt'} onClick={() => setKindFilter(kindFilter === 'pt' ? 'all' : 'pt')} />
+      </div>
 
-      {/* Above the queue, and only when there is something in it. These are the
-          bookings the escalation ladder has already been shouting about — see
-          sweep_stale_requests() in 0071 — with somewhere for the desk to act. */}
-      <BookingAttentionPanel onChanged={load} />
-
-      <Section
-        title="Queue" icon={Calendar} count={visible.length}
-        actions={
-          <Toolbar>
-            <Chips
-              value={filter}
-              onChange={setFilter}
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'pending', label: 'Pending', count: pendingCount },
-                { value: 'approved', label: 'Approved' },
-                { value: 'rejected', label: 'Rejected' },
-                { value: 'cancelled', label: 'Cancelled' },
-              ]}
-            />
-            <Chips
-              value={kindFilter}
-              onChange={setKindFilter}
-              options={[
-                { value: 'all', label: 'Both' },
-                { value: 'class', label: 'Classes' },
-                { value: 'pt', label: 'PT' },
-              ]}
-            />
-          </Toolbar>
-        }
-      >
-        {/* Bulk bar. A queue after a weekend is twenty near-identical requests,
-            and twenty separate round trips is how the desk stops using the
-            queue. It sits inside the section now, directly above the things it
-            acts on, rather than as a floating strip above the filters. */}
-        {selectablePending.length > 0 && (
-          <div className="rounded-lg px-3 py-2 flex items-center gap-3 mb-3"
-            style={{ background: 'var(--color-surface-high)' }}>
-            <label className="flex items-center gap-2 text-[11px] cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
-              <input type="checkbox" checked={allSelected}
-                onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
-              Select all {selectablePending.length} pending
-            </label>
-            {selectedPending.length > 0 && (
-              <>
-                <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                  {selectedPending.length} selected
-                </span>
-                <div className="ml-auto flex gap-2">
-                  <Button variant="primary" size="sm" className="!text-[10px]" onClick={() => setBulk('approved')}>
-                    <CheckCircle size={12} className="mr-1" /> Approve selected
-                  </Button>
-                  <Button variant="danger" size="sm" className="!text-[10px]" onClick={() => setBulk('rejected')}>
-                    <XCircle size={12} className="mr-1" /> Reject selected
-                  </Button>
-                </div>
-              </>
-            )}
+      <FitBody rail={rail}>
+        <RdCard className="overflow-hidden rd-fit-fill" data-queue>
+          <div className="flex items-center gap-2.5 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>
+            <FilterChips<'all' | BookingStatus> compact value={filter} onChange={setFilter} items={[
+              { key: 'pending', label: 'Pending', count: count('pending'), tone: pendingCount ? 'amber' : undefined },
+              { key: 'approved', label: 'Confirmed', count: count('approved') },
+              { key: 'rejected', label: 'Rejected', count: count('rejected') },
+              { key: 'cancelled', label: 'Cancelled', count: count('cancelled') },
+              { key: 'all', label: 'All', count: rows.length },
+            ]} />
+            <RdSelect label="Kind" value={kindFilter} onChange={(v) => setKindFilter(v as typeof kindFilter)} className="w-[150px]">
+              <option value="all">Both kinds</option>
+              <option value="class">Classes</option>
+              <option value="pt">1-on-1</option>
+            </RdSelect>
           </div>
-        )}
 
-        {loading ? (
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading bookings…</p>
-        ) : visible.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title={rows.length === 0 ? 'No bookings yet' : 'Nothing matches those filters'}
-            hint={rows.length === 0
-              ? 'Members book classes and PT sessions from the phone app.'
-              : 'Clear a filter to widen the queue.'}
-          />
-        ) : (
-          <>
-            {/* Cards in a grid rather than full-width rows: a request is about
-                240px of information, and stretching it to 1,600 puts the member's
-                name and the Approve button at opposite ends of the desk's screen. */}
-            <CardGrid min={330}>
+          {/* Bulk bar. A queue after a weekend is twenty near-identical requests; selection spans
+              the whole filtered queue, not just this page — "select all 20 pending" means twenty. */}
+          {selectablePending.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: LINE, background: selectedPending.length ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.015)' }} data-bulk>
+              <label className="flex items-center gap-2 text-[13px] cursor-pointer" style={{ color: SECOND }}>
+                <input type="checkbox" className="accent-violet-500" checked={allSelected}
+                  onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
+                Select all {selectablePending.length} pending
+              </label>
+              {selectedPending.length > 0 && (
+                <>
+                  <span className="text-[13px] font-medium text-white">{selectedPending.length} selected</span>
+                  <div className="ml-auto flex gap-2">
+                    <RdButton variant="primary" size="sm" icon={CheckCircle} onClick={() => setBulk('approved')}>Approve selected</RdButton>
+                    <RdButton variant="amber" size="sm" icon={XCircle} onClick={() => setBulk('rejected')}>Reject selected</RdButton>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {loading ? <p className="text-[14px] p-5" style={{ color: MUTED }}>Loading bookings…</p> : (
+            <RdTable boxRef={fit.ref} head={['', 'Member', 'Booking', 'When', 'Status', { label: '', align: 'right' }]}
+              empty={visible.length === 0 ? (
+                <EmptyBlock compact icon={Calendar} title={rows.length === 0 ? 'No bookings yet' : 'Nothing matches those filters'}
+                  body={rows.length === 0 ? 'Members book classes and 1-on-1 sessions from the phone app.' : 'Clear a filter to widen the queue.'} />
+              ) : undefined}>
               {paged.visible.map((row) => {
                 const flagged = row.warnings.length > 0;
+                const full = !!row.seats && row.seats.taken >= row.seats.capacity;
                 return (
-                  <TileCard key={`${row.kind}-${row.id}`} accent={flagged}>
-                    <div className="flex items-start gap-2.5">
+                  <Tr key={`${row.kind}-${row.id}`} style={{ height: visible.length > paged.perPage ? fit.rowHeight : undefined }} data-booking-row>
+                    <Td className="w-10">
                       {row.status === 'pending' && (
-                        <input type="checkbox" className="mt-1 flex-shrink-0"
-                          checked={selected.has(row.id)} onChange={() => toggle(row.id)}
+                        <input type="checkbox" className="accent-violet-500" checked={selected.has(row.id)} onChange={() => toggle(row.id)}
                           aria-label={`Select ${row.memberName}'s booking`} />
                       )}
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: row.kind === 'pt' ? 'var(--color-secondary-light)' : 'var(--color-primary-light)' }}>
-                        {row.kind === 'pt'
-                          ? <User size={14} style={{ color: 'var(--color-secondary)' }} />
-                          : <Dumbbell size={14} style={{ color: 'var(--color-primary)' }} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[12px] font-semibold text-white truncate">{row.memberName}</p>
-                          <Badge variant={STATUS_BADGE[row.status]} className="!text-[9px] !px-1.5 !py-0 flex-shrink-0">{row.status}</Badge>
-                        </div>
-                        <p className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                          {row.title}{row.trainerName && ` · ${row.trainerName}`}
-                        </p>
-                        {/* Since 0071 a trainer decides their own classes and
-                            sessions, so a decided row that said only
-                            "approved" would imply the desk did it. NULL is
-                            left silent rather than guessed: it means undecided,
-                            or decided before this column existed, and neither
-                            of those is "the front desk". */}
+                    </Td>
+                    <Td>
+                      <span className="flex items-center gap-3 min-w-0">
+                        <Initials name={row.memberName} size={32} />
+                        <span className="font-semibold text-white truncate max-w-[130px]">{row.memberName}</span>
+                      </span>
+                    </Td>
+                    <Td>
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <span className="min-w-0 max-w-[180px]">
+                          <span className="block text-white truncate">{row.title}</span>
+                          <span className="block text-[12px] truncate" style={{ color: row.kind === 'pt' ? TONE.amber.fg : MUTED }}>
+                            {row.kind === 'pt' ? '1-on-1' : 'Class'}{row.trainerName ? ` with ${row.trainerName}` : ''}
+                            {row.notes ? ` — “${row.notes}”` : ''}
+                          </span>
+                        </span>
+                      </span>
+                    </Td>
+                    <Td>
+                      {row.when ? (
+                        <span className="block whitespace-nowrap">
+                          <span className="block text-white">{fmtDay(row.when)}, {fmtTime(row.when)}</span>
+                          <span className="block text-[12px]" style={{ color: MUTED }}>
+                            {row.seats ? <span style={{ color: full ? TONE.amber.fg : undefined }}>{row.seats.taken}/{row.seats.capacity} seats taken</span> : '1-on-1 slot'}
+                          </span>
+                        </span>
+                      ) : <span style={{ color: MUTED }}>Not scheduled</span>}
+                    </Td>
+                    <Td>
+                      <span className="flex flex-col items-start gap-1 max-w-[190px]">
+                        <Pill tone={STATUS_TONE[row.status]} solidDot>{STATUS_BADGE[row.status]}</Pill>
+                        {/* Since 0071 a trainer decides their own bookings, so a decided row says by whom.
+                            NULL is left silent rather than guessed. */}
                         {row.coachOkName && (
-                          <p data-coach-ok className="text-[10px] truncate font-semibold" style={{ color: 'var(--color-primary)' }}>
-                            {row.coachOkName} accepted — your turn to confirm
-                          </p>
+                          <span data-coach-ok className="text-[12px] font-semibold truncate max-w-full" style={{ color: '#C4B5FD' }}>{row.coachOkName} accepted — your turn to confirm</span>
                         )}
                         {row.decidedByRole && (
-                          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+                          <span className="text-[12px] truncate max-w-full" style={{ color: MUTED }}>
                             {row.decidedByRole === 'system' && row.status === 'approved'
                               ? 'Confirmed automatically — your gym books instantly'
                               : row.decidedByRole === 'system'
-                              ? 'Expired automatically — nobody answered in time'
-                              : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${
-                                  row.decidedByName ?? DECIDER_WORD[row.decidedByRole]
-                                }${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}
-                          </p>
+                              ? 'Expired — nobody answered in time'
+                              : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${row.decidedByName ?? DECIDER_WORD[row.decidedByRole]}${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}
+                          </span>
                         )}
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] mt-1.5 flex items-center gap-2.5 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={9} />
-                        {row.when
-                          ? new Date(row.when).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
-                          : 'Not scheduled'}
+                        {/* Warnings, not blocks — the desk overrides these for real reasons. */}
+                        {flagged && (
+                          <span className="text-[12px] flex items-center gap-1 max-w-full" style={{ color: TONE.amber.fg }}
+                            data-tip={row.warnings.map((w) => w.message).join(' — ')}>
+                            <AlertTriangle size={12} className="flex-none" /> <span className="truncate">{row.warnings[0].message}</span>{row.warnings.length > 1 ? <span className="flex-none">(+{row.warnings.length - 1})</span> : null}
+                          </span>
+                        )}
                       </span>
-                      {row.when && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={9} />
-                          {new Date(row.when).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                        </span>
-                      )}
-                      {row.seats && (
-                        <span className="flex items-center gap-1"
-                          style={{ color: row.seats.taken >= row.seats.capacity ? 'var(--color-secondary)' : undefined }}>
-                          <Users size={9} /> {row.seats.taken}/{row.seats.capacity}
-                        </span>
-                      )}
-                    </p>
-
-                    {row.notes && (
-                      <p className="text-[10px] mt-1.5 px-2 py-1 rounded-lg"
-                        style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                        {row.notes}
-                      </p>
-                    )}
-
-                    {/* Warnings, not blocks — the desk overrides these for real
-                        reasons, so they inform rather than refuse. */}
-                    {flagged && (
-                      <div className="mt-1.5 space-y-0.5">
-                        {row.warnings.map((w) => (
-                          <p key={w.kind + w.message} className="text-[10px] flex items-start gap-1.5"
-                            style={{ color: 'var(--color-secondary)' }}>
-                            <AlertTriangle size={10} className="mt-0.5 flex-shrink-0" /> {w.message}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex gap-1.5 mt-2.5">
+                    </Td>
+                    <Td align="right">
                       {row.status === 'pending' ? (
-                        <>
-                          <Button variant="primary" size="sm" className="!text-[10px] flex-1"
-                            disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>
-                            <CheckCircle size={12} className="mr-1" /> Approve
-                          </Button>
-                          <Button variant="danger" size="sm" className="!text-[10px]"
-                            disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}>
-                            <XCircle size={12} className="mr-1" /> Reject
-                          </Button>
-                        </>
+                        <span className="inline-flex gap-1 whitespace-nowrap">
+                          <RdButton variant="primary" size="sm" disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>Approve</RdButton>
+                          <button type="button" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}
+                            className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><XCircle size={16} /></button>
+                        </span>
                       ) : row.status === 'approved' || row.status === 'rejected' ? (
-                        <Button variant="ghost" size="sm" className="!text-[10px]"
-                          disabled={busyId === row.id} onClick={() => setToReverse(row)}
-                          title={`Change this to ${row.status === 'approved' ? 'rejected' : 'approved'}`}>
-                          <RotateCcw size={12} className="mr-1" /> Change decision
-                        </Button>
+                        <button type="button" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
+                          data-tip={`Change decision — make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}
+                          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><RotateCcw size={16} /></button>
                       ) : null}
-                    </div>
-                  </TileCard>
+                    </Td>
+                  </Tr>
                 );
               })}
-            </CardGrid>
-
-            <div className="flex items-center justify-between mt-3">
-              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="requests" />
-              <Pagination currentPage={paged.page} totalItems={paged.total}
-                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
-            </div>
-          </>
-        )}
-      </Section>
+            </RdTable>
+          )}
+          <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="requests" onPage={paged.setPage} />
+        </RdCard>
+      </FitBody>
 
       <ConfirmDialog
         isOpen={!!bulk}
         onClose={() => setBulk(null)}
         onConfirm={runBulk}
-        title={bulk === 'approved' ? 'Approve Selected' : 'Reject Selected'}
+        title={bulk === 'approved' ? 'Approve selected' : 'Reject selected'}
         message={
           `${selectedPending.length} booking${selectedPending.length === 1 ? '' : 's'} will be ${bulk}, and every member is notified.` +
           (selectedPending.some((r) => r.warnings.length > 0)
@@ -477,7 +446,7 @@ export default function Bookings() {
         isOpen={!!toReverse}
         onClose={() => setToReverse(null)}
         onConfirm={reverse}
-        title="Change This Decision"
+        title="Change this decision"
         message={
           toReverse
             ? `Change ${toReverse.memberName}'s ${toReverse.title} from ${toReverse.status} to ${toReverse.status === 'approved' ? 'rejected' : 'approved'}? They will be notified again with the new outcome.`

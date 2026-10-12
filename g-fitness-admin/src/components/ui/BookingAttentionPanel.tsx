@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Bell, UserCog, XCircle, Clock } from 'lucide-react';
-import Button from './Button';
 import Modal from './Modal';
-import { Section, EmptyState } from './kit';
+import { EmptyState } from './kit';
+import { RdCard, RdButton } from './rd';
 import { showToast } from '../../utils/toast';
 import {
   listBookingsNeedingAttention, suggestTrainers, reassignSession, remindTrainer,
@@ -156,63 +156,43 @@ export default function BookingAttentionPanel({ onChanged }: { onChanged: () => 
 
   return (
     <>
-      <Section
-        title="Requires attention" icon={AlertTriangle} count={rows.length}
-        hint="Pending bookings the trainer has not answered, worst first"
-      >
-        <div className="space-y-2">
+      {/* A rail card on Bookings (2026-10-12): rows stack, so it fits a 320px column. */}
+      <RdCard className="p-4" data-attention-panel>
+        <div className="flex items-center gap-2.5">
+          <AlertTriangle size={20} style={{ color: '#FBBF24' }} />
+          <h3 className="text-[16px] font-semibold text-white flex-1">Requires attention</h3>
+          <span className="text-[12.5px] font-semibold px-2 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#FBBF24' }}>{rows.length}</span>
+        </div>
+        <p className="text-[12.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Bookings the coach has not answered, worst first.</p>
+        <div className="mt-3 flex flex-col gap-2">
           {rows.map((row) => {
             const u = URGENCY[row.urgency];
             const working = busy === row.id;
             return (
-              <div key={`${row.kind}:${row.id}`}
-                className="rounded-xl p-3 flex flex-wrap items-center gap-x-4 gap-y-2"
-                style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold flex-shrink-0"
-                  style={{ background: u.bg, color: u.tone }}>
-                  {u.label}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-white truncate">
-                    {row.member_name} · {row.what}
-                  </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                    {row.kind === 'pt' ? 'Personal training' : 'Class'} with{' '}
-                    {row.trainer_name ?? 'no trainer assigned'} · session {when(row.starts_at)}
-                  </p>
-                  <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                    <Clock size={11} />
-                    Waiting {row.days_waiting === 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}
-                    {' · requested '}{when(row.requested_at)}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <Button variant="ghost" size="sm" disabled={working || !row.trainer_id}
-                    onClick={() => nudge(row)}>
-                    <Bell size={13} /> Remind
-                  </Button>
-                  {/* Only PT can move: a class booking is a seat in a timetabled
-                      class, and "another trainer" would mean a different class
-                      at a different time, which is a new booking rather than a
-                      reassignment. */}
+              <div key={`${row.kind}:${row.id}`} className="rounded-xl p-3"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <span className="inline-block px-2 py-0.5 rounded-full text-[11.5px] font-semibold" style={{ background: u.bg, color: u.tone }}>{u.label}</span>
+                <p className="text-[13.5px] font-semibold text-white truncate mt-1.5">{row.member_name} — {row.what}</p>
+                <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                  {row.kind === 'pt' ? '1-on-1' : 'Class'} with {row.trainer_name ?? 'no coach assigned'}, {when(row.starts_at)}
+                </p>
+                <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                  <Clock size={12} />
+                  Waiting {row.days_waiting === 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}
+                </p>
+                <div className="flex items-center gap-1 mt-2 flex-wrap">
+                  <RdButton variant="ghost" size="sm" icon={Bell} disabled={working || !row.trainer_id} onClick={() => nudge(row)}>Remind</RdButton>
+                  {/* Only 1-on-1 can move: a class booking is a seat in a timetabled class. */}
                   {row.kind === 'pt' && (
-                    <Button variant="secondary" size="sm" disabled={working}
-                      onClick={() => openMove(row)}>
-                      <UserCog size={13} /> Another coach
-                    </Button>
+                    <RdButton variant="soft" size="sm" icon={UserCog} disabled={working} onClick={() => openMove(row)}>Another coach</RdButton>
                   )}
-                  <Button variant="ghost" size="sm" disabled={working}
-                    onClick={() => openCancel(row)}>
-                    <XCircle size={13} /> Cancel
-                  </Button>
+                  <RdButton variant="ghost" size="sm" icon={XCircle} disabled={working} onClick={() => openCancel(row)}>Cancel</RdButton>
                 </div>
               </div>
             );
           })}
         </div>
-      </Section>
+      </RdCard>
 
       {/* ── Move it to someone who is free ──────────────────────────────── */}
       <Modal
