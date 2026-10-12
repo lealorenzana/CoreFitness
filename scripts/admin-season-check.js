@@ -131,6 +131,10 @@ async (page) => {
   await page.waitForTimeout(2500);
   t = await text();
   out.push('template marked: ' + (/Repeats weekly/.test(t) ? 'shown' : 'MISSING'));
+  // The gym goal and squads have their own tab (2026-10-12).
+  await page.getByRole('tab', { name: /Gym goal/ }).click();
+  await page.waitForTimeout(600);
+  t = await text();
   out.push('gym goal with progress: ' + (/October days/.test(t) && /412 of 1,000 training days · 88 members contributing/.test(t) ? 'shown' : 'MISSING'));
   out.push("members' squads listed: " + (/Iron Barkada · 3 · target 9\/wk/.test(t) ? 'shown' : 'MISSING'));
   await page.getByLabel('Goal title').fill('500 workouts this month');

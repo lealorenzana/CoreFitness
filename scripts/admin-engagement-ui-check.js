@@ -144,6 +144,8 @@ async (page) => {
   // ---- Challenges ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.getByText('How a challenge works').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'shots/admin-challenges.png' });
   t = await text();
   out.push('challenges explain themselves with an example: ' + (/Example\./.test(t) && /reaches 10 in her fourth week/.test(t) ? 'yes' : 'MISSING'));
   out.push('completions settle on open: ' + (CALLS.some((c) => c[1] === 'settle_challenges') ? 'yes' : 'MISSING'));
@@ -156,6 +158,8 @@ async (page) => {
 
   // ---- Achievements --------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: 'shots/admin-achievements.png' });
   await page.getByRole('button', { name: /New achievement/ }).click();
   await page.getByText('1. What earns it').waitFor({ timeout: 10000 });
   await page.getByRole('button', { name: /^Training days/ }).click();
@@ -176,6 +180,8 @@ async (page) => {
   // ---- Announcements ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/notifications', { waitUntil: 'domcontentloaded' });
   await page.getByText('Sent announcements').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'shots/admin-announcements.png' });
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await page.getByRole('button', { name: /Select all 2/ }).click();
   await page.getByRole('button', { name: 'Recall 2' }).click();
@@ -187,7 +193,7 @@ async (page) => {
   await page.getByRole('button', { name: /Send|New announcement/ }).first().click();
   await page.getByText('1. Who gets it').waitFor({ timeout: 5000 });
   await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByRole('button', { name: 'Closed for a day' }).click();
+  await page.getByRole('button', { name: 'Closed for a day', exact: true }).click();
   await page.getByRole('button', { name: 'Next' }).click();
   out.push('a template must be filled in first: ' + (/Fill in the \[brackets\]/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-announce-step2.png' });

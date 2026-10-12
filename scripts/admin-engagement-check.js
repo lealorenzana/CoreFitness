@@ -192,8 +192,13 @@ async (page) => {
   // Challenges: standings + goal templates
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
+  // Goal templates and the challenges are tabs of one page (2026-10-12).
+  await page.getByRole('tab', { name: /Goals members pick/ }).click();
+  await page.waitForTimeout(600);
   t = await text();
   out.push('goal templates: ' + grab(t, 'Goal templates', 160));
+  await page.getByRole('tab', { name: /^Challenges$/ }).click();
+  await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Standings' }).first().click();
   await page.waitForTimeout(1200);
   t = await text();
@@ -201,6 +206,8 @@ async (page) => {
   await page.screenshot({ path: 'shots/admin-standings.png' });
   await page.getByRole('button', { name: 'Close' }).last().click();
   await page.waitForTimeout(300);
+  await page.getByRole('tab', { name: /Goals members pick/ }).click();
+  await page.waitForTimeout(500);
   await page.getByLabel('Default target').first().fill('15');
   await page.getByText('Goal templates').scrollIntoViewIfNeeded();
   await page.locator('button:has-text("Save")').last().click();

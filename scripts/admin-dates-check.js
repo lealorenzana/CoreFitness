@@ -82,7 +82,9 @@ async (page) => {
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
 
-  // ---- the gym-wide goal (the evaluator's 2002) ----
+  // ---- the gym-wide goal (the evaluator's 2002) — on its own tab since 2026-10-12 ----
+  await page.getByRole('tab', { name: /Gym goal/ }).click();
+  await page.waitForTimeout(600);
   const goalStart = page.locator('[aria-label="Goal starts"] button').first();
   if (await goalStart.count()) {
     await goalStart.click();
@@ -98,6 +100,8 @@ async (page) => {
   }
 
   // ---- a new challenge ----
+  await page.getByRole('tab', { name: /^Challenges$/ }).click();
+  await page.waitForTimeout(300);
   await page.getByRole('button', { name: /New challenge/ }).first().click();
   await page.waitForTimeout(500);
   // The form opens with today filled in, so find the pickers by their labels.
