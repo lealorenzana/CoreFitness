@@ -207,7 +207,10 @@ export default function RenewMembership() {
         setTrialUsed(usedTrial);
         // Nothing is pre-selected. The old screen defaulted to the plan the
         // member was already on, so the button read "Renew Free Access — ₱0"
-        // before they had touched anything.
+        // before they had touched anything. The one exception is a plan the
+        // member chose themselves: Today's "You picked Premium" sends ?plan=.
+        const asked = new URLSearchParams(window.location.search).get('plan');
+        if (asked && available.some((p) => p.id === asked && p.is_active)) setSelectedId(asked);
       } catch (err) {
         if (!cancelled) toast.error(errorMessage(err, 'Could not load the plans'));
       } finally {

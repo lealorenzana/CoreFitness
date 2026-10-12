@@ -28,6 +28,7 @@ import GymMark from '../components/ui/GymMark';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
 import DueStrip from '../components/rooms/DueStrip';
 import TermsUpdateStrip from '../components/legal/TermsUpdateStrip';
+import FinishPlanCard from '../components/home/FinishPlanCard';
 import { rampFor } from '../lib/gymTheme';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
@@ -332,6 +333,8 @@ export default function Home() {
       {/* The gym-wide goal (0124) — nothing when the gym has none running. */}
       {/* Each follows its own switch (0141): classwork is Rooms, the gym goal is Squads. */}
       <TermsUpdateStrip />
+      {/* The paid plan they picked at sign-up, asked about once (2026-10-12). */}
+      <FinishPlanCard />
       {moduleOn(gymApp, 'rooms') && <DueStrip />}
       {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
 

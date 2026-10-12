@@ -43,5 +43,10 @@ export async function finishSignup(i: FinishSignupInput): Promise<'auto' | 'desk
     p_requested_plan: i.requestedPlanId || null, p_terms_version: i.termsVersion, p_privacy_version: i.privacyVersion,
   });
   if (error) throw new Error(error.message);
+  // The plan they picked rides on the account, as the email form's does, so Today can
+  // ask them to finish it once they are in (FinishPlanCard). Best effort.
+  if (i.requestedPlanId) {
+    await supabase.auth.updateUser({ data: { requested_plan_id: i.requestedPlanId, gym_id: i.gymId } }).catch(() => undefined);
+  }
   return data as 'auto' | 'desk';
 }
