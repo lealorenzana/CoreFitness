@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MoreHorizontal, Search, ChevronDown, Lightbulb } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal, Search, ChevronDown, Lightbulb, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Popover from './Popover';
 
@@ -213,18 +213,114 @@ export function SearchField({ value, onChange, placeholder, autoFocus, onEnter, 
   );
 }
 
+interface SelectOption { value: string; text: string; disabled?: boolean }
+
+/** The <option> children as data — options may come in arrays and fragments. */
+function optionsOf(children: React.ReactNode): SelectOption[] {
+  const out: SelectOption[] = [];
+  const textOf = (n: React.ReactNode): string => React.Children.toArray(n).map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : '')).join('');
+  const walk = (n: React.ReactNode) => React.Children.forEach(n, (c) => {
+    if (!React.isValidElement(c)) return;
+    const el = c as React.ReactElement<{ value?: string | number; children?: React.ReactNode; disabled?: boolean }>;
+    if (el.type === 'option') out.push({ value: String(el.props.value ?? ''), text: textOf(el.props.children), disabled: el.props.disabled });
+    else walk(el.props.children);
+  });
+  walk(children);
+  return out;
+}
+
+/**
+ * A dropdown in the kit's look (2026-10-12). The browser's own <select> list is
+ * the operating system's white menu — on a dark dashboard it read as broken. This
+ * is a button (role=combobox, named by `label`) and a dark listbox in a Popover,
+ * with a search box once there are more than eight options and full keyboard use
+ * (↑ ↓ Home End Enter Esc). Callers still pass plain <option> children.
+ */
 export function RdSelect({ value, onChange, children, label, className = '' }: {
   value: string; onChange: (v: string) => void; children: React.ReactNode; label: string; className?: string;
 }) {
+  const options = optionsOf(children);
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [hi, setHi] = useState(0);
+  const listId = React.useId();
+  const current = options.find((o) => o.value === value) ?? null;
+  const searchable = options.length > 8;
+  const shown = q.trim() ? options.filter((o) => o.text.toLowerCase().includes(q.trim().toLowerCase())) : options;
+  // A first option with an empty value is the placeholder ("Member", "All coaches"…).
+  const isPlaceholder = !current || (current.value === '' && options[0]?.value === '');
+
+  const openList = () => {
+    setQ('');
+    setHi(Math.max(0, options.findIndex((o) => o.value === value)));
+    setOpen(true);
+  };
+  const pick = (o: SelectOption) => {
+    if (o.disabled) return;
+    onChange(o.value);
+    setOpen(false);
+    anchor?.focus();
+  };
+  const onKey = (e: React.KeyboardEvent) => {
+    if (!open) {
+      if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); openList(); }
+      return;
+    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(shown.length - 1, h + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(0, h - 1)); }
+    else if (e.key === 'Home') { e.preventDefault(); setHi(0); }
+    else if (e.key === 'End') { e.preventDefault(); setHi(shown.length - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); const o = shown[hi]; if (o) pick(o); }
+    else if (e.key === 'Tab') setOpen(false);
+  };
+
   return (
-    <label className={`relative inline-block ${className}`}>
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
-        className="appearance-none h-12 w-full pl-4 pr-10 rounded-xl text-[15px] text-white outline-none cursor-pointer"
-        style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)', colorScheme: 'dark' }}>
-        {children}
-      </select>
-      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: SECOND }} />
-    </label>
+    <div className={`relative inline-block ${className}`}>
+      <button ref={setAnchor} type="button" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
+        onClick={() => (open ? setOpen(false) : openList())} onKeyDown={onKey} data-rd-select={label}
+        className="h-12 w-full pl-4 pr-10 rounded-xl text-[15px] text-left outline-none cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-violet-500/50"
+        style={{
+          background: open ? 'rgba(124,58,237,0.10)' : 'rgba(255,255,255,0.025)',
+          border: `1px solid ${open ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.08)'}`,
+          color: isPlaceholder ? SECOND : '#fff',
+        }}>
+        <span className="block truncate">{current?.text ?? options[0]?.text ?? label}</span>
+        <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-transform"
+          style={{ color: SECOND, transform: `translateY(-50%) rotate(${open ? 180 : 0}deg)` }} />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={Math.max(anchor?.offsetWidth ?? 200, 200)}>
+        <div style={{ background: '#1A1530', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.3)', borderRadius: 12 }}>
+          {searchable && (
+            <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <label className="relative block">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
+                <input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setHi(0); }} onKeyDown={onKey} placeholder={`Find ${label.toLowerCase()}`}
+                  aria-label={`Find ${label.toLowerCase()}`}
+                  className="w-full h-9 pl-8 pr-3 rounded-lg text-[13.5px] text-white outline-none" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
+              </label>
+            </div>
+          )}
+          <div id={listId} role="listbox" aria-label={label} className="max-h-[300px] overflow-y-auto p-1.5" style={{ scrollbarWidth: 'thin' }}>
+            {shown.length === 0 ? (
+              <p className="px-3 py-3 text-[13px]" style={{ color: MUTED }}>No match for &ldquo;{q}&rdquo;</p>
+            ) : shown.map((o, i) => {
+              const on = o.value === value;
+              return (
+                <button key={`${o.value}-${i}`} type="button" role="option" aria-selected={on} disabled={o.disabled}
+                  onMouseEnter={() => setHi(i)} onClick={() => pick(o)}
+                  ref={(el) => { if (el && i === hi && open) el.scrollIntoView({ block: 'nearest' }); }}
+                  className="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-[14px] text-left disabled:opacity-40"
+                  style={{ background: i === hi ? 'rgba(124,58,237,0.22)' : 'transparent', color: on ? '#EDE9FE' : o.value === '' ? SECOND : 'var(--color-text-primary)' }}>
+                  <span className="flex-1 truncate">{o.text}</span>
+                  {on && <Check size={15} style={{ color: '#C4B5FD' }} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Popover>
+    </div>
   );
 }
 

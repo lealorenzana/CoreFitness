@@ -174,6 +174,12 @@ async (page) => {
   t = await text();
   has('coach hours: grouped by coach, and who has none', /Bianca Soriano/.test(t) && /2 windows/.test(t) && /No hours yet, so no 1-on-1 can be booked with: Dante Evangelista/.test(t));
   await page.screenshot({ path: 'shots/ops-schedule-hours.png' });
+  await page.getByRole('combobox', { name: 'Coach' }).click();
+  await page.waitForTimeout(200);
+  has('coach hours: the coach list is the dark dropdown', (await page.getByRole('listbox', { name: 'Coach' }).getByRole('option').count()) === 4);
+  await page.screenshot({ path: 'shots/ops-schedule-coach-dropdown.png' });
+  await page.getByRole('option', { name: 'Jen Lacsamana' }).click();
+  has('…and picking a coach shows them in the box', /Jen Lacsamana/.test(await page.getByRole('combobox', { name: 'Coach' }).innerText()));
 
   // ── Bookings ──
   t = await visit('/bookings', 'bookings');
@@ -205,7 +211,12 @@ async (page) => {
   has('tiles: total, this month, pending, coming to renew', /Total collected/.test(t) && /This month/.test(t) && /Pending/.test(t) && /Coming to renew/.test(t));
   has('records by member, the drawer in the rail', (await page.locator('[data-member-row]').count()) === 5 && /End of day/.test(t) && /Should be in the drawer/.test(t));
   has('the page does not scroll', await noScroll());
-  await page.getByLabel('Show').selectOption('all');
+  await page.getByRole('combobox', { name: 'Show' }).click();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: 'shots/ops-dropdown.png' });
+  has('the dropdown opens as a dark list with the choice ticked', (await page.getByRole('listbox', { name: 'Show' }).count()) === 1
+    && (await page.getByRole('option', { name: 'By member', selected: true }).count()) === 1);
+  await page.getByRole('option', { name: 'Every payment' }).click();
   await page.waitForTimeout(400);
   t = await text();
   has('every payment: method, status, a pending one to confirm, a receipt each', (await page.locator('[data-payment-row]').count()) >= 5 && /GCash/.test(t)

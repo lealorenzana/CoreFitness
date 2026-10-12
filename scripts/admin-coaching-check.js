@@ -128,9 +128,16 @@ async (page) => {
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'confirm_coaching_payment');
   out.push('Confirm records the payment as online: ' + (c && c[1].p_id === 'k1' && c[1].p_received === true && c[1].p_method === 'online' ? 'yes' : 'MISSING'));
-  await page.getByLabel('Member').selectOption('m2');
-  await page.getByLabel('Coach').selectOption('t1');
-  await page.getByLabel('Length').selectOption('3');
+  // The kit's dropdown (2026-10-12) is a combobox and a dark listbox, not the OS menu.
+  const choose = async (label, option) => {
+    await page.getByRole('combobox', { name: label }).click();
+    await page.getByRole('option', { name: option, exact: true }).click();
+  };
+  await choose('Member', 'Ana Reyes');
+  await choose('Coach', 'Rae Santos');
+  await choose('Length', '3 months');
+  out.push('the dropdowns are the dark list, never the OS menu: ' + ((await page.locator('[data-coaching-assign] select').count()) === 0
+    && (await page.getByRole('combobox', { name: 'Member' }).innerText()).includes('Ana Reyes') ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /^Assign$/ }).click();
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'assign_coaching');
