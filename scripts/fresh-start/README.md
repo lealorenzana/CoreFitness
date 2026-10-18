@@ -14,7 +14,7 @@ every role landing in the lab, the member's two-year history, wiping the lab aga
    `scripts/sql/verify/verify0198.sql`). It makes the trial 7 days with no grace and
    hides Gym #1 from Find your gym.
 2. **Take the backup** — `docs/BACKUPS.md`. Part 1 cannot be undone.
-3. **Empty Storage** — Supabase → Storage → each bucket (media, progress, support,
+3. **Empty Storage** — Supabase → Storage → each bucket (avatars, media, progress, support,
    applications, credentials) → select all → delete. SQL cannot delete files, and
    an account whose upload still points at it cannot be deleted.
 

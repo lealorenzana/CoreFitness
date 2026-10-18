@@ -3,7 +3,7 @@
 -- ============================================================================
 --
 -- IRREVERSIBLE. Take the encrypted backup first (docs/BACKUPS.md), and empty
--- the storage buckets (Supabase → Storage: media, progress, support,
+-- the storage buckets (Supabase → Storage: avatars, media, progress, support,
 -- applications, credentials) — files cannot be deleted from SQL, and an
 -- account whose upload still points at it cannot be deleted.
 --
