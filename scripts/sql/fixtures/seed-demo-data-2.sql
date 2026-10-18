@@ -1,3 +1,13 @@
+-- ============================================================================
+-- TEST FIXTURE ONLY — NEVER PASTE THIS INTO SUPABASE.
+--
+-- Written for the schema before tenancy (migration 0097). It no longer loads on
+-- today's database. The SQL harness (scripts/sql/lib/live-db.mjs) replays it at
+-- the 0097 point of the migration history, so tests meet demo rows the way the
+-- live database once did. For a filled gym to test with, use
+-- scripts/fresh-start/ (Core Fitness Lab) instead.
+-- ============================================================================
+
 -- Demo data, part 2 — the rest of the sidebar. Run AFTER seed-demo-data.sql.
 --
 -- **To run it, paste the four files in part2/ one at a time, in order 1 → 4.**

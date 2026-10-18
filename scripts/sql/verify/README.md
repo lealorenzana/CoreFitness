@@ -16,9 +16,9 @@ answer — `refused` where a rule must hold, `ALLOWED` if it did not.
 They run as a seed in the SQL harness (pglite; see `../README.md`):
 
 ```bash
-cp scripts/sql/verify/verify0096.sql scripts/demo-data/_v.tmp.sql
+cp scripts/sql/verify/verify0096.sql scripts/sql/fixtures/_v.tmp.sql
 node scripts/sql/replay-migrations.mjs . seed-demo-data.sql seed-demo-data-2.sql _v.tmp.sql
-rm scripts/demo-data/_v.tmp.sql
+rm scripts/sql/fixtures/_v.tmp.sql
 ```
 
 The run always "fails" with the REPORT line — that is the output, not an

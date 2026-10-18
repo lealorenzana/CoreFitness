@@ -14,7 +14,7 @@
  * see is checked here, not only asserted there.
  *
  *   npm install @electric-sql/pglite      # anywhere; not a project dependency
- *   node <repo>/scripts/demo-data/verify-demo-data.mjs "<repo>"
+ *   node <repo>/scripts/sql/fixtures/verify-demo-data.mjs "<repo>"
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -24,10 +24,11 @@ const requireFromCwd = createRequire(pathToFileURL(process.cwd() + '/'));
 const { PGlite } = await import(pathToFileURL(requireFromCwd.resolve('@electric-sql/pglite')).href);
 
 const REPO = process.argv[2];
-const read = (f) => readFileSync(`${REPO}/scripts/demo-data/${f}`, 'utf8');
+const read = (f) => readFileSync(`${REPO}/scripts/sql/fixtures/${f}`, 'utf8');
+const readDemo = (f) => readFileSync(`${REPO}/scripts/demo-data/${f}`, 'utf8');
 const seed1 = read('seed-demo-data.sql');
 const seed2 = read('seed-demo-data-2.sql');
-const removeSql = read('remove-demo-data.sql');
+const removeSql = readDemo('remove-demo-data.sql');
 
 const db = await PGlite.create();
 const results = [];

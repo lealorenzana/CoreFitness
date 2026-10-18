@@ -8,7 +8,7 @@
  * roles, the realtime publication. Extensions pglite does not ship are turned
  * into no-ops; every migration here already treats pg_cron as optional.
  *
- *   node <repo>/scripts/sql/replay-migrations.mjs "<repo>" [seed files under scripts/demo-data/ ...]
+ *   node <repo>/scripts/sql/replay-migrations.mjs "<repo>" [seed files under scripts/sql/fixtures/ ...]
  *
  * Found that seed-demo-data-2.sql is valid against the real schema, which the
  * hand-written fixtures in the other scripts could not show either way.

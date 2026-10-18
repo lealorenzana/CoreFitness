@@ -22,7 +22,10 @@ permissions:
 
 jobs:
   backup:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest becomes Ubuntu 26 on 2026-10-19, and the PostgreSQL
+    # apt repository below is keyed to the Ubuntu release — move only after it
+    # has been tested on the new one.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check the secrets are set

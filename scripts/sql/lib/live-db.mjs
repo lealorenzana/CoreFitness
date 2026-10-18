@@ -144,7 +144,7 @@ export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
     await db.exec(GRANTS);
     await db.exec(ADMIN_FIXTURE).catch((e) => log('admin fixture: ' + describe(e)));
     for (const s of seeds) {
-      try { await db.exec(readFileSync(`${repo}/scripts/demo-data/${s}`, 'utf8')); log(`SEED OK: ${s}`); }
+      try { await db.exec(readFileSync(`${repo}/scripts/sql/fixtures/${s}`, 'utf8')); log(`SEED OK: ${s}`); }
       catch (e) { throw new Error(`SEED FAILED: ${s}
    ${describe(e)}`); }
     }

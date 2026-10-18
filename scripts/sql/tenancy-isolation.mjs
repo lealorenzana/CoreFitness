@@ -454,7 +454,9 @@ await as(P.adminB);
 const cashB = await one(`select * from cash_day_summary((now() at time zone 'Asia/Manila')::date)`);
 check('Gym B cash drawer counts only Gym B cash', Number(cashB.cash_in) === 999 && cashB.payment_count === 1,
   JSON.stringify({ cash_in: cashB.cash_in, n: cashB.payment_count }));
-const invB = (await one(`select next_invoice_number(extract(year from now())::int) as n`)).n;
+// The counter is trigger-only since 0199 (no screen calls it), so ask it for Gym B directly.
+await asOwner();
+const invB = (await one(`select next_invoice_number(extract(year from now())::int, '${GYM_B}') as n`)).n;
 check('invoice numbers run per gym (Gym B is on its second)', /-0002$/.test(invB), invB);
 await as(P.adminA);
 const cashA = await one(`select * from cash_day_summary((now() at time zone 'Asia/Manila')::date)`);
@@ -668,13 +670,12 @@ const cross = await one(`select count(*)::int as n from notifications n
   where not exists (select 1 from gym_roles r where r.user_id = n.user_id and r.gym_id = n.gym_id)`);
 check('no notification anywhere is filed in a gym its recipient is not part of', cross.n === 0, `${cross.n}`);
 // The same dedupe key in two gyms: one message in each.
-await as(P.both);
-await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'A', null, 'same-key')`);
-await db.exec(`select set_active_gym('${GYM_B}')`);
-await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B', null, 'same-key')`);
-await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B again', null, 'same-key')`);
-await db.exec(`select set_active_gym('${GYM_A}')`);
+// notify_once is definer-only since 0199 (only triggers and sweeps call it), so
+// the owner calls it here, naming the gym the way those callers do.
 await asOwner();
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'A', null, 'same-key', '${GYM_A}')`);
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B', null, 'same-key', '${GYM_B}')`);
+await db.exec(`select notify_once('${P.both}', 'system', 'Same key', 'B again', null, 'same-key', '${GYM_B}')`);
 const dd = await db.query(`select gym_id::text as g from notifications where user_id = '${P.both}' and metadata->>'dedupe' = 'same-key'`);
 check('the same dedupe key notifies once per gym', dd.rows.length === 2 && new Set(dd.rows.map((r) => r.g)).size === 2,
   JSON.stringify(dd.rows));
