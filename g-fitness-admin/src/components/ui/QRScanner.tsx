@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { X, Camera, QrCode, AlertCircle } from 'lucide-react';
 import Button from './Button';
-import jsQR from 'jsqr';
+import { decodeQrFrame } from '../../lib/qrDecode';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -31,7 +31,11 @@ interface QRScannerProps {
  *
  * The pipeline now, at animation-frame rate over the whole frame:
  *
- *     getUserMedia -> video -> canvas.drawImage -> getImageData -> jsQR
+ *     getUserMedia -> video -> canvas.drawImage -> getImageData -> decodeQrFrame
+ *
+ * decodeQrFrame (lib/qrDecode.ts, 2026-10-18) tries zxing (WebAssembly) first,
+ * then jsQR whole and at half size: jsQR alone missed a blurry, glary phone
+ * screen the owner held up to an FHD webcam.
  *
  * `BarcodeDetector` is still used **where it exists** — on an Android tablet at
  * the desk it is faster and better than anything in JS. It is a fast path now
@@ -206,11 +210,9 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
             //
             // `attemptBoth` costs a second pass and buys a code shown light-on-
             // dark, which is exactly what the member app renders.
-            const code = jsQR(frame.data, frame.width, frame.height, {
-              inversionAttempts: 'attemptBoth',
-            });
-            if (code?.data) {
-              accept(code.data);
+            const text = await decodeQrFrame(frame);
+            if (text) {
+              accept(text);
               return;
             }
           }

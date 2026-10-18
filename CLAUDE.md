@@ -26,8 +26,8 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
   for the first eight hours of every local day. **`current_date` is UTC too** (0045). **A feature ships when a route
   leads to it** — two were built, correct, and linked from nowhere.
 - **An identifier is unique because a constraint says so**, not because a formula looks unlikely to repeat; **clocks
-  disagree too**. **`BarcodeDetector` does not exist in Chrome on Windows** and fails *silently* — `QRScanner` uses
-  **jsQR** over the full frame, **never a crop**. **A control writing a flag nothing reads is a lie**; **a rule
+  disagree too**. **`BarcodeDetector` does not exist in Chrome on Windows** and fails *silently* — `QRScanner` and the kiosk use
+  `lib/qrDecode.ts`: **zxing (WebAssembly, self-hosted) first, then jsQR whole and half-size**, over the full frame, **never a crop** (jsQR alone read 11 of 48 blurry/glary webcam frames, zxing 31). **A control writing a flag nothing reads is a lie**; **a rule
   enforced only in SQL the user cannot read ambushes them** (0017 → 0041). **Every per-member cache is cleared in ONE list, `lib/memberCaches.ts`**, called by `logout()` and `switchGym()` — two hand-kept lists had drifted and the achievement catalogue (a per-gym table) had no clearer at all, so it survived one person signing out and the next signing in. **Admin had the same bug** (2026-09-26: Ana signed in after G Fitness's owner and her sidebar wore G Fitness's name and logo) — `lib/adminCaches.ts`, and in both apps **a listener on `onAuthStateChange` clears them whenever the account changes**, so no sign-out path can forget (`admin-account-swap-check.js`). **Per-user state never lives in
   `localStorage`** — *and a column is not the fix unless the row exists when the write runs* (0033 → 0036).
 - **The legal pages are part of the system.** Terms/Privacy were boilerplate that *contradicted* it —
@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Current state (2026-10-18)
-- **Migrations 0001–0200 are all live** (probe, 2026-10-18; 0200 = the door: members pick their activity, coaches check in). What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
+- **Migrations 0001–0200 are all live** (probe, 2026-10-18; 0200 = the door: members pick their activity, coaches check in); **0201 (walk-in name optional + walk-in history) written, not yet pasted**. What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
 - **Fresh start ran 2026-10-18**: every gym and non-platform-admin account was deleted (`scripts/fresh-start/`, README). **Gym #1 is Core Fitness Lab**, the platform owner's private test gym — never listed, never billed, and still the rules template every new gym copies. Logins `mf.jgabrielle+owner|desk|coach|member@gmail.com` (ids `cf1ab000…`; made-up rows `5eed…`, removable by Remove demo data). The one platform admin is `corefitnessadmin@gmail.com`. **G Fitness re-applies through the site as an ordinary gym** — the owner's last step, after the system is polished.
 - **A free trial is 7 days and stops** (0198): the day after `paid_until`, a never-paid trial gym is `trial_ended` (no grace; grace is for paid gyms) — admin shows only `TrialEnded`, member/trainer only `GymPaused`. The platform moves a trial's end from Billing → Change the date.
 - **Security (0199)**: `scripts/sql/security-red-team.mjs` attacks as visitor/member/coach/other gym and must stay green. **Postgres grants EXECUTE to PUBLIC by default — revoke every new helper function from public/anon/ authenticated unless a screen calls it**, and remember a policy cannot limit columns (use a trigger).

@@ -62,6 +62,7 @@
     { "file": "admin-equipment-check.js", "app": "admin" },
     { "file": "admin-walk-ins-check.js", "app": "admin" },
     { "file": "admin-door-check.js", "app": "admin" },
+    { "file": "admin-qr-decode-check.js", "app": "admin" },
     { "file": "admin-inbox-check.js", "app": "admin" },
     { "file": "admin-redesign-check.js", "app": "admin" },
     { "file": "admin-ops-redesign-check.js", "app": "admin" },

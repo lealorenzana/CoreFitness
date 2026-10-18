@@ -259,7 +259,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                   boxShadow: '0 0 40px -10px var(--color-primary)',
                   opacity: expired ? 0.3 : 1, filter: expired ? 'blur(2px)' : undefined,
                 }}>
-                  <QRCodeSVG value={qr || home.memberId} size={224} level="M" marginSize={4} />
+                  <QRCodeSVG value={qr || home.memberId} size={256} level="M" marginSize={4} />
                 </div>
 
                 {/* The fallback when the camera won't cooperate. Never expires —

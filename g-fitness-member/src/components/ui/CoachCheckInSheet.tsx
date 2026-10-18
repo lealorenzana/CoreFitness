@@ -52,7 +52,7 @@ export default function CoachCheckInSheet({ open, onClose, trainerId }: { open: 
         ) : (
           // White, always: a desk webcam reads black on white (as the member's code).
           <div style={{ borderRadius: 14, overflow: 'hidden', background: '#FFFFFF', lineHeight: 0, boxShadow: '0 0 40px -10px var(--color-primary)' }}>
-            <QRCodeSVG value={qr || trainerId} size={224} level="M" marginSize={4} />
+            <QRCodeSVG value={qr || trainerId} size={256} level="M" marginSize={4} />
           </div>
         )}
         <p className="selectable" style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 19, letterSpacing: '0.34em', color: 'var(--color-primary-300)' }}>

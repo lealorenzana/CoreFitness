@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import jsQR from 'jsqr';
+import { decodeQrFrame } from '../lib/qrDecode';
 import { Camera, CheckCircle2, LogOut, QrCode, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { listMembers, type MemberWithProfile } from '../lib/api/members';
@@ -166,15 +166,17 @@ export default function Kiosk() {
         const canvas = canvasRef.current ?? document.createElement('canvas');
         canvasRef.current = canvas;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        // One decode at a time: zxing is asynchronous, and a slow frame must not pile up behind the timer.
+        let decoding = false;
         timer = window.setInterval(() => {
-          if (busyRef.current || !ctx || v.readyState !== v.HAVE_ENOUGH_DATA) return;
+          if (decoding || busyRef.current || !ctx || v.readyState !== v.HAVE_ENOUGH_DATA) return;
           canvas.width = v.videoWidth;
           canvas.height = v.videoHeight;
           ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
           // The whole frame, never a crop, and both polarities — see QRScanner.
           const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const found = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: 'attemptBoth' });
-          if (found?.data) void submit(found.data);
+          decoding = true;
+          void decodeQrFrame(frame).then((text) => { if (text) void submit(text); }).finally(() => { decoding = false; });
         }, 220);
       } catch {
         if (!cancelled) setCamError('No camera is available. Members can still type their six-character code below.');

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footprints, UserPlus, Settings2, Wallet, Undo2, HelpCircle, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
-import { RdHeader, RdCard, RdButton, Pill, EmptyBlock, FitBody, Initials } from '../components/ui/rd';
+import { Footprints, UserPlus, Settings2, Wallet, Undo2, HelpCircle, Download, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
+import { RdHeader, RdCard, RdButton, Pill, EmptyBlock, FitBody, Initials, SearchField, RdTable, Tr, Td } from '../components/ui/rd';
+import FloatingWindow from '../components/ui/FloatingWindow';
+import { exportToCSV } from '../utils/exportUtils';
 import { ATTENDANCE_TABS, TONE } from '../components/ui/rdTokens';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
-import { todayKey } from '../utils/dates';
+import { todayKey, addDays } from '../utils/dates';
 import WalkInGuide from '../components/WalkInGuide';
 import DetailSheet from '../components/ui/DetailSheet';
 
@@ -13,6 +15,11 @@ type Kind = 'day' | 'pack5' | 'pack10' | 'pack_visit';
 interface Prices { on: boolean; day: number | null; pack5: number | null; pack10: number | null; nudge: number | null }
 interface Guest { id: string; name: string; phone: string | null; visits_left: number; visits_this_month: number; last_visit: string | null }
 interface Visit { id: string; name: string; phone: string | null; kind: Kind; amount: number; method: string; visited_at: string; voided: boolean; visits_left: number }
+interface PastVisit { id: string; name: string; phone: string | null; visit_day: string; visited_at: string; kind: Kind; amount: number; method: string; voided: boolean; recorded_by_name: string | null }
+type Range = 'today' | '7' | '30' | '90';
+const RANGE_LABEL: Record<Range, string> = { today: 'Today', '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days' };
+/** A guest recorded with no name (0201) — shown as such, never given an invented one. */
+const UNNAMED = 'Walk-in guest';
 interface Regular { guest_id: string; name: string; phone: string | null; visits: number; spent: number; last_visit: string }
 const KIND: Record<Kind, string> = { day: 'Day pass', pack5: '5-visit pack', pack10: '10-visit pack', pack_visit: 'Visit from a pack' };
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
@@ -75,6 +82,24 @@ export default function WalkIns() {
   const [busy, setBusy] = useState(false);
   /** The guide's table is wide: it opens in a side panel, never unfolded inside the rail. */
   const [guideOpen, setGuideOpen] = useState(false);
+  /** Past walk-ins (0201), in a floating window: names, what they paid, who recorded it. */
+  const [histOpen, setHistOpen] = useState(false);
+  const [histRange, setHistRange] = useState<Range>('30');
+  const [histQ, setHistQ] = useState('');
+  const [hist, setHist] = useState<PastVisit[] | null | 'missing'>(null);
+  useEffect(() => {
+    if (!histOpen) return;
+    let live = true;
+    void (async () => {
+      const to = todayKey();
+      const from = histRange === 'today' ? to : addDays(to, -(Number(histRange) - 1));
+      const { data, error } = await supabase.rpc('guest_visits_between', { p_from: from, p_to: to });
+      if (!live) return;
+      // Before 0201 the function does not exist — said so, never shown as "no walk-ins".
+      setHist(error ? 'missing' : ((data ?? []) as PastVisit[]).map((v) => ({ ...v, amount: Number(v.amount) })));
+    })();
+    return () => { live = false; };
+  }, [histOpen, histRange]);
 
   const load = useCallback(async () => {
     const [{ data: s, error }, { data: v }, fg, plans] = await Promise.all([
@@ -116,13 +141,13 @@ export default function WalkIns() {
     if (!chosen) return;
     setBusy(true);
     const { data, error } = await supabase.rpc('record_guest_visit', {
-      p_guest: guest?.id ?? null, p_name: guest ? null : name, p_phone: guest ? null : (phone.trim() || null), p_kind: chosen,
+      p_guest: guest?.id ?? null, p_name: name.trim() || null, p_phone: guest ? null : (phone.trim() || null), p_kind: chosen,
       p_method: chosen === 'pack_visit' ? 'cash' : method,
     });
     setBusy(false);
     if (error) { showToast(error.message, 'error'); return; }
     const r = (Array.isArray(data) ? data[0] : data) as { amount: number; visits_left: number; visits_this_month: number; suggest_membership: boolean };
-    const who = guest?.name ?? name.trim();
+    const who = (guest && guest.name !== UNNAMED ? guest.name : name.trim()) || 'The walk-in';
     showToast(`${who}: ${Number(r.amount) > 0 ? `${peso(Number(r.amount))} ${method}` : 'a visit from their pack'}${r.visits_left ? ` · ${r.visits_left} left on the pack` : ''}`, 'success');
     if (r.suggest_membership) showToast(`${who} has come ${r.visits_this_month} times this month — suggest a membership.`, 'info');
     setPhone(''); setName(''); setFound(null); setKind(null); setMethod('cash');
@@ -140,7 +165,7 @@ export default function WalkIns() {
   const live = visits.filter((v) => !v.voided);
   const cash = live.filter((v) => v.method === 'cash').reduce((a, v) => a + v.amount, 0);
   const canSell = !!prices?.on;
-  const named = !!guest || name.trim().length > 0;
+  // The name is optional (0201): a guest paying for one visit need not give one.
   const sold = (k: Kind) => live.filter((v) => v.kind === k).length;
   const inputCls = 'h-12 px-4 rounded-xl text-[15px] text-white outline-none w-full';
   const inputSt = { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' };
@@ -150,7 +175,12 @@ export default function WalkIns() {
   return (
     <div className="rd-fit" data-walkins>
       <RdHeader title="Attendance" subtitle="Guests who aren’t members · paid at the desk · counted in the drawer." tabs={ATTENDANCE_TABS}
-        actions={<RdButton icon={Settings2} onClick={() => navigate('/settings?tab=walk-ins')}>Walk-in prices</RdButton>} />
+        actions={(
+          <div className="flex items-center gap-3">
+            <RdButton icon={History} onClick={() => setHistOpen(true)} data-open-walkin-history>Past walk-ins</RdButton>
+            <RdButton icon={Settings2} onClick={() => navigate('/settings?tab=walk-ins')}>Walk-in prices</RdButton>
+          </div>
+        )} />
 
       <FitBody rail={(
         <>
@@ -185,7 +215,10 @@ export default function WalkIns() {
               <h3 className="text-[16px] font-bold text-white inline-flex items-center gap-2"><Footprints size={18} style={{ color: '#A78BFA' }} />Today's walk-ins</h3>
               <span className="text-[13px] px-2.5 py-0.5 rounded-full tabular-nums" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>{live.length}</span>
             </div>
-            <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Void a mistake before the drawer closes.</p>
+            <p className="text-[12px] mt-1 flex items-center justify-between gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+              Void a mistake before the drawer closes.
+              <button type="button" onClick={() => setHistOpen(true)} className="font-semibold whitespace-nowrap" style={{ color: '#A78BFA' }}>Past walk-ins →</button>
+            </p>
             {visits.length === 0 ? (
               <p className="text-[13.5px] py-6 text-center" style={{ color: 'var(--color-text-muted)' }}>No walk-ins yet today.</p>
             ) : (
@@ -194,7 +227,7 @@ export default function WalkIns() {
                   <div key={v.id} className="flex items-center gap-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', opacity: v.voided ? 0.55 : 1 }}>
                     <Initials name={v.name} size={32} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-white truncate">{v.name}{v.voided ? ' · voided' : ''}</p>
+                      <p className="text-[14px] font-semibold text-white truncate">{v.name === UNNAMED ? 'No name given' : v.name}{v.voided ? ' · voided' : ''}</p>
                       <p className="text-[12px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
                         {KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} ${v.method}` : 'no charge'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
                       </p>
@@ -223,7 +256,6 @@ export default function WalkIns() {
             <RdCard glow className="p-5 flex flex-col gap-4 rd-fit-fill overflow-y-auto" data-walkin-card>
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-[17px] font-bold text-white inline-flex items-center gap-2"><UserPlus size={19} style={{ color: '#A78BFA' }} />Record a walk-in</h2>
-                <span className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>about 20 seconds</span>
               </div>
 
               {/* 1 · Who */}
@@ -239,7 +271,7 @@ export default function WalkIns() {
                     </div>
                   ) : (
                     <input aria-label="Guest name" className={inputCls} style={inputSt} value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder={looked ? 'New guest — their name' : 'Name'} />
+                      placeholder={looked ? 'New guest — name (optional)' : 'Name (optional)'} />
                   )}
                 </div>
                 <p className="text-[12.5px] inline-flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
@@ -277,7 +309,7 @@ export default function WalkIns() {
                       {m === 'cash' ? <Banknote size={16} /> : <QrCode size={16} />}{m === 'cash' ? 'Cash' : 'Online'}
                     </button>
                   ))}
-                  <RdButton variant="primary" className="ml-auto" icon={Check} disabled={busy || !named || !chosen} onClick={() => void record()} data-record-visit>
+                  <RdButton variant="primary" className="ml-auto" icon={Check} disabled={busy || !chosen} onClick={() => void record()} data-record-visit>
                     {chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
                   </RdButton>
                 </div>
@@ -333,6 +365,73 @@ export default function WalkIns() {
             </RdCard>
           )}
       </FitBody>
+
+      <FloatingWindow open={histOpen} onClose={() => setHistOpen(false)} title="Past walk-ins" icon={History} data-walkin-history
+        count={Array.isArray(hist) ? hist.filter((v) => !v.voided).length : undefined}
+        tools={(
+          <>
+            <div className="flex gap-1.5">
+              {(['today', '7', '30', '90'] as Range[]).map((r) => (
+                <button key={r} type="button" onClick={() => setHistRange(r)} aria-pressed={histRange === r}
+                  className="h-10 px-3.5 rounded-xl text-[13.5px] font-semibold"
+                  style={histRange === r
+                    ? { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` }
+                    : { background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {RANGE_LABEL[r]}
+                </button>
+              ))}
+            </div>
+            <div className="w-[230px]"><SearchField value={histQ} onChange={setHistQ} placeholder="Name or phone…" /></div>
+            <RdButton icon={Download} disabled={!Array.isArray(hist) || hist.length === 0} onClick={() => Array.isArray(hist) && exportToCSV(hist.map((v) => ({
+              Date: v.visit_day, Time: new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
+              Guest: v.name, Phone: v.phone ?? '', What: KIND[v.kind], Amount: v.amount, Paid: v.method, 'Recorded by': v.recorded_by_name ?? '', Voided: v.voided ? 'yes' : '',
+            })), `walk-ins_${histRange}_${todayKey()}`)}>Export</RdButton>
+          </>
+        )}
+        footer={Array.isArray(hist) ? (() => {
+          const kept = hist.filter((v) => !v.voided);
+          const sum = (m?: string) => kept.filter((v) => !m || v.method === m).reduce((a, v) => a + v.amount, 0);
+          return (
+            <p className="text-[14px]" style={{ color: 'var(--color-text-secondary)' }}>
+              {kept.length} visit{kept.length === 1 ? '' : 's'} · <b className="text-white">{peso(sum())}</b> · cash {peso(sum('cash'))} · online {peso(sum('online'))}
+              {hist.length > kept.length ? ` · ${hist.length - kept.length} voided` : ''}
+            </p>
+          );
+        })() : undefined}>
+        {hist === 'missing' ? (
+          <EmptyBlock icon={History} title="The walk-in history needs the 0201 update to the database." />
+        ) : hist === null ? (
+          <p className="p-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>
+        ) : (() => {
+          const q = histQ.trim().toLowerCase();
+          const shown = hist.filter((v) => !q || v.name.toLowerCase().includes(q) || (v.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000'));
+          return (
+            <RdTable head={['When', 'Guest', 'What', 'Amount', 'Paid', 'Recorded by', { label: '', align: 'right' }]}
+              empty={shown.length === 0 ? <EmptyBlock icon={Footprints} compact title={hist.length === 0 ? `No walk-ins — ${RANGE_LABEL[histRange].toLowerCase()}.` : 'Nobody matches that.'} /> : undefined}>
+              {shown.map((v) => (
+                <Tr key={v.id} data-walkin-history-row style={{ opacity: v.voided ? 0.55 : 1 }}>
+                  <Td className="whitespace-nowrap"><b className="text-white">{new Date(`${v.visit_day}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</b>{' '}
+                    <span style={{ color: 'var(--color-text-secondary)' }}>{new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span></Td>
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <Initials name={v.name} size={32} />
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate" style={{ color: v.name === UNNAMED ? 'var(--color-text-secondary)' : '#fff' }}>{v.name === UNNAMED ? 'No name given' : v.name}</p>
+                        {v.phone && <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{v.phone}</p>}
+                      </div>
+                    </div>
+                  </Td>
+                  <Td><Pill tone={v.kind === 'day' ? 'violet' : v.kind === 'pack_visit' ? 'gray' : 'amber'}>{KIND[v.kind]}</Pill></Td>
+                  <Td className="tabular-nums">{v.amount > 0 ? peso(v.amount) : 'no charge'}</Td>
+                  <Td style={{ color: 'var(--color-text-secondary)' }}>{v.amount > 0 ? (v.method === 'online' ? 'Online' : 'Cash') : '—'}</Td>
+                  <Td style={{ color: 'var(--color-text-secondary)' }}>{v.recorded_by_name ?? '—'}</Td>
+                  <Td align="right">{v.voided && <Pill tone="gray">Voided</Pill>}</Td>
+                </Tr>
+              ))}
+            </RdTable>
+          );
+        })()}
+      </FloatingWindow>
 
       <DetailSheet open={guideOpen} onClose={() => setGuideOpen(false)} title="How walk-ins and day passes work" width={720}
         subtitle="Two ways to pay for one visit — at the desk, or in the app">
