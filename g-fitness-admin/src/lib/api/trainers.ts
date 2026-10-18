@@ -1,5 +1,6 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { setAccountStatus } from './accountEvents';
 import type { ProfileRow, ProfileStatus, TrainerProfileRow } from '../../types/db';
 
 export interface TrainerWithProfile {
@@ -63,12 +64,16 @@ export async function listArchivedTrainers(): Promise<TrainerWithProfile[]> {
  * `profiles.status`, which `RoleProtectedRoute` and every RLS policy already
  * check — nothing is deleted, and it is reversible.
  */
-export async function setTrainerStatus(id: string, status: ProfileStatus): Promise<void> {
-  const { data, error } = await supabase
-    .from('profiles').update({ status }).eq('id', id)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That trainer account could not be changed — your account may not have permission.');
+/**
+ * Suspend, reactivate, archive or restore a coach — through set_account_status()
+ * (0069/0078), as members are. It was a bare UPDATE on profiles.status: no
+ * reason, no account history, and the legacy column rather than this gym's
+ * role. The function requires a reason to suspend or archive (2026-10-19: the
+ * owner asked that a coach's suspension say why) and records it on the
+ * account's history; it changes this gym's role only.
+ */
+export async function setTrainerStatus(id: string, status: ProfileStatus, reason?: string): Promise<void> {
+  await setAccountStatus(id, status, reason);
 }
 
 export async function getTrainer(id: string): Promise<TrainerWithProfile | null> {

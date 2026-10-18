@@ -228,9 +228,9 @@ export default function Trainers() {
    * until these existed. Archive keeps every class and session they ever ran —
    * a delete would orphan them.
    */
-  const changeStatus = async (trainer: TrainerDisplay, status: ProfileStatus, message: string) => {
+  const changeStatus = async (trainer: TrainerDisplay, status: ProfileStatus, message: string, reason?: string) => {
     try {
-      await setTrainerStatus(trainer.id, status);
+      await setTrainerStatus(trainer.id, status, reason);
       showToast(message, 'success');
       setToSuspend(null);
       setToArchive(null);
@@ -240,13 +240,13 @@ export default function Trainers() {
     }
   };
   /** The same, for every coach ticked in the table — one confirmation with the real count. */
-  const runBulk = async () => {
+  const runBulk = async (reason?: string) => {
     if (!bulk) return;
     const chosen = trainers.filter((t) => picked.has(t.id));
     const next: ProfileStatus = bulk === 'suspend' ? 'suspended' : bulk === 'archive' ? 'archived' : 'active';
     let done = 0;
     for (const t of chosen) {
-      try { await setTrainerStatus(t.id, next); done += 1; } catch { /* counted below */ }
+      try { await setTrainerStatus(t.id, next, reason); done += 1; } catch { /* counted below */ }
     }
     showToast(`${done} of ${chosen.length} ${bulk === 'suspend' ? 'suspended' : bulk === 'archive' ? 'archived' : 'restored'}`, done === chosen.length ? 'success' : 'error');
     setBulk(null); setPicked(new Set());
@@ -489,7 +489,12 @@ export default function Trainers() {
       <ConfirmDialog
         isOpen={bulk !== null}
         onClose={() => setBulk(null)}
-        onConfirm={() => void runBulk()}
+        onConfirm={(why) => void runBulk(why)}
+        reason={bulk === 'restore'
+          ? { label: 'Note (optional)', placeholder: 'Back from leave on 1 November.' }
+          : { label: bulk === 'suspend' ? 'Reason for suspension' : 'Reason for archiving', required: true,
+              placeholder: bulk === 'suspend' ? 'Missed three classes without notice this month.' : 'Left the gym at the end of September.',
+              hint: 'The same reason is kept on each coach’s account history.' }}
         title={bulk === 'suspend' ? 'Suspend trainers' : bulk === 'archive' ? 'Archive trainers' : 'Restore trainers'}
         message={bulk === 'suspend'
           ? `Suspend ${picked.size} trainer${picked.size === 1 ? '' : 's'}? They cannot log in to the trainer app; classes and booked sessions stay as they are. Reversible at any time.`
@@ -504,7 +509,7 @@ export default function Trainers() {
       <ConfirmDialog
         isOpen={!!toSuspend}
         onClose={() => setToSuspend(null)}
-        onConfirm={() => {
+        onConfirm={(why) => {
           if (!toSuspend) return;
           const next: ProfileStatus = toSuspend.status === 'suspended' ? 'active' : 'suspended';
           void changeStatus(
@@ -512,9 +517,15 @@ export default function Trainers() {
             next,
             next === 'suspended'
               ? `${toSuspend.name} suspended — they can no longer log in`
-              : `${toSuspend.name} reactivated`
+              : `${toSuspend.name} reactivated`,
+            why,
           );
         }}
+        /* Required to suspend, optional to reinstate — the database enforces the same (0069). */
+        reason={toSuspend?.status === 'suspended'
+          ? { label: 'Note (optional)', placeholder: 'Back from leave on 1 November.', hint: 'Kept on the account history.' }
+          : { label: 'Reason for suspension', required: true, placeholder: 'Missed three classes without notice this month.',
+              hint: 'Kept on the coach’s account history, so the next admin knows why.' }}
         title={toSuspend?.status === 'suspended' ? 'Reactivate Trainer' : 'Suspend Trainer'}
         message={
           toSuspend?.status === 'suspended'
@@ -528,14 +539,15 @@ export default function Trainers() {
       <ConfirmDialog
         isOpen={!!toArchive}
         onClose={() => setToArchive(null)}
-        onConfirm={() => {
+        onConfirm={(why) => {
           if (!toArchive) return;
           void changeStatus(
             toArchive,
             showArchived ? 'active' : 'archived',
             showArchived
               ? `${toArchive.name} restored to the active roster`
-              : `${toArchive.name} archived. Their classes and session history are kept.`
+              : `${toArchive.name} archived. Their classes and session history are kept.`,
+            why,
           );
         }}
         title={showArchived ? 'Restore Trainer' : 'Archive Trainer'}
@@ -546,6 +558,10 @@ export default function Trainers() {
         }
         confirmText={showArchived ? 'Restore' : 'Archive'}
         type={showArchived ? 'info' : 'danger'}
+        reason={showArchived
+          ? { label: 'Note (optional)', placeholder: 'Rejoined the team on 1 November.' }
+          : { label: 'Reason for archiving', required: true, placeholder: 'Left the gym at the end of September.',
+              hint: 'Kept with their classes and session history.' }}
       />
 
       {showAddModal && <AddTrainerWizard onClose={() => setShowAddModal(false)} onCreated={loadTrainers} />}

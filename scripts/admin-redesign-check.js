@@ -67,6 +67,7 @@ async (page) => {
     gym_settings: [{ id: true, gym_id: 'gym-1', gym_name: 'G Fitness', activity_options: ['Weight Training', 'Cardio', 'Strength Training'],
       day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: 1200, guest_nudge_visits: 3 }],
   };
+  const RPC_CALLS = [];
   const RPC = { guest_visits_on: [], my_gym_modules: [], my_gyms: [], my_announcements: [], my_gym_features: [], list_invitations: [] };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
@@ -84,6 +85,7 @@ async (page) => {
     if (pathname.startsWith('/auth/v1/')) return json(pathname.includes('/user') ? session.user : { ...session });
     if (pathname.startsWith('/rest/v1/rpc/')) {
       const fn = pathname.split('/rest/v1/rpc/')[1];
+      try { RPC_CALLS.push([fn, JSON.parse(req.postData() || '{}')]); } catch { RPC_CALLS.push([fn, {}]); }
       if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'G Fitness', slug: 'g-fitness', role: 'admin', status: 'active',
         lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'live' }]);
       return json(fn in RPC ? RPC[fn] : []);
@@ -208,6 +210,16 @@ async (page) => {
   t = await visit('/trainers', 'trainers');
   has('four tiles, with credentials to review', /On roster/.test(t) && /Bookable/.test(t) && /Credentials to review/.test(t));
   has('the table: specialty, credentials, rating, windows, status', (await page.locator('[data-trainer-row]').count()) === 3 && /Rehab & Injury Prevention/.test(t) && /1 verified/.test(t) && /Needs review · 1/.test(t) && /windows?/.test(t) && /Active/.test(t));
+  // 2026-10-19: suspending a coach asks why, and goes through set_account_status (it was a bare UPDATE with no reason).
+  await page.locator('[data-trainer-row]').first().getByRole('button', { name: 'Suspend' }).click(); await page.waitForTimeout(400);
+  const why = page.locator('textarea[placeholder*="Missed three classes"]');
+  const confirm = page.getByRole('button', { name: 'Suspend', exact: true }).last();
+  has('suspending a coach asks for the reason, and will not go on without one', (await why.count()) === 1 && /Reason for suspension/.test(await page.locator('body').innerText()) && !(await confirm.isEnabled()));
+  await why.fill('Missed three classes without notice.');
+  await confirm.click(); await page.waitForTimeout(600);
+  const sc = RPC_CALLS.filter(([f]) => f === 'set_account_status').pop();
+  has('…and the reason is recorded through set_account_status', !!sc && sc[1].p_status === 'suspended' && sc[1].p_reason === 'Missed three classes without notice.');
+  t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   has('kept: Edit, Suspend, Archived, Monthly totals, Add trainer', /Edit/.test(t) && /Suspend/.test(t) && /Archived/.test(t) && /Monthly totals/.test(t) && /Add trainer/.test(t));
   await page.locator('[data-trainer-row] [data-dot-menu]').first().click(); await page.waitForTimeout(300);
   has('Archive and the rest in the row menu', /Archive trainer/.test(await page.locator('[role="menu"]').innerText().catch(() => '')) && /View profile/.test(await page.locator('[role="menu"]').innerText().catch(() => '')));
