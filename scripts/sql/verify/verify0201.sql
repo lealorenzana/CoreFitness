@@ -3,7 +3,8 @@
 do $$
 declare a boolean; b boolean; c boolean; d boolean;
 begin
-  select position('Type the guest''s name' in pg_get_functiondef('record_guest_visit(uuid, text, text, text, text)'::regprocedure)) > 0 into a;
+  -- The stored body keeps the doubled quote of its string literal: guest''s.
+  select position('Type the guest''''s name' in pg_get_functiondef('record_guest_visit(uuid, text, text, text, text)'::regprocedure)) > 0 into a;
   select to_regprocedure('guest_visits_between(date, date)') is not null into b;
   select not has_function_privilege('anon', 'guest_visits_between(date, date)', 'execute') into c;
   select coalesce((select migration_0201_applied()), false) into d;

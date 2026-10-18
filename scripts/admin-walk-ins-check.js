@@ -130,7 +130,7 @@ async (page) => {
     && /Walk-in at the desk/.test(await page.locator('[data-walkin-guide]').innerText()) ? 'yes' : 'MISSING'));
   await page.keyboard.press('Escape'); await page.waitForTimeout(400);
   let t = await text();
-  out.push("the gym's prices on the choices, and no 10-visit pack it does not sell: " + (/Day pass ₱150/.test(t) && /5-visit pack ₱650/.test(t) && !/10-visit pack/.test(t) ? 'yes' : 'MISSING'));
+  out.push("the gym's prices on the choices, and no 10-visit pack it does not sell: " + (/Day pass ₱150/.test(t) && /5 visits ₱650/.test(t) && !/10 visits/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Guest name').fill('Ben Reyes');
   await page.locator('[data-walkin-option]', { hasText: 'Day pass' }).click();
   await page.locator('[data-record-visit]').click();
@@ -140,7 +140,7 @@ async (page) => {
   await page.getByLabel('Guest phone').fill('+63 917 555 0101');
   await page.locator('[data-guest-found]').waitFor({ timeout: 5000 });
   t = await text();
-  out.push('the phone finds a known guest, with their visits this month and pack: ' + (/Ana Cruz/.test(t) && /2 this month/.test(t) && /3 left on a pack/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the phone finds a known guest, with their visits this month and pack: ' + (/Ana Cruz/.test(t) && /been here 2× this month/.test(t) && /has 3 pack visits left/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('[data-walkin-option]', { hasText: 'Use a pack visit' }).click();
   await page.locator('[data-record-visit]').click();
   await page.waitForTimeout(800);

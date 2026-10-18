@@ -128,11 +128,11 @@ async (page) => {
   has("today's count in the strip", (await page.locator('[data-stats-strip]').count()) === 1 && /Checked in today\s*2/.test(t));
   has('tabs Today · Walk-ins · History', (await page.locator('[data-rd-tabs] a').count()) === 3);
   has('Scan QR and the one check-in box', (await page.locator('[data-scan-qr]').count()) === 1 && (await page.getByLabel('Check-in code or name').count()) === 1);
-  has('the strip: scanned, typed, walk-ins, this week', /Scanned/.test(t) && /Typed/.test(t) && /Walk-ins/.test(t) && /This week/.test(t));
+  has('the four cards: today, how they came in, walk-ins, the week', /How they came in/.test(t) && /Typed/.test(t) && /Walk-ins today/.test(t) && /Members this week/.test(t));
   has("today's log with method, membership and notes", (await page.locator('[data-log-row]').count()) === 2 && /Weight Training/.test(t) && /Premium|Free Plan|Free Trial/.test(t));
   has('kept: undo, export, other days', /Undo/.test(t) && /Export/.test(t) && /Other days/.test(t));
   has('kept: search, typed code, activity tag, kiosk, lobby TV', /Tag the next check-in/.test(t) && /Open kiosk/.test(t) && /Open lobby TV/.test(t));
-  await page.locator('[data-stats-strip] button', { hasText: 'Scanned' }).click();
+  await page.locator('[data-way="desk"]').click();
   await page.waitForTimeout(300);
   has('a tile filters the log', (await page.locator('[data-log-row]').count()) === 1);
 
@@ -143,8 +143,8 @@ async (page) => {
   // ── Attendance · History ──
   t = await visit('/attendance-history', 'history');
   has('presets, dates, search and filters', /Last 7 days/.test(t) && /Last 30 days/.test(t) && /All time/.test(t) && /From/.test(t) && /Any method/.test(t) && /Any activity/.test(t) && (await page.locator('[data-history-search]').count()) === 1);
-  has('four tiles', /Check-ins/.test(t) && /Unique members/.test(t) && /Average per day/.test(t) && /Scanned vs typed/.test(t));
-  has('the calendar with Less/More, and Most regular', (await page.locator('[data-attendance-calendar]').count()) === 1 && /Less/.test(t) && /More/.test(t) && (await page.locator('[data-most-regular]').count()) === 1);
+  has('four cards', /Check-ins/.test(t) && /Different members/.test(t) && /Average a day/.test(t) && /What they came for/.test(t));
+  has('the calendar with each day\'s count and the weekday averages, and Most regular', (await page.locator('[data-attendance-calendar] [data-day]').count()) >= 28 && (await page.locator('[data-weekday-bars] > div').count()) === 7 && (await page.locator('[data-most-regular]').count()) === 1);
   has('the log with Scanned/Typed and export', /Scanned/.test(t) && /Typed/.test(t) && /Export/.test(t));
 
   // ── Members ──

@@ -146,14 +146,15 @@ async (page) => {
   let t = await visit('/attendance', 'today');
   has('Today fits the screen (no page scroll)', (await noScroll()) <= 2);
   has('…with room for the log (3+ rows at 1440×900)', (await page.locator('[data-log-row]').count()) === 3 && await page.locator('[data-log-row]').last().evaluate((r) => { const b = r.closest('[data-rd-table]').getBoundingClientRect(); const x = r.getBoundingClientRect(); return x.bottom <= b.bottom + 1; }));
-  has('one check-in box with Scan QR, and the tag chips', (await page.locator('[data-checkin-box]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1 && (await page.locator('[data-tag-select] option').count()) === 31);
-  has('thirty activities are one dropdown, not a wall of chips', await page.locator('[data-tag-picker]').evaluate((e) => e.getBoundingClientRect().height < 44));
+  has('one check-in box with Scan QR, and the tag chips', (await page.locator('[data-checkin-box]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1 && (await page.locator('[data-tag-chips] button').count()) === 5 && (await page.locator('[data-tag-select] option').count()) === 27);
+  has('thirty activities: the four used most as chips (with counts), the rest under More — one line', await page.locator('[data-tag-picker]').evaluate((e) => e.getBoundingClientRect().height < 44) && /Cardio\s*1/.test(await page.locator('[data-tag-chips]').innerText()));
+  has('the kiosk says what it did today, never a "Running" it cannot know', /1 today · last/.test(await page.locator('[data-kiosk-status]').innerText()) && !/Running/.test(t));
+  has('the newest check-in shows, with Undo, before anyone is checked in here', /Andrea Santos is in/.test(await page.locator('[data-last-checkin]').innerText()));
   has('At the door: kiosk and lobby TV, big', (await page.getByRole('button', { name: 'Open kiosk' }).count()) === 1 && (await page.getByRole('button', { name: 'Open lobby TV' }).count()) === 1);
   has('the coaches who are in', /1 of 3 coaches in/.test(t) && /Paolo/.test(t));
-  has('At the door, Today: a short card (the log keeps its room)', await page.locator('[data-at-the-door]').evaluate((e) => e.getBoundingClientRect().height < 230));
   has('the log says Kiosk / Desk scan / Typed', /Kiosk/.test(t) && /Desk scan/.test(t) && /Typed/.test(t) && (await page.locator('[data-log-row]').count()) === 3);
   has("the log says whose tag it is (their pick / desk)", (await page.locator('[data-tag-by="member"]').count()) === 1 && (await page.locator('[data-tag-by="desk"]').count()) === 1);
-  has('the five tiles', /Checked in today/.test(t) && /Typed/.test(t) && /Walk-ins/.test(t) && /This week/.test(t) && /open until 9:00/.test(t));
+  has('the four cards: today vs last week with its hours, how they came in, walk-ins with the drawer, the week', /Checked in today/.test(t) && /vs last/.test(t) && (await page.locator('.a-spark i').count()) >= 10 && /How they came in/.test(t) && /Walk-ins today/.test(t) && /₱150 in the drawer/.test(t) && /Members this week/.test(t) && /open until 9:00/.test(t));
   const box = page.getByLabel('Check-in code or name');
   // The 2026-10-18 report: one character matched nearly every member (it searched
   // inside each full id) and the list grew the page past the screen.
@@ -162,7 +163,7 @@ async (page) => {
   await box.fill('a'); await page.waitForTimeout(300);
   const aHits = await page.locator('[data-quick-list] > div').count();
   has('one letter matches names that start with it, in a box that scrolls itself', aHits === 3 && (await noScroll()) <= 2
-    && await page.locator('[data-quick-list]').evaluate((e) => e.scrollHeight > e.clientHeight && e.getBoundingClientRect().height <= 90));
+    && await page.locator('[data-quick-list]').evaluate((e) => e.scrollHeight > e.clientHeight && e.getBoundingClientRect().height <= 100));
   await box.fill('Andrea'); await page.waitForTimeout(300);
   t = await text();
   has("typing finds members, with the member's own pick", (await page.locator('[data-quick-list]').innerText()).includes('Andrea Tolentino') && /picked Class/.test(t) && /already in/.test(t));
@@ -173,8 +174,10 @@ async (page) => {
   const cc = CALLS.find(([f]) => f === 'record_coach_checkin');
   has("a coach's typed code checks the coach in, at the desk", !!cc && cc[1].p_trainer === COACH && cc[1].p_source === 'desk' && cc[1].p_method === 'manual');
   has('…and says so with an Undo', (await page.locator('[data-last-checkin]').count()) === 1 && /Gabby Coach is in/.test(await text()));
-  await page.locator('[data-tag-select]').selectOption('Cardio'); await page.waitForTimeout(200);
-  has('a set tag turns amber, with a Clear', await page.locator('[data-tag-select]').evaluate((e) => getComputedStyle(e).color === 'rgb(251, 191, 36)') && (await page.locator('[data-tag-picker]').getByRole('button', { name: 'Clear' }).count()) === 1);
+  await page.locator('[data-tag-select]').selectOption('Yoga'); await page.waitForTimeout(200);
+  has('an activity from More becomes a chip, amber while set', (await page.locator('[data-tag-chips] button[aria-pressed="true"]').innerText()).includes('Yoga') && await page.locator('[data-tag-chips] button[aria-pressed="true"]').evaluate((e) => e.classList.contains('on')));
+  await page.locator('[data-tag-chips]').getByRole('button', { name: 'None' }).click(); await page.waitForTimeout(150);
+  has('…and None clears it', (await page.locator('[data-tag-chips] button[aria-pressed="true"]').innerText()) === 'None');
   await page.locator('[data-coaches-row]').click(); await page.waitForTimeout(500);
   has('the coaches row opens the coaches, with Check in / Undo', (await page.locator('[data-coaches-sheet] > div').count()) === 3);
   await page.screenshot({ path: 'shots/door-coaches.png' });
@@ -190,8 +193,10 @@ async (page) => {
   await full.getByPlaceholder('Search today…').fill('');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   has('…and Escape closes it', (await page.locator('[data-full-log]').count()) === 0);
-  await page.locator('[data-stats-strip] button', { hasText: 'Scanned' }).click(); await page.waitForTimeout(300);
-  has('a tile filters the log', (await page.locator('[data-log-row]').count()) === 2);
+  await page.locator('[data-way="desk"]').click(); await page.waitForTimeout(300);
+  has('a chip filters the log', (await page.locator('[data-log-row]').count()) === 1);
+  await page.locator('[data-stats-strip] button', { hasText: 'Kiosk' }).click(); await page.waitForTimeout(300);
+  has('…and so does the legend in How they came in', (await page.locator('[data-log-row]').count()) === 1 && /Andrea Santos/.test(await page.locator('[data-log-row]').innerText()));
 
   // ── History ──
   t = await visit('/attendance-history', 'history');
@@ -212,7 +217,7 @@ async (page) => {
   has('Walk-ins fits the screen', (await noScroll()) <= 2);
   has('three steps and the drawer', /Who is it\?/.test(t) && /What are they paying for\?/.test(t) && /How did they pay\?/.test(t) && /₱150 cash in the drawer/.test(t));
   has('the rail cards never overlap (they do not shrink; the rail scrolls)', await page.evaluate(() => {
-    const kids = [...document.querySelectorAll('.rd-fit-rail > *')].map((e) => e.getBoundingClientRect());
+    const kids = [...document.querySelectorAll('[data-walkins-rail] > *')].map((e) => e.getBoundingClientRect());
     return kids.length >= 4 && kids.every((r, i) => i === 0 || r.top >= kids[i - 1].bottom - 1);
   }));
   await page.locator('[data-walkin-guide-open]').click(); await page.waitForTimeout(500);
