@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footprints, UserPlus, Settings2, Wallet, Undo2, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
+import { Footprints, UserPlus, Settings2, Wallet, Undo2, HelpCircle, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
 import { RdHeader, RdCard, RdButton, Pill, EmptyBlock, FitBody, Initials } from '../components/ui/rd';
 import { ATTENDANCE_TABS, TONE } from '../components/ui/rdTokens';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { todayKey } from '../utils/dates';
 import WalkInGuide from '../components/WalkInGuide';
+import DetailSheet from '../components/ui/DetailSheet';
 
 type Kind = 'day' | 'pack5' | 'pack10' | 'pack_visit';
 interface Prices { on: boolean; day: number | null; pack5: number | null; pack10: number | null; nudge: number | null }
@@ -72,6 +73,8 @@ export default function WalkIns() {
   const [regulars, setRegulars] = useState<Regular[] | null>(null);
   const [cheapest, setCheapest] = useState<{ name: string; price: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The guide's table is wide: it opens in a side panel, never unfolded inside the rail. */
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [{ data: s, error }, { data: v }, fg, plans] = await Promise.all([
@@ -203,7 +206,11 @@ export default function WalkIns() {
             )}
           </RdCard>
 
-          <WalkInGuide />
+          <button type="button" onClick={() => setGuideOpen(true)} data-walkin-guide-open
+            className="rounded-2xl px-4 py-3 flex items-center gap-2 text-[14px] font-semibold text-white text-left transition-colors hover:bg-white/[0.04]"
+            style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            <HelpCircle size={16} style={{ color: '#A78BFA' }} /> How walk-ins and day passes work
+          </button>
         </>
       )}>
         {prices === undefined ? <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>
@@ -326,6 +333,11 @@ export default function WalkIns() {
             </RdCard>
           )}
       </FitBody>
+
+      <DetailSheet open={guideOpen} onClose={() => setGuideOpen(false)} title="How walk-ins and day passes work" width={720}
+        subtitle="Two ways to pay for one visit — at the desk, or in the app">
+        <WalkInGuide open />
+      </DetailSheet>
     </div>
   );
 }

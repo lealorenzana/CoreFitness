@@ -315,9 +315,12 @@
 .rd-fit-grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 .rd-fit-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .rd-fit-rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* A rail card never shrinks to make room — the rail scrolls instead. Squeezed, they overlapped (Walk-ins' guide, 2026-10-18). */
+.rd-fit-rail > * { flex-shrink: 0; }
 .rd-fit-fill { display: flex; flex-direction: column; }
 .rd-fit-scroll { overflow-x: auto; }
-.rd-fit-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--color-surface); }
+/* Solid, so a scrolled row never shows through the header (the kit's th carries a translucent inline tint). */
+.rd-fit-scroll thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(rgba(255,255,255,0.015), rgba(255,255,255,0.015)), var(--color-surface) !important; }
 .rd-fit-split { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1280px) {
   .rd-fit { height: 100%; overflow: hidden; }

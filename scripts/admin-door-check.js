@@ -51,7 +51,10 @@ async (page) => {
       ...Array.from({ length: 40 }, (_, k) => ({ id: `h${k}`, member_id: mid(k % 9), check_in_time: iso(-1 - (k % 20), 6 + (k % 10)), method: k % 3 ? 'qr' : 'manual', activity: k % 2 ? 'Gym floor' : null })),
     ],
     checkin_picks: [{ member_id: mid(1), today: 'Class', today_on: day(0), usual: 'Class' }],
-    gym_settings: [{ id: true, gym_id: 'gym-1', gym_name: 'Core Fitness Lab', activity_options: ['Gym floor', 'Class', 'Cardio'], closing_time: '21:00:00',
+    gym_settings: [{ id: true, gym_id: 'gym-1', gym_name: 'Core Fitness Lab', // The Lab's real list (2026-10-18): thirty chips in four rows pushed the log off the screen.
+      activity_options: ['Gym floor', 'Class', 'Cardio', 'Strength', 'Free Weights', 'Weight Machines', 'Bodyweight', 'Treadmill', 'Stationary Bike', 'Elliptical',
+        'Rowing', 'Jump Rope', 'HIIT', 'Circuit Training', 'Functional Training', 'Core & Abs', 'Group Class', 'Zumba', 'Aerobics', 'Yoga', 'Pilates',
+        'Spinning', 'Dance', 'Boxing', 'Muay Thai', 'Martial Arts', 'Stretching & Mobility', 'Sports', 'Personal Training', 'Other'], closing_time: '21:00:00',
       member_activity_pick: true, coach_checkin_on: true, day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: null, guest_nudge_visits: 3, day_pass_classes: false, updated_at: iso(-2), updated_by: null }],
     gyms: [{ id: 'gym-1', created_at: iso(-30) }],
     payments: [], notifications: [], bookings: [], pt_sessions: [], gym_invitations: [],
@@ -138,7 +141,8 @@ async (page) => {
   let t = await visit('/attendance', 'today');
   has('Today fits the screen (no page scroll)', (await noScroll()) <= 2);
   has('…with room for the log (3+ rows at 1440×900)', (await page.locator('[data-log-row]').count()) === 3 && await page.locator('[data-log-row]').last().evaluate((r) => { const b = r.closest('[data-rd-table]').getBoundingClientRect(); const x = r.getBoundingClientRect(); return x.bottom <= b.bottom + 1; }));
-  has('one check-in box with Scan QR, and the tag chips', (await page.locator('[data-checkin-box]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1 && (await page.locator('[data-tag-chips] button').count()) === 4);
+  has('one check-in box with Scan QR, and the tag chips', (await page.locator('[data-checkin-box]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1 && (await page.locator('[data-tag-select] option').count()) === 31);
+  has('thirty activities are one dropdown, not a wall of chips', await page.locator('[data-tag-picker]').evaluate((e) => e.getBoundingClientRect().height < 44));
   has('At the door: kiosk and lobby TV, big', (await page.getByRole('button', { name: 'Open kiosk' }).count()) === 1 && (await page.getByRole('button', { name: 'Open lobby TV' }).count()) === 1);
   has('the coaches who are in', /1 of 3 coaches in/.test(t) && /Paolo/.test(t));
   has('At the door, Today: a short card (the log keeps its room)', await page.locator('[data-at-the-door]').evaluate((e) => e.getBoundingClientRect().height < 230));
@@ -146,6 +150,14 @@ async (page) => {
   has("the log says whose tag it is (their pick / desk)", (await page.locator('[data-tag-by="member"]').count()) === 1 && (await page.locator('[data-tag-by="desk"]').count()) === 1);
   has('the five tiles', /Checked in today/.test(t) && /Typed/.test(t) && /Walk-ins/.test(t) && /This week/.test(t) && /open until 9:00/.test(t));
   const box = page.getByLabel('Check-in code or name');
+  // The 2026-10-18 report: one character matched nearly every member (it searched
+  // inside each full id) and the list grew the page past the screen.
+  await box.fill('1'); await page.waitForTimeout(300);
+  has('one digit matches nobody by their id, and the page does not grow', (await page.locator('[data-quick-list] > div').count()) === 0 && (await noScroll()) <= 2);
+  await box.fill('a'); await page.waitForTimeout(300);
+  const aHits = await page.locator('[data-quick-list] > div').count();
+  has('one letter matches names that start with it, in a box that scrolls itself', aHits === 3 && (await noScroll()) <= 2
+    && await page.locator('[data-quick-list]').evaluate((e) => e.scrollHeight > e.clientHeight && e.getBoundingClientRect().height <= 90));
   await box.fill('Andrea'); await page.waitForTimeout(300);
   t = await text();
   has("typing finds members, with the member's own pick", (await page.locator('[data-quick-list]').innerText()).includes('Andrea Tolentino') && /picked Class/.test(t) && /already in/.test(t));
@@ -156,12 +168,23 @@ async (page) => {
   const cc = CALLS.find(([f]) => f === 'record_coach_checkin');
   has("a coach's typed code checks the coach in, at the desk", !!cc && cc[1].p_trainer === COACH && cc[1].p_source === 'desk' && cc[1].p_method === 'manual');
   has('…and says so with an Undo', (await page.locator('[data-last-checkin]').count()) === 1 && /Gabby Coach is in/.test(await text()));
-  await page.locator('[data-tag-chips] button', { hasText: 'Cardio' }).click(); await page.waitForTimeout(200);
-  has('a tag chip turns amber while set', (await page.locator('[data-tag-chips] button[aria-pressed="true"]').innerText()) === 'Cardio');
+  await page.locator('[data-tag-select]').selectOption('Cardio'); await page.waitForTimeout(200);
+  has('a set tag turns amber, with a Clear', await page.locator('[data-tag-select]').evaluate((e) => getComputedStyle(e).color === 'rgb(251, 191, 36)') && (await page.locator('[data-tag-picker]').getByRole('button', { name: 'Clear' }).count()) === 1);
   await page.locator('[data-coaches-row]').click(); await page.waitForTimeout(500);
   has('the coaches row opens the coaches, with Check in / Undo', (await page.locator('[data-coaches-sheet] > div').count()) === 3);
   await page.screenshot({ path: 'shots/door-coaches.png' });
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  has('the table header is solid, so a scrolled row never shows through', await page.locator('[data-today-log] thead th').first().evaluate((th) => getComputedStyle(th).backgroundImage !== 'none' || getComputedStyle(th).backgroundColor !== 'rgba(0, 0, 0, 0)'));
+  const urlBefore = page.url();
+  await page.locator('[data-open-full-log]').click(); await page.waitForTimeout(500);
+  const full = page.locator('[data-full-log]');
+  has("View all floats today's whole log over the page, no page change", (await full.count()) === 1 && page.url() === urlBefore && (await full.locator('[data-log-row]').count()) === 3);
+  await full.getByPlaceholder('Search today…').fill('Carlo'); await page.waitForTimeout(300);
+  has('…with its own search, and Undo on each row', (await full.locator('[data-log-row]').count()) === 1 && (await full.getByRole('button', { name: 'Undo' }).count()) === 1);
+  await page.screenshot({ path: 'shots/door-full-log.png' });
+  await full.getByPlaceholder('Search today…').fill('');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  has('…and Escape closes it', (await page.locator('[data-full-log]').count()) === 0);
   await page.locator('[data-stats-strip] button', { hasText: 'Scanned' }).click(); await page.waitForTimeout(300);
   has('a tile filters the log', (await page.locator('[data-log-row]').count()) === 2);
 
@@ -183,6 +206,14 @@ async (page) => {
   t = await visit('/attendance/walk-ins', 'walkins');
   has('Walk-ins fits the screen', (await noScroll()) <= 2);
   has('three steps and the drawer', /Who is it\?/.test(t) && /What are they paying for\?/.test(t) && /How did they pay\?/.test(t) && /₱150 cash in the drawer/.test(t));
+  has('the rail cards never overlap (they do not shrink; the rail scrolls)', await page.evaluate(() => {
+    const kids = [...document.querySelectorAll('.rd-fit-rail > *')].map((e) => e.getBoundingClientRect());
+    return kids.length >= 4 && kids.every((r, i) => i === 0 || r.top >= kids[i - 1].bottom - 1);
+  }));
+  await page.locator('[data-walkin-guide-open]').click(); await page.waitForTimeout(500);
+  has('the guide opens in a side panel, with its table', /Walk-in at the desk/.test(await page.locator('[data-walkin-guide]').innerText().catch(() => '')));
+  await page.screenshot({ path: 'shots/door-walkins-guide.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
   has('guests who keep coming, with a call link', /Guests who could join/.test(t) && (await page.locator('[data-regular-guests] a[href^="tel:"]').count()) === 1);
   await page.getByLabel('Guest phone').fill('0917 555 0102');
   await page.locator('[data-guest-found]').waitFor({ timeout: 5000 });

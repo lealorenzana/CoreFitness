@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import DetailSheet from '../components/ui/DetailSheet';
@@ -6,7 +8,7 @@ import { useFitRows } from '../hooks/useFitRows';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
   QrCode, Users, Download, Undo2, Calendar, MonitorPlay, Tablet, Tag, History, Keyboard, CheckCircle2,
-  UserCheck, Footprints, CalendarDays, ScanLine, Dumbbell, ArrowRight,
+  UserCheck, Footprints, CalendarDays, ScanLine, Dumbbell, ArrowRight, Maximize2, X,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { checkInCodeOf, formatCheckInCode, normaliseCheckInCode } from '../utils/checkInCode';
@@ -97,6 +99,77 @@ function StripCell({ icon: Icon, label, value, sub, onClick, active, tip, tone =
     : <div className={cls}>{body}</div>;
 }
 
+/** One row of today's log — the card and the floating window draw the same row. */
+function LogRow({ row: r, name, photo, plan, onUndo, height }: {
+  row: AttendanceRow; name: string; photo?: string | null; plan?: string; onUndo: () => void; height?: number;
+}) {
+  return (
+    <Tr data-log-row style={{ height }}>
+      <Td className="whitespace-nowrap font-semibold">{time(r.check_in_time)}</Td>
+      <Td>
+        <div className="flex items-center gap-3">
+          <Initials name={name} photo={photo} size={34} />
+          <div className="min-w-0">
+            <p className="font-semibold text-white truncate">{name}</p>
+            <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(r.member_id)}</p>
+          </div>
+        </div>
+      </Td>
+      <Td><HowPill row={r} /></Td>
+      {/* The activity tag (0018), and whose it is (0200). A dash means nobody picked one — not "no activity". */}
+      <Td>
+        {r.activity ? (
+          <span className="inline-flex items-center gap-2">
+            {r.activity}
+            {r.activity_by === 'member' && <span data-tag-by="member"><Pill tone="violet">their pick</Pill></span>}
+            {r.activity_by === 'desk' && <span data-tag-by="desk"><Pill tone="amber">desk</Pill></span>}
+          </span>
+        ) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+      </Td>
+      <Td style={{ color: 'var(--color-text-secondary)' }}>{plan ?? '—'}</Td>
+      <Td align="right">
+        <RdButton size="sm" variant="ghost" icon={Undo2} onClick={onUndo} data-tip="Undo this check-in">Undo</RdButton>
+      </Td>
+    </Tr>
+  );
+}
+
+/**
+ * Today's whole log in a floating window over the page (the owner's ask,
+ * 2026-10-18): every row at once, scrolling in the window, with the same
+ * filters, search, export and undo — no page change, Escape or the scrim closes it.
+ */
+function FullLog({ open, onClose, total, children, filters }: {
+  open: boolean; onClose: () => void; total: number; children: React.ReactNode; filters: React.ReactNode;
+}) {
+  useEscapeToClose(open, onClose);
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6" onClick={onClose}
+      style={{ background: 'rgba(5,4,10,0.72)', backdropFilter: 'blur(6px)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Today's check-ins" data-full-log onClick={(e) => e.stopPropagation()}
+        className="w-full flex flex-col rounded-2xl overflow-hidden"
+        style={{ maxWidth: 1240, height: 'min(88vh, 980px)', background: 'var(--color-surface)', border: '1px solid rgba(139,92,246,0.35)',
+          boxShadow: '0 40px 120px -30px rgba(124,58,237,0.6)' }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-3">
+            <Users size={22} style={{ color: '#A78BFA' }} />
+            <h2 className="text-[19px] font-semibold text-white">Today's check-ins</h2>
+            <span className="text-[13px] px-2.5 py-0.5 rounded-full tabular-nums" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>{total}</span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {filters}
+            <button type="button" onClick={onClose} aria-label="Close" className="w-11 h-11 rounded-xl grid place-items-center hover:bg-white/[0.06]"
+              style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto rd-fit-scroll" data-full-log-body>{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /**
  * Attendance → Today: the desk (redesigned 2026-10-18 from the owner's pick of
  * the v2 mock-ups).
@@ -128,6 +201,8 @@ export default function Attendance() {
   const [logPage, setLogPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
   const [coachesOpen, setCoachesOpen] = useState(false);
+  /** Today's whole log, floating over the page. */
+  const [fullOpen, setFullOpen] = useState(false);
   /** The check-in just taken, with its own Undo — the desk sees it worked without reading the log. */
   const [last, setLast] = useState<{ kind: 'member' | 'coach'; id: string; name: string; at: string; activity: string | null } | null>(null);
   // The log's own filters.
@@ -263,13 +338,24 @@ export default function Attendance() {
   };
 
   const q = query.trim().toLowerCase();
-  const qCode = q.replace(/[\s-]/g, '');
+  const qCode = normaliseCheckInCode(q);
+  /**
+   * Who the box means (2026-10-18). One character matched nearly everyone — the
+   * search also looked inside each full member id — so: a name by the start of
+   * any word (one letter is enough), anywhere in it from two letters; an email
+   * from three; the six-character code by its start from three; the full id only
+   * whole. Never a substring of a UUID.
+   */
+  const nameHit = (name: string) => (q.length === 1
+    ? name.toLowerCase().split(/\s+/).some((w) => w.startsWith(q))
+    : name.toLowerCase().includes(q));
+  const codeHit = (id: string) => qCode.length >= 3 && /^[0-9a-f]+$/.test(qCode) && checkInCodeOf(id).startsWith(qCode);
   const memberHits = q ? members.filter((m) =>
-    `${m.profile.first_name} ${m.profile.last_name}`.toLowerCase().includes(q) ||
-    (m.profile.email ?? '').toLowerCase().includes(q) ||
-    (m.member.qr_code ?? '').toLowerCase().includes(q) ||
-    (qCode.length >= 3 && checkInCodeOf(m.profile.id).includes(qCode))) : [];
-  const coachHits = q ? coaches.filter((c) => c.name.toLowerCase().includes(q) || (qCode.length >= 3 && checkInCodeOf(c.id).includes(qCode))) : [];
+    nameHit(`${m.profile.first_name} ${m.profile.last_name}`) ||
+    (q.length >= 3 && (m.profile.email ?? '').toLowerCase().includes(q)) ||
+    (m.member.qr_code ?? '').toLowerCase() === q ||
+    codeHit(m.profile.id)) : [];
+  const coachHits = q ? coaches.filter((c) => nameHit(c.name) || codeHit(c.id)) : [];
 
   /** Enter: a code (or a QR's text) is checked in; a name with exactly one match is that person. */
   const submitQuery = () => {
@@ -367,7 +453,7 @@ export default function Attendance() {
           </div>
 
           {/* What the box found — members, and coaches when the owner has coach check-in on. */}
-          <div className="flex-1 min-h-[84px] overflow-y-auto rounded-xl" data-quick-list style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
+          <div className="h-[86px] flex-none overflow-y-auto rounded-xl" data-quick-list style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
             {!q && last ? (
               <div className="h-full flex items-center gap-3 px-3" data-last-checkin style={{ background: 'rgba(124,58,237,0.12)' }}>
                 <CheckCircle2 size={24} style={{ color: '#A78BFA' }} />
@@ -390,7 +476,7 @@ export default function Attendance() {
             ) : (
               <>
                 {coachHits.slice(0, 5).map((c) => (
-                  <div key={c.id} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }} data-quick-coach>
+                  <div key={c.id} className="flex items-center gap-3 px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }} data-quick-coach>
                     <Initials name={c.name} photo={c.photo} size={34} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[14px] font-semibold text-white truncate">{c.name} <span className="ml-1 align-middle"><Pill tone="amber" icon={Dumbbell}>Coach</Pill></span></p>
@@ -406,7 +492,7 @@ export default function Attendance() {
                   const name = `${m.profile.first_name} ${m.profile.last_name}`;
                   const pick = picks.get(m.profile.id);
                   return (
-                    <div key={m.profile.id} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div key={m.profile.id} className="flex items-center gap-3 px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <Initials name={name} photo={m.profile.photo_url} size={34} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[14px] font-semibold text-white truncate">{name}</p>
@@ -427,27 +513,25 @@ export default function Attendance() {
             )}
           </div>
 
-          {/* Applies to whichever check-in comes next — handy when a class arrives together.
-              Amber while set, so it is never left on unseen. The desk's tag beats a member's own pick. */}
+          {/* Applies to whichever check-in comes next — handy when a class arrives together. A dropdown
+              (2026-10-18): a gym can list thirty activities. Amber while set, so it is never left on
+              unseen, with a Clear beside it. The desk's tag beats a member's own pick. */}
           {activityOptions.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap" data-tag-chips>
-              <span className="text-[12.5px] inline-flex items-center gap-1.5 mr-1" style={{ color: 'var(--color-text-secondary)' }}><Tag size={14} />Tag the next check-in</span>
-              {['', ...activityOptions].map((opt) => {
-                const on = activity === opt;
-                return (
-                  <button key={opt || 'none'} type="button" onClick={() => setActivity(opt)} aria-pressed={on}
-                    className="h-8 px-3 rounded-full text-[13px] font-semibold transition-colors"
-                    style={on && opt
-                      ? { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` }
-                      : on ? { background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }
-                        : { background: 'rgba(255,255,255,0.025)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    {opt || 'None'}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-3" data-tag-picker>
+              <span className="text-[12.5px] inline-flex items-center gap-1.5 flex-none whitespace-nowrap" style={{ color: activity ? TONE.amber.fg : 'var(--color-text-secondary)' }}>
+                <Tag size={14} />Tag the next check-in
+              </span>
+              <select value={activity} onChange={(e) => setActivity(e.target.value)} aria-label="Tag the next check-in with an activity" data-tag-select
+                className="h-8 flex-1 min-w-0 px-3 rounded-lg text-[13.5px] font-semibold outline-none"
+                style={activity
+                  ? { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}`, colorScheme: 'dark' }
+                  : { background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.1)', colorScheme: 'dark' }}>
+                <option value="">None — their own pick, or untagged</option>
+                {activityOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+              {activity && <RdButton size="sm" variant="ghost" className="!h-8" onClick={() => setActivity('')}>Clear</RdButton>}
             </div>
           )}
-
         </RdCard>
 
         {/* ── At the door ── */}
@@ -515,6 +599,7 @@ export default function Attendance() {
             </RdSelect>
             <div className="w-[210px]"><SearchField value={logSearch} onChange={(v) => { setLogSearch(v); setLogPage(1); }} placeholder="Search today…" /></div>
             <RdButton icon={Download} onClick={exportLog} data-tip="Export what the log shows as CSV">Export</RdButton>
+            <RdButton variant="soft" icon={Maximize2} onClick={() => setFullOpen(true)} data-open-full-log data-tip="Every check-in today in one window">View all</RdButton>
           </div>
         </div>
         <RdTable boxRef={fit.ref} head={['Time', 'Member', 'How', 'Activity', 'Membership', { label: '', align: 'right' }]}
@@ -526,39 +611,10 @@ export default function Attendance() {
                 ? <RdButton variant="soft" icon={QrCode} onClick={() => setIsScannerOpen(true)}>Scan QR to get started</RdButton>
                 : <RdButton onClick={() => { setLogMethod('all'); setLogPlan('all'); setLogSearch(''); }}>Clear filters</RdButton>} />
           ) : undefined}>
-          {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => {
-            const m = memberById[r.member_id];
-            const name = nameOf(r.member_id);
-            return (
-              <Tr key={r.id} data-log-row style={{ height: logRecords.length > perPage ? fit.rowHeight : undefined }}>
-                <Td className="whitespace-nowrap font-semibold">{time(r.check_in_time)}</Td>
-                <Td>
-                  <div className="flex items-center gap-3">
-                    <Initials name={name} photo={m?.profile.photo_url} size={34} />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{name}</p>
-                      <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(r.member_id)}</p>
-                    </div>
-                  </div>
-                </Td>
-                <Td><HowPill row={r} /></Td>
-                {/* The activity tag (0018), and whose it is (0200). A dash means nobody picked one — not "no activity". */}
-                <Td>
-                  {r.activity ? (
-                    <span className="inline-flex items-center gap-2">
-                      {r.activity}
-                      {r.activity_by === 'member' && <span data-tag-by="member"><Pill tone="violet">their pick</Pill></span>}
-                      {r.activity_by === 'desk' && <span data-tag-by="desk"><Pill tone="amber">desk</Pill></span>}
-                    </span>
-                  ) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
-                </Td>
-                <Td style={{ color: 'var(--color-text-secondary)' }}>{planOf[r.member_id]?.plan ?? '—'}</Td>
-                <Td align="right">
-                  <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => setToUndo(r)} data-tip="Undo this check-in">Undo</RdButton>
-                </Td>
-              </Tr>
-            );
-          })}
+          {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => (
+            <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={planOf[r.member_id]?.plan}
+              onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fit.rowHeight : undefined} />
+          ))}
         </RdTable>
         <div className="flex items-center justify-between flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <TableFooter page={page} perPage={perPage} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
@@ -567,6 +623,31 @@ export default function Attendance() {
           </Link>
         </div>
       </RdCard>
+
+      <FullLog open={fullOpen} onClose={() => setFullOpen(false)} total={logRecords.length}
+        filters={(
+          <>
+            <RdSelect value={logMethod} onChange={(v) => setLogMethod(v as typeof logMethod)} label="Filter by method" className="w-[150px]">
+              <option value="all">All check-ins</option>
+              <option value="qr">Scanned</option>
+              <option value="manual">Typed</option>
+            </RdSelect>
+            <RdSelect value={logPlan} onChange={setLogPlan} label="Filter by membership" className="w-[190px]">
+              <option value="all">All membership types</option>
+              {plans.map((p) => <option key={p} value={p}>{p}</option>)}
+            </RdSelect>
+            <div className="w-[230px]"><SearchField value={logSearch} onChange={setLogSearch} placeholder="Search today…" autoFocus /></div>
+            <RdButton icon={Download} onClick={exportLog}>Export</RdButton>
+          </>
+        )}>
+        <RdTable head={['Time', 'Member', 'How', 'Activity', 'Membership', { label: '', align: 'right' }]}
+          empty={logRecords.length === 0 ? <EmptyBlock icon={Users} compact title={todayAttendance.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'} /> : undefined}>
+          {logRecords.map((r) => (
+            <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={planOf[r.member_id]?.plan}
+              onUndo={() => setToUndo(r)} />
+          ))}
+        </RdTable>
+      </FullLog>
 
       <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(code) => void checkInCode(code)} />
 

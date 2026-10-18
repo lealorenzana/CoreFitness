@@ -41,7 +41,10 @@ async (page) => {
     memberships: [{ id: 'ms1', member_id: MEMBER, plan_id: 'p3', status: 'active', start_date: dstr(-5), expiry_date: dstr(25), never_expires: false, frozen_at: null, created_at: iso(-5, 9), membership_plans: PREMIUM }],
     attendance: [{ id: 'a1', member_id: MEMBER, check_in_time: iso(-2, 18), method: 'qr', activity: 'Class' }],
     gym_settings: [{ id: true, gym_name: 'Core Fitness Lab', address: 'Mamburao', phone: null, email: null, opening_time: '06:00', closing_time: '21:00',
-      activity_options: ['Gym floor', 'Class', 'Cardio', 'Personal training'], member_activity_pick: true, coach_checkin_on: true, updated_at: iso(0, 9), updated_by: null }],
+      // The Lab's real list (2026-10-18): thirty of them pushed the QR off the sheet.
+      activity_options: ['Strength', 'Free Weights', 'Weight Machines', 'Bodyweight', 'Cardio', 'Treadmill', 'Stationary Bike', 'Elliptical', 'Rowing',
+        'Jump Rope', 'HIIT', 'Circuit Training', 'Functional Training', 'Core & Abs', 'Group Class', 'Zumba', 'Aerobics', 'Yoga', 'Pilates', 'Spinning',
+        'Dance', 'Boxing', 'Muay Thai', 'Martial Arts', 'Stretching & Mobility', 'Sports', 'Personal Training', 'Class', 'Other'], member_activity_pick: true, coach_checkin_on: true, updated_at: iso(0, 9), updated_by: null }],
     checkin_picks: [{ member_id: MEMBER, today: null, today_on: null, usual: 'Cardio' }],
     coach_checkins: [{ id: 'cc1', trainer_id: COACH, day: dstr(-1), check_in_time: iso(-1, 6, 12) }],
   };
@@ -118,13 +121,17 @@ async (page) => {
   await page.locator('nav[aria-label="Main"] button[aria-label*="code"]').click();
   await page.waitForTimeout(1200);
   const pick = page.locator('[data-activity-pick]');
-  has('the QR sheet asks what they are doing today, from the gym\'s list', (await pick.count()) === 1 && (await pick.locator('button').count()) === 4);
-  has('…with their usual already chosen', (await pick.locator('button[aria-pressed="true"]').innerText().catch(() => '')) === 'Cardio');
+  const sel = pick.locator('[data-activity-select]');
+  has('the QR sheet asks what they are doing today, as a dropdown of the gym\'s list', (await pick.count()) === 1 && (await sel.locator('option').count()) === 30);
+  const qrBox = await page.locator('[role="dialog"][aria-label="Check-in QR code"] svg').first().boundingBox();
+  has('with thirty activities the QR is full size and on screen', !!qrBox && qrBox.height >= 200 && qrBox.y >= 0 && qrBox.y + qrBox.height <= 852, JSON.stringify(qrBox));
+  has('…one dropdown, not a wall of chips', (await pick.locator('button').count()) === 0 && await sel.evaluate((e) => e.getBoundingClientRect().height < 60));
+  has('…with their usual already chosen', (await sel.inputValue()) === 'Cardio');
   has('…and the switch on, since it is their usual', await pick.getByRole('switch').isChecked());
-  await pick.locator('button', { hasText: 'Class' }).click(); await page.waitForTimeout(500);
+  await sel.selectOption('Class'); await page.waitForTimeout(500);
   let c = CALLS.filter(([f]) => f === 'set_my_checkin_pick').pop();
   has('a different pick just for today leaves the usual alone', !!c && c[1].p_activity === 'Class' && c[1].p_usual === null, JSON.stringify(c));
-  has('…the chip moves and the switch says it is not the usual', (await pick.locator('button[aria-pressed="true"]').innerText()) === 'Class' && !(await pick.getByRole('switch').isChecked()) && /Your usual: Cardio/.test(await pick.innerText()));
+  has('…the dropdown shows it and the switch says it is not the usual', (await sel.inputValue()) === 'Class' && !(await pick.getByRole('switch').isChecked()) && /Your usual: Cardio/.test(await pick.innerText()));
   await pick.getByRole('switch').click(); await page.waitForTimeout(500);
   c = CALLS.filter(([f]) => f === 'set_my_checkin_pick').pop();
   has('turning the switch on makes it the usual', !!c && c[1].p_activity === 'Class' && c[1].p_usual === true);

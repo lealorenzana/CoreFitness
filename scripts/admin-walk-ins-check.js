@@ -124,8 +124,11 @@ async (page) => {
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/attendance/walk-ins', { waitUntil: 'domcontentloaded' });
   await page.locator('[data-walkin-form]').waitFor({ timeout: 15000 });
-  out.push('the desk has the guide, folded: ' + ((await page.locator('[data-walkin-guide]').count()) === 1
-    && (await page.locator('[data-walkin-guide]').evaluate((d) => !d.open)) ? 'yes' : 'MISSING'));
+  // The guide opens in a side panel (2026-10-18): unfolded in the rail it squeezed the cards over each other.
+  await page.locator('[data-walkin-guide-open]').click(); await page.waitForTimeout(500);
+  out.push('the desk opens the guide in a side panel: ' + ((await page.locator('[data-walkin-guide]').count()) === 1
+    && /Walk-in at the desk/.test(await page.locator('[data-walkin-guide]').innerText()) ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
   let t = await text();
   out.push("the gym's prices on the choices, and no 10-visit pack it does not sell: " + (/Day pass ₱150/.test(t) && /5-visit pack ₱650/.test(t) && !/10-visit pack/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Guest name').fill('Ben Reyes');

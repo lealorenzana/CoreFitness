@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowClockwise, CheckCircle, Prohibit } from '@phosphor-icons/react';
-import { Chip, NocButton } from './noc';
+import { NocButton } from './noc';
+import { Select } from './Field';
 import { useT } from '../../lib/i18n';
 import { generateSecureQR, getQRTimeRemaining } from '../../utils/qrCode';
 import { formatCheckInCode } from '../../utils/checkInCode';
@@ -182,7 +183,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
             initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             role="dialog" aria-modal="true" aria-label="Check-in QR code"
-            className="absolute inset-x-0 bottom-0 flex flex-col items-center"
+            className="absolute inset-x-0 bottom-0 flex flex-col items-center [&>*]:flex-none"
             style={{
               ...GLASS,
               borderBottom: 'none',
@@ -280,11 +281,13 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                 {door?.memberPick && door.options.length > 0 && (
                   <div className="w-full flex flex-col items-center" style={{ gap: 8 }} data-activity-pick>
                     <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('What are you doing today?')}</p>
-                    <div className="flex flex-wrap justify-center" style={{ gap: 8 }}>
-                      {door.options.map((o) => (
-                        <Chip key={o} label={o} on={door.pick === o} onClick={() => void choose(door.pick === o ? null : o, null)} />
-                      ))}
-                    </div>
+                    {/* A dropdown, not chips (the owner's ask, 2026-10-18): a gym can list thirty
+                        activities, and the QR is what the member came for — it must stay the sheet. */}
+                    <Select aria-label="What are you doing today?" data-activity-select value={door.pick ?? ''} disabled={picking}
+                      onChange={(e) => void choose(e.target.value || null, null)} style={{ width: '100%' }}>
+                      <option value="">{t('Not picked — the desk can tag it')}</option>
+                      {door.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </Select>
                     <label className="w-full flex items-center justify-between" style={{ gap: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--color-surface-high)', opacity: door.pick ? 1 : 0.5 }}>
                       <span>
                         <span className="block" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('Make this my usual')}</span>

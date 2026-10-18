@@ -138,7 +138,7 @@ async (page) => {
 
   // ── Attendance · Walk-ins ──
   t = await visit('/attendance/walk-ins', 'walkins');
-  has('the drawer, the three steps, the form and the guide', (await page.locator('[data-walkins-hero]').count()) === 1 && /Day passes/.test(t) && /What are they paying for\?/.test(t) && (await page.locator('[data-walkin-form]').count()) === 1 && (await page.locator('[data-walkin-guide]').count()) === 1);
+  has('the drawer, the three steps, the form and the guide', (await page.locator('[data-walkins-hero]').count()) === 1 && /Day passes/.test(t) && /What are they paying for\?/.test(t) && (await page.locator('[data-walkin-form]').count()) === 1 && (await page.locator('[data-walkin-guide-open]').count()) === 1);
 
   // ── Attendance · History ──
   t = await visit('/attendance-history', 'history');
