@@ -1,7 +1,6 @@
 /**
- * 0201: a walk-in's name is optional ("Walk-in guest" until one is given, and a
- * name given later on a visit found by phone replaces it); the walk-in history
- * lists every visit in a range with names, for the desk only.
+ * 0201: the walk-in history lists every visit in a range with names, for the
+ * desk only; a guest's name stays required (0185).
  *
  *   node <repo>/scripts/sql/walk-in-history.mjs "<repo>"   (from a dir with pglite installed)
  */
@@ -34,19 +33,14 @@ await db.exec(`
   update gym_settings set day_pass_on = true, day_pass_price = 150, pack5_price = 650 where gym_id = '${GYM}';`);
 
 await as(ST);
-let r = await one(`select * from record_guest_visit(null, null, null, 'day', 'cash')`);
-check('a walk-in with no name and no phone is recorded', !!r?.guest_id && Number(r.amount) === 150, JSON.stringify(r));
-check('…as "Walk-in guest"', (await one(`select name from guests where id = '${r.guest_id}'`)).name === 'Walk-in guest');
-r = await one(`select * from record_guest_visit(null, '   ', '0917 555 0144', 'pack5', 'online')`);
+check('a new walk-in still needs a name', /Type the guest's name/.test((await tryExec(`select * from record_guest_visit(null, null, '0917 555 0144', 'day', 'cash')`)) ?? ''));
+let r = await one(`select * from record_guest_visit(null, 'Ana Reyes', null, 'day', 'cash')`);
+r = await one(`select * from record_guest_visit(null, 'Mara Cruz', '0917 555 0144', 'pack5', 'online')`);
 const g = r.guest_id;
-check('a blank name with a phone is fine too', !!g);
-r = await one(`select * from record_guest_visit('${g}', 'Mara Cruz', null, 'pack_visit', 'cash')`);
-check('a name given on a later visit replaces the placeholder', (await one(`select name from guests where id = '${g}'`)).name === 'Mara Cruz');
-r = await one(`select * from record_guest_visit('${g}', 'Someone Else', null, 'pack_visit', 'cash')`);
-check('…but never renames a guest who already has a name', (await one(`select name from guests where id = '${g}'`)).name === 'Mara Cruz');
-
+await one(`select * from record_guest_visit('${g}', null, null, 'pack_visit', 'cash')`);
+await one(`select * from record_guest_visit('${g}', null, null, 'pack_visit', 'cash')`);
 const h = await all(`select * from guest_visits_between(manila_today() - 30, manila_today())`);
-check('the history lists every visit, with names, newest first', h.length === 4 && h.filter((x) => x.name === 'Mara Cruz').length === 3 && h.some((x) => x.name === 'Walk-in guest'), JSON.stringify(h.map((x) => x.name)));
+check('the history lists every visit, with names, newest first', h.length === 4 && h.filter((x) => x.name === 'Mara Cruz').length === 3 && h.some((x) => x.name === 'Ana Reyes'), JSON.stringify(h.map((x) => x.name)));
 check('…with who recorded it and how they paid', h.every((x) => x.recorded_by_name === 'desk T') && h.some((x) => x.method === 'online'));
 check('…and nothing outside the range', (await all(`select * from guest_visits_between(manila_today() - 60, manila_today() - 31)`)).length === 0);
 await as(M);

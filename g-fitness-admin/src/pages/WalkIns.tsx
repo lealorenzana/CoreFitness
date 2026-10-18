@@ -18,8 +18,6 @@ interface Visit { id: string; name: string; phone: string | null; kind: Kind; am
 interface PastVisit { id: string; name: string; phone: string | null; visit_day: string; visited_at: string; kind: Kind; amount: number; method: string; voided: boolean; recorded_by_name: string | null }
 type Range = 'today' | '7' | '30' | '90';
 const RANGE_LABEL: Record<Range, string> = { today: 'Today', '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days' };
-/** A guest recorded with no name (0201) — shown as such, never given an invented one. */
-const UNNAMED = 'Walk-in guest';
 interface Regular { guest_id: string; name: string; phone: string | null; visits: number; spent: number; last_visit: string }
 const KIND: Record<Kind, string> = { day: 'Day pass', pack5: '5-visit pack', pack10: '10-visit pack', pack_visit: 'Visit from a pack' };
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
@@ -141,13 +139,13 @@ export default function WalkIns() {
     if (!chosen) return;
     setBusy(true);
     const { data, error } = await supabase.rpc('record_guest_visit', {
-      p_guest: guest?.id ?? null, p_name: name.trim() || null, p_phone: guest ? null : (phone.trim() || null), p_kind: chosen,
+      p_guest: guest?.id ?? null, p_name: guest ? null : name, p_phone: guest ? null : (phone.trim() || null), p_kind: chosen,
       p_method: chosen === 'pack_visit' ? 'cash' : method,
     });
     setBusy(false);
     if (error) { showToast(error.message, 'error'); return; }
     const r = (Array.isArray(data) ? data[0] : data) as { amount: number; visits_left: number; visits_this_month: number; suggest_membership: boolean };
-    const who = (guest && guest.name !== UNNAMED ? guest.name : name.trim()) || 'The walk-in';
+    const who = guest?.name ?? name.trim();
     showToast(`${who}: ${Number(r.amount) > 0 ? `${peso(Number(r.amount))} ${method}` : 'a visit from their pack'}${r.visits_left ? ` · ${r.visits_left} left on the pack` : ''}`, 'success');
     if (r.suggest_membership) showToast(`${who} has come ${r.visits_this_month} times this month — suggest a membership.`, 'info');
     setPhone(''); setName(''); setFound(null); setKind(null); setMethod('cash');
@@ -165,7 +163,7 @@ export default function WalkIns() {
   const live = visits.filter((v) => !v.voided);
   const cash = live.filter((v) => v.method === 'cash').reduce((a, v) => a + v.amount, 0);
   const canSell = !!prices?.on;
-  // The name is optional (0201): a guest paying for one visit need not give one.
+  const named = !!guest || name.trim().length > 0;
   const sold = (k: Kind) => live.filter((v) => v.kind === k).length;
   const inputCls = 'h-12 px-4 rounded-xl text-[15px] text-white outline-none w-full';
   const inputSt = { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' };
@@ -227,7 +225,7 @@ export default function WalkIns() {
                   <div key={v.id} className="flex items-center gap-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', opacity: v.voided ? 0.55 : 1 }}>
                     <Initials name={v.name} size={32} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-white truncate">{v.name === UNNAMED ? 'No name given' : v.name}{v.voided ? ' · voided' : ''}</p>
+                      <p className="text-[14px] font-semibold text-white truncate">{v.name}{v.voided ? ' · voided' : ''}</p>
                       <p className="text-[12px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
                         {KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} ${v.method}` : 'no charge'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
                       </p>
@@ -271,7 +269,7 @@ export default function WalkIns() {
                     </div>
                   ) : (
                     <input aria-label="Guest name" className={inputCls} style={inputSt} value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder={looked ? 'New guest — name (optional)' : 'Name (optional)'} />
+                      placeholder={looked ? 'New guest — their name' : 'Name'} />
                   )}
                 </div>
                 <p className="text-[12.5px] inline-flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
@@ -309,8 +307,8 @@ export default function WalkIns() {
                       {m === 'cash' ? <Banknote size={16} /> : <QrCode size={16} />}{m === 'cash' ? 'Cash' : 'Online'}
                     </button>
                   ))}
-                  <RdButton variant="primary" className="ml-auto" icon={Check} disabled={busy || !chosen} onClick={() => void record()} data-record-visit>
-                    {chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
+                  <RdButton variant="primary" className="ml-auto" icon={Check} disabled={busy || !named || !chosen} onClick={() => void record()} data-record-visit>
+                    {!named ? 'Type their name' : chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
                   </RdButton>
                 </div>
               </div>
@@ -416,7 +414,7 @@ export default function WalkIns() {
                     <div className="flex items-center gap-3">
                       <Initials name={v.name} size={32} />
                       <div className="min-w-0">
-                        <p className="font-semibold truncate" style={{ color: v.name === UNNAMED ? 'var(--color-text-secondary)' : '#fff' }}>{v.name === UNNAMED ? 'No name given' : v.name}</p>
+                        <p className="font-semibold text-white truncate">{v.name}</p>
                         {v.phone && <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{v.phone}</p>}
                       </div>
                     </div>

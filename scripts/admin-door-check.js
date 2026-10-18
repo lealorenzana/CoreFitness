@@ -72,7 +72,7 @@ async (page) => {
     find_guest: [{ id: 'g2', name: 'Lyn Soriano', phone: '0917 555 0102', visits_left: 3, visits_this_month: 3, last_visit: day(-3) }],
     guest_visits_between: [
       { id: 'hv1', guest_id: 'g2', name: 'Lyn Soriano', phone: '0917 555 0102', visit_day: day(-1), visited_at: iso(-1, 8, 2), kind: 'day', amount: 150, method: 'online', voided: false, recorded_by_name: 'Gabby Desk' },
-      { id: 'hv2', guest_id: 'g3', name: 'Walk-in guest', phone: null, visit_day: day(-2), visited_at: iso(-2, 17, 40), kind: 'day', amount: 150, method: 'cash', voided: false, recorded_by_name: 'Gabby Desk' },
+      { id: 'hv2', guest_id: 'g3', name: 'Jules Tan', phone: null, visit_day: day(-2), visited_at: iso(-2, 17, 40), kind: 'day', amount: 150, method: 'cash', voided: false, recorded_by_name: 'Gabby Desk' },
       { id: 'hv3', guest_id: 'g1', name: 'Rico Abad', phone: '09175550111', visit_day: day(-3), visited_at: iso(-3, 9, 0), kind: 'pack5', amount: 650, method: 'cash', voided: true, recorded_by_name: 'Lea Lorenzana' },
     ],
     record_guest_visit: [{ guest_id: 'g2', visits_left: 2, amount: 0, visits_this_month: 4, suggest_membership: true }],
@@ -234,20 +234,17 @@ async (page) => {
   await page.locator('[data-record-visit]').click(); await page.waitForTimeout(700);
   const rv2 = CALLS.filter(([f]) => f === 'record_guest_visit').pop();
   has('a new guest pays online for a day pass', !!rv2 && rv2[1].p_name === 'Ben Reyes' && rv2[1].p_kind === 'day' && rv2[1].p_method === 'online');
-  // 0201: the name is optional; "about 20 seconds" (a mock-up's caption, true of nothing) is gone.
+  // "about 20 seconds" (a mock-up's caption, true of nothing) is gone; the name stays required (the owner, 2026-10-18).
   has('no made-up "about 20 seconds"', !/about 20 seconds/.test(await text()));
   await page.getByLabel('Guest name').fill('');
   await page.locator('[data-walkin-option]', { hasText: 'Day pass' }).click();
-  has('a walk-in can be recorded with no name', await page.locator('[data-record-visit]').isEnabled());
-  await page.locator('[data-record-visit]').click(); await page.waitForTimeout(700);
-  const rv3 = CALLS.filter(([f]) => f === 'record_guest_visit').pop();
-  has('…sent with no name, never an invented one', !!rv3 && rv3[1].p_name === null && rv3[1].p_kind === 'day');
+  has('a new walk-in still needs a name', !(await page.locator('[data-record-visit]').isEnabled()) && /Type their name/.test(await page.locator('[data-record-visit]').innerText()));
   await page.locator('[data-open-walkin-history]').click(); await page.waitForTimeout(700);
   const hw = page.locator('[data-walkin-history]');
   const hc = CALLS.filter(([f]) => f === 'guest_visits_between').pop();
   has('Past walk-ins floats over the page, the last 30 days by default', (await hw.count()) === 1 && !!hc && (await hw.locator('[data-walkin-history-row]').count()) === 3);
   const ht = (await hw.innerText()).replace(/\s+/g, ' ');
-  has('…with names (an unnamed one says so), what, how paid and who recorded it', /Lyn Soriano/.test(ht) && /No name given/.test(ht) && /Online/.test(ht) && /Gabby Desk/.test(ht) && /Voided/.test(ht));
+  has('…with names, what, how paid and who recorded it', /Lyn Soriano/.test(ht) && /Jules Tan/.test(ht) && /Online/.test(ht) && /Gabby Desk/.test(ht) && /Voided/.test(ht));
   has('…and the totals, voids left out', /2 visits · ₱300 · cash ₱150 · online ₱150 · 1 voided/.test(ht));
   await hw.getByPlaceholder('Name or phone…').fill('0102'); await page.waitForTimeout(250);
   has('…searchable by phone', (await hw.locator('[data-walkin-history-row]').count()) === 1);
