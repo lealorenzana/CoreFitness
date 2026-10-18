@@ -182,6 +182,11 @@ async (page) => {
   await page.locator('[data-way="group"]').click(); await page.waitForTimeout(250);
   t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   has('the group tab: upload and review', (await page.locator('[data-invite-group]').count()) === 1 && /Upload CSV/.test(t) && /Review invitations/.test(t));
+  await page.locator('[data-invite-howto] summary').click(); await page.waitForTimeout(250);
+  const howto = (await page.locator('[data-invite-howto]').innerText()).replace(/\s+/g, ' ');
+  has('a how-to with a worked example, folded until asked', /email, first name, last name, mobile/.test(howto) && /maria\.santos@gmail\.com, Maria, Santos/.test(howto) && /Review invitations/.test(howto));
+  await page.screenshot({ path: 'shots/rd-invitations-howto.png' });
+  await page.locator('[data-invite-howto] summary').click(); await page.waitForTimeout(150);
   has('the waiting list with Copy link, Email it, Withdraw', (await page.locator('[data-invite-row]').count()) === 2 && (await page.getByRole('button', { name: 'Copy link' }).count()) === 2 && (await page.getByRole('button', { name: 'Email it' }).count()) === 2 && (await page.getByRole('button', { name: 'Withdraw' }).count()) === 2 && /2 pending/.test(t));
   has('an invite expiring within 3 days is counted', /Expiring soon\s*1/.test(t));
   await page.getByLabel('Paste your list').fill('ana@x.ph, Ana, Cruz\nnot-an-email');
