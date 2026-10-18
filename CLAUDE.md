@@ -171,7 +171,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 - **Security (0199)**: `scripts/sql/security-red-team.mjs` attacks as visitor/member/coach/other gym and must stay green. **Postgres grants EXECUTE to PUBLIC by default — revoke every new helper function from public/anon/ authenticated unless a screen calls it**, and remember a policy cannot limit columns (use a trigger).
 - **The Supabase connector (MCP) is available**, project `ifwxtekyjgeljerslnzr`: verify with `execute_sql` / `query_logs` (pooler sign-in failures are in `supavisor_logs`). It never pastes migrations (the owner does, one at a time), wipes, empties Storage or writes secrets.
 - **The weekly backup works** (first green run 2026-10-18; `docs/BACKUPS.md`), pinned to `ubuntu-24.04`.
-- **Waiting on the owner**: push-key rotation — the old VAPID private key leaked into a session (nobody is subscribed); the owner sets the new keys in Vercel and Supabase, then the member app is redeployed.
+- **Push keys rotated 2026-10-18** (the old VAPID private key had leaked into a session): new pair in Supabase secrets and Vercel `VITE_VAPID_PUBLIC_KEY` (Config, Production + Preview); the member app was redeployed with it.
 - **Queued last, in this order**: premium themes, then Project H (`docs/ENTERPRISE_PLAN.md`).
 
 **Verify with `python scripts/probe-migrations.py` (REST, no DB credentials), or the connector, rather than trusting a report that a migration was pasted** — 0070 was believed done for a day and never ran. Migrations are pasted by hand, **one at a time**, so **`db push` is wrong here**. Detail, 0074's privilege bug and Objective 2's amendment: MIGRATION_STATUS → *Migrations and the probe*.
