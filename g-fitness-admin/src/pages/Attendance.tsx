@@ -1,14 +1,15 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
+import DetailSheet from '../components/ui/DetailSheet';
 import { useFitRows } from '../hooks/useFitRows';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import {
-  QrCode, UserPlus, Users, TrendingUp, Download, Undo2, Zap, Dumbbell, Sparkles, Calendar,
-  MonitorPlay, Tablet, Tag, History, ArrowRight, KeyRound,
+  QrCode, Users, Download, Undo2, Calendar, MonitorPlay, Tablet, Tag, History, Keyboard, CheckCircle2,
+  UserCheck, Footprints, CalendarDays, ScanLine, Dumbbell, ArrowRight,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import { checkInCodeOf, formatCheckInCode } from '../utils/checkInCode';
+import { checkInCodeOf, formatCheckInCode, normaliseCheckInCode } from '../utils/checkInCode';
 import { todayKey, localDateKey, addDays } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
 import { supabase } from '../lib/supabaseClient';
@@ -16,15 +17,16 @@ import { listMembers, type MemberWithProfile } from '../lib/api/members';
 import { listMemberships } from '../lib/api/memberships';
 import { listAttendanceBetween, deleteCheckIn } from '../lib/api/attendance';
 import { getGymSettings } from '../lib/api/settings';
-import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
+import { getDoorSettings, listDoorCoaches, listTodayPicks, undoCoachCheckin, type DoorCoach, type DoorSettings } from '../lib/api/door';
+import { performCheckIn, performCoachCheckIn, resolveCheckInCode } from '../services/checkInService';
 import type { AttendanceRow } from '../types/db';
 import {
-  RdHeader, RdCard, IconTile, Ring, StatTile, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td,
-  TableFooter, EmptyBlock, RailCard, RailAction, FitBody, Initials,
+  RdHeader, RdCard, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, Initials,
 } from '../components/ui/rd';
 import { ATTENDANCE_TABS, TONE, type Tone } from '../components/ui/rdTokens';
 
 const ITEMS_PER_PAGE = 10;
+const time = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 
 /** A membership's state, worded for the desk, with its pill colour. */
 function memberState(status: string | undefined): { label: string; tone: Tone } {
@@ -38,14 +40,73 @@ function memberState(status: string | undefined): { label: string; tone: Tone } 
   }
 }
 
+/** Where and how a check-in was taken, as the log says it (0200 adds the kiosk). */
+function HowPill({ row }: { row: AttendanceRow }) {
+  if (row.source === 'kiosk') return <Pill tone="violet" icon={Tablet}>Kiosk</Pill>;
+  if (row.method === 'qr') return <Pill tone="violet" icon={ScanLine}>{row.source === 'desk' ? 'Desk scan' : 'Scanned'}</Pill>;
+  return <Pill tone="gray" icon={Keyboard}>Typed</Pill>;
+}
+
+/** One of the door's two screens: what it is for, how it is doing, and the button that opens it. */
+function DoorScreen({ kind, title, body, status, action, onOpen }: {
+  kind: 'kiosk' | 'tv'; title: string; body: string; status: React.ReactNode; action: string; onOpen: () => void;
+}) {
+  const Icon = kind === 'kiosk' ? Tablet : MonitorPlay;
+  return (
+    <div className="rounded-2xl p-3 flex flex-col gap-2 min-w-0" data-door-screen={kind}
+      style={{ background: 'radial-gradient(120% 120% at 0% 0%, rgba(124,58,237,0.16), transparent 60%), rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="w-9 h-9 rounded-xl grid place-items-center flex-none" style={{ background: kind === 'kiosk' ? TONE.amber.bg : TONE.violet.bg, border: `1px solid ${kind === 'kiosk' ? TONE.amber.line : TONE.violet.line}` }}>
+          <Icon size={18} style={{ color: kind === 'kiosk' ? TONE.amber.fg : TONE.violet.fg }} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[15px] font-bold text-white">{title}</p>
+            <span className="text-[11.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{status}</span>
+          </div>
+          <p className="text-[12px] leading-snug line-clamp-2" title={body} style={{ color: 'var(--color-text-secondary)' }}>{body}</p>
+        </div>
+      </div>
+      <RdButton size="sm" variant={kind === 'kiosk' ? 'amber' : 'secondary'} icon={Icon} onClick={onOpen} className="mt-auto w-full justify-center !h-10 !text-[14px]">{action}</RdButton>
+    </div>
+  );
+}
+
+/** One cell of the stats strip; a cell that filters or opens something is a button. */
+function StripCell({ icon: Icon, label, value, sub, onClick, active, tip, tone = 'violet' }: {
+  icon: typeof Users; label: string; value: React.ReactNode; sub: string; onClick?: () => void; active?: boolean; tip?: string; tone?: Tone;
+}) {
+  const body = (
+    <>
+      <span className="w-9 h-9 rounded-xl grid place-items-center flex-none" style={{ background: TONE[tone].bg, border: `1px solid ${TONE[tone].line}` }}>
+        <Icon size={17} style={{ color: TONE[tone].fg }} />
+      </span>
+      <span className="min-w-0 text-left">
+        <span className="block text-[12.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+        <span className="flex items-baseline gap-2 min-w-0">
+          <b className="text-[22px] leading-tight text-white tabular-nums">{value}</b>
+          <span className="text-[12px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{sub}</span>
+        </span>
+      </span>
+    </>
+  );
+  const cls = 'flex items-center gap-3 px-4 py-2.5 min-w-0 transition-colors';
+  const st: React.CSSProperties = active ? { background: 'rgba(124,58,237,0.16)' } : {};
+  return onClick
+    ? <button type="button" onClick={onClick} data-tip={tip} aria-pressed={active} className={`${cls} hover:bg-white/[0.03]`} style={st}>{body}</button>
+    : <div className={cls}>{body}</div>;
+}
+
 /**
- * Attendance → Today: the desk (redesigned 2026-10-11 from the owner's mock-up).
+ * Attendance → Today: the desk (redesigned 2026-10-18 from the owner's pick of
+ * the v2 mock-ups).
  *
- * A hero with today's count and the share of the roster, Scan QR and Manual
- * check-in; three tiles (QR, manual, the week's unique members); today's log
- * with its filters, export and undo; and a rail for checking someone in fast —
- * search, a typed code, the activity tag, and the door's own screens (kiosk,
- * lobby TV). The log is today only; any other day is History.
+ * One box checks anyone in — scan, a name, or the six-character code under
+ * their QR — with the next check-in's activity tag beside it. "At the door"
+ * is the kiosk and the lobby TV, big, with the coaches who are in (0200, when
+ * the owner turns coach check-in on). The tiles filter the log; the log is
+ * today only, and says how each check-in was taken and whose activity tag it
+ * carries — the member's own pick, or the desk's (0200). Any other day is History.
  */
 export default function Attendance() {
   const navigate = useNavigate();
@@ -54,47 +115,60 @@ export default function Attendance() {
   const [allAttendance, setAllAttendance] = useState<AttendanceRow[]>([]);
   const [adminId, setAdminId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [door, setDoor] = useState<DoorSettings | null>(null);
+  const [coaches, setCoaches] = useState<DoorCoach[]>([]);
+  const [picks, setPicks] = useState<Map<string, string>>(new Map());
+  const [walkIns, setWalkIns] = useState<number | null>(null);
+  const [closing, setClosing] = useState<string | null>(null);
 
-  const [qrInput, setQrInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [query, setQuery] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activity, setActivity] = useState('');
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
+  const [coachesOpen, setCoachesOpen] = useState(false);
+  /** The check-in just taken, with its own Undo — the desk sees it worked without reading the log. */
+  const [last, setLast] = useState<{ kind: 'member' | 'coach'; id: string; name: string; at: string; activity: string | null } | null>(null);
   // The log's own filters.
   const [logMethod, setLogMethod] = useState<'all' | 'qr' | 'manual'>('all');
   const [logPlan, setLogPlan] = useState('all');
   const [logSearch, setLogSearch] = useState('');
-  const quickSearch = useRef<HTMLDivElement>(null);
   /** Rows that fit the log's own box — the page never scrolls (2026-10-11). */
   const fit = useFitRows(ITEMS_PER_PAGE);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (): Promise<AttendanceRow[]> => {
     try {
       const [memberRows, attendanceRows, { data: { user } }] = await Promise.all([
         listMembers(),
-        // The last seven days: today's log and the week's count are all this
-        // page shows. It read every check-in the gym ever had (2026-10-10).
+        // The last seven days: today's log and the week's count are all this page shows.
         listAttendanceBetween(addDays(todayKey(), -6), todayKey()),
         supabase.auth.getUser(),
       ]);
       setMembers(memberRows);
       setAllAttendance(attendanceRows);
       setAdminId(user?.id ?? null);
-      // Each member's current plan and state, for the log and the quick list. Optional:
-      // check-in never depends on it.
-      const ms = await listMemberships().catch(() => []);
+      // Everything below is optional: check-in never depends on it.
+      const [ms, settings, d, pk, wv] = await Promise.all([
+        listMemberships().catch(() => []),
+        getGymSettings().catch(() => null),
+        getDoorSettings(),
+        listTodayPicks(),
+        supabase.rpc('guest_visits_on', { p_day: todayKey() }).then(({ data, error }) => (error ? null : ((data ?? []) as { voided: boolean }[]).filter((v) => !v.voided).length), () => null),
+      ]);
       const map: Record<string, { plan: string; status: string }> = {};
       for (const m of ms) if (!map[m.member_id]) map[m.member_id] = { plan: m.membership_plans?.name ?? '—', status: m.status };
       setPlanOf(map);
-      // The gym's own activity list (0018). If settings can't be read the
-      // picker simply doesn't appear — check-in must never depend on it.
-      const settings = await getGymSettings().catch(() => null);
       setActivityOptions(settings?.activity_options ?? []);
+      setClosing(settings?.closing_time ?? null);
+      setDoor(d);
+      setPicks(pk);
+      setWalkIns(wv);
+      setCoaches(d?.coachCheckin ? await listDoorCoaches().catch(() => []) : []);
+      return attendanceRows;
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load attendance', 'error');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -119,6 +193,7 @@ export default function Attendance() {
     () => allAttendance.filter((a) => localDateKey(a.check_in_time) === todayStr),
     [allAttendance, todayStr],
   );
+  const inToday = useMemo(() => new Set(todayAttendance.map((a) => a.member_id)), [todayAttendance]);
   /** Distinct members over the last 7 local days, ending today. */
   const weekUnique = useMemo(() => {
     const from = addDays(todayStr, -6);
@@ -136,7 +211,8 @@ export default function Attendance() {
     return todayAttendance
       .filter((r) => logMethod === 'all' || r.method === logMethod)
       .filter((r) => logPlan === 'all' || planOf[r.member_id]?.plan === logPlan)
-      .filter((r) => !q || nameOf(r.member_id).toLowerCase().includes(q) || (r.activity ?? '').toLowerCase().includes(q))
+      .filter((r) => !q || nameOf(r.member_id).toLowerCase().includes(q) || (r.activity ?? '').toLowerCase().includes(q)
+        || checkInCodeOf(r.member_id).includes(q.replace(/[\s-]/g, '')))
       .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayAttendance, logMethod, logPlan, logSearch, planOf, memberById]);
@@ -144,10 +220,13 @@ export default function Attendance() {
   const page = Math.min(logPage, Math.max(1, Math.ceil(logRecords.length / perPage)));
 
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
+    const picked = picks.get(member.profile.id);
     const result = await performCheckIn(member, method, {
-      alreadyInToday: !!todayAttendance.find((a) => a.member_id === member.profile.id),
+      alreadyInToday: inToday.has(member.profile.id),
       adminId,
       activity: activity || undefined,
+      where: 'desk',
+      picked,
     });
     if (!result.ok) { showToast(result.message, 'error'); return; }
     showToast(
@@ -156,19 +235,50 @@ export default function Attendance() {
         : `${member.profile.first_name} checked in · ${result.points.toLocaleString('en-PH')} CORE Points`,
       'success',
     );
-    setQrInput('');
-    setSearchTerm('');
-    await loadData();
+    setQuery('');
+    const rows = await loadData();
+    const row = rows.find((r) => r.member_id === member.profile.id && localDateKey(r.check_in_time) === todayKey());
+    setLast(row ? { kind: 'member', id: row.id, name: `${member.profile.first_name} ${member.profile.last_name}`, at: row.check_in_time, activity: row.activity } : null);
   };
 
-  const handleQRCheckIn = async (qrCodeValue?: string) => {
-    const qr = (qrCodeValue || qrInput).trim();
-    if (!qr) return showToast('Scan a code or type one in', 'error');
-    // Three shapes reach this desk — the rotating QR, the six-character code,
-    // a pasted member id. Resolved in checkInService, shared with the kiosk.
-    const found = await resolveCheckInCode(qr, members);
+  const doCoachCheckIn = async (coach: DoorCoach, method: 'qr' | 'manual') => {
+    const res = await performCoachCheckIn(coach, method, 'desk');
+    if (!res.ok) { showToast(res.message, 'error'); return; }
+    showToast(`${coach.name.split(' ')[0]} (coach) checked in`, 'success');
+    setQuery('');
+    const fresh = await listDoorCoaches().catch(() => coaches);
+    setCoaches(fresh);
+    const c = fresh.find((x) => x.id === coach.id);
+    setLast(c?.checkinId ? { kind: 'coach', id: c.checkinId, name: coach.name, at: c.checkedInAt ?? new Date().toISOString(), activity: null } : null);
+  };
+
+  /** A scanned or typed code — the member app's QR, a coach's QR, the six-character code, a pasted id. */
+  const checkInCode = async (raw: string) => {
+    const code = raw.trim();
+    if (!code) return showToast('Scan a code or type one in', 'error');
+    const found = await resolveCheckInCode(code, members, coaches);
     if ('error' in found) return showToast(found.error, 'error');
+    if ('coach' in found) return doCoachCheckIn(found.coach, found.method);
     await doCheckIn(found.member, found.method);
+  };
+
+  const q = query.trim().toLowerCase();
+  const qCode = q.replace(/[\s-]/g, '');
+  const memberHits = q ? members.filter((m) =>
+    `${m.profile.first_name} ${m.profile.last_name}`.toLowerCase().includes(q) ||
+    (m.profile.email ?? '').toLowerCase().includes(q) ||
+    (m.member.qr_code ?? '').toLowerCase().includes(q) ||
+    (qCode.length >= 3 && checkInCodeOf(m.profile.id).includes(qCode))) : [];
+  const coachHits = q ? coaches.filter((c) => c.name.toLowerCase().includes(q) || (qCode.length >= 3 && checkInCodeOf(c.id).includes(qCode))) : [];
+
+  /** Enter: a code (or a QR's text) is checked in; a name with exactly one match is that person. */
+  const submitQuery = () => {
+    const looksLikeCode = /^cfc?1\./i.test(query.trim()) || /^[0-9a-f]{6}$/.test(normaliseCheckInCode(query)) || /^[0-9a-f-]{36}$/i.test(query.trim());
+    if (looksLikeCode) return void checkInCode(query);
+    if (memberHits.length + coachHits.length === 1) {
+      return memberHits.length ? void doCheckIn(memberHits[0], 'manual') : void doCoachCheckIn(coachHits[0], 'manual');
+    }
+    showToast(memberHits.length + coachHits.length === 0 ? 'Nobody matches that.' : 'More than one match — pick from the list.', 'error');
   };
 
   /** Undo a check-in (0035): the wrong person scanned. Only today's — what RLS allows. */
@@ -177,8 +287,19 @@ export default function Attendance() {
     try {
       await deleteCheckIn(toUndo.id);
       showToast(`Check-in removed for ${nameOf(toUndo.member_id)}`, 'success');
+      if (last?.id === toUndo.id) setLast(null);
       setToUndo(null);
       await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not undo that check-in', 'error');
+    }
+  };
+  const undoCoach = async (checkinId: string, name: string) => {
+    try {
+      await undoCoachCheckin(checkinId);
+      showToast(`Check-in removed for ${name}`, 'success');
+      if (last?.id === checkinId) setLast(null);
+      setCoaches(await listDoorCoaches().catch(() => coaches));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not undo that check-in', 'error');
     }
@@ -194,24 +315,15 @@ export default function Attendance() {
         Member: nameOf(r.member_id),
         'Check-in Code': formatCheckInCode(r.member_id),
         Method: r.method,
+        Where: r.source ?? '',
         Membership: planOf[r.member_id]?.plan ?? '',
         Activity: r.activity ?? '',
+        'Tagged by': r.activity_by ?? '',
       })),
       `attendance_${todayStr}`,
       false,
     );
   };
-
-  const filteredMembers = members.filter((m) => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      `${m.profile.first_name} ${m.profile.last_name}`.toLowerCase().includes(q) ||
-      (m.profile.email ?? '').toLowerCase().includes(q) ||
-      (m.member.qr_code ?? '').toLowerCase().includes(q) ||
-      checkInCodeOf(m.profile.id).includes(q.replace(/[\s-]/g, ''))
-    );
-  });
 
   if (loading) {
     return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading attendance…</div>;
@@ -219,16 +331,16 @@ export default function Attendance() {
 
   const qrCount = todayAttendance.filter((a) => a.method === 'qr').length;
   const manualCount = todayAttendance.filter((a) => a.method === 'manual').length;
-  const share = members.length ? todayAttendance.length / members.length : null;
+  const kioskCount = todayAttendance.filter((a) => a.source === 'kiosk').length;
+  const share = members.length ? Math.round((todayAttendance.length / members.length) * 100) : null;
   const todayLabel = new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  const focusQuick = () => {
-    quickSearch.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    quickSearch.current?.querySelector('input')?.focus();
-  };
+  const longDate = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' });
+  const closesAt = closing ? new Date(`2000-01-01T${closing}`).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : null;
+  const coachesIn = coaches.filter((c) => c.checkedInAt);
 
   return (
     <div className="rd-fit" data-attendance-today>
-      <RdHeader title="Attendance" subtitle="Track member check-ins and keep your gym running strong." tabs={ATTENDANCE_TABS}
+      <RdHeader title="Attendance" subtitle={`Live · ${longDate}${closesAt ? ` · open until ${closesAt}` : ''}`} tabs={ATTENDANCE_TABS}
         actions={(
           <Link to="/attendance-history" className="h-12 px-4 rounded-xl inline-flex items-center gap-3 text-[15px] text-white"
             style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }} data-tip="Another day? Open History">
@@ -236,185 +348,249 @@ export default function Attendance() {
           </Link>
         )} />
 
-      <FitBody rail={(
-        <>
-          <RailCard icon={Zap} title="Quick check-in" sub="Search for a member and check them in instantly.">
-            <div ref={quickSearch}>
-              <SearchField value={searchTerm} onChange={setSearchTerm} placeholder="Search members by name, email or code…" label="Search member" />
-            </div>
-            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-0.5" data-quick-list>
-              {filteredMembers.length === 0 ? (
-                <p className="text-[14px] py-3 text-center" style={{ color: 'var(--color-text-muted)' }}>No members found</p>
-              ) : filteredMembers.slice(0, searchTerm ? 20 : 3).map((m) => {
-                const st = memberState(planOf[m.profile.id]?.status);
-                const name = `${m.profile.first_name} ${m.profile.last_name}`;
-                return (
-                  <div key={m.profile.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
-                    <Initials name={name} photo={m.profile.photo_url} size={40} />
+      <div className="grid gap-4 flex-none" style={{ gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)' }}>
+        {/* ── Check someone in ── */}
+        <RdCard glow className="p-4 flex flex-col gap-2.5 min-w-0" data-checkin-box>
+          <div className="flex gap-2.5">
+            <label className="flex-1 min-w-0 h-12 px-4 rounded-xl flex items-center gap-3" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(139,92,246,0.45)' }}>
+              <ScanLine size={19} style={{ color: '#A78BFA' }} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
+                placeholder="Check someone in — name, email or code (A3F 92B)" aria-label="Check-in code or name"
+                className="flex-1 min-w-0 bg-transparent outline-none text-[15.5px] text-white" />
+              {query && <kbd className="text-[11px] px-1.5 py-0.5 rounded" style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'var(--color-text-secondary)' }}>Enter ↵</kbd>}
+            </label>
+            <button type="button" onClick={() => setIsScannerOpen(true)} data-scan-qr data-tip="Open the camera to scan a member's or coach's code"
+              className="flex items-center gap-2 px-4 h-12 rounded-xl text-white transition-all hover:brightness-110 flex-none"
+              style={{ background: 'linear-gradient(180deg,#8B5CF6,#7C3AED)', boxShadow: '0 12px 30px -12px rgba(124,58,237,0.9)' }}>
+              <QrCode size={20} /><b className="text-[14.5px] whitespace-nowrap">Scan QR</b>
+            </button>
+          </div>
+
+          {/* What the box found — members, and coaches when the owner has coach check-in on. */}
+          <div className="flex-1 min-h-[84px] overflow-y-auto rounded-xl" data-quick-list style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}>
+            {!q && last ? (
+              <div className="h-full flex items-center gap-3 px-3" data-last-checkin style={{ background: 'rgba(124,58,237,0.12)' }}>
+                <CheckCircle2 size={24} style={{ color: '#A78BFA' }} />
+                <p className="flex-1 min-w-0 text-[14px] truncate">
+                  <b className="text-white">{last.name} is in</b>
+                  <span style={{ color: 'var(--color-text-secondary)' }}> · {time(last.at)}{last.kind === 'coach' ? ' · coach' : last.activity ? ` · ${last.activity}` : ''}</span>
+                </p>
+                <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => {
+                  if (last.kind === 'coach') return void undoCoach(last.id, last.name);
+                  const row = todayAttendance.find((r) => r.id === last.id);
+                  if (row) setToUndo(row);
+                }}>Undo</RdButton>
+              </div>
+            ) : !q ? (
+              <p className="h-full grid place-items-center text-[13.5px] px-4 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                Start typing to find a member{door?.coachCheckin ? ' or a coach' : ''}. A scanned or typed code checks them in at once.
+              </p>
+            ) : memberHits.length + coachHits.length === 0 ? (
+              <p className="h-full grid place-items-center text-[13.5px]" style={{ color: 'var(--color-text-muted)' }}>No members found</p>
+            ) : (
+              <>
+                {coachHits.slice(0, 5).map((c) => (
+                  <div key={c.id} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }} data-quick-coach>
+                    <Initials name={c.name} photo={c.photo} size={34} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14.5px] font-semibold text-white truncate">{name}</p>
-                      <p className="text-[12.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{m.profile.email}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11.5px] px-2 py-0.5 rounded-md" style={{ background: TONE[st.tone].bg, color: TONE[st.tone].fg }}>{st.label}</span>
-                        {/* The code the member reads off their phone — to confirm the right person. */}
-                        <span className="text-[11.5px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(m.profile.id)}</span>
-                      </div>
+                      <p className="text-[14px] font-semibold text-white truncate">{c.name} <span className="ml-1 align-middle"><Pill tone="amber" icon={Dumbbell}>Coach</Pill></span></p>
+                      <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(c.id)}</p>
                     </div>
-                    <RdButton variant="primary" size="sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</RdButton>
+                    {c.checkedInAt
+                      ? <span className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>in at {time(c.checkedInAt)}</span>
+                      : <RdButton variant="amber" size="sm" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</RdButton>}
                   </div>
+                ))}
+                {memberHits.slice(0, 20).map((m) => {
+                  const st = memberState(planOf[m.profile.id]?.status);
+                  const name = `${m.profile.first_name} ${m.profile.last_name}`;
+                  const pick = picks.get(m.profile.id);
+                  return (
+                    <div key={m.profile.id} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Initials name={name} photo={m.profile.photo_url} size={34} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-semibold text-white truncate">{name}</p>
+                        <p className="text-[12px] flex items-center gap-2 truncate">
+                          <span style={{ color: TONE[st.tone].fg }}>{planOf[m.profile.id]?.plan ?? 'No plan'} · {st.label}</span>
+                          {/* The code the member reads off their phone — to confirm the right person. */}
+                          <span className="font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(m.profile.id)}</span>
+                        </p>
+                      </div>
+                      {pick && !activity && <span data-tip="What they picked on their QR screen"><Pill tone="violet" icon={Tag}>picked {pick}</Pill></span>}
+                      {inToday.has(m.profile.id)
+                        ? <span className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>already in</span>
+                        : <RdButton variant="amber" size="sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</RdButton>}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {/* Applies to whichever check-in comes next — handy when a class arrives together.
+              Amber while set, so it is never left on unseen. The desk's tag beats a member's own pick. */}
+          {activityOptions.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap" data-tag-chips>
+              <span className="text-[12.5px] inline-flex items-center gap-1.5 mr-1" style={{ color: 'var(--color-text-secondary)' }}><Tag size={14} />Tag the next check-in</span>
+              {['', ...activityOptions].map((opt) => {
+                const on = activity === opt;
+                return (
+                  <button key={opt || 'none'} type="button" onClick={() => setActivity(opt)} aria-pressed={on}
+                    className="h-8 px-3 rounded-full text-[13px] font-semibold transition-colors"
+                    style={on && opt
+                      ? { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` }
+                      : on ? { background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }
+                        : { background: 'rgba(255,255,255,0.025)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    {opt || 'None'}
+                  </button>
                 );
               })}
             </div>
-            <Link to="/members" className="text-[14.5px] font-semibold inline-flex items-center justify-center gap-2 py-1" style={{ color: '#A78BFA' }}>
-              View all members <ArrowRight size={16} />
-            </Link>
-          </RailCard>
-
-          <RailCard icon={KeyRound} title="Have a code?" sub="The member finds it under their QR. A full member ID works too.">
-            <input type="text" placeholder="A3F 92B" value={qrInput} onChange={(e) => setQrInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleQRCheckIn()} aria-label="Check-in code"
-              className="w-full h-12 px-4 rounded-xl text-[16px] text-white text-center tracking-[0.3em] uppercase outline-none"
-              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)' }} />
-            <RdButton variant="soft" onClick={() => void handleQRCheckIn()}>Check in with this code</RdButton>
-          </RailCard>
-
-          {/* Applies to whichever check-in comes next — handy when a class arrives together.
-              A blank is honest; a default is fiction. Amber while set, so it is never left on unseen. */}
-          {activityOptions.length > 0 && (
-            <RailCard icon={Tag} tone="amber" title="Tag check-ins" sub="Optional. Applies to the next check-in, whichever way you take it, and fills the activity breakdown on History.">
-              <RdSelect value={activity} onChange={setActivity} label="Tag the next check-in with an activity">
-                <option value="">Not recorded</option>
-                {activityOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-              </RdSelect>
-              {activity !== '' && (
-                <div className="flex items-center justify-between">
-                  <Pill tone="amber" solidDot>Tagging: {activity}</Pill>
-                  <button type="button" onClick={() => setActivity('')} className="text-[13px] underline" style={{ color: 'var(--color-text-secondary)' }}>Clear</button>
-                </div>
-              )}
-            </RailCard>
           )}
 
-          <RailCard icon={MonitorPlay} title="At the door" sub="Screens for the gym floor.">
-            {/* Self-service: members scan themselves in. The lobby TV: goal, records, boards, classes. */}
-            <RailAction icon={Tablet} label="Kiosk mode" onClick={() => navigate('/kiosk')} />
-            <RailAction icon={MonitorPlay} label="Lobby TV" onClick={() => navigate('/tv')} />
-          </RailCard>
-        </>
-      )}>
-        {/* ── The hero ── */}
-        <RdCard glow className="px-6 py-4 rd-hero rd-hero-tight" data-attendance-hero>
-          <div className="flex items-center gap-6 min-w-0">
-            <IconTile icon={Dumbbell} size={64} />
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold tracking-[0.14em]" style={{ color: '#A78BFA' }}>TODAY'S ATTENDANCE</p>
-              <p className="text-[32px] leading-none font-bold text-white mt-1.5 tabular-nums">{todayAttendance.length} checked in</p>
-              <p className="text-[15px] mt-2" style={{ color: 'var(--color-text-secondary)' }}>Get members in, keep the momentum going.</p>
-            </div>
-          </div>
-          <Ring value={share} label={`${share === null ? 0 : Math.round(share * 100)}%`} sub="of roster" size={110} />
-          <div className="flex flex-col gap-3 min-w-0 rd-hero-side">
-            <div>
-              <p className="text-[20px] font-bold text-white tabular-nums">{todayAttendance.length} / {members.length || '—'} <span className="text-[14px] font-normal" style={{ color: 'var(--color-text-secondary)' }}>members checked in today</span></p>
-              {todayAttendance.length === 0 && (
-                <p className="text-[14px] mt-2 inline-flex items-center gap-1.5" style={{ color: '#FBBF24' }}><Sparkles size={15} /> Be the first check-in today!</p>
-              )}
-            </div>
-            <div className="flex gap-2.5">
-              <button type="button" onClick={() => setIsScannerOpen(true)} data-scan-qr data-tip="Open the camera to scan a member's code"
-                className="flex items-center gap-2 px-3.5 h-11 rounded-xl text-white transition-all hover:brightness-110"
-                style={{ background: 'linear-gradient(180deg,#8B5CF6,#7C3AED)', boxShadow: '0 12px 30px -12px rgba(124,58,237,0.9)' }}>
-                <QrCode size={20} /><b className="text-[14.5px] whitespace-nowrap">Scan QR</b>
-              </button>
-              <button type="button" onClick={focusQuick}
-                className="flex items-center gap-2 px-3.5 h-11 rounded-xl text-white transition-colors hover:bg-white/[0.06]" data-tip="Search a member and check them in"
-                style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
-                <UserPlus size={19} /><b className="text-[14.5px] whitespace-nowrap">Manual check-in</b>
-              </button>
-            </div>
-          </div>
         </RdCard>
 
-        {/* ── The tiles ── */}
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <StatTile icon={QrCode} label="QR Check-ins" compact value={qrCount} sub="via QR code scan today"
-            onClick={() => { setLogMethod(logMethod === 'qr' ? 'all' : 'qr'); setLogPage(1); }} active={logMethod === 'qr'} tip="Show only these in the log" />
-          <StatTile icon={UserPlus} label="Manual Check-ins" compact value={manualCount} sub="via admin check-in today"
-            onClick={() => { setLogMethod(logMethod === 'manual' ? 'all' : 'manual'); setLogPage(1); }} active={logMethod === 'manual'} tip="Show only these in the log" />
-          <StatTile icon={TrendingUp} tone="amber" label="7-Day Unique Members" compact value={weekUnique} sub="unique members in the last 7 days"
-            onClick={() => navigate('/attendance-history')} tip="Open History" />
+        {/* ── At the door ── */}
+        <RdCard className="p-4 flex flex-col gap-2.5 min-w-0" data-at-the-door>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[16px] font-bold text-white inline-flex items-center gap-2"><MonitorPlay size={18} style={{ color: '#A78BFA' }} />At the door</h2>
+            {door?.coachCheckin ? (
+              <button type="button" onClick={() => setCoachesOpen(true)} data-coaches-row
+                data-tip={coachesIn.length ? coachesIn.map((c) => `${c.name.split(' ')[0]} ${time(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today — they scan their own QR'}
+                className="h-8 pl-1.5 pr-3 rounded-full inline-flex items-center gap-2 text-[13px] font-semibold transition-colors hover:brightness-110"
+                style={{ background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` }}>
+                <span className="flex -space-x-2">
+                  {coachesIn.length ? coachesIn.slice(0, 3).map((c) => <Initials key={c.id} name={c.name} photo={c.photo} size={22} />) : <UserCheck size={16} className="ml-1" />}
+                </span>
+                {coachesIn.length} of {coaches.length} coaches in{coachesIn[0] ? ` · ${coachesIn[0].name.split(' ')[0]} ${time(coachesIn[0].checkedInAt!)}` : ''}
+                <ArrowRight size={14} />
+              </button>
+            ) : door ? (
+              <Link to="/settings?tab=gym" className="text-[12.5px] inline-flex items-center gap-1.5" data-coaches-off style={{ color: 'var(--color-text-secondary)' }}
+                data-tip="The owner turns it on in Settings → Gym Information">
+                <UserCheck size={15} /> Coaches can check in too
+              </Link>
+            ) : <span className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>screens for the gym floor</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+            <DoorScreen kind="kiosk" title="Kiosk" status={`${kioskCount} today`} action="Open kiosk" onOpen={() => navigate('/kiosk')}
+              body={`Members scan their own QR on a tablet by the door${door?.coachCheckin ? ' — coaches too' : ''}.`} />
+            <DoorScreen kind="tv" title="Lobby TV" status="any screen" action="Open lobby TV" onOpen={() => navigate('/tv')}
+              body="Today's classes, records and the gym goal, big." />
+          </div>
+        </RdCard>
+      </div>
+
+      {/* ── The strip: each cell filters the log, or opens the page it counts ── */}
+      <RdCard className="grid flex-none overflow-hidden divide-x divide-white/[0.06]" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }} data-stats-strip>
+        <StripCell icon={Users} label="Checked in today" value={todayAttendance.length}
+          sub={share === null ? 'no members yet' : `${share}% of ${members.length}`} />
+        <StripCell icon={QrCode} label="Scanned" value={qrCount} sub={`${kioskCount} kiosk · ${qrCount - Math.min(qrCount, kioskCount)} desk`}
+          onClick={() => { setLogMethod(logMethod === 'qr' ? 'all' : 'qr'); setLogPage(1); }} active={logMethod === 'qr'} tip="Show only these in the log" />
+        <StripCell icon={Keyboard} label="Typed" value={manualCount} sub="code or name"
+          onClick={() => { setLogMethod(logMethod === 'manual' ? 'all' : 'manual'); setLogPage(1); }} active={logMethod === 'manual'} tip="Show only these in the log" />
+        <StripCell icon={Footprints} tone="amber" label="Walk-ins" value={walkIns ?? '—'} sub="today"
+          onClick={() => navigate('/attendance/walk-ins')} tip="Open Walk-ins" />
+        <StripCell icon={CalendarDays} label="This week" value={weekUnique} sub="different members"
+          onClick={() => navigate('/attendance-history')} tip="Open History" />
+      </RdCard>
+
+      {/* ── Today's log ── */}
+      <RdCard className="overflow-hidden rd-fit-fill" data-today-log>
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3">
+          <div className="flex items-center gap-3">
+            <Users size={22} style={{ color: '#A78BFA' }} />
+            <h2 className="text-[18px] font-semibold text-white">Today's check-ins</h2>
+            <span className="text-[13px] px-2.5 py-0.5 rounded-full tabular-nums" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>{todayAttendance.length}</span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <RdSelect value={logMethod} onChange={(v) => { setLogMethod(v as typeof logMethod); setLogPage(1); }} label="Filter by method" className="w-[150px]">
+              <option value="all">All check-ins</option>
+              <option value="qr">Scanned</option>
+              <option value="manual">Typed</option>
+            </RdSelect>
+            <RdSelect value={logPlan} onChange={(v) => { setLogPlan(v); setLogPage(1); }} label="Filter by membership" className="w-[190px]">
+              <option value="all">All membership types</option>
+              {plans.map((p) => <option key={p} value={p}>{p}</option>)}
+            </RdSelect>
+            <div className="w-[210px]"><SearchField value={logSearch} onChange={(v) => { setLogSearch(v); setLogPage(1); }} placeholder="Search today…" /></div>
+            <RdButton icon={Download} onClick={exportLog} data-tip="Export what the log shows as CSV">Export</RdButton>
+          </div>
         </div>
-
-        {/* ── Today's log ── */}
-        <RdCard className="overflow-hidden rd-fit-fill" data-today-log>
-          <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <Users size={24} style={{ color: '#A78BFA' }} />
-              <h2 className="text-[20px] font-semibold text-white">Today's check-ins</h2>
-              <span className="text-[13px] px-2.5 py-0.5 rounded-full tabular-nums" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>{todayAttendance.length}</span>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <RdSelect value={logMethod} onChange={(v) => { setLogMethod(v as typeof logMethod); setLogPage(1); }} label="Filter by method" className="w-[160px]">
-                <option value="all">All check-ins</option>
-                <option value="qr">QR scans</option>
-                <option value="manual">Manual</option>
-              </RdSelect>
-              <RdSelect value={logPlan} onChange={(v) => { setLogPlan(v); setLogPage(1); }} label="Filter by membership" className="w-[200px]">
-                <option value="all">All membership types</option>
-                {plans.map((p) => <option key={p} value={p}>{p}</option>)}
-              </RdSelect>
-              <div className="w-[220px]"><SearchField value={logSearch} onChange={(v) => { setLogSearch(v); setLogPage(1); }} placeholder="Search check-ins…" /></div>
-              <RdButton icon={Download} onClick={exportLog} data-tip="Export what the log shows as CSV">Export</RdButton>
-            </div>
-          </div>
-          <RdTable boxRef={fit.ref} head={['#', 'Member', 'Time in', 'Method', 'Membership', 'Notes', { label: '', align: 'right' }]}
-            empty={logRecords.length === 0 ? (
-              <EmptyBlock icon={Users} compact
-                title={todayAttendance.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'}
-                body={todayAttendance.length === 0 ? 'When members check in, they’ll appear here.' : 'Clear a filter to see the rest of today.'}
-                action={todayAttendance.length === 0
-                  ? <RdButton variant="soft" icon={QrCode} onClick={() => setIsScannerOpen(true)}>Scan QR to get started</RdButton>
-                  : <RdButton onClick={() => { setLogMethod('all'); setLogPlan('all'); setLogSearch(''); }}>Clear filters</RdButton>} />
-            ) : undefined}>
-            {logRecords.slice((page - 1) * perPage, page * perPage).map((r, i) => {
-              const m = memberById[r.member_id];
-              const name = nameOf(r.member_id);
-              return (
-                <Tr key={r.id} data-log-row style={{ height: logRecords.length > perPage ? fit.rowHeight : undefined }}>
-                  <Td className="w-12" style={{ color: 'var(--color-text-secondary)' }}>{(page - 1) * perPage + i + 1}</Td>
-                  <Td>
-                    <div className="flex items-center gap-3">
-                      <Initials name={name} photo={m?.profile.photo_url} size={38} />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-white truncate">{name}</p>
-                        <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(r.member_id)}</p>
-                      </div>
+        <RdTable boxRef={fit.ref} head={['Time', 'Member', 'How', 'Activity', 'Membership', { label: '', align: 'right' }]}
+          empty={logRecords.length === 0 ? (
+            <EmptyBlock icon={Users} compact
+              title={todayAttendance.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'}
+              body={todayAttendance.length === 0 ? 'When members check in, they’ll appear here.' : 'Clear a filter to see the rest of today.'}
+              action={todayAttendance.length === 0
+                ? <RdButton variant="soft" icon={QrCode} onClick={() => setIsScannerOpen(true)}>Scan QR to get started</RdButton>
+                : <RdButton onClick={() => { setLogMethod('all'); setLogPlan('all'); setLogSearch(''); }}>Clear filters</RdButton>} />
+          ) : undefined}>
+          {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => {
+            const m = memberById[r.member_id];
+            const name = nameOf(r.member_id);
+            return (
+              <Tr key={r.id} data-log-row style={{ height: logRecords.length > perPage ? fit.rowHeight : undefined }}>
+                <Td className="whitespace-nowrap font-semibold">{time(r.check_in_time)}</Td>
+                <Td>
+                  <div className="flex items-center gap-3">
+                    <Initials name={name} photo={m?.profile.photo_url} size={34} />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white truncate">{name}</p>
+                      <p className="text-[12px] font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(r.member_id)}</p>
                     </div>
-                  </Td>
-                  <Td className="whitespace-nowrap">{new Date(r.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</Td>
-                  <Td>{r.method === 'qr' ? <Pill tone="violet" icon={QrCode}>Scanned</Pill> : <Pill tone="gray" icon={UserPlus}>Manual</Pill>}</Td>
-                  <Td style={{ color: 'var(--color-text-secondary)' }}>{planOf[r.member_id]?.plan ?? '—'}</Td>
-                  {/* The activity tag (0018). A dash means nobody asked — not "no activity". */}
-                  <Td style={{ color: 'var(--color-text-secondary)' }}>{r.activity || '—'}</Td>
-                  <Td align="right">
-                    {localDateKey(r.check_in_time) === todayStr && (
-                      <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => setToUndo(r)} data-tip="Undo this check-in">Undo</RdButton>
-                    )}
-                  </Td>
-                </Tr>
-              );
-            })}
-          </RdTable>
-          <div className="flex items-center justify-between flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <TableFooter page={page} perPage={perPage} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
-            <Link to="/attendance-history" className="text-[14px] font-semibold inline-flex items-center gap-1.5 px-4 py-4" style={{ color: '#A78BFA' }}>
-              <History size={15} /> Other days
-            </Link>
-          </div>
-        </RdCard>
-      </FitBody>
+                  </div>
+                </Td>
+                <Td><HowPill row={r} /></Td>
+                {/* The activity tag (0018), and whose it is (0200). A dash means nobody picked one — not "no activity". */}
+                <Td>
+                  {r.activity ? (
+                    <span className="inline-flex items-center gap-2">
+                      {r.activity}
+                      {r.activity_by === 'member' && <span data-tag-by="member"><Pill tone="violet">their pick</Pill></span>}
+                      {r.activity_by === 'desk' && <span data-tag-by="desk"><Pill tone="amber">desk</Pill></span>}
+                    </span>
+                  ) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                </Td>
+                <Td style={{ color: 'var(--color-text-secondary)' }}>{planOf[r.member_id]?.plan ?? '—'}</Td>
+                <Td align="right">
+                  <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => setToUndo(r)} data-tip="Undo this check-in">Undo</RdButton>
+                </Td>
+              </Tr>
+            );
+          })}
+        </RdTable>
+        <div className="flex items-center justify-between flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <TableFooter page={page} perPage={perPage} total={logRecords.length} noun="check-ins today" onPage={setLogPage} />
+          <Link to="/attendance-history" className="text-[14px] font-semibold inline-flex items-center gap-1.5 px-4 py-4" style={{ color: '#A78BFA' }}>
+            <History size={15} /> Other days
+          </Link>
+        </div>
+      </RdCard>
 
-      <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(qrCode) => handleQRCheckIn(qrCode)} />
+      <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(code) => void checkInCode(code)} />
+
+      {/* Coaches (0200): who is in, and checking one in by hand when their phone is not with them. */}
+      <DetailSheet open={coachesOpen} onClose={() => setCoachesOpen(false)} title="Coaches today"
+        subtitle={`${coachesIn.length} of ${coaches.length} in · never counted as member visits`}>
+        <div className="flex flex-col" data-coaches-sheet>
+          {coaches.length === 0 && <p className="text-[14px] py-6 text-center" style={{ color: 'var(--color-text-muted)' }}>This gym has no active coaches yet.</p>}
+          {coaches.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <Initials name={c.name} photo={c.photo} size={40} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold text-white truncate">{c.name}</p>
+                <p className="text-[12.5px]" style={{ color: c.checkedInAt ? '#C4B5FD' : 'var(--color-text-secondary)' }}>
+                  {c.checkedInAt ? `In at ${time(c.checkedInAt)}` : 'Not in yet'} · <span className="font-mono tracking-wider" style={{ color: 'var(--color-secondary)' }}>{formatCheckInCode(c.id)}</span>
+                </p>
+              </div>
+              {c.checkinId
+                ? <RdButton size="sm" variant="ghost" icon={Undo2} onClick={() => void undoCoach(c.checkinId!, c.name)}>Undo</RdButton>
+                : <RdButton size="sm" variant="amber" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</RdButton>}
+            </div>
+          ))}
+        </div>
+      </DetailSheet>
 
       <ConfirmDialog
         isOpen={!!toUndo}
@@ -423,7 +599,7 @@ export default function Attendance() {
         title="Undo Check-in"
         message={
           toUndo
-            ? `Remove ${nameOf(toUndo.member_id)}'s ${new Date(toUndo.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })} check-in? ` +
+            ? `Remove ${nameOf(toUndo.member_id)}'s ${time(toUndo.check_in_time)} check-in? ` +
               `Use this when the wrong member was scanned — the visit stops counting toward their training days and toward today's totals. They can simply check in again.`
             : ''
         }

@@ -127,9 +127,10 @@ async (page) => {
   out.push('the desk has the guide, folded: ' + ((await page.locator('[data-walkin-guide]').count()) === 1
     && (await page.locator('[data-walkin-guide]').evaluate((d) => !d.open)) ? 'yes' : 'MISSING'));
   let t = await text();
-  out.push("the gym's prices on the buttons, and no 10-visit pack it does not sell: " + (/Day pass · ₱150/.test(t) && /5-visit pack · ₱650/.test(t) && !/10-visit pack/.test(t) ? 'yes' : 'MISSING'));
+  out.push("the gym's prices on the choices, and no 10-visit pack it does not sell: " + (/Day pass ₱150/.test(t) && /5-visit pack ₱650/.test(t) && !/10-visit pack/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Guest name').fill('Ben Reyes');
-  await page.getByRole('button', { name: /^Day pass/ }).click();
+  await page.locator('[data-walkin-option]', { hasText: 'Day pass' }).click();
+  await page.locator('[data-record-visit]').click();
   await page.waitForTimeout(800);
   let c = CALLS.find(([f]) => f === 'record_guest_visit');
   out.push('a new walk-in pays for the day: ' + (c && c[1].p_name === 'Ben Reyes' && c[1].p_kind === 'day' && c[1].p_guest === null ? 'yes' : 'MISSING ' + JSON.stringify(CALLS)));
@@ -137,7 +138,8 @@ async (page) => {
   await page.locator('[data-guest-found]').waitFor({ timeout: 5000 });
   t = await text();
   out.push('the phone finds a known guest, with their visits this month and pack: ' + (/Ana Cruz/.test(t) && /2 this month/.test(t) && /3 left on a pack/.test(t) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /Use a pack visit/ }).click();
+  await page.locator('[data-walkin-option]', { hasText: 'Use a pack visit' }).click();
+  await page.locator('[data-record-visit]').click();
   await page.waitForTimeout(800);
   c = CALLS.filter(([f]) => f === 'record_guest_visit').pop();
   out.push('…and spends a visit from it: ' + (c && c[1].p_guest === 'g1' && c[1].p_kind === 'pack_visit' ? 'yes' : 'MISSING'));

@@ -69,21 +69,29 @@ export async function recordCheckIn(input: {
   /** One of gym_settings.activity_options (0018). Omitted rather than guessed
    *  when the front desk didn't ask — a NULL is honest, a default is fiction. */
   activity?: string;
+  /** Where it was taken (0200): the desk or the kiosk. */
+  source?: 'desk' | 'kiosk';
 }): Promise<AttendanceRow> {
-  const { data, error } = await supabase
+  const row: Record<string, unknown> = {
+    member_id: input.memberId,
+    // Only when given. Since 0098 gym_id is the tenant column, filled in by the
+    // database from the acting gym; an explicit null overrode that and RLS
+    // refused every check-in (2026-10-05).
+    ...(input.gymId ? { gym_id: input.gymId } : {}),
+    method: input.method,
+    recorded_by: input.recordedBy,
+    activity: input.activity ?? null,
+  };
+  let { data, error } = await supabase
     .from('attendance')
-    .insert({
-      member_id: input.memberId,
-      // Only when given. Since 0098 gym_id is the tenant column, filled in by the
-      // database from the acting gym; an explicit null overrode that and RLS
-      // refused every check-in (2026-10-05).
-      ...(input.gymId ? { gym_id: input.gymId } : {}),
-      method: input.method,
-      recorded_by: input.recordedBy,
-      activity: input.activity ?? null,
-    })
+    .insert(input.source ? { ...row, source: input.source } : row)
     .select()
     .single();
+  // Before 0200 there is no `source` column: check the member in without it
+  // rather than refuse them at the door.
+  if (error && input.source && (error.code === 'PGRST204' || error.code === '42703')) {
+    ({ data, error } = await supabase.from('attendance').insert(row).select().single());
+  }
   if (error) throw error;
-  return data;
+  return data as AttendanceRow;
 }

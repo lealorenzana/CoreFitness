@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Bell, CalendarBlank, Camera, CaretRight, ChatCircleDots, MagnifyingGlass, Plus, Tray, UsersThree, X,
+  Bell, CalendarBlank, Camera, CaretRight, ChatCircleDots, MagnifyingGlass, Plus, QrCode, Tray, UsersThree, X,
 } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
 import GlassSheet from '../../components/ui/GlassSheet';
+import CoachCheckInSheet from '../../components/ui/CoachCheckInSheet';
 import { NocButton } from '../../components/ui/noc';
 import { Field, TextArea, TextInput } from '../../components/ui/Field';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -66,6 +67,9 @@ export default function TrainerHub() {
   const [me, setMe] = useState<{ id: string; name: string; photo: string | null } | null>(null);
   const [presence, setPresence] = useState<Presence>('available');
   const [statusOpen, setStatusOpen] = useState(false);
+  /** The owner turned coach check-in on (0200): the panel gets a QR button. */
+  const [coachCheckin, setCoachCheckin] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [creating, setCreating] = useState(params.get('new') === '1');
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
@@ -83,6 +87,9 @@ export default function TrainerHub() {
       uid ? getUnreadCount(uid).catch(() => 0) : Promise.resolve(0),
     ]);
     setRooms(r); setConvs(c ?? []); setQueue(qu); setPhotos(ph); setPresence(pres); setBell(unread);
+    // Before 0200 the column does not exist: no button, never an error.
+    const door = await supabase.from('gym_settings').select('coach_checkin_on').maybeSingle();
+    setCoachCheckin(!door.error && !!(door.data as { coach_checkin_on?: boolean } | null)?.coach_checkin_on);
     const p = (prof as { data: { first_name: string | null; last_name: string | null; photo_url: string | null } | null }).data;
     if (uid) setMe({ id: uid, name: [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'You', photo: p?.photo_url ?? null });
     // Today and requests come from the trainer's own overview (classes, bookings).
@@ -242,6 +249,12 @@ export default function TrainerHub() {
             style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 12, border: '1px solid var(--color-separator)', color: PRESENCE_TONE[presence] }}>
             {PRESENCE_LABEL[presence]}
           </button>
+          {coachCheckin && (
+            <button type="button" onClick={() => setQrOpen(true)} aria-label="My check-in QR" data-coach-qr className="grid place-items-center flex-none noc-press"
+              style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--color-primary)', color: '#fff' }}>
+              <QrCode size={19} weight="bold" />
+            </button>
+          )}
           <button type="button" onClick={() => navigate('/trainer/notifications')} aria-label="Notifications" className="relative grid place-items-center flex-none noc-press"
             style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
             <Bell size={18} />
@@ -249,6 +262,8 @@ export default function TrainerHub() {
           </button>
         </div>
       )}
+
+      {me && <CoachCheckInSheet open={qrOpen} onClose={() => setQrOpen(false)} trainerId={me.id} />}
 
       <GlassSheet open={statusOpen} onClose={() => setStatusOpen(false)} title="Your status" subtitle="Members see it on your card">
         <div className="flex flex-col" style={{ gap: 8, padding: '0 var(--gutter) 16px' }}>

@@ -29,6 +29,8 @@ export const CATALOGUE: CatalogueGroup[] = [
     items: [
       ['QR check-in', 'Members show a code; the desk scans it with any camera, even on a Windows laptop.'],
       ['A self-service kiosk', 'A tablet by the door where members check themselves in, under the same rules as the desk.'],
+      ['Members pick their activity', 'Gym floor, a class, cardio — members tap it on their QR screen, can make it their usual, and the desk’s own tag still wins.'],
+      ['Coaches check in too', 'If you switch it on, each coach gets a QR in their app; you see who came in and when — never counted as a member visit.'],
       ['The lobby TV', 'Today’s classes and announcements on a screen in the gym — never anyone’s private messages.'],
       ['Attendance history', 'Every visit, searchable by day and member, with who is at risk of drifting away.'],
     ],

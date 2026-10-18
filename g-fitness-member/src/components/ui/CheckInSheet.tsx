@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowClockwise, CheckCircle, Prohibit } from '@phosphor-icons/react';
-import { NocButton } from './noc';
+import { Chip, NocButton } from './noc';
 import { useT } from '../../lib/i18n';
 import { generateSecureQR, getQRTimeRemaining } from '../../utils/qrCode';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { getMemberHome, type MemberHome } from '../../services/memberHomeService';
 import { errorMessage } from '../../utils/errorMessage';
+import { getMyDoor, setMyPick, type MyDoor } from '../../lib/api/door';
 import { toast } from './Toast';
 import { GLASS, SCRIM } from './glass';
 
@@ -42,6 +43,23 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
    * standing at the desk waiting to be told it worked.
    */
   const [justScanned, setJustScanned] = useState(false);
+  /** The gym's activities and this member's pick (0200). Null: no chips (off, or before 0200). */
+  const [door, setDoor] = useState<MyDoor | null>(null);
+  const [picking, setPicking] = useState(false);
+
+  /** Saves at once — the desk reads it when it scans, so there is nothing to confirm. */
+  const choose = async (activity: string | null, usual: boolean | null) => {
+    if (!door || picking) return;
+    setPicking(true);
+    try {
+      const r = await setMyPick(activity, usual);
+      setDoor({ ...door, pick: r.today, usual: r.usual });
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save what you are doing today'));
+    } finally {
+      setPicking(false);
+    }
+  };
 
   const regenerate = useCallback((memberId: string) => {
     const code = generateSecureQR(memberId);
@@ -62,9 +80,10 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
       try {
         const id = await getCurrentMemberId();
         if (!id) { toast.error('Your session could not be verified. Please sign in again.'); return; }
-        const data = await getMemberHome(id);
+        const [data, d] = await Promise.all([getMemberHome(id), getMyDoor(id).catch(() => null)]);
         if (cancelled) return;
         setHome(data);
+        setDoor(d);
         // Cleared here rather than in an effect keyed on `open`: re-opening is
         // the moment the stale celebration would show, and this already runs
         // then. A separate effect whose body is one synchronous setState is
@@ -170,6 +189,8 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
               borderRadius: '20px 20px 0 0',
               padding: '12px var(--gutter) calc(20px + env(safe-area-inset-bottom))',
               gap: 14,
+              // The activity chips (0200) make it taller: a short phone scrolls the sheet, never clips it.
+              maxHeight: '100%', overflowY: 'auto',
             }}
           >
             <div aria-hidden style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
@@ -253,6 +274,31 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                 <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
                   {home.planName ?? t('Membership')}{validTo ? ` · ${t('valid to')} ${validTo}` : ''} · {t('read the code out if the camera fails')}
                 </p>
+
+                {/* What they are doing today (0200): the check-in takes it, whoever scans the code.
+                    Only when the gym lets members pick, and only from the gym's own list. */}
+                {door?.memberPick && door.options.length > 0 && (
+                  <div className="w-full flex flex-col items-center" style={{ gap: 8 }} data-activity-pick>
+                    <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('What are you doing today?')}</p>
+                    <div className="flex flex-wrap justify-center" style={{ gap: 8 }}>
+                      {door.options.map((o) => (
+                        <Chip key={o} label={o} on={door.pick === o} onClick={() => void choose(door.pick === o ? null : o, null)} />
+                      ))}
+                    </div>
+                    <label className="w-full flex items-center justify-between" style={{ gap: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--color-surface-high)', opacity: door.pick ? 1 : 0.5 }}>
+                      <span>
+                        <span className="block" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('Make this my usual')}</span>
+                        <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                          {door.usual ? `${t('Your usual')}: ${door.usual}` : t('Picked for you every visit')}
+                        </span>
+                      </span>
+                      <input type="checkbox" role="switch" aria-label="Make this my usual" disabled={!door.pick || picking}
+                        checked={!!door.pick && door.usual === door.pick} onChange={(e) => void choose(door.pick, e.target.checked)}
+                        style={{ width: 20, height: 20, accentColor: 'var(--color-primary)' }} />
+                    </label>
+                    <p className="text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('The desk can still change it.')}</p>
+                  </div>
+                )}
 
                 {/* The manual refresh survives for the case the timer cannot
                     cover: a backgrounded phone, where setInterval is throttled

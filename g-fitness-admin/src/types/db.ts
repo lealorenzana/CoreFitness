@@ -214,6 +214,10 @@ export interface AttendanceRow {
   /** What the member trained (0018). NULL on check-ins recorded before the
    *  field existed — never back-filled with a guess. */
   activity: string | null;
+  /** Whose tag `activity` is (0200): the member's own pick or the desk's. Set by a trigger. */
+  activity_by?: 'member' | 'desk' | null;
+  /** Where it was taken (0200). NULL on older rows. */
+  source?: 'desk' | 'kiosk' | null;
 }
 
 export interface NotificationRow {

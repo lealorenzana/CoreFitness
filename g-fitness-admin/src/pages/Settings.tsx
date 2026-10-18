@@ -9,6 +9,7 @@ import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
 import DayPassSettings from '../components/DayPassSettings';
+import DoorSettings from '../components/DoorSettings';
 import WalkInGuide from '../components/WalkInGuide';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -563,7 +564,7 @@ export default function Settings() {
                   <div>
                     <p className="text-xs font-semibold text-white">Check-in activities</p>
                     <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                      What the front desk can tag a check-in with. Members can always check in without one.
+                      What the front desk can tag a check-in with — and what members pick from on their QR screen. Members can always check in without one.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -600,6 +601,12 @@ export default function Settings() {
                 <Button variant="primary" onClick={handleSaveGym} disabled={saving}>
                   {saving ? 'Saving…' : 'Save Gym Information'}
                 </Button>
+
+                {/* How check-in works (0200): each switch saves at once, apart from the form above. */}
+                <div id="checking-in" className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--color-border)' }}>
+                  <p className="text-sm font-semibold text-white">Checking in</p>
+                  <DoorSettings />
+                </div>
 
                 {/* Its own save: the pin is not part of the form above (0182). */}
                 <div id="location" ref={(el) => { if (el && window.location.hash === '#location') setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }}

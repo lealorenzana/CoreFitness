@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarCheck, Download, AlertTriangle, QrCode, Users, BarChart3, X, ArrowRight, ArrowDown, ScanLine, Keyboard,
+  CalendarCheck, Download, AlertTriangle, QrCode, Users, BarChart3, X, ArrowRight, ArrowDown, ScanLine, Keyboard, Tablet,
 } from 'lucide-react';
 import DatePicker from '../components/ui/DatePicker';
+import DetailSheet from '../components/ui/DetailSheet';
+import { checkInCodeOf } from '../utils/checkInCode';
 import { RdHeader, RdCard, StatTile, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, Initials } from '../components/ui/rd';
 import { ATTENDANCE_TABS } from '../components/ui/rdTokens';
 import { useGymFirstDay } from '../hooks/useGymFirstDay';
@@ -45,7 +47,14 @@ function manilaDate(offsetDays = 0): string {
 
 const PAGE = 25;
 
-type Preset = '7' | '30' | '90' | 'custom';
+type Preset = '7' | '30' | '90' | 'year' | 'all' | 'custom';
+
+/** Where and how a check-in was taken (0200 adds the kiosk; older rows say Scanned/Typed). */
+function HowPill({ row }: { row: AttendanceRow }) {
+  if (row.source === 'kiosk') return <Pill tone="violet" icon={Tablet}>Kiosk</Pill>;
+  if (row.method === 'qr') return <Pill tone="violet" icon={ScanLine}>{row.source === 'desk' ? 'Desk scan' : 'Scanned'}</Pill>;
+  return <Pill tone="gray" icon={Keyboard}>Typed</Pill>;
+}
 
 
 export default function AttendanceHistory() {
@@ -95,7 +104,8 @@ export default function AttendanceHistory() {
   const applyPreset = (p: Preset) => {
     setPreset(p);
     if (p === 'custom') return;
-    setFrom(manilaDate(-(Number(p) - 1)));
+    // "All time" starts at the gym's first record (useGymFirstDay), never an invented 2002.
+    setFrom(p === 'year' ? `${manilaDate().slice(0, 4)}-01-01` : p === 'all' ? (firstDay ?? manilaDate(-364)) : manilaDate(-(Number(p) - 1)));
     setTo(manilaDate());
   };
 
@@ -113,7 +123,10 @@ export default function AttendanceHistory() {
     return rows.filter((r) => {
       if (method && r.method !== method) return false;
       if (activity && r.activity !== activity) return false;
-      if (q && !(people.get(r.member_id)?.name ?? '').toLowerCase().includes(q)) return false;
+      // A name, or the six-character code the member reads off their phone.
+      const code = q.replace(/[\s-]/g, '');
+      if (q && !(people.get(r.member_id)?.name ?? '').toLowerCase().includes(q)
+        && !(code.length >= 3 && checkInCodeOf(r.member_id).includes(code))) return false;
       return true;
     });
   }, [rows, search, activity, method, people]);
@@ -140,7 +153,7 @@ export default function AttendanceHistory() {
     const entries = Object.entries(byDay);
     const busiest = [...entries].sort((a, b) => b[1] - a[1])[0] ?? null;
     const topList = [...byMember.entries()].sort((a, b) => b[1] - a[1]);
-    const top = topList.slice(0, 5);
+    const top = topList.slice(0, 8);
     const spanDays = Math.max(1,
       Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000) + 1);
     return {
@@ -151,7 +164,7 @@ export default function AttendanceHistory() {
       perDay: (inRange.length / spanDays).toFixed(1),
       busiest,
       top,
-      topList: topList.slice(0, 50),
+      topList,
       topAll: topList.length,
       byDay,
       activeDays: entries.length,
@@ -185,7 +198,9 @@ export default function AttendanceHistory() {
       member: people.get(r.member_id)?.name ?? r.member_id,
       when: timeLabel(r.check_in_time),
       method: r.method,
+      where: r.source ?? '',
       activity: r.activity ?? '',
+      tagged_by: r.activity_by ?? '',
     })),
     `attendance-${from}-to-${to}`,
   );
@@ -201,13 +216,14 @@ export default function AttendanceHistory() {
 
   return (
     <div className="flex flex-col gap-6" data-attendance-history>
-      <RdHeader title="Attendance" subtitle="Review check-ins across any date range." tabs={ATTENDANCE_TABS}
+      <RdHeader title="Attendance" tabs={ATTENDANCE_TABS}
+        subtitle={firstDay ? `Any day, any range — back to your first record, ${rangeLabel(firstDay)}.` : 'Review check-ins across any date range.'}
         actions={<RdButton variant="primary" icon={Download} onClick={exportRows} data-tip="Export the check-ins shown below as CSV">Export {filtered.length}</RdButton>} />
 
       {/* ── Range and filters ── */}
       <RdCard className="p-4 flex flex-wrap items-end gap-4" data-history-range>
         <div className="flex gap-2">
-          {presetBtn('7', 'Last 7 days')}{presetBtn('30', 'Last 30 days')}{presetBtn('90', 'Last 90 days')}
+          {presetBtn('7', 'Last 7 days')}{presetBtn('30', 'Last 30 days')}{presetBtn('90', 'Last 90 days')}{presetBtn('year', 'This year')}{presetBtn('all', 'All time')}
         </div>
         <span className="hidden lg:block w-px self-stretch" style={{ background: 'rgba(255,255,255,0.08)' }} />
         <label className="w-44">
@@ -220,7 +236,6 @@ export default function AttendanceHistory() {
           <DatePicker mode="history" bounds={{ earliest: firstDay }} value={to} min={from}
             onChange={(v) => { setTo(v || to); setPreset('custom'); }} />
         </label>
-        <div className="flex-1 min-w-[220px]"><SearchField value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search member…" /></div>
         <RdSelect value={method} onChange={(v) => { setMethod(v as '' | 'qr' | 'manual'); setPage(1); }} label="Filter by method" className="w-[170px]">
           <option value="">Any method</option>
           <option value="qr">QR scan</option>
@@ -271,8 +286,10 @@ export default function AttendanceHistory() {
         <RdCard className="p-6" data-most-regular>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-[21px] font-semibold text-white">Most regular</h3>
-            {stats.top.length > 0 && !showAllTop && stats.topAll > 5 && (
-              <button type="button" onClick={() => setShowAllTop(true)} className="text-[14.5px] font-semibold inline-flex items-center gap-1.5" style={{ color: '#A78BFA' }}>View all <ArrowRight size={15} /></button>
+            {/* The whole list opens beside the page — it used to expand in place and push everything else down. */}
+            {stats.topAll > stats.top.length && (
+              <button type="button" onClick={() => setShowAllTop(true)} data-see-all-regulars className="h-9 px-3 rounded-xl text-[14px] font-semibold inline-flex items-center gap-1.5"
+                style={{ color: '#C4B5FD', background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(139,92,246,0.35)' }}>See all {stats.topAll} <ArrowRight size={15} /></button>
             )}
           </div>
           <p className="text-[14px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Members with the most check-ins in this period.</p>
@@ -280,7 +297,7 @@ export default function AttendanceHistory() {
             <p className="text-[14px] mt-6" style={{ color: 'var(--color-text-muted)' }}>Nobody yet.</p>
           ) : (
             <div className="mt-4 flex flex-col">
-              {(showAllTop ? stats.topList : stats.top).map(([id, n], i) => {
+              {stats.top.map(([id, n], i) => {
                 const p = people.get(id);
                 return (
                   <button key={id} type="button" onClick={() => { setSearch(p?.name ?? ''); setPage(1); }} data-tip="Show only their check-ins"
@@ -312,6 +329,8 @@ export default function AttendanceHistory() {
               {filtered.length} check-in{filtered.length === 1 ? '' : 's'} • {rangeLabel(from)} – {rangeLabel(to)}
             </p>
           </div>
+          <div className="flex items-center gap-3 flex-wrap">
+          <div className="w-[260px]" data-history-search><SearchField value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Name or code…" label="Search check-ins" /></div>
           {/* Narrowed to a day — said out loud, with the way out attached. */}
           {dayFilter && (
             <button type="button" onClick={() => { setDayFilter(null); setPage(1); }}
@@ -321,6 +340,7 @@ export default function AttendanceHistory() {
               <X size={14} />
             </button>
           )}
+          </div>
         </div>
         <RdTable head={['Member', { label: <span className="inline-flex items-center gap-1">When <ArrowDown size={13} /></span> }, 'How', 'Activity']}
           empty={visible.length === 0 ? <EmptyBlock icon={CalendarCheck} title="No check-ins match those filters." /> : undefined}>
@@ -336,15 +356,45 @@ export default function AttendanceHistory() {
                   </div>
                 </Td>
                 <Td className="tabular-nums whitespace-nowrap">{timeLabel(r.check_in_time)}</Td>
-                <Td>{r.method === 'qr' ? <Pill tone="violet" icon={ScanLine}>Scanned</Pill> : <Pill tone="gray" icon={Keyboard}>Typed</Pill>}</Td>
-                {/* Never invented: a check-in taken without picking one says so. */}
-                <Td>{r.activity ?? <span style={{ color: 'var(--color-text-muted)' }}>Not recorded</span>}</Td>
+                <Td><HowPill row={r} /></Td>
+                {/* Never invented: a check-in taken without picking one says so. Whose tag it is (0200). */}
+                <Td>{r.activity ? (
+                  <span className="inline-flex items-center gap-2">{r.activity}
+                    {r.activity_by === 'member' && <Pill tone="violet">their pick</Pill>}
+                    {r.activity_by === 'desk' && <Pill tone="amber">desk</Pill>}
+                  </span>
+                ) : <span style={{ color: 'var(--color-text-muted)' }}>Not recorded</span>}</Td>
               </Tr>
             );
           })}
         </RdTable>
         <TableFooter page={current} perPage={PAGE} total={filtered.length} noun="check-ins" onPage={setPage} />
       </RdCard>
+
+      {/* Everyone who came in the range, by visits — beside the page, never pushing it down. */}
+      <DetailSheet open={showAllTop} onClose={() => setShowAllTop(false)} title="Most regular"
+        subtitle={`${stats.topAll} member${stats.topAll === 1 ? '' : 's'} came · ${rangeLabel(from)} – ${rangeLabel(to)}`}>
+        <div className="flex flex-col" data-regulars-sheet>
+          {stats.topList.map(([id, n], i) => {
+            const p = people.get(id);
+            const most = stats.topList[0]?.[1] || 1;
+            return (
+              <button key={id} type="button" onClick={() => { setSearch(p?.name ?? ''); setPage(1); setShowAllTop(false); }}
+                className="flex items-center gap-3 py-2.5 text-left hover:bg-white/[0.03] rounded-xl px-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span className="w-7 text-[14px] tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{i + 1}</span>
+                <Initials name={p?.name ?? '?'} photo={p?.photo} size={36} />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14.5px] font-semibold text-white truncate">{p?.name ?? 'Archived member'}</span>
+                  <span className="block h-1.5 mt-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    <span className="block h-full rounded-full" style={{ width: `${(n / most) * 100}%`, background: 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                  </span>
+                </span>
+                <span className="text-[16px] font-bold tabular-nums w-10 text-right" style={{ color: '#A78BFA' }}>{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      </DetailSheet>
     </div>
   );
 }

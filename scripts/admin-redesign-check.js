@@ -125,24 +125,24 @@ async (page) => {
 
   // ── Attendance · Today ──
   let t = await visit('/attendance', 'attendance');
-  has('hero with today and the ring', (await page.locator('[data-attendance-hero] [data-ring]').count()) === 1 && /2 checked in/.test(t));
+  has("today's count in the strip", (await page.locator('[data-stats-strip]').count()) === 1 && /Checked in today\s*2/.test(t));
   has('tabs Today · Walk-ins · History', (await page.locator('[data-rd-tabs] a').count()) === 3);
-  has('Scan QR and Manual check-in', (await page.locator('[data-scan-qr]').count()) === 1 && /Manual check-in/.test(t));
-  has('three tiles', /QR Check-ins/.test(t) && /Manual Check-ins/.test(t) && /7-Day Unique Members/.test(t));
+  has('Scan QR and the one check-in box', (await page.locator('[data-scan-qr]').count()) === 1 && (await page.getByLabel('Check-in code or name').count()) === 1);
+  has('the strip: scanned, typed, walk-ins, this week', /Scanned/.test(t) && /Typed/.test(t) && /Walk-ins/.test(t) && /This week/.test(t));
   has("today's log with method, membership and notes", (await page.locator('[data-log-row]').count()) === 2 && /Weight Training/.test(t) && /Premium|Free Plan|Free Trial/.test(t));
   has('kept: undo, export, other days', /Undo/.test(t) && /Export/.test(t) && /Other days/.test(t));
-  has('kept: quick check-in, typed code, activity tag, kiosk, lobby TV', /Quick check-in/.test(t) && /Have a code\?/.test(t) && /Tag check-ins/.test(t) && /Kiosk mode/.test(t) && /Lobby TV/.test(t));
-  await page.locator('[data-chip], button', { hasText: 'QR Check-ins' }).first().click();
+  has('kept: search, typed code, activity tag, kiosk, lobby TV', /Tag the next check-in/.test(t) && /Open kiosk/.test(t) && /Open lobby TV/.test(t));
+  await page.locator('[data-stats-strip] button', { hasText: 'Scanned' }).click();
   await page.waitForTimeout(300);
   has('a tile filters the log', (await page.locator('[data-log-row]').count()) === 1);
 
   // ── Attendance · Walk-ins ──
   t = await visit('/attendance/walk-ins', 'walkins');
-  has('hero, tiles, the form and the guide', (await page.locator('[data-walkins-hero]').count()) === 1 && /Day passes/.test(t) && (await page.locator('[data-walkin-form]').count()) === 1 && (await page.locator('[data-walkin-guide]').count()) === 1);
+  has('the drawer, the three steps, the form and the guide', (await page.locator('[data-walkins-hero]').count()) === 1 && /Day passes/.test(t) && /What are they paying for\?/.test(t) && (await page.locator('[data-walkin-form]').count()) === 1 && (await page.locator('[data-walkin-guide]').count()) === 1);
 
   // ── Attendance · History ──
   t = await visit('/attendance-history', 'history');
-  has('presets, dates, search and filters', /Last 7 days/.test(t) && /Last 30 days/.test(t) && /From/.test(t) && /Any method/.test(t) && /Any activity/.test(t));
+  has('presets, dates, search and filters', /Last 7 days/.test(t) && /Last 30 days/.test(t) && /All time/.test(t) && /From/.test(t) && /Any method/.test(t) && /Any activity/.test(t) && (await page.locator('[data-history-search]').count()) === 1);
   has('four tiles', /Check-ins/.test(t) && /Unique members/.test(t) && /Average per day/.test(t) && /Scanned vs typed/.test(t));
   has('the calendar with Less/More, and Most regular', (await page.locator('[data-attendance-calendar]').count()) === 1 && /Less/.test(t) && /More/.test(t) && (await page.locator('[data-most-regular]').count()) === 1);
   has('the log with Scanned/Typed and export', /Scanned/.test(t) && /Typed/.test(t) && /Export/.test(t));

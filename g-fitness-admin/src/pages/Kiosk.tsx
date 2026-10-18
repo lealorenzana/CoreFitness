@@ -5,7 +5,8 @@ import { Camera, CheckCircle2, LogOut, QrCode, AlertTriangle } from 'lucide-reac
 import { supabase } from '../lib/supabaseClient';
 import { listMembers, type MemberWithProfile } from '../lib/api/members';
 import { getGymSettings } from '../lib/api/settings';
-import { performCheckIn, resolveCheckInCode } from '../services/checkInService';
+import { performCheckIn, performCoachCheckIn, resolveCheckInCode } from '../services/checkInService';
+import { getDoorSettings, listDoorCoaches, type DoorCoach } from '../lib/api/door';
 import { todayKey } from '../utils/dates';
 
 type Flash = { kind: 'ok' | 'error'; title: string; detail: string } | null;
@@ -41,6 +42,8 @@ export default function Kiosk() {
   const busyRef = useRef(false);
   const lastRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
   const membersRef = useRef<MemberWithProfile[]>([]);
+  /** The gym's coaches, when the owner has coach check-in on (0200). Empty otherwise. */
+  const coachesRef = useRef<DoorCoach[]>([]);
   const todayRef = useRef<Set<string>>(new Set());
   /** A ref, not state: the camera effect depends on submit, and a state change here would restart the stream. */
   const adminRef = useRef<string | null>(null);
@@ -58,6 +61,8 @@ export default function Kiosk() {
     const { data } = await supabase.from('attendance').select('member_id').gte('check_in_time', start);
     todayRef.current = new Set((data ?? []).map((r) => r.member_id as string));
     setCount(todayRef.current.size);
+    const door = await getDoorSettings();
+    coachesRef.current = door?.coachCheckin ? await listDoorCoaches().catch(() => coachesRef.current) : [];
   }, []);
 
   // Session, roster, settings, today's visits — and a refresh every minute so a
@@ -99,9 +104,23 @@ export default function Kiosk() {
     lastRef.current = { code: value, at };
     busyRef.current = true;
     try {
-      const found = await resolveCheckInCode(value, membersRef.current);
+      const found = await resolveCheckInCode(value, membersRef.current, coachesRef.current);
       if ('error' in found) {
         show({ kind: 'error', title: 'That code did not work', detail: found.error });
+        return;
+      }
+      // A coach (0200): their own check-in, never a member visit.
+      if ('coach' in found) {
+        const first = found.coach.name.split(' ')[0];
+        const res = await performCoachCheckIn(found.coach, found.method, 'kiosk');
+        if (res.ok) {
+          coachesRef.current = coachesRef.current.map((c) => (c.id === found.coach.id ? { ...c, checkedInAt: new Date().toISOString() } : c));
+          show({ kind: 'ok', title: `Welcome, Coach ${first}!`, detail: 'You are checked in.' });
+        } else if (res.duplicate) {
+          show({ kind: 'ok', title: `You're already in, Coach ${first}`, detail: 'Today’s check-in is already on record.' });
+        } else {
+          show({ kind: 'error', title: 'Check-in did not go through', detail: res.message });
+        }
         return;
       }
       const res = await performCheckIn(found.member, found.method, {

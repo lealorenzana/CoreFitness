@@ -151,7 +151,7 @@ One page, no router, no Tailwind: React + plain CSS (`src/index.css`, Nocturne t
 `Sidebar.tsx` is **grouped**: nine rows, Attendance first; a one-child group **flattens**, and the open
 drawer is set in the **state initialiser, never an effect**. Attendance is **today only** (History has
 the rest); paired sections are `SectionTabs` of `NavLink`s, so old bookmarks resolve. **Modal labels
-are statement-style**, never questions. Check-in rules live in `services/checkInService.ts`, shared by the desk and `/kiosk`.
+are statement-style**, never questions. Check-in rules live in `services/checkInService.ts`, shared by the desk and `/kiosk` — it resolves member **and coach** codes (`CFC1.`, 0200); **a coach is never a member visit** (`coach_checkins`, not attendance), and the activity tag's owner (`activity_by`) is set by a trigger, never the client.
 
 ## Conventions and docs
 React 19 + Router v7 + TS; function components, default-exported pages/layouts; Framer Motion,
@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Current state (2026-10-18)
-- **Migrations 0001–0199 are all live** (probe, 2026-10-18). What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
+- **Migrations 0001–0199 are all live** (probe, 2026-10-18); **0200 (the door: members pick their activity, coaches check in) is written, not yet pasted**. What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
 - **Fresh start ran 2026-10-18**: every gym and non-platform-admin account was deleted (`scripts/fresh-start/`, README). **Gym #1 is Core Fitness Lab**, the platform owner's private test gym — never listed, never billed, and still the rules template every new gym copies. Logins `mf.jgabrielle+owner|desk|coach|member@gmail.com` (ids `cf1ab000…`; made-up rows `5eed…`, removable by Remove demo data). The one platform admin is `corefitnessadmin@gmail.com`. **G Fitness re-applies through the site as an ordinary gym** — the owner's last step, after the system is polished.
 - **A free trial is 7 days and stops** (0198): the day after `paid_until`, a never-paid trial gym is `trial_ended` (no grace; grace is for paid gyms) — admin shows only `TrialEnded`, member/trainer only `GymPaused`. The platform moves a trial's end from Billing → Change the date.
 - **Security (0199)**: `scripts/sql/security-red-team.mjs` attacks as visitor/member/coach/other gym and must stay green. **Postgres grants EXECUTE to PUBLIC by default — revoke every new helper function from public/anon/ authenticated unless a screen calls it**, and remember a policy cannot limit columns (use a trigger).

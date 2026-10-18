@@ -19,6 +19,8 @@
 export const QR_TTL_SECONDS = 60;
 
 const QR_PREFIX = 'CF1';
+/** A coach's check-in code (0200) — the desk and kiosk record it apart, never as a member visit. */
+const COACH_PREFIX = 'CFC1';
 
 export interface QRData {
   memberId: string;
@@ -28,11 +30,15 @@ export interface QRData {
 export const generateSecureQR = (memberId: string): string =>
   `${QR_PREFIX}.${Date.now().toString(36)}.${memberId}`.toUpperCase();
 
+/** The coach's rotating code (0200): same shape, its own prefix. */
+export const generateCoachQR = (trainerId: string): string =>
+  `${COACH_PREFIX}.${Date.now().toString(36)}.${trainerId}`.toUpperCase();
+
 /** Returns null when the string isn't one of our codes at all. */
 export const parseQR = (qrCode: string): QRData | null => {
   const parts = qrCode.trim().split('.');
   if (parts.length !== 3) return null;
-  if (parts[0].toUpperCase() !== QR_PREFIX) return null;
+  if (parts[0].toUpperCase() !== QR_PREFIX && parts[0].toUpperCase() !== COACH_PREFIX) return null;
 
   const timestamp = parseInt(parts[1], 36);
   if (!Number.isFinite(timestamp) || timestamp <= 0) return null;

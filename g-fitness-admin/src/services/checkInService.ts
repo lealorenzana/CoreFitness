@@ -5,6 +5,7 @@ import { recordCheckIn } from '../lib/api/attendance';
 import { getCurrentMembership, membershipIsUsable } from '../lib/api/memberships';
 import { notifyUser } from '../lib/api/notify';
 import { matchesCheckInCode, normaliseCheckInCode } from '../utils/checkInCode';
+import { recordCoachCheckin, type DoorCoach } from '../lib/api/door';
 
 /**
  * Checking a member in from a scanned or typed code — shared by the Attendance
@@ -19,15 +20,18 @@ const QR_TTL_SECONDS = 60;
 interface ParsedQr {
   memberId: string;
   timestamp: number;
+  /** A coach's code (0200): `CFC1.` in the trainer app, never a member visit. */
+  coach?: boolean;
 }
 
-/** Current member-app format: `CF1.<timestamp base36>.<member id>`. */
+/** Current member-app format: `CF1.<timestamp base36>.<member id>`; a coach's is `CFC1.` (0200). */
 const parseCompactQr = (qrCode: string): ParsedQr | null => {
   const parts = qrCode.trim().split('.');
-  if (parts.length !== 3 || parts[0].toUpperCase() !== 'CF1') return null;
+  const prefix = parts[0]?.toUpperCase();
+  if (parts.length !== 3 || (prefix !== 'CF1' && prefix !== 'CFC1')) return null;
   const timestamp = parseInt(parts[1], 36);
   if (!Number.isFinite(timestamp) || timestamp <= 0 || !parts[2]) return null;
-  return { memberId: parts[2].toLowerCase(), timestamp };
+  return { memberId: parts[2].toLowerCase(), timestamp, coach: prefix === 'CFC1' };
 };
 
 /**
@@ -98,7 +102,11 @@ export const describeGap = (seconds: number): string => {
 };
 
 
-export type Resolved = { member: MemberWithProfile; method: 'qr' | 'manual' } | { error: string };
+export type Resolved =
+  | { member: MemberWithProfile; method: 'qr' | 'manual' }
+  /** A coach (0200) — checked in through record_coach_checkin, never as a member visit. */
+  | { coach: DoorCoach; method: 'qr' | 'manual' }
+  | { error: string };
 
 /**
  * Turns whatever reached the desk into a member, or a sentence saying why not.
@@ -110,7 +118,7 @@ export type Resolved = { member: MemberWithProfile; method: 'qr' | 'manual' } | 
  * dropped connection and an unknown member as the same sentence, which is how a
  * broken lookup can look like a member who does not exist.
  */
-export async function resolveCheckInCode(raw: string, members: MemberWithProfile[]): Promise<Resolved> {
+export async function resolveCheckInCode(raw: string, members: MemberWithProfile[], coaches: DoorCoach[] = []): Promise<Resolved> {
   const qr = raw.trim();
   const verdict = validateQR(qr);
   if (verdict.kind === 'stale') {
@@ -133,6 +141,12 @@ export async function resolveCheckInCode(raw: string, members: MemberWithProfile
       return { error: `Could not look that member up: ${err instanceof Error ? err.message : 'unknown error'}` };
     }
   };
+  if (verdict.kind === 'ok' && verdict.data.coach) {
+    // `coaches` is empty when the owner has coach check-in off — said so, not "unknown".
+    const c = coaches.find((x) => x.id === verdict.data.memberId);
+    if (c) return { coach: c, method: 'qr' };
+    return { error: coaches.length ? 'That coach code is not for this gym.' : 'That is a coach’s code, and coach check-in is off at this gym.' };
+  }
   if (verdict.kind === 'ok') {
     const m = await lookup(verdict.data.memberId);
     if (m && 'error' in m) return m;
@@ -145,8 +159,10 @@ export async function resolveCheckInCode(raw: string, members: MemberWithProfile
   const typed = normaliseCheckInCode(qr);
   if (typed.length === 6 && /^[0-9a-f]{6}$/.test(typed)) {
     const matches = members.filter((m) => matchesCheckInCode(m.profile.id, typed));
+    const coachMatches = coaches.filter((c) => matchesCheckInCode(c.id, typed));
+    if (matches.length + coachMatches.length > 1) return { error: 'More than one person has that code — use the search instead.' };
     if (matches.length === 1) return { member: matches[0], method: 'manual' };
-    if (matches.length > 1) return { error: 'More than one member has that code — use the search instead.' };
+    if (coachMatches.length === 1) return { coach: coachMatches[0], method: 'manual' };
     // Not in the roster this page loaded when it opened: a member approved since,
     // or a roster that failed to load. Ask the database before saying no.
     let fresh: MemberWithProfile[];
@@ -182,7 +198,7 @@ export type CheckInResult =
 export async function performCheckIn(
   member: MemberWithProfile,
   method: 'qr' | 'manual',
-  opts: { alreadyInToday: boolean; adminId: string | null; activity?: string; where?: 'desk' | 'kiosk' },
+  opts: { alreadyInToday: boolean; adminId: string | null; activity?: string; where?: 'desk' | 'kiosk'; picked?: string },
 ): Promise<CheckInResult> {
   const first = member.profile.first_name;
   if (opts.alreadyInToday) return { ok: false, reason: 'duplicate', message: `${first} already checked in today` };
@@ -208,7 +224,7 @@ export async function performCheckIn(
     return { ok: false, reason: 'session', message: 'Your admin session could not be verified. Please refresh and try again.' };
   }
   try {
-    await recordCheckIn({ memberId: member.profile.id, method, recordedBy: opts.adminId, activity: opts.activity });
+    await recordCheckIn({ memberId: member.profile.id, method, recordedBy: opts.adminId, activity: opts.activity, source: opts.where ?? 'desk' });
   } catch (err) {
     // A Supabase error is a plain object with a message, not an Error — reading
     // only `instanceof Error` hid the database's reason behind "Check-in failed".
@@ -228,11 +244,32 @@ export async function performCheckIn(
     type: 'system',
     title: 'Checked in',
     message: opts.where === 'kiosk'
-      ? 'You checked in at the kiosk and your attendance is logged.'
-      : opts.activity
-        ? `Your QR code was scanned at the front desk and logged as ${opts.activity}.`
+      ? `You checked in at the kiosk and your attendance is logged${opts.activity || opts.picked ? ` as ${opts.activity || opts.picked}` : ''}.`
+      : opts.activity || opts.picked
+        ? `Your QR code was scanned at the front desk and logged as ${opts.activity || opts.picked}.`
         : 'Your QR code was scanned at the front desk and your attendance is logged.',
     actionUrl: '/member/attendance-history',
   }).catch(() => undefined);
   return { ok: true, points };
+}
+
+/**
+ * A coach's check-in (0200): their own table, never a member visit — no
+ * points, streaks or membership checks. Never throws: the caller shows `message`.
+ */
+export async function performCoachCheckIn(
+  coach: DoorCoach,
+  method: 'qr' | 'manual',
+  where: 'desk' | 'kiosk',
+): Promise<{ ok: true } | { ok: false; message: string; duplicate: boolean }> {
+  const first = coach.name.split(' ')[0];
+  if (coach.checkedInAt) return { ok: false, duplicate: true, message: `${first} already checked in today` };
+  try {
+    await recordCoachCheckin(coach.id, method, where);
+    return { ok: true };
+  } catch (err) {
+    const message = err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+      ? (err as { message: string }).message : 'Check-in failed';
+    return { ok: false, duplicate: /already checked in/.test(message), message };
+  }
 }
