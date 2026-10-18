@@ -228,6 +228,19 @@ export default function Invitations() {
           <p className="text-[13px] flex items-start gap-2" style={muted}>
             <Info size={15} className="flex-none mt-0.5" /> Paste a spreadsheet or choose a CSV file. You&rsquo;ll review every invitation, joining as {roleWord}, before any is sent.
           </p>
+          {/* A worked example (the owner asked, 2026-10-18): what the desk actually does, step by step. */}
+          <details className="mt-2 rounded-xl px-3 py-2 text-[13px]" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }} data-invite-howto>
+            <summary className="cursor-pointer font-semibold text-white">How to — an example</summary>
+            <ol className="mt-2 ml-4 list-decimal space-y-1.5" style={muted}>
+              <li>Keep one person per line: <b className="text-white">email, first name, last name, mobile</b>. Only the email is required; the mobile is optional.</li>
+              <li>From Excel or Google Sheets, select those columns (no header row needed) and copy — or save the sheet as <b className="text-white">.csv</b> and choose it with Upload CSV.</li>
+              <li>Paste into the box below. For example:
+                <pre className="mt-1.5 rounded-lg px-3 py-2 text-[12px] whitespace-pre-wrap" style={{ background: 'rgba(0,0,0,0.3)', color: '#C4B5FD' }}>{'maria.santos@gmail.com, Maria, Santos, 09171234567\njuan.delacruz@yahoo.com, Juan, Dela Cruz\nana.reyes@gmail.com, Ana, Reyes, 09989876543'}</pre>
+              </li>
+              <li>Press <b className="text-white">Review invitations</b>. You see who will be invited and any line that cannot be used (a missing or broken email) — fix those or leave them out.</li>
+              <li>Press <b className="text-white">Invite</b>. Each person gets their own link, sets their own password, and arrives already approved as {roleWord}. They show under &ldquo;Waiting to be accepted&rdquo; until they join.</li>
+            </ol>
+          </details>
 
           <label className="mt-4 flex flex-col items-center justify-center text-center rounded-2xl px-4 py-5 cursor-pointer transition-colors hover:bg-white/[0.02]"
             style={{ border: '1.5px dashed rgba(139,92,246,0.5)', background: 'rgba(124,58,237,0.05)' }}>
