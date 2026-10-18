@@ -8,6 +8,7 @@
  * that broke this, getProgressKpis and getTopTrainers' zeros, are gone.)
  */
 import { supabase } from '../lib/supabaseClient';
+import { todayKey, addDays, daysBetween } from '../utils/dates';
 
 export interface RevenuePoint  { month: string; revenue: number; }
 export interface MembersPoint  { month: string; members: number; newMembers: number; }
@@ -80,7 +81,10 @@ export interface RetentionSummary {
 }
 
 export interface ExpiringMember {
+  /** The membership. */
   id: string;
+  /** The person — what /members?open= takes. */
+  memberId: string;
   firstName: string;
   fullName: string;
   daysLeft: number;
@@ -100,10 +104,11 @@ export interface HeaderAlert {
 export const dashboardService = {
   /** Active memberships expiring within `withinDays` — the retention worklist. */
   async getExpiringSoon(withinDays = 7): Promise<ExpiringMember[]> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() + withinDays);
+    // Manila calendar days (utils/dates). This used toISOString(), which is the
+    // UTC date — yesterday for the first eight hours of every local day — so a
+    // membership that ended yesterday still showed as "ending soon" each morning.
+    const today = todayKey();
+    const cutoff = addDays(today, withinDays);
 
     // Two queries rather than a nested embed: memberships.member_id points at
     // member_profiles, not profiles, so PostgREST can't resolve `profiles(...)`
@@ -113,8 +118,8 @@ export const dashboardService = {
       .select('id, expiry_date, member_id')
       .eq('status', 'active')
       .not('expiry_date', 'is', null)
-      .gte('expiry_date', today.toISOString().slice(0, 10))
-      .lte('expiry_date', cutoff.toISOString().slice(0, 10))
+      .gte('expiry_date', today)
+      .lte('expiry_date', cutoff)
       .order('expiry_date', { ascending: true });
     if (error) throw error;
     if (!rows || rows.length === 0) return [];
@@ -130,11 +135,10 @@ export const dashboardService = {
     return rows.map((m) => {
       const p = byId.get(m.member_id);
       const first = p?.first_name ?? '';
-      const daysLeft = Math.ceil(
-        (new Date(m.expiry_date as string).getTime() - today.getTime()) / 86400000
-      );
+      const daysLeft = daysBetween(today, m.expiry_date as string);
       return {
         id: m.id,
+        memberId: m.member_id as string,
         firstName: first || '?',
         fullName: `${first} ${p?.last_name ?? ''}`.trim() || 'Unknown member',
         daysLeft,

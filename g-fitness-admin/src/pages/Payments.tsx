@@ -133,6 +133,10 @@ export default function Payments() {
         setPreset({ memberId: rec, memberName: nameById[rec] ?? 'Member', amount: latestMembershipByMember[rec].planPrice, key: `new-${rec}` });
         setIsModalOpen(true);
         window.history.replaceState(window.history.state, '', window.location.pathname);
+      } else if (rec === 'new') {
+        // The dashboard's "Record payment": the form, open, with nobody chosen yet.
+        setIsModalOpen(true);
+        window.history.replaceState(window.history.state, '', window.location.pathname);
       }
 
       setPayments(

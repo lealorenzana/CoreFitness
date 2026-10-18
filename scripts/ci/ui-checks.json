@@ -105,6 +105,7 @@
     { "file": "admin-invite-email-check.js", "app": "admin" },
     { "file": "admin-subscription-check.js", "app": "admin" },
     { "file": "admin-trial-ended-check.js", "app": "admin" },
+    { "file": "admin-dashboard-check.js", "app": "admin" },
     { "file": "admin-tooltips-check.js", "app": "admin" },
     { "file": "member-switches-check.js", "app": "member" },
     { "file": "admin-coach-mark-check.js", "app": "admin" },

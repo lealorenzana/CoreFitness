@@ -57,6 +57,17 @@
       "port": 5176
     },
     {
+      "name": "mockups",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5190"
+      ],
+      "cwd": "outputs/dashboard-mockups",
+      "port": 5190
+    },
+    {
       "name": "nocturne",
       "runtimeExecutable": "python",
       "runtimeArgs": [
