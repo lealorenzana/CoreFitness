@@ -115,7 +115,28 @@ export default function Bookings() {
   // page you can see: "select all 20 pending" after a weekend should mean all
   // twenty, and silently meaning "the twelve on this page" is how a desk ends
   // up believing it cleared a queue it did not.
-  const selectablePending = visible.filter((r) => r.status === 'pending');
+  /**
+   * What the gym may do with a row (0203 — the database enforces the same):
+   * "Coach approves" leaves every decision to an active coach; "Coach, then
+   * desk" lets the gym confirm only what the coach accepted. No active coach →
+   * the gym decides, so nothing is stranded.
+   */
+  const modeOf = (r: QueueRow): BookingMode => (modes ? modes[r.kind === 'class' ? 'class' : 'pt'] : 'desk');
+  const gymMayApprove = (r: QueueRow) => !r.coachActive || (modeOf(r) !== 'coach' && (modeOf(r) !== 'coach_desk' || !!r.coachOkName));
+  const gymMayReject = (r: QueueRow) => !r.coachActive || (modeOf(r) !== 'coach' && modeOf(r) !== 'coach_desk');
+  const gymMayReverse = (r: QueueRow) => !r.coachActive || (modeOf(r) !== 'coach' && modeOf(r) !== 'coach_desk');
+  /** Reminded this visit — the button says so instead of sending twice. */
+  const [reminded, setReminded] = useState<Set<string>>(new Set());
+  const remindCoach = async (r: QueueRow) => {
+    if (!r.trainerId) return;
+    await notifyUser({
+      userId: r.trainerId, type: 'booking', title: 'A booking is waiting for you',
+      message: `${r.memberName} asked for ${r.title}${r.when ? ' on ' + new Date(r.when).toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}. Accept or decline it in the app.`,
+      actionUrl: '/trainer/bookings', dedupe: `remind:${r.kind}:${r.id}:${new Date().toISOString().slice(0, 10)}`,
+    }).then(() => { setReminded((s) => new Set(s).add(r.id)); showToast(`${r.trainerName ?? 'The coach'} was reminded`, 'success'); })
+      .catch(() => showToast('The reminder could not be sent', 'error'));
+  };
+  const selectablePending = visible.filter((r) => r.status === 'pending' && gymMayApprove(r));
   const selectedPending = selectablePending.filter((r) => selected.has(r.id));
   const allSelected = selectablePending.length > 0 && selectedPending.length === selectablePending.length;
 
@@ -383,6 +404,10 @@ export default function Bookings() {
                         <Pill tone={STATUS_TONE[row.status]} solidDot>{STATUS_BADGE[row.status]}</Pill>
                         {/* Since 0071 a trainer decides their own bookings, so a decided row says by whom.
                             NULL is left silent rather than guessed. */}
+                        {row.status === 'pending' && !gymMayApprove(row) && (
+                          <span data-waiting-coach className="text-[12px] font-semibold truncate max-w-full" style={{ color: '#C4B5FD' }}>
+                            Waiting for {row.trainerName ?? 'the coach'} to decide</span>
+                        )}
                         {row.coachOkName && (
                           <span data-coach-ok className="text-[12px] font-semibold truncate max-w-full" style={{ color: '#C4B5FD' }}>{row.coachOkName} accepted — your turn to confirm</span>
                         )}
@@ -405,13 +430,17 @@ export default function Bookings() {
                       </span>
                     </Td>
                     <Td align="right">
-                      {row.status === 'pending' ? (
+                      {row.status === 'pending' && !gymMayApprove(row) ? (
+                        // The coach's to decide (0203): the gym sees it and can nudge.
+                        <RdButton size="sm" disabled={reminded.has(row.id)} onClick={() => void remindCoach(row)} data-remind-coach
+                          data-tip={`Send ${row.trainerName ?? 'the coach'} a reminder in the app`}>{reminded.has(row.id) ? 'Reminded' : 'Remind coach'}</RdButton>
+                      ) : row.status === 'pending' ? (
                         <span className="inline-flex gap-1 whitespace-nowrap">
                           <RdButton variant="primary" size="sm" disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>Approve</RdButton>
-                          <button type="button" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}
-                            className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><XCircle size={16} /></button>
+                          {gymMayReject(row) && <button type="button" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}
+                            className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><XCircle size={16} /></button>}
                         </span>
-                      ) : row.status === 'approved' || row.status === 'rejected' ? (
+                      ) : (row.status === 'approved' || row.status === 'rejected') && gymMayReverse(row) ? (
                         <button type="button" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
                           data-tip={`Change decision — make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}
                           className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><RotateCcw size={16} /></button>

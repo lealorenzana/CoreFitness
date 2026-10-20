@@ -8,7 +8,7 @@ export type BookingMode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
 
 const CHOICES: { key: BookingMode; title: string; blurb: (kind: 'class' | 'pt') => string }[] = [
   { key: 'instant', title: 'Instant', blurb: () => 'Confirmed the moment a member books. Seats, plan limits and clashes still apply.' },
-  { key: 'coach', title: 'Coach approves', blurb: () => 'The coach accepts or declines. What every gym had before this setting.' },
+  { key: 'coach', title: 'Coach approves', blurb: () => 'Only the coach accepts or declines. You see every request on Bookings and can remind them.' },
   { key: 'desk', title: 'Desk approves', blurb: (k) => (k === 'class'
       ? 'Only you decide, on Bookings. Coaches see the request but cannot decide it.'
       : 'You or the front desk decide, on Bookings. Coaches cannot.') },
@@ -86,7 +86,7 @@ export default function BookingApproval() {
         </div>
       ))}
       <p className="text-xs" style={labelStyle}>
-        Whatever you choose, you can always approve, decline or reverse a booking on Bookings.
+        You can always cancel a booking for a member. Deciding follows your choice: when the coach decides, you see the request and can remind them — and if that coach is suspended or gone, the decision comes back to you, so nothing is left waiting.
       </p>
     </div>
   );

@@ -185,18 +185,22 @@ async (page) => {
   t = await visit('/bookings', 'bookings');
   has('the queue fits its box — no sideways scroll', await page.evaluate(() => { const b = document.querySelector('[data-queue] [data-rd-table]'); return !!b && b.scrollWidth <= b.clientWidth + 1; }));
   has('tiles: awaiting, need checking, classes, 1-on-1', /Awaiting approval/.test(t) && /Need checking/.test(t) && /1-on-1/.test(t));
-  has('the queue: three pending, each with Approve and Reject', (await page.locator('[data-booking-row]').count()) === 3
-    && (await page.getByRole('button', { name: 'Approve', exact: true }).count()) === 3);
+  // 0203: classes are "coach, then desk", 1-on-1 "coach approves". The gym confirms only what a coach accepted;
+  // the rest show who they wait for and a reminder — never Approve.
+  const approveN = await page.getByRole('button', { name: 'Approve', exact: true }).count();
+  const waitN = await page.locator('[data-waiting-coach]').count();
+  has('the queue: three pending — Approve only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 3
+    && approveN >= 1 && waitN >= 1 && approveN + waitN === 3 && (await page.locator('[data-remind-coach]').count()) === waitN, `approve ${approveN}, waiting ${waitN}`);
   has('coach then desk: "accepted — your turn to confirm"', /Bianca Soriano accepted — your turn to confirm/.test(t));
   has('warnings, never blocks: an expired membership and a plan without 1-on-1', /Membership is expired/.test(t) && /Free Plan does not include personal training/.test(t));
   has('the rail: requires attention, and who approves here', /Requires attention/.test(t) && /Another coach/.test(t) && /Who approves here/.test(t) && /Coach, then desk/.test(t));
-  has('bulk: select all pending', /Select all 3 pending/.test(t));
+  has('bulk: select all — only what the gym may decide', new RegExp(`Select all ${approveN} pending`).test(t));
   has('the page does not scroll', await noScroll());
   await page.locator('[data-chip="all"]').click();
   await page.waitForTimeout(300);
   t = await text();
-  has('decided rows say by whom, and offer Change decision', /Accepted by Bianca Soriano \(their trainer\)/.test(t)
-    && (await page.getByRole('button', { name: 'Change decision' }).count()) >= 2);
+  has('decided rows say by whom; in coach modes the gym cannot change them (0203)', /Accepted by (Bianca Soriano \(their trainer\)|front desk)/.test(t)
+    && (await page.getByRole('button', { name: 'Change decision' }).count()) === 0);
   has('no row runs past the edge of the queue', await page.evaluate(() => { const b = document.querySelector('[data-queue]'); const r = b && b.getBoundingClientRect();
     return !!r && [...document.querySelectorAll('[data-booking-row] button')].every((x) => x.getBoundingClientRect().right <= r.right + 1); }));
   await page.locator('[data-chip="rejected"]').click();

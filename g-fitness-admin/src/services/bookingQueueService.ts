@@ -60,6 +60,12 @@ export interface QueueRow {
   decidedByName: string | null;
   /** Under "coach, then desk" (0180): the coach has accepted; the gym confirms. */
   coachOkName: string | null;
+  /**
+   * The row's coach is active at the gym (0203). When not — no coach, or one
+   * suspended or archived — the gym may decide even in "Coach approves", so a
+   * request is never stranded.
+   */
+  coachActive: boolean;
 }
 
 export interface QueueData {
@@ -93,6 +99,7 @@ export async function loadBookingQueue(): Promise<QueueData> {
   const names: Record<string, string> = {};
   for (const m of members) names[m.profile.id] = fullName(m.profile);
   for (const t of trainers) names[t.profile.id] = fullName(t.profile);
+  const activeCoaches = new Set(trainers.filter((t) => t.profile.status === 'active').map((t) => t.profile.id));
 
   // Newest membership per member — a renewal creates a new row, and the old one
   // must not be what we judge them on.
@@ -177,6 +184,7 @@ export async function loadBookingQueue(): Promise<QueueData> {
         decidedByRole: b.decided_by_role ?? null,
         decidedByName: b.decided_by ? names[b.decided_by] ?? null : null,
         coachOkName: coachOk(b),
+        coachActive: !!b.classes?.trainer_id && activeCoaches.has(b.classes.trainer_id),
       };
     }),
     ...ptSessions.map((s): QueueRow => {
@@ -204,6 +212,7 @@ export async function loadBookingQueue(): Promise<QueueData> {
         decidedByRole: s.decided_by_role ?? null,
         decidedByName: s.decided_by ? names[s.decided_by] ?? null : null,
         coachOkName: coachOk(s),
+        coachActive: activeCoaches.has(s.trainer_id),
       };
     }),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
