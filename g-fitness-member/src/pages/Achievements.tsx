@@ -277,22 +277,27 @@ export default function Achievements() {
                   {sorted.map((def, i) => {
                     const have = has(def.key);
                     const p = progress?.get(def.key);
-                    const line = have ? null : amountLine(def, p, units);
+                    // A secret badge (0206) keeps its name and rule to itself until it is yours.
+                    const hidden = !have && !!def.secret;
+                    const line = have || hidden ? null : amountLine(def, p, units);
+                    const pts = def.points ? ` · +${def.points} points` : '';
                     return (
                       <LineRow
                         key={def.key}
                         gutterWidth={46}
                         gutter={<Medallion def={def} have={have} size={40} />}
-                        title={def.title}
+                        title={hidden ? 'Secret badge' : def.title}
                         dim={!have}
                         // A locked row states the rule that would unlock it —
-                        // every one, so nothing here is a mystery — and, since
-                        // 0093, how far along you are.
+                        // every one but a secret, which the gym chose to keep
+                        // quiet — and, since 0093, how far along you are.
                         meta={have ? (
-                          `${tierStyle(def.tier).label} · unlocked ${unlockedOn(def.key)}`
+                          `${tierStyle(def.tier).label}${pts} · unlocked ${unlockedOn(def.key)}`
+                        ) : hidden ? (
+                          'Keep training — it shows itself when you earn it.'
                         ) : (
                           <>
-                            <span className="block">{def.requirement}</span>
+                            <span className="block">{def.requirement}{pts}</span>
                             {line && p && (frac(def) ?? 0) > 0 && (
                               <span className="block" style={{ marginTop: 6 }}>
                                 <ProgressBar fraction={frac(def)} />
@@ -314,8 +319,8 @@ export default function Achievements() {
         </>
       )}
 
-      <GlassSheet open={!!detail} onClose={() => setDetail(null)} title={detail?.title ?? ''}
-        subtitle={detail ? `${tierStyle(detail.tier).label} · ${detail.category}` : undefined}>
+      <GlassSheet open={!!detail} onClose={() => setDetail(null)} title={detail ? (detail.secret && !has(detail.key) ? 'Secret badge' : detail.title) : ''}
+        subtitle={detail ? `${tierStyle(detail.tier).label} · ${detail.category}${detail.points ? ` · +${detail.points} points` : ''}` : undefined}>
         {detail && (
           <AchievementDetail def={detail} have={has(detail.key)} unlockedOn={has(detail.key) ? unlockedOn(detail.key) : null}
             progress={progress?.get(detail.key)} units={units} rarity={rarityLine(rarity?.get(detail.key), role)}
@@ -340,8 +345,12 @@ function Medallion({ def, have, size }: { def: AchievementDef; have: boolean; si
         ? `inset 0 0 0 1.5px ${ring}, 0 0 ${Math.round(size / 2.4)}px -${Math.round(size / 6)}px ${ring}, inset 0 1px 0 rgba(255,255,255,0.25)`
         : 'inset 0 0 0 1px rgba(233, 233, 237, 0.14)',
     }}>
-      <Icon size={Math.round(size * 0.44)} strokeWidth={have ? 2.1 : 1.8}
-        style={{ color: have ? '#fff' : 'var(--color-text-muted)', opacity: have ? 1 : 0.6 }} />
+      {!have && def.secret ? (
+        <span style={{ fontSize: Math.round(size * 0.42), fontWeight: 800, color: 'var(--color-text-muted)', lineHeight: 1 }}>?</span>
+      ) : (
+        <Icon size={Math.round(size * 0.44)} strokeWidth={have ? 2.1 : 1.8}
+          style={{ color: have ? '#fff' : 'var(--color-text-muted)', opacity: have ? 1 : 0.6 }} />
+      )}
       {!have && (
         <span className="absolute grid place-items-center rounded-full" style={{
           right: -2, bottom: -2, width: Math.max(16, size * 0.34), height: Math.max(16, size * 0.34),
@@ -387,6 +396,12 @@ function AchievementDetail({
             <SealCheck size={14} weight="fill" /> Unlocked {unlockedOn}
           </p>
         </>
+      ) : def.secret ? (
+        // The gym keeps this one quiet (0206): no rule and no progress until it is earned.
+        <p className="flex items-start text-left" style={{ gap: 8, marginTop: 10, fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+          <Lock size={15} className="flex-none" style={{ marginTop: 3, color: 'var(--color-text-muted)' }} />
+          A secret badge. Keep training — it shows itself when you earn it.
+        </p>
       ) : (
         <>
           <p className="flex items-start text-left" style={{ gap: 8, marginTop: 10, fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>

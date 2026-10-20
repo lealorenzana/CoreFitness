@@ -61,6 +61,7 @@ async (page) => {
       if (fn === 'winback_sweep') return json(0);
       if (fn === 'retention_radar') return json(RADAR);
       if (fn === 'send_retention_message') return json(null);
+      if (fn === 'log_retention_call') return json('c1');
       if (fn === 'winback_results') return json([{ rule_key: 'no_visit_14', sent: 6, came_back: 2 }]);
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
     }
@@ -76,6 +77,13 @@ async (page) => {
       }
       return json(RULES);
     }
+    if (t === 'winback_sends') return json([{ member_id: 'm2', sent_at: minute, rule_key: 'manual', kind: 'message', note: null }]);
+    if (t === 'attendance') {
+      // Ana and Ben came last month; only Ben came this month.
+      const last = new Date(); last.setMonth(last.getMonth() - 1, 10);
+      const thisM = new Date(); thisM.setDate(1); thisM.setHours(9);
+      return json([{ member_id: 'm1', check_in_time: last.toISOString() }, { member_id: 'm2', check_in_time: last.toISOString() }, { member_id: 'm2', check_in_time: thisM.toISOString() }]);
+    }
     if (t === 'profiles' || t === 'gym_people') return json(one ? desk : [desk]);
     return json(one ? null : []);
   });
@@ -87,36 +95,48 @@ async (page) => {
   await page.getByText('Ana Reyes').first().waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
   let seen = await text();
-  out.push('the radar members, with why: ' + (/No visit in 20 days · Stopped logging workouts/.test(seen) && /Membership ends in 5 days/.test(seen) ? 'shown' : 'MISSING'));
-  out.push('one count of at risk: ' + (/At Risk Members 2/i.test(seen) ? '2, the radar count' : 'MISSING'));
-  out.push('who was already contacted: ' + (/contacted/.test(seen) ? 'shown' : 'MISSING'));
-  out.push('win-back sweep ran on open: ' + (CALLS.some(([f]) => f === 'winback_sweep') ? 'yes' : 'MISSING'));
-  await page.waitForTimeout(1500);
+  const has = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING' + (extra ? ' ' + extra : '')}`);
+  has('the radar members, with why', /No visit in 20 days/.test(seen) && /Stopped logging workouts/.test(seen) && /Membership ends in 5 days/.test(seen));
+  has('one count of who to win back', /Who to win back 2/.test(seen));
+  has('still coming: one of last month\'s two visitors came this month', /Still coming 50%/.test(seen), (seen.match(/Still coming.{0,60}/) || [''])[0]);
+  has('slipping counts no visit in 14+ days', /Slipping 1 no visit in 14\+ days/.test(seen));
+  has('came back after a message, from the results', /Came back after a message 2 of 6 messaged/.test(seen));
+  has('last contact says how: a desk message, or never', /· message/.test(seen) && /never/.test(seen));
+  has('filters with counts', /High risk 1/.test(seen) && /Plan ending 1/.test(seen) && /Not contacted 1/.test(seen));
+  has('win-back sweep ran on open', CALLS.some(([f]) => f === 'winback_sweep'));
+  has('the page does not scroll', await page.evaluate(() => { const m = document.querySelector('main'); return !m || m.scrollHeight <= m.clientHeight + 1; }));
+  await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-retention.png' });
-  await page.getByRole('button', { name: 'Reach out' }).first().click();
-  await page.waitForTimeout(800);
-  const sent = CALLS.find(([f]) => f === 'send_retention_message');
-  // Ben is listed only because his membership ends: his message must say so.
-  await page.getByRole('button', { name: 'Reach out' }).first().click().catch(() => {});
-  await page.waitForTimeout(800);
-  const sentBen = CALLS.filter(([f]) => f === 'send_retention_message').find(([, b]) => b.p_member === 'm2');
-  out.push('reach out says the real reason: ' + (sentBen && /Your membership ends in 5 days/.test(sentBen[1].p_message) && !/since your last visit/.test(sentBen[1].p_message) ? 'ends in 5 days' : 'MISSING ' + JSON.stringify(sentBen)));
-  out.push('reach out is recorded: ' + (sent && sent[1].p_member === 'm1' && /20 days/.test(sent[1].p_message) ? 'through send_retention_message' : 'MISSING ' + JSON.stringify(sent)));
 
-  await page.getByRole('button', { name: 'Win-back messages' }).click();
+  // Ben is listed only because his membership ends: the ready words must say so, never "we miss you".
+  await page.locator('[data-winback-row]', { hasText: 'Ben Cruz' }).getByRole('button', { name: 'Message' }).click();
+  await page.locator('[data-message-card]').getByRole('button', { name: 'Plan ending' }).click();
+  await page.locator('[data-send-winback]').click();
+  await page.waitForTimeout(600);
+  const sentBen = CALLS.filter(([f]) => f === 'send_retention_message').find(([, b]) => b.p_member === 'm2');
+  has('a message says the real reason, and is recorded', !!sentBen && /your membership ends in 5 days/.test(sentBen[1].p_message), JSON.stringify(sentBen));
+  await page.locator('[data-winback-row]', { hasText: 'Ana Reyes' }).locator('[data-mark-called]').click();
+  await page.getByLabel(/What they said/).fill('Back on Thursday');
+  await page.locator('[data-log-call]').click();
+  await page.waitForTimeout(600);
+  const call = CALLS.find(([f]) => f === 'log_retention_call');
+  has('Mark called logs the call with its note (0205)', !!call && call[1].p_member === 'm1' && call[1].p_note === 'Back on Thursday', JSON.stringify(call));
+
+  await page.locator('[data-view="msgs"]').click();
   await page.waitForTimeout(1000);
   seen = await text();
-  const titles = await page.locator('input[aria-label^="Title of"]').evaluateAll((els) => els.map((e) => e.value));
-  const offs = await page.locator('input[type=checkbox]').evaluateAll((els) => els.filter((e) => !e.checked).length);
-  out.push('the three messages, off: ' + (titles.join('|') === 'We miss you|Still with us?|Come back' && offs === 3 ? 'shown' : 'MISSING ' + titles.join('|') + ' off=' + offs));
-  out.push('results: ' + (/sent to 6, 2 came back within two weeks/.test(seen) ? 'shown' : 'MISSING'));
+  has('/retention/messages is the Automatic messages tab', /\/retention\/messages$/.test(page.url()) && (await page.locator('[data-rule]').count()) === 3);
+  has('the three messages, all off', (await page.locator('[data-rule] .a-toggle.off').count()) === 3 && /We miss you/.test(seen) && /Still with us\?/.test(seen) && /Come back/.test(seen));
+  has('results under the one that was sent', /6 sent in 30 days · 2 came back within 2 weeks/.test(seen));
   await page.getByLabel('Send "We miss you" automatically').click();
   await page.waitForTimeout(800);
-  out.push('switching one on: ' + (CALLS.some(([f, k, b]) => f === 'patch' && k === 'no_visit_14' && b && b.is_active === true) ? 'saved' : 'MISSING'));
-  await page.getByLabel('Text of lapsed').fill('Renew this week and your first month of classes is on us.');
+  has('switching one on saves', CALLS.some(([f, k, b]) => f === 'patch' && k === 'no_visit_14' && b && b.is_active === true));
+  await page.locator('[data-rule="lapsed"]').getByRole('button', { name: 'Edit message' }).click();
+  await page.getByLabel('Text of lapsed').fill('Your plan ended. Renew at the desk any time.');
   await page.getByRole('button', { name: 'Save wording' }).click();
   await page.waitForTimeout(800);
-  out.push('rewording: ' + (CALLS.some(([f, k, b]) => f === 'patch' && k === 'lapsed' && b && b.message === 'Renew this week and your first month of classes is on us.') ? 'saved' : 'MISSING'));
+  has('rewording saves', CALLS.some(([f, k, b]) => f === 'patch' && k === 'lapsed' && b && b.message === 'Your plan ended. Renew at the desk any time.'));
+  await page.waitForTimeout(800);
   await page.screenshot({ path: 'shots/admin-winback.png' });
   return out.join('\n');
 }

@@ -53,31 +53,43 @@ async (page) => {
       }
       if (!path.startsWith('/rest/v1/')) return json([]);
       const t = path.split('/rest/v1/')[1];
-      if (t === 'payments') return json([{ id: 'pay1', amount: 1500, status: 'completed', member_id: 'm1', paid_on: day, invoice_number: 'INV-1', created_at: minute }]);
+      if (t === 'payments') return json([
+        { id: 'pay1', amount: 1500, status: 'completed', member_id: 'm1', paid_on: day, invoice_number: 'INV-1', created_at: minute, method: 'cash', plan_name: 'Premium', plan_id: 'pl1',
+          member_profiles: { profiles: { first_name: 'Andrea', last_name: 'Flores' } } },
+        { id: 'pay2', amount: 3000, status: 'pending', member_id: 'm2', paid_on: day, invoice_number: 'INV-2', created_at: minute, method: 'gcash', plan_name: 'Premium', plan_id: 'pl1', member_profiles: null },
+      ]);
+      if (t === 'guest_visits') return json([{ id: 'g1', visit_day: day, visited_at: minute, kind: 'day', amount: 150, method: 'cash', guests: { name: 'Mara Cruz' } }]);
       if (t === 'shop_sales') return json([
-        { id: 's1', sale_day: day, total: 840, created_at: minute, voided_at: null, void_reason: null, member: null, seller: null, shop_sale_items: [] },
+        { id: 's1', sale_day: day, total: 840, created_at: minute, voided_at: null, void_reason: null, member: null, seller: null,
+          shop_sale_items: [{ qty: 30, unit_price: 20, shop_products: { name: 'Water 500ml' } }, { qty: 4, unit_price: 60, shop_products: { name: 'Whey scoop' } }] },
         { id: 's2', sale_day: day, total: 999, created_at: minute, voided_at: minute, void_reason: 'twice', member: null, seller: null, shop_sale_items: [] },
       ]);
       if (t === 'profiles' || t === 'gym_people') return json(one ? desk : [desk]);
       return json(one ? null : []);
     });
     await page.goto('http://localhost:5174/revenue', { waitUntil: 'domcontentloaded' });
-    await page.getByText('Monthly breakdown').waitFor({ timeout: 15000 });
+    await page.locator('[data-month-bars]').waitFor({ timeout: 15000 });
     await page.waitForTimeout(1200);
     return page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   };
 
   const out = [];
   await page.setViewportSize({ width: 1400, height: 900 });
+  const month = new Date(`${day}T00:00:00`).toLocaleDateString('en-PH', { month: 'long' });
+  const mon = new Date(`${day}T00:00:00`).toLocaleDateString('en-US', { month: 'short' });
   let t = await run(true);
-  out.push('shop on: total is memberships + shop, voids out: ' + (/Total Revenue ₱2,340/i.test(t) ? '₱1,500 + ₱840' : 'MISSING ' + (t.match(/Total Revenue [^ ]+/i) || [''])[0]));
-  out.push('…shop as its own tile: ' + (/Shop \(all time\) ₱840/i.test(t) ? 'yes' : 'MISSING'));
-  out.push('…the year split into memberships and shop: ' + (new RegExp(`${year} total ₱2,340`, "i").test(t) && /■ Memberships ₱1,500/i.test(t) && /■ Shop ₱840/i.test(t) ? 'yes' : 'MISSING'));
-  out.push('…a shop segment on this month\'s bar: ' + ((await page.locator('[data-part="shop"]').count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('…best sellers: ' + (/Shop — best sellers/.test(t) && /Water 500ml · 30 sold/.test(t) ? 'yes' : 'MISSING'));
+  out.push('shop on: collected is memberships + shop + day passes, voids and pending out: ' + (new RegExp(`Collected in ${month} ₱2,490`).test(t) ? '₱1,500 + ₱840 + ₱150' : 'MISSING ' + (t.match(/Collected in \S+ \S+/) || [''])[0]));
+  out.push('…shop as its own tile, counted in items: ' + (/Shop ₱840 34 items/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…day passes as their own tile: ' + (/Day passes ₱150 1 walk-in/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…three segments on this month\'s bar: ' + ((await page.locator(`[data-month="${mon}"] span i`).count()) === 3 ? 'yes' : 'MISSING ' + await page.locator(`[data-month="${mon}"] span i`).count()));
+  out.push('…best sellers: ' + (/Shop best sellers/.test(t) && /Water 500ml 30 sold/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…the period\'s payments are what the total is made of: ' + ((await page.locator('[data-money-row]').count()) === 3 ? 'yes' : 'MISSING'));
+  out.push('…a pending payment is waiting, never money in: ' + (/₱3,000 waiting to be confirmed/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…the page does not scroll: ' + (await page.evaluate(() => { const m = document.querySelector('main'); return !m || m.scrollHeight <= m.clientHeight + 1; }) ? 'yes' : 'SCROLLS'));
+  await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-revenue-shop.png' });
   t = await run(false);
-  out.push('shop off: no shop anywhere: ' + (!/best sellers/i.test(t) && !/Shop \(all time\)/i.test(t) && !/■ Shop/i.test(t) && (await page.locator('[data-part="shop"]').count()) === 0 ? 'none' : 'STILL SHOWN'));
-  out.push('…total is memberships alone: ' + (/Total Revenue ₱1,500/i.test(t) ? '₱1,500' : 'MISSING'));
+  out.push('shop off: no shop anywhere: ' + (!/best sellers/i.test(t) && !/Shop ₱/i.test(t) && (await page.locator(`[data-month="${mon}"] span i`).count()) === 2 ? 'none' : 'STILL SHOWN'));
+  out.push('…collected is memberships and day passes: ' + (new RegExp(`Collected in ${month} ₱1,650`).test(t) ? '₱1,650' : 'MISSING'));
   return out.join('\n');
 }

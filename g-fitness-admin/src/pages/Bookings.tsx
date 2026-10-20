@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import Popover from '../components/ui/Popover';
 import DatePicker from '../components/ui/DatePicker';
 import DeskBookCard from '../components/bookings/DeskBookCard';
 import { Av, Pager } from './attendance/parts';
@@ -87,7 +86,6 @@ export default function Bookings() {
   const [preset, setPreset] = useState<'today' | 'tomorrow' | 'week' | 'month' | 'pick'>('week');
   const [pickDay, setPickDay] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
-  const [pickAnchor, setPickAnchor] = useState<HTMLElement | null>(null);
   /** Bumped by the head's button: the desk-booking card reloads its lists. */
   const [focusBook, setFocusBook] = useState(0);
   const range = preset === 'today' ? { from: today, to: today } : preset === 'tomorrow' ? { from: addDays(today, 1), to: addDays(today, 1) }
@@ -362,10 +360,15 @@ export default function Bookings() {
           {([['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week'], ['month', 'Next 30 days']] as const).map(([k, l]) => (
             <button key={k} type="button" className={`a-chip ${preset === k ? 'v' : ''}`} onClick={() => setPreset(k)}>{l}</button>
           ))}
-          <button type="button" className={`a-btn ${preset === 'pick' ? 'soft' : ''}`} style={{ padding: '7px 11px' }} onClick={(e) => setPickAnchor(e.currentTarget)}><CalendarRange size={15} />{preset === 'pick' ? rangeLabel : 'Pick a date'}</button>
+          {/* One tap opens the calendar (the picker's own trigger, in the toolbar's look). */}
+          <DatePicker value={preset === 'pick' ? range.from : ''} mode="future" bounds={{ today: addDays(today, -60), aheadDays: 60 + 120 }}
+            triggerClassName={`a-btn ${preset === 'pick' ? 'soft' : ''} a-btn-tight`} triggerAriaLabel="Pick a date"
+            triggerLabel={<><CalendarRange size={15} />{preset === 'pick' ? rangeLabel : 'Pick a date'}</>}
+            onChange={(v) => { if (v) { setPickDay(v); setPreset('pick'); } }} />
         </>)}
         {view === 'history' && (
-          <button type="button" className="a-btn" style={{ padding: '7px 11px' }} onClick={(e) => setPickAnchor(e.currentTarget)}><CalendarRange size={15} />{historyFrom ? `From ${dayTitle(historyFrom)}` : 'Last 30 days'}</button>
+          <DatePicker value={historyFrom} mode="history" onChange={setHistoryFrom} triggerClassName="a-btn a-btn-tight" triggerAriaLabel="History from"
+            triggerLabel={<><CalendarRange size={15} />{historyFrom ? `From ${dayTitle(historyFrom)}` : 'Last 30 days'}</>} />
         )}
         <select className={`a-chip ${kindFilter !== 'all' ? 'on' : ''}`} value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)} aria-label="Kind">
           <option value="all">Both kinds</option><option value="class">Classes</option><option value="pt">1-on-1</option>
@@ -377,16 +380,6 @@ export default function Bookings() {
         )}
         {view === 'history' && <button type="button" className="a-btn" style={{ padding: '7px 11px', marginLeft: 'auto' }} onClick={exportCsv}><Download size={15} />Export</button>}
       </div>
-      <Popover anchor={pickAnchor} open={!!pickAnchor} onClose={() => setPickAnchor(null)} width={300}>
-        <div className="p-3">
-          {view === 'history' ? (
-            <DatePicker value={historyFrom} mode="history" onChange={(v) => { setHistoryFrom(v); setPickAnchor(null); }} />
-          ) : (
-            <DatePicker value={preset === 'pick' ? range.from : ''} mode="future" bounds={{ today: addDays(today, -60), aheadDays: 60 + 120 }}
-              onChange={(v) => { if (v) { setPickDay(v); setPreset('pick'); } setPickAnchor(null); }} />
-          )}
-        </div>
-      </Popover>
 
       <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-booking-cards>
         <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: '#3e310f', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>

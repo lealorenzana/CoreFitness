@@ -137,8 +137,6 @@ export default function Schedule() {
   const [msgOpen, setMsgOpen] = useState(false);
   const [msg, setMsg] = useState('');
   const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
-  const [pickAnchor, setPickAnchor] = useState<HTMLElement | null>(null);
-  const [pickDate, setPickDate] = useState('');
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ClassTemplateRow | null>(null);
@@ -389,7 +387,10 @@ export default function Schedule() {
             <button type="button" className="a-btn" style={{ padding: '7px 9px' }} onClick={() => step(1)} aria-label={view === 'day' ? 'Next day' : 'Next week'}><ChevronRight size={15} /></button>
           </div>
           <button type="button" className="a-btn sm" style={{ padding: '7px 11px' }} onClick={() => { setDay(today); setWeekStart(weekStartOf(today)); }}>Today</button>
-          <button type="button" className="a-btn" style={{ padding: '7px 11px' }} onClick={(e) => { setPickDate(view === 'day' ? day : weekStart); setPickAnchor(e.currentTarget); }}><CalendarRange size={15} />Pick a date</button>
+          {/* One tap opens the calendar — the picker's own trigger in the toolbar's look. */}
+          <DatePicker value={view === 'day' ? day : weekStart} mode="future" bounds={{ today: addDays(today, -365), aheadDays: 365 + 90 }}
+            triggerClassName="a-btn a-btn-tight" triggerAriaLabel="Pick a date" triggerLabel={<><CalendarRange size={15} />Pick a date</>}
+            onChange={(v) => { if (!v) return; setDay(v); setWeekStart(weekStartOf(v)); setSelId(null); }} />
           <label className="a-input sm" style={{ width: 230, marginLeft: 6 }}><Search size={14} />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Class, coach or room…" aria-label="Search the schedule" /></label>
           <select className={`a-chip ${coach !== 'all' ? 'on' : ''}`} value={coach} onChange={(e) => setCoach(e.target.value)} aria-label="Filter by coach" style={{ maxWidth: 170 }}>
@@ -407,12 +408,6 @@ export default function Schedule() {
           </div>
         </div>
       )}
-      <Popover anchor={pickAnchor} open={!!pickAnchor} onClose={() => setPickAnchor(null)} width={300}>
-        <div className="p-3" data-pick-date>
-          <DatePicker value={pickDate} mode="future" bounds={{ today: addDays(today, -365), aheadDays: 365 + 90 }}
-            onChange={(v) => { if (!v) return; setDay(v); setWeekStart(weekStartOf(v)); setPickAnchor(null); setSelId(null); }} />
-        </div>
-      </Popover>
 
       {loading ? <p className="a-sub" style={{ padding: 20 }}>Loading the schedule…</p> : view === 'week' ? (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>

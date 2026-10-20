@@ -83,9 +83,10 @@ async (page) => {
   await page.waitForTimeout(2500);
 
   // ---- the gym-wide goal (the evaluator's 2002) — on its own tab since 2026-10-12 ----
-  await page.getByRole('tab', { name: /Gym goal/ }).click();
+  await page.locator('[data-idea="gg"]').click();
   await page.waitForTimeout(600);
-  const goalStart = page.locator('[aria-label="Goal starts"] button').first();
+  // The goal reads as a sentence (2026-10-20): its dates are dashed words that open the calendar.
+  const goalStart = page.locator('button[aria-label="Goal starts"]').first();
   if (await goalStart.count()) {
     await goalStart.click();
     await page.waitForTimeout(300);
@@ -100,12 +101,10 @@ async (page) => {
   }
 
   // ---- a new challenge ----
-  await page.getByRole('tab', { name: /^Challenges$/ }).click();
-  await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /New challenge/ }).first().click();
+  await page.locator('[data-idea="ch"]').click();
   await page.waitForTimeout(500);
-  // The form opens with today filled in, so find the pickers by their labels.
-  const pickers = page.locator('label:has-text("Starts") button, label:has-text("Ends") button');
+  // The maker sits beside the list with today filled in; its dates are words in the sentence.
+  const pickers = page.locator('button[aria-label="Starts"], button[aria-label="Ends"]');
   out.push('challenge: both dates use the calendar: ' + ((await pickers.count()) >= 2 ? 'yes' : 'MISSING (' + (await pickers.count()) + ')'));
   if (!(await pickers.count())) {
     out.push('page says: ' + (await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 600))));

@@ -74,10 +74,19 @@ export interface DatePickerProps {
   placeholder?: string;
   /** Jump straight to a sensible decade for a birth date. */
   startView?: 'month' | 'year';
+  /**
+   * A trigger of the caller's own look (2026-10-20) — e.g. a dashed word inside
+   * a sentence — that opens the calendar in one tap. Given a class, the button
+   * drops the field styling and shows `triggerLabel` instead of the date.
+   */
+  triggerClassName?: string;
+  triggerLabel?: React.ReactNode;
+  triggerAriaLabel?: string;
 }
 
 export default function DatePicker({
   value, onChange, mode, bounds, min: minProp, max: maxProp, placeholder = 'Select a date', startView = 'month',
+  triggerClassName, triggerLabel, triggerAriaLabel,
 }: DatePickerProps) {
   const { min, max } = narrow(dateBounds(mode, bounds), minProp, maxProp);
   const [open, setOpen] = useState(false);
@@ -154,6 +163,12 @@ export default function DatePicker({
 
   return (
     <>
+      {triggerClassName ? (
+        <button ref={anchorRef} type="button" className={triggerClassName} aria-label={triggerAriaLabel} aria-expanded={open}
+          onClick={() => { setOpen((o) => !o); setShowYears(startView === 'year' && !value); }}>
+          {triggerLabel ?? (value ? formatDisplay(value) : placeholder)}
+        </button>
+      ) : (
       <button
         ref={anchorRef}
         type="button"
@@ -168,6 +183,7 @@ export default function DatePicker({
         <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>
         <Calendar size={13} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
       </button>
+      )}
 
       <Popover anchor={anchorRef.current} open={open} onClose={() => setOpen(false)} width={268}>
         <div className="p-3">

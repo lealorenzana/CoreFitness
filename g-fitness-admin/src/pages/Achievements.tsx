@@ -1,267 +1,187 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Award, CalendarCheck, CalendarHeart, ClipboardList, Crown, Dumbbell, Flame, Footprints,
-  Gem, Gift, GraduationCap, Handshake, Heart, HeartHandshake, Medal, Moon, Mountain,
-  PartyPopper, Repeat, Rocket, Ruler, Shapes, Shield, Smile, Sparkles, Star, Sunrise,
-  Swords, Target, ThumbsUp, Timer, Trophy, UserCheck, Users, Zap,
-  Plus, Pencil, EyeOff, Eye, Trash2, Gift as GiftIcon, X, Lock, Wand2, Hand, Cpu, Lightbulb,
-  type LucideIcon,
-} from 'lucide-react';
-import Modal from '../components/ui/Modal';
+import { Users, Dumbbell, Plus, Search, Sparkles, Check, X, Gift, EyeOff, Eye, Trash2, Lock, Wand2, Info } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import {
-  RdHeader, RdCard, PageTabs, FilterChips, SearchField, RdSelect, RdButton, Pill, DotMenu, EmptyBlock, TableFooter, RdField,
-} from '../components/ui/rd';
-import { TONE, RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
-import { usePaged } from '../hooks/usePaged';
+import AwardModal from '../components/achievements/AwardModal';
+import { BADGE_ICON_NAMES, badgeIcon } from '../components/achievements/badgeIcons';
+import './attendance/att.css';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { todayKey } from '../utils/dates';
 import {
-  listAchievements, listMetrics, createAchievement, updateAchievement,
-  deleteAchievement, setAchievementActive, awardAchievement, revokeAchievement,
-  listHolders, listAwardCandidates, ruleSummary, achievementRarity, type Rarity,
-  type AchievementRow, type AchievementMetric, type AchievementAudience,
-  type AchievementTier, type AchievementRuleKind, type AchievementHolder,
+  listAchievements, listMetrics, createAchievement, updateAchievement, deleteAchievement, setAchievementActive,
+  achievementRarity, achievementQualifiers, earnedSince, ruleSummary, type Rarity,
+  type AchievementRow, type AchievementMetric, type AchievementAudience, type AchievementTier, type AchievementRuleKind,
 } from '../lib/api/achievements';
 
 /**
- * The achievement catalogue, editable (migration 0038).
+ * Achievements (0038/0093/0206, redrawn 2026-10-20 to the approved mock-up): the
+ * catalogue by group as medals, and a one-screen maker beside it — the badge as
+ * the member sees it, what earns it, how many already qualify, its tier, icon,
+ * points, whether it is secret, whether the member is told.
  *
  * Admin-only, and not just for tidiness: inventing a badge changes what the gym
- * rewards, which is the same class of decision as plan pricing. RLS gives
- * `staff` read access and no writes.
- *
- * Three rule kinds are visible here and they are not interchangeable:
- *   • **Automatic** — a stat and a number. The server awards it to everyone who
- *     qualifies, on their next sync. This is the only kind that can be created.
- *   • **By hand** — no rule. Picked per person: "Member of the Month".
- *   • **Built-in** — the two level badges, whose rule reads `level_thresholds()`
- *     so the badge and the level on Home cannot disagree. Copy is editable, the
- *     rule is not.
- *
- * 2026-10-12, made easy to understand: the three kinds are explained up front
- * (and filter the catalogue), every badge reads as one sentence — "Earned when
- * …" — and a new one can start from a ready idea, with the member's view of it
- * beside the form the whole time.
+ * rewards. RLS gives staff read access and no writes. Three kinds:
+ *   • Automatic — a stat and a number; the server awards it on each sync.
+ *   • Given by you — no rule; picked per person ("Member of the Month").
+ *   • Levels (built-in) — their rule reads level_thresholds(), so the badge and
+ *     the level on Home cannot disagree. Words editable, rule not.
  */
 
-const SECOND = 'var(--color-text-secondary)';
-const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const TIERS: [AchievementTier, string][] = [['bronze', 'most get it'], ['silver', 'takes weeks'], ['gold', 'takes months'], ['platinum', 'very rare']];
+const slugify = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
 
-/**
- * Duplicated from `g-fitness-member/src/data/achievements.ts` on purpose —
- * there is no shared package here. **Keep the two in step**; the member app's
- * `npm run check:achievements` fails the build if a stored icon name has no
- * component on that side, which is what catches drift.
- */
-const ICONS: Record<string, LucideIcon> = {
-  Award, CalendarCheck, CalendarHeart, ClipboardList, Crown, Dumbbell, Flame, Footprints,
-  Gem, Gift, GraduationCap, Handshake, Heart, HeartHandshake, Medal, Moon, Mountain,
-  PartyPopper, Repeat, Rocket, Ruler, Shapes, Shield, Smile, Sparkles, Star, Sunrise,
-  Swords, Target, ThumbsUp, Timer, Trophy, UserCheck, Users, Zap,
-};
-const ICON_NAMES = Object.keys(ICONS).sort();
-const iconByName = (n: string): LucideIcon => ICONS[n] ?? Award;
-
-/** Renders a stored icon name; `createElement` because the component comes from a frozen registry. */
-function AchievementIcon({ name, size, color }: { name: string; size: number; color: string }) {
-  return createElement(iconByName(name), { size, style: { color } });
+interface Draft {
+  key: string; audience: AchievementAudience; title: string; description: string; requirement: string; ownRequirement: boolean;
+  icon: string; tier: AchievementTier; category: string; rule_kind: AchievementRuleKind;
+  metric: string; threshold: string; metric2: string; threshold2: string; sort_order: number;
+  points: string; secret: boolean; tell: boolean;
 }
-
-const TIERS: AchievementTier[] = ['bronze', 'silver', 'gold', 'platinum'];
-const TIER_RING: Record<AchievementTier, string> = {
-  bronze: '#C77B3E', silver: '#A8B0BE', gold: '#F59E0B', platinum: '#A78BFA',
-};
-
-/** A badge medallion: the tier's colour as a ring and a glow, the icon in the middle. */
-function Medallion({ icon, tier, size = 56, locked }: { icon: string; tier: AchievementTier; size?: number; locked?: boolean }) {
-  const c = locked ? 'rgba(255,255,255,0.25)' : TIER_RING[tier];
-  return (
-    <span className="grid place-items-center flex-none rounded-full" style={{
-      width: size, height: size,
-      background: locked ? 'rgba(255,255,255,0.04)' : `radial-gradient(circle at 30% 25%, ${c}55, ${c}14 60%, transparent 75%), #1A1530`,
-      border: `2px solid ${c}`, boxShadow: locked ? undefined : `0 0 0 4px ${c}1f, 0 10px 28px -12px ${c}`,
-    }}>
-      <AchievementIcon name={icon} size={Math.round(size * 0.42)} color={locked ? 'rgba(255,255,255,0.45)' : c} />
-    </span>
-  );
-}
-
-/** A key the database will accept, derived from the title as a starting point. */
-function slugify(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
-}
-
-interface FormState {
-  key: string;
-  audience: AchievementAudience;
-  title: string;
-  description: string;
-  requirement: string;
-  icon: string;
-  tier: AchievementTier;
-  category: string;
-  rule_kind: AchievementRuleKind;
-  metric: string;
-  threshold: string;
-  metric2: string;
-  threshold2: string;
-  sort_order: number;
-}
-
-const EMPTY_FORM: FormState = {
-  key: '', audience: 'member', title: '', description: '', requirement: '',
-  icon: 'Award', tier: 'bronze', category: 'General',
-  rule_kind: 'metric', metric: '', threshold: '', metric2: '', threshold2: '',
-  sort_order: 100,
-};
-
-/**
- * Ideas to start from (2026-10-12). Each names a real metric from 0038's
- * `achievement_metrics`; one whose metric this gym does not have is not offered.
- */
+const blank = (audience: AchievementAudience, n: number): Draft => ({
+  key: '', audience, title: '', description: '', requirement: '', ownRequirement: false, icon: 'Award', tier: 'bronze', category: 'General',
+  rule_kind: 'metric', metric: '', threshold: '', metric2: '', threshold2: '', sort_order: 100 + n, points: '0', secret: false, tell: true,
+});
+const fromRow = (a: AchievementRow): Draft => ({
+  key: a.key, audience: a.audience, title: a.title, description: a.description, requirement: a.requirement, ownRequirement: true,
+  icon: a.icon, tier: a.tier, category: a.category, rule_kind: a.rule_kind, metric: a.metric ?? '', threshold: a.threshold?.toString() ?? '',
+  metric2: a.metric2 ?? '', threshold2: a.threshold2?.toString() ?? '', sort_order: a.sort_order,
+  points: String(a.points ?? 0), secret: !!a.secret, tell: !!a.tell_member,
+});
 const IDEAS: { label: string; audience: AchievementAudience; kind: AchievementRuleKind; metric?: string; threshold?: number;
-  title: string; description: string; icon: string; tier: AchievementTier; category: string }[] = [
-  { label: 'First week done', audience: 'member', kind: 'metric', metric: 'training_days', threshold: 3, title: 'Off the Mark', description: 'Three days in. The hardest part is behind you.', icon: 'Rocket', tier: 'bronze', category: 'Getting started' },
-  { label: 'A habit forming', audience: 'member', kind: 'metric', metric: 'consistent_weeks', threshold: 4, title: 'Four Steady Weeks', description: 'Four weeks of training twice or more. That is a habit.', icon: 'Repeat', tier: 'silver', category: 'Consistency' },
-  { label: 'Early riser', audience: 'member', kind: 'metric', metric: 'early_checkins', threshold: 10, title: 'Sunrise Crew', description: 'Ten workouts before 7am. The gym is yours at dawn.', icon: 'Sunrise', tier: 'silver', category: 'Habits' },
-  { label: 'Class regular', audience: 'member', kind: 'metric', metric: 'classes_attended', threshold: 20, title: 'Class Regular', description: 'Twenty classes. The coaches know your name.', icon: 'Users', tier: 'gold', category: 'Classes' },
-  { label: 'One full year', audience: 'member', kind: 'metric', metric: 'days_as_member', threshold: 365, title: 'One Year Strong', description: 'A whole year with us. Thank you.', icon: 'Crown', tier: 'platinum', category: 'Loyalty' },
-  { label: 'Member of the month', audience: 'member', kind: 'manual', title: 'Member of the Month', description: 'Chosen by the gym for showing up and lifting others up.', icon: 'Star', tier: 'gold', category: 'Recognition' },
-  { label: 'Coach: 50 sessions', audience: 'trainer', kind: 'metric', metric: 'sessions_delivered', threshold: 50, title: 'Fifty Sessions', description: 'Fifty 1-on-1 sessions delivered.', icon: 'Medal', tier: 'gold', category: 'Coaching' },
+  title: string; description: string; icon: string; tier: AchievementTier; category: string; points: number }[] = [
+  { label: 'First week done', audience: 'member', kind: 'metric', metric: 'training_days', threshold: 3, title: 'Off the Mark', description: 'Three days in. The hardest part is behind you.', icon: 'Rocket', tier: 'bronze', category: 'Getting started', points: 20 },
+  { label: 'A habit forming', audience: 'member', kind: 'metric', metric: 'consistent_weeks', threshold: 4, title: 'Four Steady Weeks', description: 'Four weeks of training twice or more. That is a habit.', icon: 'Repeat', tier: 'silver', category: 'Consistency', points: 50 },
+  { label: 'Early riser', audience: 'member', kind: 'metric', metric: 'early_checkins', threshold: 10, title: 'Sunrise Crew', description: 'Ten workouts before 7am. The gym is yours at dawn.', icon: 'Sunrise', tier: 'gold', category: 'Habits', points: 100 },
+  { label: 'Class regular', audience: 'member', kind: 'metric', metric: 'classes_attended', threshold: 20, title: 'Class Regular', description: 'Twenty classes. The coaches know your name.', icon: 'Users', tier: 'gold', category: 'Classes', points: 100 },
+  { label: 'One full year', audience: 'member', kind: 'metric', metric: 'days_as_member', threshold: 365, title: 'One Year Strong', description: 'A whole year with us. Thank you.', icon: 'Crown', tier: 'platinum', category: 'Loyalty', points: 200 },
+  { label: 'Member of the month', audience: 'member', kind: 'manual', title: 'Member of the Month', description: 'Chosen by the gym for showing up and lifting others up.', icon: 'Star', tier: 'gold', category: 'Given by you', points: 100 },
+  { label: 'Coach: 50 sessions', audience: 'trainer', kind: 'metric', metric: 'sessions_delivered', threshold: 50, title: 'Fifty Sessions', description: 'Fifty 1-on-1 sessions delivered.', icon: 'Medal', tier: 'gold', category: 'Coaching', points: 0 },
 ];
+type Kind = 'all' | 'metric' | 'manual' | 'builtin' | 'retired' | 'never';
 
-type KindFilter = 'all' | 'metric' | 'manual' | 'builtin' | 'retired' | 'never';
+function Medal({ icon, tier, locked, size = 48 }: { icon: string; tier: AchievementTier; locked?: boolean; size?: number }) {
+  return <span className={`a-medal ${locked ? 'locked' : tier}`} style={{ width: size, height: size }}>{createElement(badgeIcon(icon), { size: Math.round(size * 0.44) })}</span>;
+}
 
 export default function Achievements() {
   const [rows, setRows] = useState<AchievementRow[]>([]);
   const [metrics, setMetrics] = useState<AchievementMetric[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unavailable, setUnavailable] = useState(false);
-  const [audience, setAudience] = useState<AchievementAudience>('member');
-  const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<KindFilter>('all');
-
-  const [editing, setEditing] = useState<AchievementRow | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-
-  const [confirmDelete, setConfirmDelete] = useState<AchievementRow | null>(null);
-  const [awarding, setAwarding] = useState<AchievementRow | null>(null);
-  /** Who holds what (0093) — null until it is pasted, and the cards then say nothing. */
   const [rarity, setRarity] = useState<Map<string, Rarity> | null>(null);
-  const [sort, setSort] = useState<'catalogue' | 'rarest' | 'most'>('catalogue');
+  const [month, setMonth] = useState<{ badges: number; people: number } | null>(null);
+  const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [audience, setAudience] = useState<AchievementAudience>('member');
+  const [kind, setKind] = useState<Kind>('all');
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<'catalogue' | 'most' | 'rarest'>('catalogue');
+  const [editing, setEditing] = useState<AchievementRow | null>(null);
+  const [draft, setDraft] = useState<Draft>(() => blank('member', 0));
+  const [qual, setQual] = useState<{ qualify: number; halfway: number } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [awarding, setAwarding] = useState<AchievementRow | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<AchievementRow | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [a, m] = await Promise.all([listAchievements(true), listMetrics()]);
-      setRows(a);
-      setMetrics(m);
-      setUnavailable(false);
+      setRows(a); setMetrics(m); setState('ready');
       setRarity(await achievementRarity().catch(() => null));
+      setMonth(await earnedSince(`${todayKey().slice(0, 8)}01`));
     } catch (err) {
-      setRows([]);
-      setUnavailable(true);
+      setState('unavailable');
       showErrorToast(err instanceof Error ? err.message : 'Could not load achievements');
-    } finally {
-      setLoading(false);
     }
   }, []);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, [load]);
-
+  /** 0206's columns arrive with select('*'); before it they are simply absent. */
+  const has0206 = rows.length > 0 && 'points' in rows[0];
   const forAudience = useMemo(() => rows.filter((r) => r.audience === audience), [rows, audience]);
-  const holdersOf = (key: string) => rarity?.get(key)?.holders ?? 0;
-  const neverEarned = forAudience.filter((r) => r.active && rarity && holdersOf(r.key) === 0);
+  const holders = (k: string) => rarity?.get(k)?.holders ?? 0;
+  const pct = (k: string) => { const r = rarity?.get(k); return r?.audience ? Math.round((r.holders / r.audience) * 100) : 0; };
+  const live = forAudience.filter((r) => r.active);
+  const never = live.filter((r) => rarity && holders(r.key) === 0);
+  const earned = rarity ? live.filter((r) => holders(r.key) > 0) : [];
+  const most = earned.length ? earned.reduce((a, b) => (holders(b.key) > holders(a.key) ? b : a)) : null;
+  const rarest = earned.length ? earned.reduce((a, b) => (holders(b.key) < holders(a.key) ? b : a)) : null;
 
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return forAudience
-      .filter((r) => kind === 'all' ? true : kind === 'retired' ? !r.active : kind === 'never' ? r.active && !!rarity && (rarity.get(r.key)?.holders ?? 0) === 0 : r.rule_kind === kind)
-      .filter((r) => !q || r.title.toLowerCase().includes(q) || r.key.includes(q) || r.category.toLowerCase().includes(q) || r.requirement.toLowerCase().includes(q))
-      .sort((a, b) => {
-        if (sort === 'catalogue' || !rarity) return 0;
-        const ha = rarity.get(a.key)?.holders ?? 0;
-        const hb = rarity.get(b.key)?.holders ?? 0;
-        return sort === 'rarest' ? ha - hb : hb - ha;
-      });
-  }, [forAudience, kind, search, sort, rarity]);
-
-  const paged = usePaged(visible, 12);
-
-  const metricsFor = useMemo(() => metrics.filter((m) => m.audience === form.audience), [metrics, form.audience]);
-
-  const openCreate = () => {
-    setForm({ ...EMPTY_FORM, audience, sort_order: 100 + rows.filter((r) => r.audience === audience).length });
-    setCreating(true);
+  const counts: Record<Kind, number> = {
+    all: forAudience.length, metric: forAudience.filter((r) => r.rule_kind === 'metric').length, manual: forAudience.filter((r) => r.rule_kind === 'manual').length,
+    builtin: forAudience.filter((r) => r.rule_kind === 'builtin').length, retired: forAudience.filter((r) => !r.active).length, never: never.length,
   };
+  const visible = forAudience
+    .filter((r) => kind === 'all' ? true : kind === 'retired' ? !r.active : kind === 'never' ? never.includes(r) : r.rule_kind === kind)
+    .filter((r) => { const s = q.trim().toLowerCase(); return !s || `${r.title} ${r.category} ${r.requirement}`.toLowerCase().includes(s); })
+    .sort((a, b) => sort === 'catalogue' || !rarity ? 0 : sort === 'most' ? holders(b.key) - holders(a.key) : holders(a.key) - holders(b.key));
+  const groups = [...new Set(visible.map((r) => r.category))];
 
-  const openEdit = (a: AchievementRow) => {
-    setForm({
-      key: a.key, audience: a.audience, title: a.title, description: a.description,
-      requirement: a.requirement, icon: a.icon, tier: a.tier, category: a.category,
-      rule_kind: a.rule_kind,
-      metric: a.metric ?? '', threshold: a.threshold?.toString() ?? '',
-      metric2: a.metric2 ?? '', threshold2: a.threshold2?.toString() ?? '',
-      sort_order: a.sort_order,
-    });
-    setEditing(a);
+  // The maker.
+  const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
+  const metricsFor = metrics.filter((m) => m.audience === draft.audience);
+  const chosen = metrics.find((m) => m.key === draft.metric);
+  const chosen2 = metrics.find((m) => m.key === draft.metric2);
+  const locked = draft.rule_kind === 'builtin';
+  const autoRequirement = () => {
+    if (draft.rule_kind === 'manual') return 'Given by the gym.';
+    if (!chosen) return '';
+    const one = chosen.is_boolean ? chosen.label : `Reach ${draft.threshold || '…'} ${chosen.label.toLowerCase()}`;
+    const two = chosen2 ? (chosen2.is_boolean ? `, and ${chosen2.label.toLowerCase()}` : `, and ${draft.threshold2 || '…'} ${chosen2.label.toLowerCase()}`) : '';
+    return `${one}${two}.`;
   };
+  const requirement = draft.ownRequirement ? draft.requirement : autoRequirement();
+  const ruleReady = locked || draft.rule_kind === 'manual' || (!!chosen && (chosen.is_boolean || Number(draft.threshold) > 0) && (!draft.metric2 || chosen2?.is_boolean || Number(draft.threshold2) > 0));
 
-  const closeForm = () => { setCreating(false); setEditing(null); setForm(EMPTY_FORM); };
+  // How many already qualify — asked of the database a moment after the rule stops changing.
+  useEffect(() => {
+    if (draft.rule_kind !== 'metric' || !chosen || !(chosen.is_boolean || Number(draft.threshold) > 0)) return;
+    let alive = true;
+    const id = setTimeout(() => {
+      void (async () => {
+        const r = await achievementQualifiers(draft.audience, draft.metric, chosen.is_boolean ? 1 : Number(draft.threshold), draft.metric2 || null, draft.metric2 ? (chosen2?.is_boolean ? 1 : Number(draft.threshold2)) : null);
+        if (alive) setQual(r);
+      })();
+    }, 400);
+    return () => { alive = false; clearTimeout(id); };
+  }, [draft.rule_kind, draft.audience, draft.metric, draft.threshold, draft.metric2, draft.threshold2, chosen, chosen2]);
 
-  const validate = (): string | null => {
-    if (!form.title.trim()) return 'Give it a name.';
-    if (!form.description.trim()) return 'Write the line the member sees once they earn it.';
-    if (!form.requirement.trim()) return 'Write what it takes — a locked badge that will not say what it wants is a tease.';
-    if (creating && !form.key.trim()) return 'The key cannot be empty.';
-    if (creating && rows.some((r) => r.key === form.key.trim())) return `"${form.key.trim()}" is already taken — change the name a little.`;
-    if (form.rule_kind === 'metric') {
-      if (!form.metric) return 'Pick what the rule counts.';
-      const m = metrics.find((x) => x.key === form.metric);
-      if (!m?.is_boolean && !form.threshold.trim()) return 'Set the number to reach.';
-      if (form.metric2 && !form.threshold2.trim()) return 'The second condition needs a number too.';
-    }
-    return null;
+  const startNew = () => { setEditing(null); setQual(null); setDraft(blank(audience, forAudience.length)); };
+  const open = (a: AchievementRow) => { setEditing(a); setQual(null); setDraft(fromRow(a)); };
+  const applyIdea = (i: typeof IDEAS[number]) => {
+    setQual(null);
+    setDraft((d) => ({ ...d, audience: i.audience, rule_kind: i.kind, metric: i.metric ?? '', threshold: i.threshold ? String(i.threshold) : '', metric2: '', threshold2: '',
+      title: i.title, key: slugify(i.title), description: i.description, icon: i.icon, tier: i.tier, category: i.category, ownRequirement: false, points: String(i.points) }));
   };
+  const ideas = IDEAS.filter((i) => i.audience === audience && (i.kind === 'manual' || metrics.some((m) => m.key === i.metric)));
 
   const save = async () => {
-    const problem = validate();
+    const problem = !draft.title.trim() ? 'Give it a name.' : !draft.description.trim() ? 'Write what it says when earned.'
+      : !requirement.trim() ? 'Write what it takes — a locked badge that will not say what it wants is a tease.'
+      : !editing && rows.some((r) => r.key === (draft.key || slugify(draft.title))) ? 'That name is taken — change it a little.'
+      : !ruleReady ? 'Finish the rule: what it counts, and the number to reach.' : null;
     if (problem) { showErrorToast(problem); return; }
     setSaving(true);
     try {
-      const isBool = metrics.find((x) => x.key === form.metric)?.is_boolean;
+      const isBool = chosen?.is_boolean;
       const payload = {
-        audience: form.audience,
-        title: form.title.trim(),
-        description: form.description.trim(),
-        requirement: form.requirement.trim(),
-        icon: form.icon,
-        tier: form.tier,
-        category: form.category.trim() || 'General',
-        rule_kind: form.rule_kind,
-        // A manual achievement carries no rule, or the database's shape constraint rejects it.
-        metric: form.rule_kind === 'metric' ? form.metric : null,
-        threshold: form.rule_kind === 'metric' ? (isBool ? 1 : Number(form.threshold)) : null,
-        metric2: form.rule_kind === 'metric' && form.metric2 ? form.metric2 : null,
-        threshold2: form.rule_kind === 'metric' && form.metric2 ? Number(form.threshold2) : null,
-        sort_order: form.sort_order,
-        active: editing ? editing.active : true,
+        audience: draft.audience, title: draft.title.trim(), description: draft.description.trim(), requirement: requirement.trim(),
+        icon: draft.icon, tier: draft.tier, category: draft.category.trim() || 'General', rule_kind: draft.rule_kind,
+        // A hand-given badge carries no rule, or the database's shape constraint rejects it.
+        metric: draft.rule_kind === 'metric' ? draft.metric : null,
+        threshold: draft.rule_kind === 'metric' ? (isBool ? 1 : Number(draft.threshold)) : null,
+        metric2: draft.rule_kind === 'metric' && draft.metric2 ? draft.metric2 : null,
+        threshold2: draft.rule_kind === 'metric' && draft.metric2 ? (chosen2?.is_boolean ? 1 : Number(draft.threshold2)) : null,
+        sort_order: draft.sort_order, active: editing ? editing.active : true,
+        ...(has0206 ? { points: Math.max(0, Math.round(Number(draft.points) || 0)), secret: draft.secret, tell_member: draft.tell } : {}),
       };
       if (editing) {
-        // `key` is deliberately absent: it joins to every earned unlock.
-        await updateAchievement(editing.key, payload);
-        showSuccessToast(`"${payload.title}" updated`);
+        // The rule of a level badge is SQL's; only its words and looks change here.
+        await updateAchievement(editing.key, locked ? {
+          title: payload.title, description: payload.description, requirement: payload.requirement, icon: payload.icon, tier: payload.tier,
+          category: payload.category, ...(has0206 ? { points: payload.points, secret: payload.secret, tell_member: payload.tell_member } : {}),
+        } : payload);
+        showSuccessToast(`"${payload.title}" saved`);
       } else {
-        await createAchievement({ ...payload, key: form.key.trim() });
-        showSuccessToast(payload.rule_kind === 'manual'
-          ? `"${payload.title}" created — give it with the gift button on its card`
-          : `"${payload.title}" created — everyone who already qualifies gets it on their next sync`);
+        await createAchievement({ ...payload, key: draft.key || slugify(draft.title) });
+        showSuccessToast(payload.rule_kind === 'manual' ? `"${payload.title}" created — give it from its card` : `"${payload.title}" created — everyone who already qualifies gets it on their next sync`);
+        startNew();
       }
-      closeForm();
       await load();
     } catch (err) {
       showErrorToast(err instanceof Error ? err.message : 'Could not save');
@@ -269,598 +189,214 @@ export default function Achievements() {
       setSaving(false);
     }
   };
-
   const toggleActive = async (a: AchievementRow) => {
     try {
       await setAchievementActive(a.key, !a.active);
-      showSuccessToast(a.active
-        ? `"${a.title}" retired — nobody new will earn it, and everyone who has it keeps it`
-        : `"${a.title}" is being awarded again`);
+      showSuccessToast(a.active ? `"${a.title}" retired — nobody new earns it, and everyone who has it keeps it` : `"${a.title}" is being awarded again`);
       await load();
+      setEditing((e) => (e && e.key === a.key ? { ...e, active: !a.active } : e));
     } catch (err) {
       showErrorToast(err instanceof Error ? err.message : 'Could not change that');
     }
   };
-
   const doDelete = async () => {
     if (!confirmDelete) return;
     try {
       await deleteAchievement(confirmDelete.key);
       showSuccessToast(`"${confirmDelete.title}" deleted`);
-      setConfirmDelete(null);
+      startNew();
       await load();
     } catch (err) {
-      // 0038's trigger raises here with a count and the advice to retire instead.
+      // 0038's trigger raises with a count and the advice to retire instead.
       showErrorToast(err instanceof Error ? err.message : 'Could not delete');
+    } finally {
       setConfirmDelete(null);
     }
   };
 
-  const countKind = (k: AchievementRuleKind) => forAudience.filter((r) => r.rule_kind === k).length;
-  const KINDS: { key: AchievementRuleKind; icon: LucideIcon; title: string; body: string; tone: 'violet' | 'amber' | 'gray' }[] = [
-    { key: 'metric', icon: Cpu, title: 'Automatic', body: 'A goal with a number. The app gives it to everyone who reaches it — you never hand these out.', tone: 'violet' },
-    { key: 'manual', icon: Hand, title: 'By hand', body: 'No goal. You give it to someone you choose, like Member of the Month.', tone: 'amber' },
-    { key: 'builtin', icon: Lock, title: 'Built-in', body: 'The level badges. Their rule matches the level on Home, so it cannot change — the words can.', tone: 'gray' },
-  ];
+  const pts = Math.max(0, Math.round(Number(draft.points) || 0));
+  const kindChips: [Kind, string][] = [['all', 'All'], ['metric', 'Automatic'], ['manual', 'Given by you'], ['builtin', 'Levels'], ['retired', 'Retired'], ...(rarity ? [['never', 'Nobody yet'] as [Kind, string]] : [])];
 
+  if (state === 'unavailable') {
+    return <div className="att"><div className="a-card"><p className="a-sub">The achievement catalogue needs migration 0038 — until then the built-in badges still work, they are just not editable.</p></div></div>;
+  }
   return (
-    <div className="rd-fit" data-achievements>
-      <RdHeader title="Achievements" subtitle="Badges members and coaches collect in the app — for showing up, for milestones, or because you chose them."
-        actions={!unavailable ? <RdButton variant="primary" icon={Plus} onClick={openCreate}>New achievement</RdButton> : undefined} />
+    <div className="att" data-achievements>
+      <div className="a-head">
+        <div className="min-w-0"><h1>Achievements</h1><p>Badges members and coaches earn — automatically from what they do, or given by you</p></div>
+        <nav className="a-tabs" aria-label="Who earns them" data-rd-tabs style={{ marginLeft: 'auto' }}>
+          <button type="button" className={audience === 'member' ? 'on' : ''} onClick={() => { setAudience('member'); setKind('all'); if (!editing) setDraft(blank('member', 0)); }}><Users size={14} />For members <em>{rows.filter((r) => r.audience === 'member').length}</em></button>
+          <button type="button" className={audience === 'trainer' ? 'on' : ''} onClick={() => { setAudience('trainer'); setKind('all'); if (!editing) setDraft(blank('trainer', 0)); }} data-audience="trainer"><Dumbbell size={14} />For coaches <em>{rows.filter((r) => r.audience === 'trainer').length}</em></button>
+        </nav>
+        <button type="button" className="a-btn violet" onClick={startNew}><Plus size={15} />New achievement</button>
+      </div>
 
-      {unavailable ? (
-        <RdCard className="rd-fit-fill">
-          <EmptyBlock icon={Trophy} title="The achievement catalogue is not available yet"
-            body={<>Migration <span className="font-mono">0038_achievements_as_data.sql</span> creates the table and moves the existing achievements into it. Until then the built-in ones still work — they are just not editable.</>} />
-        </RdCard>
-      ) : (
-        <>
-          {/* The three kinds, explained where they are counted — and each one filters the catalogue. */}
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))' }} data-kinds>
-            {KINDS.map((k) => {
-              const on = kind === k.key;
-              const Icon = k.icon;
+      <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', flex: 'none' }} data-badge-tiles>
+        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Earned this month</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{month ? month.badges : '—'}</div><span className="a-sub">{month ? `by ${month.people} ${month.people === 1 ? 'person' : 'people'}` : ''}</span></div></div>
+        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Most earned</div>
+          <div className="a-num truncate" style={{ fontSize: 20 }}>{most ? most.title : '—'}</div><div className="a-sub">{most ? `${holders(most.key)} ${audience === 'member' ? 'members' : 'coaches'} · ${pct(most.key)}%` : 'nobody has a badge yet'}</div></div>
+        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Rarest</div>
+          <div className="a-num truncate" style={{ fontSize: 20 }}>{rarest && rarest !== most ? rarest.title : '—'}</div><div className="a-sub">{rarest && rarest !== most ? `${holders(rarest.key)} · ${pct(rarest.key)}%` : 'of the ones anybody has'}</div></div>
+        <button type="button" className="a-card" style={{ padding: '12px 14px', borderColor: never.length ? '#3e310f' : undefined, textAlign: 'left' }} onClick={() => setKind(kind === 'never' ? 'all' : 'never')} data-never>
+          <div className="a-lbl" style={{ color: never.length ? 'var(--a-a300)' : undefined }}>Nobody has these yet</div>
+          <div className="a-num">{rarity ? never.length : '—'}</div><div className="a-sub">{never.length ? 'maybe too hard — check them' : live.length ? 'every live badge has been earned' : 'no badges yet'}</div></button>
+      </div>
+
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 420px', flex: 1 }}>
+        <div className="a-card" data-catalogue>
+          <div className="a-ct" style={{ flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {kindChips.map(([k, l]) => <button key={k} type="button" className={`a-chip ${kind === k ? 'v' : ''}`} onClick={() => setKind(k)} data-kind={k}>{l} <em>{counts[k]}</em></button>)}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {rarity && <select className="a-chip" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Order"><option value="catalogue">Catalogue order</option><option value="most">Most earned</option><option value="rarest">Rarest first</option></select>}
+              <label className="a-input" style={{ padding: '6px 10px', fontSize: 12, width: 170 }}><Search size={14} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a badge…" aria-label="Find a badge" /></label>
+            </div>
+          </div>
+          <div className="a-scroll grow">
+            {state === 'loading' ? <p className="a-sub">Loading…</p> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet — make one on the right.'}</p> : groups.map((g) => {
+              const items = visible.filter((r) => r.category === g);
               return (
-                <button key={k.key} type="button" onClick={() => setKind(on ? 'all' : k.key)} aria-pressed={on} data-kind={k.key}
-                  className="rounded-2xl px-4 py-3 text-left flex items-start gap-3 transition-colors"
-                  style={{ background: on ? TONE[k.tone].bg : 'var(--color-surface)', border: `1px solid ${on ? TONE[k.tone].line : 'rgba(255,255,255,0.06)'}` }}>
-                  <span className="w-10 h-10 rounded-xl grid place-items-center flex-none" style={{ background: TONE[k.tone].bg, border: `1px solid ${TONE[k.tone].line}` }}>
-                    <Icon size={18} style={{ color: TONE[k.tone].fg }} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="flex items-baseline gap-2"><b className="text-[15px] text-white">{k.title}</b><span className="text-[20px] font-bold text-white tabular-nums">{countKind(k.key)}</span></span>
-                    <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SECOND }}>{k.body}</span>
-                  </span>
-                </button>
+                <div key={g}>
+                  <div className="a-cat"><span>{g}</span><span>{items.length}</span></div>
+                  <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                    {items.map((a) => {
+                      const n = holders(a.key);
+                      return (
+                        <button key={a.key} type="button" className={`a-badge ${editing?.key === a.key ? 'on' : ''}`} style={{ opacity: a.active ? 1 : 0.5, borderStyle: rarity && a.active && n === 0 ? 'dashed' : undefined }} onClick={() => open(a)} data-badge={a.title}>
+                          <Medal icon={a.icon} tier={a.tier} locked={!!rarity && a.active && n === 0} />
+                          <div className="min-w-0">
+                            <b className="truncate">{a.title}{rarity && a.active && n === 0 && <> <span className="a-pill a" style={{ fontSize: 9.5 }}>nobody yet</span></>}{!a.active && <> <span className="a-pill" style={{ fontSize: 9.5 }}>retired</span></>}</b>
+                            <small className="truncate" data-tip={ruleSummary(a, metrics)}>{a.rule_kind === 'manual' ? 'chosen by the gym' : a.requirement}</small>
+                            <small style={{ color: n ? 'var(--a-p300)' : 'var(--a-muted)' }}>{a.secret ? 'secret until earned · ' : ''}{rarity ? (n ? `${n} have it · ${pct(a.key)}%` : 'nobody has it') : ''}{a.points ? ` · +${a.points} pts` : ''}</small>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
-            {rarity && (
-              <button type="button" onClick={() => setKind(kind === 'never' ? 'all' : 'never')} aria-pressed={kind === 'never'}
-                className="rounded-2xl px-4 py-3 text-left flex items-start gap-3"
-                style={{ background: kind === 'never' ? TONE.amber.bg : 'var(--color-surface)', border: `1px solid ${kind === 'never' ? TONE.amber.line : 'rgba(255,255,255,0.06)'}` }}>
-                <span className="w-10 h-10 rounded-xl grid place-items-center flex-none" style={{ background: TONE.amber.bg, border: `1px solid ${TONE.amber.line}` }}>
-                  <Lightbulb size={18} style={{ color: TONE.amber.fg }} />
-                </span>
-                <span className="min-w-0">
-                  <span className="flex items-baseline gap-2"><b className="text-[15px] text-white">Nobody has it yet</b><span className="text-[20px] font-bold text-white tabular-nums">{neverEarned.length}</span></span>
-                  <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SECOND }}>Live badges no one has earned — often a goal set too high.</span>
-                </span>
-              </button>
+          </div>
+        </div>
+
+        <div className="a-card glow" style={{ overflowY: 'auto' }} data-badge-maker>
+          <div className="a-ct">
+            <h3><Sparkles size={16} />{editing ? `Edit ${editing.title}` : 'New achievement'}</h3>
+            {!locked && (
+              <div className="a-seg" role="group" aria-label="How it is given">
+                <button type="button" className={draft.rule_kind === 'metric' ? 'on' : ''} onClick={() => set({ rule_kind: 'metric' })}>Automatic</button>
+                <button type="button" className={draft.rule_kind === 'manual' ? 'on' : ''} onClick={() => set({ rule_kind: 'manual' })}>Given by you</button>
+              </div>
             )}
           </div>
-
-          <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-catalogue>
-            <div className="flex items-center gap-2.5 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>
-              <PageTabs<AchievementAudience> label="Who earns them" value={audience} onChange={(a) => { setAudience(a); paged.setPage(1); }} tabs={[
-                { key: 'member', label: `Members (${rows.filter((r) => r.audience === 'member').length})`, icon: Users },
-                { key: 'trainer', label: `Coaches (${rows.filter((r) => r.audience === 'trainer').length})`, icon: Dumbbell },
-              ]} />
-              <div className="flex-1 min-w-[200px]"><SearchField value={search} onChange={setSearch} placeholder="Find a badge" label="Find a badge by name, group or goal" /></div>
-              <FilterChips<KindFilter> compact value={kind === 'retired' || kind === 'all' ? kind : 'all'} onChange={setKind} items={[
-                { key: 'all', label: 'All', count: forAudience.length },
-                { key: 'retired', label: 'Retired', count: forAudience.filter((r) => !r.active).length },
-              ]} />
-              {rarity && (
-                <RdSelect label="Order" value={sort} onChange={(v) => setSort(v as typeof sort)} className="w-[170px]">
-                  <option value="catalogue">Catalogue order</option>
-                  <option value="most">Most earned</option>
-                  <option value="rarest">Rarest first</option>
-                </RdSelect>
-              )}
+          {!editing && ideas.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div className="a-lbl" style={{ marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}><Wand2 size={13} />Start from an idea</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} role="group" aria-label="Ideas">
+                {ideas.map((i) => <button key={i.label} type="button" className={`a-chip ${draft.title === i.title ? 'on' : ''}`} onClick={() => applyIdea(i)}>{i.label}</button>)}
+              </div>
             </div>
-            <div className="rd-fit-scroll p-4">
-              {loading ? (
-                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))' }}>
-                  {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-40 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
+          )}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 10, borderRadius: 14, background: '#120f20', border: '1px solid #33295c' }} data-preview>
+            <Medal icon={draft.icon} tier={draft.tier} size={58} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 15 }}>{draft.title || 'Untitled'}</b>
+              <div className="a-sub">{draft.description || 'What they read once it is theirs'}</div>
+              <div className="a-sub" style={{ color: 'var(--a-a300)', marginTop: 3, textTransform: 'capitalize' }}>{draft.tier}{pts && draft.audience === 'member' ? ` · +${pts} points` : ''} · {draft.category || 'General'}</div>
+            </div>
+          </div>
+          <div className="a-sub" style={{ marginTop: 6 }}>While locked, {draft.audience === 'member' ? 'members' : 'coaches'} read: <b style={{ color: '#fff' }}>{draft.secret ? 'Secret badge — it shows itself when earned.' : requirement || '…'}</b></div>
+
+          {locked ? (
+            <div className="a-hint" style={{ marginTop: 10 }}><Lock size={14} /><span>A level badge. Its rule reads the same thresholds as the level on Home, so the two cannot disagree — the words and looks are editable, the rule is not.</span></div>
+          ) : draft.rule_kind === 'metric' ? (<>
+            <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Earned when</div>
+            <div className="a-cond">
+              <select aria-label="What it counts" value={draft.metric} onChange={(e) => set({ metric: e.target.value })}>
+                <option value="">Pick what it counts…</option>
+                {metricsFor.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
+              {chosen && !chosen.is_boolean && <><span>reach</span><input aria-label="How many" inputMode="numeric" value={draft.threshold} onChange={(e) => set({ threshold: e.target.value.replace(/\D/g, '') })} placeholder="10" /></>}
+            </div>
+            {draft.metric2 !== '' || chosen ? (
+              draft.metric2 !== '' ? (
+                <div className="a-cond" style={{ marginTop: 6 }}>
+                  <span className="a-pill v">and</span>
+                  <select aria-label="And also" value={draft.metric2} onChange={(e) => set({ metric2: e.target.value })}>
+                    {metricsFor.filter((m) => m.key !== draft.metric).map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+                  </select>
+                  {!chosen2?.is_boolean && <><span>reach</span><input aria-label="Second number" inputMode="numeric" value={draft.threshold2} onChange={(e) => set({ threshold2: e.target.value.replace(/\D/g, '') })} /></>}
+                  <button type="button" className="a-link" aria-label="Remove the second condition" onClick={() => set({ metric2: '', threshold2: '' })}><X size={14} /></button>
                 </div>
-              ) : visible.length === 0 ? (
-                <EmptyBlock compact icon={Trophy}
-                  title={search ? 'Nothing matches that' : kind !== 'all' ? 'None of this kind yet' : 'No achievements for this group yet'}
-                  body={search ? 'Try a shorter search.' : 'Create one — start from an idea, it takes a minute.'}
-                  action={!search ? <RdButton variant="soft" icon={Plus} onClick={openCreate}>Add the first one</RdButton> : undefined} />
               ) : (
-                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))' }}>
-                  {paged.visible.map((a) => {
-                    const r = rarity?.get(a.key);
-                    const pct = r?.audience ? Math.round((r.holders / r.audience) * 100) : 0;
-                    return (
-                      <RdCard key={a.key} className="p-4 flex flex-col gap-3" style={{ opacity: a.active ? 1 : 0.55 }} data-badge={a.title}>
-                        <div className="flex items-start gap-3">
-                          <Medallion icon={a.icon} tier={a.tier} size={52} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[15px] font-semibold text-white leading-snug">{a.title}</p>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              <Pill tone={a.rule_kind === 'manual' ? 'amber' : a.rule_kind === 'builtin' ? 'gray' : 'violet'}>
-                                {a.rule_kind === 'manual' ? 'By hand' : a.rule_kind === 'builtin' ? 'Built-in' : 'Automatic'}
-                              </Pill>
-                              <span className="text-[12px] capitalize" style={{ color: TIER_RING[a.tier] }}>{a.tier}</span>
-                              {!a.active && <span className="text-[12px]" style={{ color: MUTED }}>— retired</span>}
-                            </div>
-                          </div>
-                          <DotMenu label={`More for ${a.title}`} items={[
-                            { label: 'Edit', icon: Pencil, onClick: () => openEdit(a) },
-                            { label: a.active ? 'Retire (keep who has it)' : 'Bring back', icon: a.active ? EyeOff : Eye, onClick: () => void toggleActive(a), tone: a.active ? 'warn' : undefined },
-                            // A built-in has its rule in SQL, which this screen cannot express — retired, never deleted.
-                            { label: 'Delete', icon: Trash2, onClick: () => setConfirmDelete(a), tone: 'danger', hidden: a.builtin },
-                          ]} />
-                        </div>
-                        {/* The badge in one sentence: what it takes, then what they read. */}
-                        <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.025)', border: LINE }}>
-                          <p className="text-[12px]" style={{ color: MUTED }}>{a.rule_kind === 'manual' ? 'Given by you' : 'Earned when'}</p>
-                          <p className="text-[13.5px] text-white leading-snug">{a.requirement}</p>
-                          <p className="text-[12px] mt-1" style={{ color: MUTED }} data-tip={ruleSummary(a, metrics)}>{a.category}</p>
-                        </div>
-                        {r && (
-                          <div>
-                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: TIER_RING[a.tier] }} />
-                            </div>
-                            <p className="text-[12px] mt-1" style={{ color: SECOND }}>
-                              {r.holders === 0 ? 'Nobody has earned it yet' : `${r.holders} of ${r.audience} active ${a.audience === 'member' ? 'members' : 'coaches'} — ${pct}%`}
-                            </p>
-                          </div>
-                        )}
-                        <div className="mt-auto flex gap-1.5">
-                          <RdButton size="sm" variant={a.rule_kind === 'manual' ? 'amber' : 'ghost'} icon={GiftIcon} onClick={() => setAwarding(a)}>
-                            {a.rule_kind === 'manual' ? 'Give it' : 'Who has it'}
-                          </RdButton>
-                          <RdButton size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(a)} className="ml-auto">Edit</RdButton>
-                        </div>
-                      </RdCard>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {visible.length > 0 && (
-              <div style={{ borderTop: LINE }}>
-                <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="achievements" onPage={paged.setPage} />
-              </div>
+                <button type="button" className="a-link a-sub" style={{ marginTop: 6 }} onClick={() => set({ metric2: metricsFor.find((m) => m.key !== draft.metric)?.key ?? '' })}>+ and another condition</button>
+              )
+            ) : null}
+            {qual && ruleReady && (
+              <div className="a-hint" style={{ marginTop: 8 }} data-qualify><Users size={14} />
+                <span><b style={{ color: '#fff' }}>{qual.qualify} {draft.audience === 'member' ? (qual.qualify === 1 ? 'member' : 'members') : (qual.qualify === 1 ? 'coach' : 'coaches')}</b> already qualify and get it the next time they open the app.{qual.halfway ? ` ${qual.halfway} more are past halfway.` : ''}</span></div>
             )}
-          </RdCard>
-        </>
-      )}
-
-      {(creating || editing) && (
-        <AchievementForm form={form} setForm={setForm} metrics={metricsFor} allMetrics={metrics}
-          isNew={creating} saving={saving} onClose={closeForm} onSave={save} />
-      )}
-
-      {awarding && (
-        <AwardModal achievement={awarding} onClose={() => setAwarding(null)} onDone={() => { setAwarding(null); void load(); }} />
-      )}
-
-      <ConfirmDialog
-        isOpen={confirmDelete !== null}
-        type="danger"
-        title={`Delete "${confirmDelete?.title ?? ''}"`}
-        message={'This removes it from the catalogue entirely. If anyone has already earned it the database will refuse — retire it instead, which keeps their badge and stops new ones.'}
-        confirmText="Delete"
-        onConfirm={doDelete}
-        onClose={() => setConfirmDelete(null)}
-      />
-    </div>
-  );
-}
-
-// ─── Create / edit ───────────────────────────────────────────────────────────
-
-function AchievementForm({
-  form, setForm, metrics, allMetrics, isNew, saving, onClose, onSave,
-}: {
-  form: FormState;
-  setForm: React.Dispatch<React.SetStateAction<FormState>>;
-  metrics: AchievementMetric[];
-  allMetrics: AchievementMetric[];
-  isNew: boolean;
-  saving: boolean;
-  onClose: () => void;
-  onSave: () => void;
-}) {
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const chosen = allMetrics.find((m) => m.key === form.metric);
-  const chosen2 = allMetrics.find((m) => m.key === form.metric2);
-  const locked = form.rule_kind === 'builtin';
-  // A new one is made in three steps; an existing one opens on everything at once.
-  const [step, setStep] = useState(isNew ? 0 : -1);
-  const [advanced, setAdvanced] = useState(false);
-  // The requirement line writes itself from the rule until the owner types their own.
-  const [ownRequirement, setOwnRequirement] = useState(!isNew);
-
-  const chip = (on: boolean): React.CSSProperties => on
-    ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
-    : { background: 'rgba(255,255,255,0.02)', color: SECOND, border: '1px solid rgba(255,255,255,0.1)' };
-
-  const autoRequirement = () => {
-    if (form.rule_kind === 'manual') return 'Given by the gym.';
-    if (!chosen) return '';
-    const one = chosen.is_boolean ? chosen.label : `Reach ${form.threshold || '…'} ${chosen.label.toLowerCase()}`;
-    const two = chosen2 ? (chosen2.is_boolean ? `, and ${chosen2.label.toLowerCase()}` : `, and ${form.threshold2 || '…'} ${chosen2.label.toLowerCase()}`) : '';
-    return `${one}${two}.`;
-  };
-  const requirement = ownRequirement ? form.requirement : autoRequirement();
-  const commit = () => {
-    if (!ownRequirement) setForm((f) => ({ ...f, requirement: autoRequirement() }));
-  };
-
-  const ruleReady = locked || form.rule_kind === 'manual' || (!!form.metric && (chosen?.is_boolean || Number(form.threshold) > 0)
-    && (!form.metric2 || chosen2?.is_boolean || Number(form.threshold2) > 0));
-  const looksReady = !!form.title.trim() && !!form.description.trim();
-
-  /** An idea fills every step; the owner can change any of it after. */
-  const applyIdea = (i: typeof IDEAS[number]) => {
-    setForm((f) => ({ ...f, audience: i.audience, rule_kind: i.kind, metric: i.metric ?? '', threshold: i.threshold ? String(i.threshold) : '',
-      metric2: '', threshold2: '', title: i.title, key: slugify(i.title), description: i.description, icon: i.icon, tier: i.tier, category: i.category }));
-    setOwnRequirement(false);
-  };
-  const ideas = IDEAS.filter((i) => i.kind === 'manual' || allMetrics.some((m) => m.key === i.metric));
-
-  /** What a member sees: the badge locked (with the goal), then earned (with your line). */
-  const preview = (
-    <div className="space-y-3" data-preview>
-      <p className="text-[13px] font-semibold" style={{ color: SECOND }}>What {form.audience === 'member' ? 'a member' : 'a coach'} sees</p>
-      {[false, true].map((earned) => (
-        <div key={String(earned)} className="rounded-2xl p-3.5 flex items-center gap-3"
-          style={{ background: earned ? 'radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.18), transparent 60%), var(--color-surface)' : 'var(--color-surface)', border: LINE }}>
-          <Medallion icon={form.icon} tier={form.tier} size={48} locked={!earned} />
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold" style={{ color: earned ? TIER_RING[form.tier] : MUTED }}>{earned ? 'Earned' : 'Locked'}</p>
-            <p className="text-[14px] font-semibold text-white truncate">{form.title || 'Untitled'}</p>
-            <p className="text-[12.5px] leading-snug" style={{ color: SECOND }}>{earned ? (form.description || 'What they read once it is theirs') : (requirement || 'What they need to do')}</p>
-          </div>
-        </div>
-      ))}
-      <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>
-        {locked ? 'Its rule is built in.' : form.rule_kind === 'manual'
-          ? `You give it by hand to a ${form.audience === 'member' ? 'member' : 'coach'} — nobody earns it alone.`
-          : 'Given automatically on each person\'s next sync — anyone who already qualifies gets it straight away.'}
-      </p>
-    </div>
-  );
-
-  const rule = locked ? (
-    <p className="text-[13px] p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', color: SECOND }}>
-      This is a built-in level badge. Its rule reads the same thresholds as the level on the member's Home screen,
-      so the two cannot disagree — the wording and icon are editable, the rule is not.
-    </p>
-  ) : (
-    <div className="space-y-4">
-      {isNew && ideas.length > 0 && (
-        <div>
-          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-white mb-1.5"><Wand2 size={14} style={{ color: '#C4B5FD' }} /> Start from an idea</span>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Ideas">
-            {ideas.map((i) => (
-              <button key={i.label} type="button" onClick={() => applyIdea(i)} className="h-8 px-3 rounded-full text-[12.5px] font-semibold"
-                style={chip(form.title === i.title)}>{i.label}</button>
-            ))}
-          </div>
-          <p className="text-[12px] mt-1.5" style={{ color: MUTED }}>Or build your own below — every step can be changed.</p>
-        </div>
-      )}
-      {isNew && (
-        <div>
-          <span className="block text-[13px] font-semibold text-white mb-1.5">Who earns it?</span>
-          <div className="flex gap-2">
-            {([['member', 'Members'], ['trainer', 'Coaches']] as const).map(([k, t]) => (
-              <button key={k} type="button" onClick={() => setForm((f) => ({ ...f, audience: k, metric: '', metric2: '' }))}
-                className="h-9 px-4 rounded-xl text-[13px] font-semibold" style={chip(form.audience === k)}>{t}</button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div>
-        <span className="block text-[13px] font-semibold text-white mb-1.5">How is it given?</span>
-        <div className="grid grid-cols-2 gap-2">
-          {([['metric', 'Automatically', 'When a number is reached — nobody has to remember.', Cpu],
-             ['manual', 'By hand', 'You give it to someone you choose.', Hand]] as const).map(([k, t, h, Icon]) => (
-            <button key={k} type="button" onClick={() => set('rule_kind', k)} className="text-left rounded-xl p-3 flex gap-2.5" style={chip(form.rule_kind === k)}>
-              <Icon size={18} className="flex-none mt-0.5" />
-              <span><span className="block text-[14px] font-semibold">{t}</span><span className="block text-[12px] mt-0.5" style={{ color: SECOND }}>{h}</span></span>
-            </button>
-          ))}
-        </div>
-      </div>
-      {form.rule_kind === 'metric' && (
-        <>
-          <div>
-            <span className="block text-[13px] font-semibold text-white">What does it count?</span>
-            <span className="block text-[12px] mb-1.5" style={{ color: SECOND }}>Counted by the database from what really happened — nobody types it.</span>
-            <div className="grid gap-1.5 max-h-48 overflow-y-auto pr-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
-              {metrics.map((m) => (
-                <button key={m.key} type="button" onClick={() => set('metric', m.key)}
-                  className="text-left rounded-lg px-3 py-2 text-[12.5px] font-medium" style={chip(form.metric === m.key)}>
-                  {m.label}{m.unit ? <span style={{ color: MUTED }}> · {m.unit}</span> : null}
-                </button>
-              ))}
-            </div>
-          </div>
-          {chosen && !chosen.is_boolean && (
-            <div>
-              <span className="block text-[13px] font-semibold text-white mb-1.5">How many?</span>
-              <div className="flex items-center gap-2 flex-wrap">
-                <input type="number" min={1} value={form.threshold} onChange={(e) => set('threshold', e.target.value)} aria-label="How many"
-                  placeholder="10" className={`${RD_INPUT} w-28`} style={RD_INPUT_STYLE} />
-                {[5, 10, 25, 50, 100].map((n) => (
-                  <button key={n} type="button" onClick={() => set('threshold', String(n))} className="h-9 px-3 rounded-lg text-[13px] font-semibold"
-                    style={chip(form.threshold === String(n))}>{n}</button>
-                ))}
-              </div>
-            </div>
+          </>) : (
+            <div className="a-hint" style={{ marginTop: 10 }}><Gift size={14} /><span>Nobody earns this on their own. Once it exists, open it and use <b style={{ color: '#fff' }}>Give it</b> to choose who gets it.</span></div>
           )}
-          {/* The goal, said back as a sentence before anything else is asked. */}
-          {chosen && (
-            <p className="text-[13.5px] rounded-xl px-3 py-2.5" style={{ background: TONE.violet.bg, border: `1px solid ${TONE.violet.line}`, color: '#DDD6FE' }} data-goal-sentence>
-              Earned when {form.audience === 'member' ? 'a member' : 'a coach'} reaches <b className="text-white">{autoRequirement().replace(/^Reach /, '').replace(/\.$/, '') || '…'}</b>.
-            </p>
-          )}
-          <details className="rounded-lg" open={!!form.metric2}>
-            <summary className="text-[12.5px] font-semibold cursor-pointer" style={{ color: SECOND }}>Add a second condition (optional)</summary>
-            <div className="grid gap-3 mt-2" style={{ gridTemplateColumns: 'minmax(0, 1fr) 120px' }}>
-              <RdSelect label="And also" value={form.metric2} onChange={(v) => set('metric2', v)} className="w-full">
-                <option value="">No second condition</option>
-                {metrics.filter((m) => m.key !== form.metric).map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-              </RdSelect>
-              {form.metric2 && !chosen2?.is_boolean ? (
-                <input type="number" min={1} value={form.threshold2} onChange={(e) => set('threshold2', e.target.value)} aria-label="Second number"
-                  className={RD_INPUT} style={RD_INPUT_STYLE} />
-              ) : <div className="h-11" />}
+
+          <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+            <div className="a-fld"><label htmlFor="b-name">Name</label>
+              <input id="b-name" className="a-in" value={draft.title} onChange={(e) => set({ title: e.target.value, ...(editing ? {} : { key: slugify(e.target.value) }) })} placeholder="e.g. Sunrise Crew" /></div>
+            <div className="a-fld"><label htmlFor="b-group">Group it under</label>
+              <input id="b-group" className="a-in" list="badge-groups" value={draft.category} onChange={(e) => set({ category: e.target.value })} />
+              <datalist id="badge-groups">{[...new Set(rows.map((r) => r.category))].map((c) => <option key={c} value={c} />)}</datalist></div>
+            <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-said">What it says when earned</label>
+              <input id="b-said" className="a-in" value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Ten workouts before 7am. The gym is yours at dawn." /></div>
+            <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-req">What it says while locked {draft.ownRequirement ? '' : <span style={{ fontWeight: 500 }}>· written from the rule — type to change</span>}</label>
+              <input id="b-req" className="a-in" value={requirement} onChange={(e) => set({ ownRequirement: true, requirement: e.target.value })} /></div>
+          </div>
+
+          <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Tier <span style={{ fontWeight: 500 }}>· how hard it is, shown as the ring colour</span></div>
+          <div className="a-tiers" role="group" aria-label="Tier">
+            {TIERS.map(([t, h]) => <button key={t} type="button" className={draft.tier === t ? 'on' : ''} aria-pressed={draft.tier === t} onClick={() => set({ tier: t })}>{t[0].toUpperCase() + t.slice(1)}<small>{h}</small></button>)}
+          </div>
+          <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Icon</div>
+          <div className="a-icons" role="group" aria-label="Icon">
+            {BADGE_ICON_NAMES.map((n) => <button key={n} type="button" className={draft.icon === n ? 'on' : ''} aria-label={`Icon ${n}`} aria-pressed={draft.icon === n} onClick={() => set({ icon: n })}>{createElement(badgeIcon(n), { size: 17 })}</button>)}
+          </div>
+
+          {has0206 ? (<>
+            <div className="a-setting" style={{ padding: '10px 0 4px', borderTop: 0 }}>
+              <div className="t"><b>Points when earned</b><small>{draft.audience === 'member' ? 'added to their balance for Rewards, once' : 'coaches have no points balance'}</small></div>
+              <input className="a-in" style={{ width: 80, textAlign: 'center' }} inputMode="numeric" aria-label="Points when earned" disabled={draft.audience !== 'member'} value={draft.points} onChange={(e) => set({ points: e.target.value.replace(/\D/g, '') })} />
             </div>
-          </details>
-        </>
-      )}
-      {form.rule_kind === 'manual' && (
-        <p className="text-[13px] p-3 rounded-xl" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>
-          Nobody earns this on their own. Once it exists, use <b>Give it</b> on its card to choose who gets it.
-        </p>
-      )}
-    </div>
-  );
-
-  const looks = (
-    <div className="space-y-3.5">
-      <RdField label="Name">
-        <input value={form.title} onChange={(e) => { set('title', e.target.value); if (isNew) set('key', slugify(e.target.value)); }}
-          placeholder="e.g. Ten-Day Club" aria-label="Title" className={RD_INPUT} style={RD_INPUT_STYLE} />
-      </RdField>
-      <RdField label="What they read once it is theirs" hint="Past tense, to whoever earned it.">
-        <input value={form.description} onChange={(e) => set('description', e.target.value)} aria-label="Description"
-          placeholder="You trained ten days. That's a habit forming." className={RD_INPUT} style={RD_INPUT_STYLE} />
-      </RdField>
-      <RdField label="What they read while it is locked" hint={ownRequirement ? undefined : 'Written from the goal — type to change it.'}>
-        <input value={requirement} aria-label="Requirement" onChange={(e) => { setOwnRequirement(true); set('requirement', e.target.value); }}
-          placeholder="Train on ten different days." className={RD_INPUT} style={RD_INPUT_STYLE} />
-      </RdField>
-      <div>
-        <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>Tier</span>
-        <div className="flex gap-2 flex-wrap">
-          {TIERS.map((t) => (
-            <button key={t} type="button" onClick={() => set('tier', t)} className="h-9 px-3.5 rounded-xl text-[13px] font-semibold capitalize flex items-center gap-1.5"
-              style={chip(form.tier === t)}>
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: TIER_RING[t] }} />{t}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>Icon</span>
-        <div className="grid grid-cols-9 gap-1.5 max-h-32 overflow-y-auto p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: LINE }}>
-          {ICON_NAMES.map((n) => {
-            const on = form.icon === n;
-            return (
-              <button key={n} type="button" aria-label={`Icon ${n}`} onClick={() => set('icon', n)}
-                className="aspect-square rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
-                style={{ background: on ? 'rgba(124,58,237,0.25)' : 'transparent', border: `1px solid ${on ? 'rgba(139,92,246,0.7)' : 'transparent'}` }}>
-                <AchievementIcon name={n} size={16} color={on ? '#EDE9FE' : '#fff'} />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <RdField label="Group" hint="Where it sits in the member's gallery.">
-        <input value={form.category} onChange={(e) => set('category', e.target.value)} aria-label="Category" className={RD_INPUT} style={RD_INPUT_STYLE} />
-      </RdField>
-      <div>
-        <button type="button" className="text-[12.5px] font-semibold" style={{ color: SECOND }} onClick={() => setAdvanced((v) => !v)}>
-          {advanced ? '▾' : '▸'} Advanced
-        </button>
-        {advanced && (
-          <div className="mt-2">
-            <RdField label="Key" hint={isNew ? 'Made from the name. It links every earned badge to this one, so it cannot change after creating.' : 'Fixed once created.'}>
-              <input value={form.key} disabled={!isNew} onChange={(e) => set('key', slugify(e.target.value))} aria-label="Key"
-                className={`${RD_INPUT} font-mono disabled:opacity-60`} style={RD_INPUT_STYLE} />
-            </RdField>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const STEPS = ['What earns it', 'How it looks', 'Check and create'];
-
-  return (
-    <Modal isOpen onClose={onClose} hideFooter size="lg" title={isNew ? 'New achievement' : `Edit "${form.title}"`}>
-      <div className="space-y-4">
-        {step >= 0 && (
-          <ol className="flex gap-2" aria-label="Steps">
-            {STEPS.map((t, i) => (
-              <li key={t} className="flex-1">
-                <div className="h-1 rounded-full" style={{ background: i <= step ? '#8B5CF6' : 'rgba(255,255,255,0.1)' }} />
-                <p className="text-[12px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : SECOND }}>{i + 1}. {t}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {/* The form on the left, the member's view on the right — always in sight. */}
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr)' }}>
-          <div className="min-w-0">
-            {step === 0 && rule}
-            {step === 1 && looks}
-            {step === 2 && (
-              <div className="space-y-3">
-                <p className="text-[14px] text-white">Everything ready. Here is the badge as it will appear.</p>
-                <p className="text-[13px]" style={{ color: SECOND }}>
-                  {form.rule_kind === 'manual' ? `You give it by hand to a ${form.audience === 'member' ? 'member' : 'coach'}.` : `Earned automatically by ${form.audience === 'member' ? 'members' : 'coaches'}: ${requirement}`}
-                  {' '}Tier: {form.tier}. Group: {form.category}.
-                </p>
-              </div>
-            )}
-            {step === -1 && (
-              <div className="space-y-5">
-                {looks}
-                <div className="pt-4" style={{ borderTop: LINE }}>
-                  <p className="text-[14px] font-semibold text-white mb-3">How it is earned</p>
-                  {rule}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="min-w-0">{preview}</div>
-        </div>
-
-        <div className="flex justify-between gap-2 pt-2" style={{ borderTop: LINE }}>
-          <RdButton variant="ghost" onClick={step > 0 ? () => setStep(step - 1) : onClose} disabled={saving}>{step > 0 ? 'Back' : 'Cancel'}</RdButton>
-          {step >= 0 && step < 2 ? (
-            <RdButton variant="primary" onClick={() => { commit(); setStep(step + 1); }} disabled={step === 0 ? !ruleReady : !looksReady}>Next</RdButton>
-          ) : (
-            <RdButton variant="primary" onClick={() => { commit(); onSave(); }} disabled={saving || !ruleReady || !looksReady}>
-              {saving ? 'Saving…' : isNew ? 'Create' : 'Save changes'}
-            </RdButton>
+            <div className="a-setting" style={{ padding: '8px 0' }}>
+              <div className="t"><b>Secret until earned</b><small>shown as “Secret badge” until they get it</small></div>
+              <button type="button" className={`a-toggle ${draft.secret ? '' : 'off'}`} aria-pressed={draft.secret} aria-label="Secret until earned" onClick={() => set({ secret: !draft.secret })} />
+            </div>
+            <div className="a-setting" style={{ padding: '8px 0' }}>
+              <div className="t"><b>Tell the {draft.audience === 'member' ? 'member' : 'coach'}</b><small>a notification the moment it is earned</small></div>
+              <button type="button" className={`a-toggle ${draft.tell ? '' : 'off'}`} aria-pressed={draft.tell} aria-label="Tell them" onClick={() => set({ tell: !draft.tell })} />
+            </div>
+          </>) : (
+            <div className="a-hint" style={{ marginTop: 10 }}><Info size={14} /><span>Points when earned, secret badges and telling the member arrive with migration 0206.</span></div>
           )}
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
-// ─── Award by hand ───────────────────────────────────────────────────────────
-
-function AwardModal({
-  achievement, onClose, onDone,
-}: { achievement: AchievementRow; onClose: () => void; onDone: () => void }) {
-  const [people, setPeople] = useState<Array<{ id: string; name: string }>>([]);
-  const [holders, setHolders] = useState<AchievementHolder[]>([]);
-  const [pick, setPick] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      const [p, h] = await Promise.all([listAwardCandidates(achievement.audience), listHolders(achievement.key)]);
-      setPeople(p);
-      setHolders(h);
-    } catch (err) {
-      showErrorToast(err instanceof Error ? err.message : 'Could not load');
-    }
-  }, [achievement]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void refresh(); }, [refresh]);
-
-  const held = new Set(holders.map((h) => h.user_id));
-  const available = people.filter((p) => !held.has(p.id));
-
-  const give = async () => {
-    if (!pick) return;
-    setBusy(true);
-    try {
-      await awardAchievement(pick, achievement.key);
-      showSuccessToast('Awarded');
-      setPick('');
-      await refresh();
-      onDone();
-    } catch (err) {
-      showErrorToast(err instanceof Error ? err.message : 'Could not award');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const take = async (userId: string) => {
-    setBusy(true);
-    try {
-      await revokeAchievement(userId, achievement.key);
-      showSuccessToast('Removed');
-      await refresh();
-    } catch (err) {
-      showErrorToast(err instanceof Error ? err.message : 'Could not remove');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const who = achievement.audience === 'member' ? 'member' : 'coach';
-  return (
-    <Modal isOpen onClose={onClose} hideFooter title={`${achievement.rule_kind === 'manual' ? 'Give' : 'Who has'} "${achievement.title}"`}>
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Medallion icon={achievement.icon} tier={achievement.tier} size={48} />
-          <p className="text-[13px]" style={{ color: SECOND }}>{achievement.requirement}</p>
-        </div>
-        {achievement.rule_kind !== 'manual' && (
-          // Said plainly: revoking an automatic achievement somebody still qualifies for lasts until their next sync.
-          <p className="text-[12.5px] p-3 rounded-xl" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>
-            This one is given automatically. You can still give it by hand — useful for records from before the app — but taking it from
-            someone who genuinely qualifies will not stick: the server gives it back on their next sync.
-          </p>
-        )}
-
-        <div>
-          <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>Give it to a {who}</span>
-          <div className="flex gap-2">
-            <RdSelect label={`Choose a ${who}`} value={pick} onChange={setPick} className="flex-1">
-              <option value="">{available.length === 0 ? 'Everyone already has it' : `Choose a ${who}…`}</option>
-              {available.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </RdSelect>
-            <RdButton variant="amber" icon={GiftIcon} onClick={give} disabled={!pick || busy}>Award</RdButton>
-          </div>
-        </div>
-
-        <div className="pt-3" style={{ borderTop: LINE }}>
-          <p className="text-[13px] font-semibold text-white mb-2">Holding it ({holders.length})</p>
-          {holders.length === 0 ? (
-            <p className="text-[13px] py-4 text-center" style={{ color: MUTED }}>Nobody yet</p>
-          ) : (
-            <div className="max-h-56 overflow-y-auto space-y-1">
-              {holders.map((h) => (
-                <div key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <div className="min-w-0">
-                    <p className="text-[13.5px] text-white truncate">{h.name}</p>
-                    <p className="text-[12px]" style={{ color: MUTED }}>{h.unlocked_on}</p>
-                  </div>
-                  <button type="button" onClick={() => take(h.user_id)} disabled={busy} aria-label={`Remove from ${h.name}`} data-tip="Remove"
-                    className="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 hover:bg-white/[0.06]" style={{ color: MUTED, border: LINE }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
+          <button type="button" className="a-btn violet" style={{ marginTop: 10 }} disabled={saving} onClick={() => void save()} data-badge-save>
+            <Check size={15} />{saving ? 'Saving…' : editing ? `Save ${draft.title || 'badge'}` : `Create ${draft.title || 'the badge'}`}</button>
+          {editing && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              <button type="button" className={`a-btn sm ${editing.rule_kind === 'manual' ? 'amber' : ''}`} onClick={() => setAwarding(editing)}><Gift size={13} />{editing.rule_kind === 'manual' ? 'Give it' : 'Who has it'}</button>
+              <button type="button" className="a-btn ghost sm" onClick={() => void toggleActive(editing)}>{editing.active ? <><EyeOff size={13} />Retire (keep who has it)</> : <><Eye size={13} />Bring back</>}</button>
+              {!editing.builtin && <button type="button" className="a-btn ghost sm" onClick={() => setConfirmDelete(editing)}><Trash2 size={13} />Delete</button>}
+              <span className="a-sub" style={{ alignSelf: 'center', marginLeft: 'auto' }}>key {editing.key}</span>
             </div>
           )}
         </div>
-
-        <div className="flex justify-end pt-1">
-          <RdButton onClick={onClose}>Done</RdButton>
-        </div>
       </div>
-    </Modal>
+
+      {awarding && <AwardModal achievement={awarding} onClose={() => setAwarding(null)} onDone={() => void load()} />}
+      <ConfirmDialog isOpen={confirmDelete !== null} type="danger" title={`Delete "${confirmDelete?.title ?? ''}"`}
+        message="This removes it from the catalogue entirely. If anyone has already earned it the database will refuse — retire it instead, which keeps their badge and stops new ones."
+        confirmText="Delete" onConfirm={doDelete} onClose={() => setConfirmDelete(null)} />
+    </div>
   );
 }

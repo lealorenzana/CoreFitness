@@ -288,3 +288,19 @@
 .att .a-swc.on { border-color: #fff; box-shadow: 0 0 0 3px #ffffff22; }
 .att .a-pair { border: 1px solid var(--a-line); border-radius: 12px; padding: 6px; background: var(--a-raised); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; gap: 5px; text-align: left; }
 .att .a-pair i { display: block; height: 20px; border-radius: 7px; } .att .a-pair.on { border-color: var(--a-amber); box-shadow: 0 0 0 3px #f59e0b22; }
+/* Challenges (2026-10-20): a dashed word in a sentence that opens a picker. */
+.att .a-word { border-bottom: 2px dashed var(--a-p400); color: #fff; font-weight: 700; padding: 0 2px; font-size: inherit; line-height: inherit; }
+.att .a-word:hover { color: var(--a-p300); }
+.att .a-avs { display: flex; } .att .a-avs > * + * { margin-left: -6px; }
+/* Achievements (2026-10-20): the one-screen maker. */
+.att .a-cond { display: flex; gap: 6px; align-items: center; background: #0f0f19; border: 1px solid var(--a-line); border-radius: 12px; padding: 8px 10px; font-size: 12.5px; }
+.att .a-cond select, .att .a-cond input { background: var(--a-raised); border: 1px solid var(--a-line); border-radius: 8px; padding: 5px 8px; font-weight: 600; color: #fff; outline: none; color-scheme: dark; font-size: 12.5px; min-width: 0; }
+.att .a-cond select { flex: 1; } .att .a-cond input { width: 64px; text-align: center; }
+.att .a-icons { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; max-height: 112px; overflow-y: auto; }
+.att .a-icons button { height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--a-raised); color: var(--a-text2); }
+.att .a-icons button.on { background: var(--a-plight); color: var(--a-p300); box-shadow: inset 0 0 0 1px #5b43b5; }
+.att .a-tiers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.att .a-tiers button { border: 1px solid var(--a-line); border-radius: 11px; padding: 7px; text-align: center; font-size: 11px; font-weight: 700; background: var(--a-raised); color: #fff; }
+.att .a-tiers button small { display: block; font-weight: 500; color: var(--a-muted); font-size: 10px; }
+.att .a-tiers button.on { border-color: var(--a-amber); background: var(--a-alight); color: var(--a-a300); }
+.att .a-btn.a-btn-tight { padding: 7px 11px; }

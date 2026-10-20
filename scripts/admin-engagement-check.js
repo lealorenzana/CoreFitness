@@ -192,25 +192,25 @@ async (page) => {
   // Challenges: standings + goal templates
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
-  // Goal templates and the challenges are tabs of one page (2026-10-12).
-  await page.getByRole('tab', { name: /Goals members pick/ }).click();
+  // The four ideas are the page's tabs (2026-10-20).
+  await page.locator('[data-idea="gp"]').click();
   await page.waitForTimeout(600);
   t = await text();
-  out.push('goal templates: ' + grab(t, 'Goal templates', 160));
-  await page.getByRole('tab', { name: /^Challenges$/ }).click();
+  out.push('goal templates: ' + grab(t, 'The goals on your list', 160));
+  await page.locator('[data-idea="ch"]').click();
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: 'Standings' }).first().click();
+  await page.getByRole('button', { name: /^Finished/ }).click();
+  await page.locator('[data-challenge="September sprint"]').click();
   await page.waitForTimeout(1200);
   t = await text();
   out.push('standings: ' + grab(t, 'Standings — ', 140));
   await page.screenshot({ path: 'shots/admin-standings.png' });
   await page.getByRole('button', { name: 'Close' }).last().click();
   await page.waitForTimeout(300);
-  await page.getByRole('tab', { name: /Goals members pick/ }).click();
+  await page.locator('[data-idea="gp"]').click();
   await page.waitForTimeout(500);
-  await page.getByLabel('Default target').first().fill('15');
-  await page.getByText('Goal templates').scrollIntoViewIfNeeded();
-  await page.locator('button:has-text("Save")').last().click();
+  await page.getByLabel('Starting number').fill('15');
+  await page.locator('[data-save-goal]').click();
   await page.waitForTimeout(900);
   out.push('template target now: ' + TABLES.goal_templates[0].target_default);
   await page.screenshot({ path: 'shots/admin-goal-templates.png' });

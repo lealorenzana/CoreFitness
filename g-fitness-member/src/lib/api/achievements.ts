@@ -169,6 +169,9 @@ export interface AchievementRow {
   active: boolean;
   builtin: boolean;
   sort_order: number;
+  /** 0206 — absent before it is pasted. */
+  points?: number;
+  secret?: boolean;
 }
 
 /**
@@ -210,6 +213,8 @@ function toDef(row: AchievementRow): AchievementDef & { audience: AchievementRol
     metric: row.metric,
     metric2: row.metric2,
     ruleKind: row.rule_kind,
+    points: row.points ?? 0,
+    secret: row.secret ?? false,
   };
 }
 

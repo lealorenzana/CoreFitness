@@ -50,7 +50,7 @@ export async function listGoalTemplates(): Promise<GoalTemplate[]> {
 
 export async function updateGoalTemplate(
   key: string,
-  patch: Partial<Pick<GoalTemplate, 'label' | 'description' | 'target_default' | 'is_active'>>,
+  patch: Partial<Pick<GoalTemplate, 'label' | 'description' | 'target_default' | 'is_active' | 'sort_order'>>,
 ): Promise<void> {
   if (patch.target_default != null && !(Number.isInteger(patch.target_default) && patch.target_default > 0)) {
     throw new Error('The default target must be a whole number above zero.');
@@ -64,6 +64,16 @@ export async function updateGoalTemplate(
 /** How many members currently have an open goal on each template. */
 export async function goalTemplateUsage(): Promise<Map<string, number>> {
   const { data, error } = await supabase.from('fitness_goals').select('template_key').is('achieved_on', null)
+    .not('template_key', 'is', null);
+  if (error) return new Map();
+  const m = new Map<string, number>();
+  for (const r of data ?? []) m.set(r.template_key as string, (m.get(r.template_key as string) ?? 0) + 1);
+  return m;
+}
+
+/** How many goals set from each template have been reached — marked by settle_my_goals() (0087), never by hand. */
+export async function goalTemplateReached(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('fitness_goals').select('template_key').not('achieved_on', 'is', null)
     .not('template_key', 'is', null);
   if (error) return new Map();
   const m = new Map<string, number>();

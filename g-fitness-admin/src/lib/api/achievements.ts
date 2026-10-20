@@ -40,6 +40,10 @@ export interface AchievementRow {
   sort_order: number;
   created_at: string;
   created_by: string | null;
+  /** 0206 — absent before it is pasted, so every caller treats them as optional. */
+  points?: number;
+  secret?: boolean;
+  tell_member?: boolean;
 }
 
 /** A stat a rule can be built on — the real output columns of the SQL stats
@@ -250,6 +254,27 @@ export async function achievementProgress(userId: string): Promise<Map<string, A
     value2: r.value2 == null ? null : Number(r.value2),
     threshold2: r.threshold2 == null ? null : Number(r.threshold2),
   }]));
+}
+
+/**
+ * For a rule being drafted: how many active people already meet it (they get it
+ * on their next sync) and how many are past halfway (0206). Null before 0206.
+ */
+export async function achievementQualifiers(audience: AchievementAudience, metric: string, threshold: number,
+  metric2?: string | null, threshold2?: number | null): Promise<{ qualify: number; halfway: number } | null> {
+  const { data, error } = await supabase.rpc('achievement_qualifiers', {
+    p_audience: audience, p_metric: metric, p_threshold: threshold, p_metric2: metric2 || null, p_threshold2: metric2 ? threshold2 ?? null : null,
+  });
+  if (error) return null;
+  const row = (Array.isArray(data) ? data[0] : data) as { qualify: number; halfway: number } | undefined;
+  return row ? { qualify: Number(row.qualify), halfway: Number(row.halfway) } : null;
+}
+
+/** Badges earned since a day (YYYY-MM-DD), and by how many people — the "Earned this month" tile. */
+export async function earnedSince(day: string): Promise<{ badges: number; people: number } | null> {
+  const { data, error } = await supabase.from('achievement_unlocks').select('user_id').gte('unlocked_on', day);
+  if (error) return null;
+  return { badges: (data ?? []).length, people: new Set((data ?? []).map((r) => r.user_id as string)).size };
 }
 
 /** 0–1; a two-part rule is as far along as its weaker half. Same rule as the member app. */

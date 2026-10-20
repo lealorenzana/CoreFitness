@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { moduleOn, useGymModules } from '../hooks/useGymModules';
 import { updatePlan } from '../lib/api/membershipPlans';
 import { Check, Lock, AlertTriangle } from 'lucide-react';
-import Card from './ui/Card';
-import { RdCard } from './ui/rd';
 import { showToast } from '../utils/toast';
 import {
   listFeatures, listPlanFeatures, setPlanFeature,
@@ -133,54 +131,29 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
   };
 
   if (loading) {
-    return (
-      <Card className="!p-4">
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading plan access…</p>
-      </Card>
-    );
+    return <div className="a-card" style={{ flex: 1 }}><p className="a-sub">Loading plan access…</p></div>;
   }
 
   if (failed) {
+    // Says so rather than rendering an empty grid, which would read as "this plan includes nothing".
     return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-secondary)' }} />
-          <div>
-            <p className="text-xs font-semibold text-white">Couldn't load plan access</p>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              This is a connection problem, not an empty configuration — no plan has
-              been changed. Reload to try again.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <div className="a-card" style={{ flex: 1 }}>
+        <div className="a-hint"><AlertTriangle size={14} /><span><b style={{ color: '#fff' }}>Couldn't load plan access.</b> This is a connection problem, not an empty configuration — no plan has been changed. Reload to try again.</span></div>
+      </div>
     );
   }
 
   return (
-    <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-plan-matrix>
-      <div className="flex items-start gap-2.5 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <Lock size={18} className="mt-0.5 flex-shrink-0" style={{ color: '#C4B5FD' }} />
-        <div className="min-w-0">
-          <h3 className="text-[16px] font-semibold text-white">What each plan unlocks</h3>
-          <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            A member on a plan without a tick sees the feature locked and explained, never hidden — it is what upgrading gets them.
-            Hover a row for what it does; &ldquo;off at your gym&rdquo; means it is switched off on Your app.
-          </p>
-        </div>
-      </div>
-
+    <div className="a-card" style={{ flex: 1 }} data-plan-matrix>
+      <div className="a-ct"><h3><Lock size={16} />What each plan unlocks</h3>
+        <small>a member without a tick sees the feature locked and explained — never hidden</small></div>
       {/* Wide content scrolls inside its own box — the page must not. */}
-      <div className="rd-fit-scroll px-4 pb-3">
-        <table className="w-full" style={{ minWidth: 460, borderCollapse: 'separate', borderSpacing: 0 }}>
+      <div className="a-scroll grow">
+        <table className="a-table" style={{ minWidth: 460 }}>
           <thead>
             <tr>
-              <th className="text-left py-2.5 pr-3 text-[12.5px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Feature</th>
-              {plans.map((p) => (
-                <th key={p.id} className="py-2.5 px-2 text-[13px] font-semibold text-center" style={{ color: 'var(--color-text-primary)', minWidth: 96 }}>
-                  {p.name}
-                </th>
-              ))}
+              <th>Feature</th>
+              {plans.map((p) => <th key={p.id} style={{ textAlign: 'center', minWidth: 96 }}>{p.name}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -189,47 +162,37 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
               if (rows.length === 0) return [];
               return [
                 <tr key={`g-${group}`} data-matrix-group={group}>
-                  <td colSpan={plans.length + 1} className="pt-4 pb-1.5 text-[12.5px] font-semibold" style={{ color: '#C4B5FD' }}>{group}</td>
+                  <td colSpan={plans.length + 1} className="a-lbl" style={{ color: 'var(--a-p300)', paddingTop: 12 }}>{group}</td>
                 </tr>,
-                ...rows.map((f) => ({ f, off: !moduleOn(modules, SWITCH_OF[f.key]) })),
-              ];
-            }).map((row) => {
-              if (!('f' in (row as object))) return row as React.ReactElement;
-              const { f, off } = row as { f: FeatureDef; off: boolean };
-              return (
-              <tr key={f.key} className="hover:bg-white/[0.02]" style={{ opacity: off ? 0.55 : 1 }} data-matrix-row={f.key}>
-                <td className="py-2 pr-3 align-middle" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} data-tip={f.description}>
-                  <p className="text-[13.5px] font-medium text-white">{f.label}{off && <span className="ml-1.5 text-[12px] font-normal" style={{ color: '#FBBF24' }}>· off at your gym</span>}</p>
-                  <p className="text-[12px] mt-0.5 line-clamp-1" style={{ color: 'var(--color-text-muted)' }}>{f.description}</p>
-                </td>
-                {plans.map((p) => {
-                  const on = isOn(p.id, f.key);
-                  const busy = saving === `${p.id}:${f.key}`;
+                ...rows.map((f) => {
+                  const off = !moduleOn(modules, SWITCH_OF[f.key]);
                   return (
-                    <td key={p.id} className="py-2 px-2 text-center align-middle" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <button
-                        type="button"
-                        onClick={() => toggle(p.id, f.key)}
-                        disabled={busy}
-                        aria-pressed={on}
-                        aria-label={`${f.label} on ${p.name}`}
-                        className="w-7 h-7 rounded-lg inline-flex items-center justify-center disabled:opacity-50 transition-colors"
-                        style={{
-                          background: on ? 'linear-gradient(180deg,#8B5CF6,#7C3AED)' : 'transparent',
-                          border: `1px solid ${on ? 'rgba(167,139,250,0.7)' : 'rgba(255,255,255,0.14)'}`,
-                        }}
-                      >
-                        {on && <Check size={14} style={{ color: '#fff' }} />}
-                      </button>
-                    </td>
+                    <tr key={f.key} data-matrix-row={f.key}>
+                      <td data-tip={f.description}>
+                        <b>{f.label}</b>{off && <> <span className="a-pill a">off at your gym</span></>}
+                        <div className="a-sub" style={{ marginTop: 2 }}>{off ? 'switch it on in Your app → What you run' : f.description}</div>
+                      </td>
+                      {plans.map((p) => {
+                        const on = isOn(p.id, f.key);
+                        const busy = saving === `${p.id}:${f.key}`;
+                        return (
+                          <td key={p.id} style={{ textAlign: 'center' }}>
+                            <button type="button" className={`a-tick ${on ? 'on' : ''}`} style={{ opacity: off ? 0.35 : undefined }}
+                              onClick={() => toggle(p.id, f.key)} disabled={busy} aria-pressed={on} aria-label={`${f.label} on ${p.name}`}>
+                              {on && <Check size={13} />}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
-                })}
-              </tr>
-              );
+                }),
+              ];
             })}
           </tbody>
         </table>
       </div>
-    </RdCard>
+      <div className="a-sub" style={{ paddingTop: 8 }}>The free workout library is never locked — it exists for members who cannot pay.</div>
+    </div>
   );
 }

@@ -11,7 +11,6 @@ import MemberDetail from './pages/MemberDetail';
 import Attendance from './pages/Attendance';
 import Analytics from './pages/Analytics';
 import Retention from './pages/Retention';
-import WinbackMessages from './pages/WinbackMessages';
 import Revenue from './pages/Revenue';
 import Payments from './pages/Payments';
 import MembershipPlans from './pages/MembershipPlans';
@@ -85,7 +84,7 @@ function App() {
             <Route path="attendance-history" element={<AttendanceHistory />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="retention" element={<Retention />} />
-            <Route path="retention/messages" element={<WinbackMessages />} />
+            <Route path="retention/messages" element={<Retention />} />
             <Route path="revenue" element={<Revenue />} />
             <Route path="payments" element={<Payments />} />
             {/* Admin-only: plan pricing, trainer management and settings change

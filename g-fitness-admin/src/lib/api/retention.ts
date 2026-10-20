@@ -68,3 +68,29 @@ export async function sendRetentionMessage(memberId: string, message: string): P
   const { error } = await supabase.rpc('send_retention_message', { p_member: memberId, p_title: null, p_message: message.trim() });
   if (error) throw new Error(clean(error.message));
 }
+
+/** The desk's "Mark called" (0205): recorded as contact, never capped, with an optional note. */
+export async function logRetentionCall(memberId: string, note: string): Promise<void> {
+  const { error } = await supabase.rpc('log_retention_call', { p_member: memberId, p_note: note.trim() || null });
+  if (error) {
+    if (/log_retention_call/.test(error.message)) throw new Error('Logging calls needs migration 0205 — paste it, then try again.');
+    throw new Error(clean(error.message));
+  }
+}
+
+export type ContactHow = 'message' | 'call' | 'automatic';
+export interface Contact { memberId: string; at: string; how: ContactHow; note: string | null }
+
+/** Each member's latest contact — a desk message, a logged call (0205) or an automatic win-back. */
+export async function lastContacts(memberIds: string[]): Promise<Map<string, Contact>> {
+  const out = new Map<string, Contact>();
+  if (memberIds.length === 0) return out;
+  // `*`, because `kind` and `note` arrive with 0205 and naming them would fail the read before it.
+  const { data, error } = await supabase.from('winback_sends').select('*').in('member_id', memberIds).order('sent_at', { ascending: false });
+  if (error) return out;
+  for (const r of (data ?? []) as { member_id: string; sent_at: string; rule_key: string; kind?: string; note?: string | null }[]) {
+    if (out.has(r.member_id)) continue;
+    out.set(r.member_id, { memberId: r.member_id, at: r.sent_at, how: r.kind === 'call' ? 'call' : r.rule_key === 'manual' ? 'message' : 'automatic', note: r.note ?? null });
+  }
+  return out;
+}

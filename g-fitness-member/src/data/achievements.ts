@@ -42,6 +42,10 @@ export interface AchievementDef {
   metric2?: string | null;
   /** 'manual' ones are handed out by the gym and have no number to chase. */
   ruleKind?: 'metric' | 'builtin' | 'manual';
+  /** Points added to the balance when earned (0206); 0 = none. */
+  points?: number;
+  /** Shown as "Secret badge" until earned (0206). Words on a screen, not a secret — the row is readable. */
+  secret?: boolean;
 }
 
 type TierStyle = { ring: string; glow: string; label: string };

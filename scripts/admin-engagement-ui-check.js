@@ -143,36 +143,45 @@ async (page) => {
 
   // ---- Challenges ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
-  await page.getByText('How a challenge works').waitFor({ timeout: 15000 });
-  await page.waitForTimeout(600);
+  await page.locator('[data-challenge-new]').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-challenges.png' });
   t = await text();
-  out.push('challenges explain themselves with an example: ' + (/Example\./.test(t) && /reaches 10 in her fourth week/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the four ideas, each explained where it is chosen: ' + ((await page.locator('[data-idea]').count()) === 4 && /members make/.test(t) && /everyone together/.test(t) && /personal goal/.test(t) ? 'yes' : 'MISSING'));
   out.push('completions settle on open: ' + (CALLS.some((c) => c[1] === 'settle_challenges') ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /New challenge/ }).click();
-  await page.getByRole('button', { name: '10 training days in 30 days' }).click();
-  t = await text();
-  out.push('a preset fills the form and reads back the sentence: ' + (/Members will read:/.test(t) && /reach 10 × training days and earn 250 points/.test(t) ? 'yes' : 'MISSING'));
+  await page.locator('[data-challenge-new]').getByRole('button', { name: 'Weekend warrior' }).click();
+  out.push('a preset fills the sentence: ' + ((await page.getByLabel('Target', { exact: true }).inputValue()) === '6' && (await page.getByLabel('What is counted').inputValue()) === 'weekend_days'
+    && (await page.getByLabel('Name members see').inputValue()) === 'Weekend warrior' && /You: 0 of 6 weekend days/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.locator('[data-start-challenge]').click();
+  await page.waitForTimeout(600);
+  const ch = CALLS.find((c) => c[0] === 'POST' && c[1] === 'challenges');
+  out.push('…and starts it as written: ' + (ch && ch[2].metric_key === 'weekend_days' && ch[2].target === 6 && ch[2].reward_points === 200 && ch[2].title === 'Weekend warrior' ? 'yes' : 'MISSING ' + JSON.stringify(ch?.[2])));
   await page.screenshot({ path: 'shots/admin-challenge-new.png' });
-  await page.keyboard.press('Escape');
+  for (const [k, sel] of [['gg', '[data-goal-new]'], ['sq', '[data-squads]'], ['gp', '[data-goal-list]']]) {
+    await page.locator(`[data-idea="${k}"]`).click();
+    await page.locator(sel).waitFor({ timeout: 10000 }).catch(() => {});
+    out.push(`the ${k} tab opens: ` + ((await page.locator(sel).count()) === 1 ? 'yes' : 'MISSING'));
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `shots/admin-challenges-${k}.png` });
+  }
 
   // ---- Achievements --------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: 'shots/admin-achievements.png' });
+  // One-screen maker beside the catalogue (2026-10-20, the approved mock-up).
   await page.getByRole('button', { name: /New achievement/ }).click();
-  await page.locator('[aria-label="Steps"]').getByText('What earns it').waitFor({ timeout: 10000 });
-  await page.getByRole('button', { name: /^Training days/ }).click();
-  await page.getByRole('button', { name: '10', exact: true }).click();
-  await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByLabel('Title').fill('Ten-Day Club');
-  await page.getByLabel('Description').fill('You trained ten days.');
-  out.push('the requirement writes itself: ' + ((await page.getByLabel('Requirement').inputValue()) === 'Reach 10 training days.' ? 'yes' : 'MISSING ' + (await page.getByLabel('Requirement').inputValue())));
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.locator('[data-badge-maker]').waitFor({ timeout: 10000 });
+  await page.getByLabel('What it counts').selectOption('training_days');
+  await page.getByLabel('How many').fill('10');
+  await page.getByLabel('Name', { exact: true }).fill('Ten-Day Club');
+  await page.getByLabel('What it says when earned').fill('You trained ten days.');
+  const req = await page.getByLabel(/What it says while locked/).inputValue();
+  out.push('the requirement writes itself: ' + (req === 'Reach 10 training days.' ? 'yes' : 'MISSING ' + req));
   t = await text();
-  out.push('a locked and earned preview: ' + (/Locked/i.test(t) && /Earned/i.test(t) && /Ten-Day Club/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the badge is previewed as it is made: ' + (/Ten-Day Club/.test(await page.locator('[data-preview]').innerText()) && /While locked, members read: Reach 10 training days\./.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-achievement-new.png' });
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.locator('[data-badge-save]').click();
   await page.waitForTimeout(600);
   const made = CALLS.find((c) => c[0] === 'POST' && c[1] === 'achievements');
   out.push('created with the key made from the name: ' + (made && made[2].key === 'ten_day_club' && made[2].metric === 'training_days' && Number(made[2].threshold) === 10 ? 'yes' : 'MISSING ' + JSON.stringify(made?.[2])));

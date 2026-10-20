@@ -133,13 +133,16 @@ async (page) => {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   await page.setViewportSize({ width: 1400, height: 1000 });
   await page.goto('http://localhost:5174/membership-plans', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: 'What each plan unlocks' }).waitFor({ timeout: 15000 });
+  await page.locator('[data-plan-cards]').waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
-  let t = await text();
   out.push('a starter plan with no price says so, not ₱0: ' + ((await page.locator('[data-price-unset]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-view="unlock"]').click();
+  await page.getByRole('heading', { name: 'What each plan unlocks' }).waitFor({ timeout: 15000 });
+  await page.waitForTimeout(400);
+  let t = await text();
   out.push('the table is grouped, with the booking rows in it: ' + ((await page.locator('[data-matrix-group="Booking"]').count()) === 1
     && (await page.locator('[data-matrix-row="can_book_pt"]').count()) === 1 && (await page.locator('[data-matrix-group="Training"]').count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('a feature the gym switched off says so: ' + (/Earn points\s*· off at your gym/.test(t) ? 'yes' : 'MISSING'));
+  out.push('a feature the gym switched off says so: ' + (/Earn points\s*off at your gym/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: 'Book 1-on-1 and have a coach on Monthly' }).click();
   await page.waitForTimeout(700);
   let c = CALLS.find(([f]) => f === 'patch:membership_plans');

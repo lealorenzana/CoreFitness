@@ -87,7 +87,7 @@ async (page) => {
       if (m === 'POST') { SENT.goals.push(body()); return json([], 201); }
       return json(GOALS);
     }
-    if (t === 'squads') return json([{ id: 'sq1', name: 'Iron Barkada', weekly_target: 9 }]);
+    if (t === 'squads') return json([{ id: 'sq1', name: 'Iron Barkada', code: 'IRNBAR', weekly_target: 9, created_by: 'm1' }]);
     if (t === 'squad_members') return json([{ squad_id: 'sq1' }, { squad_id: 'sq1' }, { squad_id: 'sq1' }]);
     if (t === 'achievement_metrics') return json([{ key: 'training_days', label: 'Training days', unit: 'days' }]);
     if (t === 'profiles' || t === 'gym_people') return json(one ? owner : [owner]);
@@ -130,27 +130,29 @@ async (page) => {
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   t = await text();
-  out.push('template marked: ' + (/Repeats weekly/.test(t) ? 'shown' : 'MISSING'));
-  // The gym goal and squads have their own tab (2026-10-12).
-  await page.getByRole('tab', { name: /Gym goal/ }).click();
-  await page.waitForTimeout(600);
+  out.push('template marked: ' + ((await page.locator('[data-challenge="Train twice a week"]', { hasText: 'weekly' }).count()) === 1 ? 'shown' : 'MISSING'));
+  out.push('weekly copies not listed: ' + (/this week copy/.test(t) ? 'MISSING (copy listed)' : 'hidden'));
+  // The gym goal and squads have their own tabs (2026-10-20: the four ideas).
+  await page.locator('[data-idea="gg"]').click();
+  await page.waitForTimeout(900);
   t = await text();
-  out.push('gym goal with progress: ' + (/October days/.test(t) && /412 of 1,000 training days · 88 members contributing/.test(t) ? 'shown' : 'MISSING'));
-  out.push("members' squads listed: " + (/Iron Barkada · 3 · target 9\/wk/.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Goal title').fill('500 workouts this month');
+  out.push('gym goal with progress: ' + (/October days/.test(t) && /412 of 1,000 training days · 88 members have helped/.test(t) ? 'shown' : 'MISSING'));
+  await page.getByLabel('Name on Today').fill('500 workouts this month');
   await page.getByLabel('What counts').selectOption('workouts_logged');
   await page.getByLabel('Goal target').fill('500');
-  await page.getByRole('button', { name: 'Set the goal' }).click();
+  await page.locator('[data-set-goal]').click();
   await page.waitForTimeout(900);
   const gl = SENT.goals[SENT.goals.length - 1] || {};
   out.push('goal sent: ' + (gl.title === '500 workouts this month' && gl.metric === 'workouts_logged' && gl.target === 500 ? 'workouts 500' : 'MISSING ' + JSON.stringify(gl)));
   await page.screenshot({ path: 'shots/admin-gym-goal.png', fullPage: true });
-  out.push('weekly copies not listed: ' + (/this week copy/.test(t) ? 'MISSING (copy listed)' : 'hidden'));
-  await page.getByRole('button', { name: /New challenge/ }).first().click();
+  await page.locator('[data-idea="sq"]').click();
+  await page.waitForTimeout(900);
+  out.push("members' squads listed: " + ((await page.locator('[data-squad-row="Iron Barkada"]').count()) === 1 ? 'shown' : 'MISSING'));
+  await page.locator('[data-idea="ch"]').click();
   await page.waitForTimeout(500);
-  await page.getByPlaceholder('e.g. 15 visits in November').fill('Two classes a week');
-  await page.getByLabel('Repeat every week').check();
-  await page.getByRole('button', { name: 'Create challenge' }).click();
+  await page.getByLabel('Name members see').fill('Two classes a week');
+  await page.getByRole('button', { name: 'Repeat every week' }).click();
+  await page.locator('[data-start-challenge]').click();
   await page.waitForTimeout(1000);
   const c = SENT.challenges[SENT.challenges.length - 1] || {};
   out.push('repeating challenge sent: ' + (c.title === 'Two classes a week' && c.repeats_weekly === true ? 'repeats_weekly' : 'MISSING ' + JSON.stringify(c)));

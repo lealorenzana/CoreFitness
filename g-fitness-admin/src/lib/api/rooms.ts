@@ -68,3 +68,11 @@ export async function memberRoomsSummary(memberId: string): Promise<{
     record: rec ? { assigned: rec.assigned, onTime: rec.on_time, late: rec.late, missing: rec.missing } : null,
   };
 }
+
+/** Remove a post or comment and tell its author why (0207). Before 0207, a plain delete. */
+export async function moderateRoomItem(kind: 'post' | 'comment', id: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc('moderate_room_item', { p_kind: kind, p_id: id, p_reason: reason.trim() });
+  if (!error) return;
+  if (/moderate_room_item/.test(error.message)) return kind === 'post' ? removePost(id) : removeComment(id);
+  throw new Error(clean(error.message));
+}
