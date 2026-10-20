@@ -89,7 +89,7 @@ async (page) => {
 
   // ---- Add member ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Add Member/ }).first().click();
+  await page.getByRole('button', { name: /Add member/i }).first().click();
   await page.getByText('1. Who they are').waitFor({ timeout: 15000 });
   await page.getByLabel('First name').fill('Ana');
   await page.getByLabel('Last name').fill('Reyes');

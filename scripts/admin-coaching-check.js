@@ -123,22 +123,20 @@ async (page) => {
   await page.waitForTimeout(800);
   t = await text();
   out.push('the Coaching page: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
-  out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/i.test(t) && /day \d+ of \d+/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > *').count()) === 4 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How it works here/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /^Confirm$/ }).click();
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'confirm_coaching_payment');
   out.push('Confirm records the payment as online: ' + (c && c[1].p_id === 'k1' && c[1].p_received === true && c[1].p_method === 'online' ? 'yes' : 'MISSING'));
-  // The kit's dropdown (2026-10-12) is a combobox and a dark listbox, not the OS menu.
-  const choose = async (label, option) => {
-    await page.getByRole('combobox', { name: label }).click();
-    await page.getByRole('option', { name: option, exact: true }).click();
-  };
-  await choose('Member', 'Ana Reyes');
-  await choose('Coach', 'Rae Santos');
-  await choose('Length', '3 months');
-  out.push('the dropdowns are the dark list, never the OS menu: ' + ((await page.locator('[data-coaching-assign] select').count()) === 0
-    && (await page.getByRole('combobox', { name: 'Member' }).innerText()).includes('Ana Reyes') ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /^Assign$/ }).click();
+  // The assign panel (2026-10-20 mock-up): find the member, coaches fewest-trainees first, length chips.
+  await page.getByLabel('Member', { exact: true }).fill('Ana');
+  await page.locator('[data-coaching-assign] .a-row', { hasText: 'Ana Reyes' }).click();
+  await page.locator('[data-assign-coach="t1"]').click();
+  await page.locator('[data-coaching-assign] .a-chip', { hasText: /^3 months$/ }).click();
+  const go = await page.locator('[data-assign-go]').innerText();
+  out.push('the assign button says who is paired with whom, and for how long: ' + (/Pair Ana with Rae · 3 months/.test(go) ? 'yes' : 'MISSING (' + go + ')'));
+  await page.locator('[data-assign-go]').click();
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'assign_coaching');
   out.push('the desk assigns a coach for a length: ' + (c && c[1].p_member === 'm2' && c[1].p_trainer === 't1' && c[1].p_months === 3 ? 'yes' : 'MISSING'));

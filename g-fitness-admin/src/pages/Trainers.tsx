@@ -8,11 +8,14 @@ import { useCallback, useEffect, useState } from 'react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
 import TrainerMonthTotals from '../components/ui/TrainerMonthTotals';
-import {
-  RdHeader, RdCard, StatTile, SearchField, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, Initials, DotMenu,
-} from '../components/ui/rd';
+import { RdHeader, RdButton, DotMenu } from '../components/ui/rd';
 import { usePaged } from '../hooks/usePaged';
-import { CalendarRange, UserPlus, X, Archive, UserX, UserCheck, Star, Users, ShieldCheck, Shield, Plus, Pencil, Eye, CalendarDays, AlertCircle, ArrowLeft, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { useFitRows } from '../hooks/useFitRows';
+import { Av, Pager } from './attendance/parts';
+import './attendance/att.css';
+import { listCoachings } from '../lib/api/coaching';
+import { currentLockoutReason } from '../lib/api/accountEvents';
+import { CalendarRange, X, Archive, UserX, UserCheck, Users, ShieldCheck, Plus, Pencil, Eye, ArrowLeft, ChevronUp, ChevronDown, Search, SquareCheck, AlertTriangle } from 'lucide-react';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import { showToast } from '../utils/toast';
 import {
@@ -83,6 +86,57 @@ type TSortKey = 'name' | 'specialty' | 'credentials' | 'rating' | 'windows' | 's
 const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
 const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
 
+const REASONS = ['Missed classes', 'On leave', 'Conduct', 'Credentials lapsed', 'Other'];
+
+/**
+ * Suspending a coach (2026-10-20, from the owner's mock-up): a reason is required
+ * (set_account_status refuses a blank one), picked in a tap or written out, and
+ * the desk is told what is still booked with them — those stay, so reassign first.
+ */
+function SuspendCoachDialog({ coach, onClose, onConfirm }: { coach: TrainerDisplay; onClose: () => void; onConfirm: (why: string) => void }) {
+  const [why, setWhy] = useState('');
+  const [tag, setTag] = useState('');
+  const [booked, setBooked] = useState<{ classes: number; sessions: number } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const now = new Date().toISOString();
+      const [c, s] = await Promise.all([
+        supabase.from('classes').select('id', { count: 'exact', head: true }).eq('trainer_id', coach.id).gte('scheduled_at', now),
+        supabase.from('pt_sessions').select('id', { count: 'exact', head: true }).eq('trainer_id', coach.id).gte('starts_at', now).in('status', ['pending', 'approved', 'confirmed']),
+      ]);
+      setBooked({ classes: c.count ?? 0, sessions: s.count ?? 0 });
+    })();
+  }, [coach.id]);
+  const text = [tag && tag !== 'Other' ? tag : '', why.trim()].filter(Boolean).join(' — ');
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(5,4,10,0.72)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div className="att" style={{ height: 'auto', overflow: 'visible', width: 440 }} onClick={(e) => e.stopPropagation()}>
+        <div className="a-card glow" role="dialog" aria-label={`Suspend ${coach.name}`} data-suspend-coach>
+          <div className="a-ct"><h3><AlertTriangle size={16} style={{ color: 'var(--a-a300)' }} />Suspend {coach.name}</h3>
+            <button type="button" className="a-link" onClick={onClose} aria-label="Close"><X size={15} /></button></div>
+          <div className="a-sub" style={{ lineHeight: 1.5, fontSize: 12 }}>
+            They can’t sign in to the trainer app.{' '}
+            {booked == null ? 'Checking what is booked with them…'
+              : booked.classes + booked.sessions === 0 ? 'Nothing is booked with them.'
+                : <>Their {booked.classes} upcoming class{booked.classes === 1 ? '' : 'es'} and {booked.sessions} booked session{booked.sessions === 1 ? '' : 's'} stay — <b style={{ color: '#fff' }}>reassign them first</b> or the desk handles them.</>}
+          </div>
+          <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Why? <span style={{ color: 'var(--a-a300)' }}>*</span></div>
+          <div className="flex gap-1.5 flex-wrap">
+            {REASONS.map((r) => <button key={r} type="button" className={`a-chip ${tag === r ? 'on' : ''}`} onClick={() => setTag(tag === r ? '' : r)} aria-pressed={tag === r}>{r}</button>)}
+          </div>
+          <textarea value={why} onChange={(e) => setWhy(e.target.value)} rows={2} maxLength={280} aria-label="Reason for suspension"
+            placeholder="Missed three classes without notice this month." className="a-input" style={{ marginTop: 8, width: '100%', resize: 'none', fontSize: 12.5 }} />
+          <div className="a-sub" style={{ marginTop: 6 }}>Kept on their account history, so the next admin knows why.{tag === 'Other' && !why.trim() ? ' Say what happened.' : ''}</div>
+          <div className="flex gap-2" style={{ marginTop: 12 }}>
+            <button type="button" className="a-btn ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+            <button type="button" className="a-btn amber" style={{ flex: 1 }} disabled={!text || (tag === 'Other' && !why.trim())} onClick={() => onConfirm(text)}>Suspend</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Trainers() {
   /** Sessions and classes each coach delivered in a month (0095). */
   const [showTotals, setShowTotals] = useState(false);
@@ -110,6 +164,14 @@ export default function Trainers() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<'suspend' | 'archive' | 'restore' | null>(null);
   const [tSort, setTSort] = useState<{ key: TSortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
+  /** The roster's chips (2026-10-20 redesign). */
+  const [chip, setChip] = useState<'all' | 'active' | 'suspended' | 'nohours'>('all');
+  /** Tick boxes show only while selecting, so the everyday table stays clean. */
+  const [selecting, setSelecting] = useState(false);
+  /** What the cards and columns add: bookable hours a week, active trainees, the last coach check-in,
+   *  why a suspended coach is suspended, and this month's classes and PT sessions. Each optional. */
+  const [extra, setExtra] = useState<{ hours: Map<string, number>; trainees: Map<string, number>; lastIn: Map<string, string>; reasons: Map<string, string>; month: { classes: number; pt: number } | null }>(
+    { hours: new Map(), trainees: new Map(), lastIn: new Map(), reasons: new Map(), month: null });
   // Credentials are a view of this page (2026-10-10), in the address so /credentials can land on it.
   const [params, setParams] = useSearchParams();
   const reviewing = params.get('view') === 'credentials';
@@ -158,9 +220,32 @@ export default function Trainers() {
         gymScore.set(m.trainer_id, at);
       }
       const windowsByTrainer = new Map<string, number>();
+      const hours = new Map<string, number>();
+      const hm = (t: string) => { const [h, m] = t.split(':').map(Number); return h + (m || 0) / 60; };
       for (const a of availability) {
         windowsByTrainer.set(a.trainer_id, (windowsByTrainer.get(a.trainer_id) ?? 0) + 1);
+        hours.set(a.trainer_id, (hours.get(a.trainer_id) ?? 0) + Math.max(0, hm(a.end_time) - hm(a.start_time)));
       }
+      void (async () => {
+        const [coachings, checks, summary] = await Promise.all([
+          listCoachings(),
+          supabase.from('coach_checkins').select('trainer_id, check_in_time').order('check_in_time', { ascending: false }).limit(500),
+          supabase.rpc('trainer_month_summary', { p_month: `${todayKey().slice(0, 7)}-01` }),
+        ]);
+        const trainees = new Map<string, number>();
+        for (const c of coachings ?? []) if (c.status === 'active') trainees.set(c.trainer_id, (trainees.get(c.trainer_id) ?? 0) + 1);
+        const lastIn = new Map<string, string>();
+        for (const r of ((checks.data ?? []) as { trainer_id: string; check_in_time: string }[])) if (!lastIn.has(r.trainer_id)) lastIn.set(r.trainer_id, r.check_in_time);
+        const sum = summary.error ? null : ((summary.data ?? []) as { classes_led: number; pt_sessions: number }[])
+          .reduce((acc, r) => ({ classes: acc.classes + Number(r.classes_led || 0), pt: acc.pt + Number(r.pt_sessions || 0) }), { classes: 0, pt: 0 });
+        const reasons = new Map<string, string>();
+        for (const { profile } of rows) {
+          if (profile.status !== 'suspended') continue;
+          const why = await currentLockoutReason(profile.id);
+          if (why) reasons.set(profile.id, why);
+        }
+        setExtra({ hours, trainees, lastIn, reasons, month: sum });
+      })();
 
       setTrainers(
         rows.map(({ profile, trainer }) => ({
@@ -200,6 +285,9 @@ export default function Trainers() {
 
   const visible = trainers.filter((t) => {
     const q = search.trim().toLowerCase();
+    if (chip === 'active' && t.status !== 'active') return false;
+    if (chip === 'suspended' && t.status !== 'suspended') return false;
+    if (chip === 'nohours' && !(t.bookableWindows === 0 && t.status === 'active')) return false;
     return (
       !q ||
       t.name.toLowerCase().includes(q) ||
@@ -219,7 +307,8 @@ export default function Trainers() {
       default: return dir * a.name.localeCompare(b.name);
     }
   });
-  const paged = usePaged(sortedTrainers, TRAINERS_PER_PAGE);
+  const { ref: fitRef, perPage: fitPer, rowHeight: fitRowHeight } = useFitRows(TRAINERS_PER_PAGE);
+  const paged = usePaged(sortedTrainers, fitPer);
 
   /**
    * Suspend / reactivate / archive.
@@ -327,164 +416,183 @@ export default function Trainers() {
     );
   }
 
-  const sortHead = (label: string, key: TSortKey, align?: 'right') => ({
-    align,
-    label: (
-      <button type="button" onClick={() => setTSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))}
-        className="inline-flex items-center gap-1.5 normal-case tracking-normal text-[14.5px] font-semibold" style={{ color: tSort.key === key ? '#fff' : 'var(--color-text-primary)' }}>
-        {label}{tSort.key === key ? (tSort.dir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ChevronsUpDown size={13} style={{ color: 'var(--color-text-muted)' }} />}
-      </button>
-    ),
-  });
   const pageIds = paged.visible.map((t) => t.id);
   const allOnPage = pageIds.length > 0 && pageIds.every((id) => picked.has(id));
   const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const activeN = trainers.filter((t) => t.status === 'active').length;
+  const suspendedN = trainers.filter((t) => t.status === 'suspended').length;
+  const noHours = trainers.filter((t) => t.bookableWindows === 0 && t.status === 'active');
+  const weekHours = trainers.reduce((a, t) => a + (extra.hours.get(t.id) ?? 0), 0);
+  const withHours = trainers.filter((t) => (extra.hours.get(t.id) ?? 0) > 0).length;
+  const firstWaiting = [...pending.entries()][0];
+  const firstWaitingName = firstWaiting ? trainers.find((t) => t.id === firstWaiting[0])?.name.split(' ')[0] : null;
+  const head = (label: string, key: TSortKey) => (
+    <button type="button" onClick={() => setTSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))}
+      className="inline-flex items-center gap-1 uppercase" style={{ color: tSort.key === key ? 'var(--a-p300)' : 'inherit', letterSpacing: 'inherit' }}>
+      {label}{tSort.key === key && (tSort.dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+    </button>
+  );
+  const lastIn = (iso: string | undefined) => {
+    if (!iso) return '—';
+    const d = Math.round((new Date(`${todayKey()}T00:00:00`).getTime() - new Date(`${iso.slice(0, 10)}T00:00:00`).getTime()) / 86_400_000);
+    return d <= 0 ? `Today ${new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}` : d === 1 ? 'Yesterday' : `${d} days ago`;
+  };
 
   return (
-    <div className="flex flex-col gap-6" data-trainers>
+    <div className="att" data-trainers>
       <TrainerMonthTotals isOpen={showTotals} onClose={() => setShowTotals(false)} />
-      <RdHeader
-        title={showArchived ? 'Archived trainers' : 'Trainers'}
-        subtitle={showArchived ? 'Archived trainers — classes and sessions retained.' : 'Who coaches here, and who members can actually book.'}
-        actions={(
-          <>
-            <div className="w-[300px]"><SearchField value={search} onChange={(v) => { setSearch(v); paged.setPage(1); }} placeholder="Search name or specialty…" /></div>
-            <RdButton icon={Archive} onClick={() => { setShowArchived((v) => !v); setPicked(new Set()); }}>{showArchived ? 'Active roster' : 'Archived'}</RdButton>
-            <RdButton icon={CalendarRange} onClick={() => setShowTotals(true)}>Monthly totals</RdButton>
-            <RdButton variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>Add trainer</RdButton>
-          </>
-        )} />
-
-      {/* "Bookable" counts real trainer_availability windows — the weekday blurb produces no slots. */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))' }}>
-        <StatTile icon={Users} label="On roster" value={trainers.length} />
-        <StatTile icon={UserCheck} tone="green" label="Active" value={trainers.filter((t) => t.status === 'active').length} />
-        <StatTile icon={CalendarDays} tone={trainers.some((t) => t.bookableWindows === 0) ? 'amber' : 'violet'} label="Bookable"
-          value={trainers.filter((t) => t.bookableWindows > 0).length}
-          sub={trainers.some((t) => t.bookableWindows === 0) ? `${trainers.filter((t) => t.bookableWindows === 0).length} with no hours set` : undefined} />
-        <StatTile icon={ShieldCheck} tone="amber" label="Credentials to review" value={waitingTotal} onClick={() => setReviewing(true)}
-          tip="Coaches' certificates: look at each document, then verify or reject it" active={waitingTotal > 0} />
+      <div className="a-head">
+        <div className="min-w-0">
+          <h1>{showArchived ? 'Archived trainers' : 'Trainers'}</h1>
+          <p>{showArchived ? 'Classes and sessions they ran are kept.' : `${trainers.length} coach${trainers.length === 1 ? '' : 'es'} · ${activeN} active${waitingTotal ? ` · ${waitingTotal} credential${waitingTotal === 1 ? '' : 's'} to review` : ''}`}</p>
+        </div>
+        <nav className="a-tabs" aria-label="Trainers views">
+          <a href="#" className={!showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(false); setPicked(new Set()); }}><Users size={14} />Coaches{!showArchived && <em>{trainers.length}</em>}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(true); }}><ShieldCheck size={14} />Credentials{waitingTotal > 0 && <em>{waitingTotal}</em>}</a>
+          <a href="#" className={showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(true); setPicked(new Set()); }}><Archive size={14} />Archived</a>
+        </nav>
+        <button type="button" className="a-btn" onClick={() => setShowTotals(true)}><CalendarRange size={15} />Monthly totals</button>
+        <button type="button" className="a-btn violet" onClick={() => setShowAddModal(true)}><Plus size={15} />Add trainer</button>
       </div>
 
-      {picked.size > 0 && (
-        <RdCard className="px-5 py-3 flex items-center gap-3 flex-wrap" data-trainer-bulk>
-          <span className="text-[15px] font-semibold text-white">{picked.size} selected</span>
-          {!showArchived && <RdButton size="sm" variant="amber" icon={UserX} onClick={() => setBulk('suspend')}>Suspend</RdButton>}
-          <RdButton size="sm" icon={Archive} onClick={() => setBulk(showArchived ? 'restore' : 'archive')}>{showArchived ? 'Restore' : 'Archive'}</RdButton>
-          <RdButton size="sm" variant="ghost" onClick={() => setPicked(new Set())}>Clear</RdButton>
-        </RdCard>
+      {!showArchived && (
+        <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-trainer-cards>
+          <button type="button" className="a-card press text-left" onClick={() => { setChip('active'); paged.setPage(1); }}>
+            <div className="a-lbl">Active coaches</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{activeN}</div><span className="a-sub">of {trainers.length}{suspendedN ? ` · ${suspendedN} suspended` : ''}</span></div>
+          </button>
+          {/* "Bookable" counts real trainer_availability windows — the weekday blurb produces no slots. */}
+          <button type="button" className="a-card press text-left" onClick={() => { setChip('nohours'); paged.setPage(1); }}>
+            <div className="a-lbl">Bookable this week</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{Math.round(weekHours)}</div><span className="a-sub">hours across {withHours} coach{withHours === 1 ? '' : 'es'}</span></div>
+            {noHours.length > 0 && <div className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>{noHours.length === 1 ? `${noHours[0].name.split(' ')[0]} has no hours set` : `${noHours.length} coaches have no hours set`}</div>}
+          </button>
+          <button type="button" className="a-card press text-left" style={waitingTotal ? { borderColor: '#3e310f' } : undefined} onClick={() => setReviewing(true)} data-review-card>
+            <div className="a-lbl" style={waitingTotal ? { color: 'var(--a-a300)' } : undefined}>Credentials to review</div>
+            <div className="a-num">{waitingTotal}</div>
+            <div className="a-sub" style={{ marginTop: 6 }}>{waitingTotal ? <>{firstWaitingName ?? 'A coach'}{waitingTotal > 1 ? ` and ${waitingTotal - 1} more` : ''} · <span style={{ color: 'var(--a-a300)' }}>review now</span></> : 'nothing waiting'}</div>
+          </button>
+          <button type="button" className="a-card press text-left" onClick={() => setShowTotals(true)}>
+            <div className="a-lbl">This month</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{extra.month ? extra.month.classes : '—'}</div><span className="a-sub">classes led{extra.month ? ` · ${extra.month.pt} PT session${extra.month.pt === 1 ? '' : 's'}` : ''}</span></div>
+            <div className="a-sub" style={{ marginTop: 6 }}>for paying them — open Monthly totals</div>
+          </button>
+        </div>
       )}
 
-      <RdCard className="overflow-hidden" data-trainers-table>
-        <RdTable head={[
-          { label: <input type="checkbox" aria-label="Select this page" checked={allOnPage}
-              onChange={(e) => setPicked((s) => { const n = new Set(s); pageIds.forEach((id) => (e.target.checked ? n.add(id) : n.delete(id))); return n; })} />, className: 'w-12' },
-          sortHead('Trainer', 'name'), sortHead('Specialty', 'specialty'), sortHead('Credentials', 'credentials'), sortHead('Rating', 'rating'),
-          sortHead('Booking windows', 'windows'), sortHead('Status', 'status'), { label: <span className="normal-case tracking-normal text-[14.5px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Actions</span> },
-        ]}
-          empty={loading ? <p className="text-center py-12 text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading trainers…</p>
-            : visible.length === 0 ? (
-              <EmptyBlock icon={showArchived ? Archive : UserPlus}
-                title={search ? 'No trainer matches' : showArchived ? 'No archived trainers' : 'No trainers yet'}
-                body={search ? `Nothing matches “${search}”.` : showArchived ? 'Archived trainers keep every class and session they ever ran.' : 'Add a coach and they get a login for the trainer app.'}
-                action={!search && !showArchived ? <RdButton variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>Add trainer</RdButton> : undefined} />
-            ) : undefined}>
-          {!loading && paged.visible.map((trainer) => {
-            const list = verified.get(trainer.id) ?? [];
-            const soon = list.filter((c) => c.expiresOn && c.expiresOn <= addDays(todayKey(), 30)).length;
-            const waiting = pending.get(trainer.id) ?? 0;
-            const found = goalsFor({ specialization: trainer.specialization, bio: trainer.bio,
-              achievements: trainer.achievements, focus_areas: trainer.focusAreas, certifications: trainer.certifications });
-            const statusTone = trainer.status === 'active' ? 'green' : trainer.status === 'suspended' ? 'amber' : 'gray';
-            return (
-              <Tr key={trainer.id} data-trainer-row onClick={() => setViewingId(trainer.id)} style={{ opacity: trainer.status !== 'active' && !showArchived ? 0.8 : 1 }}>
-                <Td onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" aria-label={`Select ${trainer.name}`} checked={picked.has(trainer.id)} onChange={() => toggle(trainer.id)} />
-                </Td>
-                <Td>
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <Initials name={trainer.name} photo={trainer.photoUrl} size={50} tone="amber" />
-                    <div className="min-w-0">
-                      <p className="text-[16px] font-semibold text-white truncate">{trainer.name}</p>
-                      <p className="text-[13px] truncate max-w-[220px]" style={{ color: 'var(--color-text-secondary)' }}>{trainer.email}</p>
-                    </div>
-                  </div>
-                </Td>
-                <Td>
-                  <p className="text-[15px]" style={{ color: '#A78BFA' }}>{trainer.specialization}</p>
-                  {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
-                  <p className="text-[12px] mt-0.5 truncate max-w-[200px]" style={{ color: found.length ? 'var(--color-text-muted)' : '#FBBF24' }}
-                    data-tip="Goals members can pick under Coaches → Find your coach">
-                    {found.length ? `Found under: ${found.map((f) => f.goal.label).join(', ')}` : 'Not matched to a member goal yet'}
-                  </p>
-                </Td>
-                <Td>
-                  {list.length > 0 ? (
-                    <p className="text-[14.5px] inline-flex items-center gap-1.5" style={{ color: soon ? '#FBBF24' : '#A78BFA' }}
-                      data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}${soon ? ` — ${soon} expiring within 30 days` : ''}`}>
-                      <ShieldCheck size={17} /> {list.length} verified{soon ? ` · ${soon} expiring` : ''}
-                    </p>
-                  ) : waiting === 0 ? (
-                    <>
-                      <p className="text-[14.5px] inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}><Shield size={17} /> Not matched</p>
-                      <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>No credentials yet</p>
-                    </>
-                  ) : null}
-                  {waiting > 0 && (
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setReviewing(true); }} data-needs-review
-                      className="text-[14px] inline-flex items-center gap-1.5 mt-0.5 font-medium whitespace-nowrap" style={{ color: '#FBBF24' }}
-                      data-tip="Certificates waiting for you — verify or reject them">
-                      <AlertCircle size={15} /> Needs review · {waiting}
-                    </button>
-                  )}
-                </Td>
-                <Td>
-                  {/* The gym's own figure, whatever the count; "Not public" says what members see. */}
-                  <p className="text-[15px] font-semibold text-white inline-flex items-center gap-1.5">
-                    <Star size={17} fill={trainer.gymAverage != null ? '#F59E0B' : 'none'} style={{ color: '#F59E0B' }} />
-                    {trainer.gymAverage != null ? trainer.gymAverage.toFixed(1) : '—'}
-                  </p>
-                  <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-                    {trainer.gymAverage == null ? 'No evaluations' : trainer.ratingAverage == null ? 'Not public' : 'Public'}
-                  </p>
-                </Td>
-                <Td>
-                  <p className="text-[15px] inline-flex items-center gap-2" style={{ color: trainer.bookableWindows > 0 ? '#A78BFA' : '#FBBF24' }}>
-                    <CalendarDays size={18} />
-                    {trainer.bookableWindows > 0 ? `${trainer.bookableWindows} window${trainer.bookableWindows === 1 ? '' : 's'}` : 'No hours set'}
-                  </p>
-                  {trainer.availabilityDays.length > 0 && (
-                    <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{trainer.availabilityDays.map((d) => d.slice(0, 3)).join(' · ')}</p>
-                  )}
-                </Td>
-                <Td><Pill tone={statusTone} solidDot>{trainer.status === 'active' ? 'Active' : trainer.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}</Pill></Td>
-                <Td onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    {!showArchived && (
-                      <>
-                        <RdButton size="sm" variant="soft" icon={Pencil} onClick={() => openEdit(trainer)}>Edit</RdButton>
-                        <RdButton size="sm" variant="amber" icon={trainer.status === 'suspended' ? UserCheck : UserX} onClick={() => setToSuspend(trainer)}>
-                          {trainer.status === 'suspended' ? 'Reactivate' : 'Suspend'}
-                        </RdButton>
-                      </>
-                    )}
-                    {showArchived && <RdButton size="sm" icon={Archive} onClick={() => setToArchive(trainer)}>Restore</RdButton>}
-                    <DotMenu label={`More for ${trainer.name}`} items={[
-                      { label: 'View profile', icon: Eye, onClick: () => setViewingId(trainer.id) },
-                      { label: 'Archive trainer', icon: Archive, onClick: () => setToArchive(trainer), tone: 'danger', hidden: showArchived },
-                      { label: 'Review credentials', icon: ShieldCheck, onClick: () => setReviewing(true) },
-                      { label: 'Monthly totals', icon: CalendarRange, onClick: () => setShowTotals(true) },
-                    ]} />
-                  </div>
-                </Td>
-              </Tr>
-            );
-          })}
-        </RdTable>
-        <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun={showArchived ? 'archived trainers' : 'trainers'} onPage={paged.setPage} />
-      </RdCard>
+      <div className="a-card" style={{ flex: 1 }} data-trainers-table>
+        <div className="a-ct">
+          {picked.size > 0 ? (
+            <div className="flex items-center gap-2" data-trainer-bulk>
+              <b style={{ fontSize: 13 }}>{picked.size} selected</b>
+              {!showArchived && <button type="button" className="a-btn soft sm" onClick={() => setBulk('suspend')}><UserX size={12} />Suspend</button>}
+              <button type="button" className="a-btn sm" onClick={() => setBulk(showArchived ? 'restore' : 'archive')}><Archive size={12} />{showArchived ? 'Restore' : 'Archive'}</button>
+              <button type="button" className="a-link" onClick={() => setPicked(new Set())}>Clear</button>
+            </div>
+          ) : (
+            <div className="flex gap-1.5">
+              {([['all', 'All', trainers.length], ['active', 'Active', activeN], ['suspended', 'Suspended', suspendedN], ['nohours', 'No hours set', noHours.length]] as [typeof chip, string, number][]).map(([k, l, n]) => (
+                <button key={k} type="button" className={`a-chip ${chip === k ? 'v' : ''}`} onClick={() => { setChip(k); paged.setPage(1); }} data-chip={k}>{l} <em>{n}</em></button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-1.5 items-center">
+            <label className="a-input sm" style={{ width: 230 }}><Search size={14} />
+              <input value={search} onChange={(e) => { setSearch(e.target.value); paged.setPage(1); }} placeholder="Name or specialty…" aria-label="Search trainers" /></label>
+            <button type="button" className={`a-btn sm ${selecting ? 'soft' : ''}`} onClick={() => { setSelecting(!selecting); setPicked(new Set()); }} data-select-mode><SquareCheck size={13} />{selecting ? 'Done' : 'Select'}</button>
+          </div>
+        </div>
+        <div ref={fitRef} className="a-scroll" style={{ flex: 1 }}>
+          <table className="a-table">
+            <thead><tr>
+              {selecting && <th style={{ width: 34 }}><input type="checkbox" aria-label="Select this page" checked={allOnPage}
+                onChange={(e) => setPicked((s) => { const n = new Set(s); pageIds.forEach((id) => (e.target.checked ? n.add(id) : n.delete(id))); return n; })} /></th>}
+              <th>{head('Coach', 'name')}</th><th>{head('Credentials', 'credentials')}</th><th>{head('Rating', 'rating')}</th><th>{head('Bookable hours', 'windows')}</th>
+              <th>Trainees</th><th>{head('Status', 'status')}</th><th>Last in</th><th />
+            </tr></thead>
+            <tbody>
+              {!loading && paged.visible.map((trainer) => {
+                const list = verified.get(trainer.id) ?? [];
+                const soon = list.filter((c) => c.expiresOn && c.expiresOn <= addDays(todayKey(), 30)).length;
+                const waiting = pending.get(trainer.id) ?? 0;
+                const found = goalsFor({ specialization: trainer.specialization, bio: trainer.bio,
+                  achievements: trainer.achievements, focus_areas: trainer.focusAreas, certifications: trainer.certifications });
+                const hrs = extra.hours.get(trainer.id) ?? 0;
+                const trainees = extra.trainees.get(trainer.id) ?? 0;
+                return (
+                  <tr key={trainer.id} data-trainer-row onClick={() => setViewingId(trainer.id)} style={{ cursor: 'pointer', height: paged.total > paged.perPage ? fitRowHeight : undefined }}>
+                    {selecting && <td onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Select ${trainer.name}`} checked={picked.has(trainer.id)} onChange={() => toggle(trainer.id)} /></td>}
+                    <td>
+                      <div className="a-who"><Av name={trainer.name} photo={trainer.photoUrl} />
+                        <div className="min-w-0"><b className="block truncate">{trainer.name}</b>
+                          {/* The member app's "Find your coach" — lib/coachGoals.ts, identical in both apps. */}
+                          <div className="a-sub truncate" data-tip={found.length ? `Members find them under: ${found.map((f) => f.goal.label).join(', ')}` : 'Not matched to a member goal yet'}>
+                            {trainer.specialization}{trainer.yearsExperience != null ? ` · ${trainer.yearsExperience} yr${trainer.yearsExperience === 1 ? '' : 's'}` : ''}
+                          </div></div></div>
+                    </td>
+                    <td onClick={(e) => { if (waiting) { e.stopPropagation(); setReviewing(true); } }}>
+                      <span className="inline-flex flex-col items-start gap-1">
+                        {list.length > 0 && <span className={`a-pill ${soon ? 'a' : 'v'}`} data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}`}>{list.length} verified{soon ? ` · ${soon} expiring` : ''}</span>}
+                        {waiting > 0 && <span className="a-pill a" data-needs-review data-tip="Certificates waiting for you — verify or reject them">Needs review · {waiting}</span>}
+                        {list.length === 0 && waiting === 0 && <span className="a-sub">None uploaded</span>}
+                      </span>
+                    </td>
+                    {/* The gym's own figure, whatever the count; the line under it says what members see. */}
+                    <td><b>{trainer.gymAverage != null ? `★ ${trainer.gymAverage.toFixed(1)}` : '—'}</b>
+                      <div className="a-sub">{trainer.gymAverage == null ? 'no ratings yet' : trainer.ratingAverage == null ? `${trainer.ratingCount || 'few'} rating${trainer.ratingCount === 1 ? '' : 's'} · not public yet` : `${trainer.ratingCount} ratings`}</div></td>
+                    <td>{trainer.bookableWindows > 0
+                      ? <span>{trainer.bookableWindows} window{trainer.bookableWindows === 1 ? '' : 's'}{hrs ? ` · ${Math.round(hrs)} h/wk` : ''}</span>
+                      : <span style={{ color: 'var(--a-a300)' }}>No hours set</span>}</td>
+                    <td>{trainees} trainee{trainees === 1 ? '' : 's'}</td>
+                    <td>
+                      <span className={`a-pill ${trainer.status === 'active' ? 'v' : trainer.status === 'suspended' ? 'a' : ''}`}>{trainer.status === 'active' ? 'Active' : trainer.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}</span>
+                      {trainer.status === 'suspended' && extra.reasons.get(trainer.id) && <div className="a-sub truncate" style={{ marginTop: 3, maxWidth: 170 }} data-suspend-reason>&ldquo;{extra.reasons.get(trainer.id)}&rdquo;</div>}
+                    </td>
+                    <td className="a-sub whitespace-nowrap">{lastIn(extra.lastIn.get(trainer.id))}</td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                      <span className="inline-flex items-center gap-1.5">
+                        {!showArchived && (trainer.status === 'suspended'
+                          ? <button type="button" className="a-btn soft sm" onClick={() => setToSuspend(trainer)}><UserCheck size={12} />Reactivate</button>
+                          : <>
+                            <button type="button" className="a-btn ghost sm" onClick={() => openEdit(trainer)}><Pencil size={12} />Edit</button>
+                            <button type="button" className="a-btn ghost sm" onClick={() => setToSuspend(trainer)}><UserX size={12} />Suspend</button>
+                          </>)}
+                        {showArchived && <button type="button" className="a-btn sm" onClick={() => setToArchive(trainer)}><Archive size={12} />Restore</button>}
+                        <DotMenu label={`More for ${trainer.name}`} items={[
+                          { label: 'View profile', icon: Eye, onClick: () => setViewingId(trainer.id) },
+                          { label: 'Edit trainer', icon: Pencil, onClick: () => openEdit(trainer), hidden: showArchived },
+                          { label: 'Archive trainer', icon: Archive, onClick: () => setToArchive(trainer), tone: 'danger', hidden: showArchived },
+                          { label: 'Review credentials', icon: ShieldCheck, onClick: () => setReviewing(true) },
+                          { label: 'Monthly totals', icon: CalendarRange, onClick: () => setShowTotals(true) },
+                        ]} />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {loading ? <p className="a-sub text-center" style={{ padding: 30 }}>Loading trainers…</p>
+            : visible.length === 0 && (
+              <div className="a-sub text-center" style={{ padding: 30 }}>
+                <b className="block text-white" style={{ fontSize: 14 }}>{search ? 'No trainer matches' : showArchived ? 'No archived trainers' : chip !== 'all' ? 'Nobody here' : 'No trainers yet'}</b>
+                {search ? `Nothing matches “${search}”.` : showArchived ? 'Archived trainers keep every class and session they ever ran.' : chip !== 'all' ? '' : 'Add a coach and they get a login for the trainer app.'}
+              </div>
+            )}
+        </div>
+        <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
+          <span>{paged.total ? `Showing ${(paged.page - 1) * paged.perPage + 1}–${Math.min(paged.total, paged.page * paged.perPage)} of ${paged.total} ${showArchived ? 'archived trainers' : 'trainers'} · ` : ''}click a coach to open their profile, classes, 1-on-1s, members and evaluations{selecting ? '' : ' · Select to suspend or archive several'}</span>
+          <Pager page={paged.page} pages={paged.totalPages} onPage={paged.setPage} />
+        </div>
+      </div>
 
       <TrainerDetailDrawer trainerId={viewingId} onClose={() => setViewingId(null)} onChanged={loadTrainers} />
+
+      {/* Suspending a coach (2026-10-19/20): why, in a word or a sentence, and what is still booked with them. */}
+      {toSuspend && toSuspend.status !== 'suspended' && (
+        <SuspendCoachDialog key={toSuspend.id} coach={toSuspend} onClose={() => setToSuspend(null)}
+          onConfirm={(why) => void changeStatus(toSuspend, 'suspended', `${toSuspend.name} suspended — they can no longer log in`, why)} />
+      )}
 
       <ConfirmDialog
         isOpen={bulk !== null}
@@ -507,7 +615,7 @@ export default function Trainers() {
 
 
       <ConfirmDialog
-        isOpen={!!toSuspend}
+        isOpen={!!toSuspend && toSuspend.status === 'suspended'}
         onClose={() => setToSuspend(null)}
         onConfirm={(why) => {
           if (!toSuspend) return;

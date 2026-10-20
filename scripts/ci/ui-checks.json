@@ -58,6 +58,7 @@
     { "file": "admin-join-rules-check.js", "app": "admin" },
     { "file": "admin-booking-approval-check.js", "app": "admin" },
     { "file": "admin-coaching-check.js", "app": "admin" },
+    { "file": "admin-volume-check.js", "app": "admin" },
     { "file": "admin-gym-location-check.js", "app": "admin" },
     { "file": "admin-equipment-check.js", "app": "admin" },
     { "file": "admin-walk-ins-check.js", "app": "admin" },

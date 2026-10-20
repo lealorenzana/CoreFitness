@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Sun, Footprints, History, Tablet, QrCode, Keyboard, type LucideIcon } from 'lucide-react';
+import { Sun, Footprints, History, Tablet, QrCode, Keyboard, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import type { AttendanceRow } from '../../types/db';
 
 /** Parts the three Attendance pages share, drawn in the mock-up's style (att.css). */
@@ -12,6 +12,28 @@ export function Av({ name, photo, small }: { name: string; photo?: string | null
   return (
     <span className={`a-av ${small ? 's' : ''} ${TONES[h % 4]}`}>
       {photo ? <img src={photo} alt="" /> : init}
+    </span>
+  );
+}
+
+/**
+ * A table's pages (2026-10-20): back, first, the pages beside this one, last, forward —
+ * so 3 pages and 300 pages take the same room in the footer and never push the table.
+ */
+export function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (n: number) => void }) {
+  if (pages <= 1) return null;
+  const nums = [...new Set([1, page - 1, page, page + 1, pages])].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const pad = { padding: '3px 9px' };
+  return (
+    <span style={{ display: 'flex', gap: 4, flexShrink: 0 }} data-pager>
+      <button type="button" className="a-chip" style={pad} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page"><ChevronLeft size={13} /></button>
+      {nums.map((n, i) => (
+        <span key={n} style={{ display: 'flex', gap: 4 }}>
+          {i > 0 && n - nums[i - 1] > 1 && <span className="a-sub" style={{ alignSelf: 'center' }}>…</span>}
+          <button type="button" className={`a-chip ${n === page ? 'v' : ''}`} style={pad} onClick={() => onPage(n)} aria-current={n === page ? 'page' : undefined}>{n}</button>
+        </span>
+      ))}
+      <button type="button" className="a-chip" style={pad} disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Next page"><ChevronRight size={13} /></button>
     </span>
   );
 }

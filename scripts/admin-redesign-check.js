@@ -151,14 +151,15 @@ async (page) => {
 
   // ── Members ──
   t = await visit('/members', 'members');
-  has('hero with members, the bar and the ring', (await page.locator('[data-members-hero] [data-ring]').count()) === 1 && /12 members/.test(t));
+  has('four cards: active, expiring (with remind all), payment due, new this month', (await page.locator('[data-members-hero] > *').count()) === 4 && /12 members/.test(t) && /Expiring in 7 days/.test(t) && /remind all/.test(t) && /New this month/.test(t));
+  has('tabs Members · Sign-ups · Archived', (await page.locator('[data-rd-tabs] a').count()) === 3 && /Sign-ups/.test(t));
   has('chips with counts', (await page.locator('[data-rd-chips] [data-chip]').count()) === 7 && /Payment due/.test(t) && /Awaiting approval/.test(t));
-  has('search, plans, statuses and Filter', /All plans/.test(t) && /All statuses/.test(t) && /Filter/.test(t));
+  has('search, plans, sort, Filter and Export', /All plans/.test(t) && /Name A–Z/.test(t) && /Filter/.test(t) && /Export/.test(t) && (await page.getByLabel('Search members').count()) === 1);
   const noScroll = async () => page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 999; });
   const rowsShown = await page.locator('[data-member-row]').count();
   has('the page does not scroll; the table pages by what fits', (await noScroll()) <= 2 && rowsShown >= 3 && new RegExp(`Showing 1–${rowsShown} of 12 members`).test(t));
-  has('rail: quick actions, needs attention, tip', /Quick actions/.test(t) && /Export CSV/.test(t) && /Archived members/.test(t) && /Needs attention/.test(t) && /Tip/.test(t));
-  has('kept: Invite link and Add Member', /Invite link/.test(t) && /Add Member/.test(t));
+  has('the table: phone, ends in N days, last visit', /Phone/i.test(t) && /Last visit/i.test(t) && /\d+ days?/.test(t));
+  has('kept: Invite link and Add member', /Invite link/.test(t) && /Add member/.test(t));
   await page.locator('[data-chip="approval"]').click(); await page.waitForTimeout(300);
   has('a waiting account has Approve on its row', (await page.locator('[data-member-row]').count()) === 1 && (await page.getByRole('button', { name: 'Approve' }).count()) === 1);
   await page.locator('[data-chip="pending"]').click(); await page.waitForTimeout(300);
@@ -169,6 +170,12 @@ async (page) => {
   has('the row menu keeps every action', /View details/.test(menu) && /Edit member/.test(menu) && /(Suspend|Reactivate) account/.test(menu) && /Archive member/.test(menu));
   await page.keyboard.press('Escape');
   await page.screenshot({ path: 'shots/rd-members-menu.png' });
+  await page.locator('[data-remind-all]').click(); await page.waitForTimeout(300);
+  has('remind all names who will get it before anything is sent', /Send a renewal reminder to 1 member/.test(await page.locator('body').innerText()));
+  await page.getByRole('button', { name: 'Send reminders' }).click(); await page.waitForTimeout(600);
+  await page.locator('[data-open-signups]').click(); await page.waitForTimeout(400);
+  has('the Sign-ups tab opens the sign-ups waiting', /Pending registrations/.test(await page.locator('body').innerText()));
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 
   // ── Invitations ──
   RPC.list_invitations = [
@@ -208,13 +215,15 @@ async (page) => {
   TABLES.trainer_availability = [{ id: 'av1', trainer_id: 't0', day_of_week: 1, start_time: '08:00', end_time: '12:00' },
     { id: 'av2', trainer_id: 't1', day_of_week: 3, start_time: '08:00', end_time: '12:00' }];
   t = await visit('/trainers', 'trainers');
-  has('four tiles, with credentials to review', /On roster/.test(t) && /Bookable/.test(t) && /Credentials to review/.test(t));
-  has('the table: specialty, credentials, rating, windows, status', (await page.locator('[data-trainer-row]').count()) === 3 && /Rehab & Injury Prevention/.test(t) && /1 verified/.test(t) && /Needs review · 1/.test(t) && /windows?/.test(t) && /Active/.test(t));
+  has('four cards: active, bookable hours this week, credentials to review, this month', /Active coaches/.test(t) && /Bookable this week/.test(t) && /8 hours across 2 coaches/.test(t) && /Credentials to review/.test(t) && /This month/.test(t));
+  has('tabs Coaches · Credentials · Archived', /Coaches/.test(t) && /Credentials/.test(t) && /Archived/.test(t));
+  has('the table: specialty, credentials, rating, windows, status', (await page.locator('[data-trainer-row]').count()) === 3 && /Rehab & Injury Prevention/.test(t) && /1 verified/.test(t) && /Needs review · 1/.test(t) && /windows? · 4 h\/wk/.test(t) && /Active/.test(t) && /trainees?/.test(t) && /Last in/i.test(t));
   // 2026-10-19: suspending a coach asks why, and goes through set_account_status (it was a bare UPDATE with no reason).
   await page.locator('[data-trainer-row]').first().getByRole('button', { name: 'Suspend' }).click(); await page.waitForTimeout(400);
   const why = page.locator('textarea[placeholder*="Missed three classes"]');
+  has('the suspend window offers quick reasons and says what is booked', (await page.locator('[data-suspend-coach] .a-chip').count()) === 5 && /stay|Nothing is booked/.test(await page.locator('[data-suspend-coach]').innerText()));
   const confirm = page.getByRole('button', { name: 'Suspend', exact: true }).last();
-  has('suspending a coach asks for the reason, and will not go on without one', (await why.count()) === 1 && /Reason for suspension/.test(await page.locator('body').innerText()) && !(await confirm.isEnabled()));
+  has('suspending a coach asks for the reason, and will not go on without one', (await why.count()) === 1 && /Why\?/.test(await page.locator('[data-suspend-coach]').innerText()) && !(await confirm.isEnabled()));
   await why.fill('Missed three classes without notice.');
   await confirm.click(); await page.waitForTimeout(600);
   const sc = RPC_CALLS.filter(([f]) => f === 'set_account_status').pop();
@@ -224,6 +233,7 @@ async (page) => {
   await page.locator('[data-trainer-row] [data-dot-menu]').first().click(); await page.waitForTimeout(300);
   has('Archive and the rest in the row menu', /Archive trainer/.test(await page.locator('[role="menu"]').innerText().catch(() => '')) && /View profile/.test(await page.locator('[role="menu"]').innerText().catch(() => '')));
   await page.keyboard.press('Escape');
+  await page.locator('[data-select-mode]').click(); await page.waitForTimeout(200);
   await page.getByLabel('Select Bianca Soriano').check(); await page.waitForTimeout(200);
   has('ticking rows offers bulk suspend and archive', (await page.locator('[data-trainer-bulk]').count()) === 1 && /1 selected/.test(await page.locator('[data-trainer-bulk]').innerText()));
   await page.screenshot({ path: 'shots/rd-trainers-selected.png' });
