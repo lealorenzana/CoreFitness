@@ -131,3 +131,24 @@ export async function cancelPtSession(id: string): Promise<void> {
   if (error) throw error;
   assertWrote(data, 'That request could not be withdrawn — it may already have been approved.');
 }
+
+/**
+ * The desk books a 1-on-1 for a member (pt_sessions_insert_frontdesk): confirmed
+ * at once — the desk deciding is the decision. Clashes with the coach's other
+ * sessions or the member's other bookings are refused by the database (0068).
+ */
+export async function deskBookPt(input: { trainerId: string; memberId: string; startsAt: string; durationMinutes: number }): Promise<PtSessionRow> {
+  const { data, error } = await supabase
+    .from('pt_sessions')
+    .insert({
+      trainer_id: input.trainerId, member_id: input.memberId, starts_at: input.startsAt,
+      duration_minutes: input.durationMinutes, status: 'approved', notes: 'Booked at the desk',
+    })
+    .select()
+    .single();
+  if (error) {
+    if (error.code === '23505') throw new Error('That slot has just been taken. Pick another time.');
+    throw new Error(error.message);
+  }
+  return data;
+}

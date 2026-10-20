@@ -147,32 +147,41 @@ async (page) => {
   };
   const has = (label, ok) => out.push(`  ${label}: ${ok ? 'yes' : 'MISSING'}`);
 
-  // ── Schedule ──
+  // ── Schedule (rebuilt to the approved mock-up, 2026-10-20) ──
   let t = await visit('/schedule', 'schedule');
-  has('tiles: classes, sessions, coach hours, clashes', /Classes/.test(t) && /Sessions, next 14 days/.test(t) && /Coach hours set/.test(t) && /Clashes/.test(t));
-  has('the board: bands, days, cards, Free cells, a retired class', /Morning/.test(t) && /Evening/.test(t) && (await page.locator('[data-tip^="Edit "][role="button"]').count()) === 6
-    && /Free/.test(t) && /Retired/.test(t));
-  has('a clash is flagged: one coach on Power Hour and Spin at once', /2 timetable clashes/.test(await (async () => { await page.getByRole('button', { name: /Clashes/ }).click(); await page.waitForTimeout(300); const x = await text(); await page.keyboard.press('Escape'); return x; })())
-    && (await page.locator('span').filter({ hasText: /^Clash$/ }).count()) === 2);
-  has('kept: PNG, CSV, Refresh, Add class, trainer filter', ['PNG', 'CSV', 'Refresh', 'Add class'].every((n) => t.includes(n)) && (await page.getByLabel('Filter by trainer').count()) === 1);
+  has('calendar: tabs, date navigation, search, coach filter, export, add class', /Calendar/.test(t) && /Weekly timetable/.test(t) && /Coach hours/.test(t)
+    && (await page.getByLabel('Search the schedule').count()) === 1 && (await page.getByLabel('Filter by coach').count()) === 1
+    && /Export/.test(t) && /Add class/.test(t) && /Today/.test(t) && /Pick a date/.test(t));
+  has('the week by the clock: dated classes on the calendar', (await page.locator('[data-week] [data-event]').count()) >= 1, String(await page.locator('[data-week] [data-event]').count()));
+  has('needs a look: both clashes, a full class with a waitlist, a coach with no hours', (await page.locator('[data-needs-look] .a-row', { hasText: 'Clash' }).count()) === 2
+    && /has no 1-on-1 hours/.test(t));
   has('the page does not scroll', await noScroll());
-  await page.locator('[data-tip^="Edit Yoga Flow"]').click();
+  await page.locator('[data-week] [data-event]').first().click();
+  await page.waitForTimeout(600);
+  has('a class opens beside the calendar: coach, room, seats, who booked, book a member', (await page.locator('[data-class-panel]').count()) === 1
+    && /Booked/.test(await page.locator('[data-class-panel]').innerText()));
+  await page.screenshot({ path: 'shots/ops-schedule-class.png' });
+  await page.locator('[data-view="day"]').click();
+  await page.waitForTimeout(600);
+  has('day view: one day with a month to pick from', (await page.locator('[data-day]').count()) === 1 && (await page.locator('[data-minical] button').count()) >= 28);
+  await page.screenshot({ path: 'shots/ops-schedule-day.png' });
+  await page.locator('[data-view="plan"]').click();
+  await page.waitForTimeout(400);
+  t = await text();
+  has('weekly timetable: every class, the retired one, both clashes flagged', (await page.locator('[data-template-row]').count()) === 6 && /Retired/.test(t)
+    && (await page.locator('[data-template-row] .a-pill', { hasText: /^Clash$/ }).count()) === 2);
+  await page.locator('[data-template-row]', { hasText: 'Yoga Flow' }).getByRole('button', { name: /Edit/ }).click();
   await page.waitForTimeout(400);
   has('a class opens in the editor with its day, time, coach and room', (await page.getByRole('dialog', { name: 'Edit class' }).count()) === 1
     && (await page.getByRole('group', { name: 'Repeats every' }).getByRole('button', { name: 'Tue', pressed: true }).count()) === 1);
   await page.screenshot({ path: 'shots/ops-schedule-edit.png' });
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  await page.getByRole('tab', { name: /Upcoming sessions/ }).click();
+  await page.locator('[data-view="hours"]').click();
   await page.waitForTimeout(400);
   t = await text();
-  has('sessions: by day, booked of capacity, full and waiting', (await page.locator('[data-session-row]').count()) >= 4 && /10\/10/.test(t) && /\+2 waiting/.test(t));
+  has('coach hours: a row per coach, and who has none', (await page.locator('[data-hours-row]').count()) === 3 && /No hours — members cannot book them/.test(t));
   has('…and the page still does not scroll', await noScroll());
-  await page.screenshot({ path: 'shots/ops-schedule-sessions.png' });
-  await page.getByRole('tab', { name: /Coach hours/ }).click();
-  await page.waitForTimeout(400);
-  t = await text();
-  has('coach hours: grouped by coach, and who has none', /Bianca Soriano/.test(t) && /2 windows/.test(t) && /No hours yet, so no 1-on-1 can be booked with: Dante Evangelista/.test(t));
   await page.screenshot({ path: 'shots/ops-schedule-hours.png' });
   await page.getByRole('combobox', { name: 'Coach' }).click();
   await page.waitForTimeout(200);
@@ -181,34 +190,42 @@ async (page) => {
   await page.getByRole('option', { name: 'Jen Lacsamana' }).click();
   has('…and picking a coach shows them in the box', /Jen Lacsamana/.test(await page.getByRole('combobox', { name: 'Coach' }).innerText()));
 
-  // ── Bookings ──
+  // ── Bookings (rebuilt to the approved mock-up, 2026-10-20) ──
   t = await visit('/bookings', 'bookings');
+  has('one search, date chips, kind and status, four cards', (await page.getByLabel('Search bookings').count()) === 1 && /This week/.test(t) && /Next 30 days/.test(t)
+    && (await page.locator('[data-booking-cards] > *').count()) === 4 && /Waiting for a decision/.test(t) && /Need checking/.test(t));
+  has('the week grouped by day', (await page.locator('[data-queue] .a-daygroup').count()) >= 2);
   has('the queue fits its box — no sideways scroll', await page.evaluate(() => { const b = document.querySelector('[data-queue] [data-rd-table]'); return !!b && b.scrollWidth <= b.clientWidth + 1; }));
-  has('tiles: awaiting, need checking, classes, 1-on-1', /Awaiting approval/.test(t) && /Need checking/.test(t) && /1-on-1/.test(t));
+  has('decided rows say by whom; in coach modes the gym cannot change them (0203)', /Accepted by (Bianca Soriano \(their trainer\)|front desk)/.test(t)
+    && (await page.getByRole('button', { name: 'Change decision' }).count()) === 0);
+  has('the rail: book for a member, who decides here', (await page.locator('[data-desk-book]').count()) === 1 && /Who decides here/.test(t) && /the coach accepts, then you confirm/.test(t));
+  has('the page does not scroll', await noScroll());
+  await page.locator('[data-view="waiting"]').click();
+  await page.waitForTimeout(400);
+  t = await text();
   // 0203: classes are "coach, then desk", 1-on-1 "coach approves". The gym confirms only what a coach accepted;
   // the rest show who they wait for and a reminder — never Approve.
-  const approveN = await page.getByRole('button', { name: 'Approve', exact: true }).count();
+  const approveN = await page.getByRole('button', { name: /^(Approve|Confirm)$/ }).count();
   const waitN = await page.locator('[data-waiting-coach]').count();
-  has('the queue: three pending — Approve only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 3
+  has('waiting: three — Confirm only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 3
     && approveN >= 1 && waitN >= 1 && approveN + waitN === 3 && (await page.locator('[data-remind-coach]').count()) === waitN, `approve ${approveN}, waiting ${waitN}`);
   has('coach then desk: "accepted — your turn to confirm"', /Bianca Soriano accepted — your turn to confirm/.test(t));
   has('warnings, never blocks: an expired membership and a plan without 1-on-1', /Membership is expired/.test(t) && /Free Plan does not include personal training/.test(t));
-  has('the rail: requires attention, and who approves here', /Requires attention/.test(t) && /Another coach/.test(t) && /Who approves here/.test(t) && /Coach, then desk/.test(t));
   has('bulk: select all — only what the gym may decide', new RegExp(`Select all ${approveN} pending`).test(t));
-  has('the page does not scroll', await noScroll());
-  await page.locator('[data-chip="all"]').click();
-  await page.waitForTimeout(300);
-  t = await text();
-  has('decided rows say by whom; in coach modes the gym cannot change them (0203)', /Accepted by (Bianca Soriano \(their trainer\)|front desk)/.test(t)
-    && (await page.getByRole('button', { name: 'Change decision' }).count()) === 0);
   has('no row runs past the edge of the queue', await page.evaluate(() => { const b = document.querySelector('[data-queue]'); const r = b && b.getBoundingClientRect();
     return !!r && [...document.querySelectorAll('[data-booking-row] button')].every((x) => x.getBoundingClientRect().right <= r.right + 1); }));
-  await page.locator('[data-chip="rejected"]').click();
+  await page.screenshot({ path: 'shots/ops-bookings-waiting.png' });
+  await page.locator('[data-rd-tabs] button').first().click();
+  await page.waitForTimeout(300);
+  await page.getByLabel('Status').selectOption('rejected');
   await page.waitForTimeout(300);
   has('an expiry is worded as an event', /Expired — nobody answered in time/.test(await text()));
-  await page.locator('[data-chip="all"]').click();
+  await page.getByLabel('Status').selectOption('all');
   await page.waitForTimeout(300);
   await page.screenshot({ path: 'shots/ops-bookings-all.png' });
+  await page.locator('[data-view="history"]').click();
+  await page.waitForTimeout(300);
+  has('history: before today, with an export', /Export/.test(await text()));
 
   // ── Payments ──
   t = await visit('/payments', 'payments');

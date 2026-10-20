@@ -196,3 +196,46 @@ export async function loadUpcomingSessions(daysAhead = 14): Promise<UpcomingSess
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
+
+/** A dated session on the calendar (2026-10-20): what the week view draws. */
+export interface CalendarSession extends UpcomingSession {
+  /** The timetable class it came from, or null for a one-off a coach made (0085). */
+  templateId: string | null;
+  level: string;
+}
+
+/**
+ * Every dated class between two local dates (inclusive), with real headcounts —
+ * the calendar's week or day, past weeks included. `from`/`to` are YYYY-MM-DD.
+ */
+export async function loadSessionsBetween(from: string, to: string): Promise<CalendarSession[]> {
+  const [classes, availability] = await Promise.all([
+    listClasses().catch(() => [] as ClassRow[]),
+    listClassAvailability().catch(() => []),
+  ]);
+  const bookedById = new Map<string, number>();
+  for (const a of availability) bookedById.set(a.class_id, a.booked_count);
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  const start = new Date(fy, fm - 1, fd).getTime();
+  const end = new Date(ty, tm - 1, td + 1).getTime();
+  return classes
+    .filter((c) => {
+      if (!c.scheduled_at) return false;
+      const t = new Date(c.scheduled_at).getTime();
+      return t >= start && t < end;
+    })
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      trainerId: c.trainer_id,
+      startsAt: c.scheduled_at!,
+      durationMinutes: c.duration_minutes,
+      location: c.location,
+      capacity: c.capacity,
+      booked: bookedById.get(c.id) ?? 0,
+      templateId: (c as ClassRow & { template_id?: string | null }).template_id ?? null,
+      level: c.level,
+    }))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}

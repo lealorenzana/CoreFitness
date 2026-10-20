@@ -106,3 +106,26 @@ export async function sweepStaleRequests(): Promise<number> {
   }
   return (data as number | null) ?? 0;
 }
+
+/**
+ * The desk books a member into a class (0204): confirmed at once and the member
+ * told. The database refuses a full class, a started one, a member already in
+ * it, or a plan without classes — the message says which.
+ */
+export async function deskBookClass(memberId: string, classId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('desk_book_class', { p_member: memberId, p_class: classId });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/** Who is booked into one dated class (pending or confirmed), oldest first. */
+export async function listClassRoster(classId: string): Promise<{ id: string; member_id: string; status: BookingStatus }[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('id, member_id, status')
+    .eq('class_id', classId)
+    .in('status', ['pending', 'approved'])
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as { id: string; member_id: string; status: BookingStatus }[];
+}

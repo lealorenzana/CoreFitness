@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import {
-  RdHeader, RdCard, StatTile, FilterChips, SearchField, RdSelect, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock,
-  FitBody, RailCard, RailRow, RailAction, TipCard, Initials,
-} from '../components/ui/rd';
-import { TONE, type Tone } from '../components/ui/rdTokens';
+import Popover from '../components/ui/Popover';
+import DatePicker from '../components/ui/DatePicker';
+import DeskBookCard from '../components/bookings/DeskBookCard';
+import { Av, Pager } from './attendance/parts';
+import './attendance/att.css';
+import { todayKey, addDays, localDateKey } from '../utils/dates';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import {
-  CheckCircle, XCircle, Clock, Calendar, User, Dumbbell, AlertTriangle,
-  RotateCcw, ShieldCheck, Settings2,
+  CheckCircle, XCircle, AlertTriangle, RotateCcw, ShieldCheck, Settings2, CalendarDays, Hourglass, History, CalendarPlus,
+  Search, CalendarRange, Download,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -40,12 +41,13 @@ import type { BookingStatus } from '../types/db';
  * with what needs chasing and who approves at this gym. Nothing scrolls the page.
  */
 
-const SECOND = 'var(--color-text-secondary)';
-const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
-const STATUS_TONE: Record<BookingStatus, Tone> = { pending: 'amber', approved: 'violet', rejected: 'gray', cancelled: 'gray' };
 type BookingMode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
-const MODE_WORD: Record<BookingMode, string> = { instant: 'Instant', coach: 'Coach', desk: 'Desk', coach_desk: 'Coach, then desk', off: 'Off' };
+const MODE_WORD: Record<BookingMode, string> = { instant: 'Instant', coach: 'Coach decides', desk: 'Desk decides', coach_desk: 'Coach, then desk', off: 'Off' };
+/** Who decides, said as a sentence for the side card. */
+const MODE_SAY: Record<BookingMode, string> = {
+  instant: 'confirmed the moment a member books', coach: 'the coach decides · you see and remind',
+  desk: 'you and the desk decide', coach_desk: 'the coach accepts, then you confirm', off: 'not booked in the app',
+};
 
 /** Statuses as the desk says them. */
 const STATUS_BADGE: Record<BookingStatus, string> = {
@@ -70,7 +72,7 @@ const DECIDER_WORD: Record<'admin' | 'staff' | 'trainer' | 'system', string> = {
 
 export default function Bookings() {
   const [rows, setRows] = useState<QueueRow[]>([]);
-  const [filter, setFilter] = useState<'all' | BookingStatus>('pending');
+  const [filter, setFilter] = useState<'all' | BookingStatus>('all');
   const [kindFilter, setKindFilter] = useState<'all' | 'class' | 'pt'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -79,14 +81,30 @@ export default function Bookings() {
   const [bulk, setBulk] = useState<'approved' | 'rejected' | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [toReverse, setToReverse] = useState<QueueRow | null>(null);
+  /** The redesign's three views (2026-10-20): the days ahead, what waits, and everything before today. */
+  const [view, setView] = useState<'day' | 'waiting' | 'history'>('day');
+  const [today] = useState(() => todayKey());
+  const [preset, setPreset] = useState<'today' | 'tomorrow' | 'week' | 'month' | 'pick'>('week');
+  const [pickDay, setPickDay] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [pickAnchor, setPickAnchor] = useState<HTMLElement | null>(null);
+  /** Bumped by the head's button: the desk-booking card reloads its lists. */
+  const [focusBook, setFocusBook] = useState(0);
+  const range = preset === 'today' ? { from: today, to: today } : preset === 'tomorrow' ? { from: addDays(today, 1), to: addDays(today, 1) }
+    : preset === 'week' ? { from: today, to: addDays(today, 6) } : preset === 'month' ? { from: today, to: addDays(today, 29) } : { from: pickDay || today, to: pickDay || today };
 
   // Declared before the handlers because `runBulk` reads it. It resolves either
   // way — the closure runs long after this line — but a handler referring to a
   // binding defined thirty lines below it is a trap for the next reader.
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const day = (r: QueueRow) => (r.when ? localDateKey(r.when) : null);
+    const inView = (r: QueueRow) => view === 'waiting' ? r.status === 'pending'
+      : view === 'history' ? !!day(r) && day(r)! < today && day(r)! >= (historyFrom || addDays(today, -30))
+        : !!day(r) && day(r)! >= range.from && day(r)! <= range.to;
     return rows.filter(
       (r) =>
+        inView(r) &&
         (filter === 'all' || r.status === filter) &&
         (kindFilter === 'all' || r.kind === kindFilter) &&
         (!q ||
@@ -94,11 +112,12 @@ export default function Bookings() {
           r.title.toLowerCase().includes(q) ||
           (r.trainerName ?? '').toLowerCase().includes(q))
     );
-  }, [rows, filter, kindFilter, search]);
+  }, [rows, filter, kindFilter, search, view, today, historyFrom, range.from, range.to]).sort((a, b) => view === 'history'
+    ? (b.when ?? '').localeCompare(a.when ?? '') : (a.when ?? '').localeCompare(b.when ?? ''));
 
   /** Rows that fit the queue's own box — the page never scrolls (2026-10-12). */
-  const fit = useFitRows(10);
-  const paged = usePaged(visible, fit.perPage);
+  const { ref: fitRef, perPage } = useFitRows(10);
+  const paged = usePaged(visible, perPage);
   const navigate = useNavigate();
   /** Who approves, per kind (0180) — read so the rail can say it. Null before 0180. */
   const [modes, setModes] = useState<{ class: BookingMode; pt: BookingMode } | null>(null);
@@ -132,7 +151,7 @@ export default function Bookings() {
     await notifyUser({
       userId: r.trainerId, type: 'booking', title: 'A booking is waiting for you',
       message: `${r.memberName} asked for ${r.title}${r.when ? ' on ' + new Date(r.when).toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}. Accept or decline it in the app.`,
-      actionUrl: '/trainer/bookings', dedupe: `remind:${r.kind}:${r.id}:${new Date().toISOString().slice(0, 10)}`,
+      actionUrl: '/trainer/bookings', dedupe: `remind:${r.kind}:${r.id}:${todayKey()}`,
     }).then(() => { setReminded((s) => new Set(s).add(r.id)); showToast(`${r.trainerName ?? 'The coach'} was reminded`, 'success'); })
       .catch(() => showToast('The reminder could not be sent', 'error'));
   };
@@ -278,182 +297,196 @@ export default function Bookings() {
     });
 
   const pendingCount = rows.filter((r) => r.status === 'pending').length;
+  const yours = rows.filter((r) => r.status === 'pending' && gymMayApprove(r)).length;
   const flaggedCount = rows.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
-  const count = (s: 'all' | BookingStatus) => (s === 'all' ? rows.length : rows.filter((r) => r.status === s).length);
-  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+  const bookedToday = rows.filter((r) => r.status === 'approved' && r.when && localDateKey(r.when) === today);
+  const weekRows = rows.filter((r) => r.kind === 'class' && r.when && localDateKey(r.when) >= today && localDateKey(r.when) <= addDays(today, 6) && r.seats);
+  const seatsByClass = new Map<string, { t: number; c: number }>();
+  for (const r of weekRows) seatsByClass.set(r.title + r.when, { t: r.seats!.taken, c: r.seats!.capacity });
+  const seatT = [...seatsByClass.values()].reduce((a, x) => a + x.t, 0); const seatC = [...seatsByClass.values()].reduce((a, x) => a + x.c, 0);
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  const dayTitle = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number);
+    const base = new Date(y, m - 1, d).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+    return key === today ? `Today · ${base}` : key === addDays(today, 1) ? `Tomorrow · ${base}` : key === addDays(today, -1) ? `Yesterday · ${base}` : base;
+  };
+  const rangeLabel = range.from === range.to ? dayTitle(range.from) : `${dayTitle(range.from)} – ${dayTitle(range.to)}`;
+  // The page's rows grouped by the day they happen, on this page of the list.
+  const groups: { key: string; rows: QueueRow[] }[] = [];
+  for (const r of paged.visible) {
+    const k = r.when ? localDateKey(r.when) : 'none';
+    const g = groups[groups.length - 1];
+    if (g && g.key === k) g.rows.push(r); else groups.push({ key: k, rows: [r] });
+  }
+  const exportCsv = () => {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const lines = [['Date', 'Time', 'Member', 'Booking', 'Coach', 'Status', 'Decided by'].join(',')];
+    for (const r of visible) {
+      lines.push([r.when ? localDateKey(r.when) : '', r.when ? fmtTime(r.when) : '', r.memberName, r.title, r.trainerName ?? '', STATUS_BADGE[r.status],
+        r.decidedByRole ? (r.decidedByRole === 'system' ? 'automatic' : `${r.decidedByName ?? DECIDER_WORD[r.decidedByRole]}`) : ''].map((v) => esc(String(v))).join(','));
+    }
+    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `bookings-${today}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
 
-  const rail = (
-    <>
-      {/* Bookings the escalation ladder has been shouting about (0071), with somewhere to act.
-          It renders nothing when nothing waits. */}
-      <BookingAttentionPanel onChanged={load} />
-      {modes && (
-        <RailCard icon={ShieldCheck} title="Who approves here" sub="Set in Settings → Bookings (0180).">
-          <RailRow tone="violet" label="Classes" count={MODE_WORD[modes.class]} />
-          <RailRow tone="amber" label="1-on-1" count={MODE_WORD[modes.pt]} />
-          <RailAction icon={Settings2} label="Change who approves" onClick={() => navigate('/settings?tab=bookings')} />
-        </RailCard>
-      )}
-      <TipCard>
-        A warning never blocks — a full class, a lapsed membership or a plan that does not cover it is for you to weigh. Ticking rows lets you decide a whole weekend at once.
-      </TipCard>
-    </>
-  );
+  const outcome = (row: QueueRow) => {
+    if (row.status === 'pending' && !gymMayApprove(row)) return <span data-waiting-coach className="a-sub" style={{ color: 'var(--a-p300)' }}>Waiting for {row.trainerName ?? 'the coach'} to decide</span>;
+    if (row.coachOkName) return <span data-coach-ok className="a-sub" style={{ color: 'var(--a-p300)' }}>{row.coachOkName} accepted — your turn to confirm</span>;
+    if (row.decidedByRole) return (
+      <span className="a-sub">{row.decidedByRole === 'system' && row.status === 'approved' ? 'Confirmed automatically — your gym books instantly'
+        : row.decidedByRole === 'system' ? 'Expired — nobody answered in time'
+          : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${row.decidedByName ?? DECIDER_WORD[row.decidedByRole]}${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}</span>
+    );
+    return null;
+  };
 
   return (
-    <div className="rd-fit" data-bookings>
-      <RdHeader title="Bookings" subtitle="Class bookings and 1-on-1 requests, in one queue."
-        actions={<div className="w-[300px]"><SearchField value={search} onChange={setSearch} placeholder="Member, class or coach" /></div>} />
-
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-        <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Awaiting approval" value={pendingCount} sub="decide or remind"
-          active={filter === 'pending' && kindFilter === 'all'} onClick={() => { setFilter('pending'); setKindFilter('all'); }} />
-        <StatTile compact icon={AlertTriangle} tone={flaggedCount ? 'amber' : 'violet'} label="Need checking" value={flaggedCount} sub="pending with a warning"
-          onClick={() => { setFilter('pending'); setKindFilter('all'); }} />
-        <StatTile compact icon={Dumbbell} label="Classes" value={rows.filter((r) => r.kind === 'class').length} sub="seats in timetabled classes"
-          active={kindFilter === 'class'} onClick={() => setKindFilter(kindFilter === 'class' ? 'all' : 'class')} />
-        <StatTile compact icon={User} label="1-on-1" value={rows.filter((r) => r.kind === 'pt').length} sub="sessions with a coach"
-          active={kindFilter === 'pt'} onClick={() => setKindFilter(kindFilter === 'pt' ? 'all' : 'pt')} />
+    <div className="att" data-bookings>
+      <div className="a-head">
+        <div className="min-w-0">
+          <h1>Bookings</h1>
+          <p>Every class booking and 1-on-1, by day{modes ? <> · <span style={{ color: 'var(--a-p300)' }}>classes: {MODE_WORD[modes.class].toLowerCase()} · 1-on-1: {MODE_WORD[modes.pt].toLowerCase()}</span></> : ''}</p>
+        </div>
+        <nav className="a-tabs" aria-label="Bookings views" data-rd-tabs>
+          <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => { setView('day'); setFilter('all'); }}><CalendarDays size={14} />By day</button>
+          <button type="button" className={view === 'waiting' ? 'on' : ''} onClick={() => { setView('waiting'); setFilter('pending'); }} data-view="waiting"><Hourglass size={14} />Waiting <em>{pendingCount}</em></button>
+          <button type="button" className={view === 'history' ? 'on' : ''} onClick={() => { setView('history'); setFilter('all'); }} data-view="history"><History size={14} />History</button>
+        </nav>
+        <button type="button" className="a-btn amber" onClick={() => setFocusBook((n) => n + 1)}><CalendarPlus size={15} />Book for a member</button>
       </div>
 
-      <FitBody rail={rail}>
-        <RdCard className="overflow-hidden rd-fit-fill" data-queue>
-          <div className="flex items-center gap-2.5 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>
-            <FilterChips<'all' | BookingStatus> compact value={filter} onChange={setFilter} items={[
-              { key: 'pending', label: 'Pending', count: count('pending'), tone: pendingCount ? 'amber' : undefined },
-              { key: 'approved', label: 'Confirmed', count: count('approved') },
-              { key: 'rejected', label: 'Rejected', count: count('rejected') },
-              { key: 'cancelled', label: 'Cancelled', count: count('cancelled') },
-              { key: 'all', label: 'All', count: rows.length },
-            ]} />
-            <RdSelect label="Kind" value={kindFilter} onChange={(v) => setKindFilter(v as typeof kindFilter)} className="w-[150px]">
-              <option value="all">Both kinds</option>
-              <option value="class">Classes</option>
-              <option value="pt">1-on-1</option>
-            </RdSelect>
-          </div>
+      <div className="flex items-center gap-2 flex-none flex-wrap">
+        <label className="a-input" style={{ flex: 1, maxWidth: 440, padding: '9px 13px' }}><Search size={15} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Member, class, coach or room…" aria-label="Search bookings" /></label>
+        {view === 'day' && (<>
+          {([['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week'], ['month', 'Next 30 days']] as const).map(([k, l]) => (
+            <button key={k} type="button" className={`a-chip ${preset === k ? 'v' : ''}`} onClick={() => setPreset(k)}>{l}</button>
+          ))}
+          <button type="button" className={`a-btn ${preset === 'pick' ? 'soft' : ''}`} style={{ padding: '7px 11px' }} onClick={(e) => setPickAnchor(e.currentTarget)}><CalendarRange size={15} />{preset === 'pick' ? rangeLabel : 'Pick a date'}</button>
+        </>)}
+        {view === 'history' && (
+          <button type="button" className="a-btn" style={{ padding: '7px 11px' }} onClick={(e) => setPickAnchor(e.currentTarget)}><CalendarRange size={15} />{historyFrom ? `From ${dayTitle(historyFrom)}` : 'Last 30 days'}</button>
+        )}
+        <select className={`a-chip ${kindFilter !== 'all' ? 'on' : ''}`} value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)} aria-label="Kind">
+          <option value="all">Both kinds</option><option value="class">Classes</option><option value="pt">1-on-1</option>
+        </select>
+        {view !== 'waiting' && (
+          <select className={`a-chip ${filter !== 'all' ? 'on' : ''}`} value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Status">
+            <option value="all">Any status</option><option value="pending">Waiting</option><option value="approved">Confirmed</option><option value="rejected">Declined</option><option value="cancelled">Cancelled</option>
+          </select>
+        )}
+        {view === 'history' && <button type="button" className="a-btn" style={{ padding: '7px 11px', marginLeft: 'auto' }} onClick={exportCsv}><Download size={15} />Export</button>}
+      </div>
+      <Popover anchor={pickAnchor} open={!!pickAnchor} onClose={() => setPickAnchor(null)} width={300}>
+        <div className="p-3">
+          {view === 'history' ? (
+            <DatePicker value={historyFrom} mode="history" onChange={(v) => { setHistoryFrom(v); setPickAnchor(null); }} />
+          ) : (
+            <DatePicker value={preset === 'pick' ? range.from : ''} mode="future" bounds={{ today: addDays(today, -60), aheadDays: 60 + 120 }}
+              onChange={(v) => { if (v) { setPickDay(v); setPreset('pick'); } setPickAnchor(null); }} />
+          )}
+        </div>
+      </Popover>
 
-          {/* Bulk bar. A queue after a weekend is twenty near-identical requests; selection spans
-              the whole filtered queue, not just this page — "select all 20 pending" means twenty. */}
+      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-booking-cards>
+        <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: '#3e310f', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
+          <div className="a-lbl" style={pendingCount ? { color: 'var(--a-a300)' } : undefined}>Waiting for a decision</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{pendingCount}</div><span className="a-sub">{pendingCount - yours} with coaches · {yours} yours</span></div>
+        </button>
+        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Booked today</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{bookedToday.length}</div><span className="a-sub">{bookedToday.filter((r) => r.kind === 'class').length} in classes · {bookedToday.filter((r) => r.kind === 'pt').length} 1-on-1</span></div></div>
+        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Seats filled · next 7 days</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{seatC ? `${Math.round((seatT / seatC) * 100)}%` : '—'}</div><span className="a-sub">{seatC ? `${seatT} of ${seatC} in booked classes` : 'no class bookings yet'}</span></div></div>
+        <button type="button" className="a-card press text-left" style={flaggedCount ? { borderColor: '#3e310f', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
+          <div className="a-lbl" style={flaggedCount ? { color: 'var(--a-a300)' } : undefined}>Need checking</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{flaggedCount}</div><span className="a-sub">waiting with a warning</span></div>
+        </button>
+      </div>
+
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 340px', flex: 1 }}>
+        <div className="a-card" style={{ padding: '6px 14px 12px' }} data-queue>
           {selectablePending.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: LINE, background: selectedPending.length ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.015)' }} data-bulk>
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer" style={{ color: SECOND }}>
-                <input type="checkbox" className="accent-violet-500" checked={allSelected}
-                  onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
+            <div className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid var(--a-border)' }} data-bulk>
+              <label className="flex items-center gap-2 a-sub cursor-pointer">
+                <input type="checkbox" className="accent-violet-500" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
                 Select all {selectablePending.length} pending
               </label>
               {selectedPending.length > 0 && (
                 <>
-                  <span className="text-[13px] font-medium text-white">{selectedPending.length} selected</span>
+                  <b style={{ fontSize: 12.5 }}>{selectedPending.length} selected</b>
                   <div className="ml-auto flex gap-2">
-                    <RdButton variant="primary" size="sm" icon={CheckCircle} onClick={() => setBulk('approved')}>Approve selected</RdButton>
-                    <RdButton variant="amber" size="sm" icon={XCircle} onClick={() => setBulk('rejected')}>Reject selected</RdButton>
+                    <button type="button" className="a-btn violet sm" onClick={() => setBulk('approved')}><CheckCircle size={13} />Approve selected</button>
+                    <button type="button" className="a-btn soft sm" onClick={() => setBulk('rejected')}><XCircle size={13} />Reject selected</button>
                   </div>
                 </>
               )}
             </div>
           )}
-
-          {loading ? <p className="text-[14px] p-5" style={{ color: MUTED }}>Loading bookings…</p> : (
-            <RdTable boxRef={fit.ref} head={['', 'Member', 'Booking', 'When', 'Status', { label: '', align: 'right' }]}
-              empty={visible.length === 0 ? (
-                <EmptyBlock compact icon={Calendar} title={rows.length === 0 ? 'No bookings yet' : 'Nothing matches those filters'}
-                  body={rows.length === 0 ? 'Members book classes and 1-on-1 sessions from the phone app.' : 'Clear a filter to widen the queue.'} />
-              ) : undefined}>
-              {paged.visible.map((row) => {
-                const flagged = row.warnings.length > 0;
-                const full = !!row.seats && row.seats.taken >= row.seats.capacity;
-                return (
-                  <Tr key={`${row.kind}-${row.id}`} style={{ height: visible.length > paged.perPage ? fit.rowHeight : undefined }} data-booking-row>
-                    <Td className="w-10">
-                      {row.status === 'pending' && (
-                        <input type="checkbox" className="accent-violet-500" checked={selected.has(row.id)} onChange={() => toggle(row.id)}
-                          aria-label={`Select ${row.memberName}'s booking`} />
-                      )}
-                    </Td>
-                    <Td>
-                      <span className="flex items-center gap-3 min-w-0">
-                        <Initials name={row.memberName} size={32} />
-                        <span className="font-semibold text-white truncate max-w-[130px]">{row.memberName}</span>
-                      </span>
-                    </Td>
-                    <Td>
-                      <span className="flex items-center gap-2.5 min-w-0">
-                        <span className="min-w-0 max-w-[180px]">
-                          <span className="block text-white truncate">{row.title}</span>
-                          <span className="block text-[12px] truncate" style={{ color: row.kind === 'pt' ? TONE.amber.fg : MUTED }}>
-                            {row.kind === 'pt' ? '1-on-1' : 'Class'}{row.trainerName ? ` with ${row.trainerName}` : ''}
-                            {row.notes ? ` — “${row.notes}”` : ''}
-                          </span>
-                        </span>
-                      </span>
-                    </Td>
-                    <Td>
-                      {row.when ? (
-                        <span className="block whitespace-nowrap">
-                          <span className="block text-white">{fmtDay(row.when)}, {fmtTime(row.when)}</span>
-                          <span className="block text-[12px]" style={{ color: MUTED }}>
-                            {row.seats ? <span style={{ color: full ? TONE.amber.fg : undefined }}>{row.seats.taken}/{row.seats.capacity} seats taken</span> : '1-on-1 slot'}
-                          </span>
-                        </span>
-                      ) : <span style={{ color: MUTED }}>Not scheduled</span>}
-                    </Td>
-                    <Td>
-                      <span className="flex flex-col items-start gap-1 max-w-[190px]">
-                        <Pill tone={STATUS_TONE[row.status]} solidDot>{STATUS_BADGE[row.status]}</Pill>
-                        {/* Since 0071 a trainer decides their own bookings, so a decided row says by whom.
-                            NULL is left silent rather than guessed. */}
-                        {row.status === 'pending' && !gymMayApprove(row) && (
-                          <span data-waiting-coach className="text-[12px] font-semibold truncate max-w-full" style={{ color: '#C4B5FD' }}>
-                            Waiting for {row.trainerName ?? 'the coach'} to decide</span>
-                        )}
-                        {row.coachOkName && (
-                          <span data-coach-ok className="text-[12px] font-semibold truncate max-w-full" style={{ color: '#C4B5FD' }}>{row.coachOkName} accepted — your turn to confirm</span>
-                        )}
-                        {row.decidedByRole && (
-                          <span className="text-[12px] truncate max-w-full" style={{ color: MUTED }}>
-                            {row.decidedByRole === 'system' && row.status === 'approved'
-                              ? 'Confirmed automatically — your gym books instantly'
-                              : row.decidedByRole === 'system'
-                              ? 'Expired — nobody answered in time'
-                              : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${row.decidedByName ?? DECIDER_WORD[row.decidedByRole]}${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}
-                          </span>
-                        )}
-                        {/* Warnings, not blocks — the desk overrides these for real reasons. */}
-                        {flagged && (
-                          <span className="text-[12px] flex items-center gap-1 max-w-full" style={{ color: TONE.amber.fg }}
-                            data-tip={row.warnings.map((w) => w.message).join(' — ')}>
-                            <AlertTriangle size={12} className="flex-none" /> <span className="truncate">{row.warnings[0].message}</span>{row.warnings.length > 1 ? <span className="flex-none">(+{row.warnings.length - 1})</span> : null}
-                          </span>
-                        )}
-                      </span>
-                    </Td>
-                    <Td align="right">
-                      {row.status === 'pending' && !gymMayApprove(row) ? (
-                        // The coach's to decide (0203): the gym sees it and can nudge.
-                        <RdButton size="sm" disabled={reminded.has(row.id)} onClick={() => void remindCoach(row)} data-remind-coach
-                          data-tip={`Send ${row.trainerName ?? 'the coach'} a reminder in the app`}>{reminded.has(row.id) ? 'Reminded' : 'Remind coach'}</RdButton>
-                      ) : row.status === 'pending' ? (
-                        <span className="inline-flex gap-1 whitespace-nowrap">
-                          <RdButton variant="primary" size="sm" disabled={busyId === row.id} onClick={() => decide(row, 'approved')}>Approve</RdButton>
-                          {gymMayReject(row) && <button type="button" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => decide(row, 'rejected')}
-                            className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><XCircle size={16} /></button>}
-                        </span>
-                      ) : (row.status === 'approved' || row.status === 'rejected') && gymMayReverse(row) ? (
-                        <button type="button" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
-                          data-tip={`Change decision — make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}
-                          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06] disabled:opacity-50" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><RotateCcw size={16} /></button>
-                      ) : null}
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </RdTable>
+          {loading ? <p className="a-sub" style={{ padding: 20 }}>Loading bookings…</p> : (
+            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
+              {visible.length === 0 ? (
+                <p className="a-sub text-center" style={{ padding: 30 }}>{rows.length === 0 ? 'No bookings yet — members book from the phone app, or book one for them here.' : view === 'waiting' ? 'Nothing is waiting for a decision.' : 'Nothing matches — try another day or clear the search.'}</p>
+              ) : groups.map((g) => (
+                <div key={g.key}>
+                  <div className="a-daygroup"><CalendarDays size={13} />{g.key === 'none' ? 'Not scheduled' : dayTitle(g.key)} <em>{g.rows.length}</em></div>
+                  <table className="a-table" style={{ tableLayout: 'fixed' }}>
+                    <colgroup><col style={{ width: 30 }} /><col style={{ width: '28%' }} /><col style={{ width: '30%' }} /><col style={{ width: '24%' }} /><col /></colgroup><tbody>
+                    {g.rows.map((row) => {
+                      const full = !!row.seats && row.seats.taken >= row.seats.capacity;
+                      return (
+                        <tr key={`${row.kind}-${row.id}`} data-booking-row>
+                          <td>
+                            {row.status === 'pending' && gymMayApprove(row) && (
+                              <input type="checkbox" className="accent-violet-500" checked={selected.has(row.id)} onChange={() => toggle(row.id)} aria-label={`Select ${row.memberName}'s booking`} />
+                            )}
+                          </td>
+                          <td><div className="a-who"><Av name={row.memberName} small /><div className="min-w-0"><b className="block truncate">{row.memberName}</b>
+                            {row.warnings.length > 0 && <div className="a-sub truncate" style={{ color: 'var(--a-a300)' }} data-tip={row.warnings.map((w) => w.message).join(' — ')}><AlertTriangle size={11} className="inline" /> {row.warnings[0].message}</div>}</div></div></td>
+                          <td><b className="block truncate">{row.title}</b>
+                            <div className="a-sub truncate">{row.when ? fmtTime(row.when) : '—'}{row.trainerName ? ` · ${row.trainerName}` : ''}{row.seats ? <> · <span style={{ color: full ? 'var(--a-a300)' : undefined }}>{row.seats.taken}/{row.seats.capacity}</span></> : ' · 1-on-1'}{row.notes ? ` · “${row.notes}”` : ''}</div></td>
+                          <td><span className={`a-pill ${row.status === 'approved' ? 'v' : row.status === 'pending' ? 'a' : ''}`}>{STATUS_BADGE[row.status]}</span><div>{outcome(row)}</div></td>
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {row.status === 'pending' && !gymMayApprove(row) ? (
+                              <button type="button" className="a-btn sm" disabled={reminded.has(row.id)} onClick={() => void remindCoach(row)} data-remind-coach
+                                data-tip={`Send ${row.trainerName ?? 'the coach'} a reminder in the app`}>{reminded.has(row.id) ? 'Reminded' : 'Remind coach'}</button>
+                            ) : row.status === 'pending' ? (
+                              <span className="inline-flex gap-1">
+                                <button type="button" className="a-btn violet sm" disabled={busyId === row.id} onClick={() => void decide(row, 'approved')}>{row.coachOkName ? 'Confirm' : 'Approve'}</button>
+                                {gymMayReject(row) && <button type="button" className="a-btn ghost sm" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => void decide(row, 'rejected')}><XCircle size={14} /></button>}
+                              </span>
+                            ) : (row.status === 'approved' || row.status === 'rejected') && gymMayReverse(row) ? (
+                              <button type="button" className="a-btn ghost sm" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
+                                data-tip={`Change decision — make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}><RotateCcw size={14} /></button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody></table>
+                </div>
+              ))}
+            </div>
           )}
-          <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="requests" onPage={paged.setPage} />
-        </RdCard>
-      </FitBody>
+          {visible.length > 0 && (
+            <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
+              <span>{(paged.page - 1) * paged.perPage + 1}–{Math.min(paged.total, paged.page * paged.perPage)} of {paged.total}{view === 'day' ? ` · ${rangeLabel}` : ''}{search.trim() ? ` · “${search.trim()}”` : ''}</span>
+              <Pager page={paged.page} pages={paged.totalPages} onPage={paged.setPage} />
+            </div>
+          )}
+        </div>
+
+        <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <DeskBookCard onBooked={() => void load()} focusKey={focusBook} />
+          <BookingAttentionPanel onChanged={load} />
+          {modes && (
+            <div className="a-card" style={{ flexShrink: 0 }}>
+              <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings')}><Settings2 size={13} />Change</button></div>
+              <div className="a-row"><span className="a-dot v" /><div className="t"><b>Classes</b><small>{MODE_SAY[modes.class]}</small></div></div>
+              <div className="a-row"><span className="a-dot a" /><div className="t"><b>1-on-1</b><small>{MODE_SAY[modes.pt]}</small></div></div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <ConfirmDialog
         isOpen={!!bulk}
