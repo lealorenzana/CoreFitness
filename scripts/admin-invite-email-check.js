@@ -1,7 +1,9 @@
 /**
- * Emailing an invitation (2026-10-04): "Email it" beside "Copy link" calls
- * send-email with the invitation's link, says plainly when email is not set up
- * (nothing claims a send that did not happen), and shows "Emailed" when it went.
+ * Sending an invitation's login (0202, 2026-10-20; was "Email it", 2026-10-04):
+ * the form and "Send a new login" call invite-account, which makes the login
+ * and emails it. When the email went, the screen says so and shows no password;
+ * when email is not set up it says nothing was sent and shows the one-time
+ * password once, to hand over — nothing claims a send that did not happen.
  *
  * Playwright runner's `filename` argument, admin dev server on :5174.
  */
@@ -41,11 +43,11 @@ async (page) => {
       headers: { 'Content-Range': '0-0/1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     const one = req.headers()['accept']?.includes('vnd.pgrst.object');
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
-    if (path === '/functions/v1/send-email') {
+    if (path === '/functions/v1/invite-account') {
       SENT.push(JSON.parse(req.postData() || '{}'));
       return json(MAIL_MODE === 'off'
-        ? { id: 'e' + SENT.length, configured: false, status: 'not_configured' }
-        : { id: 'e' + SENT.length, configured: true, status: 'sent' });
+        ? { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'not_configured', password: 'Hk7mPq2RtW9x' }
+        : { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'sent', password: null });
     }
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
@@ -78,23 +80,28 @@ async (page) => {
   await page.setViewportSize({ width: 1280, height: 850 });
   await page.goto('http://localhost:5174/invitations', { waitUntil: 'domcontentloaded' });
   await page.getByText('lea@example.test').first().waitFor({ timeout: 15000 });
-  const btn = page.getByRole('button', { name: /Email it/ });
-  out.push('Email it beside Copy link: ' + ((await btn.count()) === 1 && (await page.getByRole('button', { name: /Copy link/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('each waiting invitation offers a new login, not a link to copy: ' + ((await page.getByRole('button', { name: 'Send a new login' }).count()) === 1
+    && (await page.getByRole('button', { name: /Copy link/ }).count()) === 0 ? 'yes' : 'MISSING'));
 
-  await btn.click();
+  // The form: email not set up.
+  await page.getByLabel('Email').fill('mara@example.test');
+  await page.getByLabel(/First name/).fill('Mara');
+  await page.getByRole('button', { name: /Send member login/ }).click();
   await page.waitForTimeout(800);
   let t = await text();
   const m = SENT[0] ?? {};
-  out.push('sends the invitation: ' + (m.kind === 'invitation' && m.to === 'lea@example.test' && m.gymId === g.gym_id
-    && /invite\/tok123abc/.test(m.body ?? '') && /Ana Gymanigga/.test(m.subject ?? '') ? 'yes' : 'MISSING ' + JSON.stringify(m).slice(0, 200)));
-  out.push('not set up: says nothing was sent: ' + (/Email is not set up on Core Fitness yet, so nothing was sent/.test(t) && !/Emailed/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the form sends a member login through invite-account: ' + (m.email === 'mara@example.test' && m.role === 'member' && m.firstName === 'Mara' && m.sendEmail === true ? 'yes' : 'MISSING ' + JSON.stringify(m)));
+  out.push('not set up: says nothing was sent, and shows the one-time password once: ' + (/the email did not go out/.test(t) && /Email is not set up on Core Fitness yet/.test(t)
+    && (await page.locator('[data-invite-password]').innerText()) === 'Hk7mPq2RtW9x' ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-invite-handover.png' });
 
+  // A row: email set up.
   MAIL_MODE = 'on';
-  await page.waitForTimeout(4500);   // let the toast go
-  await page.getByRole('button', { name: /Email it/ }).click();
+  await page.getByRole('button', { name: 'Send a new login' }).click();
   await page.waitForTimeout(800);
   t = await text();
-  out.push('set up: says it went: ' + (SENT.length === 2 && /Emailed to lea@example.test/.test(t) && (await page.getByRole('button', { name: /Emailed/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('set up: says it went, and shows no password: ' + (SENT.length === 2 && SENT[1].email === 'lea@example.test' && /Login emailed to lea@example.test/.test(t)
+    && (await page.locator('[data-invite-password]').count()) === 0 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-invite-email.png' });
   return out.join('\n');
 }

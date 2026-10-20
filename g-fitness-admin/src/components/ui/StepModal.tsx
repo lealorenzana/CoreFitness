@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
-import Button from './Button';
+import { Check, X } from 'lucide-react';
 
 /**
  * A form in steps (2026-10-04) — Add member, Add trainer, Add staff. One
  * question at a time, a progress line you can click back along, Back/Next at
  * the bottom, and a body that scrolls inside the window rather than pushing
  * the buttons off it. The page owns the steps and what "ready" means.
+ *
+ * `tabs` (2026-10-20, Edit trainer): the same sections as tabs — every one
+ * open at once, and the footer is Cancel + Save rather than Back/Next — so
+ * editing asks exactly what adding asked, in the same places.
  */
 export default function StepModal({
-  title, subtitle, steps, step, onStep, canNext, onNext, onBack, onClose, finishLabel, busy, children, hideNav,
+  title, subtitle, steps, step, onStep, canNext, onNext, onBack, onClose, finishLabel, busy, children, hideNav, tabs, flagged,
 }: {
   title: string;
   subtitle?: string;
@@ -26,6 +29,10 @@ export default function StepModal({
   children: React.ReactNode;
   /** The done screen has its own buttons. */
   hideNav?: boolean;
+  /** Free tabs and a Save footer — editing what a wizard created. */
+  tabs?: boolean;
+  /** Steps with a problem to fix, marked on the tab. */
+  flagged?: number[];
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -47,25 +54,46 @@ export default function StepModal({
             <button aria-label="Close" onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-secondary)' }}><X size={18} /></button>
           </div>
           {!hideNav && (
-            <ol className="flex gap-2 mt-3" aria-label="Steps">
-              {steps.map((t, i) => (
-                <li key={t} className="flex-1 min-w-0">
-                  <button type="button" disabled={i > step} onClick={() => onStep(i)} className="w-full text-left disabled:cursor-default">
-                    <span className="block h-1 rounded-full" style={{ background: i <= step ? 'var(--color-primary)' : 'var(--color-border)' }} />
-                    <span className="block text-[11px] mt-1 font-semibold truncate" style={{ color: i === step ? '#fff' : 'var(--color-text-secondary)' }}>{i + 1}. {t}</span>
-                  </button>
-                </li>
-              ))}
+            <ol className="flex gap-2 mt-4" aria-label={tabs ? 'Sections' : 'Steps'} role={tabs ? 'tablist' : undefined}>
+              {steps.map((t, i) => {
+                const reach = tabs || i <= step;
+                const here = i === step;
+                const passed = !tabs && i < step;
+                const flag = flagged?.includes(i);
+                return (
+                  <li key={t} className="flex-1 min-w-0">
+                    <button type="button" disabled={!reach} onClick={() => onStep(i)} role={tabs ? 'tab' : undefined} aria-selected={tabs ? here : undefined}
+                      aria-current={!tabs && here ? 'step' : undefined}
+                      className="w-full text-left disabled:cursor-default group">
+                      <span className="block h-1 rounded-full transition-colors"
+                        style={{ background: here ? 'var(--color-primary)' : passed ? 'rgba(139,92,246,0.55)' : tabs ? 'rgba(255,255,255,0.12)' : 'var(--color-border)' }} />
+                      <span className="flex items-center gap-1.5 text-[11.5px] mt-1.5 font-semibold truncate"
+                        style={{ color: here ? '#fff' : reach ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
+                        <span className="w-4 h-4 rounded-full grid place-items-center text-[9.5px] flex-none"
+                          style={{ background: here ? 'var(--color-primary)' : passed ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)', color: '#fff' }}>
+                          {passed ? <Check size={10} /> : i + 1}
+                        </span>
+                        <span className="truncate group-hover:text-white">{t}</span>
+                        {flag && <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: '#FBBF24' }} aria-label="needs fixing" />}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           )}
         </div>
         <div className="p-5 space-y-4 overflow-y-auto flex-1">{children}</div>
         {!hideNav && (
           <div className="p-4 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-            <Button variant="ghost" className="flex-1" onClick={step > 0 ? onBack : onClose} disabled={busy}>{step > 0 ? 'Back' : 'Cancel'}</Button>
-            <Button variant={last ? 'secondary' : 'primary'} className="flex-1" onClick={onNext} disabled={!canNext || busy}>
-              {busy ? 'Working…' : last ? finishLabel : 'Next'}
-            </Button>
+            <button type="button" className="flex-1 h-11 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5 disabled:opacity-50"
+              style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'var(--color-text-secondary)' }}
+              onClick={!tabs && step > 0 ? onBack : onClose} disabled={busy}>{!tabs && step > 0 ? 'Back' : 'Cancel'}</button>
+            <button type="button" className="flex-1 h-11 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', boxShadow: canNext && !busy ? '0 10px 30px -12px rgba(124,58,237,0.8)' : 'none' }}
+              onClick={onNext} disabled={!canNext || busy} data-step-next>
+              {busy ? 'Working…' : tabs || last ? finishLabel : 'Next'}
+            </button>
           </div>
         )}
       </div>

@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FileText, Check, X, AlertTriangle, ShieldCheck, Clock, ChevronLeft, ChevronRight,
-  ExternalLink, ImageOff, RotateCw, Award,
+  ExternalLink, ImageOff, RotateCw, Award, Search, Bell, Users,
 } from 'lucide-react';
-import { RdCard, StatTile, FilterChips, Pill, RdButton, EmptyBlock, TableFooter, Initials } from '../ui/rd';
+import { notifyUser } from '../../lib/api/notify';
+import { RdCard, FilterChips, Pill, RdButton, EmptyBlock, TableFooter, Initials } from '../ui/rd';
+import { Pager } from '../../pages/attendance/parts';
+import '../../pages/attendance/att.css';
 import type { Tone } from '../ui/rdTokens';
 import { assertWrote } from '../../lib/api/mutate';
 import { showToast } from '../../utils/toast';
@@ -431,9 +434,14 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
   );
 }
 
-export default function CredentialReview({ trainerId, compact = false, onChanged }: {
+/** A coach on the roster, for the by-coach panel (the full view only). */
+export interface RosterCoach { id: string; name: string; photoUrl: string | null }
+
+export default function CredentialReview({ trainerId, compact = false, onChanged, coaches }: {
   /** Only this coach's certificates (the trainer's drawer). */
   trainerId?: string;
+  /** Every active coach — the full view lists who has nothing on file (2026-10-20). */
+  coaches?: RosterCoach[];
   /** No header or tiles, four to a page: a section inside the drawer. */
   compact?: boolean;
   /** After a decision, so the roster's "needs review" marks refresh. */
@@ -448,7 +456,13 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   const [viewing, setViewing] = useState<{ id: string; rejecting: boolean } | null>(null);
   const [signed, setSigned] = useState<Record<string, Signed>>({});
   const [broken, setBroken] = useState<Record<string, true>>({});
-  const perPage = compact ? 4 : 8;
+  /** By coach or certificate (2026-10-20). */
+  const [q, setQ] = useState('');
+  /** One coach's cards only, picked in the by-coach panel. */
+  const [coachPick, setCoachPick] = useState<string | null>(null);
+  /** Reminders sent this visit, so a button says it went. */
+  const [asked, setAsked] = useState<Record<string, true>>({});
+  const perPage = compact ? 4 : 6;
 
   /** Pure fetch, no state. Keeps every setState behind an await in the caller,
    *  which is what react-hooks/set-state-in-effect is asking for. */
@@ -487,10 +501,13 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   // Waiting first — it is the part of the page that is a task — then newest.
   const shown = useMemo(() => {
     const order = { pending: 0, rejected: 1, verified: 2 } as const;
+    const term = q.trim().toLowerCase();
     return rows
       .filter((r) => filter === 'all' || (filter === 'expiring' ? expiring(r) : r.status === filter))
+      .filter((r) => !coachPick || r.trainer_id === coachPick)
+      .filter((r) => !term || `${r.title} ${trainerName(r)} ${r.issuer ?? ''} ${r.credential_number ?? ''}`.toLowerCase().includes(term))
       .sort((a, b) => order[a.status] - order[b.status] || b.uploaded_at.localeCompare(a.uploaded_at));
-  }, [rows, filter]);
+  }, [rows, filter, q, coachPick]);
 
   // Clamped during render, never corrected in an effect.
   const page = Math.min(rawPage, Math.max(1, Math.ceil(shown.length / perPage)));
@@ -584,6 +601,40 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
     }
   };
 
+  /**
+   * Ask a coach in the app — to upload certificates, or to renew one running
+   * out. The notification is the record; dedupe keeps a second tap from sending
+   * it twice the same day.
+   */
+  const ask = async (coachId: string, kind: 'upload' | 'renew', title?: string) => {
+    const key = `${kind}:${coachId}:${title ?? ''}`;
+    try {
+      await notifyUser({
+        userId: coachId, type: 'system',
+        title: kind === 'upload' ? 'Add your certificates' : `Renew ${title}`,
+        message: kind === 'upload'
+          ? 'The gym asks you to upload your coaching certificates so members see them as verified. Profile → Edit profile → Certificates.'
+          : `Your ${title} is running out. Upload the renewed certificate so it stays verified on your profile.`,
+        actionUrl: '/trainer/profile/edit',
+        dedupe: `credential-${key}:${new Date().toISOString().slice(0, 10)}`,
+      });
+      setAsked((a) => ({ ...a, [key]: true }));
+      showToast(kind === 'upload' ? 'Asked in the app to upload certificates' : 'Reminded in the app to renew it', 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not send that', 'error');
+    }
+  };
+  const byCoach = (coaches ?? []).map((c) => {
+    const mine = rows.filter((r) => r.trainer_id === c.id);
+    return {
+      ...c, total: mine.length,
+      verified: mine.filter((r) => r.status === 'verified' && !(daysLeft(r) != null && daysLeft(r)! < 0)).length,
+      pending: mine.filter((r) => r.status === 'pending').length,
+      expiring: mine.filter(expiring).length,
+    };
+  }).sort((a, b) => b.pending - a.pending || b.expiring - a.expiring || a.total - b.total || a.name.localeCompare(b.name));
+  const nothingOnFile = byCoach.filter((c) => c.total === 0);
+
   const counts = {
     pending: rows.filter((r) => r.status === 'pending').length,
     verified: rows.filter((r) => r.status === 'verified').length,
@@ -599,33 +650,8 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
     openView(next);
   };
 
-  return (
-    <div className="flex flex-col gap-5" data-credential-review={compact ? 'trainer' : 'all'}>
-      {compact ? (rows.length > 1 && (
-        <FilterChips value={filter} onChange={setFilter} items={[
-          { key: 'all' as Filter, label: 'All', count: rows.length },
-          { key: 'pending' as Filter, label: 'Waiting', count: counts.pending, tone: 'amber' as const },
-          { key: 'verified' as Filter, label: 'Verified', count: counts.verified, tone: 'violet' as const },
-        ]} />
-      )) : (<>
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <StatTile icon={Clock} tone={counts.pending > 0 ? 'amber' : 'violet'} label="Waiting for review" value={loading ? '—' : counts.pending}
-            onClick={() => setFilter('pending')} active={filter === 'pending'} />
-          <StatTile icon={ShieldCheck} label="Verified" value={loading ? '—' : counts.verified} onClick={() => setFilter('verified')} active={filter === 'verified'} />
-          <StatTile icon={X} tone="red" label="Rejected" value={loading ? '—' : counts.rejected} onClick={() => setFilter('rejected')} active={filter === 'rejected'} />
-          <StatTile icon={Clock} tone={counts.expiring > 0 ? 'amber' : 'violet'} label="Expiring or lapsed" value={loading ? '—' : counts.expiring}
-            onClick={() => setFilter('expiring')} active={filter === 'expiring'}
-            tip="Verified credentials that run out within 30 days, or already have — members stop seeing one the day it lapses" />
-        </div>
-        <FilterChips value={filter} onChange={setFilter} items={[
-            { key: 'all' as Filter, label: 'All', count: rows.length },
-            { key: 'pending' as Filter, label: 'Waiting', count: counts.pending, tone: 'amber' as const },
-            { key: 'verified' as Filter, label: 'Verified', count: counts.verified, tone: 'violet' as const },
-            { key: 'rejected' as Filter, label: 'Rejected', count: counts.rejected, tone: 'red' as const },
-            { key: 'expiring' as Filter, label: 'Expiring', count: counts.expiring, tone: 'amber' as const },
-          ]} />
-      </>)}
-
+  const cards = (
+    <>
       {loading ? (
         <p className="text-[14.5px]" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
       ) : failed ? (
@@ -652,9 +678,131 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
         </div>
       )}
 
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-5" data-credential-review="trainer">
+        {rows.length > 1 && (
+          <FilterChips value={filter} onChange={setFilter} items={[
+            { key: 'all' as Filter, label: 'All', count: rows.length },
+            { key: 'pending' as Filter, label: 'Waiting', count: counts.pending, tone: 'amber' as const },
+            { key: 'verified' as Filter, label: 'Verified', count: counts.verified, tone: 'violet' as const },
+          ]} />
+        )}
+        {cards}
       {!loading && shown.length > 0 && (
         <RdCard><TableFooter page={page} perPage={perPage} total={shown.length} noun="credentials" onPage={setPage} /></RdCard>
       )}
+
+      {viewRow && viewing && (
+        <Viewer key={viewRow.id} row={viewRow}
+          signed={signed[viewRow.file_path]} broken={!!broken[viewRow.file_path]}
+          busy={busy === viewRow.id}
+          position={viewIndex >= 0 ? { index: viewIndex, count: shown.length } : null}
+          startRejecting={viewing.rejecting}
+          onClose={() => setViewing(null)}
+          onPrev={viewIndex > 0 ? () => step(-1) : null}
+          onNext={viewIndex >= 0 && viewIndex < shown.length - 1 ? () => step(1) : null}
+          onDecide={(status, note) => decide(viewRow, status, note)}
+          onOpenTab={() => openTab(viewRow)}
+          onRetry={() => retry(viewRow.file_path)}
+          onBroken={() => markBroken(viewRow.file_path)} />
+      )}
+    </div>
+  );
+  }
+
+  // ── The full view (Trainers → Credentials, 2026-10-20): counts that filter,
+  //    a search, the cards scrolling inside their own box, and every coach on
+  //    the right — what they have on file, and a way to ask for what is missing.
+  return (
+    <div className="att" data-credential-review="all" style={{ height: '100%' }}>
+      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-credential-counts>
+        {([
+          ['pending', 'Waiting for review', counts.pending, counts.pending ? 'decide on each document' : 'nothing to decide', counts.pending > 0],
+          ['verified', 'Verified', counts.verified, 'members see the verified mark', false],
+          ['expiring', 'Expiring or lapsed', counts.expiring, 'within 30 days — members stop seeing a lapsed one', counts.expiring > 0],
+          ['all', 'Coaches with nothing on file', nothingOnFile.length, coaches ? `of ${coaches.length} coach${coaches.length === 1 ? '' : 'es'}` : 'roster not loaded', nothingOnFile.length > 0],
+        ] as const).map(([key, label, n, sub, warn]) => (
+          <button key={label} type="button" className={`a-card press text-left ${filter === key && key !== 'all' ? 'on' : ''}`} data-credential-tile-count={key}
+            style={warn ? { borderColor: '#3e310f' } : undefined}
+            onClick={() => { if (key !== 'all') setFilter(key as Filter); else { setFilter('all'); setCoachPick(null); } }}>
+            <div className="a-lbl" style={warn ? { color: 'var(--a-a300)' } : undefined}>{label}</div>
+            <div className="a-num">{loading ? '—' : n}</div>
+            <div className="a-sub" style={{ marginTop: 4 }}>{sub}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
+        <div className="a-card" data-credential-list>
+          <div className="a-ct">
+            <div className="flex gap-1.5 flex-wrap">
+              {([['all', 'All', rows.length], ['pending', 'Waiting', counts.pending], ['verified', 'Verified', counts.verified],
+                ['rejected', 'Rejected', counts.rejected], ['expiring', 'Expiring', counts.expiring]] as const).map(([k, label, n]) => (
+                <button key={k} type="button" className={`a-chip ${filter === k ? 'v' : ''}`} onClick={() => setFilter(k as Filter)} data-chip={k}>{label} <em>{n}</em></button>
+              ))}
+              {coachPick && (
+                <button type="button" className="a-chip on" onClick={() => setCoachPick(null)} data-tip="Show every coach">
+                  {byCoach.find((c) => c.id === coachPick)?.name ?? 'One coach'} <X size={11} />
+                </button>
+              )}
+            </div>
+            <label className="a-input sm" style={{ width: 230 }}><Search size={14} />
+              <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Coach, certificate, issuer…" aria-label="Search credentials" /></label>
+          </div>
+          <div className="a-scroll" style={{ flex: 1, paddingRight: 4 }} data-credential-scroll>{cards}</div>
+          {!loading && shown.length > 0 && (
+            <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
+              <span>{(page - 1) * perPage + 1}–{Math.min(shown.length, page * perPage)} of {shown.length} credentials · click a document to see it full size</span>
+              <Pager page={page} pages={Math.ceil(shown.length / perPage)} onPage={setPage} />
+            </div>
+          )}
+        </div>
+
+        <div className="a-grid a-scroll coaching-side" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="a-card" data-by-coach>
+            <div className="a-ct"><h3><Users size={16} />By coach</h3><small>{byCoach.length}</small></div>
+            {!coaches ? <p className="a-sub">The roster did not load.</p> : byCoach.length === 0 ? <p className="a-sub">No coaches yet.</p> : byCoach.slice(0, 7).map((c) => (
+              <div key={c.id} className="a-row" style={coachPick === c.id ? { background: '#7c3aed14', borderRadius: 10 } : undefined}>
+                <Initials name={c.name} photo={c.photoUrl} size={30} tone={c.pending ? 'amber' : 'violet'} />
+                <button type="button" className="t text-left" onClick={() => setCoachPick(coachPick === c.id ? null : c.id)} data-tip="Show only their certificates">
+                  <b>{c.name}</b>
+                  <small>{c.total === 0 ? 'Nothing on file' : [c.verified && `${c.verified} verified`, c.pending && `${c.pending} waiting`, c.expiring && `${c.expiring} expiring`].filter(Boolean).join(' · ') || `${c.total} rejected`}</small>
+                </button>
+                {c.total === 0 && (
+                  <button type="button" className="a-btn ghost sm" disabled={!!asked[`upload:${c.id}:`]} onClick={() => void ask(c.id, 'upload')} data-ask-upload>
+                    <Bell size={12} />{asked[`upload:${c.id}:`] ? 'Asked' : 'Ask'}</button>
+                )}
+              </div>
+            ))}
+            {byCoach.length > 7 && <p className="a-sub" style={{ paddingTop: 4 }}>+{byCoach.length - 7} more — search a name to find them</p>}
+          </div>
+
+          {counts.expiring > 0 && (
+            <div className="a-card" style={{ borderColor: '#3e310f' }} data-expiring-panel>
+              <div className="a-ct"><h3><Clock size={16} style={{ color: 'var(--a-a300)' }} />Running out</h3></div>
+              {rows.filter(expiring).slice(0, 4).map((r) => {
+                const key = `renew:${r.trainer_id}:${r.title}`;
+                return (
+                  <div key={r.id} className="a-row">
+                    <div className="t"><b>{r.title}</b><small>{(() => { const n = daysLeft(r) ?? 0; return n < 0 ? `lapsed ${-n} day${n === -1 ? '' : 's'} ago` : n === 0 ? 'expires today' : `expires in ${n} day${n === 1 ? '' : 's'}`; })()} · {trainerName(r)}</small></div>
+                    <button type="button" className="a-btn ghost sm" disabled={!!asked[key]} onClick={() => void ask(r.trainer_id, 'renew', r.title)} data-ask-renew>
+                      <Bell size={12} />{asked[key] ? 'Reminded' : 'Remind'}</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="a-card">
+            <div className="a-ct"><h3><ShieldCheck size={16} />What verified means</h3></div>
+            <p className="a-sub" style={{ lineHeight: 1.5 }}>You looked at the document and it matches what the coach claims. Members see a verified mark on that certificate until it expires; anything not verified reads as the coach&rsquo;s own words. Coaches upload them in the app under Profile → Edit profile → Certificates.</p>
+          </div>
+        </div>
+      </div>
 
       {viewRow && viewing && (
         <Viewer key={viewRow.id} row={viewRow}

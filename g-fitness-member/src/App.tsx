@@ -83,7 +83,24 @@ const JoinGym = lazyPage(() => import('./pages/JoinGym'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 
 
-type RoleCheck = 'checking' | 'authorized' | 'unauthorized';
+type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite';
+
+/** An invited account that has not finished its first-sign-in form (0202). */
+function pendingInvite(meta: Record<string, unknown> | undefined): string | null {
+  return meta?.invite_pending && typeof meta.invite_token === 'string' ? meta.invite_token : null;
+}
+
+/** Sends an invited account to its form, reading the token from the session. */
+function InviteRedirect() {
+  const [to, setTo] = useState<string | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setTo(`/invite/${pendingInvite(session?.user.user_metadata) ?? ''}`);
+    })();
+  }, []);
+  return to ? <Navigate to={to} replace /> : null;
+}
 
 /** Gates a route to authenticated users whose real DB role+status match. */
 function RoleProtectedRoute({
@@ -106,6 +123,11 @@ function RoleProtectedRoute({
       } = await supabase.auth.getSession();
       if (!session) {
         if (active) setStatus('unauthorized');
+        return;
+      }
+      const invite = pendingInvite(session.user.user_metadata);
+      if (invite) {
+        if (active) setStatus('invite');
         return;
       }
       // The role is the one in *this gym* (lib/gymContext, 0104) — the same
@@ -131,12 +153,14 @@ function RoleProtectedRoute({
   }, [role]);
 
   if (status === 'checking') return null;
+  if (status === 'invite') return <InviteRedirect />;
   if (status === 'unauthorized') return <Navigate to={redirectTo} replace />;
   return <>{children}</>;
 }
 
 function LoginRoute() {
   const [dest, setDest] = useState<'member' | 'trainer' | 'choose' | null>(null);
+  const [invite, setInvite] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -146,6 +170,11 @@ function LoginRoute() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+      const token = pendingInvite(session.user.user_metadata);
+      if (token) {
+        if (active) setInvite(token);
+        return;
+      }
       const ctx = await getGymContext();
       if (!active) return;
       if (ctx?.status === 'active' && homeFor(ctx.role)) {
@@ -163,6 +192,7 @@ function LoginRoute() {
     };
   }, []);
 
+  if (invite) return <Navigate to={`/invite/${invite}`} replace />;
   if (dest === 'trainer') return <Navigate to="/trainer/home" replace />;
   if (dest === 'member') return <Navigate to="/member/home" replace />;
   if (dest === 'choose') return <Navigate to="/choose-gym" replace />;

@@ -90,7 +90,7 @@ async (page) => {
   // ---- Add member ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Add member/i }).first().click();
-  await page.getByText('1. Who they are').waitFor({ timeout: 15000 });
+  await page.locator('[aria-label="Steps"]').getByText('Who they are').waitFor({ timeout: 15000 });
   await page.getByLabel('First name').fill('Ana');
   await page.getByLabel('Last name').fill('Reyes');
   await page.getByRole('radio', { name: 'Female' }).click();
@@ -132,7 +132,9 @@ async (page) => {
   await page.getByRole('button', { name: /Add trainer/ }).first().click();
   await page.getByLabel('First name').fill('Ben');
   await page.getByLabel('Last name').fill('Cruz');
-  await page.getByRole('radio', { name: '5–9 years' }).click();
+  // Years coaching is an exact number now, with quick picks (2026-10-20) — the same control as Edit.
+  await page.locator('[data-years-field] button', { hasText: /^5$/ }).click();
+  await page.screenshot({ path: 'shots/admin-add-trainer.png' });
   await next();
   await page.getByRole('button', { name: 'Boxing Coach' }).click();
   await page.getByRole('button', { name: 'Boxing', exact: true }).click();
@@ -146,7 +148,26 @@ async (page) => {
   await page.getByRole('button', { name: 'Add trainer' }).last().click();
   await page.getByText('is on the team').waitFor({ timeout: 8000 });
   const up = CALLS.find((c) => c[0] === 'PATCH' && c[1] === 'trainer_profiles');
-  out.push('coaching details saved onto the profile: ' + (up && up[2].years_experience === 6 && up[2].focus_areas.includes('Boxing') && up[2].certifications.includes('First Aid / CPR') ? 'yes' : 'MISSING ' + JSON.stringify(up?.[2])));
+  out.push('coaching details saved onto the profile: ' + (up && up[2].years_experience === 5 && up[2].focus_areas.includes('Boxing') && up[2].certifications.includes('First Aid / CPR') ? 'yes' : 'MISSING ' + JSON.stringify(up?.[2])));
+
+  // ---- Edit trainer (2026-10-20): the same sections as Add, as tabs; years is the same exact-number control.
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.goto('http://localhost:5174/trainers', { waitUntil: 'domcontentloaded' });
+  await page.getByText('Tess Test').first().waitFor({ timeout: 15000 });
+  await page.locator('[data-trainer-row]', { hasText: 'Tess Test' }).getByRole('button', { name: /^Edit$/ }).first().click();
+  await page.locator('[aria-label="Sections"]').waitFor({ timeout: 8000 });
+  out.push('Edit has the four sections Add has, all open: ' + ((await page.locator('[aria-label="Sections"] [role="tab"]').count()) === 4
+    && (await page.locator('[aria-label="Sections"] [role="tab"]:disabled').count()) === 0 ? 'yes' : 'MISSING'));
+  out.push('…and years coaching is the same control: ' + ((await page.locator('[data-years-field]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-years-field] button', { hasText: /^8$/ }).click();
+  await page.screenshot({ path: 'shots/admin-edit-trainer.png' });
+  await page.locator('[aria-label="Sections"] [role="tab"]', { hasText: 'What they coach' }).click();
+  out.push('…what they coach, with where members find them: ' + ((await page.locator('[data-found-under]').count()) === 1 ? 'yes' : 'MISSING'));
+  CALLS.length = 0;
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.waitForTimeout(800);
+  const ed = CALLS.find((c) => c[0] === 'PATCH' && c[1] === 'trainer_profiles');
+  out.push('Save writes the exact years: ' + (ed && ed[2].years_experience === 8 ? 'yes' : 'MISSING ' + JSON.stringify(ed?.[2])));
 
   // ---- Credentials ------------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/credentials', { waitUntil: 'domcontentloaded' });
@@ -156,6 +177,10 @@ async (page) => {
   out.push('issuer and expiry on the card: ' + (/Philippine Red Cross · expires in 10 days/.test(t) ? 'yes' : 'MISSING'));
   out.push('an expiring count: ' + (/Expiring\s*1\b/i.test(t) && /Expiring or lapsed\s*1\b/i.test(t) ? 'yes' : 'MISSING ' + (t.match(/Expiring[^A-Z]{0,30}/i) || [''])[0]));
   out.push('the expiry sweep runs on open: ' + (CALLS.some((c) => c[1] === 'credential_expiry_sweep') ? 'yes' : 'MISSING'));
+  out.push('the view keeps the Trainers tabs, a search and the by-coach panel: ' + ((await page.locator('[data-credentials-view] .a-tabs a').count()) === 3
+    && (await page.getByLabel('Search credentials').count()) === 1 && (await page.locator('[data-by-coach]').count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('…with a reminder to renew what is running out: ' + ((await page.locator('[data-ask-renew]').count()) >= 1 ? 'yes' : 'MISSING'));
+  await page.waitForTimeout(900); await page.screenshot({ path: 'shots/admin-credentials.png' });
 
   // ---- Staff accounts -----------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });

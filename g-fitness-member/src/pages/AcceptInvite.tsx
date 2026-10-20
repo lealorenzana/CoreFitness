@@ -6,6 +6,7 @@ import { clearGymApp } from '../lib/gymApp';
 import { Page, PageTitle } from '../components/ui/page';
 import { NocButton } from '../components/ui/noc';
 import { logout } from '../utils/auth';
+import FinishInvite from './FinishInvite';
 
 interface Peek {
   gym_id: string;
@@ -142,6 +143,10 @@ export default function AcceptInvite() {
       );
     }
 
+    // Signed in (0202): the form for what they were invited as is the
+    // acceptance — the sign-up's details for a member, the coaching for a coach.
+    if (signedIn) return <FinishInvite token={token} />;
+
     const role = peek.role === 'member' ? 'a member'
       : peek.role === 'trainer' ? 'one of their coaches' : 'part of their front desk';
 
@@ -187,16 +192,27 @@ export default function AcceptInvite() {
         ) : (
           <div className="space-y-2.5">
             <p className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Sign in or make an account first — with the email this invitation was sent to.
+              {peek.role === 'staff'
+                ? 'Your login is for the gym’s dashboard — sign in there with the email and one-time password the gym sent you.'
+                : 'Sign in with the email and one-time password the gym sent you. You choose your own password next.'}
             </p>
             {/* The token rides along so they land back here afterwards rather
                 than on a home screen, wondering what happened to the link. */}
-            <NocButton className="w-full" onClick={() => navigate(`/register?invite=${token}`)}>
-              Create my account
-            </NocButton>
-            <NocButton className="w-full" variant="structure" onClick={() => navigate(`/login?invite=${token}`)}>
-              I already have one
-            </NocButton>
+            {peek.role === 'staff' ? (
+              <NocButton className="w-full" onClick={() => window.location.assign('https://corefitness-admin.vercel.app/admin/login')}>
+                Open the dashboard
+              </NocButton>
+            ) : (
+              <>
+                <NocButton className="w-full" onClick={() => navigate(`/login?invite=${token}${peek.role === 'trainer' ? '&as=trainer' : ''}`)}>
+                  Sign in
+                </NocButton>
+                {/* Invitations sent before 0202 came with a link and no login. */}
+                <NocButton className="w-full" variant="structure" onClick={() => navigate(`/register?invite=${token}`)}>
+                  I was not sent a password
+                </NocButton>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -66,6 +66,45 @@ export async function revokeInvitation(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * What sending an invitation did (0202, `invite-account`): the login exists,
+ * and either it was emailed or — only then — the one-time password comes back
+ * once, for the desk to hand over in person. `existing` = the address already
+ * had a Core Fitness account (another gym): no new password, they sign in with
+ * their own and are asked to finish joining.
+ */
+export interface InviteOutcome {
+  id: string;
+  token: string;
+  existing: boolean;
+  emailed: 'sent' | 'failed' | 'not_configured' | 'skipped';
+  emailError?: string;
+  password: string | null;
+}
+
+/**
+ * Invite someone with a login (the owner's design, 2026-10-20): the account is
+ * made and the address, a one-time password and the right app are emailed —
+ * the admin app for the front desk, the phone app for a coach or a member.
+ * At first sign-in they choose a password and fill the form for their role,
+ * which is the acceptance. The SQL rules still decide who may invite whom.
+ */
+export async function inviteAccount(i: NewInvite & { sendEmail?: boolean }): Promise<InviteOutcome> {
+  const { data, error } = await supabase.functions.invoke('invite-account', {
+    body: {
+      email: i.email.trim(), role: i.role ?? 'member',
+      firstName: i.firstName?.trim() || null, lastName: i.lastName?.trim() || null,
+      phone: i.phone?.trim() || null, note: i.note?.trim() || null, sendEmail: i.sendEmail !== false,
+    },
+  });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? (error.message.includes('Failed to send')
+      ? 'The invitation service is not reachable. Try again in a moment.' : error.message));
+  }
+  return data as InviteOutcome;
+}
+
 /** The link a member opens. The member app reads the token and joins them. */
 export const inviteLink = (token: string) =>
   `https://corefitness-gym.vercel.app/invite/${token}`;
@@ -185,7 +224,7 @@ function splitRow(line: string): string[] {
 }
 
 export interface ImportResult {
-  invited: { email: string; token: string }[];
+  invited: { email: string; token: string; emailed: InviteOutcome['emailed']; password: string | null; existing: boolean }[];
   failed: { email: string; reason: string }[];
 }
 
@@ -209,13 +248,14 @@ export async function importInvites(
   for (let i = 0; i < usable.length; i++) {
     const row = usable[i];
     try {
-      const { token } = await inviteToGym({
+      // Each gets their own login, emailed (0202) — the same as inviting one.
+      const out = await inviteAccount({
         email: row.email, role,
         firstName: row.firstName || null,
         lastName: row.lastName || null,
         phone: row.phone || null,
       });
-      result.invited.push({ email: row.email, token });
+      result.invited.push({ email: row.email, token: out.token, emailed: out.emailed, password: out.password, existing: out.existing });
     } catch (e) {
       result.failed.push({ email: row.email, reason: e instanceof Error ? e.message : 'Refused' });
     }

@@ -47,6 +47,8 @@ export default function Coaching() {
   const [coachFilter, setCoachFilter] = useState('');
   const [assign, setAssign] = useState({ member: '', coach: '', months: 0 });
   const [memberQ, setMemberQ] = useState('');
+  /** Finding a coach by name or specialty (the owner's ask, 2026-10-20) — every coach, not only the most free. */
+  const [coachQ, setCoachQ] = useState('');
   const [busy, setBusy] = useState(false);
   /** A whole list in a floating window (the owner's rule, 2026-10-20): long lists never grow the page. */
   const [win, setWin] = useState<null | 'all' | 'pay' | 'load'>(null);
@@ -112,6 +114,14 @@ export default function Coaching() {
   const maxLoad = Math.max(1, ...loadBy.values());
   const byBusy = [...coaches].sort((a, b) => (loadBy.get(b.id) ?? 0) - (loadBy.get(a.id) ?? 0));
   const byLoad = [...coaches].sort((a, b) => (loadBy.get(a.id) ?? 0) - (loadBy.get(b.id) ?? 0));
+  const coachTerm = coachQ.trim().toLowerCase();
+  const coachList = (() => {
+    const hits = coachTerm ? byLoad.filter((c) => `${c.name} ${c.specialty}`.toLowerCase().includes(coachTerm)) : byLoad;
+    let shown = hits.slice(0, 4);
+    const chosen = byLoad.find((c) => c.id === assign.coach);
+    if (chosen && !shown.includes(chosen)) shown = [...shown.slice(0, 3), chosen];
+    return { shown, more: Math.max(0, hits.length - shown.length) };
+  })();
   const waitingFirst = list.find((r) => OPEN.includes(r.status));
   const endingFirst = list.filter(isEnding).sort((a, b) => (a.ends_on ?? '').localeCompare(b.ends_on ?? ''))[0];
   const months = settings?.lengths ?? [1, 3, 6];
@@ -151,7 +161,7 @@ export default function Coaching() {
                               ) : <div className="a-sub" style={{ marginTop: 3 }}>{r.started_by === 'desk' ? 'Assigned by the gym' : r.started_by === 'coach' ? 'The coach offered' : 'The member asked'}</div>}
                             </div></div>
                         </td>
-                        <td className="whitespace-nowrap">{r.kind === 'group' ? 'Group' : '1-on-1'} · {r.months} month{r.months === 1 ? '' : 's'}</td>
+                        <td className="whitespace-nowrap"><span data-tip={`${r.months} month${r.months === 1 ? '' : 's'}`}>{r.kind === 'group' ? 'Group' : '1-on-1'} · {r.months} mo</span></td>
                         <td><span className={`a-pill ${isEnding(r) ? 'a' : PILL[r.status] === 'b' ? '' : PILL[r.status]}`} style={PILL[r.status] === 'b' ? { background: '#13233d', color: '#93c5fd' } : undefined}>
                           {isEnding(r) ? 'Ending soon' : STATUS_WORDS[r.status]}</span></td>
                         <td className="whitespace-nowrap"><b>{fmt(r.ends_on)}</b> <span className={`a-sub ${isEnding(r) ? 'a-dn' : ''}`}>
@@ -245,7 +255,7 @@ export default function Coaching() {
               ))}
             </div>
             <div className="flex gap-1.5 items-center">
-              <label className="a-input sm" style={{ width: 190 }}><Search size={14} />
+              <label className="a-input sm" style={{ width: 'clamp(130px, 14vw, 190px)' }}><Search size={14} />
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Member or coach…" aria-label="Search by name" /></label>
               <select className={`a-chip ${coachFilter ? 'on' : ''}`} value={coachFilter} onChange={(e) => setCoachFilter(e.target.value)} aria-label="Filter by coach" style={{ maxWidth: 140 }}>
                 <option value="">All coaches</option>{coaches.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -302,18 +312,24 @@ export default function Coaching() {
                   )}
                 </div>
               )}
-              <div className="a-lbl" style={{ margin: '10px 0 6px' }}>Coach — fewest trainees first</div>
-              <div className="flex flex-col gap-1.5" style={{ maxHeight: 190, overflowY: 'auto' }}>
-                {byLoad.map((c, i) => (
+              <div className="a-lbl" style={{ margin: '10px 0 6px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Coach</span><span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{coaches.length} coaches · fewest trainees first</span></div>
+              <label className="a-input sm" style={{ fontSize: 12.5, marginBottom: 6 }}><Search size={13} />
+                <input value={coachQ} onChange={(e) => setCoachQ(e.target.value)} placeholder="Find a coach or specialty…" aria-label="Find a coach" data-coach-search /></label>
+              {/* No box inside the box: the four most free (or the matches), the chosen one always shown, the rest said in a line. */}
+              <div className="flex flex-col gap-1.5">
+                {coachList.shown.map((c) => (
                   <button key={c.id} type="button" className={`a-opt ${assign.coach === c.id ? 'on' : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: '9px 12px' }}
                     onClick={() => setAssign({ ...assign, coach: c.id })} data-assign-coach={c.id}>
                     <Av name={c.name} small />
                     <div style={{ flex: 1, minWidth: 0 }}><b style={{ fontSize: 12.5 }} className="block truncate">{c.name}</b>
                       <div className="a-sub truncate">{loadBy.get(c.id) ?? 0} trainee{(loadBy.get(c.id) ?? 0) === 1 ? '' : 's'}{c.specialty ? ` · ${c.specialty}` : ''}</div></div>
-                    {i === 0 && assign.coach !== c.id && <span className="a-pill v">most free</span>}
+                    {c.id === byLoad[0]?.id && assign.coach !== c.id && <span className="a-pill v">most free</span>}
                     {assign.coach === c.id && <span className="tick" style={{ position: 'static' }}><Check size={12} /></span>}
                   </button>
                 ))}
+                {coachList.shown.length === 0 && <p className="a-sub" style={{ padding: '6px 2px' }}>No coach matches “{coachQ.trim()}”.</p>}
+                {coachList.more > 0 && <p className="a-sub" style={{ padding: '2px 2px 0' }}>+{coachList.more} more — type a name to find them</p>}
               </div>
               <div className="flex gap-1.5 flex-wrap" style={{ marginTop: 10 }}>
                 {months.map((mo) => <button key={mo} type="button" className={`a-chip ${assignMonths === mo ? 'on' : ''}`} onClick={() => setAssign({ ...assign, months: mo })}>{mo} month{mo === 1 ? '' : 's'}</button>)}

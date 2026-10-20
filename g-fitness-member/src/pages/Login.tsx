@@ -66,7 +66,9 @@ export default function Login() {
     // Signing in to accept an invitation: back to it before anything else
     // here can turn them away — the invitation is what makes them active, so a
     // `pending_approval` (or no role at this gym yet) is expected, not an error.
-    const invite = new URLSearchParams(window.location.search).get('invite');
+    // An invited account's first sign-in (0202) — or a link opened before
+    // signing in: its form comes first, whatever the account's gym says.
+    const invite = result.inviteToken ?? new URLSearchParams(window.location.search).get('invite');
     if (invite) {
       localStorage.setItem('isLoggedIn', 'true');
       setIsLoading(false);

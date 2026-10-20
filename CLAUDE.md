@@ -52,7 +52,7 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
 accounts, settings or the audit log. `<ProtectedRoute adminOnly>` is convenience; **RLS is the
 boundary.** The member app also caches a legacy user object into `localStorage['user']` for the ~6 pages
 still on `getCurrentUser()` — **never real auth state**; `syncUserCache()` rebuilds it on boot. **Sessions last until Logout.** **Only
-members self-register** — the signup trigger hardcodes `'member'`, so Login hides Sign Up on Trainer.
+members self-register** — the signup trigger hardcodes `'member'`, so Login hides Sign Up on Trainer. **Everyone else is invited, and an invitation is a login (0202)**: `invite-account` emails a one-time password and the right app (front desk → admin); the account has no gym until its first-sign-in form calls `complete_invitation()` — both apps gate on `invite_pending` in the user metadata.
 **Approving a registration grants the free tier, `active`, via `startFreeMembership()`** — by *tier*,
 never the plan tapped at signup: they have paid nothing, and the gym is cash-only. Idempotent, because
 flipping `status` alone left them signed in with **no** membership (and `pending` is not usable).
@@ -165,7 +165,7 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 [MEMBERSHIP_POLICY](docs/MEMBERSHIP_POLICY.md).
 
 ## Current state (2026-10-18)
-- **Migrations 0001–0201 are all live** (probe, 2026-10-18; 0200 = the door: members pick their activity, coaches check in; 0201 = the walk-in history). What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
+- **Migrations 0001–0201 are all live** (probe, 2026-10-18; 0200 = the door: members pick their activity, coaches check in; 0201 = the walk-in history). **0202 (an invitation is a login) is written, not yet pasted.** What every migration shipped, its harness and its trap: **[docs/ROADMAP.md](docs/ROADMAP.md)** — read a feature's entry before changing it. Add new entries there, newest first.
 - **Fresh start ran 2026-10-18**: every gym and non-platform-admin account was deleted (`scripts/fresh-start/`, README). **Gym #1 is Core Fitness Lab**, the platform owner's private test gym — never listed, never billed, and still the rules template every new gym copies. Logins `mf.jgabrielle+owner|desk|coach|member@gmail.com` (ids `cf1ab000…`; made-up rows `5eed…`, removable by Remove demo data). The one platform admin is `corefitnessadmin@gmail.com`. **G Fitness re-applies through the site as an ordinary gym** — the owner's last step, after the system is polished.
 - **A free trial is 7 days and stops** (0198): the day after `paid_until`, a never-paid trial gym is `trial_ended` (no grace; grace is for paid gyms) — admin shows only `TrialEnded`, member/trainer only `GymPaused`. The platform moves a trial's end from Billing → Change the date.
 - **Security (0199)**: `scripts/sql/security-red-team.mjs` attacks as visitor/member/coach/other gym and must stay green. **Postgres grants EXECUTE to PUBLIC by default — revoke every new helper function from public/anon/ authenticated unless a screen calls it**, and remember a policy cannot limit columns (use a trigger).

@@ -75,7 +75,9 @@ async (page) => {
   // ---- an invitation → Create my account ------------------------------------------------------------
   await page.goto('http://localhost:5173/invite/' + 'b'.repeat(64), { waitUntil: 'domcontentloaded' });
   await page.getByText(/has invited you/).waitFor({ timeout: 15000 });
-  await page.getByRole('button', { name: 'Create my account' }).click();
+  // 0202: a login comes by email, so Sign in leads; a link sent before 0202 still makes an account here.
+  out.push('an invitation leads with Sign in: ' + ((await page.getByRole('button', { name: 'Sign in', exact: true }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: 'I was not sent a password' }).click();
   await page.waitForTimeout(2500);
   t = await text();
   out.push('Create my account stays on sign-up (not /join): ' + (page.url().includes('/register?invite=') ? 'yes' : 'NO — ' + page.url()));

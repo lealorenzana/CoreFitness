@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import AddTrainerWizard from '../components/trainers/AddTrainerWizard';
+import EditTrainerModal from '../components/trainers/EditTrainerModal';
 import CredentialReview from '../components/trainers/CredentialReview';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
@@ -8,32 +8,31 @@ import { useCallback, useEffect, useState } from 'react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TrainerDetailDrawer from '../components/ui/TrainerDetailDrawer';
 import TrainerMonthTotals from '../components/ui/TrainerMonthTotals';
-import { RdHeader, RdButton, DotMenu } from '../components/ui/rd';
+import { DotMenu } from '../components/ui/rd';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
 import { listCoachings } from '../lib/api/coaching';
 import { currentLockoutReason } from '../lib/api/accountEvents';
-import { CalendarRange, X, Archive, UserX, UserCheck, Users, ShieldCheck, Plus, Pencil, Eye, ArrowLeft, ChevronUp, ChevronDown, Search, SquareCheck, AlertTriangle } from 'lucide-react';
-import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
+import { CalendarRange, X, Archive, UserX, UserCheck, Users, ShieldCheck, Plus, Pencil, Eye, ChevronUp, ChevronDown, Search, SquareCheck, AlertTriangle } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listTrainers,
   listArchivedTrainers,
   setTrainerStatus,
-  updateTrainerProfile,
   getRatingSummaries,
   getTrainerMonths,
 } from '../lib/api/trainers';
 import { listAllAvailability } from '../lib/api/trainerAvailability';
-import { updateProfile } from '../lib/api/profiles';
 import type { ProfileStatus } from '../types/db';
 import { goalsFor } from '../lib/coachGoals';
 
 interface TrainerDisplay {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   specialization: string;
   email: string;
   phone: string | null;
@@ -63,28 +62,9 @@ interface TrainerDisplay {
   status: ProfileStatus;
 }
 
-/** The weekday chips in both modals. Display labels for the free-text
- *  `trainer_profiles.availability` blurb — not bookable hours. */
-const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-/**
- * One comma-separated line -> a Postgres text[], matching the trainer's own
- * editor in the member app so both write the same shape.
- *
- * Blank entries are dropped, so the trailing comma left behind by someone who
- * paused mid-typing never becomes an empty chip on a public profile. An empty
- * result stores NULL rather than `[]` — "not stated" has one representation.
- */
-function toList(value: string): string[] | null {
-  const items = value.split(',').map((v) => v.trim()).filter(Boolean);
-  return items.length > 0 ? items : null;
-}
-
 const TRAINERS_PER_PAGE = 8;
 type TSortKey = 'name' | 'specialty' | 'credentials' | 'rating' | 'windows' | 'status';
 
-const FIELD_CLASS = 'w-full px-3 py-2 rounded-xl text-white text-xs';
-const FIELD_STYLE = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
 
 const REASONS = ['Missed classes', 'On leave', 'Conduct', 'Credentials lapsed', 'Other'];
 
@@ -147,17 +127,12 @@ export default function Trainers() {
 
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({
-    id: '', name: '', specialty: '', email: '', phone: '', bio: '', availability: [] as string[],
-    yearsExperience: '', certifications: '', focusAreas: '', achievements: '',
-  });
-  const [saving, setSaving] = useState(false);
+  /** The coach being edited — EditTrainerModal, the same sections as Add (2026-10-20). */
+  const [editing, setEditing] = useState<TrainerDisplay | null>(null);
   const [toSuspend, setToSuspend] = useState<TrainerDisplay | null>(null);
   const [toArchive, setToArchive] = useState<TrainerDisplay | null>(null);
   /** trainer id → their verified credentials in date (0054/0160), for the mark on each card. */
   const [verified, setVerified] = useState<Map<string, { title: string; expiresOn: string | null }[]>>(new Map());
-  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   /** trainer id → certificates waiting for the owner's decision: "Needs review" on the card. */
   const [pending, setPending] = useState<Map<string, number>>(new Map());
   /** Ticked rows, for suspending or archiving several at once. */
@@ -251,6 +226,8 @@ export default function Trainers() {
         rows.map(({ profile, trainer }) => ({
           id: profile.id,
           name: `${profile.first_name} ${profile.last_name}`.trim(),
+          firstName: profile.first_name ?? '',
+          lastName: profile.last_name ?? '',
           specialization: trainer.specialization || 'General Training',
           email: profile.email,
           phone: profile.phone,
@@ -342,76 +319,25 @@ export default function Trainers() {
     await loadTrainers();
   };
 
-  const openEdit = (trainer: TrainerDisplay) => {
-    setEditErrors({});
-    setEditForm({
-      id: trainer.id,
-      name: trainer.name,
-      specialty: trainer.specialization,
-      email: trainer.email,
-      phone: trainer.phone || '',
-      bio: trainer.bio || '',
-      availability: trainer.availabilityDays,
-      // `!= null` on the number: a trainer in their first year stores 0, and `|| ''` would blank it.
-      yearsExperience: trainer.yearsExperience != null ? String(trainer.yearsExperience) : '',
-      certifications: trainer.certifications.join(', '),
-      focusAreas: trainer.focusAreas.join(', '),
-      achievements: trainer.achievements || '',
-    });
-    setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async () => {
-    const next: Record<string, string> = {};
-    if (!editForm.name.trim()) next.name = 'Required.';
-    if (!editForm.specialty.trim()) next.specialty = 'Required.';
-    // Mirrors the CHECK constraint in 0041, said as a sentence rather than a constraint name.
-    const editYears = editForm.yearsExperience.trim() === '' ? null : Number(editForm.yearsExperience);
-    if (editYears != null && (!Number.isInteger(editYears) || editYears < 0 || editYears > 70)) {
-      next.yearsExperience = 'Whole number, 0-70.';
-    }
-    setEditErrors(next);
-    if (Object.keys(next).length > 0) {
-      showToast(
-        next.yearsExperience && !next.name && !next.specialty
-          ? 'Years coaching must be a whole number between 0 and 70'
-          : 'Name and specialization are required',
-        'error'
-      );
-      return;
-    }
-    const [firstName, ...rest] = editForm.name.trim().split(/\s+/);
-    const lastName = rest.join(' ') || firstName;
-
-    setSaving(true);
-    try {
-      await updateProfile(editForm.id, { first_name: firstName, last_name: lastName, phone: editForm.phone || null });
-      await updateTrainerProfile(editForm.id, {
-        specialization: editForm.specialty,
-        bio: editForm.bio || null,
-        availability: editForm.availability.join(', ') || null,
-        years_experience: editYears,
-        certifications: toList(editForm.certifications),
-        focus_areas: toList(editForm.focusAreas),
-        achievements: editForm.achievements.trim() || null,
-      });
-      showToast(`${editForm.name} updated successfully!`, 'success');
-      setShowEditModal(false);
-      await loadTrainers();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update trainer', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const openEdit = (trainer: TrainerDisplay) => setEditing(trainer);
 
   const waitingTotal = [...pending.values()].reduce((a, b) => a + b, 0);
   if (reviewing) {
     return (
-      <div className="flex flex-col gap-6" data-credentials-view>
-        <RdHeader title="Credentials" subtitle="Coaches' certificates: look at each document, then verify or reject it."
-          actions={<RdButton icon={ArrowLeft} onClick={() => setReviewing(false)}>Back to trainers</RdButton>} />
-        <CredentialReview onChanged={loadTrainers} />
+      <div className="att" data-credentials-view>
+        <div className="a-head">
+          <div className="min-w-0">
+            <h1>Credentials</h1>
+            <p>Coaches&rsquo; certificates — look at each document, then verify or reject it.{waitingTotal ? ` ${waitingTotal} waiting.` : ''}</p>
+          </div>
+          <nav className="a-tabs" aria-label="Trainers views">
+            <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(false); setShowArchived(false); }}><Users size={14} />Coaches<em>{trainers.length}</em></a>
+            <a href="#" className="on" onClick={(e) => e.preventDefault()}><ShieldCheck size={14} />Credentials{waitingTotal > 0 && <em>{waitingTotal}</em>}</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(false); setShowArchived(true); }}><Archive size={14} />Archived</a>
+          </nav>
+        </div>
+        <CredentialReview onChanged={loadTrainers}
+          coaches={trainers.filter((x) => x.status === 'active').map((x) => ({ id: x.id, name: x.name, photoUrl: x.photoUrl }))} />
       </div>
     );
   }
@@ -674,155 +600,7 @@ export default function Trainers() {
 
       {showAddModal && <AddTrainerWizard onClose={() => setShowAddModal(false)} onCreated={loadTrainers} />}
 
-      {/* Edit Trainer Modal */}
-      <AnimatePresence>
-        {showEditModal && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setShowEditModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                className="w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
-                style={{ background: 'radial-gradient(120% 80% at 0% 0%, rgba(124,58,237,0.16), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.25)' }}
-                onClick={e => e.stopPropagation()}>
-                <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Edit Trainer</h2>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Update trainer details</p>
-                  </div>
-                  <button onClick={() => setShowEditModal(false)} style={{ color: 'var(--color-text-muted)' }}>
-                    <X size={18} />
-                  </button>
-                </div>
-                <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                  <SectionLabel>Personal Information</SectionLabel>
-                  <FormField label="Full name" required error={editErrors.name}>
-                    <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Specialization" required error={editErrors.specialty}
-                    hint="Shown to members as their headline — what they coach.">
-                    <input value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })}
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField label="Login email" hint="Cannot be changed here.">
-                      <input value={editForm.email} disabled
-                        data-tip="Changing a login email means changing the auth account, which this form does not do"
-                        className={`${FIELD_CLASS} cursor-not-allowed`}
-                        style={{ ...FIELD_STYLE, color: 'var(--color-text-muted)' }} />
-                    </FormField>
-                    <FormField label="Phone">
-                      <input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                        placeholder="+63 917 000 0000"
-                        className={FIELD_CLASS} style={FIELD_STYLE} />
-                    </FormField>
-                  </div>
-                  <FormField label="Bio / description" hint="Members read this on the trainer's profile.">
-                    <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-                      placeholder="How they like to coach, who they work best with…"
-                      rows={2}
-                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
-                  </FormField>
-
-                  <FieldDivider />
-                  <SectionLabel>Background</SectionLabel>
-                  {/* Editable from both sides on purpose. The trainer owns this
-                      in the app, but a coach who has never opened it would
-                      otherwise have an empty profile that nobody can fill —
-                      and at a gym this size the admin is often the one holding
-                      the certificates. Every field is optional and the member
-                      profile renders each only when set. */}
-                  <FormField label="Years coaching" error={editErrors.yearsExperience}
-                    hint="Leave blank rather than guessing — blank shows nothing at all.">
-                    <input type="number" min={0} max={70} value={editForm.yearsExperience}
-                      onChange={e => setEditForm({ ...editForm, yearsExperience: e.target.value })}
-                      placeholder="e.g. 5"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Trains for" hint="Comma separated — e.g. Weight Loss, Strength, Rehab.">
-                    <input value={editForm.focusAreas}
-                      onChange={e => setEditForm({ ...editForm, focusAreas: e.target.value })}
-                      placeholder="Weight Loss, Strength"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Certifications"
-                    hint="Comma separated. Shown to members as the trainer's own statement — the gym does not verify them.">
-                    <input value={editForm.certifications}
-                      onChange={e => setEditForm({ ...editForm, certifications: e.target.value })}
-                      placeholder="NASM-CPT, First Aid / CPR"
-                      className={FIELD_CLASS} style={FIELD_STYLE} />
-                  </FormField>
-                  <FormField label="Achievements" hint="Competitions, athletic background, notable results.">
-                    <textarea value={editForm.achievements}
-                      onChange={e => setEditForm({ ...editForm, achievements: e.target.value })}
-                      rows={2}
-                      className={`${FIELD_CLASS} resize-none`} style={FIELD_STYLE} />
-                  </FormField>
-
-                  {/* Live: where members will find this coach under Coaches →
-                      Find your coach, from exactly the fields above. */}
-                  {(() => {
-                    const found = goalsFor({
-                      specialization: editForm.specialty || null, bio: editForm.bio || null,
-                      achievements: editForm.achievements || null,
-                      focus_areas: editForm.focusAreas.split(',').map((x) => x.trim()).filter(Boolean),
-                      certifications: editForm.certifications.split(',').map((x) => x.trim()).filter(Boolean),
-                    });
-                    return (
-                      <div className="rounded-xl p-3 text-[11px]"
-                        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-border)' }}>
-                        <p className="font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>How members find this coach</p>
-                        {found.length === 0 ? (
-                          <p style={{ color: 'var(--color-text-secondary)' }}>
-                            No member goal matches yet. Members pick a goal under Coaches → Find your coach; say what they train in Specialty or Trains for.
-                          </p>
-                        ) : found.map(({ goal, words }) => (
-                          <p key={goal.id} className="text-white">
-                            {goal.label}<span style={{ color: 'var(--color-text-muted)' }}> — from “{words.join('”, “')}”</span>
-                          </p>
-                        ))}
-                      </div>
-                    );
-                  })()}
-
-                  <FieldDivider />
-                  <SectionLabel>Availability</SectionLabel>
-                  <FormField
-                    label="Days they usually coach"
-                    hint="Display only — it appears on their profile. Bookable time slots are set by the trainer in the app, under Schedule → Availability."
-                  >
-                    <div className="flex flex-wrap gap-1.5">
-                      {WEEKDAY_LABELS.map(day => {
-                        const isSelected = editForm.availability.includes(day);
-                        return (
-                          <button key={day} type="button"
-                            onClick={() => setEditForm({ ...editForm, availability: isSelected ? editForm.availability.filter(d => d !== day) : [...editForm.availability, day] })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors"
-                            style={{
-                              background: isSelected ? 'var(--color-primary)' : 'var(--color-bg)',
-                              color: isSelected ? '#fff' : 'var(--color-text-muted)',
-                              border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            }}>
-                            {day.slice(0, 3)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </FormField>
-                </div>
-                <div className="p-5 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <RdButton className="flex-1" onClick={() => setShowEditModal(false)}>Cancel</RdButton>
-                  <RdButton className="flex-1" variant="primary" onClick={handleSaveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</RdButton>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      {editing && <EditTrainerModal trainer={editing} onClose={() => setEditing(null)} onSaved={loadTrainers} />}
     </div>
   );
 }

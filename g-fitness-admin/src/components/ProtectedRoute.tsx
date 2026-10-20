@@ -23,7 +23,8 @@ interface ProtectedRouteProps {
  */
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const [status, setStatus] =
-    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner'>('checking');
+    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner' | 'invite'>('checking');
+  const [inviteToken, setInviteToken] = useState('');
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -35,6 +36,12 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       } = await supabase.auth.getSession();
       if (!session) {
         if (active) setStatus('unauthorized');
+        return;
+      }
+      // An invited login that has not finished its first sign-in (0202).
+      const meta = session.user.user_metadata;
+      if (meta?.invite_pending && typeof meta.invite_token === 'string') {
+        if (active) { setInviteToken(meta.invite_token); setStatus('invite'); }
         return;
       }
       // The role is the one in *this gym* (lib/gymContext, 0104): the same
@@ -72,6 +79,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
     };
   }, [adminOnly, pathname]);
 
+  if (status === 'invite') return <Navigate to={`/admin/invite/${inviteToken}`} replace />;
   if (status === 'checking') {
     return (
       <div

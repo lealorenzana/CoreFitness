@@ -161,6 +161,7 @@ async (page) => {
     t = await visit('/coaching', `vol-coaching-${w}`);
     rows = await page.locator('[data-coaching-row]').count();
     has(`${at} Coaching: 120 coachings, the page does not scroll`, (await overflow()) <= 2);
+    has(`${at} Coaching: the table never runs off sideways (its last button is fully inside)`, await page.evaluate(() => { const b = document.querySelector('[data-coaching-list] .a-scroll'); return !!b && b.scrollWidth <= b.clientWidth + 1; }));
     await page.locator('[data-chip="all"]').click(); await page.waitForTimeout(300);
     has(`${at} Coaching: All — the table shows what fits (${await page.locator('[data-coaching-row]').count()} rows) with a short pager (${await pagerButtons()} buttons)`,
       (await page.locator('[data-coaching-row]').count()) < 40 && (await pagerButtons()) <= 7 && (await overflow()) <= 2);

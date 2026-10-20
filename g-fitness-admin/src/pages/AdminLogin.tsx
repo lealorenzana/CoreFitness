@@ -92,6 +92,15 @@ export default function AdminLogin() {
 
   /** After any sign-in — a password, or Google (0190): which gym, the application, or no access. */
   const routeSignedIn = async () => {
+    // An invited login's first sign-in (0202): its form comes first — the
+    // account has no gym until it is finished, so nothing below would let it in.
+    const { data: { user } } = await supabase.auth.getUser();
+    const invite = user?.user_metadata?.invite_pending ? user.user_metadata.invite_token : null;
+    if (typeof invite === 'string' && invite) {
+      setIsLoading(false);
+      navigate(`/admin/invite/${invite}`);
+      return;
+    }
     // Which gym, and what they are in it (0104). Someone who owns or works at
     // more than one picks; the front desk and owners of one land straight in.
     const ctx = await getGymContext(true);
@@ -102,7 +111,7 @@ export default function AdminLogin() {
       setIsLoading(false);
       return;
     }
-    if (ctx?.role !== 'admin' || ctx.status !== 'active') {
+    if (!(ctx?.role === 'admin' || ctx?.role === 'staff') || ctx.status !== 'active') {
       // Applied on the website (0187) and not let in yet: their application, not a refusal.
       const apps = await myApplications().catch(() => []);
       if (apps.length > 0) {

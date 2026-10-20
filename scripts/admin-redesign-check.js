@@ -196,7 +196,11 @@ async (page) => {
   has('a how-to with a worked example, folded until asked', /email, first name, last name, mobile/.test(howto) && /maria\.santos@gmail\.com, Maria, Santos/.test(howto) && /Review invitations/.test(howto));
   await page.screenshot({ path: 'shots/rd-invitations-howto.png' });
   await page.locator('[data-invite-howto] summary').click(); await page.waitForTimeout(150);
-  has('the waiting list with Copy link, Email it, Withdraw', (await page.locator('[data-invite-row]').count()) === 2 && (await page.getByRole('button', { name: 'Copy link' }).count()) === 2 && (await page.getByRole('button', { name: 'Email it' }).count()) === 2 && (await page.getByRole('button', { name: 'Withdraw' }).count()) === 2 && /2 pending/.test(t));
+  has('the waiting list with Send a new login and Withdraw (0202: an invitation is a login)', (await page.locator('[data-invite-row]').count()) === 2 && (await page.getByRole('button', { name: 'Send a new login' }).count()) === 2 && (await page.getByRole('button', { name: 'Withdraw' }).count()) === 2 && /2 pending/.test(t));
+  await page.locator('[data-way="one"]').click(); await page.waitForTimeout(200);
+  await page.screenshot({ path: 'shots/rd-invitations-one.png' });
+  has('Joining as is three buttons, never the white OS dropdown', (await page.locator('[data-invite-role] [role="radio"]').count()) >= 1 && (await page.locator('[data-invite-one] select').count()) === 0);
+  await page.locator('[data-way="group"]').click(); await page.waitForTimeout(200);
   has('an invite expiring within 3 days is counted', /Expiring soon\s*1/.test(t));
   await page.getByLabel('Paste your list').fill('ana@x.ph, Ana, Cruz\nnot-an-email');
   await page.getByRole('button', { name: 'Review invitations' }).click(); await page.waitForTimeout(300);
@@ -240,7 +244,7 @@ async (page) => {
 
   t = await visit('/trainers?view=credentials', 'credentials');
   has('credentials: tiles, chips and certificate cards', /Waiting for review/.test(t) && /Expiring or lapsed/.test(t) && (await page.locator('[data-credential-tile]').count()) === 2);
-  has('kept: Verify and Reject on a waiting certificate, and the way back', /Verify/.test(t) && /Reject/.test(t) && /Back to trainers/.test(t));
+  has('kept: Verify and Reject on a waiting certificate, and the way back (the Coaches tab)', /Verify/.test(t) && /Reject/.test(t) && (await page.locator('[data-credentials-view] .a-tabs a', { hasText: 'Coaches' }).count()) === 1);
 
   return out.join('\n');
 }

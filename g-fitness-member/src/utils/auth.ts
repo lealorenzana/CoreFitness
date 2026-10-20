@@ -30,6 +30,8 @@ export interface LoginResult {
   /** Role and status in the current gym (lib/gymContext), not the legacy profile columns. */
   role?: 'admin' | 'staff' | 'trainer' | 'member';
   status?: 'active' | 'pending_approval' | 'suspended' | 'archived';
+  /** An invited account's first sign-in (0202): the token whose form comes first. */
+  inviteToken?: string;
   /**
    * The person can sign in to more than one gym, or their current gym is not
    * usable but another is: the gym picker decides where they land.
@@ -43,7 +45,10 @@ export const login = async (email: string, password: string): Promise<LoginResul
   if (error || !data.user) {
     return { success: false, error: error?.message ?? 'Invalid email or password' };
   }
-  return finishSignIn(data.user.id);
+  const meta = data.user.user_metadata ?? {};
+  const result = await finishSignIn(data.user.id);
+  return meta.invite_pending && typeof meta.invite_token === 'string' && result.success
+    ? { ...result, inviteToken: meta.invite_token } : result;
 };
 
 /**

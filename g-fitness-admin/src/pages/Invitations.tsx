@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight } from 'lucide-react';
+import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight, RotateCw, Smartphone, Monitor, KeyRound, AlertTriangle } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import { showToast } from '../utils/toast';
 import { getGymContext } from '../lib/gymContext';
 import {
-  emailInvitation, importInvites, inviteLink, inviteToGym, listInvitations, parseList, revokeInvitation,
-  type ImportResult, type Invitation, type InviteRole, type ParsedRow,
+  importInvites, inviteAccount, listInvitations, parseList, revokeInvitation,
+  type ImportResult, type Invitation, type InviteOutcome, type InviteRole, type ParsedRow,
 } from '../lib/api/invitations';
 import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, IconTile } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
@@ -22,16 +22,22 @@ const relDays = (iso: string, now: number) => {
 const ROLE: Record<InviteRole, string> = { member: 'Member', trainer: 'Coach', staff: 'Front desk' };
 const STATE_TONE: Record<Invitation['state'], Tone> = { waiting: 'violet', accepted: 'green', revoked: 'gray', expired: 'amber' };
 const STATE_LABEL: Record<Invitation['state'], string> = { waiting: 'Waiting', accepted: 'Joined', revoked: 'Withdrawn', expired: 'Expired' };
+/** What each kind of invitation gives, said where the role is chosen. */
+const ROLE_PICK: { key: InviteRole; label: string; icon: typeof Users; gets: string; ownerOnly?: boolean }[] = [
+  { key: 'member', label: 'Member', icon: Users, gets: 'A login for the phone app. They fill in their details at first sign-in and join already approved, on the free tier.' },
+  { key: 'trainer', label: 'Coach', icon: Smartphone, gets: 'A login for the trainer side of the phone app. They add what they coach at first sign-in.', ownerOnly: true },
+  { key: 'staff', label: 'Front desk', icon: Monitor, gets: 'A login for this dashboard. They appear under Settings → Staff accounts with the whole desk until you narrow it.', ownerOnly: true },
+];
 
 /**
- * Bringing in the members a gym already has (redesigned 2026-10-11 from the
- * owner's mock-up): three counts, one person or a whole list side by side,
- * and the invitations waiting to be accepted.
+ * Bringing people in (redesigned 2026-10-11; logins 2026-10-20, 0202): three
+ * counts, one person or a whole list side by side, and the invitations waiting.
  *
- * Invitations rather than accounts, deliberately: each member sets their own
- * password, and an invitation is addressed — accepting it needs the address it
- * was sent to (0111). The gym hands out the link the way it already talks to
- * its members, or presses "Email it", which says whether it went.
+ * An invitation is a login: the account is made and the address, a one-time
+ * password and the right app are emailed. At first sign-in they choose their
+ * own password and fill the form for their role — that is the acceptance, so
+ * they stay "waiting" here until they have actually done it. When the email
+ * did not go out, the one-time password is shown here once, to hand over.
  */
 export default function Invitations() {
   const [rows, setRows] = useState<Invitation[] | null>(null);
@@ -50,9 +56,9 @@ export default function Invitations() {
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [gym, setGym] = useState<{ id: string; name: string } | null>(null);
-  const [mailing, setMailing] = useState<string | null>(null);
-  const [mailed, setMailed] = useState<Record<string, string>>({});
+  /** What the last single invitation did — emailed, or the password to hand over. */
+  const [sent, setSent] = useState<(InviteOutcome & { email: string; role: InviteRole }) | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
   /** Now, read once — never during a render. */
   const [nowMs] = useState(() => Date.now());
@@ -63,7 +69,6 @@ export default function Invitations() {
       setRows(list);
       setAll(every);
       setIsAdmin(ctx?.role === 'admin');
-      setGym(ctx?.gymId && ctx.gymName ? { id: ctx.gymId, name: ctx.gymName } : null);
     } catch (e) {
       setRows([]);
       showToast(e instanceof Error ? e.message : 'Could not load invitations', 'error');
@@ -91,10 +96,10 @@ export default function Invitations() {
     e.preventDefault();
     setBusy(true);
     try {
-      await inviteToGym({ ...one, role });
+      const out = await inviteAccount({ ...one, role });
+      setSent({ ...out, email: one.email.trim(), role });
       setOne({ email: '', firstName: '', lastName: '', phone: '' });
       await load();
-      showToast('Invited. Copy their link from the list below.', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'That could not be sent', 'error');
     } finally {
@@ -122,24 +127,22 @@ export default function Invitations() {
     });
   };
 
-  /** Email one invitation. Says plainly whether it went, and keeps Copy link either way. */
-  const mail = async (r: Invitation) => {
-    if (!gym) return;
-    setMailing(r.id);
+  /**
+   * A new login for someone who has not signed in yet: the invitation is
+   * replaced (only one ever works) and, if they never used the account, a new
+   * one-time password goes out. Says plainly whether the email went.
+   */
+  const resend = async (r: Invitation) => {
+    setResending(r.id);
     try {
-      const res = await emailInvitation(r, gym);
-      if (res.status === 'sent') {
-        setMailed((m) => ({ ...m, [r.id]: 'Emailed' }));
-        showToast(`Emailed to ${r.email}.`, 'success');
-      } else if (res.status === 'not_configured') {
-        showToast('Email is not set up on Core Fitness yet, so nothing was sent. Copy the link and send it yourself.', 'error');
-      } else {
-        showToast(`The email did not go through${res.error ? ': ' + res.error.slice(0, 140) : ''}. Copy the link instead.`, 'error');
-      }
+      const out = await inviteAccount({ email: r.email, role: r.role, firstName: r.first_name, lastName: r.last_name, phone: r.phone });
+      setSent({ ...out, email: r.email, role: r.role });
+      setWay('one');
+      await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not email it', 'error');
+      showToast(e instanceof Error ? e.message : 'Could not send it again', 'error');
     } finally {
-      setMailing(null);
+      setResending(null);
     }
   };
   const withdraw = async (r: Invitation) => {
@@ -156,7 +159,7 @@ export default function Invitations() {
 
   return (
     <div className="rd-fit" data-invitations>
-      <RdHeader title="Invitations" subtitle="Invite members and manage pending invites. Each person sets their own password and arrives already approved." />
+      <RdHeader title="Invitations" subtitle="Invite members, coaches and front desk. Each gets a login by email, chooses their own password at first sign-in, and arrives already approved." />
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <StatTile icon={Users} label="Pending invitations" compact value={counts.waiting} sub="Invites waiting to be accepted"
@@ -183,7 +186,18 @@ export default function Invitations() {
         {/* ── One person ── */}
         {way === 'one' && (
           <form onSubmit={inviteOne} data-invite-one>
-            <p className="text-[14.5px]" style={muted}>Send a single invitation to a new member.</p>
+            <p className={labelCls} style={labelSt} id="iv-role">Joining as</p>
+            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }} role="radiogroup" aria-labelledby="iv-role" data-invite-role>
+              {ROLE_PICK.filter((r) => !r.ownerOnly || isAdmin).map(({ key, label, icon: Icon }) => (
+                <button key={key} type="button" role="radio" aria-checked={role === key} onClick={() => setRole(key)} data-role={key}
+                  className="h-12 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
+                  style={role === key ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
+                    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>
+                  <Icon size={16} />{label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[13px] flex items-start gap-2" style={muted}><KeyRound size={14} className="flex-none mt-0.5" />{ROLE_PICK.find((r) => r.key === role)?.gets}</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelCls} style={labelSt} htmlFor="iv-email">Email</label>
@@ -205,20 +219,11 @@ export default function Invitations() {
                 <input id="iv-phone" className={input} style={inputSt} placeholder="09XX XXX XXXX"
                   value={one.phone} onChange={(e) => setOne({ ...one, phone: e.target.value })} />
               </div>
-              <div>
-                <label className={labelCls} style={labelSt} htmlFor="iv-role">Joining as</label>
-                <select id="iv-role" className={input} style={{ ...inputSt, colorScheme: 'dark' }} value={role}
-                  onChange={(e) => setRole(e.target.value as InviteRole)}>
-                  <option value="member">Member</option>
-                  {/* Only an owner brings in a coach or more desk staff — the database enforces the same split. */}
-                  {isAdmin && <option value="trainer">Coach</option>}
-                  {isAdmin && <option value="staff">Front desk</option>}
-                </select>
-              </div>
             </div>
             <RdButton className="mt-6" variant="primary" icon={Send} type="submit" disabled={busy}>
-              {busy ? 'Inviting…' : 'Create invitation'}
+              {busy ? 'Sending…' : `Send ${ROLE[role].toLowerCase()} login`}
             </RdButton>
+            {sent && <SentCard sent={sent} copied={copied} onCopy={copy} onClose={() => setSent(null)} />}
           </form>
         )}
 
@@ -238,7 +243,7 @@ export default function Invitations() {
                 <pre className="mt-1.5 rounded-lg px-3 py-2 text-[12px] whitespace-pre-wrap" style={{ background: 'rgba(0,0,0,0.3)', color: '#C4B5FD' }}>{'maria.santos@gmail.com, Maria, Santos, 09171234567\njuan.delacruz@yahoo.com, Juan, Dela Cruz\nana.reyes@gmail.com, Ana, Reyes, 09989876543'}</pre>
               </li>
               <li>Press <b className="text-white">Review invitations</b>. You see who will be invited and any line that cannot be used (a missing or broken email) — fix those or leave them out.</li>
-              <li>Press <b className="text-white">Invite</b>. Each person gets their own link, sets their own password, and arrives already approved as {roleWord}. They show under &ldquo;Waiting to be accepted&rdquo; until they join.</li>
+              <li>Press <b className="text-white">Invite</b>. Each person is emailed their own login (email and a one-time password). At first sign-in they choose a password and fill in a short form, and arrive already approved as {roleWord}. They show under &ldquo;Waiting to be accepted&rdquo; until they do.</li>
             </ol>
           </details>
 
@@ -308,11 +313,15 @@ export default function Invitations() {
                   ))}
                 </ul>
               )}
-              {result.invited.length > 0 && (
-                <RdButton className="mt-3" variant="soft" icon={Copy}
-                  onClick={() => copy(result.invited.map((i) => `${i.email}\t${inviteLink(i.token)}`).join('\n'), 'bulk')}>
-                  {copied === 'bulk' ? 'Copied' : 'Copy every link'}
-                </RdButton>
+              {result.invited.filter((i) => i.password).length > 0 && (
+                <div className="mt-3" data-invite-handover>
+                  <p className="text-[13px] flex items-start gap-2" style={{ color: '#FBBF24' }}><AlertTriangle size={14} className="flex-none mt-0.5" />
+                    {result.invited.filter((i) => i.password).length} could not be emailed. Hand each their one-time password — it is shown only now.</p>
+                  <RdButton className="mt-2" variant="soft" icon={Copy}
+                    onClick={() => copy(result.invited.filter((i) => i.password).map((i) => `${i.email}\t${i.password}`).join('\n'), 'bulk')}>
+                    {copied === 'bulk' ? 'Copied' : 'Copy their logins'}
+                  </RdButton>
+                </div>
               )}
             </div>
           )}
@@ -327,7 +336,7 @@ export default function Invitations() {
           <IconTile icon={Users} size={42} />
           <div className="flex-1 min-w-[220px]">
             <h2 className="text-[20px] font-semibold text-white">{showDone ? 'Every invitation' : 'Waiting to be accepted'}</h2>
-            <p className="text-[14px]" style={muted}>Invitations that are pending acceptance. Share the link again or withdraw anytime.</p>
+            <p className="text-[14px]" style={muted}>Not signed in and finished yet. Send a new login, or withdraw — a withdrawn login opens nothing.</p>
           </div>
           {counts.waiting > 0 && <Pill tone="violet">{counts.waiting} pending</Pill>}
           <button type="button" onClick={() => setShowDone((v) => !v)} className="text-[14.5px] font-semibold inline-flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
@@ -337,7 +346,7 @@ export default function Invitations() {
         <RdTable boxRef={fit.ref} head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
           empty={rows === null ? <p className="py-10 text-center text-[14.5px]" style={muted}>Loading…</p>
             : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
-                body="Invite one person or a whole list above — each gets their own link." /> : undefined}>
+                body="Invite one person or a whole list above — each gets their own login by email." /> : undefined}>
           {paged.visible.map((r) => {
             const soon = r.state === 'waiting' && new Date(r.expires_at).getTime() - nowMs <= 3 * 86_400_000;
             const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
@@ -361,8 +370,7 @@ export default function Invitations() {
                   {r.state === 'waiting' && (
                     <div className="inline-flex items-center gap-1.5 justify-end">
                       {/* Icon buttons with their words as labels and tips — three labelled buttons stacked made every row tall. */}
-                      <IconAct label={copied === r.id ? 'Copied' : 'Copy link'} icon={copied === r.id ? CheckCircle2 : Copy} onClick={() => copy(inviteLink(r.token), r.id)} />
-                      <IconAct label={mailing === r.id ? 'Sending…' : mailed[r.id] ?? 'Email it'} icon={Mail} disabled={!gym || mailing === r.id} onClick={() => void mail(r)} />
+                      <IconAct label={resending === r.id ? 'Sending…' : 'Send a new login'} icon={RotateCw} disabled={resending === r.id} onClick={() => void resend(r)} />
                       <IconAct label="Withdraw" icon={Trash2} danger onClick={() => void withdraw(r)} />
                     </div>
                   )}
@@ -386,5 +394,47 @@ function IconAct({ label, icon: Icon, onClick, disabled, danger }: { label: stri
       style={{ border: '1px solid rgba(255,255,255,0.08)', color: danger ? '#F87171' : '#C4B5FD' }}>
       <Icon size={17} />
     </button>
+  );
+}
+
+/** What sending did: emailed, or — only when it was not — the one-time password, once. */
+function SentCard({ sent, copied, onCopy, onClose }: {
+  sent: InviteOutcome & { email: string; role: InviteRole };
+  copied: string | null; onCopy: (text: string, key: string) => void; onClose: () => void;
+}) {
+  const app = sent.role === 'staff' ? 'corefitness-admin.vercel.app' : 'corefitness-gym.vercel.app';
+  const ok = sent.emailed === 'sent';
+  return (
+    <div className="mt-4 rounded-xl p-4 relative" data-invite-sent
+      style={ok ? { background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(139,92,246,0.45)' } : { background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.45)' }}>
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute top-2.5 right-2.5 w-8 h-8 grid place-items-center rounded-lg hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}><X size={15} /></button>
+      <p className="text-[14.5px] text-white font-semibold flex items-center gap-2">
+        {ok ? <CheckCircle2 size={17} style={{ color: '#A78BFA' }} /> : <AlertTriangle size={17} style={{ color: '#FBBF24' }} />}
+        {ok ? `Login emailed to ${sent.email}` : `${sent.email} is invited — the email did not go out`}
+      </p>
+      {sent.existing ? (
+        <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+          They already have a Core Fitness account, so no new password was made. They sign in at {app} with their own and are asked to finish joining.
+        </p>
+      ) : ok ? (
+        <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+          It has their email, a one-time password and the link to {app}. At first sign-in they choose their own password and fill in the form.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+            {sent.emailed === 'not_configured' ? 'Email is not set up on Core Fitness yet.' : `The email service said: ${sent.emailError?.slice(0, 120) ?? 'no answer'}.`} Give them this login yourself — it is shown only now:
+          </p>
+          {sent.password && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <code className="px-3 py-2 rounded-lg text-[14px] tracking-wide" style={{ background: 'rgba(0,0,0,0.35)', color: '#FDE68A' }} data-invite-password>{sent.password}</code>
+              <RdButton variant="soft" icon={Copy} onClick={() => onCopy(`Sign in at ${app}\nEmail: ${sent.email}\nOne-time password: ${sent.password}`, 'one')}>
+                {copied === 'one' ? 'Copied' : 'Copy login'}
+              </RdButton>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

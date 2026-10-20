@@ -161,7 +161,7 @@ async (page) => {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: 'shots/admin-achievements.png' });
   await page.getByRole('button', { name: /New achievement/ }).click();
-  await page.getByText('1. What earns it').waitFor({ timeout: 10000 });
+  await page.locator('[aria-label="Steps"]').getByText('What earns it').waitFor({ timeout: 10000 });
   await page.getByRole('button', { name: /^Training days/ }).click();
   await page.getByRole('button', { name: '10', exact: true }).click();
   await page.getByRole('button', { name: 'Next' }).click();
@@ -191,7 +191,7 @@ async (page) => {
   const del = CALLS.find((c) => c[0] === 'DELETE' && c[1] === 'notifications');
   out.push('…all their rows go: ' + (del && /n1/.test(del[3]) && /n2/.test(del[3]) && /n3/.test(del[3]) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /Send|New announcement/ }).first().click();
-  await page.getByText('1. Who gets it').waitFor({ timeout: 5000 });
+  await page.locator('[aria-label="Steps"]').getByText('Who gets it').waitFor({ timeout: 5000 });
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Closed for a day', exact: true }).click();
   await page.getByRole('button', { name: 'Next' }).click();
@@ -210,7 +210,7 @@ async (page) => {
   const dev = CALLS.find((c) => c[0] === 'DELETE' && c[1] === 'events');
   out.push('…both deleted, the upcoming one kept: ' + (dev && /e1/.test(dev[3]) && /e2/.test(dev[3]) && !/e3/.test(dev[3]) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /New event/i }).first().click();
-  await page.getByText('1. What and when').waitFor({ timeout: 5000 });
+  await page.locator('[aria-label="Steps"]').getByText('What and when').waitFor({ timeout: 5000 });
   await page.getByRole('button', { name: '1 h 30' }).click();
   out.push('quick picks for duration: ' + ((await page.getByLabel('Minutes').inputValue()) === '90' ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-event-new.png' });
