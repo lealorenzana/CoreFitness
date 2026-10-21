@@ -12,6 +12,7 @@ import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
 import { useCountUp, useMotionEngine } from './motion';
+import { currentTheme, setTheme, type Theme } from './theme';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
@@ -125,6 +126,18 @@ function FeatureTrack() {
  * with Core Fitness lives here; a member's Terms and Privacy are the gym's,
  * in the member app. The footer used to send a gym owner to the member Terms.
  */
+/** Light or dark (2026-10-21) — index.html picked one before paint; this flips it and remembers. */
+function ThemeToggle() {
+  const [theme, setThemeState] = useState<Theme>(() => currentTheme());
+  const next: Theme = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <button type="button" className="theme-btn" aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`}
+      onClick={() => { setTheme(next); setThemeState(next); }}>
+      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+    </button>
+  );
+}
+
 function SiteFooter() {
   return (
     <footer>
@@ -242,6 +255,7 @@ export default function App() {
           <a className="link-quiet hide-sm" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
           <a className="link-quiet hide-sm" href="#account">My application</a>
           <a className="link-quiet" href={ADMIN_APP} aria-label="Gym sign in"><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>
+          <ThemeToggle />
           <a className="cta magnetic" href="#apply">Register</a>
         </div>
       </header>
@@ -259,7 +273,7 @@ export default function App() {
 
         <section className="hero" data-scroll>
           <div className="hero-bg" aria-hidden="true">
-            <img src="/gfit-floor.webp" alt="" />
+            <img src="/hero-floor.webp" alt="" />
           </div>
           <div className="hero-grid" aria-hidden="true" />
           <div className="blob b1" aria-hidden="true" />
@@ -291,7 +305,6 @@ export default function App() {
             </div>
           </div>
           <a className="scroll-cue" href="#day" aria-label="Scroll to the story"><Icon name="mouse" /><span>Scroll</span></a>
-          <p className="photo-credit">Photo: G Fitness, Mamburao</p>
         </section>
 
         <div className="ticker" aria-hidden="true">
@@ -314,7 +327,7 @@ export default function App() {
         <Scrub />
 
         <section className="photo-band" id="floor" data-scroll>
-          <div className="pb-img" aria-hidden="true"><img src="/gfit-coaches.webp" alt="" loading="lazy" /></div>
+          <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
           <div className="wrap pb-inner">
             <span className="eyebrow">Built on a real gym floor</span>
             <h2 className="big">Coaches carry <br />the app too.</h2>
@@ -323,7 +336,6 @@ export default function App() {
               and see only the members they train — and only what those members choose to share.
             </p>
           </div>
-          <p className="photo-credit">Photo: the coaches of G Fitness, Mamburao</p>
         </section>
 
         <Catalogue />
