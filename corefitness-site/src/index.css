@@ -86,7 +86,7 @@
 .theme-btn:hover { color: var(--text); border-color: var(--violet-2); transform: rotate(-12deg); }
 .theme-btn .icon { width: 18px; height: 18px; }
 /* With the switch in the header, a phone has no room for the brand's words: the logo carries it. */
-header.top .brand span, header.top .link-quiet { white-space: nowrap; }
+header.top .brand span, header.top .link-quiet, header.top nav a { white-space: nowrap; }
 @media (max-width: 420px) { header.top .brand span { display: none; } header.top .wrap { gap: 6px; } }
 
 * { box-sizing: border-box; }
@@ -1026,3 +1026,7 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 .google-hint { margin: 8px 0 0; text-align: center; font-size: 12.5px; color: var(--text-3); }
 .google-or { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 .google-or::before, .google-or::after { content: ''; flex: 1; height: 1px; background: var(--hairline-strong); }
+
+/* Below 1100px the four section links no longer fit beside the account links and the light/dark switch;
+   the side dots reach every section. Last in the file, so it wins over `header.top nav { display: flex }`. */
+@media (max-width: 1100px) { header.top nav { display: none; } }
