@@ -99,6 +99,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, f: number, w: number, h: numbe
   const violet = css.getPropertyValue('--violet').trim() || '#7c3aed';
   const violetText = css.getPropertyValue('--violet-text').trim() || '#c4b5fd';
   const amber = css.getPropertyValue('--amber').trim() || '#f59e0b';
+  const amberText = css.getPropertyValue('--amber-text').trim() || amber;
   const text = css.getPropertyValue('--text').trim() || '#f4f4f7';
   const dim = css.getPropertyValue('--hairline-strong').trim() || '#36354f';
   ctx.clearRect(0, 0, w, h);
@@ -143,7 +144,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, f: number, w: number, h: numbe
   // Points, counting up, and the streak weeks.
   const points = Math.round(t * 340);
   ctx.textAlign = 'left';
-  ctx.fillStyle = amber;
+  ctx.fillStyle = amberText;
   ctx.font = `800 ${Math.round(s * 0.05)}px Inter, system-ui, sans-serif`;
   ctx.fillText(`+${points}`, w * 0.06, h * 0.1);
   ctx.fillStyle = text; ctx.font = `600 ${Math.round(s * 0.028)}px Inter, system-ui, sans-serif`;
@@ -160,7 +161,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, f: number, w: number, h: numbe
     const k = Math.min(1, (t - 0.86) / 0.12);
     ctx.globalAlpha = k;
     ctx.textAlign = 'center';
-    ctx.fillStyle = amber;
+    ctx.fillStyle = amberText;
     ctx.font = `800 ${Math.round(s * 0.045)}px Inter, system-ui, sans-serif`;
     ctx.fillText('Renewed · paid in the app', cx, h * 0.97);
     ctx.globalAlpha = 1;

@@ -46,21 +46,33 @@
 /* Light mode (2026-10-21): the same roles on a light ground. The phone mock-ups stay dark — they
    are pictures of the app, which is dark. index.html sets data-theme before the first paint. */
 :root[data-theme="light"] {
-  --bg: #f6f5fb;
-  --bg-2: #eeedf6;
+  /* Modelled on the pitch deck's slides (2026-10-25): a lavender-white ground, deep indigo type,
+     violet for state, warm yellow pills with dark type for every call to action, white cards that
+     carry a faint violet wash and a soft violet shadow. */
+  --bg: #f7f5fd;
+  --bg-2: #f1edfb;
   --surface: #ffffff;
-  --surface-high: #f1f0f8;
-  --hairline: #e2e0ee;
-  --hairline-strong: #cbc8de;
-  --text: #15131f;
-  --text-2: #4a475f;
-  --text-3: #686583;
-  --violet-text: #6d28d9;
+  --surface-high: #f4f0fd;
+  --hairline: #e8e2f7;
+  --hairline-strong: #d6cdf0;
+  --text: #1e1b3a;
+  --text-2: #4a4670;
+  --text-3: #6c6890;
+  --violet: #7c3aed;
   --violet-2: #8b5cf6;
+  --violet-text: #6d28d9;
+  --amber: #fcd34d;
+  --amber-hover: #fbbf24;
   --amber-text: #b45309;
-  --photo-hero: .2;
+  --card-wash: linear-gradient(160deg, #ffffff 0%, #faf7ff 55%, #f3edff 100%);
+  --card-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 18px 40px -26px rgba(91, 33, 182, .35);
+  --photo-hero: .16;
   --photo-band: .9;
   color-scheme: light;
+}
+/* White cards with a violet wash and a soft violet shadow, as on the slides. */
+:root[data-theme="light"] :is(.stat, .card, .voice, .plan-opt, .step, .steps li, .cat-item, .fcard, .faq details) {
+  background: var(--card-wash); border-color: var(--hairline); box-shadow: var(--card-shadow);
 }
 /* The coaches band is a photo on black: it stays a dark band in light mode too (a light wash over a
    black studio shot only turns it grey) — its own dark tokens, and straight edges instead of a fade. */
@@ -73,6 +85,12 @@
 }
 @media (max-width: 760px) {
   :root[data-theme="light"] .photo-band::before { background: linear-gradient(180deg, #08080e, color-mix(in srgb, #08080e 70%, transparent) 40%, color-mix(in srgb, #08080e 90%, transparent)); }
+}
+/* The phone and tablet mock-ups are app screens, and the app is dark: they keep dark tokens in light mode. */
+:root[data-theme="light"] :is(.device, .p3d-phone, .p3d-layer) {
+  --bg: #0b0b12; --surface: #14141d; --surface-high: #1c1c28; --hairline: #26263a; --hairline-strong: #34344a;
+  --text: #f4f4f7; --text-2: #c9c9d6; --text-3: #8a8aa0; --violet-text: #c4b5fd; --amber-text: #f59e0b;
+  color: var(--text);
 }
 :root[data-theme="light"] .grain { opacity: .03; }
 :root[data-theme="light"] .cursor-glow { display: none; }
