@@ -304,3 +304,7 @@
 .att .a-tiers button small { display: block; font-weight: 500; color: var(--a-muted); font-size: 10px; }
 .att .a-tiers button.on { border-color: var(--a-amber); background: var(--a-alight); color: var(--a-a300); }
 .att .a-btn.a-btn-tight { padding: 7px 11px; }
+/* Programs (2026-10-20): a workout's name in its grid colour, in the legend under the weeks. */
+.att .a-wkg-name.t0 { color: var(--a-p300); } .att .a-wkg-name.t1 { color: #7ee7d4; } .att .a-wkg-name.t2 { color: var(--a-a300); }
+.att .a-wkg-name.t3 { color: #f0abfc; } .att .a-wkg-name.t4 { color: #93c5fd; } .att .a-wkg-name.t5 { color: #d9f99d; }
+.att .a-wkg button.d:hover:not(:disabled) { box-shadow: 0 0 0 2px #ffffff55; }

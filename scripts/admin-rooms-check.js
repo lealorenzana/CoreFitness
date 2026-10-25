@@ -31,6 +31,7 @@ async (page) => {
   const minute = new Date(Date.now() - 3600_000).toISOString();
 
   const DELETED = [];
+  const MODERATED = [];
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -45,6 +46,7 @@ async (page) => {
         role: 'staff', status: 'active', lock_reason: null, short_name: null, logo_url: null, accent: 'teal',
         gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'open' }]);
       if (fn === 'sync_gym_rooms') return json(0);
+      if (fn === 'moderate_room_item') { const b = JSON.parse(req.postData() || '{}'); MODERATED.push(b); DELETED.push(b.p_id); return json(null); }
       if (fn === 'all_gym_rooms') return json([
         { id: 'rm1', kind: 'class', name: 'Morning HIIT', trainer_name: 'Coach Rae', member_count: 12, post_count: 3,
           comment_count: 5, last_post_at: minute, archived: false },
@@ -78,7 +80,7 @@ async (page) => {
   let seen = await text();
   out.push('rooms by trainer: ' + (/Coach Rae/i.test(seen) && /Coach Ben/i.test(seen) && /8-week fat loss/.test(seen) && /Ana Reyes · 1-on-1/.test(seen) ? 'shown' : 'MISSING'));
   const hiit = (await page.getByRole('button', { name: /Morning HIIT/ }).first().innerText()).replace(/\s+/g, ' ');
-  out.push('activity: ' + (/ 12 8$/.test(hiit) ? 'members and posts+comments on the row' : 'MISSING ' + hiit));
+  out.push('activity: ' + (/12 members.* 8$/.test(hiit) ? 'members and posts+comments on the row' : 'MISSING ' + hiit));
   // Find and filter (2026-10-04).
   await page.getByLabel('Find a room, coach or member').fill('fat loss');
   await page.waitForTimeout(400);
@@ -97,7 +99,11 @@ async (page) => {
   out.push('no way to post as the trainer: ' + ((await page.locator('textarea').count()) === 0 ? 'none' : 'MISSING (a post box)'));
   await page.screenshot({ path: 'shots/admin-rooms.png' });
   await page.getByRole('button', { name: 'Remove comment by Spam M.' }).click();
+  out.push('removing asks why first: ' + ((await page.locator('[data-confirm-remove]').isDisabled()) ? 'yes' : 'MISSING'));
+  await page.getByLabel('Why it is removed').fill('Selling things is not allowed here.');
+  await page.locator('[data-confirm-remove]').click();
   await page.waitForTimeout(800);
   out.push('removing a comment: ' + (DELETED.includes('c1') && !/buy my supplements lol/.test(await text()) ? 'removed' : 'MISSING'));
+  out.push('…with the reason the author is told (0207): ' + (MODERATED.some((m) => m.p_kind === 'comment' && m.p_reason === 'Selling things is not allowed here.') ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

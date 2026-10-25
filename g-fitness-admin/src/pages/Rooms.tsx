@@ -1,32 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, MessageSquare, Search, Trash2, Users } from 'lucide-react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import DetailSheet from '../components/ui/DetailSheet';
-import { PageHeader } from '../components/ui/kit';
+import { MessageSquare, Search, Trash2, Users, Shield, Flame, HeartHandshake, UsersRound, Check, X } from 'lucide-react';
+import { Av } from './attendance/parts';
+import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
-import { allGymRooms, memberRoomsSummary, removeComment, removePost, roomStream, type GymRoom, type StreamPost } from '../lib/api/rooms';
+import { allGymRooms, memberRoomsSummary, moderateRoomItem, roomStream, type GymRoom, type StreamPost } from '../lib/api/rooms';
 
-const MUTED = 'var(--color-text-muted)';
-const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' };
 const KIND: Record<GymRoom['kind'], string> = { class: 'Class', pt: '1-on-1', group: 'Coaching group' };
+const ICON = { class: Flame, pt: HeartHandshake, group: UsersRound };
 type Kind = 'all' | GymRoom['kind'];
-
 const ago = (iso: string | null) => {
   if (!iso) return 'nothing posted yet';
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  return d <= 0 ? 'active today' : d === 1 ? 'active yesterday' : `last post ${d} days ago`;
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 };
+const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /**
- * Training → Rooms (0128/0129): the trainers' Google Classroom, seen from the
- * desk. Find a room by its name, its coach or one of its members; filter by
- * kind and coach; open one beside the list to read its stream and remove a post
- * or comment that should not be there.
- *
- * The owner and desk moderate; they never post as a trainer (the database
- * refuses it). Classwork and hand-ins stay between each member and their coach.
+ * Training → Rooms (0128/0129, redrawn 2026-10-20 to the approved mock-up):
+ * the rooms on the left — by name, coach or a member in them — and the one
+ * open beside them, read-only for the desk. A post or comment that does not
+ * belong is removed with a reason the author is told (moderate_room_item,
+ * 0207). The owner and desk never post as a coach (the database refuses it).
+ * The mock-up's member "flags" do not exist yet — the list says nothing it
+ * cannot count.
  */
 export default function Rooms() {
   const [rooms, setRooms] = useState<GymRoom[] | null | undefined>(null);
@@ -36,8 +33,9 @@ export default function Rooms() {
   const [kind, setKind] = useState<Kind>('all');
   const [coach, setCoach] = useState('all');
   const [showClosed, setShowClosed] = useState(false);
-  /** Rooms a member searched for is in (member_rooms), keyed by their name. */
   const [memberHit, setMemberHit] = useState<{ name: string; ids: Set<string> } | null>(null);
+  const [removing, setRemoving] = useState<{ kind: 'post' | 'comment'; id: string; reason: string } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -68,14 +66,20 @@ export default function Rooms() {
     setPosts(null);
     try { setPosts(await roomStream(room.id)); } catch { setPosts([]); }
   }, []);
+  const pick = (r: GymRoom) => { setOpen(r); setRemoving(null); void loadStream(r); };
 
-  const remove = async (fn: () => Promise<void>, what: string) => {
+  const remove = async () => {
+    if (!removing || !open) return;
+    setBusy(true);
     try {
-      await fn();
-      showToast(`${what} removed`, 'success');
-      if (open) await loadStream(open);
+      await moderateRoomItem(removing.kind, removing.id, removing.reason);
+      showToast(`${removing.kind === 'post' ? 'Post' : 'Comment'} removed — they have been told why`, 'success');
+      setRemoving(null);
+      await loadStream(open);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be removed', 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -88,112 +92,89 @@ export default function Rooms() {
       .sort((a, b) => (b.lastPostAt ?? '').localeCompare(a.lastPostAt ?? '') || a.name.localeCompare(b.name));
   }, [rooms, q, kind, coach, showClosed, memberHit]);
 
-  if (rooms === null) return <div className="text-sm" style={{ color: MUTED }}>Loading rooms…</div>;
-  if (rooms === undefined) {
-    return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5" style={{ color: 'var(--color-secondary)' }} />
-          <p className="text-xs text-white">Rooms are not switched on yet — migration 0128 is not live on this database.</p>
-        </div>
-      </Card>
-    );
-  }
-
+  if (rooms === null) return <div className="att"><p className="a-sub">Loading rooms…</p></div>;
+  if (rooms === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Rooms are not switched on yet — migration 0128 is not live on this database.</p></div></div>;
   const count = (k: Kind) => rooms.filter((r) => (showClosed || !r.archived) && (k === 'all' || r.kind === k)).length;
 
+  const reasonRow = (k: 'post' | 'comment', itemId: string) => removing?.id === itemId ? (
+    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+      <input className="a-in" style={{ padding: '6px 9px', fontSize: 12 }} autoFocus maxLength={200} value={removing.reason} aria-label="Why it is removed"
+        onChange={(e) => setRemoving({ kind: k, id: itemId, reason: e.target.value })} placeholder="Why — the person is told" />
+      <button type="button" className="a-btn violet sm" disabled={busy || !removing.reason.trim()} onClick={() => void remove()} data-confirm-remove><Check size={13} />Remove</button>
+      <button type="button" className="a-btn ghost sm" aria-label="Cancel" onClick={() => setRemoving(null)}><X size={13} /></button>
+    </div>
+  ) : null;
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Rooms"
-        subtitle={`Your coaches' rooms — one per recurring class, per 1-on-1 trainee, and each coaching group · ${rooms.filter((r) => !r.archived).length} open`} />
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1" style={{ minWidth: 220 }}>
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: MUTED }} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a room, coach or member" aria-label="Find a room, coach or member"
-            className="w-full h-9 pl-9 pr-3 rounded-lg text-xs text-white" style={FIELD} />
-        </div>
-        {(['all', 'class', 'pt', 'group'] as Kind[]).map((k) => (
-          <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className="h-9 px-3 rounded-lg text-xs font-semibold"
-            style={{ background: kind === k ? 'var(--color-primary-light)' : 'var(--color-surface-high)', color: kind === k ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              border: `1px solid ${kind === k ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
-            {k === 'all' ? 'All' : KIND[k]} <span style={{ opacity: 0.7 }}>{count(k)}</span>
-          </button>
-        ))}
-        <select value={coach} onChange={(e) => setCoach(e.target.value)} aria-label="Coach" className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}>
-          <option value="all">Every coach</option>
-          {coaches.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Closed rooms
-        </label>
+    <div className="att" data-rooms>
+      <div className="a-head">
+        <div className="min-w-0"><h1>Rooms</h1><p>Where coaches talk to their classes and groups — you can read every room and remove what does not belong</p></div>
       </div>
-      {memberHit && q.trim() && (
-        <p className="text-[11px]" style={{ color: MUTED }}>Including the {memberHit.ids.size} room{memberHit.ids.size === 1 ? '' : 's'} {memberHit.name} is in.</p>
-      )}
-
-      {rooms.length === 0 ? (
-        <Card className="!p-6 text-center">
-          <p className="text-xs" style={{ color: MUTED }}>No rooms yet. A room appears for each recurring class that has a coach, and for each 1-on-1 trainee.</p>
-        </Card>
-      ) : shown.length === 0 ? (
-        <p className="text-xs py-6 text-center" style={{ color: MUTED }}>No room matches.</p>
-      ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-          {shown.map((r, i) => (
-            <button key={r.id} type="button" onClick={() => { setOpen(r); void loadStream(r); }}
-              className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-white/5"
-              style={{ background: open?.id === r.id ? 'var(--color-primary-light)' : 'var(--color-surface)', borderTop: i ? '1px solid var(--color-border)' : undefined, opacity: r.archived ? 0.55 : 1 }}>
-              <span className="text-[10px] font-bold uppercase w-20 flex-shrink-0" style={{ color: 'var(--color-primary)' }}>{KIND[r.kind]}</span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-semibold text-white truncate">{r.name}{r.archived ? ' · closed' : ''}</span>
-                <span className="block text-[11px] truncate" style={{ color: MUTED }}>{r.trainerName} · {ago(r.lastPostAt)}</span>
-              </span>
-              <span className="text-[11px] flex items-center gap-3 flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
-                <span className="flex items-center gap-1"><Users size={12} /> {r.memberCount}</span>
-                <span className="flex items-center gap-1"><MessageSquare size={12} /> {r.postCount + r.commentCount}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <DetailSheet open={!!open} onClose={() => setOpen(null)} width={520}
-        title={open?.name ?? ''} subtitle={open ? `${KIND[open.kind]} · ${open.trainerName} · ${open.memberCount} member${open.memberCount === 1 ? '' : 's'}` : undefined}>
-        {posts === null ? (
-          <p className="text-xs" style={{ color: MUTED }}>Loading…</p>
-        ) : posts.length === 0 ? (
-          <p className="text-xs" style={{ color: MUTED }}>Nothing posted in this room yet.</p>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-[11px]" style={{ color: MUTED }}>The stream, newest first. You can remove a post or comment; you cannot post as the coach.</p>
-            {posts.map((p) => (
-              <div key={p.id} className="rounded-lg p-3" style={FIELD}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px]" style={{ color: MUTED }}>
-                    {p.authorName} · {new Date(p.createdAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                  <Button size="sm" variant="ghost" aria-label="Remove post" onClick={() => void remove(() => removePost(p.id), 'Post')}>
-                    <Trash2 size={12} /> Remove
-                  </Button>
-                </div>
-                <p className="text-xs text-white mt-1 whitespace-pre-wrap">{p.body}</p>
-                {p.photoUrl && <img src={p.photoUrl} alt="" className="mt-2 rounded-lg w-full object-cover" style={{ maxHeight: 220 }} />}
-                {p.videoUrl && <p className="text-[11px] mt-1" style={{ color: 'var(--color-primary)' }}>{p.videoUrl}</p>}
-                {p.comments.map((c) => (
-                  <div key={c.id} className="flex items-start justify-between gap-2 mt-2 pl-3" style={{ borderLeft: '2px solid var(--color-border)' }}>
-                    <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-                      <MessageSquare size={10} className="inline mr-1" />
-                      <span className="font-semibold text-white">{c.author}</span> {c.body}
-                    </p>
-                    <button aria-label={`Remove comment by ${c.author}`} onClick={() => void remove(() => removeComment(c.id), 'Comment')} style={{ color: MUTED }}><Trash2 size={12} /></button>
-                  </div>
-                ))}
-              </div>
+      <div className="a-grid" style={{ gridTemplateColumns: '360px minmax(0, 1fr)', flex: 1 }}>
+        <div className="a-card" data-room-list>
+          <label className="a-input" style={{ padding: '7px 11px', fontSize: 12, marginBottom: 8 }}><Search size={14} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a room, coach or member…" aria-label="Find a room, coach or member" /></label>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            {(['all', 'class', 'pt', 'group'] as Kind[]).map((k) => (
+              <button key={k} type="button" className={`a-chip ${kind === k ? 'v' : ''}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{k === 'all' ? 'All' : KIND[k]} <em>{count(k)}</em></button>
             ))}
           </div>
-        )}
-      </DetailSheet>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+            <select className="a-chip" value={coach} onChange={(e) => setCoach(e.target.value)} aria-label="Coach"><option value="all">Every coach</option>{coaches.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <button type="button" className={`a-chip ${showClosed ? 'v' : ''}`} aria-pressed={showClosed} onClick={() => setShowClosed(!showClosed)}>Closed rooms</button>
+          </div>
+          {memberHit && q.trim() && <div className="a-sub" style={{ marginBottom: 6 }}>Including the {memberHit.ids.size} room{memberHit.ids.size === 1 ? '' : 's'} {memberHit.name} is in.</div>}
+          <div className="a-scroll grow">
+            {rooms.length === 0 ? <p className="a-sub">No rooms yet. A room appears for each recurring class that has a coach, and for each 1-on-1 trainee.</p>
+              : shown.length === 0 ? <p className="a-sub">No room matches.</p> : shown.map((r) => {
+              const Icon = ICON[r.kind];
+              return (
+                <button key={r.id} type="button" className="a-row w-full text-left" onClick={() => pick(r)} data-room={r.name}
+                  style={{ padding: 9, borderRadius: 12, borderTop: 0, background: open?.id === r.id ? '#7c3aed14' : undefined, opacity: r.archived ? 0.55 : 1 }}>
+                  <div className={`a-ic ${r.kind === 'pt' ? 'a' : ''}`} style={r.kind === 'group' ? { background: '#14323a', color: '#7ee7d4' } : undefined}><Icon size={15} /></div>
+                  <div className="t"><b>{r.name}{r.archived ? ' · closed' : ''}</b><small>{r.trainerName} · {r.memberCount} member{r.memberCount === 1 ? '' : 's'} · {ago(r.lastPostAt)}</small></div>
+                  <span className="a-sub" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageSquare size={12} />{r.postCount + r.commentCount}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="a-card glow" data-room-stream>
+          {!open ? (
+            <div style={{ margin: 'auto', textAlign: 'center' }}><Shield size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
+              <b>Open a room to read it</b><div className="a-sub" style={{ marginTop: 4 }}>The stream, newest first. You can remove a post or comment; you cannot post as the coach.</div></div>
+          ) : (<>
+            <div className="a-ct"><div className="min-w-0"><h3 className="truncate">{open.name}</h3>
+              <div className="a-sub">{KIND[open.kind]} room · {open.trainerName} · {open.memberCount} member{open.memberCount === 1 ? '' : 's'} · read-only for you</div></div>
+              <span className="a-pill"><Users size={12} />{open.memberCount}</span></div>
+            <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {posts === null ? <p className="a-sub">Loading…</p> : posts.length === 0 ? <p className="a-sub">Nothing posted in this room yet.</p> : posts.map((p) => (
+                <div key={p.id} className="a-post" data-post>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Av name={p.authorName} small /><b>{p.authorName}</b><span className="a-sub">{stamp(p.createdAt)}</span>
+                    <button type="button" className="a-btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => setRemoving({ kind: 'post', id: p.id, reason: '' })} aria-label="Remove post"><Trash2 size={13} />Remove</button>
+                  </div>
+                  <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{p.body}</div>
+                  {p.photoUrl && <img src={p.photoUrl} alt="" style={{ marginTop: 8, borderRadius: 10, width: '100%', maxHeight: 220, objectFit: 'cover' }} />}
+                  {p.videoUrl && <div className="a-sub" style={{ marginTop: 4, color: 'var(--a-p300)' }}>{p.videoUrl}</div>}
+                  {reasonRow('post', p.id)}
+                  {p.comments.map((c) => (
+                    <div key={c.id}>
+                      <div className="a-rep" style={{ marginTop: 8, padding: '8px 10px', borderRadius: 10, background: '#0f0f19', fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <Av name={c.author} small /><div style={{ flex: 1, minWidth: 0 }}><b>{c.author}</b>{c.isTrainer ? <span className="a-pill v" style={{ marginLeft: 6 }}>coach</span> : null} {c.body}</div>
+                        <button type="button" className="a-btn ghost sm" onClick={() => setRemoving({ kind: 'comment', id: c.id, reason: '' })} aria-label={`Remove comment by ${c.author}`}><Trash2 size={12} /></button>
+                      </div>
+                      {reasonRow('comment', c.id)}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="a-hint" style={{ marginTop: 10 }}><Shield size={14} /><span>You can remove a post or comment, and the person is told why. You cannot post as the coach.</span></div>
+          </>)}
+        </div>
+      </div>
     </div>
   );
 }

@@ -109,7 +109,8 @@ async (page) => {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/equipment', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Problems members reported').waitFor({ timeout: 15000 });
+  await page.locator('[data-equipment-reports]').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(600);
   let t = await text();
   out.push('the report, with what is wrong and who said so: ' + (/The seat pin is stuck/.test(t) && /Lea Lorenzana/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('[data-equipment-reports]').getByRole('button', { name: /^Fixed$/ }).click();
@@ -119,7 +120,7 @@ async (page) => {
   await page.getByRole('button', { name: /Add equipment/ }).click();
   await page.locator('[data-equipment-form]').waitFor({ timeout: 5000 });
   await page.getByPlaceholder('Leg press').fill('Rowing machine');
-  await page.getByPlaceholder('2nd floor, cardio zone').fill('Ground floor, cardio');
+  await page.getByPlaceholder('2nd floor').fill('Ground floor, cardio');
   await page.getByLabel('Find an exercise').fill('squat');
   await page.getByRole('button', { name: /^Back Squat$/ }).click();
   await page.getByRole('button', { name: /^Save$/ }).click();

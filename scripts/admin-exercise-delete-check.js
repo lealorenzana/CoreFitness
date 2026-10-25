@@ -80,22 +80,28 @@ async (page) => {
   await page.goto('http://localhost:5174/exercises', { waitUntil: 'domcontentloaded' });
   await page.getByText('Tyre Drag').waitFor({ timeout: 15000 });
 
+  // An exercise opens beside the tiles (2026-10-20); Delete lives there, on your own ones only.
   const del = (name) => page.getByRole('button', { name: `Delete ${name}` });
+  const open = async (name) => { await page.locator(`[data-exercise="${name}"]`).click(); await page.waitForTimeout(200); };
+  await open('Tyre Drag');
   out.push('delete on your own exercise: ' + ((await del('Tyre Drag').count()) === 1 ? 'shown' : 'MISSING'));
+  await open('Back Squat');
   out.push('no delete on a library exercise: ' + ((await del('Back Squat').count()) === 0 ? 'none' : 'MISSING (shown on the shared library)'));
 
   await page.getByLabel('Search exercises').fill('hammer');
   await page.waitForTimeout(200);
-  let seen = await text();
-  out.push('search: ' + (/Hammer Curl/.test(seen) && !/Back Squat|Tyre Drag/.test(seen) ? 'finds Hammer Curl only' : 'MISSING'));
+  const tiles = () => page.locator('[data-exercise]').evaluateAll((els) => els.map((e) => e.getAttribute('data-exercise')).join('|'));
+  let seen = await tiles();
+  out.push('search: ' + (seen === 'Hammer Curl' ? 'finds Hammer Curl only' : 'MISSING ' + seen));
   await page.getByLabel('Search exercises').fill('');
-  await page.getByLabel('Muscle group').selectOption('legs');
+  await page.locator('[data-group="legs"]').click();
   await page.waitForTimeout(200);
-  seen = await text();
-  out.push('muscle group filter: ' + (/Back Squat/.test(seen) && !/Hammer Curl|Tyre Drag/.test(seen) ? 'legs only' : 'MISSING'));
-  await page.getByLabel('Muscle group').selectOption('all');
+  seen = await tiles();
+  out.push('muscle group filter: ' + (/Back Squat/.test(seen) && !/Hammer Curl|Tyre Drag/.test(seen) ? 'legs only' : 'MISSING ' + seen));
+  await page.locator('button.a-chip', { hasText: /^All$/ }).click();
   await page.waitForTimeout(200);
 
+  await open('Tyre Drag');
   await del('Tyre Drag').click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForTimeout(800);
@@ -103,6 +109,7 @@ async (page) => {
   out.push('deleting your unused exercise: ' + (DELETED.includes('ex-drag') && !/Tyre Drag/.test(seen.replace(/Tyre Drag deleted/, '')) ? 'gone' : 'MISSING'));
   await page.screenshot({ path: 'shots/exercise-delete.png' });
 
+  await open('Sandbag Carry');
   await del('Sandbag Carry').click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForTimeout(800);

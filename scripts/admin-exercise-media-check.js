@@ -91,8 +91,12 @@ async (page) => {
   let t = await text();
 
   out.push('photo counter: ' + (/42 of 100 photos/.test(t) ? 'shown' : 'MISSING'));
+  out.push('own label: ' + (/\byours\b/i.test(t) ? 'shown' : 'MISSING'));
+  // An exercise opens beside the tiles (2026-10-20): its label, Hide and Edit guide live there.
+  await page.locator('[data-exercise="Back Squat"]').click();
+  await page.waitForTimeout(300);
+  t = await text();
   out.push('library label: ' + (/Core Fitness library/.test(t) ? 'shown' : 'MISSING'));
-  out.push('own label: ' + (/\bYours\b/.test(t) ? 'shown' : 'MISSING'));
 
   // Hide the shared squat. The write must be the gym's overlay.
   await page.getByRole('button', { name: 'Hide Back Squat from members' }).click();

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Crown, ImagePlus, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Crown, ImagePlus, Plus, Sparkles, Trash2, CalendarRange, Dumbbell, Eye, EyeOff, Check } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Popover from '../components/ui/Popover';
+import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { removeContentPhoto, uploadContentPhoto } from '../lib/api/exerciseMedia';
@@ -11,16 +13,16 @@ import {
 } from '../lib/api/programs';
 
 /**
- * Training → Programs (0122): the gym's own workouts and multi-week programs.
+ * Training → Programs (0122/0173, redrawn 2026-10-20 to the approved mock-up):
+ * the programs (and the workouts they are made of) on the left, the one open
+ * on the right — its details, and the weeks as a grid where each training day
+ * shows its workout in that workout's colour and a tap changes it.
  *
  * Members follow a program in the phone app; each day runs in the ordinary
  * workout player, so points, badges and history need nothing from this page.
- * Programs are built here, by the owner — a six-week grid is a desk job, not a
- * phone one. Trainers build workouts in their app, and theirs show here too.
- *
  * Everything starts as a Draft; members see a program once it is Published.
- * Premium locks a program to plans that include "Premium programs" (Membership
- * Plans decides which); a free member still sees it, with the reason.
+ * Premium locks a program to plans that include "Premium programs"; a free
+ * member still sees it, with the reason.
  */
 
 const MUTED = 'var(--color-text-muted)';
@@ -34,6 +36,7 @@ const STARTERS: { key: StarterKey; label: string; blurb: string }[] = [
   { key: 'beginner_full_body', label: '3-Day Beginner Full Body', blurb: 'Two alternating full-body workouts, Mon · Wed · Fri, four weeks.' },
   { key: 'push_pull_legs', label: 'Push / Pull / Legs', blurb: 'The classic three-day split, four weeks.' },
 ];
+const levelWord = (l: Level) => LEVELS.find((x) => x.value === l)?.label ?? l;
 
 interface Ex { id: string; name: string; is_timed: boolean }
 
@@ -54,8 +57,9 @@ export default function Programs() {
     setPrograms(p);
     setWorkouts(w ?? []);
     setExercises((ex.data ?? []) as Ex[]);
+    // Open the first program when nothing is open yet, so the right side is never empty for no reason.
+    setEditingProgram((cur) => cur ?? p?.[0]?.id ?? null);
   }, []);
-
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const copy = async (key: StarterKey) => {
@@ -63,6 +67,7 @@ export default function Programs() {
     try {
       const id = await copyStarterProgram(key);
       await load();
+      setTab('programs');
       setEditingProgram(id);
       showToast('Added as a draft. Check it over, then publish it.', 'success');
     } catch (e) {
@@ -72,158 +77,95 @@ export default function Programs() {
     }
   };
 
-  if (programs === undefined) return <div className="text-sm" style={{ color: MUTED }}>Loading programs…</div>;
-  if (programs === null) {
-    return (
-      <Card className="!p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle size={14} className="mt-0.5" style={{ color: 'var(--color-secondary)' }} />
-          <p className="text-xs text-white">
-            Programs need migration 0122_gym_programs.sql, which is not pasted yet (or the list could not load).
-          </p>
-        </div>
-      </Card>
-    );
-  }
+  if (programs === undefined) return <div className="att"><p className="a-sub">Loading programs…</p></div>;
+  if (programs === null) return <div className="att"><div className="a-card"><p className="a-sub">Programs need migration 0122_gym_programs.sql, which is not pasted yet (or the list could not load).</p></div></div>;
 
   const program = editingProgram && editingProgram !== 'new' ? programs.find((p) => p.id === editingProgram) ?? null : null;
   const workout = editingWorkout && editingWorkout !== 'new' ? workouts.find((w) => w.id === editingWorkout) ?? null : null;
+  const published = programs.filter((p) => p.published).length;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Programs</h1>
-        <p className="text-xs mt-1" style={{ color: MUTED }}>
-          Week-by-week training your members follow in the app · {programs.filter((p) => p.published).length} published
-        </p>
+    <div className="att" data-programs>
+      <div className="a-head">
+        <div className="min-w-0"><h1>Programs</h1><p>Multi-week plans members follow — a workout for each training day · {published} published</p></div>
+        <nav className="a-tabs" aria-label="Programs or workouts" data-rd-tabs style={{ marginLeft: 'auto' }}>
+          <button type="button" className={tab === 'programs' ? 'on' : ''} onClick={() => setTab('programs')}><CalendarRange size={14} />Programs <em>{programs.length}</em></button>
+          <button type="button" className={tab === 'workouts' ? 'on' : ''} onClick={() => setTab('workouts')} data-tab="workouts"><Dumbbell size={14} />Workouts <em>{workouts.length}</em></button>
+        </nav>
+        <button type="button" className="a-btn violet" onClick={() => (tab === 'programs' ? setEditingProgram('new') : setEditingWorkout('new'))}>
+          <Plus size={15} />{tab === 'programs' ? 'New program' : 'New workout'}</button>
       </div>
+      {programs.length > 0 && published === 0 && (
+        <div className="a-hint" style={{ flex: 'none' }}><AlertTriangle size={14} /><span>Members cannot see any of your programs yet — open one and press Publish.</span></div>
+      )}
 
-      <div className="flex gap-2">
-        {(['programs', 'workouts'] as const).map((k) => (
-          <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: tab === k ? 'var(--color-primary)' : 'var(--color-surface-high)', color: '#fff' }}>
-            {k === 'programs' ? 'Programs' : 'Workouts'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'programs' ? (
-        <>
-          {/* How a program reaches a member, said where it is built. */}
-          <Card className="!p-4">
-            <p className="text-xs font-bold text-white">How members get a program</p>
-            <ol className="grid gap-2 mt-2 md:grid-cols-4 text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">1. Workouts</b>Each training day is a workout — build them under Workouts, or start from a ready-made program.</li>
-              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">2. Weeks and days</b>Put a workout on each training day. Rest days stay empty.</li>
-              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">3. Publish</b>A draft is yours alone. Published, members find it under Train → Programs.</li>
-              <li className="rounded-lg p-2.5" style={FIELD}><b className="text-white block">4. They follow it</b>Today shows their next day with a Start button; each finished day counts for points, streaks and badges.</li>
-            </ol>
-            {programs.length > 0 && !programs.some((p) => p.published) && (
-              <p className="text-[11px] mt-3 rounded-lg px-3 py-2 flex items-center gap-2" style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                <AlertTriangle size={13} /> Members cannot see any of your programs yet — open one and press Publish.
-              </p>
-            )}
-          </Card>
-
-          <Card className="!p-4">
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} style={{ color: 'var(--color-primary)' }} />
-              <p className="text-xs font-bold text-white">Start from a ready-made program</p>
-            </div>
-            <p className="text-[10px] mt-1" style={{ color: MUTED }}>
-              Copied into your gym as a draft, built from the standard exercises. Change anything before you publish.
-            </p>
-            <div className="grid grid-cols-2 gap-2 mt-3">
+      <div className="a-grid" style={{ gridTemplateColumns: '300px minmax(0, 1fr)', flex: 1 }}>
+        <div className="a-card" data-program-list>
+          {tab === 'programs' ? (<>
+            <div className="a-ct"><h3><CalendarRange size={16} />Your programs</h3><small>{programs.length}</small></div>
+            <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {programs.length === 0 && <p className="a-sub">No programs yet — start from a ready-made one below, or build your own.</p>}
+              {programs.map((p) => (
+                <button key={p.id} type="button" className={`a-tile ${editingProgram === p.id ? 'on' : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                  onClick={() => setEditingProgram(p.id)} data-program={p.name}>
+                  <span style={{ height: 46, width: 56, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', overflow: 'hidden', background: 'linear-gradient(135deg,#2a2050,#14323a)', color: '#ffffff99' }}>
+                    {p.coverUrl ? <img src={p.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Dumbbell size={20} />}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="truncate" style={{ display: 'block' }}>{p.name} {p.premium && <Crown size={11} style={{ display: 'inline', color: 'var(--a-a300)' }} aria-label="Premium" />}</b>
+                    <small style={{ display: 'block' }}>{p.weeks} week{p.weeks === 1 ? '' : 's'} · {levelWord(p.level).toLowerCase()} · {p.days.length} training days</small>
+                    <small style={{ color: p.published ? 'var(--a-p300)' : 'var(--a-a300)' }}>{p.published ? 'published — members see it' : 'draft — members cannot see it'}</small>
+                  </span>
+                </button>
+              ))}
+              <div className="a-lbl" style={{ margin: '10px 0 2px', display: 'flex', gap: 6, alignItems: 'center' }}><Sparkles size={13} />Start from a ready-made one</div>
               {STARTERS.map((s) => (
-                <button key={s.key} onClick={() => void copy(s.key)} disabled={busy} aria-label={`Add ${s.label}`}
-                  className="text-left rounded-lg px-3 py-2.5" style={FIELD}>
-                  <p className="text-xs font-semibold text-white">{s.label}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: MUTED }}>{s.blurb}</p>
+                <button key={s.key} type="button" className="a-tile" style={{ borderStyle: 'dashed' }} disabled={busy} onClick={() => void copy(s.key)} aria-label={`Add ${s.label}`}>
+                  <b>{s.label}</b><small>{s.blurb}</small>
                 </button>
               ))}
             </div>
-          </Card>
-
-          {editingProgram && (
-            <ProgramEditor key={editingProgram} program={program} workouts={workouts}
-              onSaved={async (id) => { await load(); setEditingProgram(id); }}
-              onClose={() => setEditingProgram(null)} />
-          )}
-
-          <Card className="!p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-white">Your programs</p>
-              <Button size="sm" variant="outline" onClick={() => setEditingProgram('new')}><Plus size={12} /> New program</Button>
+          </>) : (<>
+            <div className="a-ct"><h3><Dumbbell size={16} />Workouts</h3><small>one session each</small></div>
+            <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {workouts.length === 0 && <p className="a-sub">No workouts yet. A workout is one session: exercises with sets, reps or time, and rest. Programs put them on days.</p>}
+              {workouts.map((w) => {
+                const used = programs.filter((p) => p.days.some((d) => d.workoutId === w.id)).length;
+                return (
+                  <button key={w.id} type="button" className={`a-tile ${editingWorkout === w.id ? 'on' : ''}`} onClick={() => setEditingWorkout(w.id)} aria-label={`Edit workout ${w.name}`}>
+                    <b>{w.name}</b><small>{w.items.length} exercise{w.items.length === 1 ? '' : 's'} · {levelWord(w.level).toLowerCase()}{used ? ` · in ${used} program${used === 1 ? '' : 's'}` : ''}</small>
+                  </button>
+                );
+              })}
             </div>
-            {programs.length === 0 ? (
-              <p className="text-xs mt-3" style={{ color: MUTED }}>No programs yet. Start from a ready-made one above, or build your own.</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                {programs.map((p) => (
-                  <div key={p.id} className="rounded-lg px-3 py-2.5 flex items-start justify-between gap-2" style={FIELD}>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">
-                        {p.name} {p.premium && <Crown size={11} className="inline" style={{ color: 'var(--color-secondary)' }} aria-label="Premium" />}
-                      </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>
-                        <span className="font-semibold" style={{ color: p.published ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                          {p.published ? 'Published — members see it' : 'Draft — only you see it'}
-                        </span>
-                        {' '}· {p.weeks} week{p.weeks === 1 ? '' : 's'} · {p.days.length} training days
-                      </p>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingProgram(p.id)} aria-label={`Edit ${p.name}`}>Edit</Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </>
-      ) : (
-        <>
-          {editingWorkout && (
+          </>)}
+        </div>
+
+        <div className="a-card glow" style={{ overflowY: 'auto' }} data-program-editor>
+          {tab === 'programs' ? (editingProgram ? (
+            <ProgramEditor key={editingProgram} program={program} workouts={workouts} exercises={exercises}
+              onSaved={async (id) => { await load(); setEditingProgram(id); }} onClose={() => setEditingProgram(programs[0]?.id ?? null)} />
+          ) : (
+            <div style={{ margin: 'auto', textAlign: 'center' }}><CalendarRange size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
+              <b>How members get a program</b>
+              <div className="a-sub" style={{ marginTop: 6, maxWidth: 460 }}>Build workouts, put one on each training day of each week, then Publish. Members find it under Train → Programs; Today shows their next day with a Start button, and each finished day counts for points, streaks and badges.</div></div>
+          )) : (editingWorkout ? (
             <WorkoutEditor key={editingWorkout} workout={workout} exercises={exercises}
-              onSaved={async () => { await load(); setEditingWorkout(null); }}
-              onClose={() => setEditingWorkout(null)} />
-          )}
-          <Card className="!p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-white">Workouts</p>
-              <Button size="sm" variant="outline" onClick={() => setEditingWorkout('new')}><Plus size={12} /> New workout</Button>
-            </div>
-            <p className="text-[10px] mt-1" style={{ color: MUTED }}>
-              A workout is one session: exercises with sets, reps or time, and rest. Programs put them on days.
-            </p>
-            {workouts.length === 0 ? (
-              <p className="text-xs mt-3" style={{ color: MUTED }}>No workouts yet.</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                {workouts.map((w) => {
-                  const used = programs.filter((p) => p.days.some((d) => d.workoutId === w.id)).length;
-                  return (
-                    <div key={w.id} className="rounded-lg px-3 py-2 flex items-center justify-between gap-2" style={FIELD}>
-                      <div className="min-w-0">
-                        <p className="text-xs text-white truncate">{w.name}</p>
-                        <p className="text-[10px]" style={{ color: MUTED }}>
-                          {w.items.length} exercise{w.items.length === 1 ? '' : 's'}{used ? ` · in ${used} program${used === 1 ? '' : 's'}` : ''}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingWorkout(w.id)} aria-label={`Edit workout ${w.name}`}>Edit</Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </>
-      )}
+              onSaved={async () => { await load(); setEditingWorkout(null); }} onClose={() => setEditingWorkout(null)} />
+          ) : (
+            <div style={{ margin: 'auto', textAlign: 'center' }}><Dumbbell size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
+              <b>Pick a workout, or make a new one</b><div className="a-sub" style={{ marginTop: 6 }}>Coaches build workouts in their app too; theirs show here.</div></div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function ProgramEditor({ program, workouts, onSaved, onClose }: {
+function ProgramEditor({ program, workouts, exercises, onSaved, onClose }: {
   program: GymProgram | null;
   workouts: GymWorkout[];
+  exercises: Ex[];
   onSaved: (id: string) => Promise<void>;
   onClose: () => void;
 }) {
@@ -236,13 +178,13 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
   const [deloadEvery, setDeloadEvery] = useState<number | null>(program?.deloadEvery ?? null);
   const [cover, setCover] = useState<string | null>(program?.coverUrl ?? null);
   const [busy, setBusy] = useState(false);
+  const [cellAt, setCellAt] = useState<{ at: HTMLElement; week: number; day: number } | null>(null);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (e) { showToast(e instanceof Error ? e.message : 'That did not work', 'error'); }
     finally { setBusy(false); }
   };
-
   const save = () => run(async () => {
     if (!name.trim()) throw new Error('The program needs a name.');
     const id = await saveProgram(program?.id ?? null, { name, description, coverUrl: cover, level, weeks, premium, deloadEvery });
@@ -251,7 +193,6 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
     showToast('Program saved.', 'success');
     await onSaved(id);
   });
-
   const publish = (on: boolean) => run(async () => {
     if (!program) return;
     if (on && program.days.length === 0) throw new Error('Put at least one workout on a day before publishing.');
@@ -259,133 +200,114 @@ function ProgramEditor({ program, workouts, onSaved, onClose }: {
     showToast(on ? 'Published. Your members can follow it now.' : 'Back to draft. Members no longer see it.', 'success');
     await onSaved(program.id);
   });
-
   const setDay = (week: number, day: number, workoutId: string) => run(async () => {
     if (!program) return;
+    setCellAt(null);
     await setProgramDay(program.id, week, day, workoutId || null);
     await onSaved(program.id);
   });
-
   const pickCover = (file: File | undefined) => run(async () => {
     if (!file) return;
     setCover(await uploadContentPhoto(file));
   });
 
   const cell = (week: number, day: number) => program?.days.find((d) => d.week === week && d.day === day)?.workoutId ?? '';
+  // Each workout used in the program keeps one colour across the grid and the legend.
+  const used = program ? [...new Set(program.days.map((d) => d.workoutId))] : [];
+  const tone = (id: string) => `t${used.indexOf(id) % 6}`;
+  const wName = (id: string) => workouts.find((w) => w.id === id)?.name ?? 'Workout';
+  const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? 'an exercise';
+  const lighter = (wk: number) => !!deloadEvery && wk % deloadEvery === 0;
 
-  return (
-    <Card className="!p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-white">{program ? program.name : 'New program'}</h2>
-          <p className="text-[10px] mt-0.5" style={{ color: MUTED }}>
-            {program ? (program.published ? 'Published — members can follow it.' : 'Draft — only you and your staff see it.') : 'Save it, then fill in the weeks.'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {program && (
-            <Button size="sm" variant={program.published ? 'outline' : 'secondary'} disabled={busy}
-              onClick={() => void publish(!program.published)}>
-              {program.published ? 'Unpublish' : 'Publish'}
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
-        </div>
+  return (<>
+    <div className="a-ct">
+      <div className="min-w-0"><h3 style={{ fontSize: 17 }}>{program ? program.name : 'New program'}</h3>
+        <div className="a-sub">{program ? `${program.published ? 'Published — members can follow it' : 'Draft — only you and your staff see it'} · ${program.days.length} training days over ${program.weeks} weeks` : 'Save it, then fill in the weeks.'}</div></div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {program && <button type="button" className={`a-btn sm ${program.published ? '' : 'amber'}`} disabled={busy} onClick={() => void publish(!program.published)} data-publish>
+          {program.published ? <><EyeOff size={13} />Unpublish</> : <><Eye size={13} />Publish</>}</button>}
+        <button type="button" className="a-btn violet sm" disabled={busy} onClick={() => void save()} data-save-program><Check size={13} />Save</button>
+        {!program && <button type="button" className="a-btn ghost sm" onClick={onClose}>Cancel</button>}
       </div>
+    </div>
 
-      <div className="grid gap-3 mt-4" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
-        <div className="space-y-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} aria-label="Program name"
-            placeholder="e.g. 6-Week Beginner Strength" className="w-full h-10 px-3 rounded-lg text-xs text-white" style={FIELD} />
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={3}
-            aria-label="Description" placeholder="Who it is for and what it does."
-            className="w-full px-3 py-2 rounded-lg text-xs text-white" style={FIELD} />
-          <div className="flex flex-wrap items-center gap-3">
-            <select value={level} onChange={(e) => setLevel(e.target.value as Level)} aria-label="Level"
-              className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}>
-              {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-            </select>
-            <select value={weeks} onChange={(e) => setWeeks(Number(e.target.value))} aria-label="Weeks"
-              className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}>
-              {Array.from({ length: 16 }, (_, i) => i + 1).map((w) => <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>)}
-            </select>
-            <select value={deloadEvery ?? ''} onChange={(e) => setDeloadEvery(e.target.value ? Number(e.target.value) : null)}
-              aria-label="Lighter week" className="h-9 px-2 rounded-lg text-xs text-white" style={FIELD}
-              data-tip="A lighter week goes back to week 1's load, so the body recovers before the next step up">
-              <option value="">No lighter week</option>
-              {[3, 4, 5, 6].map((n) => <option key={n} value={n}>Lighter every {n === 3 ? '3rd' : `${n}th`} week</option>)}
-            </select>
-            <label className="flex items-center gap-2 text-xs text-white">
-              <input type="checkbox" checked={premium} onChange={(e) => setPremium(e.target.checked)} aria-label="Premium members only" />
-              Premium members only
-            </label>
+    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <input className="a-in" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} aria-label="Program name" placeholder="e.g. 6-Week Beginner Strength" />
+        <textarea className="a-in" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={2} aria-label="Description" placeholder="Who it is for and what it does." />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select className="a-chip v" value={level} onChange={(e) => setLevel(e.target.value as Level)} aria-label="Level">{LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}</select>
+          <select className="a-chip" value={weeks} onChange={(e) => setWeeks(Number(e.target.value))} aria-label="Weeks">{Array.from({ length: 16 }, (_, i) => i + 1).map((w) => <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>)}</select>
+          <select className="a-chip" value={deloadEvery ?? ''} onChange={(e) => setDeloadEvery(e.target.value ? Number(e.target.value) : null)} aria-label="Lighter week"
+            data-tip="A lighter week goes back to week 1's load, so the body recovers before the next step up">
+            <option value="">No lighter week</option>{[3, 4, 5, 6].map((n) => <option key={n} value={n}>Lighter every {n === 3 ? '3rd' : `${n}th`} week</option>)}
+          </select>
+          <button type="button" className={`a-chip ${premium ? 'on' : ''}`} aria-pressed={premium} aria-label="Premium members only" onClick={() => setPremium(!premium)}><Crown size={12} style={{ display: 'inline' }} /> Premium only</button>
+        </div>
+        {premium && <div className="a-sub">Members whose plan does not include "Premium programs" (Plans) see it with a lock and the reason, never hidden.</div>}
+        {program && (weeks !== program.weeks || deloadEvery !== program.deloadEvery || level !== program.level || premium !== program.premium || name !== program.name) && <div className="a-sub" style={{ color: 'var(--a-a300)' }}>Changes are not saved yet — press Save.</div>}
+      </div>
+      <div>
+        {cover ? (
+          <div style={{ position: 'relative' }}>
+            <img src={cover} alt="Program cover" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', maxHeight: 120 }} />
+            <button type="button" onClick={() => setCover(null)} aria-label="Remove cover" style={{ position: 'absolute', top: 6, right: 6, padding: 4, borderRadius: 6, background: 'rgba(0,0,0,0.6)', color: '#fff' }}><Trash2 size={12} /></button>
           </div>
-          {premium && (
-            <p className="text-[10px]" style={{ color: MUTED }}>
-              Members whose plan does not include "Premium programs" (Membership Plans) see it with a lock and the reason, never hidden.
-            </p>
-          )}
-          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void save()}>Save program</Button>
-        </div>
-        <div>
-          {cover ? (
-            <div className="relative">
-              <img src={cover} alt="Program cover" className="w-full rounded-lg object-cover" style={{ maxHeight: 130 }} />
-              <button onClick={() => setCover(null)} className="absolute top-1.5 right-1.5 p-1 rounded-md"
-                style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }} aria-label="Remove cover"><Trash2 size={12} /></button>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer" style={{ ...FIELD, height: 110 }}>
-              <ImagePlus size={16} style={{ color: MUTED }} />
-              <span className="text-[11px] text-white">Cover photo</span>
-              <span className="text-[10px]" style={{ color: MUTED }}>Optional · one photo slot</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={busy}
-                onChange={(e) => void pickCover(e.target.files?.[0])} />
-            </label>
-          )}
-        </div>
+        ) : (
+          <label className="a-tile" style={{ height: 110, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }}>
+            <ImagePlus size={16} /><b>Cover photo</b><small>Optional · one photo slot</small>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={busy} onChange={(e) => void pickCover(e.target.files?.[0])} />
+          </label>
+        )}
       </div>
+    </div>
 
-      {program && (
-        <div className="mt-5 overflow-x-auto">
-          <p className="text-[10px] font-semibold uppercase mb-2" style={{ color: MUTED }}>
-            The weeks — pick a workout for each training day; leave the rest as Rest
-          </p>
-          {workouts.length === 0 && (
-            <p className="text-[11px] mb-2" style={{ color: 'var(--color-secondary)' }}>
-              No workouts yet. Build one on the Workouts tab first.
-            </p>
-          )}
-          <table className="w-full text-[11px]" style={{ borderCollapse: 'separate', borderSpacing: 4 }}>
-            <thead>
-              <tr>
-                <th />
-                {DAYS.map((d) => <th key={d} className="font-semibold text-left" style={{ color: MUTED }}>{d}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: program.weeks }, (_, i) => i + 1).map((wk) => (
-                <tr key={wk}>
-                  <td className="font-semibold text-white pr-2 whitespace-nowrap">Week {wk}</td>
-                  {DAYS.map((d, di) => (
-                    <td key={d}>
-                      <select value={cell(wk, di + 1)} aria-label={`Week ${wk}, ${d}`} disabled={busy}
-                        onChange={(e) => void setDay(wk, di + 1, e.target.value)}
-                        className="w-full h-8 px-1 rounded-md text-[11px] text-white"
-                        style={{ ...FIELD, opacity: cell(wk, di + 1) ? 1 : 0.6 }}>
-                        <option value="">Rest</option>
-                        {workouts.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                      </select>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    {program && (<>
+      <div className="a-lbl" style={{ margin: '14px 0 8px' }}>The weeks <span style={{ fontWeight: 500 }}>· tap a day to put a workout on it, or leave it as rest</span></div>
+      {workouts.length === 0 && <div className="a-hint" style={{ marginBottom: 8 }}><AlertTriangle size={14} /><span>No workouts yet. Build one on the Workouts tab first.</span></div>}
+      <div className="a-wkg" data-week-grid>
+        <div />{DAYS.map((d) => <div key={d} className="h">{d}</div>)}
+        {Array.from({ length: program.weeks }, (_, i) => i + 1).map((wk) => [
+          <div key={`w${wk}`} className="w">Week {wk}</div>,
+          ...DAYS.map((d, di) => {
+            const id = cell(wk, di + 1);
+            const w = workouts.find((x) => x.id === id);
+            return (
+              <button key={`${wk}-${d}`} type="button" className={`d ${id ? tone(id) : 'rest'}`} disabled={busy} aria-label={`Week ${wk}, ${d}`}
+                onClick={(e) => setCellAt({ at: e.currentTarget, week: wk, day: di + 1 })}>
+                {id ? <>{wName(id)}<small>{lighter(wk) ? 'lighter' : wk === 1 && w ? `${w.items.length} exercises` : ' '}</small></> : 'rest'}
+              </button>
+            );
+          }),
+        ])}
+      </div>
+      <Popover anchor={cellAt?.at ?? null} open={!!cellAt} onClose={() => setCellAt(null)} width={240}>
+        {cellAt && (
+          <div className="p-1.5 flex flex-col max-h-72 overflow-y-auto" role="listbox" aria-label="Workout for the day">
+            <button type="button" className="text-left px-3 py-2 rounded-lg text-[13px] hover:bg-white/5" style={{ color: MUTED }} onClick={() => void setDay(cellAt.week, cellAt.day, '')}>Rest</button>
+            {workouts.map((w) => (
+              <button key={w.id} type="button" role="option" aria-selected={cell(cellAt.week, cellAt.day) === w.id} className="text-left px-3 py-2 rounded-lg text-[13px] text-white hover:bg-white/5"
+                style={cell(cellAt.week, cellAt.day) === w.id ? { background: 'rgba(124,58,237,0.2)' } : undefined}
+                onClick={() => void setDay(cellAt.week, cellAt.day, w.id)}>{w.name} <span style={{ color: MUTED }}>· {w.items.length}</span></button>
+            ))}
+          </div>
+        )}
+      </Popover>
+      {used.length > 0 && (
+        <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', marginTop: 12, gap: 8 }}>
+          {used.map((id) => {
+            const w = workouts.find((x) => x.id === id);
+            const names = (w?.items ?? []).map((it) => exName(it.exerciseId));
+            return (
+              <div key={id} className="a-tile"><b className={`a-wkg-name ${tone(id)}`}>{wName(id)}</b>
+                <small>{names.slice(0, 3).join(' · ')}{names.length > 3 ? ` · +${names.length - 3}` : ''}</small></div>
+            );
+          })}
         </div>
       )}
-    </Card>
-  );
+      {deloadEvery && <div className="a-sub" style={{ marginTop: 8 }}>Every {deloadEvery === 3 ? '3rd' : `${deloadEvery}th`} week is lighter: it goes back to week 1's load.</div>}
+    </>)}
+  </>);
 }
 
 function WorkoutEditor({ workout, exercises, onSaved, onClose }: {

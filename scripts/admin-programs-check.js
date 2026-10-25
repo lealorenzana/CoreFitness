@@ -137,28 +137,30 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('starter pack sent: ' + (SENT.rpc.copy_starter_program?.p_key === 'push_pull_legs' ? 'push_pull_legs' : 'MISSING'));
   t = await text();
-  out.push('arrives as a draft: ' + (/Push \/ Pull \/ Legs/.test(t) && /Draft/.test(t) ? 'shown' : 'MISSING'));
+  out.push('arrives as a draft: ' + (/Push \/ Pull \/ Legs/.test(t) && /draft/i.test(t) ? 'shown' : 'MISSING'));
 
-  await page.getByRole('button', { name: 'Edit Push / Pull / Legs' }).click();
+  await page.locator('[data-program="Push / Pull / Legs"]').click();
   await page.waitForTimeout(800);
   t = await text();
   out.push('week grid: ' + (/Week 1/.test(t) && /Week 4/.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Week 1, Tue').selectOption({ label: 'Push' });
+  // A day is one tap: the cell, then the workout (2026-10-20).
+  await page.getByRole('button', { name: 'Week 1, Tue' }).click();
+  await page.getByRole('option', { name: /^Push/ }).click();
   await page.waitForTimeout(800);
   const day = SENT.days[SENT.days.length - 1] || {};
   out.push('a grid cell sends the day: ' + (day.week === 1 && day.day === 2 && day.workout_id === WORKOUTS[0].id ? 'week 1, Tue, Push' : 'MISSING ' + JSON.stringify(day)));
 
-  await page.getByLabel('Premium members only').check();
-  await page.getByRole('button', { name: 'Save program' }).click();
+  await page.getByLabel('Premium members only').click();
+  await page.locator('[data-save-program]').click();
   await page.waitForTimeout(900);
   out.push('premium sent: ' + (SENT.programPatches.some((p) => p.premium === true) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.locator('[data-publish]').click();
   await page.waitForTimeout(900);
   out.push('publish sent: ' + (SENT.programPatches.some((p) => p.published === true) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-programs.png', fullPage: true });
 
   // A workout from scratch.
-  await page.getByRole('button', { name: 'Workouts', exact: true }).click();
+  await page.locator('[data-tab="workouts"]').click();
   await page.waitForTimeout(600);
   await page.getByRole('button', { name: 'New workout' }).click();
   await page.waitForTimeout(500);
@@ -177,7 +179,7 @@ async (page) => {
   out.push('its exercise sent: ' + (it.exercise_id === 'ex-plank' && it.target_seconds === 45 ? 'Plank 45 s' : 'MISSING ' + JSON.stringify(it)));
   out.push('…and how it steps up each week: ' + (it.progress_kind === 'seconds' && it.progress_step === 5 ? '+5 s a week' : 'MISSING ' + JSON.stringify(it)));
   t = await text();
-  out.push('the saved workout lists its exercise: ' + (/Core Finisher 1 exercise/.test(t) ? '1 exercise' : 'MISSING'));
+  out.push('the saved workout lists its exercise: ' + (/Core Finisher 1 exercise/.test(t) ? '1 exercise' : 'MISSING ' + (t.match(/Core Finisher.{0,60}/) || ['(not listed)'])[0]));
   await page.screenshot({ path: 'shots/admin-workouts.png', fullPage: true });
 
   return out.join('\n');
