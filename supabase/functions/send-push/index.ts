@@ -129,9 +129,15 @@ Deno.serve(async (req: Request) => {
     await Promise.all(
       subs.map(async (s) => {
         try {
+          // High urgency (2026-10-25): web-push defaults to "normal", which Android
+          // holds while the phone dozes and hands over when it wakes — members saw
+          // alerts only after opening the app. High is what chat apps send; FCM
+          // delivers it at once. A day's TTL: a "class in an hour" alert that lands
+          // next week is worse than none.
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payload,
+            { TTL: 86400, urgency: "high" },
           );
           sent++;
         } catch (err) {

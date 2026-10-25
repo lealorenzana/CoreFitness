@@ -144,6 +144,7 @@ export default function Programs() {
         <div className="a-card glow" style={{ overflowY: 'auto' }} data-program-editor>
           {tab === 'programs' ? (editingProgram ? (
             <ProgramEditor key={editingProgram} program={program} workouts={workouts} exercises={exercises}
+              onEditWorkout={(id) => { setTab('workouts'); setEditingWorkout(id); }}
               onSaved={async (id) => { await load(); setEditingProgram(id); }} onClose={() => setEditingProgram(programs[0]?.id ?? null)} />
           ) : (
             <div style={{ margin: 'auto', textAlign: 'center' }}><CalendarRange size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
@@ -162,12 +163,14 @@ export default function Programs() {
   );
 }
 
-function ProgramEditor({ program, workouts, exercises, onSaved, onClose }: {
+function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditWorkout }: {
   program: GymProgram | null;
   workouts: GymWorkout[];
   exercises: Ex[];
   onSaved: (id: string) => Promise<void>;
   onClose: () => void;
+  /** Opens a workout on the Workouts tab — its name and exercises are edited there (2026-10-25). */
+  onEditWorkout: (id: string) => void;
 }) {
   const [name, setName] = useState(program?.name ?? '');
   const [description, setDescription] = useState(program?.description ?? '');
@@ -293,14 +296,20 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose }: {
           </div>
         )}
       </Popover>
+      {used.length > 0 && <div className="a-lbl" style={{ margin: '14px 0 0' }}>The workouts in it <span style={{ fontWeight: 500 }}>· tap one to rename it or choose its exercises</span></div>}
       {used.length > 0 && (
-        <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', marginTop: 12, gap: 8 }}>
+        <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', marginTop: 8, gap: 8 }}>
           {used.map((id) => {
             const w = workouts.find((x) => x.id === id);
             const names = (w?.items ?? []).map((it) => exName(it.exerciseId));
             return (
-              <div key={id} className="a-tile"><b className={`a-wkg-name ${tone(id)}`}>{wName(id)}</b>
-                <small>{names.slice(0, 3).join(' · ')}{names.length > 3 ? ` · +${names.length - 3}` : ''}</small></div>
+              // Each workout on the grid opens its editor: rename it, choose its exercises (members asked what "Full body A" was).
+              <button key={id} type="button" className="a-tile" onClick={() => onEditWorkout(id)} aria-label={`Edit workout ${wName(id)}`} data-tip="Rename it or choose its exercises">
+                <b className={`a-wkg-name ${tone(id)}`}>{wName(id)}</b>
+                {names.length === 0
+                  ? <small style={{ color: 'var(--a-a300)' }}>No exercises yet — tap to choose them</small>
+                  : <small>{names.slice(0, 3).join(' · ')}{names.length > 3 ? ` · +${names.length - 3}` : ''}</small>}
+              </button>
             );
           })}
         </div>

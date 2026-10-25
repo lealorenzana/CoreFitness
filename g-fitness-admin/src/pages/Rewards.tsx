@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin, Pencil, Star, Eye, EyeOff,
-  CalendarClock, Repeat, Sparkles, Trophy, UserPlus, Copy,
+  CalendarClock, Repeat, Sparkles, Trophy, UserPlus, Copy, TrendingUp,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/ui/Modal';
@@ -13,7 +13,7 @@ import SeasonSection from '../components/SeasonSection';
 import ReferralsSection from '../components/ReferralsSection';
 import {
   RdHeader, RdCard, StatTile, PageTabs, FilterChips, SearchField, RdSelect, RdButton, Pill, DotMenu, EmptyBlock,
-  TableFooter, Initials, RdField,
+  TableFooter, Initials, RdField, FitBody,
 } from '../components/ui/rd';
 import { TONE, RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
 import { usePaged } from '../hooks/usePaged';
@@ -232,6 +232,76 @@ function MemberPreview({ f }: { f: Form }) {
   );
 }
 
+/**
+ * The right-hand column on every Rewards tab (2026-10-25): what the month has
+ * cost, what members are saving for, and what is running out — read from the
+ * catalogue, 0092's wishlist and reward_stats. Each line is a real count.
+ */
+function InsightRail({ rewards, wishlist, stats, spentThisMonth, onOpen, onRestock }: {
+  rewards: Reward[]; wishlist: Map<string, number> | null; stats: Map<string, Stat>; spentThisMonth: number;
+  onOpen: () => void; onRestock: (r: Reward) => void;
+}) {
+  const wanted = wishlist ? rewards.filter((r) => r.is_active).map((r) => ({ r, n: wishlist.get(r.id) ?? 0 })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 5) : [];
+  const top = Math.max(1, ...wanted.map((x) => x.n));
+  const low = rewards.filter((r) => r.is_active && r.stock != null && r.stock <= 3).sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0)).slice(0, 5);
+  const pointsAll = [...stats.values()].reduce((n, x) => n + x.points_spent, 0);
+  const cheapest = rewards.filter((r) => r.is_active).sort((a, b) => a.cost_points - b.cost_points)[0];
+  const head = (Icon: typeof Gift, title: string) => (
+    <div className="flex items-center gap-2 mb-2.5"><Icon size={17} style={{ color: TONE.violet.fg }} /><h3 className="text-[15px] font-semibold text-white">{title}</h3></div>
+  );
+  return (
+    <>
+      <RdCard className="p-4" data-rail-month>
+        {head(Sparkles, 'This month')}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.025)', border: LINE }}>
+            <p className="text-[12px]" style={{ color: SECOND }}>Requests</p>
+            <p className="text-[20px] font-bold text-white tabular-nums">{stats.size ? spentThisMonth : '—'}</p>
+            <p className="text-[11.5px]" style={{ color: MUTED }}>declined left out</p>
+          </div>
+          <div className="rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.025)', border: LINE }}>
+            <p className="text-[12px]" style={{ color: SECOND }}>Points spent</p>
+            <p className="text-[20px] font-bold tabular-nums" style={{ color: '#C4B5FD' }}>{stats.size ? pointsAll.toLocaleString('en-PH') : '—'}</p>
+            <p className="text-[11.5px]" style={{ color: MUTED }}>on rewards, all time</p>
+          </div>
+        </div>
+        {cheapest && <p className="text-[12px] mt-2.5" style={{ color: MUTED }}>Cheapest reward: <span className="text-white">{cheapest.name}</span>, {cheapest.cost_points.toLocaleString('en-PH')} points.</p>}
+      </RdCard>
+      <RdCard className="p-4" data-rail-wanted>
+        {head(TrendingUp, 'Most wanted')}
+        {wishlist === null ? <p className="text-[12.5px]" style={{ color: MUTED }}>Saving-for counts need migration 0092.</p>
+          : wanted.length === 0 ? <p className="text-[12.5px]" style={{ color: MUTED }}>Nobody has pinned a reward to save for yet. Members pin one on their Rewards screen.</p>
+          : wanted.map(({ r, n }) => (
+            <button key={r.id} type="button" onClick={onOpen} className="w-full flex items-center gap-2.5 py-1.5 text-left">
+              <RewardArt r={r} size={34} />
+              <span className="min-w-0 flex-1">
+                <span className="flex justify-between gap-2 text-[13px]"><span className="text-white truncate">{r.name}</span><span className="tabular-nums" style={{ color: TONE.amber.fg }}>{n}</span></span>
+                <span className="block h-1.5 rounded-full mt-1 overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                  <span className="block h-full rounded-full" style={{ width: `${(n / top) * 100}%`, background: 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                </span>
+              </span>
+            </button>
+          ))}
+        {wanted.length > 0 && <p className="text-[11.5px] mt-2" style={{ color: MUTED }}>Members saving for each — check before you hide or reprice one.</p>}
+      </RdCard>
+      <RdCard className="p-4" style={{ flexGrow: 1 }} data-rail-low>
+        {head(Package, 'Running low')}
+        {low.length === 0 ? <p className="text-[12.5px]" style={{ color: MUTED }}>Nothing on sale has 3 or fewer left.</p>
+          : low.map((r) => (
+            <div key={r.id} className="flex items-center gap-2.5 py-1.5">
+              <RewardArt r={r} size={34} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] text-white truncate">{r.name}</span>
+                <span className="block text-[12px]" style={{ color: outOf(r) ? TONE.amber.fg : MUTED }}>{outOf(r) ? 'Out of stock' : `${r.stock} left`}</span>
+              </span>
+              <RdButton size="sm" variant="ghost" onClick={() => onRestock(r)}>Restock</RdButton>
+            </div>
+          ))}
+      </RdCard>
+    </>
+  );
+}
+
 export default function Rewards() {
   // One section at a time; the tab lives in the address, so a link or a reload lands where you were.
   const [params, setParams] = useSearchParams();
@@ -443,7 +513,7 @@ export default function Rewards() {
     const out = kind === 'pending' && !!rw && outOf(rw);
     return (
       <div key={row.id} className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.045)' }} data-request-row>
-        {rw ? <RewardArt r={rw} size={46} /> : <Initials name={memberName(row)} size={46} />}
+        {rw ? <RewardArt r={rw} size={52} /> : <Initials name={memberName(row)} size={52} />}
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-white truncate">{row.rewards?.name ?? 'Reward'}</p>
           <p className="text-[12.5px] truncate" style={{ color: SECOND }}>
@@ -480,46 +550,46 @@ export default function Rewards() {
   return (
     <div className="rd-fit" data-rewards>
       <RdHeader title="Rewards" subtitle="What members can spend their CORE Points on, and who is waiting on you."
-        actions={<RdButton variant="primary" icon={Plus} onClick={() => openForm(emptyForm)}>Add reward</RdButton>} />
+        actions={<>
+          <PageTabs<Tab> label="Rewards sections" value={tab} onChange={setTab} tabs={[
+            { key: 'requests', label: 'Requests', count: pending.length + ready.length, icon: Clock },
+            { key: 'catalogue', label: 'Catalogue', icon: Gift },
+            { key: 'earning', label: 'How members earn', icon: Coins },
+            { key: 'season', label: 'Monthly season', icon: Trophy },
+            { key: 'referrals', label: 'Referrals', icon: UserPlus },
+            { key: 'history', label: 'History', icon: History },
+          ]} />
+          <RdButton variant="primary" icon={Plus} onClick={() => openForm(emptyForm)}>Add reward</RdButton>
+        </>} />
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <div className="rd-tiles-rail">
         <StatTile compact icon={Clock} tone={pending.length ? 'amber' : 'violet'} label="Waiting" value={pending.length} sub="for your decision" onClick={() => setTab('requests')} />
         <StatTile compact icon={HandHeart} label="Ready to collect" value={ready.length} sub="at the front desk" onClick={() => setTab('requests')} />
         <StatTile compact icon={Gift} label="Live rewards" value={liveCount} sub={`${rewards.length - liveCount} hidden`} onClick={() => { setFilter('live'); setTab('catalogue'); }} />
         <StatTile compact icon={Package} tone={outCount ? 'amber' : 'violet'} label="Out of stock" value={outCount} sub="needs restocking" onClick={() => { setFilter('out'); setTab('catalogue'); }} />
-        {stats.size > 0 && <StatTile compact icon={Sparkles} label="Asked this month" value={spentThisMonth} sub="requests, declined left out" />}
       </div>
 
-      <PageTabs<Tab> label="Rewards sections" value={tab} onChange={setTab} tabs={[
-        { key: 'requests', label: 'Requests', count: pending.length + ready.length, icon: Clock },
-        { key: 'catalogue', label: 'Catalogue', icon: Gift },
-        { key: 'earning', label: 'How members earn', icon: Coins },
-        { key: 'season', label: 'Monthly season', icon: Trophy },
-        { key: 'referrals', label: 'Referrals', icon: UserPlus },
-        { key: 'history', label: 'History', icon: History },
-      ]} />
-
+      <FitBody rail={<InsightRail rewards={rewards} wishlist={wishlist} stats={stats} spentThisMonth={spentThisMonth}
+        onOpen={() => setTab('catalogue')} onRestock={(r) => { setFilter('all'); setSearch(r.name); setTab('catalogue'); }} />}>
       {tab === 'requests' && (
-        <div className="rd-fit-two">
-          {/* The queue first: it is the thing with someone waiting on it. */}
-          <RdCard className="flex flex-col min-h-0 overflow-hidden" data-waiting>
-            {boxHead(Clock, 'Waiting for you', 'Stock only drops when you approve', pending.length, 'amber')}
-            <div className="rd-fit-scroll">
+        // One card, the queue first and what waits at the desk under it — two half-empty columns read as nothing to do.
+        <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-requests>
+          <div className="rd-fit-scroll">
+            <div data-waiting>
+              {boxHead(Clock, 'Waiting for you', 'Approving agrees to hand it over and drops the stock by one; the points are already spent', pending.length, 'amber')}
               {pending.length === 0
                 ? <EmptyBlock compact icon={Check} title="Nothing to approve" body="Requests land here the moment a member spends their points." />
                 : pending.map((row) => requestRow(row, 'pending'))}
             </div>
-          </RdCard>
-          {/* Approved, waiting at the desk. Whoever hands it over marks it; the member's app then says Collected. */}
-          <RdCard className="flex flex-col min-h-0 overflow-hidden" data-ready>
-            {boxHead(HandHeart, 'Ready to collect', 'Mark it when it leaves the desk', ready.length)}
-            <div className="rd-fit-scroll">
+            {/* Approved, waiting at the desk. Whoever hands it over marks it; the member's app then says Collected. */}
+            <div data-ready>
+              {boxHead(HandHeart, 'Ready to collect', 'Mark it when it leaves the desk', ready.length)}
               {ready.length === 0
                 ? <EmptyBlock compact icon={HandHeart} title="Nothing waiting at the desk" body="Approved rewards wait here until they are handed over." />
                 : ready.map((row) => requestRow(row, 'ready'))}
             </div>
-          </RdCard>
-        </div>
+          </div>
+        </RdCard>
       )}
 
       {tab === 'catalogue' && (
@@ -563,11 +633,11 @@ export default function Rewards() {
       )}
 
       {/* How points are earned (0051's point_rules, 0159's two more) — admin-only by RLS. */}
-      {tab === 'earning' && <div className="rd-fit-fill"><div className="rd-fit-scroll pr-1"><EarningRules /></div></div>}
+      {tab === 'earning' && <EarningRules />}
       {/* The monthly season (0123): tiers and the rewards waiting at the desk. */}
-      {tab === 'season' && <div className="rd-fit-fill"><div className="rd-fit-scroll pr-1"><SeasonSection isAdmin /></div></div>}
+      {tab === 'season' && <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-season-tab><div className="rd-fit-scroll p-4"><SeasonSection isAdmin /></div></RdCard>}
       {/* Who brought whom (0125). */}
-      {tab === 'referrals' && <div className="rd-fit-fill"><div className="rd-fit-scroll pr-1"><ReferralsSection /></div></div>}
+      {tab === 'referrals' && <ReferralsSection />}
 
       {tab === 'history' && (
         <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-history>
@@ -599,6 +669,8 @@ export default function Rewards() {
           </div>
         </RdCard>
       )}
+
+      </FitBody>
 
       {/* ── Add or edit a reward, with the member's card beside the form ── */}
       <Modal

@@ -181,7 +181,7 @@ async (page) => {
     await page.getByRole('button', { name: /Switch off/ }).nth(TABLES.point_rules.filter((r) => r.is_active).indexOf(wl)).click();
     await page.waitForTimeout(800);
   }
-  await page.getByRole('button', { name: /Add a way to earn/ }).click();
+  // Switched-off rules are listed under the on ones (2026-10-25) — no picker to open first.
   await page.getByRole('button', { name: /Logged a workout/ }).click();
   await page.getByRole('button', { name: 'Switch it on' }).click();
   await page.waitForTimeout(800);

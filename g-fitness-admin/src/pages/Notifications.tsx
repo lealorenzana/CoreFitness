@@ -142,6 +142,18 @@ const COMMS_TABS = [
   { label: 'Events', to: '/events' },
 ];
 
+const ROLE_WORD: Record<string, string> = { member: 'Member', trainer: 'Coach', staff: 'Front desk', admin: 'Owner' };
+
+/** "Ana Lopez", "Ana Lopez and Ben Cruz", "Ana Lopez and 11 others". */
+function whoLine(b: BroadcastSummary, names: Record<string, { name: string }>): string {
+  const ids = [...new Set(b.recipientIds)];
+  const first = ids.map((id) => names[id]?.name).filter(Boolean) as string[];
+  if (first.length === 0) return `${b.recipients} ${b.recipients === 1 ? 'person' : 'people'}`;
+  if (ids.length === 1) return first[0];
+  if (ids.length === 2 && first.length === 2) return `${first[0]} and ${first[1]}`;
+  return `${first[0]} and ${ids.length - 1} other${ids.length - 1 === 1 ? '' : 's'}`;
+}
+
 export default function Notifications() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [form, setForm] = useState<NotificationForm>(EMPTY_FORM);
@@ -158,6 +170,10 @@ export default function Notifications() {
   const [planCounts, setPlanCounts] = useState<{ free_tier: number | null; paid: number | null }>({ free_tier: null, paid: null });
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
   const [toRecall, setToRecall] = useState<BroadcastSummary | null>(null);
+  /** Every recipient's name and role, any status — the owner and the desk get system messages too (2026-10-25). */
+  const [names, setNames] = useState<Record<string, { name: string; role: string }>>({});
+  /** The send whose recipients are open in the list window. */
+  const [whoFor, setWhoFor] = useState<BroadcastSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -176,6 +192,11 @@ export default function Notifications() {
         countAudience('everyone').catch(() => 0),
       ]);
       setRecent(broadcasts);
+      const ids = [...new Set(broadcasts.flatMap((b) => b.recipientIds))];
+      if (ids.length) {
+        const { data: who } = await supabase.from('gym_people').select('id, first_name, last_name, role').in('id', ids);
+        setNames(Object.fromEntries((who ?? []).map((p) => [p.id, { name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Someone', role: p.role }])));
+      }
       setPeople((profiles ?? []).map((p) => ({
         id: p.id,
         name: `${p.first_name} ${p.last_name}`.trim(),
@@ -463,7 +484,11 @@ export default function Notifications() {
                     </span>
                   </Td>
                   <Td>
-                    <span className="block whitespace-nowrap text-white">{notif.recipients} {notif.recipients === 1 ? 'person' : 'people'}</span>
+                    {/* Who, not just how many: a name for one or two, the first and a count beyond that — tap for everyone. */}
+                    <button type="button" onClick={() => setWhoFor(notif)} className="block text-left text-white hover:underline max-w-[220px] truncate"
+                      data-tip="See who it went to" data-sent-to>
+                      {whoLine(notif, names)}
+                    </button>
                     <span className="block text-[12px] whitespace-nowrap" style={{ color: MUTED }}>{timeAgo(notif.sentAt)} — {notif.type}</span>
                   </Td>
                   <Td>
@@ -488,6 +513,31 @@ export default function Notifications() {
             })}
           </RdTable>
           <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="announcements" onPage={paged.setPage} />
+          <Modal isOpen={!!whoFor} onClose={() => setWhoFor(null)} hideFooter size="lg" title={whoFor ? `Sent to — ${whoFor.title}` : 'Sent to'}
+            subtitle={whoFor ? `${timeAgo(whoFor.sentAt)} — ${whoFor.type} · ${whoFor.readCount} of ${whoFor.recipients} opened it` : undefined}>
+            {whoFor && (
+              <div data-recipients style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                  {[...new Set(whoFor.recipientIds)].map((id) => {
+                    const p = names[id];
+                    const opened = whoFor.readIds.includes(id);
+                    return (
+                      <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }} data-recipient>
+                        <span className="w-8 h-8 rounded-full grid place-items-center text-[11px] font-bold flex-none" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>
+                          {(p?.name ?? '?').split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-white font-semibold truncate">{p?.name ?? 'Name could not be looked up'}</span>
+                          <span className="block text-[12px]" style={{ color: MUTED }}>{p ? ROLE_WORD[p.role] ?? p.role : '—'}</span>
+                        </span>
+                        <span className="text-[12px] font-semibold" style={{ color: opened ? '#C4B5FD' : MUTED }}>{opened ? 'Opened' : 'Not yet'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </Modal>
         </RdCard>
       </FitBody>
 

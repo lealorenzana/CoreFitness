@@ -130,7 +130,7 @@ async (page) => {
   await page.waitForTimeout(500);
   out.push('a reward can be edited: ' + (CALLS.some((c) => c[0] === 'PATCH' && c[1] === 'rewards' && c[2]?.cost_points === 450) ? 'price 500 → 450' : 'MISSING'));
   await page.getByRole('tab', { name: 'How members earn' }).click();
-  await page.getByRole('button', { name: /Add a way to earn/ }).click();
+  await page.locator('[data-rule-off]').first().waitFor({ timeout: 10000 });   // switched-off rules are listed, no picker (2026-10-25)
   t = await text();
   out.push('only rules the database pays are offered: ' + (/Points for every ₱100 spent at the counter/.test(t) && /Paid for a membership/.test(t) ? 'shop + membership' : 'MISSING'));
   await page.getByRole('button', { name: /Points for every ₱100/ }).click();

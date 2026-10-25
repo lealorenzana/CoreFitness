@@ -318,11 +318,16 @@ export default function Payments() {
     <div className="rd-fit" data-payments>
       <RdHeader title="Payments" subtitle="Money taken at the desk and online, by member — and the drawer at closing time."
         actions={<>
+          {/* Up here, not above the table: the table and End of day start on one line (2026-10-25). */}
+          <PageTabs<'records' | 'renew'> label="Payments sections" value={tab} onChange={setTab} tabs={[
+            { key: 'records', label: 'Records', icon: Banknote },
+            { key: 'renew', label: 'Coming to renew', icon: Send, count: reqCount },
+          ]} />
           <RdButton icon={Download} onClick={() => exportPaymentsToCSV(payments)}>Export</RdButton>
           <RdButton variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>Record payment</RdButton>
         </>} />
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <div className="rd-tiles-rail">
         <StatTile compact icon={Banknote} label="Total collected" value={peso(totalRevenue)} sub={`${completed.length} completed payments`} />
         <StatTile compact icon={CalendarRange} label="This month" value={peso(thisMonth)} sub="by the day it was paid" />
         <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Pending" value={pendingCount} sub="waiting to be confirmed"
@@ -335,13 +340,6 @@ export default function Payments() {
         {/* The drawer at closing time (0095). Re-reads whenever payments change. */}
         <CashCloseout refreshKey={payments} />
       </>}>
-        <div className="flex items-center gap-3 flex-wrap">
-          <PageTabs<'records' | 'renew'> label="Payments sections" value={tab} onChange={setTab} tabs={[
-            { key: 'records', label: 'Records', icon: Banknote },
-            { key: 'renew', label: 'Coming to renew', icon: Send, count: reqCount },
-          ]} />
-        </div>
-
         {tab === 'records' ? (
           <RdCard className="overflow-hidden rd-fit-fill" data-records>
             <div className="flex items-center gap-2.5 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>

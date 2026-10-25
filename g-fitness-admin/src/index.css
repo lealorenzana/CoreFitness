@@ -313,6 +313,8 @@
    its own boxes scroll (the table, the rail). Narrower, everything flows as before. */
 .rd-fit { display: flex; flex-direction: column; gap: 16px; }
 .rd-fit-grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+/* Stat tiles over a FitBody: the last tile sits exactly over the rail (Payments, 2026-10-25). */
+.rd-tiles-rail { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .rd-fit-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .rd-fit-rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 /* A rail card never shrinks to make room — the rail scrolls instead. Squeezed, they overlapped (Walk-ins' guide, 2026-10-18). */
@@ -325,6 +327,7 @@
 @media (min-width: 1280px) {
   .rd-fit { height: 100%; overflow: hidden; }
   .rd-fit-grid { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) 320px; }
+  .rd-tiles-rail { gap: 20px; grid-template-columns: repeat(3, minmax(0, 1fr)) 320px; }
   .rd-fit-main { min-height: 0; }
   .rd-fit-rail { min-height: 0; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; }
   .rd-fit-fill { flex: 1; min-height: 0; }

@@ -175,6 +175,9 @@ export interface BroadcastSummary {
   /** The picture, if the send had one (0065). Read off the first row of the
    *  group — every recipient's row carries the same URL. */
   imageUrl: string | null;
+  /** Who it went to, and which of them opened it (2026-10-25) — a count alone could not say who. */
+  recipientIds: string[];
+  readIds: string[];
 }
 
 /**
@@ -190,7 +193,7 @@ export interface BroadcastSummary {
 export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary[]> {
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, title, message, type, created_at, read, image_url')
+    .select('id, user_id, title, message, type, created_at, read, image_url')
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) throw error;
@@ -206,11 +209,14 @@ export async function listRecentBroadcasts(limit = 20): Promise<BroadcastSummary
       existing.recipients += 1;
       if (n.read) existing.readCount += 1;
       existing.ids.push(n.id);
+      existing.recipientIds.push(n.user_id);
+      if (n.read) existing.readIds.push(n.user_id);
     } else {
       groups.set(key, {
         title: n.title, message: n.message, type: n.type, sentAt: n.created_at,
         recipients: 1, readCount: n.read ? 1 : 0, ids: [n.id],
         image_url: n.image_url ?? null,
+        recipientIds: [n.user_id], readIds: n.read ? [n.user_id] : [],
       });
     }
   }

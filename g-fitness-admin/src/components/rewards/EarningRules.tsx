@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Coins, Plus, Power } from 'lucide-react';
-import Button from '../ui/Button';
+import {
+  CalendarCheck, CheckCircle2, Coins, Dumbbell, Flag, Flame, Handshake, Plus, Power, ShoppingBag, Target, Trophy, UserPlus, Users,
+  BookOpen, Banknote, type LucideIcon,
+} from 'lucide-react';
 import Modal from '../ui/Modal';
-import { Section } from '../ui/kit';
+import { RdCard, RdButton, Pill } from '../ui/rd';
+import { TONE } from '../ui/rdTokens';
 import { showToast } from '../../utils/toast';
 import { listPointRules, updatePointRule, type PointRule } from '../../lib/api/engagementRules';
 
@@ -29,19 +32,29 @@ const WHEN: Record<string, string> = {
   shop_purchase: 'For every whole ₱100 spent at the counter, when the till names them under “Who is buying?”. A void takes it back.',
   membership_paid: 'When a membership payment above ₱0 is completed at the desk.',
 };
+const ICON: Record<string, LucideIcon> = {
+  checkin: CalendarCheck, workout_logged: Dumbbell, class_attended: Users, pt_session: Handshake, goal_achieved: Target,
+  challenge_complete: Flag, personal_record: Trophy, squad_week: Users, gym_goal: Trophy, referral: UserPlus, referral_welcome: UserPlus,
+  classwork_on_time: BookOpen, streak_milestone: Flame, shop_purchase: ShoppingBag, membership_paid: Banknote,
+};
 const per = (r: PointRule) => (r.key === 'shop_purchase' ? ' per ₱100' : '');
+const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' };
 
 /**
  * Rewards → How members earn points (0051's point_rules; 0159 adds two). The
  * member's Rewards screen lists the switched-on ones under "How you earn",
  * word for word. A change applies from now on; points already earned stay.
+ *
+ * 2026-10-25: one full-height list — what is on, each editable in place, and
+ * below it everything that is off with one tap to switch it on (the old page
+ * hid those behind a picker and left the screen empty).
  */
 export default function EarningRules() {
   const [rules, setRules] = useState<PointRule[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<Record<string, { label: string; points: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const [adding, setAdding] = useState<PointRule | null | 'pick'>(null);
+  const [adding, setAdding] = useState<PointRule | null>(null);
   const [newPoints, setNewPoints] = useState('');
 
   useEffect(() => {
@@ -71,80 +84,95 @@ export default function EarningRules() {
   const off = rules?.filter((r) => !r.is_active) ?? [];
 
   return (
-    <Section title="How members earn points" icon={Coins} count={on.length}
-      hint="members read these words under “How you earn”; changes apply from now on"
-      actions={off.length > 0 ? <Button size="sm" variant="secondary" onClick={() => setAdding('pick')}><Plus size={13} /> Add a way to earn</Button> : undefined}>
-      {failed ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>The point rules could not be loaded.</p>
-      ) : !rules ? (
-        <div className="h-24 rounded-lg animate-pulse" style={{ background: 'var(--color-surface-raised)' }} />
-      ) : on.length === 0 ? (
-        <p className="text-xs py-4" style={{ color: 'var(--color-text-muted)' }}>No way to earn is switched on, so members earn nothing. Add one.</p>
-      ) : (
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 360px), 1fr))' }}>
-          {on.map((r) => {
-            const d = draft[r.key] ?? { label: r.label, points: String(r.points) };
-            const dirty = d.label !== r.label || d.points !== String(r.points);
-            return (
-              <div key={r.key} className="rounded-xl p-3 space-y-2" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-                <div className="flex items-center gap-2">
-                  <input className="flex-1 min-w-0 h-8 rounded-lg px-2.5 text-xs text-white" value={d.label} aria-label={`What members read for ${r.label}`}
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                    onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, label: e.target.value } }))} />
-                  <input className="w-16 h-8 rounded-lg px-2 text-xs text-white text-right tabular-nums" value={d.points} inputMode="numeric" aria-label={`Points for ${r.label}`}
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                    onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, points: e.target.value.replace(/\D/g, '') } }))} />
-                  <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>pts{per(r)}</span>
-                </div>
-                <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{WHEN[r.key] ?? 'Paid by the system when this happens.'}</p>
-                <div className="flex gap-1.5">
-                  {dirty && <Button size="sm" disabled={busy === r.key} onClick={() => void save(r, { label: d.label.trim(), points: Number(d.points) }, 'Saved — members see it next time they open Rewards')}>Save</Button>}
-                  <Button size="sm" variant="ghost" disabled={busy === r.key} onClick={() => void save(r, { is_active: false }, `${r.label}: switched off`)}><Power size={12} /> Switch off</Button>
-                </div>
-              </div>
-            );
-          })}
+    <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-earning>
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <Coins size={20} style={{ color: TONE.violet.fg }} />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-semibold text-white">How members earn points</h2>
+          <p className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>Members read these words under “How you earn”. Changes apply from now on; points already earned stay.</p>
         </div>
-      )}
+        <Pill tone="violet">{on.length} on</Pill>
+      </div>
+      <div className="rd-fit-scroll p-4">
+        {failed ? (
+          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>The point rules could not be loaded — a connection problem, not an empty list.</p>
+        ) : !rules ? (
+          <div className="h-24 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
+        ) : (
+          <>
+            {on.length === 0 && <p className="text-[13px] pb-3" style={{ color: TONE.amber.fg }}>No way to earn is switched on, so members earn nothing. Switch one on below.</p>}
+            <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))' }}>
+              {on.map((r) => {
+                const d = draft[r.key] ?? { label: r.label, points: String(r.points) };
+                const dirty = d.label !== r.label || d.points !== String(r.points);
+                const Icon = ICON[r.key] ?? CheckCircle2;
+                return (
+                  <div key={r.key} className="rounded-xl p-3.5 flex gap-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }} data-rule={r.key}>
+                    <span className="w-10 h-10 rounded-xl grid place-items-center flex-none" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}><Icon size={18} /></span>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input className="flex-1 min-w-0 h-9 rounded-lg px-2.5 text-[13.5px] text-white outline-none" value={d.label} aria-label={`What members read for ${r.label}`}
+                          style={FIELD} onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, label: e.target.value } }))} />
+                        <input className="w-16 h-9 rounded-lg px-2 text-[13.5px] font-bold text-right tabular-nums outline-none" value={d.points} inputMode="numeric" aria-label={`Points for ${r.label}`}
+                          style={{ ...FIELD, color: '#C4B5FD' }} onChange={(e) => setDraft((x) => ({ ...x, [r.key]: { ...d, points: e.target.value.replace(/\D/g, '') } }))} />
+                        <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>pts{per(r)}</span>
+                      </div>
+                      <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>{WHEN[r.key] ?? 'Paid by the system when this happens.'}</p>
+                      <div className="flex gap-1.5">
+                        {dirty && <RdButton size="sm" variant="primary" disabled={busy === r.key} onClick={() => void save(r, { label: d.label.trim(), points: Number(d.points) }, 'Saved — members see it next time they open Rewards')}>Save</RdButton>}
+                        <RdButton size="sm" variant="ghost" icon={Power} disabled={busy === r.key} onClick={() => void save(r, { is_active: false }, `${r.label}: switched off`)}>Switch off</RdButton>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {off.length > 0 && (
+              <>
+                <p className="text-[12px] font-semibold uppercase tracking-wide mt-5 mb-2" style={{ color: 'var(--color-text-muted)' }}>Switched off — members cannot earn these</p>
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))' }}>
+                  {off.map((r) => {
+                    const Icon = ICON[r.key] ?? CheckCircle2;
+                    return (
+                      <button key={r.key} type="button" onClick={() => { setAdding(r); setNewPoints(String(r.points)); }} data-rule-off={r.key}
+                        className="text-left rounded-xl px-3.5 py-3 flex items-start gap-3 hover:bg-white/[0.04]" style={{ border: '1px dashed rgba(255,255,255,0.12)' }}>
+                        <Icon size={16} className="mt-0.5 flex-none" style={{ color: 'var(--color-text-muted)' }} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[13.5px] font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{r.label}</span>
+                          <span className="block text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{WHEN[r.key] ?? ''}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[12px] font-semibold flex-none" style={{ color: TONE.amber.fg }}><Plus size={13} />Switch on</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
-      <Modal isOpen={adding !== null} onClose={() => setAdding(null)} title={adding && adding !== 'pick' ? adding.label : 'Add a way to earn'}
-        subtitle={adding && adding !== 'pick' ? 'How many points, then switch it on' : 'Each one is paid by the system when it happens — nothing to track by hand'}
-        size="md"
-        onConfirm={adding && adding !== 'pick' ? async () => {
+      <Modal isOpen={adding !== null} onClose={() => setAdding(null)} title={adding ? adding.label : ''} subtitle="How many points, then switch it on" size="md"
+        onConfirm={adding ? async () => {
           const n = Number(newPoints);
           if (!Number.isInteger(n) || n <= 0) { showToast('Points are a whole number above zero', 'error'); return; }
           if (await save(adding, { is_active: true, points: n }, `${adding.label}: on — members earn it from now`)) setAdding(null);
         } : undefined}
         confirmLabel="Switch it on" confirmDisabled={busy !== null || !newPoints}>
-        {adding === 'pick' ? (
-          <div className="space-y-1.5">
-            {off.map((r) => (
-              <button key={r.key} type="button" onClick={() => { setAdding(r); setNewPoints(String(r.points)); }}
-                className="w-full text-left rounded-xl px-3 py-2.5 flex items-start gap-3 hover:brightness-125"
-                style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-                <Plus size={14} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-white">{r.label}</span>
-                  <span className="block text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{WHEN[r.key] ?? ''}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : adding ? (
+        {adding && (
           <div className="space-y-3">
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{WHEN[adding.key]}</p>
+            <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>{WHEN[adding.key]}</p>
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Points{per(adding)}</span>
+              <span className="text-[12px] font-semibold uppercase" style={{ color: 'var(--color-text-muted)' }}>Points{per(adding)}</span>
               <input autoFocus value={newPoints} inputMode="numeric" onChange={(e) => setNewPoints(e.target.value.replace(/\D/g, ''))} aria-label="Points"
-                className="w-full h-10 px-3 rounded-lg text-sm text-white mt-1" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+                className="w-full h-10 px-3 rounded-lg text-sm text-white mt-1 outline-none" style={FIELD} />
             </label>
             {adding.key === 'shop_purchase' && Number(newPoints) > 0 && (
-              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>A ₱450 sale would earn {Number(newPoints) * 4} points (four whole ₱100s).</p>
+              <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>A ₱450 sale would earn {Number(newPoints) * 4} points (four whole ₱100s).</p>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setAdding('pick')}>← Another way</Button>
           </div>
-        ) : null}
+        )}
       </Modal>
-    </Section>
+    </RdCard>
   );
 }

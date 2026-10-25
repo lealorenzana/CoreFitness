@@ -101,7 +101,8 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
   }
 
   return (
-    <RdCard className="p-4" data-cash>
+    // Grows to the rail's height, so its bottom meets the records beside it (2026-10-25).
+    <RdCard className="p-4 flex flex-col" style={{ flexGrow: 1 }} data-cash>
       {head}
       <div className="mt-3">
         <DatePicker mode="record" bounds={{ backDays: 7 }} value={day} onChange={(v) => { if (v) { setDay(v); setRedo(false); } }} />
@@ -176,9 +177,9 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
         </div>
       )}
 
-      {history.length > 0 && (
-        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <p className="text-[12.5px] font-medium mb-1.5" style={{ color: 'var(--color-text-muted)' }}>Recent closes</p>
+          {history.length === 0 && <p className="text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>None yet — each day you close shows here, with any difference.</p>}
           <div className="space-y-1">
             {history.map((h) => (
               <button type="button" key={h.day} onClick={() => setDay(h.day)} className="w-full flex items-center justify-between gap-2 text-[12.5px] px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.04]"
@@ -190,8 +191,7 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
               </button>
             ))}
           </div>
-        </div>
-      )}
+      </div>
     </RdCard>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bolt, Bot, Smartphone } from 'lucide-react';
+import { Bolt, Bot, Coins, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
 import { shrinkImage } from '../../utils/shrinkImage';
@@ -33,10 +33,13 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
   const [daily, setDaily] = useState('');
   const [monthly, setMonthly] = useState('');
   const [saving, setSaving] = useState(false);
+  /** The owner's allowance from Core Fitness (0189): null for the desk, or before 0189. */
+  const [allow, setAllow] = useState<AiAllowance | null>(null);
 
   const load = useCallback(async () => {
-    const [r, ctx] = await Promise.all([getAiUsage(), getGymContext()]);
+    const [r, ctx, a] = await Promise.all([getAiUsage(), getGymContext(), aiAllowance()]);
     setRes(r);
+    setAllow(a);
     setOwner(ctx?.role === 'admin');
     if (r.ok) { setDaily(String(r.usage.daily_limit)); setMonthly(String(r.usage.monthly_limit)); }
   }, []);
@@ -82,6 +85,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
               How much your members can talk to the coach, and how much they have this month. You see totals for the whole gym — never who asked what.
               {!enabled && ' The coach is switched off, so your members do not see it right now.'}
             </p>
+            {allow && <Credits a={allow} onRaise={() => { if (allow.plan_monthly) setMonthly(String(allow.plan_monthly)); }} />}
             <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
               <div className="a-card" style={{ padding: 12 }} data-tip={`of the gym's ${u.monthly_limit.toLocaleString('en-PH')} for the month`}>
                 <div className="a-lbl">Messages this month</div><div className="a-num" style={{ fontSize: 22 }}>{u.messages_month.toLocaleString('en-PH')}</div>
@@ -153,6 +157,37 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
           <div className="a-sub" style={{ textAlign: 'center', fontSize: 10 }}>Sample conversation</div>
         </div></div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * What Core Fitness gives this gym, said first (2026-10-25): the plan's monthly
+ * messages (set by the platform), the gym's own limit under it, what is used and
+ * left this month, and prepaid top-ups. The owner asked to see "my credits"; it
+ * was all here, at the bottom, under "Need more?".
+ */
+function Credits({ a, onRaise }: { a: AiAllowance; onRaise: () => void }) {
+  const used = Number(a.used);
+  const left = Math.max(0, a.monthly - used);
+  const below = a.plan_monthly != null && a.monthly < a.plan_monthly;
+  const pct = a.monthly > 0 ? Math.min(100, Math.round((used / a.monthly) * 100)) : 0;
+  return (
+    <div className="a-card glow" style={{ marginBottom: 10 }} data-ai-credits>
+      <div className="a-ct"><h3><Coins size={16} />Your AI coach credits</h3><small>set by Core Fitness, used by your members</small></div>
+      <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        <div><div className="a-lbl">Your plan gives</div><div className="a-num" style={{ fontSize: 22 }}>{a.plan_monthly != null ? a.plan_monthly.toLocaleString('en-PH') : 'No cap'}</div><div className="a-sub">messages a month</div></div>
+        <div><div className="a-lbl">Your limit</div><div className="a-num" style={{ fontSize: 22 }}>{a.monthly.toLocaleString('en-PH')}</div><div className="a-sub">{below ? 'below what your plan allows' : 'the month’s allowance'}</div></div>
+        <div><div className="a-lbl">Left this month</div><div className="a-num" style={{ fontSize: 22, color: left === 0 ? 'var(--a-a300)' : undefined }}>{left.toLocaleString('en-PH')}</div><div className="a-sub">{used.toLocaleString('en-PH')} used · starts again on the 1st</div></div>
+        <div><div className="a-lbl">Top-up credits</div><div className="a-num" style={{ fontSize: 22 }}>{a.credits.toLocaleString('en-PH')}</div><div className="a-sub">used after the month&rsquo;s, never expire</div></div>
+      </div>
+      <div className="a-meter" style={{ marginTop: 10 }}><i style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--a-amber)' : undefined }} /></div>
+      {below && (
+        <div className="a-hint" style={{ marginTop: 10 }}><Coins size={15} />
+          <span>Your plan allows {a.plan_monthly!.toLocaleString('en-PH')} a month, but your limit is {a.monthly.toLocaleString('en-PH')}.{' '}
+            <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={onRaise}>Use all {a.plan_monthly!.toLocaleString('en-PH')}</button> — then Save below.</span>
+        </div>
+      )}
     </div>
   );
 }

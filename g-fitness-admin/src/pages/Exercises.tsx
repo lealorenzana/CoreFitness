@@ -159,6 +159,12 @@ export default function Exercises() {
 
   return (
     <div className="att" data-exercises>
+      {/* The guide editor is a window of its own (it portals); the exercise stays in the side panel behind it. */}
+      {panel === 'guide' && pick && (
+        <ExerciseGuideEditor key={pick.id} exerciseId={pick.id} name={pick.name} libraryCues={pick.cues ?? []} librarySteps={pick.steps ?? []} media={media.get(pick.id) ?? null}
+              onSaved={() => { void (async () => { const [mm, p] = await Promise.all([listExerciseMedia(), photoUsage()]); setMedia(mm); setPhotos(p); setPanel('detail'); })(); }}
+              onClose={() => { setPanel('detail'); void photoUsage().then(setPhotos); }} />
+      )}
       <div className="a-head">
         <div className="min-w-0"><h1>Exercises</h1>
           <p>What members pick from when they track a workout — {rows.length - own.length} shared, {own.length} your own{photos ? ` · ${photos.used}${photos.cap !== null ? ` of ${photos.cap}` : ''} photos` : ''}</p></div>
@@ -214,11 +220,7 @@ export default function Exercises() {
             </div>
             <button type="button" className="a-btn violet" style={{ marginTop: 10 }} disabled={saving || !form.name.trim()} onClick={() => void add()} data-add-exercise><Plus size={15} />{saving ? 'Adding…' : 'Add it'}</button>
             <div className="a-sub" style={{ marginTop: 8 }}>Then give it a photo, a video and the steps members follow.</div>
-          </>) : panel === 'guide' && pick ? (
-            <ExerciseGuideEditor key={pick.id} exerciseId={pick.id} name={pick.name} libraryCues={pick.cues ?? []} librarySteps={pick.steps ?? []} media={media.get(pick.id) ?? null}
-              onSaved={() => { void (async () => { const [mm, p] = await Promise.all([listExerciseMedia(), photoUsage()]); setMedia(mm); setPhotos(p); setPanel('detail'); })(); }}
-              onClose={() => { setPanel('detail'); void photoUsage().then(setPhotos); }} />
-          ) : !pick ? (
+          </>) : !pick ? (
             <div style={{ margin: 'auto', textAlign: 'center' }}><Dumbbell size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
               <b>Pick an exercise</b><div className="a-sub" style={{ marginTop: 4 }}>See its steps, where it is used, and give it your own photo, video and cues.</div></div>
           ) : (<>

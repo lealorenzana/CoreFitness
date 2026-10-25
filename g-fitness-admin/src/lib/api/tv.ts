@@ -90,3 +90,45 @@ export async function loadTv(): Promise<TvData> {
     announcement: b ? { title: b.title, message: b.message, sentAt: b.sentAt } : null,
   };
 }
+
+// ---- the gym's design for its screen (0209) ----------------------------------------------------------------
+
+export type TvTheme = 'dark' | 'brand' | 'light';
+export type TvPanel = 'goal' | 'wall' | 'season' | 'squads' | 'classes' | 'news';
+export interface TvDesign {
+  theme?: TvTheme;
+  background_url?: string | null;
+  panels?: TvPanel[];
+  seconds?: number;
+  headline?: string;
+  show_clock?: boolean;
+  show_count?: boolean;
+  show_qr?: boolean;
+}
+/** Every panel, in the order the TV shows them, with what the owner reads. */
+export const TV_PANELS: { key: TvPanel; label: string; hint: string }[] = [
+  { key: 'goal', label: 'The gym goal', hint: 'the whole gym’s target and how close it is' },
+  { key: 'wall', label: 'Personal records', hint: 'this week’s records, members who opted in' },
+  { key: 'season', label: 'The season board', hint: 'this month’s points leaders, opted in' },
+  { key: 'squads', label: 'Teams', hint: 'each team’s days this week' },
+  { key: 'classes', label: 'Classes today', hint: 'what is on, and the spots left' },
+  { key: 'news', label: 'Your latest announcement', hint: 'the last one sent to everyone' },
+];
+/** What a gym that never touched the design gets — the TV as it was before 0209. */
+export const TV_DEFAULTS: Required<Omit<TvDesign, 'background_url' | 'headline'>> & Pick<TvDesign, 'background_url' | 'headline'> = {
+  theme: 'dark', background_url: null, panels: TV_PANELS.map((p) => p.key), seconds: 12, headline: '',
+  show_clock: true, show_count: true, show_qr: true,
+};
+export const withDefaults = (d: TvDesign | null | undefined) => ({ ...TV_DEFAULTS, ...(d ?? {}) });
+
+/** undefined = 0209 not pasted (the TV runs as before); null = not the owner or desk. */
+export async function loadTvDesign(): Promise<{ allowed: boolean; sold: boolean; design: TvDesign } | null | undefined> {
+  const { data, error } = await supabase.rpc('my_tv_design');
+  if (error) return undefined;
+  return (data as { allowed: boolean; sold: boolean; design: TvDesign } | null) ?? null;
+}
+
+export async function saveTvDesign(d: TvDesign): Promise<void> {
+  const { error } = await supabase.rpc('save_tv_design', { p_design: d });
+  if (error) throw new Error(error.message);
+}
