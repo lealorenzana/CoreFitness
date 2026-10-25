@@ -32,8 +32,7 @@ import Exercises from './pages/Exercises';
 import Programs from './pages/Programs';
 import Rooms from './pages/Rooms';
 import Shop from './pages/Shop';
-import Support from './pages/Support';
-import Feedback from './pages/Feedback';
+import Help from './pages/Help';
 import Inbox from './pages/Inbox';
 import Subscription from './pages/Subscription';
 import Rewards from './pages/Rewards';
@@ -121,9 +120,11 @@ function App() {
             <Route path="programs" element={<ProtectedRoute adminOnly><Programs /></ProtectedRoute>} />
             <Route path="rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
             <Route path="shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-            <Route path="support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+            <Route path="help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+            {/* Support and Feedback became Help (2026-10-25); old links and notification action_urls still land. */}
+            <Route path="support" element={<Navigate to="/help" replace />} />
             {/* 0188: ratings, ideas, bug reports and a testimonial, for Core Fitness. */}
-            <Route path="feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
+            <Route path="feedback" element={<Navigate to="/help?tab=ideas" replace />} />
             <Route path="inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
             {/* The gym's own Core Fitness bill (0138): owner only — my_gym_subscription() returns no row to the desk. */}
             <Route path="subscription" element={<ProtectedRoute adminOnly><Subscription /></ProtectedRoute>} />
@@ -137,8 +138,8 @@ function App() {
             <Route path="credentials" element={<Navigate to="/trainers?view=credentials" replace />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
             {/* System moved to the platform app (2026-10-04): migrations, demo data and backups are
-                Core Fitness's to look after, not a gym owner's. An old bookmark lands on Support. */}
-            <Route path="system" element={<Navigate to="/support" replace />} />
+                Core Fitness's to look after, not a gym owner's. An old bookmark lands on Help. */}
+            <Route path="system" element={<Navigate to="/help" replace />} />
           </Route>
 
           {/* Self-service check-in by the door (2026-09-19): full screen, outside

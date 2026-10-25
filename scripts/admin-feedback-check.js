@@ -133,32 +133,30 @@ async (page) => {
   const out = [];
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   await page.setViewportSize({ width: 1400, height: 1000 });
+  // Feedback is part of Help since 2026-10-25: ideas, rating and words for the website on their tabs,
+  // and a problem report is a question with a screenshot.
   await page.goto('http://localhost:5174/feedback', { waitUntil: 'domcontentloaded' });
-  await page.locator('[data-feedback="rate"]').waitFor({ timeout: 15000 });
+  await page.locator('[data-feedback="ideas"]').waitFor({ timeout: 15000 });
   await page.waitForTimeout(500);
   let t = await text();
-  out.push('the sidebar has Feedback: ' + ((await page.locator('nav a[href="/feedback"]').count()) >= 1 ? 'yes' : 'MISSING'));
-  out.push('the current rating is shown: ' + (/Your current rating: 3 of 5/.test(t) ? 'yes' : 'MISSING'));
-  await page.getByRole('radio', { name: '5 stars' }).click();
-  await page.getByLabel('Comment').fill('The kiosk is fast now');
-  await page.getByRole('button', { name: 'Send rating' }).click();
-  await page.waitForTimeout(600);
-  out.push('a rating is sent: ' + (CALLS.some(([f, b]) => f === 'rate_core_fitness' && b.p_stars === 5 && b.p_comment === 'The kiosk is fast now') ? 'yes' : 'MISSING'));
+  out.push('an old /feedback link opens Help on Ideas: ' + (new URL(page.url()).pathname === '/help' && page.url().includes('tab=ideas') ? 'yes' : 'MISSING ' + page.url()));
+  out.push('the sidebar has Help: ' + ((await page.locator('nav a[href="/help"]').count()) >= 1 ? 'yes' : 'MISSING'));
   out.push('an idea shows the platform\'s answer: ' + (/Planned/.test(t) && /Core Fitness: Coming next month/.test(t) ? 'yes' : 'MISSING'));
   await page.getByLabel('Idea').fill('Export members to Excel');
   await page.getByRole('button', { name: 'Send idea' }).click();
   await page.waitForTimeout(600);
   out.push('an idea is sent and listed: ' + (CALLS.some(([f, b]) => f === 'submit_feature_request' && b.p_title === 'Export members to Excel')
     && /Export members to Excel/.test(await text()) ? 'yes' : 'MISSING'));
-  await page.getByLabel('Problem').fill('Kiosk freezes');
-  await page.getByLabel('What happened').fill('After ten scans it stops reading codes.');
-  await page.getByLabel('Screenshot').setInputFiles({ name: 'bug.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]) });
-  await page.getByRole('button', { name: 'Send report' }).click();
-  await page.waitForTimeout(800);
-  const bug = CALLS.find(([f]) => f === 'report_bug');
-  out.push('a bug report uploads its screenshot into the gym\'s folder and opens a ticket: ' + (bug && bug[1].p_screenshot && bug[1].p_screenshot.startsWith('gym-a/bug-')
-    && CALLS.some(([f, p]) => f === 'upload' && p.includes('/support/gym-a/bug-')) && bug[1].p_title === 'Kiosk freezes' ? 'yes' : 'MISSING ' + JSON.stringify(bug)));
-  out.push('…and says where to follow it: ' + (/Sent\. Follow it in Support/.test(await text()) ? 'yes' : 'MISSING'));
+
+  await page.getByRole('tab', { name: /Rate us/ }).click();
+  await page.locator('[data-feedback="rate"]').waitFor({ timeout: 10000 });
+  t = await text();
+  out.push('the current rating is shown: ' + (/Your current rating: 3 of 5/.test(t) ? 'yes' : 'MISSING'));
+  await page.getByRole('radio', { name: '5 stars' }).click();
+  await page.getByLabel('Comment').fill('The kiosk is fast now');
+  await page.getByRole('button', { name: 'Send rating' }).click();
+  await page.waitForTimeout(600);
+  out.push('a rating is sent: ' + (CALLS.some(([f, b]) => f === 'rate_core_fitness' && b.p_stars === 5 && b.p_comment === 'The kiosk is fast now') ? 'yes' : 'MISSING'));
   await page.getByLabel('Your words').fill('Core Fitness changed how we run the desk every single day.');
   await page.getByLabel('Name to show').fill('Gabby P.');
   const send = page.locator('[data-feedback="testimonial"]').getByRole('button', { name: 'Send' });
@@ -172,5 +170,18 @@ async (page) => {
   await page.waitForTimeout(600);
   out.push('the owner can take it down: ' + (CALLS.some(([f, b]) => f === 'withdraw_testimonial' && b.p_id === 'q9') ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-feedback.png', fullPage: true });
+
+  await page.getByRole('tab', { name: /Questions/ }).click();
+  await page.getByLabel('Subject').waitFor({ timeout: 10000 });
+  await page.getByLabel('Subject').fill('Kiosk freezes');
+  await page.getByLabel('Message', { exact: true }).fill('After ten scans it stops reading codes.');
+  await page.getByLabel('Screenshot').setInputFiles({ name: 'bug.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]) });
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await page.waitForTimeout(800);
+  const bug = CALLS.find(([f]) => f === 'report_bug');
+  out.push('a question with a screenshot is a problem report: it uploads into the gym\'s folder and opens a ticket: ' + (bug && bug[1].p_screenshot && bug[1].p_screenshot.startsWith('gym-a/bug-')
+    && CALLS.some(([f, p]) => f === 'upload' && p.includes('/support/gym-a/bug-')) && bug[1].p_title === 'Kiosk freezes' ? 'yes' : 'MISSING ' + JSON.stringify(bug)));
+  out.push('…and nothing is sent as a plain question: ' + (!CALLS.some(([f]) => f === 'open_support_ticket') ? 'yes' : 'NO'));
+  await page.screenshot({ path: 'shots/admin-help.png' });
   return out.join('\n');
 }

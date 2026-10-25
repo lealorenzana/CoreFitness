@@ -308,3 +308,6 @@
 .att .a-wkg-name.t0 { color: var(--a-p300); } .att .a-wkg-name.t1 { color: #7ee7d4; } .att .a-wkg-name.t2 { color: var(--a-a300); }
 .att .a-wkg-name.t3 { color: #f0abfc; } .att .a-wkg-name.t4 { color: #93c5fd; } .att .a-wkg-name.t5 { color: #d9f99d; }
 .att .a-wkg button.d:hover:not(:disabled) { box-shadow: 0 0 0 2px #ffffff55; }
+/* Your app (2026-10-25): the phone sits between the stage's caption and its footnote, never over them. */
+.att .a-stage { padding: 34px 0 28px; }
+.att .a-stage .a-phone { max-height: 100%; }

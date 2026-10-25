@@ -68,7 +68,7 @@ async (page) => {
     document.querySelector('header img')?.getAttribute('src') ?? null);
 
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5174/settings?tab=profile', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Save Profile' }).waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
   let src = await headerPhoto();

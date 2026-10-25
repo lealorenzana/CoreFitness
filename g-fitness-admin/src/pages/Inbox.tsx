@@ -50,8 +50,8 @@ const PAGES: [string, string][] = [
   ['/schedule', 'Schedule'], ['/bookings', 'Bookings'], ['/payments', 'Payments'], ['/shop', 'Shop'],
   ['/membership-plans', 'Plans'], ['/revenue', 'Revenue'], ['/retention', 'Retention'], ['/activity', 'Activity log'],
   ['/challenges', 'Challenges'], ['/rewards', 'Rewards'], ['/equipment', 'Equipment'], ['/rooms', 'Rooms'],
-  ['/gym-app', 'Your app'], ['/settings', 'Settings'], ['/subscription', 'Your plan'], ['/support', 'Support'],
-  ['/feedback', 'Feedback'], ['/attendance', 'Attendance'], ['/dashboard', 'Dashboard'],
+  ['/gym-app', 'Your app'], ['/settings', 'Settings'], ['/subscription', 'Your plan'], ['/help', 'Help'], ['/support', 'Help'],
+  ['/feedback', 'Help'], ['/attendance', 'Attendance'], ['/dashboard', 'Dashboard'],
 ];
 const pageName = (url: string) => PAGES.find(([p]) => url === p || url.startsWith(`${p}/`) || url.startsWith(`${p}?`))?.[1];
 const PER_PAGE = 30;

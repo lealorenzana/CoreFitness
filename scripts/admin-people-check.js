@@ -184,7 +184,7 @@ async (page) => {
 
   // ---- Staff accounts -----------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Staff Accounts/ }).first().click();
+  await page.getByRole('button', { name: /Staff accounts/i }).first().click();
   await page.getByText('Front-desk staff').waitFor({ timeout: 10000 });
   const st = await text();
   out.push('status said plainly: ' + (/Can sign in/.test(st) && /Suspended — cannot sign in/.test(st) && (await page.getByRole('button', { name: /Let them sign in again/ }).count()) === 1 ? 'yes' : 'MISSING'));

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
-  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy, MessageSquareHeart,
+  LogOut, ChevronRight, ChevronDown, Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
   Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -180,10 +180,8 @@ const NAV: Entry[] = [
   { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true },
   // What this gym pays Core Fitness, and its receipts (0138).
   { label: 'Your plan', path: '/subscription', icon: CreditCard, adminOnly: true },
-  // Talking to Core Fitness (0137): owner and desk.
-  { label: 'Support', path: '/support', icon: LifeBuoy },
-  // Telling Core Fitness what works and what is missing (0188).
-  { label: 'Feedback', path: '/feedback', icon: MessageSquareHeart },
+  // Talking to Core Fitness — questions (0137), ideas and ratings (0188) — owner and desk.
+  { label: 'Help', path: '/help', icon: LifeBuoy },
 ];
 
 /**
@@ -192,7 +190,6 @@ const NAV: Entry[] = [
  * so a new desk hire can find their way without asking.
  */
 const NAV_TIPS: Record<string, string> = {
-  '/feedback': 'Rate Core Fitness, ask for a feature, report a problem, or say a few words for its website',
   '/dashboard': 'Today at a glance: members, money, check-ins and what needs you',
   '/attendance': "Check people in and see who is in today. History has every day before",
   '/members': 'Everyone who belongs here: memberships, payments, approvals and archiving',
@@ -218,7 +215,7 @@ const NAV_TIPS: Record<string, string> = {
   '/gym-app': "How the member app looks: your logo, colours, words and join poster",
   '/settings': 'Gym details, hours, rules, waivers and staff accounts',
   '/subscription': 'What this gym pays Core Fitness, until when, and the receipts',
-  '/support': 'Ask Core Fitness anything, and read the answers',
+  '/help': 'Ask Core Fitness anything, ask for a feature, report a problem, or rate it',
   People: 'Members, invitations and coaches (with their certificates)',
   Classes: 'The timetable and every booking',
   Billing: 'Payments, the shop and membership plans',

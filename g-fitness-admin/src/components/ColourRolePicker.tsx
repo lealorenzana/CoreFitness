@@ -18,12 +18,14 @@ import { contrast, isColourCode, rampFor } from '../lib/gymTheme';
  * `value` is '' for "not set" where the role allows it (the action colour,
  * which is then amber); `unsetLabel` names that choice.
  */
-export default function ColourRolePicker({ value, fallback, onChange, unsetLabel, idPrefix }: {
+export default function ColourRolePicker({ value, fallback, onChange, unsetLabel, idPrefix, compact }: {
   value: string;
   fallback: 'violet' | 'amber';
   onChange: (v: string) => void;
   unsetLabel?: string;
   idPrefix: string;
+  /** Your app's mock-up layout (2026-10-25): round swatches and one line under them, inside `.att`. */
+  compact?: boolean;
 }) {
   const custom = isColourCode(value);
   // What is typed into the code box, kept apart from `value` so a half-typed
@@ -70,6 +72,60 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
     try { await payOnline('custom_colours', {}, window.location.pathname + window.location.search); }
     catch (e) { setBuying(false); showToast(e instanceof Error ? e.message : 'Could not open the payment', 'error'); }
   };
+
+  if (compact) {
+    const ratio = contrast(textShade, '#0B0B12');
+    return (
+      <div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {unsetLabel && (
+            <button type="button" className={`a-swc ${value === '' ? 'on' : ''}`} data-tip={unsetLabel}
+              aria-label={unsetLabel} aria-pressed={value === ''} onClick={() => onChange('')}
+              style={{ background: rampFor(fallback, fallback).base, color: '#1f1a0a', fontSize: 9, fontWeight: 800 }}>Std</button>
+          )}
+          {ACCENTS.map((a) => (
+            <button key={a.key} type="button" className={`a-swc ${value === a.key ? 'on' : ''}`} data-tip={a.label}
+              aria-label={a.label} aria-pressed={value === a.key} onClick={() => onChange(a.key)} style={{ background: a.swatch }} />
+          ))}
+        </div>
+        <div className="a-sub" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {locked && !custom ? (
+            <button type="button" className="a-chip" onClick={() => void buy()} disabled={buying} data-buy-colours
+              data-tip="Presets are free. Your own colour codes are a one-time purchase, paid online.">
+              <span style={{ width: 14, height: 14, borderRadius: 99, background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)' }} />
+              {buying ? 'Opening PayMongo…' : `Your own colour · ₱${locked.price.toLocaleString('en-PH')} once`}
+            </button>
+          ) : (
+            <>
+              <span>or your brand code</span>
+              <label className="a-chip" style={{ padding: '3px 8px 3px 4px', borderColor: custom ? '#fff' : undefined }}>
+                <input type="color" aria-label="Pick your own colour" value={isColourCode(draft) ? draft : ramp.base}
+                  onChange={(e) => pick(e.target.value)} style={{ width: 18, height: 18, border: 0, padding: 0, background: 'transparent', borderRadius: 99 }} />
+                <input id={idPrefix + '-code'} aria-label="Colour code" placeholder="#1F8A70" value={draft} maxLength={7}
+                  onChange={(e) => { const v = e.target.value.trim(); pick(v.startsWith('#') || v === '' ? v : '#' + v); }}
+                  style={{ width: 64, background: 'transparent', outline: 'none', color: '#fff', fontWeight: 700 }} />
+              </label>
+            </>
+          )}
+          <span data-tip="How readable small text in this colour is on the app's background. 4.5 or more passes.">
+            Text contrast {ratio.toFixed(1)}:1 {ratio >= 4.5 ? '✓' : ''}
+          </span>
+        </div>
+        {confirming && idPrefix.endsWith('accent') && (
+          <p className="a-sub" style={{ marginTop: 6 }} data-colours-confirming>
+            {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet. If you were charged, it unlocks here shortly — or ask in Help.'}
+          </p>
+        )}
+        {draft !== '' && !isColourCode(draft) && <p className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>A colour code is # and six characters, like #1F8A70.</p>}
+        {adjusted && (
+          <p className="a-sub" style={{ marginTop: 6 }}>
+            {value} is {contrast(value, '#0B0B12') < contrast(ramp.base, '#0B0B12') ? 'darker' : 'lighter'} than the colours the app is tested with,
+            so on your members' dark screen it uses {ramp.base} — the same hue{action ? '' : ', with a lighter shade for text'}.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -131,7 +187,7 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
 
       {confirming && idPrefix.endsWith('accent') && (
         <p className="mt-2 text-xs" style={{ color: 'var(--color-text-secondary)' }} data-colours-confirming>
-          {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet. If you were charged, it unlocks here shortly — or ask in Support.'}
+          {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet. If you were charged, it unlocks here shortly — or ask in Help.'}
         </p>
       )}
       {draft !== '' && !isColourCode(draft) && (

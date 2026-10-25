@@ -51,7 +51,7 @@ export default function PayOnline({ onPaid }: { onPaid: () => void }) {
         <p className="text-xs mt-2" style={{ color: 'var(--color-text-primary)' }} data-pay-confirmed>Paid {peso(returned.amount)}{returned.method ? ` by ${returned.method}` : ''}. Your receipt is below.</p>
       )}
       {returned && returned !== 'waiting' && returned.status !== 'paid' && (
-        <p className="text-xs mt-2" style={{ color: 'var(--color-secondary)' }}>PayMongo has not confirmed this payment yet. If you were charged, it appears here shortly — or ask in Support.</p>
+        <p className="text-xs mt-2" style={{ color: 'var(--color-secondary)' }}>PayMongo has not confirmed this payment yet. If you were charged, it appears here shortly — or ask in Help.</p>
       )}
       {on && (monthly || yearly) ? (
         <>

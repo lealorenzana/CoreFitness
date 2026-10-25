@@ -265,7 +265,7 @@ async (page) => {
   await page.screenshot({ path: 'shots/door-kiosk.png' });
 
   // ── Settings: the owner's switches ──
-  await visit('/settings?tab=gym', null);
+  await visit('/settings?tab=checkin', null);
   await page.locator('[data-door-settings]').scrollIntoViewIfNeeded().catch(() => undefined);
   has('Settings has both switches', (await page.locator('[data-door-switch]').count()) === 2);
   await page.locator('[data-door-switch="coachCheckin"] input').click(); await page.waitForTimeout(500);

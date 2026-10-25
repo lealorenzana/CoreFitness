@@ -324,7 +324,7 @@ export default function Setup() {
     clearGymContext();
     const ctx = await getGymContext(true);
     if (ctx && !ctx.onboarded) {
-      throw new Error('Your gym could not be marked as set up. Try again, or ask Core Fitness in Support.');
+      throw new Error('Your gym could not be marked as set up. Try again, or ask Core Fitness in Help.');
     }
     // A full load: the shell reads the gym's name and colours once at boot.
     window.location.assign(to);

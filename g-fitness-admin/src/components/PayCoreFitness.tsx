@@ -70,7 +70,7 @@ export default function PayCoreFitness({ priceMonthly }: { priceMonthly: string 
     <Card className="!p-4 space-y-4">
       <p className="text-xs font-semibold text-white flex items-center gap-2"><Wallet size={14} /> Pay Core Fitness</p>
       {opts.length === 0 ? (
-        <p className="text-xs" style={{ color: MUTED }}>Core Fitness has not published how to pay yet. Ask them through Support.</p>
+        <p className="text-xs" style={{ color: MUTED }}>Core Fitness has not published how to pay yet. Ask them in Help.</p>
       ) : (
         <>
           <p className="text-xs" style={{ color: MUTED }}>

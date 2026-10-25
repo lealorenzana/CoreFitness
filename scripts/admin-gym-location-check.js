@@ -83,8 +83,8 @@ async (page) => {
   const out = [];
   await page.setViewportSize({ width: 1400, height: 1100 });
   await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Gym Information$/ }).first().waitFor({ timeout: 15000 });
-  await page.getByRole('button', { name: /^Gym Information$/ }).first().click();
+  await page.getByRole('button', { name: /^Gym information/ }).first().waitFor({ timeout: 15000 });
+  await page.getByRole('button', { name: /^Gym information/ }).first().click();
   await page.locator('[data-location-picker]').waitFor({ timeout: 10000 });
   await page.locator('[data-location-picker]').scrollIntoViewIfNeeded();
   out.push('Gym Information has the map pin: yes');

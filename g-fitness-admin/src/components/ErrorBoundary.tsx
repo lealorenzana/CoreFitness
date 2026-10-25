@@ -58,7 +58,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
         </button>
         <div style={{ width: '100%', maxWidth: 380, marginTop: 12, textAlign: 'left' }}>
           {sent === 'sent' ? (
-            <p style={{ fontSize: 13, color: '#C4B5FD' }}>Sent — it is under Support, and Core Fitness replies there.</p>
+            <p style={{ fontSize: 13, color: '#C4B5FD' }}>Sent — it is under Help, and Core Fitness replies there.</p>
           ) : (
             <>
               <label htmlFor="crash-note" style={{ fontSize: 13, fontWeight: 600 }}>Tell us what you were doing (optional)</label>
@@ -72,7 +72,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
               }}>
                 {sent === 'sending' ? 'Sending…' : 'Send to Core Fitness support'}
               </button>
-              {sent === 'failed' && <p style={{ fontSize: 12.5, color: '#F59E0B', marginTop: 6 }}>It could not be sent — reload and try Support from the menu.</p>}
+              {sent === 'failed' && <p style={{ fontSize: 12.5, color: '#F59E0B', marginTop: 6 }}>It could not be sent — reload and try Help from the menu.</p>}
               <p style={{ fontSize: 12, color: '#8A8AA0', marginTop: 6 }}>The error and this screen&rsquo;s address go with it — nothing about your members.</p>
             </>
           )}

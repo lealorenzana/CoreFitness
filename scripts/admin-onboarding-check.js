@@ -112,8 +112,8 @@ async (page) => {
 
   // ---- Your app: colour pairs and the gradient preview ---------------------------------------------------
   await page.goto('http://localhost:5174/gym-app', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Pairs that go together').waitFor({ timeout: 15000 });
-  const grad = await page.locator('button', { hasText: 'Forest' }).locator('span').first().evaluate((e) => getComputedStyle(e).backgroundImage);
+  await page.getByText('Ready-made pairs').waitFor({ timeout: 15000 });
+  const grad = await page.locator('button', { hasText: 'Forest' }).locator('i').first().evaluate((e) => getComputedStyle(e).backgroundImage);
   out.push('a pair is drawn as its gradient: ' + (/linear-gradient/.test(grad) && /rgb\(5, 150, 105\)/.test(grad) && /rgb\(101, 163, 13\)/.test(grad) ? 'yes (emerald → lime)' : 'MISSING ' + grad));
   out.push('the saved pair is marked: ' + ((await page.locator('button[aria-pressed="true"]', { hasText: 'Forest' }).count()) === 1 ? 'yes' : 'MISSING'));
   await page.locator('button', { hasText: 'Sunset' }).click();
@@ -123,7 +123,7 @@ async (page) => {
   await page.goto('http://localhost:5174/gym-app?tab=join', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
   t = await text();
-  out.push('the copy buttons are separate: ' + (/Copy link/.test(t) && /Copy code/.test(t) && /Copy a message to send/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the copy buttons are separate: ' + (/Copy link/.test(t) && /Copy code/.test(t) && /Copy a message/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-theme-preview.png', fullPage: true });
   return out.join('\n');
 }

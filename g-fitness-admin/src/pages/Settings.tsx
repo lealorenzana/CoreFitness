@@ -1,7 +1,7 @@
 import StaffAccounts from '../components/staff/StaffAccounts';
-import { motion } from 'framer-motion';
 import { setAccountStatus } from '../lib/api/accountEvents';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import './attendance/att.css';
 import { Link } from 'react-router-dom';
 import WaiverTab from '../components/WaiverTab';
 import HouseRulesTab from '../components/HouseRulesTab';
@@ -12,12 +12,11 @@ import DayPassSettings from '../components/DayPassSettings';
 import DoorSettings from '../components/DoorSettings';
 import WalkInGuide from '../components/WalkInGuide';
 import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
+import { getGymContext } from '../lib/gymContext';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
-import FormField from '../components/ui/FormField';
-import { User, Shield, Building2, CreditCard, UserPlus, Eye, EyeOff, ChevronRight, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints } from 'lucide-react';
+import { User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, Search, ArrowUpRight, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -57,43 +56,44 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'bookings' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
 
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: 'profile', label: 'My Profile', icon: User },
-  { id: 'gym', label: 'Gym Information', icon: Building2 },
-  { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
-  { id: 'coaching', label: 'Coaching', icon: Handshake },
-  { id: 'walk-ins', label: 'Walk-ins', icon: Footprints },
-  { id: 'refunds', label: 'Refund Policy', icon: Banknote },
-  { id: 'payments', label: 'Online Payments', icon: Smartphone },
-  { id: 'waiver', label: 'Waiver', icon: FileSignature },
-  { id: 'house-rules', label: 'House Rules', icon: ScrollText },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'staff', label: 'Staff Accounts', icon: UserPlus },
+/**
+ * The left-hand list, grouped as the owner's approved mock-up groups it
+ * (2026-10-25, outputs/supporting-docs/dashboard-mockups/account-v1.html).
+ * `words` are what the search box matches besides the label. Plans is a link:
+ * one editor only, on its own page.
+ */
+type Section = { group?: string; id?: TabId; href?: string; label: string; icon: LucideIcon; words: string[] };
+const SECTIONS: Section[] = [
+  { group: 'Your gym', label: '', icon: Building2, words: [] },
+  { id: 'gym', label: 'Gym information', icon: Building2, words: ['name', 'address', 'phone', 'email', 'logo', 'map', 'pin', 'location', 'tagline'] },
+  { id: 'hours', label: 'Hours and closed days', icon: Clock, words: ['open', 'close', 'hours', 'sunday', 'holiday'] },
+  { id: 'checkin', label: 'Checking in', icon: DoorOpen, words: ['kiosk', 'qr', 'door', 'activities', 'check-in', 'coach'] },
+  { id: 'house-rules', label: 'House rules', icon: ScrollText, words: ['rules', 'conduct'] },
+  { id: 'waiver', label: 'Waiver', icon: FileSignature, words: ['par-q', 'health', 'sign', 'liability'] },
+  { group: 'Members and money', label: '', icon: Building2, words: [] },
+  { id: 'bookings', label: 'Bookings', icon: CalendarCheck, words: ['approve', 'class', 'booking'] },
+  { id: 'coaching', label: 'Coaching', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
+  { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
+  { id: 'refunds', label: 'Refunds', icon: Banknote, words: ['refund', 'cancel', 'fee'] },
+  { id: 'payments', label: 'Online payments', icon: Smartphone, words: ['gcash', 'maya', 'qr', 'bank', 'pay'] },
+  { href: '/membership-plans', label: 'Plans', icon: Tag, words: ['plan', 'price', 'membership'] },
+  { group: 'Team and you', label: '', icon: Building2, words: [] },
+  { id: 'staff', label: 'Staff accounts', icon: UserPlus, words: ['desk', 'staff', 'account', 'suspend'] },
+  { id: 'profile', label: 'My profile', icon: User, words: ['photo', 'name', 'profile'] },
+  { id: 'security', label: 'Security', icon: Shield, words: ['password'] },
 ];
+const TAB_IDS = SECTIONS.filter((s) => s.id).map((s) => s.id as TabId);
 
-function Field({
-  label, value, onChange, type = 'text', placeholder, required, hint, error,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  required?: boolean;
-  hint?: string;
-  error?: string;
-}) {
-  return (
-    <FormField label={label} required={required} hint={hint} error={error}>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-    </FormField>
-  );
-}
+/** "05:00:00" → "5:00 AM". */
+const clock = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
 
 /** What a password must clear, shown while it's being typed rather than after. */
 function passwordChecks(pw: string) {
@@ -104,11 +104,26 @@ function passwordChecks(pw: string) {
   ];
 }
 
+/** Map pin, a published waiver, a priced plan on sale — each read on its own, so one failure hides only its own line. */
+async function loadSetup(): Promise<{ pinned: boolean | null; waiver: boolean | null; plans: boolean | null }> {
+  const ctx = await getGymContext().catch(() => null);
+  const [g, w, p] = await Promise.all([
+    ctx ? supabase.from('gyms').select('latitude, longitude').eq('id', ctx.gymId).maybeSingle() : null,
+    supabase.from('gym_waivers').select('id').not('published_at', 'is', null).limit(1),
+    supabase.from('membership_plans').select('id').eq('is_active', true).gt('price', 0).limit(1),
+  ]);
+  return {
+    pinned: !g || g.error ? null : g.data ? g.data.latitude != null && g.data.longitude != null : false,
+    waiver: w.error ? null : (w.data ?? []).length > 0,
+    plans: p.error ? null : (p.data ?? []).length > 0,
+  };
+}
+
 export default function Settings() {
   // `?tab=refunds` opens that tab — the setup wizard's last step links straight to each one.
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const asked = new URLSearchParams(window.location.search).get('tab');
-    return TABS.some((t) => t.id === asked) ? (asked as TabId) : 'profile';
+    return TAB_IDS.includes(asked as TabId) ? (asked as TabId) : 'gym';
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +151,9 @@ export default function Settings() {
   /** Who last changed the gym information, and when — already stored, never shown. */
   const [gymAudit, setGymAudit] = useState<{ at: string; by: string | null } | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [search, setSearch] = useState('');
+  /** The set-up checklist's facts that live outside gym_settings; null = could not be read, and the line is left out. */
+  const [setup, setSetup] = useState<{ pinned: boolean | null; waiver: boolean | null; plans: boolean | null }>({ pinned: null, waiver: null, plans: null });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -173,6 +191,7 @@ export default function Settings() {
         setGymAudit({ at: gym.updated_at, by: gym.updated_by });
       }
       setAccounts(staff);
+      void loadSetup().then(setSetup);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load settings', 'error');
     } finally {
@@ -325,383 +344,285 @@ export default function Settings() {
     }
   };
 
-  const panel = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
+  // ---- what the right-hand column says ------------------------------------------------------
+  const infoMissing = [
+    !gymForm.address.trim() && 'Address',
+    !gymForm.phone.trim() && 'Phone',
+    !gymForm.email.trim() && 'Email for members',
+    setup.pinned === false && 'Map pin',
+  ].filter(Boolean) as string[];
+  const checklist: { ok: boolean; label: string; why: string; go?: TabId; href?: string }[] = [
+    { ok: !!gymForm.address.trim(), label: 'Address', why: 'members and receipts have no address to show', go: 'gym' },
+    { ok: !!gymForm.phone.trim(), label: 'Phone', why: 'receipts have no contact number', go: 'gym' },
+    { ok: !!gymForm.email.trim(), label: 'Email for members', why: 'members have no email to write to', go: 'gym' },
+    { ok: !!(gymForm.opening_time && gymForm.closing_time), label: 'Opening hours', why: 'members cannot see when you are open', go: 'hours' },
+    { ok: !!gymForm.logo_url.trim(), label: 'Logo', why: 'members see the Core Fitness mark instead', go: 'gym' },
+    ...(setup.pinned === null ? [] : [{ ok: setup.pinned, label: 'Map pin', why: 'you are not on the Find a gym map', go: 'gym' as TabId }]),
+    ...(setup.waiver === null ? [] : [{ ok: setup.waiver, label: 'Waiver published', why: 'members sign nothing before booking', go: 'waiver' as TabId }]),
+    ...(setup.plans === null ? [] : [{ ok: setup.plans, label: 'Plans have prices', why: 'only free plans are on sale', href: '/membership-plans' }]),
+  ];
+  const done = checklist.filter((c) => c.ok).length;
+  const pct = checklist.length ? Math.round((done / checklist.length) * 100) : 0;
+  const openNow = (() => {
+    if (!gymForm.opening_time || !gymForm.closing_time) return null;
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    if (closedDays?.includes(now.getDay())) return { open: false, line: 'closed today' };
+    const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const open = hm >= gymForm.opening_time.slice(0, 5) && hm < gymForm.closing_time.slice(0, 5);
+    return { open, line: open ? `closes ${clock(gymForm.closing_time)}` : `opens ${clock(gymForm.opening_time)}` };
+  })();
+
+  const q = search.trim().toLowerCase();
+  const matches = (s: Section) => !q || s.label.toLowerCase().includes(q) || s.words.some((w) => w.includes(q));
+  const head = (title: string, sub: string, pill?: ReactNode) => (
+    <div className="a-ct" style={{ alignItems: 'flex-start' }}>
+      <div><h3 style={{ fontSize: 16 }}>{title}</h3><div className="a-sub" style={{ marginTop: 2, whiteSpace: 'normal' }}>{sub}</div></div>{pill}
+    </div>
+  );
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex gap-0 overflow-hidden rounded-xl" style={{ border: '1px solid var(--color-border)' }}>
-      {/* Sidebar */}
-      <div className="w-52 flex-shrink-0 flex flex-col py-5 px-3 overflow-y-auto"
-        style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
-        <h1 className="text-lg font-bold text-white mb-4 px-2">Settings</h1>
-        <nav className="space-y-0.5">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = activeTab === t.id;
-            return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-left"
-                style={{
-                  background: isActive ? 'var(--color-primary-light)' : 'transparent',
-                  color: isActive ? VIOLET : 'var(--color-text-secondary)',
-                }}>
-                <Icon size={14} style={{ color: isActive ? VIOLET : TEXT_MUTED }} />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Plans used to be edited here too, against localStorage. One editor only. */}
-        <Link to="/membership-plans"
-          className="mt-4 mx-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-medium"
-          style={{ background: 'var(--color-bg)', color: TEXT_MUTED, border: '1px solid var(--color-border)' }}>
-          <CreditCard size={13} />
-          <span className="flex-1">Membership Plans</span>
-          <ChevronRight size={12} />
-        </Link>
+    <div className="att" data-settings>
+      <div className="a-head">
+        <div className="min-w-0"><h1>Settings</h1><p>How your gym works — every rule members meet comes from here</p></div>
+        <label className="a-input sm" style={{ marginLeft: 'auto', width: 320 }}>
+          <Search size={14} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings — “refund”, “hours”, “waiver”…" aria-label="Search settings"
+            onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { setActiveTab(first.id); setSearch(''); } } }} />
+        </label>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--color-bg)' }}>
-        {loading ? (
-          <p className="text-xs" style={{ color: TEXT_MUTED }}>Loading…</p>
-        ) : (
-          <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            /* Was `max-w-xl` — 576px of form on a 1,650px page, with the rest
-               left as empty background. 860px fits the two-column field rows
-               without letting a single text input run the width of a monitor. */
-            className="space-y-4" style={{ maxWidth: 860 }}>
+      <div className="a-grid" style={{ gridTemplateColumns: activeTab === 'gym' || activeTab === 'hours' ? '230px minmax(0, 1fr) 320px' : '230px minmax(0, 1fr)', flex: 1 }}>
+        <div className="a-card a-scroll" style={{ padding: 10 }}>
+          <nav className="a-sn" aria-label="Settings sections">
+            {SECTIONS.filter((s) => s.group || matches(s)).map((s) => s.group
+              ? <div key={s.group} className="g">{s.group}</div>
+              : s.href
+                ? <Link key={s.label} to={s.href} className="a-btn ghost" style={{ justifyContent: 'flex-start', border: 0, padding: '8px 10px', color: 'var(--a-text2)', fontWeight: 500, fontSize: 12.5 }}>
+                    <s.icon size={16} />{s.label}<ArrowUpRight size={13} style={{ marginLeft: 'auto' }} /></Link>
+                : (
+                  <button key={s.id} type="button" className={activeTab === s.id ? 'on' : ''} aria-current={activeTab === s.id ? 'page' : undefined}
+                    onClick={() => { setActiveTab(s.id!); setSearch(''); }}>
+                    <s.icon size={16} />{s.label}
+                    {s.id === 'gym' && infoMissing.length > 0 && <em>{infoMissing.length} to fill</em>}
+                  </button>
+                ))}
+            {q && !SECTIONS.some((s) => !s.group && matches(s)) && <p className="a-sub" style={{ padding: '8px 10px' }}>Nothing matches “{search.trim()}”.</p>}
+          </nav>
+        </div>
 
-            {activeTab === 'profile' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-shrink-0">
-                    <Avatar name={`${me?.first_name ?? ''} ${me?.last_name ?? ''}`} photoUrl={me?.photo_url ?? null} size={56} />
-                    <label data-tip="Change photo"
-                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                      style={{ background: 'var(--color-primary)', color: '#fff', opacity: uploadingPhoto ? 0.5 : 1 }}>
-                      <Camera size={11} />
-                      <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto}
-                        onChange={(e) => handlePhoto(e.target.files?.[0])} />
-                    </label>
+        <div className="a-card a-scroll" key={activeTab}>
+          {loading ? <p className="a-sub">Loading…</p> : (
+            <>
+              {activeTab === 'gym' && (
+                <>
+                  {head('Gym information', 'Shown on the sign-up page, receipts, the legal pages and the gym map',
+                    infoMissing.length > 0 ? <span className="a-pill a">{infoMissing.length} to fill</span> : <span className="a-pill v">complete</span>)}
+                  <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="a-fld"><label htmlFor="g-name">Gym name</label>
+                      <input id="g-name" className="a-in" value={gymForm.gym_name} onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })} /></div>
+                    <div className="a-fld"><label htmlFor="g-short">Short name <span style={{ fontWeight: 500 }}>· for small spaces</span></label>
+                      <input id="g-short" className="a-in" value={gymForm.short_name} placeholder={DEFAULT_BRANDING.shortName} onChange={(e) => setGymForm({ ...gymForm, short_name: e.target.value })} /></div>
+                    <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="g-address">Address</label>
+                      <input id="g-address" className={`a-in ${gymForm.address.trim() ? '' : 'warn'}`} value={gymForm.address} placeholder="Barangay, town, province" onChange={(e) => setGymForm({ ...gymForm, address: e.target.value })} /></div>
+                    <div className="a-fld"><label htmlFor="g-phone">Phone {!gymForm.phone.trim() && <span style={{ color: 'var(--a-a300)' }}>· missing</span>}</label>
+                      <input id="g-phone" className={`a-in ${gymForm.phone.trim() ? '' : 'warn'}`} value={gymForm.phone} placeholder="+63 900 000 0000" onChange={(e) => setGymForm({ ...gymForm, phone: e.target.value })} /></div>
+                    <div className="a-fld"><label htmlFor="g-email">Email for members {!gymForm.email.trim() && <span style={{ color: 'var(--a-a300)' }}>· missing</span>}</label>
+                      <input id="g-email" type="email" className={`a-in ${gymForm.email.trim() ? '' : 'warn'}`} value={gymForm.email} placeholder="desk@yourgym.com" onChange={(e) => setGymForm({ ...gymForm, email: e.target.value })} /></div>
+                    <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="g-tagline">Tagline <span style={{ fontWeight: 500 }}>· the small line under the name, blank hides it</span></label>
+                      <input id="g-tagline" className="a-in" value={gymForm.tagline} placeholder={DEFAULT_BRANDING.tagline ?? ''} onChange={(e) => setGymForm({ ...gymForm, tagline: e.target.value })} /></div>
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-bold text-white">My Profile</h2>
-                    <p className="text-[10px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>
-                      Signed in as {me?.email} · {me?.role}
-                    </p>
-                    {me?.photo_url && (
-                      <button onClick={handleRemovePhoto} disabled={uploadingPhoto}
-                        className="text-[10px] mt-1 flex items-center gap-1" style={{ color: 'var(--color-secondary)' }}>
-                        <Trash2 size={10} /> Remove photo
-                      </button>
-                    )}
+                  <div className="a-grid" style={{ gridTemplateColumns: '220px minmax(0, 1fr)', gap: 14, marginTop: 12, alignItems: 'start' }}>
+                    <ImageField value={gymForm.logo_url} onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })} kind="logos" label="Logo" aspect={1}
+                      hint="Square works best — it shows in a circle." />
+                    <div className="a-hint"><Palette size={15} /><span>The two colours in your members' app live on <Link to="/gym-app" style={{ color: 'var(--a-p300)' }}>Your app</Link>, alongside your words and what you run.</span></div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="First Name" value={profileForm.firstName}
-                    onChange={(v) => setProfileForm({ ...profileForm, firstName: v })} />
-                  <Field label="Last Name" value={profileForm.lastName}
-                    onChange={(v) => setProfileForm({ ...profileForm, lastName: v })} />
-                </div>
-                <Field label="Phone" value={profileForm.phone} placeholder="+63 900 000 0000"
-                  onChange={(v) => setProfileForm({ ...profileForm, phone: v })} />
-                <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
-                  Email and role are not editable here — changing either affects sign-in and access.
-                </p>
-                <Button variant="primary" onClick={handleSaveProfile} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save Profile'}
-                </Button>
-              </div>
-            )}
-
-            {activeTab === 'gym' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div>
-                  <h2 className="text-sm font-bold text-white">Gym Information</h2>
-                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
-                    Shared across the system — not just this browser.
-                  </p>
-                  {/* ── Branding ─────────────────────────────────────────
-                      The sidebar hardcoded "CORE FITNESS", a tagline and a logo
-                      file, and the header hardcoded the name a second time.
-                      `gym_name` had been editable here since 0013 and changed
-                      nothing on screen. All four are one source now. */}
-                  <div className="pt-4 mt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <h3 className="text-xs font-bold text-white">Branding</h3>
-                    <p className="text-[10px] mt-0.5 mb-3" style={{ color: TEXT_MUTED }}>
-                      What the sidebar and the header show. Leave anything blank
-                      to use the built-in default.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field
-                        label="Short name"
-                        value={gymForm.short_name}
-                        onChange={(short_name) => setGymForm({ ...gymForm, short_name })}
-                        placeholder={DEFAULT_BRANDING.shortName}
-                        hint="Shown on the collapsed menu. Blank derives it from the gym name."
-                      />
-                      <Field
-                        label="Tagline"
-                        value={gymForm.tagline}
-                        onChange={(tagline) => setGymForm({ ...gymForm, tagline })}
-                        placeholder={DEFAULT_BRANDING.tagline ?? ''}
-                        hint="The small line under the name. Blank hides it."
-                      />
-                    </div>
-
-                    {/* The colours moved to Your app (0114), and this is a
-                        pointer rather than a second picker. There are TWO colour
-                        roles, not one — "where you are" and "what you can do
-                        next" — and this control only ever wrote the first. A gym
-                        that picked Rose here got a rose app with amber buttons
-                        and read that as the setting not working. One control,
-                        one source; the other page owns both. */}
-                    <div className="mt-3 rounded-md border px-3 py-2.5"
-                      style={{ borderColor: 'var(--color-border)' }}>
-                      <span className="block text-xs" style={{ color: 'var(--color-text-primary)' }}>
-                        Colours in the member app
-                      </span>
-                      <span className="block text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
-                        Your members' app uses two colours — one for where they are, one for what
-                        they can do next. Both live on{' '}
-                        <Link to="/gym-app" className="underline"
-                          style={{ color: 'var(--color-text-secondary)' }}>Your app</Link>,
-                        alongside your words and which features you run.
-                      </span>
-                    </div>
-
-                    <div className="mt-3" style={{ maxWidth: 260 }}>
-                      <ImageField
-                        value={gymForm.logo_url}
-                        onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })}
-                        kind="logos"
-                        label="Logo"
-                        aspect={1}
-                        hint="Square works best — it renders in a circle. Blank uses the built-in logo."
-                      />
-                    </div>
+                  <div style={{ marginTop: 14 }} id="location"
+                    ref={(el) => { if (el && window.location.hash === '#location') setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }}>
+                    <GymLocationPicker />
                   </div>
-
-                  {/* `updated_at` / `updated_by` have been recorded since 0013 and
-                      never shown. Who last changed the gym's phone number is
-                      exactly the question you ask when it turns out to be wrong. */}
                   {gymAudit && (
-                    <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>
+                    <p className="a-sub" style={{ marginTop: 10 }}>
                       Last changed {new Date(gymAudit.at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
-                      {gymAudit.by === me?.id
-                        ? ' by you'
-                        : gymAudit.by
-                          ? ` by ${accounts.find((a) => a.id === gymAudit.by)?.first_name ?? 'another admin'}`
-                          : ''}
+                      {gymAudit.by === me?.id ? ' by you' : gymAudit.by ? ` by ${accounts.find((a) => a.id === gymAudit.by)?.first_name ?? 'another admin'}` : ''}
                     </p>
                   )}
-                </div>
-                {/* Each field says where it shows up. Until now all four were
-                    written here and read by nothing — the receipt is the first
-                    thing that consumes them. */}
-                <Field label="Gym Name" required value={gymForm.gym_name}
-                  hint="Printed at the top of every payment receipt."
-                  onChange={(v) => setGymForm({ ...gymForm, gym_name: v })} />
-                <Field label="Address" value={gymForm.address} placeholder="Mamburao, Occidental Mindoro"
-                  hint="Appears on receipts."
-                  onChange={(v) => setGymForm({ ...gymForm, address: v })} />
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Phone" value={gymForm.phone} placeholder="+63 900 000 0000"
-                    hint="Receipts show this as the contact number."
-                    onChange={(v) => setGymForm({ ...gymForm, phone: v })} />
-                  <Field label="Email" type="email" value={gymForm.email}
-                    onChange={(v) => setGymForm({ ...gymForm, email: v })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Opens">
-                    <TimePicker value={gymForm.opening_time.slice(0, 5)}
-                      onChange={(v) => setGymForm({ ...gymForm, opening_time: v })} />
-                  </FormField>
-                  <FormField label="Closes"
-                    error={
-                      gymForm.opening_time && gymForm.closing_time && gymForm.closing_time <= gymForm.opening_time
-                        ? 'Must be after opening.'
-                        : undefined
-                    }>
-                    <TimePicker value={gymForm.closing_time.slice(0, 5)}
-                      onChange={(v) => setGymForm({ ...gymForm, closing_time: v })} />
-                  </FormField>
-                </div>
-                <p className="text-[10px] -mt-1" style={{ color: TEXT_MUTED }}>
-                  Opening hours flag classes scheduled outside them on the Schedule page.
-                </p>
-                {closedDays !== null && (
-                  <FormField label="Closed on">
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days the gym is closed">
+                  <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={() => void handleSaveGym()} disabled={saving}>
+                    <Check size={15} />{saving ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              )}
+
+              {activeTab === 'hours' && (
+                <>
+                  {head('Hours and closed days', 'Members see whether you are open now; classes outside these hours are flagged on Schedule')}
+                  <div className="a-setting">
+                    <div className="t"><b>Every open day</b><small>one set of hours for the days you open</small></div>
+                    <div style={{ width: 130 }}><TimePicker value={gymForm.opening_time.slice(0, 5)} onChange={(val) => setGymForm({ ...gymForm, opening_time: val })} /></div>
+                    <span className="a-sub">to</span>
+                    <div style={{ width: 130 }}><TimePicker value={gymForm.closing_time.slice(0, 5)} onChange={(val) => setGymForm({ ...gymForm, closing_time: val })} /></div>
+                  </div>
+                  {gymForm.opening_time && gymForm.closing_time && gymForm.closing_time <= gymForm.opening_time && (
+                    <p className="a-sub" style={{ color: 'var(--a-a300)' }}>Closing must be after opening.</p>
+                  )}
+                  {closedDays !== null && (
+                    <div role="group" aria-label="Days the gym is closed" style={{ marginTop: 6 }}>
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, k) => {
                         const d = (k + 1) % 7;   // 0 = Sunday, as the database stores it
-                        const on = closedDays.includes(d);
+                        const closed = closedDays.includes(d);
                         return (
-                          <button key={label} type="button" aria-pressed={on}
-                            disabled={!on && closedDays.length >= 6}
-                            onClick={() => setClosedDays(on ? closedDays.filter((x) => x !== d) : [...closedDays, d])}
-                            className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
-                            style={on
-                              ? { background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }
-                              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                            {label}
-                          </button>
+                          <div key={label} className="a-setting">
+                            <div className="t"><b>{label}</b><small>{closed ? 'closed' : gymForm.opening_time && gymForm.closing_time ? `${clock(gymForm.opening_time)} – ${clock(gymForm.closing_time)}` : 'open'}</small></div>
+                            <button type="button" className={`a-toggle ${closed ? 'off' : ''}`} aria-label={label} aria-pressed={closed}
+                              data-tip={closed ? `Open on ${label}` : `Closed on ${label}`}
+                              disabled={!closed && closedDays.length >= 6}
+                              onClick={() => setClosedDays(closed ? closedDays.filter((x) => x !== d) : [...closedDays, d])} />
+                          </div>
                         );
                       })}
+                      <p className="a-sub" style={{ marginTop: 6 }}>Members' streaks never count a closed day as a day left to train, so nobody is told to come in when you are shut.</p>
                     </div>
-                    <p className="text-[10px] mt-1.5" style={{ color: TEXT_MUTED }}>
-                      Members' streaks never count a closed day as a day left to train, so nobody is told to come in when you are shut.
-                    </p>
-                  </FormField>
-                )}
-                {/* The check-in activity list. Pre-defined at the door so the
-                    data can be aggregated, but defined here rather than in code
-                    so it describes this gym rather than the one it was built for. */}
-                <div className="rounded-xl p-3 space-y-2"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                  <div>
-                    <p className="text-xs font-semibold text-white">Check-in activities</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                      What the front desk can tag a check-in with — and what members pick from on their QR screen. Members can always check in without one.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  )}
+                  <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={() => void handleSaveGym()} disabled={saving}>
+                    <Check size={15} />{saving ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              )}
+
+              {activeTab === 'checkin' && (
+                <>
+                  {head('Checking in', 'How members and coaches get in, and what a check-in can be tagged with')}
+                  <div id="checking-in"><DoorSettings /></div>
+                  <div className="a-ct" style={{ marginTop: 16 }}><h3><Tags size={16} />Check-in activities</h3></div>
+                  <p className="a-sub">What the front desk can tag a check-in with — and what members pick from on their QR screen. Members can always check in without one.</p>
+                  <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
                     {activityOptions.map((opt) => (
-                      <span key={opt} className="px-2.5 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1.5"
-                        style={{ background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                        {opt}
-                        <button onClick={() => setActivityOptions(activityOptions.filter((a) => a !== opt))}
-                          data-tip={`Remove ${opt}`} className="opacity-70 hover:opacity-100">×</button>
-                      </span>
+                      <span key={opt} className="a-chip on">{opt}
+                        <button type="button" onClick={() => setActivityOptions(activityOptions.filter((x) => x !== opt))} aria-label={`Remove ${opt}`} data-tip={`Remove ${opt}`}>×</button></span>
                     ))}
-                    {activityOptions.length === 0 && (
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        None — the picker is hidden at check-in.
-                      </span>
+                    {activityOptions.length === 0 && <span className="a-sub">None — the picker is hidden at check-in.</span>}
+                  </div>
+                  <input className="a-in" style={{ marginTop: 8 }} value={newActivity} onChange={(e) => setNewActivity(e.target.value)} placeholder="Add an activity, then press Enter"
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      const val = newActivity.trim();
+                      if (val && !activityOptions.includes(val)) setActivityOptions([...activityOptions, val]);
+                      setNewActivity('');
+                    }} />
+                  <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={() => void handleSaveGym()} disabled={saving}>
+                    <Check size={15} />{saving ? 'Saving…' : 'Save activities'}
+                  </button>
+                </>
+              )}
+
+              {activeTab === 'bookings' && <>{head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval /></>}
+              {activeTab === 'coaching' && <>{head('Coaching', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
+              {activeTab === 'walk-ins' && (
+                <>
+                  {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}
+                  <WalkInGuide open />
+                  <DayPassSettings />
+                </>
+              )}
+              {activeTab === 'refunds' && <RefundPolicyTab />}
+              {activeTab === 'payments' && <OnlinePaymentsTab />}
+              {activeTab === 'waiver' && <WaiverTab />}
+              {activeTab === 'house-rules' && <HouseRulesTab />}
+              {activeTab === 'staff' && (
+                <StaffAccounts accounts={accounts} meId={me?.id ?? null} onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
+              )}
+
+              {activeTab === 'profile' && (
+                <>
+                  {head('My profile', `Signed in as ${me?.email ?? ''} · ${me?.role ?? ''}`)}
+                  <div className="flex items-center gap-4" style={{ marginBottom: 12 }}>
+                    <div className="relative flex-shrink-0">
+                      <Avatar name={`${me?.first_name ?? ''} ${me?.last_name ?? ''}`} photoUrl={me?.photo_url ?? null} size={56} />
+                      <label data-tip="Change photo" className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                        style={{ background: 'var(--a-primary)', color: '#fff', opacity: uploadingPhoto ? 0.5 : 1 }}>
+                        <Camera size={11} />
+                        <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={(e) => handlePhoto(e.target.files?.[0])} />
+                      </label>
+                    </div>
+                    {me?.photo_url && (
+                      <button type="button" className="a-btn ghost sm" onClick={handleRemovePhoto} disabled={uploadingPhoto}><Trash2 size={12} />Remove photo</button>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <input value={newActivity} onChange={(e) => setNewActivity(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return;
-                        const v = newActivity.trim();
-                        // Silently ignoring a duplicate is friendlier than an error
-                        // and keeps the list from growing near-identical entries.
-                        if (v && !activityOptions.includes(v)) setActivityOptions([...activityOptions, v]);
-                        setNewActivity('');
-                      }}
-                      placeholder="Add an activity, then press Enter"
-                      className="flex-1 px-3 py-2 rounded-xl text-xs text-white"
-                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                  <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="a-fld"><label htmlFor="p-first">First name</label>
+                      <input id="p-first" className="a-in" value={profileForm.firstName} onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })} /></div>
+                    <div className="a-fld"><label htmlFor="p-last">Last name</label>
+                      <input id="p-last" className="a-in" value={profileForm.lastName} onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })} /></div>
+                    <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="p-phone">Phone</label>
+                      <input id="p-phone" className="a-in" value={profileForm.phone} placeholder="+63 900 000 0000" onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} /></div>
                   </div>
-                </div>
+                  <p className="a-sub" style={{ marginTop: 8 }}>Email and role are not editable here — changing either affects sign-in and access.</p>
+                  <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={handleSaveProfile} disabled={saving}>
+                    {saving ? 'Saving…' : 'Save Profile'}
+                  </button>
+                </>
+              )}
 
-                <Button variant="primary" onClick={handleSaveGym} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save Gym Information'}
-                </Button>
-
-                {/* How check-in works (0200): each switch saves at once, apart from the form above. */}
-                <div id="checking-in" className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--color-border)' }}>
-                  <p className="text-sm font-semibold text-white">Checking in</p>
-                  <DoorSettings />
-                </div>
-
-                {/* Its own save: the pin is not part of the form above (0182). */}
-                <div id="location" ref={(el) => { if (el && window.location.hash === '#location') setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }}
-                  className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}><GymLocationPicker /></div>
-              </div>
-            )}
-
-            {activeTab === 'bookings' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div>
-                  <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Who approves bookings</h2>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    For group classes and 1-on-1 sessions separately.
-                  </p>
-                </div>
-                <BookingApproval />
-              </div>
-            )}
-            {activeTab === 'coaching' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div>
-                  <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>How coaching works here</h2>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    How members get a coach, for how long, and who is paid.
-                  </p>
-                </div>
-                <CoachingSettings />
-              </div>
-            )}
-            {activeTab === 'walk-ins' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div>
-                  <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Day passes and walk-ins</h2>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves.
-                  </p>
-                </div>
-                <WalkInGuide open />
-                <DayPassSettings />
-              </div>
-            )}
-            {activeTab === 'refunds' && <RefundPolicyTab />}
-            {activeTab === 'payments' && <OnlinePaymentsTab />}
-            {activeTab === 'waiver' && <WaiverTab />}
-            {activeTab === 'house-rules' && <HouseRulesTab />}
-
-            {activeTab === 'security' && (
-              <div className="rounded-xl p-5 space-y-4" style={panel}>
-                <div>
-                  <h2 className="text-sm font-bold text-white">Change Password</h2>
-                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
-                    Changes your real sign-in password.
-                  </p>
-                </div>
-                <Field label="Current Password" type={showPw ? 'text' : 'password'} value={pw.current}
-                  onChange={(v) => setPw({ ...pw, current: v })} />
-                <Field label="New Password" type={showPw ? 'text' : 'password'} value={pw.next}
-                  onChange={(v) => setPw({ ...pw, next: v })} />
-                <Field label="Confirm New Password" type={showPw ? 'text' : 'password'} value={pw.confirm}
-                  error={pw.confirm && pw.confirm !== pw.next ? 'Does not match.' : undefined}
-                  onChange={(v) => setPw({ ...pw, confirm: v })} />
-
-                {/* Requirements shown while typing rather than as a rejection
-                    after submitting — the old page only told you the rule once
-                    you had already got it wrong. */}
-                {pw.next.length > 0 && (
-                  <div className="rounded-xl p-3 space-y-1"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                    {passwordChecks(pw.next).map((c) => (
-                      <p key={c.label} className="text-[10px] flex items-center gap-1.5"
-                        style={{ color: c.ok ? 'var(--color-primary)' : TEXT_MUTED }}>
-                        <Check size={10} style={{ opacity: c.ok ? 1 : 0.3 }} /> {c.label}
-                      </p>
+              {activeTab === 'security' && (
+                <>
+                  {head('Security', 'Changes your real sign-in password')}
+                  <div className="a-grid" style={{ gap: 10, maxWidth: 420 }}>
+                    {([['current', 'Current password'], ['next', 'New password'], ['confirm', 'Confirm new password']] as const).map(([k, label]) => (
+                      <div key={k} className="a-fld"><label htmlFor={'pw-' + k}>{label}</label>
+                        <input id={'pw-' + k} className={`a-in ${k === 'confirm' && pw.confirm && pw.confirm !== pw.next ? 'warn' : ''}`} type={showPw ? 'text' : 'password'}
+                          value={pw[k]} onChange={(e) => setPw({ ...pw, [k]: e.target.value })} /></div>
                     ))}
                   </div>
-                )}
+                  {pw.confirm && pw.confirm !== pw.next && <p className="a-sub" style={{ color: 'var(--a-a300)', marginTop: 4 }}>Does not match.</p>}
+                  {/* Requirements while typing rather than a rejection after submitting. */}
+                  {pw.next.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      {passwordChecks(pw.next).map((c) => (
+                        <p key={c.label} className="a-sub flex items-center gap-1.5" style={{ color: c.ok ? 'var(--a-p300)' : undefined }}>
+                          <Check size={11} style={{ opacity: c.ok ? 1 : 0.3 }} /> {c.label}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" className="a-link flex items-center gap-1.5" style={{ marginTop: 8 }} onClick={() => setShowPw(!showPw)}>
+                    {showPw ? <EyeOff size={12} /> : <Eye size={12} />} {showPw ? 'Hide' : 'Show'} passwords
+                  </button>
+                  <p className="a-sub" style={{ marginTop: 6 }}>Changing this signs you out of nothing — but you will need the new password next time.</p>
+                  <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={handleChangePassword} disabled={saving}>
+                    {saving ? 'Changing…' : 'Change Password'}
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
 
-                <button type="button" onClick={() => setShowPw(!showPw)}
-                  className="flex items-center gap-1.5 text-[10px]" style={{ color: TEXT_MUTED }}>
-                  {showPw ? <EyeOff size={12} /> : <Eye size={12} />} {showPw ? 'Hide' : 'Show'} passwords
-                </button>
-                <p className="text-[10px]" style={{ color: TEXT_MUTED }}>
-                  Changing this signs you out of nothing — but you will need the new password next time.
-                </p>
-                <Button variant="primary" onClick={handleChangePassword} disabled={saving}>
-                  {saving ? 'Changing…' : 'Change Password'}
-                </Button>
+        {(activeTab === 'gym' || activeTab === 'hours') && (
+          <div className="a-grid a-scroll" style={{ alignContent: 'start' }}>
+            <div className="a-card glow">
+              <div className="a-ct"><h3><Smartphone size={16} />Members see</h3></div>
+              <div className="a-phcard">
+                <b>{gymForm.gym_name || 'Your gym'}</b>
+                {gymForm.address.trim() && <div className="a-sub">{gymForm.address}</div>}
+                {openNow && <div className="a-sub" style={{ marginTop: 6 }}><span style={{ color: openNow.open ? 'var(--a-p300)' : 'var(--a-a300)' }}>{openNow.open ? 'Open now' : 'Closed now'}</span> · {openNow.line}</div>}
+                {gymForm.phone.trim() && <div className="a-sub flex items-center gap-1" style={{ marginTop: 6 }}><Phone size={11} /> {gymForm.phone}</div>}
               </div>
-            )}
-
-            {activeTab === 'staff' && (
-              <StaffAccounts accounts={accounts} meId={me?.id ?? null}
-                onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
-            )}
-          </motion.div>
+              <div className="a-sub" style={{ marginTop: 8 }}>On Today, the join page, every receipt, and the Terms and Privacy contact lines.</div>
+            </div>
+            <div className="a-card" data-setup-checklist>
+              <div className="a-ct"><h3><ListChecks size={16} />Your gym is {pct}% set up</h3></div>
+              <div className="a-meter"><i style={{ width: `${pct}%` }} /></div>
+              <div style={{ marginTop: 6 }}>
+                {checklist.map((c) => (
+                  <div key={c.label} className="a-row">
+                    {c.ok ? <CircleCheck size={16} style={{ color: 'var(--a-p300)' }} /> : <CircleDashed size={16} style={{ color: 'var(--a-a300)' }} />}
+                    <div className="t"><b>{c.label}</b>{!c.ok && <small>{c.why}</small>}</div>
+                    {!c.ok && c.href && <Link to={c.href} className="a-link">Fix</Link>}
+                    {!c.ok && c.go && c.go !== activeTab && <button type="button" className="a-link" onClick={() => setActiveTab(c.go!)}>Fix</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -740,7 +661,6 @@ export default function Settings() {
     </div>
   );
 }
-
 
 /**
  * The refund policy, editable.

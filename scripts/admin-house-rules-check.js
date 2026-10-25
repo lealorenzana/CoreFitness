@@ -91,7 +91,7 @@ async (page) => {
   const notes = [];
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /House Rules/ }).first().click({ timeout: 15000 }).catch(() => failures.push('MISSING: no House Rules tab'));
+  await page.getByRole('button', { name: /House rules/i }).first().click({ timeout: 15000 }).catch(() => failures.push('MISSING: no House Rules tab'));
   await page.getByText(/Version 1 is in force/).waitFor({ timeout: 8000 }).catch(() => {});
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   const t1 = await text();

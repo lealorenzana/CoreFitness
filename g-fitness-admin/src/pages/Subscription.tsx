@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarClock, Check, CreditCard, Crown, Receipt, ShieldCheck, Users, X } from 'lucide-react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
+import { AlertTriangle, ArrowUp, CalendarClock, Check, FileDown, FileText, ListChecks, Lock, Receipt, ShieldCheck, Wallet } from 'lucide-react';
+import './attendance/att.css';
 import GymReceiptSheet from '../components/GymReceiptSheet';
 import PayCoreFitness from '../components/PayCoreFitness';
 import PayOnline from '../components/PayOnline';
@@ -15,7 +14,6 @@ import {
   type GymFeature, type GymReceipt, type GymReceiptRow, type GymSubscription,
 } from '../lib/api/subscription';
 
-const MUTED = 'var(--color-text-secondary)';
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const day = (d: string) => new Date(d + 'T00:00:00+08:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -26,7 +24,7 @@ function explain(sub: GymSubscription): State {
   if (sub.lock_reason === 'trial_ended') return { tone: 'bad', title: 'The free trial has ended', lines: [
     `It ended on ${sub.paid_until ? day(sub.paid_until) : 'its last day'}. The app is paused for everyone at the gym until a plan is paid.`,
     'Pay online below and it opens again in about a minute, or send a reference and it opens once Core Fitness confirms it. Nothing is deleted.'] };
-  if (sub.lock_reason === 'suspended') return { tone: 'bad', title: 'Suspended by Core Fitness', lines: ['Everything is read-only until Core Fitness reactivates the gym. Nothing is deleted. Ask in Support why.'] };
+  if (sub.lock_reason === 'suspended') return { tone: 'bad', title: 'Suspended by Core Fitness', lines: ['Everything is read-only until Core Fitness reactivates the gym. Nothing is deleted. Ask in Help why.'] };
   if (sub.lock_reason === 'overdue') return { tone: 'bad', title: 'Read-only until it is paid', lines: [`The plan ran out on ${sub.paid_until ? day(sub.paid_until) : 'its due date'} and the ${sub.grace_days}-day grace has passed.`, 'Members and staff can still sign in and look; nothing can change until a payment is confirmed. Nothing is deleted.'] };
   if (!sub.paid_until) {
     return { tone: 'none', title: 'No billing for this gym', lines: [
@@ -51,6 +49,10 @@ function explain(sub: GymSubscription): State {
  * "no billing" (a gym with no covered-until date, which never locks) and a plan
  * Core Fitness has not priced — how to pay, and a receipt for every payment.
  * Owner only; the reminders that link here go to owners only.
+ *
+ * Laid out to the owner's approved mock-up (2026-10-25, account-v1.html → Your
+ * plan): the state across the top, three tiles, payments beside what the plan
+ * includes. The countdown ring went with it — the state line says the days.
  */
 export default function Subscription() {
   const [sub, setSub] = useState<GymSubscription | null | undefined>(null);
@@ -82,130 +84,136 @@ export default function Subscription() {
     catch (e) { showToast(e instanceof Error ? e.message : 'Could not open the receipt', 'error'); }
   };
 
-  if (!loaded) return <div className="text-sm" style={{ color: MUTED }}>Loading…</div>;
-  if (sub === undefined) return <Card className="!p-4"><p className="text-xs text-white">Your plan page needs migration 0138, which is not live on this database.</p></Card>;
-  if (sub === null) return <Card className="!p-4"><p className="text-xs text-white">Only the gym's owner sees its Core Fitness plan.</p></Card>;
+  if (!loaded) return <div className="att"><p className="a-sub">Loading…</p></div>;
+  if (sub === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Your plan page needs migration 0138, which is not live on this database.</p></div></div>;
+  if (sub === null) return <div className="att"><div className="a-card"><p className="a-sub">Only the gym's owner sees its Core Fitness plan.</p></div></div>;
 
   const st = explain(sub);
-  const tone = st.tone === 'bad' ? 'var(--color-secondary)' : st.tone === 'soon' ? 'var(--color-secondary)' : 'var(--color-primary)';
   const billed = !!sub.paid_until;
-  const left = sub.days_left ?? 0;
-  const ring = billed && left >= 0 ? Math.min(1, left / 30) : 0;
+  const priced = sub.price_monthly !== null && Number(sub.price_monthly) > 0;
   const included = features.filter((f) => f.enabled);
   const notIncluded = features.filter((f) => !f.enabled);
-  const meter = (label: string, used: number, cap: number | null) => (
-    <div>
-      <div className="flex justify-between text-xs"><span style={{ color: MUTED }}>{label}</span>
-        <span className="text-white font-semibold">{used}{cap !== null ? ` of ${cap}` : ' · no limit'}</span></div>
-      {cap !== null && cap > 0 && (
-        <div className="h-1.5 rounded-full mt-1.5" style={{ background: 'var(--color-surface-high)' }}>
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, (used / cap) * 100)}%`, background: used >= cap ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
-        </div>
-      )}
+  const warn = st.tone === 'bad' || st.tone === 'soon';
+  const toPay = () => document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const meter = (label: string, used: number, cap: number | null, unit: string) => (
+    <div className="a-card">
+      <div className="a-lbl">{label}</div>
+      <b style={{ fontSize: 22 }}>{used}{cap !== null ? <span className="a-sub" style={{ fontSize: 13 }}> of {cap}</span> : <span className="a-sub" style={{ fontSize: 13 }}> · no limit</span>}</b>
+      {cap !== null && cap > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (used / cap) * 100)}%`, background: used >= cap ? 'var(--a-amber)' : undefined }} /></div>}
+      <div className="a-sub" style={{ marginTop: 6 }}>
+        {cap === null ? 'this plan has no ceiling' : used >= cap ? `full — ask Core Fitness for a bigger plan` : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}
+      </div>
     </div>
   );
 
   return (
-    <div className="space-y-4">
+    <div className="att" data-your-plan>
       {receipt && <GymReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2"><CreditCard size={22} /> Your plan</h1>
-        <p className="text-xs mt-1" style={{ color: MUTED }}>What this gym pays Core Fitness, what it includes, and a receipt for every payment.</p>
+      <div className="a-head">
+        <div className="min-w-0"><h1>Your plan</h1><p>What this gym pays Core Fitness, what it includes, and a receipt for every payment</p></div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        {/* Where the gym stands, with the countdown */}
-        <Card className="!p-5">
-          <div className="flex items-center gap-5">
-            <div className="relative w-24 h-24 flex-shrink-0">
-              <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90" aria-hidden>
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-surface-high)" strokeWidth="3" />
-                {billed && <circle cx="18" cy="18" r="15.5" fill="none" stroke={tone} strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray={`${ring * 97.4} 97.4`} />}
-              </svg>
-              <div className="absolute inset-0 grid place-items-center text-center">
-                {billed ? (
-                  <span><span className="block text-2xl font-bold text-white tabular-nums">{Math.max(0, left)}</span><span className="block text-[10px]" style={{ color: MUTED }}>days</span></span>
-                ) : <ShieldCheck size={28} style={{ color: 'var(--color-primary)' }} />}
-              </div>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase" style={{ color: MUTED }}>{sub.on_trial ? 'Free trial' : billed ? 'Covered until' : 'Billing'}</p>
-              <p className="text-lg font-bold" style={{ color: st.tone === 'bad' ? 'var(--color-secondary)' : '#fff' }}>{st.title}</p>
-              {st.lines.map((l) => <p key={l} className="text-xs mt-1" style={{ color: MUTED }}>{l}</p>)}
-            </div>
+      <div className="a-card" data-plan-state
+        style={warn ? { borderColor: '#5a4512', background: 'linear-gradient(90deg, #211a08, var(--a-surface) 60%)', flex: 'none' } : { flex: 'none' }}>
+        <div className="a-row" style={{ padding: 0, alignItems: 'flex-start' }}>
+          <span className="a-ic" style={warn ? { background: 'var(--a-alight)', color: 'var(--a-a300)' } : undefined}>
+            {warn ? <AlertTriangle size={15} /> : billed ? <CalendarClock size={15} /> : <ShieldCheck size={15} />}
+          </span>
+          <div className="t">
+            <b style={{ whiteSpace: 'normal', color: st.tone === 'bad' ? 'var(--a-a300)' : undefined }}>{st.title}</b>
+            {st.lines.map((l) => <small key={l} style={{ whiteSpace: 'normal', display: 'block' }}>{l}</small>)}
           </div>
-        </Card>
-
-        {/* The plan */}
-        <Card className="!p-5">
-          <p className="text-[11px] font-semibold uppercase" style={{ color: MUTED }}>Your Core Fitness plan</p>
-          <p className="text-xl font-bold text-white mt-1 flex items-center gap-2"><Crown size={18} style={{ color: 'var(--color-secondary)' }} /> {sub.plan_name ?? 'Not set'}</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-primary)' }}>
-            {sub.price_monthly !== null && Number(sub.price_monthly) > 0 ? <>{peso(sub.price_monthly)} <span style={{ color: MUTED }}>a month</span></>
-              : sub.price_monthly !== null ? 'Free' : <span style={{ color: MUTED }}>Core Fitness has not put a price on this plan — ask in <Link to="/support" style={{ color: 'var(--color-primary)' }}>Support</Link>.</span>}
-          </p>
-          <div className="mt-4 space-y-3">
-            {meter('Active members', sub.members, sub.max_members)}
-            {meter('Owners and front desk', sub.staff, sub.max_staff)}
-          </div>
-        </Card>
+          {billed && warn && priced && (
+            <button type="button" className="a-btn amber" onClick={toPay}><Wallet size={15} />Pay {peso(sub.price_monthly ?? 0)} now</button>
+          )}
+        </div>
       </div>
 
-      {application && (
-        <Card className="!p-5" id="documents">
-          <p className="text-sm font-semibold text-white">Business documents</p>
-          <p className="text-xs mt-1" style={{ color: MUTED }}>
-            What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document
-            before it runs out — you are reminded.
-          </p>
-          <div className="mt-3"><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
-        </Card>
-      )}
-
-      {features.length > 0 && (
-        <Card className="!p-5">
-          <p className="text-sm font-semibold text-white">What the plan includes</p>
-          <div className="grid gap-2 mt-3 sm:grid-cols-2 lg:grid-cols-3">
-            {included.map((f) => (
-              <div key={f.feature_key} className="flex items-start gap-2 text-xs">
-                <Check size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
-                <span><span className="text-white font-semibold">{f.label}</span>{f.description ? <span className="block" style={{ color: MUTED }}>{f.description}</span> : null}</span>
-              </div>
-            ))}
-            {notIncluded.map((f) => (
-              <div key={f.feature_key} className="flex items-start gap-2 text-xs" style={{ opacity: 0.6 }}>
-                <X size={14} className="flex-shrink-0 mt-0.5" style={{ color: MUTED }} />
-                <span><span className="text-white">{f.label}</span><span className="block" style={{ color: MUTED }}>Not on this plan — ask Core Fitness to change plans.</span></span>
-              </div>
-            ))}
+      <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', flex: 'none' }}>
+        <div className="a-card">
+          <div className="a-lbl">Your plan</div>
+          <div className="flex gap-2 items-baseline">
+            <b style={{ fontSize: 22 }}>{sub.plan_name ?? 'Not set'}</b>
+            <span className="a-sub">{priced ? `${peso(sub.price_monthly ?? 0)} a month` : sub.price_monthly !== null ? 'Free' : ''}</span>
           </div>
-        </Card>
-      )}
+          <div className="a-sub" style={{ marginTop: 6 }}>
+            {sub.price_monthly === null
+              ? <>Core Fitness has not put a price on this plan — ask in <Link to="/help" style={{ color: 'var(--a-p300)' }}>Help</Link>.</>
+              : sub.on_trial ? `Free trial until ${sub.paid_until ? day(sub.paid_until) : '—'}`
+              : billed ? `Covered until ${day(sub.paid_until!)}${payments[0]?.method ? ` · last paid by ${payments[0].method}` : ''}`
+              : 'No billing for this gym'}
+          </div>
+          <a href="https://corefitness-site.vercel.app/#pricing" target="_blank" rel="noreferrer" className="a-btn sm" style={{ marginTop: 10, alignSelf: 'flex-start' }}>
+            <ArrowUp size={13} />Compare plans
+          </a>
+        </div>
+        {meter('Active members', sub.members, sub.max_members, 'member')}
+        {meter('Owners and front desk', sub.staff, sub.max_staff, 'seat')}
+      </div>
 
-      {billed && <PayOnline onPaid={reloadAfterPay} />}
-      {billed ? <PayCoreFitness priceMonthly={sub.price_monthly} /> : (
-        <Card className="!p-4 flex items-center gap-3">
-          <CalendarClock size={16} style={{ color: MUTED }} />
-          <p className="text-xs" style={{ color: MUTED }}>Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount and every way to send it.</p>
-        </Card>
-      )}
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px', flex: 1 }}>
+        <div className="a-card a-scroll">
+          <div className="a-ct"><h3><Receipt size={16} />Payments to Core Fitness</h3></div>
+          {payments.length === 0 ? <p className="a-sub">No payment has been recorded for this gym yet.</p> : (
+            <table className="a-table">
+              <thead><tr><th>Paid</th><th>Covers</th><th>How</th><th>Receipt</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td><b>{day(p.paid_on)}</b></td>
+                    <td>to {day(p.covers_until)}{p.plan_name ? <div className="a-sub">{p.plan_name}</div> : null}</td>
+                    <td>{p.method ? <span className="a-pill">{p.method}</span> : <span className="a-sub">—</span>}</td>
+                    <td className="a-sub">{p.receipt_no}</td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <b>{peso(p.amount)}</b>{' '}
+                      <button type="button" className="a-btn ghost sm" onClick={() => void open(p.id)} aria-label={`Receipt ${p.receipt_no}`}><FileDown size={13} />Receipt</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-      <Card className="!p-5">
-        <p className="text-sm font-semibold text-white flex items-center gap-2"><Users size={15} /> Payments to Core Fitness</p>
-        {payments.length === 0 && <p className="text-xs mt-2" style={{ color: MUTED }}>No payment has been recorded for this gym yet.</p>}
-        <div className="divide-y mt-1" style={{ borderColor: 'var(--color-border)' }}>
-          {payments.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 py-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white">{peso(p.amount)} <span className="text-xs font-normal" style={{ color: MUTED }}>· {p.receipt_no}</span></p>
-                <p className="text-xs" style={{ color: MUTED }}>Paid {day(p.paid_on)} · covers to {day(p.covers_until)}{p.method ? ` · ${p.method}` : ''}{p.plan_name ? ` · ${p.plan_name}` : ''}</p>
+          <div id="pay" style={{ marginTop: 16 }}>
+            <div className="a-ct"><h3><Wallet size={16} />Paying for the plan</h3></div>
+            {billed ? (
+              <div className="space-y-3">
+                <PayOnline onPaid={reloadAfterPay} />
+                <PayCoreFitness priceMonthly={sub.price_monthly} />
               </div>
-              <Button size="sm" variant="ghost" onClick={() => void open(p.id)}><Receipt size={14} className="mr-1.5" /> Receipt</Button>
+            ) : (
+              <div className="a-hint"><CalendarClock size={15} /><span>Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount and every way to send it.</span></div>
+            )}
+          </div>
+
+          {application && (
+            <div id="documents" style={{ marginTop: 16 }}>
+              <div className="a-ct"><h3><FileText size={16} />Business documents</h3></div>
+              <p className="a-sub">
+                What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document before it runs out — you are reminded.
+              </p>
+              <div style={{ marginTop: 10 }}><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
             </div>
+          )}
+        </div>
+
+        <div className="a-card glow a-scroll">
+          <div className="a-ct"><h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3></div>
+          {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded — a connection problem, not an empty plan.</p>}
+          {sub.max_members !== null || sub.max_staff !== null ? (
+            <div className="a-row"><Check size={15} style={{ color: 'var(--a-p300)' }} />
+              <div className="t"><b>{sub.max_members !== null ? `Up to ${sub.max_members} members` : 'Any number of members'}, {sub.max_staff !== null ? `${sub.max_staff} staff` : 'any number of staff'}</b></div></div>
+          ) : null}
+          {included.map((f) => (
+            <div key={f.feature_key} className="a-row"><Check size={15} style={{ color: 'var(--a-p300)' }} />
+              <div className="t"><b style={{ whiteSpace: 'normal' }}>{f.label}</b>{f.description ? <small style={{ whiteSpace: 'normal' }}>{f.description}</small> : null}</div></div>
+          ))}
+          {notIncluded.map((f) => (
+            <div key={f.feature_key} className="a-row"><Lock size={15} style={{ color: 'var(--a-muted)' }} />
+              <div className="t"><b style={{ color: 'var(--a-text2)', whiteSpace: 'normal' }}>{f.label}</b><small style={{ whiteSpace: 'normal' }}>Not on this plan — ask Core Fitness to change plans.</small></div></div>
           ))}
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

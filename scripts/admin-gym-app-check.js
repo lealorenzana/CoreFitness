@@ -135,7 +135,7 @@ async (page) => {
   await page.waitForTimeout(2500);
   let t = await text();
 
-  out.push('look card: ' + has(t, 'What it looks like'));
+  out.push('look card: ' + has(t, 'Ready-made pairs'));
   // Two rows, named for what they mean rather than "colour 1" and "colour 2" —
   // the roles are what keep the screen readable, and an owner picking blind is
   // how the first one ended up rose with amber buttons.
@@ -143,7 +143,7 @@ async (page) => {
   out.push('role 2: ' + has(t, 'What you can do next'));
   // A gym that never set the second one is told what it currently is, rather
   // than shown fourteen unselected swatches and left to guess.
-  out.push('unset says amber: ' + (/Not set, so your buttons are amber/.test(t) ? 'shown' : 'MISSING'));
+  out.push('unset says amber: ' + (/Not set, so your buttons are standard amber/.test(t) ? 'shown' : 'MISSING'));
   await page.getByRole('tab', { name: 'Words' }).click();
   await page.waitForTimeout(400);
   out.push('nouns: ' + has(await text(), 'What you call your people'));
@@ -154,7 +154,7 @@ async (page) => {
   // Pick an action colour and a noun, then save. The assertion is on what was
   // sent: a swatch that highlights and sends nothing is the exact failure.
   await page.getByRole('button', { name: 'Red' }).nth(1).click();
-  await page.getByRole('button', { name: 'Save' }).first().click();
+  await page.getByRole('button', { name: 'Publish to members' }).click();
   await page.waitForTimeout(1200);
   out.push('action colour sent: ' + (CALLS.save_gym_look?.p_accent_action ?? 'MISSING')
     + ' (kept accent ' + (CALLS.save_gym_look?.p_accent ?? 'MISSING') + ')');
@@ -174,7 +174,7 @@ async (page) => {
   await page.waitForTimeout(400);
   await page.getByLabel('All of them', { exact: true }).first().fill('PTs');
   await page.getByLabel('All of your people', { exact: true }).fill('Athletes');
-  await page.getByRole('button', { name: 'Save' }).first().click();   // the Words tab has the one Save
+  await page.getByRole('button', { name: 'Save words' }).click();
   await page.waitForTimeout(1500);
   out.push('noun sent: ' + (CALLS.save_gym_vocabulary?.p_words?.trainers ?? 'MISSING'));
 
@@ -189,7 +189,7 @@ async (page) => {
 
   // Moving the front door. The warning has to be on screen *before* the button,
   // because "every printed link stops working" is not a thing to learn after.
-  await page.getByRole('tab', { name: 'How members join' }).click();
+  await page.getByRole('tab', { name: 'Joining' }).click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Change' }).click();
   await page.waitForTimeout(400);
@@ -204,7 +204,7 @@ async (page) => {
   // The poster. Asserted on the QR's own <svg> rather than on the screenshot,
   // because a QR that renders as an empty box is exactly the failure a
   // picture-only check sails past.
-  await page.getByRole('button', { name: 'Poster' }).click();
+  await page.getByRole('button', { name: 'Print a poster' }).click();
   await page.waitForTimeout(700);
   const poster = await page.evaluate(() => {
     const svg = document.querySelector('body > div svg');

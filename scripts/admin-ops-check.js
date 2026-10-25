@@ -173,7 +173,7 @@ async (page) => {
   // System is the platform's now (2026-10-04): an old bookmark lands on Support.
   await page.goto('http://localhost:5174/system', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
-  out.push('old /system bookmark: ' + (new URL(page.url()).pathname === '/support' ? 'sent to /support' : 'MISSING ' + page.url()));
+  out.push('old /system bookmark: ' + (new URL(page.url()).pathname === '/help' ? 'sent to /help' : 'MISSING ' + page.url()));
 
   // Kiosk (headless has no camera: the typed code still works)
   await page.goto('http://localhost:5174/kiosk', { waitUntil: 'domcontentloaded' });

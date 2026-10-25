@@ -133,13 +133,13 @@ async (page) => {
   // ---- nested switches ----
   let t = await text();
   const kids = await page.evaluate(() => {
-    // A child sits in the indented list under its parent.
-    const rows = [...document.querySelectorAll('button[aria-pressed]')];
-    const find = (l) => rows.find((b) => b.innerText.split('\n')[0].trim() === l);
+    // Your app (2026-10-25): one row per part, a child indented in its parent's group, the switch on the right.
+    const rows = [...document.querySelectorAll('[data-module]')];
+    const find = (l) => rows.find((r) => r.querySelector('.t b')?.textContent.trim() === l);
     const rooms = find('Coaching rooms'), coaches = find('Coaches'), quests = find('Weekly quests');
     return {
-      nested: !!rooms && !!coaches && coaches.parentElement.contains(rooms) && rooms.parentElement !== coaches.parentElement,
-      questsDisabled: !!quests && quests.disabled,
+      nested: !!rooms && !!coaches && rooms.parentElement === coaches.parentElement && rooms.style.paddingLeft !== '' && coaches.style.paddingLeft === '',
+      questsDisabled: !!quests && !!quests.querySelector('button.a-toggle')?.disabled,
     };
   });
   out.push('children nested under their part: ' + (kids.nested ? 'yes' : 'MISSING'));
@@ -149,16 +149,17 @@ async (page) => {
   await page.screenshot({ path: 'shots/admin-switches.png', fullPage: true });
 
   // ---- switching one on reaches the sidebar without a reload ----
-  await page.locator('button[aria-pressed]', { hasText: 'Coaching rooms' }).first().click();
+  await page.locator('[data-module]', { hasText: 'Coaching rooms' }).first().locator('button.a-toggle').click();
   await page.waitForTimeout(1500);
   out.push('switch sent: ' + (CALLS.set_gym_module?.p_feature === 'rooms' && CALLS.set_gym_module?.p_enabled === true ? 'rooms on' : 'MISSING'));
   nav = await openGroups();
   out.push('Rooms back in the sidebar without a reload: ' + (nav.includes('Rooms') ? 'yes' : 'MISSING'));
   // Engagement back on brings quests back as the gym left it (on).
-  await page.locator('button[aria-pressed]', { hasText: 'Points, rewards and challenges' }).first().click();
+  await page.locator('[data-module]', { hasText: 'Points, rewards and challenges' }).first().locator('button.a-toggle').click();
   await page.waitForTimeout(1500);
   const questsNow = await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button[aria-pressed]')].find((x) => x.innerText.startsWith('Weekly quests'));
+    const row = [...document.querySelectorAll('[data-module]')].find((x) => x.querySelector('.t b')?.textContent.trim() === 'Weekly quests');
+    const b = row?.querySelector('button.a-toggle');
     return b ? { on: b.getAttribute('aria-pressed') === 'true', disabled: b.disabled } : null;
   });
   out.push('parent back on restores its child: ' + (questsNow?.on && !questsNow.disabled ? 'yes' : 'MISSING'));
@@ -171,7 +172,7 @@ async (page) => {
   await page.locator('#look-accent-code').fill('#1F8A70');
   await page.waitForTimeout(300);
   t = await text();
-  out.push('preview measures the text shade: ' + (/Text contrast \d+(\.\d)?:1/.test(t) ? t.match(/Text contrast [\d.]+:1/)[0] : 'MISSING'));
+  out.push('preview measures the text shade: ' + (/text contrast \d+(\.\d)?:1/i.test(t) ? t.match(/text contrast [\d.]+:1/i)[0] : 'MISSING'));
   // A pale yellow cannot fill a white-text button; the page says what it will use.
   await page.locator('#look-action-code').fill('#FFEE00');
   await page.waitForTimeout(300);
@@ -182,7 +183,7 @@ async (page) => {
   t = await text();
   out.push('a half-typed code is flagged: ' + (/A colour code is # and six characters/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('#look-action-code').fill('#FFEE00');
-  await page.getByRole('button', { name: 'Save' }).first().click();
+  await page.getByRole('button', { name: 'Publish to members' }).click();
   await page.waitForTimeout(1200);
   out.push('saved: accent ' + (CALLS.save_gym_look?.p_accent ?? 'MISSING') + ' / action ' + (CALLS.save_gym_look?.p_accent_action ?? 'MISSING'));
   await page.screenshot({ path: 'shots/admin-brand-colour.png', fullPage: true });

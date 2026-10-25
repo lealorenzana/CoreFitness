@@ -87,11 +87,11 @@ async (page) => {
   out.push('announcement banner on the dashboard: ' + (/Maintenance tonight from Core Fitness/.test(t) && /pauses 10–11pm/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-announcement.png', clip: { x: 0, y: 0, width: 1280, height: 200 } });
 
-  await page.getByRole('link', { name: 'Support' }).first().click();
+  await page.getByRole('link', { name: 'Help', exact: true }).first().click();
   await page.getByText('Your messages').waitFor({ timeout: 10000 });
   await page.waitForTimeout(500);
   t = await text();
-  out.push('Support in the sidebar, opens: ' + (/\/support$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('Help in the sidebar, opens: ' + (/\/help$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   out.push('the banner follows onto every screen: ' + (/Maintenance tonight/.test(t) ? 'yes' : 'MISSING'));
   out.push('an answered ticket, marked new: ' + (/Receipts will not print/.test(t) && /NEW/.test(t) && /Answered/.test(t) ? 'shown' : 'MISSING'));
   await page.getByRole('button', { name: /Receipts will not print/ }).click();
@@ -99,6 +99,7 @@ async (page) => {
   t = await text();
   out.push("Core Fitness's reply in the thread: " + (/Try Chrome — we are fixing Edge/.test(t) && !/NEW/.test(t) ? 'shown, and no longer new' : 'MISSING'));
 
+  await page.getByRole('button', { name: 'Ask a question' }).click();   // Help (2026-10-25): a new question starts here
   await page.getByLabel('Subject').fill('How do I add a second desk?');
   await page.getByLabel('Message', { exact: true }).fill('We hired someone for evenings.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
