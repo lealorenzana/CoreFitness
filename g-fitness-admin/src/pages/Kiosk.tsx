@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { decodeQrFrame } from '../lib/qrDecode';
-import { Camera, CheckCircle2, LogOut, QrCode, AlertTriangle } from 'lucide-react';
+import { Camera, CheckCircle2, CloudOff, LogOut, QrCode, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { listMembers, type MemberWithProfile } from '../lib/api/members';
 import { getGymSettings } from '../lib/api/settings';
 import { performCheckIn, performCoachCheckIn, resolveCheckInCode } from '../services/checkInService';
 import { getDoorSettings, listDoorCoaches, type DoorCoach } from '../lib/api/door';
 import { todayKey } from '../utils/dates';
+import { getGymContext } from '../lib/gymContext';
+import { flushScans, isOffline, resolveOffline, saveScan, savedScans } from '../lib/checkinOutbox';
 
 type Flash = { kind: 'ok' | 'error'; title: string; detail: string } | null;
 
@@ -34,6 +36,11 @@ const EXIT_HOLD_MS = 1500;
  * Scanning runs on a timer, not requestAnimationFrame: rAF stops on a page that
  * is not compositing (CLAUDE.md), and a kiosk that silently stops scanning is
  * the one failure it must not have.
+ *
+ * With no connection (0211) a scan is read on this device and saved with the
+ * time it was scanned; it is sent when the connection is back and the rules are
+ * applied then. The screen says "saved", never "checked in", and never why a
+ * saved scan was later refused — that goes to the desk (Attendance).
  */
 export default function Kiosk() {
   const navigate = useNavigate();
@@ -55,6 +62,10 @@ export default function Kiosk() {
   const [now, setNow] = useState(() => new Date());
   const [holding, setHolding] = useState(false);
   const holdTimer = useRef<number | null>(null);
+  /** This gym, read while online: the saved-scan queue is kept per gym. */
+  const gymRef = useRef<string | null>(null);
+  const [waiting, setWaiting] = useState(0);
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
 
   const refreshToday = useCallback(async () => {
     const start = new Date(`${todayKey()}T00:00:00+08:00`).toISOString();
@@ -78,6 +89,8 @@ export default function Kiosk() {
       if (!alive) return;
       adminRef.current = user?.id ?? null;
       membersRef.current = members;
+      gymRef.current = (await getGymContext().catch(() => null))?.gymId ?? null;
+      if (gymRef.current) setWaiting(savedScans(gymRef.current).length);
       setGymName(settings?.gym_name ?? '');
       await refreshToday();
     })();
@@ -89,6 +102,24 @@ export default function Kiosk() {
     }, 60_000);
     const c = window.setInterval(() => setNow(new Date()), 1000);
     return () => { alive = false; window.clearInterval(t); window.clearInterval(c); };
+  }, [refreshToday]);
+
+  // Saved scans go the moment the connection is back, and every minute while any wait.
+  useEffect(() => {
+    const send = async () => {
+      setOffline(navigator.onLine === false);
+      const gym = gymRef.current;
+      if (!gym) return;
+      const r = await flushScans(gym);
+      setWaiting(r.left);
+      if (r.recorded || r.refused) void refreshToday();
+    };
+    const up = () => { setOffline(false); void send(); };
+    const down = () => setOffline(true);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    const t = window.setInterval(() => { void send(); }, 60_000);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); window.clearInterval(t); };
   }, [refreshToday]);
 
   const show = useCallback((f: Flash) => {
@@ -103,8 +134,27 @@ export default function Kiosk() {
     if (lastRef.current.code === value && at - lastRef.current.at < SAME_CODE_COOLDOWN_MS) return;
     lastRef.current = { code: value, at };
     busyRef.current = true;
+    /** No connection: read it here and save it with the time it was scanned (0211). */
+    const saveOffline = () => {
+      const local = resolveOffline(value, membersRef.current);
+      if ('error' in local) { show({ kind: 'error', title: 'That code did not work', detail: local.error }); return; }
+      if (todayRef.current.has(local.memberId)) {
+        show({ kind: 'ok', title: `You're already in, ${local.name}`, detail: 'Today\'s visit is already on record.' });
+        return;
+      }
+      const gym = gymRef.current;
+      if (!gym || !saveScan(gym, { memberId: local.memberId, name: local.name, method: local.method, source: 'kiosk' })) {
+        show({ kind: 'error', title: 'Please see the front desk', detail: 'There is no connection and this device could not save your scan.' });
+        return;
+      }
+      setWaiting(savedScans(gym).length);
+      setOffline(true);
+      show({ kind: 'ok', title: `Saved, ${local.name}`, detail: 'There is no connection right now. Your check-in is saved and is recorded as soon as it is back.' });
+    };
     try {
+      if (isOffline()) { saveOffline(); return; }
       const found = await resolveCheckInCode(value, membersRef.current, coachesRef.current);
+      if ('error' in found && isOffline(found.error)) { saveOffline(); return; }
       if ('error' in found) {
         show({ kind: 'error', title: 'That code did not work', detail: found.error });
         return;
@@ -139,6 +189,8 @@ export default function Kiosk() {
         // Not the reason itself — "your membership has expired" is not for the
         // whole queue to read. The desk can tell them privately.
         show({ kind: 'error', title: `${first}, please see the front desk`, detail: 'Your membership needs attention before you can check in.' });
+      } else if (isOffline(res.message)) {
+        saveOffline();
       } else {
         show({ kind: 'error', title: 'Check-in did not go through', detail: res.message });
       }
@@ -229,6 +281,13 @@ export default function Kiosk() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-muted)' }}>{gymName || 'Check-in'}</p>
           <p className="text-6xl font-bold text-white tabular-nums mt-3">{time}</p>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{date}</p>
+          {(offline || waiting > 0) && (
+            <p className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" data-kiosk-offline
+              style={{ background: 'rgba(245,158,11,0.12)', color: '#FCD34D', border: '1px solid rgba(245,158,11,0.35)' }}>
+              <CloudOff size={14} />
+              {offline ? 'No connection' : 'Connection back'}{waiting > 0 ? ` · ${waiting} check-in${waiting === 1 ? '' : 's'} saved on this device` : ' · scans are saved here'}
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">

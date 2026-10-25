@@ -1,128 +1,501 @@
 {
   "_comment": "Fixture checks run by run-ui-checks.mjs and CI. app = which dev server the check needs.",
   "checks": [
-    { "file": "workout-run-check.js", "app": "member" },
-    { "file": "workout-offline-check.js", "app": "member" },
-    { "file": "achievements-check.js", "app": "member" },
-    { "file": "account-check.js", "app": "member" },
-    { "file": "renew-check.js", "app": "member" },
-    { "file": "language-check.js", "app": "member" },
-    { "file": "gym-picker-check.js", "app": "member" },
-    { "file": "member-join-check.js", "app": "member" },
-    { "file": "member-joining-rules-check.js", "app": "member" },
-    { "file": "member-google-check.js", "app": "member" },
-    { "file": "member-renew-paymongo-check.js", "app": "member" },
-    { "file": "member-finish-plan-check.js", "app": "member" },
-    { "file": "member-trial-ended-check.js", "app": "member" },
-    { "file": "trainer-sign-in-check.js", "app": "member" },
-    { "file": "trainer-hub-check.js", "app": "member" },
-    { "file": "member-door-check.js", "app": "member" },
-    { "file": "member-invite-check.js", "app": "member" },
-    { "file": "member-gym-finder-check.js", "app": "member" },
-    { "file": "member-booking-modes-check.js", "app": "member" },
-    { "file": "trainer-booking-modes-check.js", "app": "member" },
-    { "file": "member-coach-term-check.js", "app": "member" },
-    { "file": "member-equipment-check.js", "app": "member" },
-    { "file": "trainer-coaching-check.js", "app": "member" },
-    { "file": "member-get-app-check.js", "app": "member" },
-    { "file": "member-paging-check.js", "app": "member" },
-    { "file": "member-workouts-check.js", "app": "member" },
-    { "file": "member-program-targets-check.js", "app": "member" },
-    { "file": "member-coach-place-check.js", "app": "member" },
-    { "file": "trainer-coach-edit-check.js", "app": "member" },
-    { "file": "member-reset-password-check.js", "app": "member" },
-    { "file": "waiver-check.js", "app": "member" },
-    { "file": "exercise-guide-check.js", "app": "member" },
-    { "file": "trainer-exercises-check.js", "app": "member" },
-    { "file": "program-check.js", "app": "member" },
-    { "file": "trainer-assign-check.js", "app": "member" },
-    { "file": "trainer-rooms-check.js", "app": "member" },
-    { "file": "member-rooms-check.js", "app": "member" },
-    { "file": "member-photos-check.js", "app": "member" },
-    { "file": "member-nav-check.js", "app": "member" },
-    { "file": "member-online-pay-check.js", "app": "member" },
-    { "file": "member-shop-check.js", "app": "member" },
-    { "file": "member-coach-check.js", "app": "member" },
-    { "file": "member-chat-scroll-check.js", "app": "member" },
-    { "file": "member-coach-setup-check.js", "app": "member" },
-    { "file": "member-coach-tools-check.js", "app": "member" },
-    { "file": "assistant-routing-check.js", "app": "member" },
-    { "file": "trainer-coach-mark-check.js", "app": "member" },
-    { "file": "trainer-chat-check.js", "app": "member" },
-    { "file": "season-check.js", "app": "member" },
-    { "file": "squad-check.js", "app": "member" },
-    { "file": "member-streak-check.js", "app": "member" },
-    { "file": "refer-check.js", "app": "member" },
-    { "file": "plan-gates.js", "app": "member" },
-    { "file": "trainer-scenarios.js", "app": "member" },
-    { "file": "admin-engagement-check.js", "app": "admin" },
-    { "file": "admin-join-rules-check.js", "app": "admin" },
-    { "file": "admin-booking-approval-check.js", "app": "admin" },
-    { "file": "admin-coaching-check.js", "app": "admin" },
-    { "file": "admin-volume-check.js", "app": "admin" },
-    { "file": "admin-invite-check.js", "app": "admin" },
-    { "file": "admin-gym-location-check.js", "app": "admin" },
-    { "file": "admin-equipment-check.js", "app": "admin" },
-    { "file": "admin-walk-ins-check.js", "app": "admin" },
-    { "file": "admin-door-check.js", "app": "admin" },
-    { "file": "admin-qr-decode-check.js", "app": "admin" },
-    { "file": "admin-inbox-check.js", "app": "admin" },
-    { "file": "admin-redesign-check.js", "app": "admin" },
-    { "file": "admin-ops-redesign-check.js", "app": "admin" },
-    { "file": "admin-plans-points-check.js", "app": "admin" },
-    { "file": "admin-applicant-check.js", "app": "admin" },
-    { "file": "admin-feedback-check.js", "app": "admin" },
-    { "file": "admin-paymongo-check.js", "app": "admin" },
-    { "file": "admin-rewards-check.js", "app": "admin" },
-    { "file": "admin-ops-check.js", "app": "admin" },
-    { "file": "admin-activity-check.js", "app": "admin" },
-    { "file": "admin-checkin-check.js", "app": "admin" },
-    { "file": "admin-setup-check.js", "app": "admin" },
-    { "file": "admin-gym-app-check.js", "app": "admin" },
-    { "file": "admin-onboarding-check.js", "app": "admin" },
-    { "file": "admin-sweep-check.js", "app": "admin" },
-    { "file": "admin-account-swap-check.js", "app": "admin" },
-    { "file": "admin-no-logo-check.js", "app": "admin" },
-    { "file": "admin-header-photo-check.js", "app": "admin" },
-    { "file": "admin-exercise-delete-check.js", "app": "admin" },
-    { "file": "admin-rooms-check.js", "app": "admin" },
-    { "file": "admin-retention-check.js", "app": "admin" },
-    { "file": "admin-shop-check.js", "app": "admin" },
-    { "file": "admin-shop-desk-check.js", "app": "admin" },
-    { "file": "admin-receipt-check.js", "app": "admin" },
-    { "file": "admin-revenue-check.js", "app": "admin" },
-    { "file": "admin-plans-page-check.js", "app": "admin" },
-    { "file": "admin-training-pages-check.js", "app": "admin" },
-    { "file": "admin-engagement-ui-check.js", "app": "admin" },
-    { "file": "admin-people-check.js", "app": "admin" },
-    { "file": "platform-shell-check.js", "app": "platform" },
-    { "file": "platform-gyms-check.js", "app": "platform" },
-    { "file": "platform-insight-check.js", "app": "platform" },
-    { "file": "platform-onboarding-check.js", "app": "platform" },
-    { "file": "platform-applicant-check.js", "app": "platform" },
-    { "file": "platform-feedback-check.js", "app": "platform" },
-    { "file": "site-status-check.js", "app": "site" },
-    { "file": "site-applicant-check.js", "app": "site" },
-    { "file": "site-showcase-check.js", "app": "site" },
-    { "file": "admin-exercise-media-check.js", "app": "admin" },
-    { "file": "admin-programs-check.js", "app": "admin" },
-    { "file": "admin-season-check.js", "app": "admin" },
-    { "file": "admin-tv-check.js", "app": "admin" },
-    { "file": "admin-support-check.js", "app": "admin" },
-    { "file": "admin-closed-days-check.js", "app": "admin" },
-    { "file": "admin-invite-email-check.js", "app": "admin" },
-    { "file": "admin-subscription-check.js", "app": "admin" },
-    { "file": "admin-trial-ended-check.js", "app": "admin" },
-    { "file": "admin-dashboard-check.js", "app": "admin" },
-    { "file": "admin-tooltips-check.js", "app": "admin" },
-    { "file": "member-switches-check.js", "app": "member" },
-    { "file": "admin-coach-mark-check.js", "app": "admin" },
-    { "file": "admin-switches-check.js", "app": "admin" },
-    { "file": "admin-dates-check.js", "app": "admin" },
-    { "file": "admin-coach-usage-check.js", "app": "admin" },
-    { "file": "member-terms-check.js", "app": "member" },
-    { "file": "admin-gym-terms-check.js", "app": "admin" },
-    { "file": "member-house-rules-check.js", "app": "member" },
-    { "file": "admin-house-rules-check.js", "app": "admin" }
+    {
+      "file": "workout-run-check.js",
+      "app": "member"
+    },
+    {
+      "file": "workout-offline-check.js",
+      "app": "member"
+    },
+    {
+      "file": "achievements-check.js",
+      "app": "member"
+    },
+    {
+      "file": "account-check.js",
+      "app": "member"
+    },
+    {
+      "file": "renew-check.js",
+      "app": "member"
+    },
+    {
+      "file": "language-check.js",
+      "app": "member"
+    },
+    {
+      "file": "gym-picker-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-join-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-joining-rules-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-google-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-renew-paymongo-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-finish-plan-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-trial-ended-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-sign-in-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-hub-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-door-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-invite-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-gym-finder-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-booking-modes-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-booking-modes-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coach-term-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-equipment-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-coaching-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-get-app-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-paging-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-workouts-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-program-targets-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coach-place-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-coach-edit-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-reset-password-check.js",
+      "app": "member"
+    },
+    {
+      "file": "waiver-check.js",
+      "app": "member"
+    },
+    {
+      "file": "exercise-guide-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-exercises-check.js",
+      "app": "member"
+    },
+    {
+      "file": "program-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-assign-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-rooms-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-rooms-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-photos-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-nav-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-online-pay-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-shop-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coach-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-chat-scroll-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coach-setup-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coach-tools-check.js",
+      "app": "member"
+    },
+    {
+      "file": "assistant-routing-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-coach-mark-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-chat-check.js",
+      "app": "member"
+    },
+    {
+      "file": "season-check.js",
+      "app": "member"
+    },
+    {
+      "file": "squad-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-streak-check.js",
+      "app": "member"
+    },
+    {
+      "file": "refer-check.js",
+      "app": "member"
+    },
+    {
+      "file": "plan-gates.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-scenarios.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-engagement-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-join-rules-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-booking-approval-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-coaching-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-volume-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-invite-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-gym-location-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-equipment-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-walk-ins-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-door-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-qr-decode-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-inbox-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-redesign-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-ops-redesign-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-plans-points-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-applicant-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-feedback-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-paymongo-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-rewards-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-ops-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-activity-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-checkin-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-setup-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-gym-app-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-onboarding-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-sweep-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-account-swap-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-no-logo-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-header-photo-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-exercise-delete-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-rooms-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-retention-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-shop-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-shop-desk-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-receipt-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-revenue-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-plans-page-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-training-pages-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-engagement-ui-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-people-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "platform-shell-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-gyms-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-insight-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-onboarding-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-applicant-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-feedback-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "site-status-check.js",
+      "app": "site"
+    },
+    {
+      "file": "site-applicant-check.js",
+      "app": "site"
+    },
+    {
+      "file": "site-showcase-check.js",
+      "app": "site"
+    },
+    {
+      "file": "admin-exercise-media-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-programs-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-season-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-tv-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-support-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-closed-days-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-invite-email-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-subscription-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-trial-ended-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-dashboard-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-tooltips-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-switches-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-coach-mark-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-switches-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-dates-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-coach-usage-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-terms-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-gym-terms-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-house-rules-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-house-rules-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-offline-checkin-check.js",
+      "app": "admin"
+    }
   ]
 }

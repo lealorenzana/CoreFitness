@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import DetailSheet from '../components/ui/DetailSheet';
@@ -25,6 +25,9 @@ import type { AttendanceRow } from '../types/db';
 import { Av, HowPill, AttHead } from './attendance/parts';
 import { useAttCounts, peso, clock } from './attendance/attData';
 import './attendance/att.css';
+import OfflineScans from './attendance/OfflineScans';
+import { isOffline, resolveOffline, saveScan } from '../lib/checkinOutbox';
+import { getGymContext } from '../lib/gymContext';
 
 const ITEMS_PER_PAGE = 10;
 type Who = { plan: string; status: string; expiry: string | null; usable: boolean };
@@ -228,10 +231,24 @@ export default function Attendance() {
   const pages = Math.max(1, Math.ceil(logRecords.length / perPage));
   const page = Math.min(logPage, pages);
 
+  /** No connection (0211): saved on this computer with the time it was scanned, recorded when it is back. */
+  const saveOffline = async (memberId: string, name: string, method: 'qr' | 'manual') => {
+    if (inToday.has(memberId)) { showToast(`${name} already checked in today`, 'error'); return; }
+    const gym = (await getGymContext().catch(() => null))?.gymId ?? null;
+    if (!gym || !saveScan(gym, { memberId, name, method, source: 'desk' })) {
+      showToast('No connection, and this computer could not save the check-in. Write it down and record it later.', 'error');
+      return;
+    }
+    showToast(`No connection — ${name}'s check-in is saved on this computer and is recorded when it is back.`, 'success');
+    setQuery('');
+  };
+
   const doCheckIn = async (member: MemberWithProfile, method: 'qr' | 'manual') => {
+    if (isOffline()) return saveOffline(member.profile.id, member.profile.first_name, method);
     const result = await performCheckIn(member, method, {
       alreadyInToday: inToday.has(member.profile.id), adminId, activity: activity || undefined, where: 'desk', picked: picks.get(member.profile.id),
     });
+    if (!result.ok && isOffline(result.message)) return saveOffline(member.profile.id, member.profile.first_name, method);
     if (!result.ok) { showToast(result.message, 'error'); return; }
     showToast(result.points === null
       ? `${member.profile.first_name} checked in successfully!`
@@ -241,6 +258,8 @@ export default function Attendance() {
     const row = fresh.find((r) => r.member_id === member.profile.id && localDateKey(r.check_in_time) === todayKey());
     setLast(row ? { kind: 'member', id: row.id, name: `${member.profile.first_name} ${member.profile.last_name}`, at: row.check_in_time, activity: row.activity, by: row.activity_by ?? null } : null);
   };
+
+  const reloadAfterSend = useCallback(() => { void loadData(); }, []);
 
   const doCoachCheckIn = async (coach: DoorCoach, method: 'qr' | 'manual') => {
     const res = await performCoachCheckIn(coach, method, 'desk');
@@ -257,7 +276,13 @@ export default function Attendance() {
   const checkInCode = async (raw: string) => {
     const code = raw.trim();
     if (!code) return showToast('Scan a code or type one in', 'error');
+    const offlineRead = () => {
+      const local = resolveOffline(code, members);
+      return 'error' in local ? showToast(local.error, 'error') : saveOffline(local.memberId, local.name, local.method);
+    };
+    if (isOffline()) return offlineRead();
     const found = await resolveCheckInCode(code, members, coaches);
+    if ('error' in found && isOffline(found.error)) return offlineRead();
     if ('error' in found) return showToast(found.error, 'error');
     if ('coach' in found) return doCoachCheckIn(found.coach, found.method);
     await doCheckIn(found.member, found.method);
@@ -349,6 +374,7 @@ export default function Attendance() {
     <div className="att" data-attendance-today>
       <AttHead counts={{ today: today.length, walkIns: walkIns ? liveWalkIns.length : counts.walkIns }}
         sub={<><span className="a-live">Live</span>&nbsp; {longDate}{closesAt ? ` · open until ${closesAt}` : ''}</>} />
+      <OfflineScans onRecorded={reloadAfterSend} />
 
       <div className="a-grid flex-none" style={{ gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr)' }}>
         {/* ── Check someone in ── */}
