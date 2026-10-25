@@ -4,12 +4,11 @@ import { Link } from 'react-router-dom';
 import TvBoard from '../tv/TvBoard';
 import { showToast } from '../../utils/toast';
 import { uploadMedia } from '../../lib/api/media';
+import { rampFor } from '../../lib/gymTheme';
 import { TV_PANELS, loadTv, loadTvDesign, saveTvDesign, withDefaults, type TvData, type TvDesign, type TvPanel, type TvTheme } from '../../lib/api/tv';
 
-const THEMES: { key: TvTheme; label: string; swatch: string }[] = [
-  { key: 'dark', label: 'Dark', swatch: '#07070A' },
-  { key: 'brand', label: 'Your colour', swatch: 'linear-gradient(135deg, var(--a-primary), #1e1333)' },
-  { key: 'light', label: 'Light', swatch: '#F7F5FD' },
+const THEMES: { key: TvTheme; label: string }[] = [
+  { key: 'dark', label: 'Dark' }, { key: 'brand', label: 'Your colour' }, { key: 'light', label: 'Light' },
 ];
 
 /**
@@ -78,11 +77,15 @@ export default function TvTab() {
         )}
         <div className="a-lbl" style={{ marginBottom: 6 }}>Theme</div>
         <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-          {THEMES.map((t) => (
+          {THEMES.map((t) => {
+            const r = rampFor(data?.app?.accent, 'violet');
+            const swatch = t.key === 'dark' ? '#07070A' : t.key === 'light' ? '#F7F5FD' : `linear-gradient(135deg, ${r.c700}, ${r.c900})`;
+            return (
             <button key={t.key} type="button" className={`a-pair ${d.theme === t.key ? 'on' : ''}`} aria-pressed={d.theme === t.key} onClick={() => setD({ ...d, theme: t.key })}>
-              <i style={{ background: t.swatch, height: 34, border: '1px solid #ffffff22' }} />{t.label}
+              <i style={{ background: swatch, height: 34, border: '1px solid #ffffff22' }} />{t.label}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="a-lbl" style={{ margin: '14px 0 6px' }}>Background photo <span style={{ fontWeight: 500 }}>· optional, one of your own</span></div>

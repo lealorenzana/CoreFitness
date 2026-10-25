@@ -249,6 +249,7 @@ CHECKS = [
     ('0207', 'rpc migration_0207_applied',     lambda: rpc('migration_0207_applied')),
     ('0208', 'rpc migration_0208_applied',     lambda: rpc('migration_0208_applied')),
     ('0209', 'rpc migration_0209_applied',     lambda: rpc('migration_0209_applied')),
+    ('0210', 'rpc migration_0210_applied',     lambda: rpc('migration_0210_applied')),
 ]
 
 # The platform home's Migrations card checks 0074..LAST (it was admin's System page until 2026-10-04). It read 117 while 0118 and 0119
