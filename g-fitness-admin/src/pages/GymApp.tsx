@@ -24,6 +24,7 @@ import JoinPoster from '../components/JoinPoster';
 import CoachTab from '../components/yourapp/CoachTab';
 import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
+import SavedThemes from '../components/yourapp/SavedThemes';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -230,6 +231,7 @@ export default function GymApp() {
               </button>
             ))}
           </div>
+          <SavedThemes accent={look.accent} action={look.action} onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
           <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 14 }}>
             <div>
               <b style={{ fontSize: 12.5 }}>Where you are, and what you have</b>

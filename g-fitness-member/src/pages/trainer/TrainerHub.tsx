@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import WhatsNew from '../../components/WhatsNew';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Bell, CalendarBlank, Camera, CaretRight, ChatCircleDots, MagnifyingGlass, Plus, QrCode, Tray, UsersThree, X,
@@ -103,6 +104,15 @@ export default function TrainerHub() {
     }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  // A coach who has not finished their first steps (0212) is taken there — once a session if they chose Later.
+  useEffect(() => {
+    let skip = false;
+    try { skip = sessionStorage.getItem('cf-coach-setup-later') === '1'; } catch { /* storage blocked: ask */ }
+    if (skip) return;
+    void supabase.rpc('my_coach_setup').then(({ data, error }) => {
+      if (!error && data && (data as { onboarded: boolean }).onboarded === false) navigate('/trainer/welcome', { replace: true });
+    });
+  }, [navigate]);
 
   const active = useMemo(() => (rooms ?? []).filter((r) => !r.archived), [rooms]);
   const servers = useMemo(() => active.filter((r) => r.kind !== 'pt'), [active]);
@@ -119,6 +129,8 @@ export default function TrainerHub() {
 
   return (
     <div className="flex" data-trainer-hub style={{ flex: 1, minHeight: '100dvh', background: RAIL_BG }}>
+      {/* What changed for coaches (0212), once. */}
+      <WhatsNew app="trainer" />
       {/* ---- the rail ---- */}
       <nav aria-label="Your rooms" className="flex flex-col items-center flex-none scrollbar-hide"
         style={{ width: 68, gap: 10, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>

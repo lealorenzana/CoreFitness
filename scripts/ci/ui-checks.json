@@ -496,6 +496,18 @@
     {
       "file": "admin-offline-checkin-check.js",
       "app": "admin"
+    },
+    {
+      "file": "trainer-setup-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-whats-new-themes-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "platform-whats-new-check.js",
+      "app": "platform"
     }
   ]
 }

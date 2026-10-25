@@ -869,3 +869,11 @@ export const supportSnapshot = (gym: string) => call<SupportSnapshot>('platform_
 /** The SQL path for a password reset (0149), used when the Edge Function cannot be reached. */
 export const resetGymPasswordSql = async (gym: string, user: string, password: string) =>
   (await call<{ email: string | null; is_owner: boolean }[]>('platform_reset_gym_password', { p_gym: gym, p_user: user, p_password: password }))[0];
+
+// ---- What's new (0212): short notes per app, each person sees the newest once ----------------------
+export type ReleaseApp = 'admin' | 'member' | 'trainer';
+export interface Release { id: string; app: ReleaseApp; title: string; items: string[]; published_at: string; seen: number }
+export const listReleases = () => call<Release[]>('platform_releases');
+export const saveRelease = (r: { id: string | null; app: ReleaseApp; title: string; items: string[] }) =>
+  call<string>('platform_save_release', { p_id: r.id, p_app: r.app, p_title: r.title, p_items: r.items });
+export const deleteRelease = (id: string) => call<void>('platform_delete_release', { p_id: id });

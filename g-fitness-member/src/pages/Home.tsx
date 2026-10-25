@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, Lock } from '@phosphor-icons/react';
@@ -293,6 +294,8 @@ export default function Home() {
   return (
     <Page>
       <PushPrompt />
+      {/* What changed in the app (0212), once. */}
+      <WhatsNew app="member" />
       {/* Whose gym this is, on the screen a member opens every day.
 
           The logo has existed since 0067 and reached the phone in 0112, and no

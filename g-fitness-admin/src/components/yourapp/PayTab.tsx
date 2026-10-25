@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Check, CreditCard, ExternalLink, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
@@ -19,6 +19,45 @@ const monthKey = (iso: string) => localDateKey(iso).slice(0, 7);
  * not drawn: nothing in the system stores either, and a control writing a flag
  * nothing reads is a lie (CLAUDE.md). Turning in-app paying off is disconnecting.
  */
+/** The six steps from nothing to members paying in the app, each ticked from the real connection (2026-10-25). */
+function Steps({ acc }: { acc: GymAccount | null }) {
+  const link = (href: string, text: string) => (
+    <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--a-p300)' }}>{text} <ExternalLink size={11} className="inline" /></a>
+  );
+  const steps: { title: string; body: ReactNode; done: boolean }[] = [
+    { title: 'Make a PayMongo account', done: !!acc,
+      body: <>At {link('https://www.paymongo.com', 'paymongo.com')}, with your gym&rsquo;s email. It is free to open; PayMongo takes a fee from each payment.</> },
+    { title: 'Activate it with your business details', done: !!acc?.live,
+      body: <>PayMongo asks for your business registration (DTI or SEC), a valid ID and the bank account it pays you out to, and reviews them. Until it activates you, only test mode works — that is fine for step 5.</> },
+    { title: 'Copy your secret key', done: !!acc,
+      body: <>In {link('https://dashboard.paymongo.com/developers', 'dashboard.paymongo.com → Developers → API keys')}. It starts with <b>sk_test_</b> (test) or, once activated, <b>sk_live_</b>. Never share it with anyone else.</> },
+    { title: 'Paste it below and press Connect', done: !!acc,
+      body: <>Core Fitness checks it with PayMongo and stores it encrypted; it is never shown again, here or anywhere.</> },
+    { title: 'Try it in test mode', done: !!acc?.live,
+      body: <>With the test key, open the member app, renew a plan and choose Pay in the app. Use one of {link('https://developers.paymongo.com', 'PayMongo’s test cards (in its developer docs)')} — no real money moves — and see it arrive in Payments with a receipt number.</> },
+    { title: 'Go live', done: !!acc?.live,
+      body: <>When PayMongo activates your account, connect your <b>sk_live_</b> key here instead. Members&rsquo; payments land in your PayMongo balance and PayMongo pays them out to your bank; Core Fitness never holds your money.</> },
+  ];
+  const next = steps.findIndex((x) => !x.done);
+  return (
+    <div style={{ marginTop: 14 }} data-paymongo-steps>
+      <div className="a-lbl" style={{ marginBottom: 8 }}>How to set it up {acc ? `· ${steps.filter((x) => x.done).length} of 6 done` : ''}</div>
+      {steps.map((x, i) => (
+        <div key={x.title} className="flex gap-2.5" style={{ padding: '8px 0', borderTop: i ? '1px solid var(--a-border)' : 0, opacity: x.done ? 0.65 : 1 }}>
+          <span className="a-ic" style={{ width: 24, height: 24, borderRadius: 99, fontSize: 11, fontWeight: 800,
+            background: x.done ? 'var(--a-plight)' : i === next ? 'var(--a-alight)' : undefined, color: x.done ? 'var(--a-p300)' : i === next ? 'var(--a-a300)' : undefined }}>
+            {x.done ? <Check size={12} /> : i + 1}
+          </span>
+          <div className="min-w-0">
+            <b style={{ fontSize: 13 }}>{x.title}</b>
+            <div className="a-sub" style={{ lineHeight: 1.5, marginTop: 1 }}>{x.body}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PayTab() {
   const [acc, setAcc] = useState<GymAccount | null | undefined>(undefined);
   const [paid, setPaid] = useState<GymOnlinePayment[]>([]);
@@ -79,15 +118,15 @@ export default function PayTab() {
                     {busy ? 'Disconnecting…' : 'Disconnect'}
                   </button>
                 </div>
+                {!acc.live && <Steps acc={acc} />}
               </>
             ) : (
               <>
                 <p className="a-sub" style={{ lineHeight: 1.5 }}>
                   Connect your gym's own PayMongo account and members pay you in the app by GCash, Maya, card or online banking —
-                  straight to you; Core Fitness never holds your money. Find the keys at{' '}
-                  <a href="https://dashboard.paymongo.com/developers" target="_blank" rel="noreferrer" style={{ color: 'var(--a-p300)' }}>dashboard.paymongo.com → Developers <ExternalLink size={11} className="inline" /></a>.
-                  Use the test keys to try it first. Your secret key is stored encrypted and never shown again.
+                  straight to you; Core Fitness never holds your money. Use the test keys to try it first; your secret key is stored encrypted and never shown again.
                 </p>
+                <Steps acc={null} />
                 <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
                   <div className="a-fld"><label htmlFor="pm-secret">Secret key</label>
                     <input id="pm-secret" className="a-in" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)}

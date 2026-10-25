@@ -242,3 +242,17 @@ export async function setJoinSettings(policy: JoinPolicy, s: JoinSettings): Prom
   if (error.code !== 'PGRST202') throw new Error(error.message);
   return setJoinPolicy(policy, false);
 }
+
+// ---- the gym's own saved colour themes (0212) -----------------------------------------------------------
+
+export interface SavedTheme { name: string; accent: string; action: string }
+/** null = not the owner, undefined = before 0212. `unlocked` is 0191's ₱499 custom-colours unlock. */
+export async function getGymThemes(): Promise<{ unlocked: boolean; themes: SavedTheme[] } | null | undefined> {
+  const { data, error } = await supabase.rpc('my_gym_themes');
+  if (error) return undefined;
+  return (data as { unlocked: boolean; themes: SavedTheme[] } | null) ?? null;
+}
+export async function saveGymThemes(themes: SavedTheme[]): Promise<void> {
+  const { error } = await supabase.rpc('save_gym_themes', { p_themes: themes });
+  if (error) throw new Error(error.message);
+}

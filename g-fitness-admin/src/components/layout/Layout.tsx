@@ -6,6 +6,7 @@ import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
 import SubscriptionBanner from '../SubscriptionBanner';
 import AnnouncementBanner from '../AnnouncementBanner';
+import WhatsNew from '../WhatsNew';
 import GymTermsBanner from '../GymTermsBanner';
 import TrialEnded from '../TrialEnded';
 import { getGymContext, type GymContext } from '../../lib/gymContext';
@@ -44,6 +45,8 @@ export default function Layout() {
         <SubscriptionBanner />
         {/* Core Fitness's announcements to gyms (0137). */}
         <AnnouncementBanner />
+        {/* What changed in the app (0212): once, on the dashboard — the home screen. */}
+        {location.pathname === '/dashboard' && <WhatsNew />}
         {/* The gym documents, until an owner agrees to the version in effect (0156). */}
         <GymTermsBanner />
         <main

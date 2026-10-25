@@ -29,6 +29,7 @@ const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
 const TrainerHub = lazyPage(() => import('./pages/trainer/TrainerHub'));
+const TrainerSetup = lazyPage(() => import('./pages/trainer/TrainerSetup'));
 const ProgressPhotos = lazyPage(() => import('./pages/ProgressPhotos'));
 const CoachPlaceRedirect = lazyPage(() => import('./pages/CoachPlaceRedirect'));
 const ShopMenu = lazyPage(() => import('./pages/ShopMenu'));
@@ -256,6 +257,8 @@ function App() {
           {/* The hub, Discord style (2026-10-11): Messages, the rooms rail, the coach at the bottom. */}
           <Route path="home" element={<TrainerHub />} />
           <Route path="today" element={<TrainerHome />} />
+          {/* A coach's first steps (0212): the hub sends them here until they finish. */}
+          <Route path="welcome" element={<TrainerSetup />} />
           <Route path="members" element={<TrainerMembers />} />
           {/* A coach writes or edits their trainee's routine (0174). */}
           <Route path="members/:memberId/routine/:routineId" element={<RoutineEditor />} />
