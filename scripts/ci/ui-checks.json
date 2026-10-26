@@ -82,6 +82,10 @@
       "app": "member"
     },
     {
+      "file": "member-you-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },

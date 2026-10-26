@@ -5,17 +5,17 @@ import { pointsWord } from '../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, EnvelopeSimple, Gear, Gift, Key,
-  ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning,
+  ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning, Receipt, CalendarDots, FileText, PauseCircle, UserPlus, Storefront,
 } from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
-import { Chip, Eyebrow, InlineStat, NocButton, Panel, ProgressBar, SeeAll, SectionHead, StatusPill } from '../components/ui/noc';
+import { Eyebrow, InlineStat, LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import Modal from '../components/ui/Modal';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentMemberId } from '../services/bookingService';
 import { getMembershipHub, type MembershipHub as Hub } from '../services/membershipHubService';
-import { matchesFilter, toLines, type Filter } from '../utils/activityLines';
-import ActivityLineRow from '../components/ui/ActivityLineRow';
+import { toLines } from '../utils/activityLines';
+import { visibleDestinations, type Destination } from '../components/layout/memberNav';
 import { membershipTerm } from '../utils/membershipTerm';
 import { errorMessage } from '../utils/errorMessage';
 import { useLiveData } from '../hooks/useLiveData';
@@ -61,7 +61,6 @@ export default function MembershipHub() {
   const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
   /** The gym's waiver (0119), read on its own so a database without it leaves
       the rest of this screen untouched. Null = nothing published. */
   const [waiver, setWaiver] = useState<WaiverStatus | null>(null);
@@ -136,11 +135,27 @@ export default function MembershipHub() {
   // ── Activity ──
   // A preview: six lines, then the statement's own page (never an in-place
   // "show more" — the user's rule, 2026-09-19).
-  const lines = toLines(hub.activity.filter((a) => matchesFilter(a, filter)));
-  const shown = lines.slice(0, 6);
+  // Newest first, everything; the Activity page has the filters.
+  const lines = toLines(hub.activity);
 
   const t = hub.term;
   const rate = t && t.elapsedDays > 0 ? t.visitDays / t.elapsedDays : null;
+
+  // The rows under the cards. Gated as More gates them (0110): a part the gym does
+  // not run is not offered here either.
+  type YouRow = Destination & { meta: string; tone?: 'mine' | 'act' | 'info' };
+  const latest = lines[0];
+  const youRows = visibleDestinations([
+    { label: 'Activity', path: '/member/activity', icon: ClockCounterClockwise,
+      meta: latest ? `Latest: ${latest.title} · ${latest.amount}` : 'Points earned and payments, newest first' },
+    { label: 'Payments', path: '/member/payments', icon: Receipt, meta: 'Every payment, with its receipt' },
+    { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots, meta: 'Every visit, month by month' },
+    { label: `How you earn ${pointsWord(gymApp, true)}`, path: '/member/rewards', module: 'points', icon: Gift, meta: 'And what you can spend them on' },
+    { label: 'Waiver', path: '/member/waiver', icon: FileText, meta: waiver?.acceptedAt ? 'Signed' : waiver ? 'Not signed yet' : "The gym's waiver" },
+    { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests', icon: PauseCircle, meta: 'Ask the desk to freeze or end it' },
+    { label: 'Shop', path: '/member/shop', module: 'shop', icon: Storefront, meta: 'What the gym sells at the counter' },
+    { label: 'Invite a friend', path: '/member/refer', module: 'referrals', icon: UserPlus, meta: 'Share your gym' },
+  ] as YouRow[], gymApp) as YouRow[];
 
   const account: { label: string; icon: typeof Gear; to: string }[] = [
     { label: 'Profile', icon: UserCircle, to: '/member/profile' },
@@ -304,37 +319,19 @@ export default function MembershipHub() {
         )}
       </Panel>
 
-      {/* ── Activity ── */}
-      <section>
-        <SectionHead title="Activity" />
-        <div className="flex" style={{ gap: 8, marginTop: 10 }}>
-          <Chip label="All" on={filter === 'all'} onClick={() => setFilter('all')} />
-          <Chip label="Points" on={filter === 'points'} onClick={() => setFilter('points')} />
-          <Chip label="Payments" on={filter === 'payments'} onClick={() => setFilter('payments')} />
-        </div>
-        {lines.length === 0 ? (
-          <p style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
-            {filter === 'payments' ? 'No payments recorded yet — they appear here once the desk records one.'
-              : 'Nothing yet. Check-ins and workouts earn points, and payments at the desk appear here.'}
-          </p>
-        ) : (
-          <div className="noc-rows" style={{ marginTop: 4 }}>
-            {shown.map((l, i) => <ActivityLineRow key={`${l.key}:${i}`} l={l} last={i === shown.length - 1} />)}
-          </div>
-        )}
-        {lines.length > 0 && (
-          <SeeAll label="See all activity" onClick={() => navigate(`/member/activity${filter === 'all' ? '' : `?filter=${filter}`}`)} />
-        )}
+      {/* ── Everything else about the membership: one described row each, each its own page
+          (redesign, 2026-10-26). The activity preview and its filter chips became the Activity
+          page's own (it has the same filters); the text links became rows. ── */}
+      <section aria-label="Your membership" data-you-rows>
+        {youRows.map((r, i) => (
+          <LineRow key={r.path} icon={r.icon} tone={r.tone ?? 'info'} title={r.label} meta={r.meta}
+            onClick={() => navigate(r.path)} last={i === youRows.length - 1} />
+        ))}
         {hub.activityGaps.length > 0 && (
           <p style={{ marginTop: 8, fontSize: 12, color: 'var(--color-secondary)' }}>
-            Could not load {hub.activityGaps.join(' or ')} — this list may be missing entries.
+            Could not load {hub.activityGaps.join(' or ')} — your activity may be missing entries.
           </p>
         )}
-        <div className="flex flex-wrap" style={{ gap: '12px 20px', marginTop: 14, fontSize: 13 }}>
-          <button onClick={() => navigate('/member/payments')} style={{ color: 'var(--color-primary-300)' }}>All payments</button>
-          <button onClick={() => navigate('/member/rewards')} style={{ color: 'var(--color-primary-300)' }}>How you earn points</button>
-          <button onClick={() => navigate('/member/attendance-history')} style={{ color: 'var(--color-primary-300)' }}>Attendance</button>
-        </div>
       </section>
 
       {/* ── Folded: the plan, its history, the account ── */}
