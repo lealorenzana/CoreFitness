@@ -350,6 +350,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-colour-lock-check.js",
+      "app": "admin"
+    },
+    {
       "file": "admin-onboarding-check.js",
       "app": "admin"
     },

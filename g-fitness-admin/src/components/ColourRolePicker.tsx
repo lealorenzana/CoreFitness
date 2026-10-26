@@ -48,7 +48,13 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
   /**
    * 0191: a gym's own colour code is a one-time purchase; the presets stay free.
    * null = not known yet, or before 0191 (nothing locked). A gym already on a
-   * code has it unlocked, so it is never taken away here.
+   * code before 0191 was given the unlock ('kept'), so it is never taken away.
+   *
+   * Locked follows the unlock alone, never the current value: the ready-made
+   * pairs are partly codes (Volt is #7C3AED + #A3E635), and treating "the value
+   * is a code" as "the gym owns codes" opened the code box to a gym that had not
+   * paid — whose typed code the database then refused (2026-10-27). The pairs'
+   * own codes are free on the server too (0214).
    */
   const [locked, setLocked] = useState<{ price: number } | null>(null);
   /** Back from PayMongo: confirming, then unlocked in place — no reload (0191). */
@@ -89,7 +95,7 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
           ))}
         </div>
         <div className="a-sub" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {locked && !custom ? (
+          {locked ? (
             <button type="button" className="a-chip" onClick={() => void buy()} disabled={buying} data-buy-colours
               data-tip="Presets are free. Your own colour codes are a one-time purchase, paid online.">
               <span style={{ width: 14, height: 14, borderRadius: 99, background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)' }} />
@@ -154,7 +160,7 @@ export default function ColourRolePicker({ value, fallback, onChange, unsetLabel
         ))}
         {/* The gym's own colour. The native picker and the code box edit the
             same thing; either one is enough. Locked until bought (0191). */}
-        {locked && !custom ? (
+        {locked ? (
           <button type="button" onClick={() => void buy()} disabled={buying} data-buy-colours
             className="flex items-center gap-2 rounded-full border-2 px-3 h-9 text-xs font-semibold disabled:opacity-60"
             data-tip="Presets are free. Your own colour codes are a one-time purchase, paid online."
