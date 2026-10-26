@@ -49,9 +49,9 @@
   - setting `'sideways'` raises the check violation;
   - as that member, updating another member's `assistant_button` writes 0 rows;
   - with `gym_settings.points_name = 'G Points'` and a reachable reward, running the reward-reminder sweep writes a notification whose body contains `G Points` and not `CORE Points`;
-  - `migration_0213_applied()` is true; `anon` cannot execute it.
+  - `migration_0213_applied()` is true (granted to anon like every marker — the probe uses the anon key).
 - [ ] **Step 2: Run it** — `cd ~/uicheck && node <repo>/scripts/sql/assistant-button.mjs "<repo>"` → fails (no 0213).
-- [ ] **Step 3: Write 0213.** Find the **last** definition of the function holding `' CORE Points — enough for '` (0102 at line ~249; grep later migrations for a redefinition) and redefine it with the gym's `points_name`; add the column; marker; revoke the marker from `public, anon`.
+- [ ] **Step 3: Write 0213.** Find the **last** definition of the function holding `' CORE Points — enough for '` (0102 at line ~249; grep later migrations for a redefinition) and redefine it with the gym's `points_name`; add the column; marker granted to `anon, authenticated`.
 - [ ] **Step 4: Run the harness** → exit 0. Run `security-red-team.mjs` → exit 0.
 - [ ] **Step 5: Verify file, probe entry, CI line; commit** `0213 (written, not pasted): assistant placement per member; reward reminders use the gym's points name`.
 
