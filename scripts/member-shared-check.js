@@ -124,7 +124,9 @@ async (page) => {
   const saved = [];
   await page.route('**/rest/v1/rpc/my_features', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H,
     body: JSON.stringify(features.map((key) => ({ key, label: key, description: key, enabled: true }))) }));
-  await page.route(/\/rest\/v1\/member_profiles\?.*assistant_button/, (r) => {
+  await page.route(/\/rest\/v1\/member_profiles\?/, (r) => {
+    const isPlacement = /assistant_button/.test(decodeURIComponent(r.request().url())) || /assistant_button/.test(r.request().postData() || '');
+    if (!isPlacement) return r.fallback();
     if (r.request().method() === 'PATCH') {
       const b = JSON.parse(r.request().postData() || '{}'); saved.push(b.assistant_button); placement = b.assistant_button;
       return r.fulfill({ status: 200, contentType: 'application/json', headers: H, body: JSON.stringify([{ profile_id: MEMBER }]) });

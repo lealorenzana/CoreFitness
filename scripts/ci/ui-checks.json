@@ -94,6 +94,10 @@
       "app": "member"
     },
     {
+      "file": "member-settings-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },

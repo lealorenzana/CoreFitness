@@ -240,7 +240,7 @@ async (page) => {
   };
 
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
-  await go('/member/settings');
+  await go('/member/settings?section=ai');
   out.push('the coach switch is offered when allowed: ' + (/Let the coach read my training/.test(await text()) ? 'yes' : 'MISSING'));
   await go('/member/chatbot');
   let t = await text();
@@ -293,7 +293,7 @@ async (page) => {
   out.push('the limit is explained: ' + (/used today's 30 messages/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach.png' });
   // Over the limit with consent on, the switch stays so consent can be withdrawn.
-  await go('/member/settings');
+  await go('/member/settings?section=ai');
   out.push('the coach switch stays at the limit while consent is on: ' + (/Let the coach read my training/.test(await text()) ? 'yes' : 'MISSING'));
   // Allowed in the database but the function is not deployed: the assistant is what it was before the coach.
   FN_DEPLOYED = false; COACH.allowed = true; COACH.reason = null; COACH.used_today = 3; COACH.consent = null;

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { toast } from '../components/ui/Toast';
@@ -17,7 +17,8 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, LineRow, NocButton, SectionHead } from '../components/ui/noc';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
-import { BellRinging, DownloadSimple, Phone, EnvelopeSimple, SignOut } from '@phosphor-icons/react';
+import { Bell, BellRinging, Buildings, DownloadSimple, Eye, HandTap, Key, Phone, EnvelopeSimple, SignOut, Sparkle, Translate, UserGear, type Icon } from '@phosphor-icons/react';
+import { saveAssistantPlacement, useAssistantPlacement, type AssistantPlacement } from '../lib/assistantPlacement';
 import { exportMemberData, downloadExport } from '../lib/memberDataExport';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
@@ -157,6 +158,9 @@ const dialable = (phone: string) => {
   return (t.startsWith('+') ? '+' : '') + t.replace(/[^0-9]/g, '');
 };
 
+type Section = 'notifications' | 'coaches' | 'ai' | 'signin' | 'data' | 'language' | 'account' | 'gym';
+const SECTIONS: Section[] = ['notifications', 'coaches', 'ai', 'signin', 'data', 'language', 'account', 'gym'];
+
 export default function Settings() {
   // The test alert is shown by this gym's app, so it carries this gym's name.
   const gymApp = useGymApp();
@@ -189,6 +193,22 @@ export default function Settings() {
   const [exporting, setExporting] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const support = pushSupport();
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('section');
+  const section: Section | null = SECTIONS.includes(asked as Section) ? (asked as Section) : null;
+  // A step of its own, so Back returns to the list.
+  const openSection = (id: Section) => setParams({ section: id });
+  const placement = useAssistantPlacement();
+  const [placementError, setPlacementError] = useState<string | null>(null);
+  const choosePlacement = async (next: AssistantPlacement) => {
+    if (next === placement) return;
+    setPlacementError(null);
+    try {
+      await saveAssistantPlacement(next);
+    } catch (err) {
+      setPlacementError(err instanceof Error ? err.message : 'Your choice could not be saved.');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -359,199 +379,293 @@ export default function Settings() {
     ['Version', APP_VERSION],
   ].filter((r): r is [string, string] => Boolean(r[1]));
 
+  // ── The list (redesign, 2026-10-26): each section is one row saying its state, and opens on
+  // its own (`?section=`, a step Back undoes) with exactly the switches and words it had. ──
+  const sharedCount = SHARE_ROWS.filter((r) => share[r.key]).length;
+  const kindsOn = categoryRows.filter((r) => prefs[r.key]).length;
+  const titles: Record<Section, string> = {
+    notifications: 'Notifications', coaches: 'What your trainer sees', ai: 'AI coach', signin: 'Sign-in',
+    data: 'Your data', language: 'Language', account: 'Account & app', gym: gym?.gym_name ?? 'Your gym',
+  };
+  const listRows: { id: Section; icon: Icon; tone?: 'mine' | 'act' | 'info'; meta: string }[] = [
+    { id: 'notifications', icon: Bell, tone: 'mine', meta: `${unavailableReason ? 'Push not available here' : pushOn ? 'Push on' : 'Push off'} · ${kindsOn} of ${categoryRows.length} kinds` },
+    { id: 'coaches', icon: Eye, tone: 'mine', meta: `${sharedCount} of ${SHARE_ROWS.length} shared${coaches ? ` · ${coaches.length} ${coaches.length === 1 ? 'coach' : 'coaches'}` : ''}` },
+    ...(coachOn !== null ? [{ id: 'ai' as Section, icon: Sparkle, tone: 'mine' as const, meta: coachOn ? 'Can read your training' : 'Cannot read your training' }] : []),
+    { id: 'signin', icon: Key, meta: 'How you sign in, and linking Google' },
+    { id: 'language', icon: Translate, meta: lang === 'fil' ? 'Filipino' : 'English' },
+    { id: 'data', icon: DownloadSimple, meta: 'Download everything the gym holds' },
+    { id: 'account', icon: UserGear, meta: 'Interests, email, password, help and legal' },
+    { id: 'gym', icon: Buildings, meta: [hours ? `Open ${hours}` : null, gym?.phone || gym?.email ? 'call or email' : null].filter(Boolean).join(' · ') || 'Hours and contact' },
+  ];
+
+  if (section) {
+    return (
+      <Page>
+        <PageTitle back fallback="/member/settings" title={t(titles[section])} />
+        {section === 'notifications' && (
+          <>
+            {/* Notifications — every switch here does something observable. */}
+            <section>
+              <SectionHead title={t('Notifications')} />
+              <div style={{ marginTop: 2 }}>
+                <SwitchRow
+                  label="Push notifications"
+                  // Says what is actually true of THIS device, rather than implying a
+                  // setting that follows the member everywhere.
+                  description={unavailableReason ?? (busy === 'push' ? 'Working…' : 'On this device')}
+                  on={pushOn}
+                  busy={busy === 'push'}
+                  disabled={unavailableReason !== null || busy === 'push'}
+                  onToggle={togglePush}
+                />
+                <SwitchRow
+                  label="Sound"
+                  description="A chime when something arrives in the app"
+                  on={prefs.soundEnabled}
+                  busy={busy === 'soundEnabled'}
+                  disabled={busy === 'soundEnabled'}
+                  onToggle={() => togglePref('soundEnabled')}
+                />
+                {categoryRows.map((row, i) => (
+                  <SwitchRow
+                    key={row.key}
+                    label={row.label}
+                    description={row.description}
+                    on={Boolean(prefs[row.key])}
+                    busy={busy === row.key}
+                    disabled={busy === row.key}
+                    onToggle={() => togglePref(row.key)}
+                    last={i === categoryRows.length - 1}
+                  />
+                ))}
+              </div>
+              <Footnote>
+                Muting a category stops the alert, not the record — everything still appears in Updates.
+                Coach notes, reminders, reward and renewal replies are always kept in Updates.
+              </Footnote>
+              <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} icon={<BellRinging size={16} />}
+                onClick={() => void testAlert()}>
+                Send a test alert to this device
+              </NocButton>
+            </section>
+          </>
+        )}
+        {section === 'coaches' && (
+          <>
+            {/* What your trainer sees.
+                Enforced by RLS (migration 0032), not by hiding a panel: switching one
+                off removes those rows from every trainer's queries. The wording names
+                trainers specifically, because gym staff are deliberately not gated and
+                a switch implying otherwise would be the same lie as the six dead ones
+                this page used to carry. */}
+            <section>
+              <SectionHead title={t('What your trainer sees')} />
+              <div style={{ marginTop: 2 }}>
+                {SHARE_ROWS.map((row, i) => (
+                  <SwitchRow
+                    key={row.key}
+                    label={row.label}
+                    description={row.description}
+                    on={share[row.key]}
+                    busy={busy === row.key}
+                    disabled={busy === row.key}
+                    onToggle={() => toggleShare(row.key)}
+                    last={i === SHARE_ROWS.length - 1}
+                  />
+                ))}
+              </div>
+              {/* Named, so "my trainer" is somebody specific. A trainer sees only
+                  their own trainees (0082) — the coaches you have trained with. */}
+              {coaches && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+                    {coaches.length === 0 ? 'No coach has trained you yet' : 'Coaches these switches apply to'}
+                  </p>
+                  {coaches.length > 0 && (
+                    <div className="flex flex-wrap" style={{ gap: 10, marginTop: 8 }}>
+                      {coaches.map((c) => (
+                        <span key={c.trainer.id} className="inline-flex items-center" style={{ gap: 6, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                          <Avatar name={c.name} photoUrl={c.trainer.photo_url} size={24} /> {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Footnote>
+                Your name, membership and gym check-ins are always visible to gym staff — that is how the
+                front desk runs. Your training plan is visible to your coaches too, so they can plan around it.
+                These switches cover the personal logs you keep in Progress.
+              </Footnote>
+            </section>
+          </>
+        )}
+        {section === 'ai' && (
+          <>
+            {coachOn !== null && (
+              <section>
+                <SectionHead title={t('AI coach')} />
+                <SwitchRow
+                  label="Let the coach read my training"
+                  description="Your first name, goals, experience level, routines, weekly plan and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
+                  on={coachOn}
+                  busy={busy === 'coach'}
+                  disabled={busy === 'coach'}
+                  onToggle={() => void toggleCoach()}
+                  last
+                />
+              </section>
+            )}
+          </>
+        )}
+        {section === 'signin' && <SignInMethods returnPath="/member/settings?section=signin" />}
+        {section === 'data' && (
+          <>
+            {/* ── Your data (RA 10173) ── */}
+            <section>
+              <SectionHead title={t('Your data')} />
+              <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
+                Download a copy of everything the gym holds about you — membership, payments, visits, bookings,
+                workouts, goals, points and notes — as one file. The front desk can give you the same file.
+              </p>
+              <NocButton variant="structure" className="w-full" style={{ marginTop: 12 }} disabled={exporting}
+                icon={<DownloadSimple size={16} />} onClick={() => void downloadMyData()}>
+                {exporting ? 'Preparing…' : 'Download my data'}
+              </NocButton>
+              <Footnote>
+                Something wrong? Most details you can fix yourself in Edit profile; for the rest, ask at the desk.
+              </Footnote>
+            </section>
+          </>
+        )}
+        {section === 'language' && (
+          <>
+            <section>
+              <SectionHead title={t('Language')} />
+              {/* English or Filipino for the main screens (lib/i18n.ts, 0095). Saved
+                  to the member's row, so it follows them to a new phone. */}
+              <div className="flex" style={{ gap: 8, marginTop: 10 }}>
+                {([['en', 'English'], ['fil', 'Filipino']] as [Lang, string][]).map(([code, name]) => (
+                  <Chip key={code} label={name} on={lang === code} onClick={() => void chooseLanguage(code)} />
+                ))}
+              </div>
+              <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                {lang === 'fil'
+                  ? 'Naka-Filipino ang mga pangunahing screen. Nasa English pa ang ibang bahagi.'
+                  : 'Filipino covers the main screens — navigation, check-in and Settings. The rest stays in English for now.'}
+              </p>
+            </section>
+          </>
+        )}
+        {section === 'account' && (
+          <>
+            <section>
+              <SectionHead title={t('Account & app')} />
+              <div style={{ marginTop: 2 }}>
+                {links.map((l) => (
+                  <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
+                    onClick={() => navigate(l.to)} />
+                ))}
+                <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
+                  style={{ gap: 10, padding: '13px 0', fontSize: 14.5, color: 'var(--color-text-secondary)' }}>
+                  <SignOut size={17} aria-hidden /> {t('Log out')}
+                </button>
+              </div>
+            </section>
+          </>
+        )}
+        {section === 'gym' && (
+          <>
+            <section>
+              <SectionHead title={t('About')} meta="Core Fitness member app" />
+              <div style={{ marginTop: 2 }}>
+                {about.map(([k, v]) => (
+                  <LineRow key={k} gutter={k} gutterWidth={72} title={v} />
+                ))}
+              </div>
+              {/* The gym's own contact details, from gym_settings — tap to call or write. */}
+              {(gym?.phone || gym?.email) && (
+                <div className="flex" style={{ gap: 9, marginTop: 12 }}>
+                  {gym?.phone && (
+                    <a href={`tel:${dialable(gym.phone)}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}
+                      onClick={() => {
+                        // A computer or a browser with nothing to dial with ignores a
+                        // tel: link silently, which reads as a broken button. The
+                        // number goes on the clipboard and on screen either way.
+                        void navigator.clipboard?.writeText(gym.phone ?? '').catch(() => undefined);
+                        toast.info(`Calling ${gym.phone} — the number is copied too.`);
+                      }}>
+                      <Phone size={15} aria-hidden /> Call the gym
+                    </a>
+                  )}
+                  {gym?.email && (
+                    <a href={`mailto:${gym.email}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}>
+                      <EnvelopeSimple size={15} aria-hidden /> Email
+                    </a>
+                  )}
+                </div>
+              )}
+              {gym?.phone && (
+                <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                  {gym.phone}{gym.email ? ` · ${gym.email}` : ''}
+                </p>
+              )}
+            </section>
+          </>
+        )}
+        <Modal
+          isOpen={confirmLogout}
+          onClose={() => setConfirmLogout(false)}
+          title="Log out"
+          subtitle="You will need your email and password to get back in."
+          confirmLabel="Log out"
+          cancelLabel="Stay signed in"
+          onConfirm={async () => { await logout(); navigate('/'); }}
+        >
+          <span />
+        </Modal>
+      </Page>
+    );
+  }
+
   return (
     <Page>
       <PageTitle back fallback="/member/profile" title={t('Settings')} subtitle={t('Alerts, privacy and your account')} />
 
-      {/* Notifications — every switch here does something observable. */}
-      <section>
-        <SectionHead title={t('Notifications')} />
-        <div style={{ marginTop: 2 }}>
-          <SwitchRow
-            label="Push notifications"
-            // Says what is actually true of THIS device, rather than implying a
-            // setting that follows the member everywhere.
-            description={unavailableReason ?? (busy === 'push' ? 'Working…' : 'On this device')}
-            on={pushOn}
-            busy={busy === 'push'}
-            disabled={unavailableReason !== null || busy === 'push'}
-            onToggle={togglePush}
-          />
-          <SwitchRow
-            label="Sound"
-            description="A chime when something arrives in the app"
-            on={prefs.soundEnabled}
-            busy={busy === 'soundEnabled'}
-            disabled={busy === 'soundEnabled'}
-            onToggle={() => togglePref('soundEnabled')}
-          />
-          {categoryRows.map((row, i) => (
-            <SwitchRow
-              key={row.key}
-              label={row.label}
-              description={row.description}
-              on={Boolean(prefs[row.key])}
-              busy={busy === row.key}
-              disabled={busy === row.key}
-              onToggle={() => togglePref(row.key)}
-              last={i === categoryRows.length - 1}
-            />
-          ))}
+      <section aria-label={t('Settings')} data-settings-list>
+        {listRows.map((r) => (
+          <LineRow key={r.id} icon={r.icon} tone={r.tone ?? 'info'} title={t(titles[r.id])} meta={r.meta}
+            onClick={() => openSection(r.id)} />
+        ))}
+        {/* Where the assistant sits (0213) — the member's own choice, saved to their account. */}
+        <div className="flex items-center" style={{ gap: 12, padding: '13px 0', borderBottom: '1px solid var(--color-separator)' }} data-assistant-setting>
+          <span aria-hidden className="flex-none grid place-items-center" style={{
+            width: 38, height: 38, borderRadius: 12, background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-hairline)', color: 'var(--color-text-secondary)',
+          }}><HandTap size={18} /></span>
+          <span className="flex-1 min-w-0">
+            <span className="block" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t('Assistant button')}</span>
+            <span className="block" style={{ fontSize: 12, marginTop: 2, color: placementError ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
+              {placementError ?? t('Beside the bell, or a floating bubble')}
+            </span>
+          </span>
+          <span role="radiogroup" aria-label={t('Assistant button')} className="flex flex-none" style={{
+            border: '1px solid var(--color-hairline)', borderRadius: 10, overflow: 'hidden',
+          }}>
+            {(['header', 'floating'] as AssistantPlacement[]).map((p) => (
+              <button key={p} role="radio" aria-checked={placement === p} onClick={() => void choosePlacement(p)}
+                style={{ padding: '7px 11px', fontSize: 12.5, fontWeight: placement === p ? 600 : 400,
+                  background: placement === p ? 'var(--color-primary-light)' : 'transparent',
+                  color: placement === p ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
+                {p === 'header' ? t('Header') : t('Floating')}
+              </button>
+            ))}
+          </span>
         </div>
-        <Footnote>
-          Muting a category stops the alert, not the record — everything still appears in Updates.
-          Coach notes, reminders, reward and renewal replies are always kept in Updates.
-        </Footnote>
-        <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} icon={<BellRinging size={16} />}
-          onClick={() => void testAlert()}>
-          Send a test alert to this device
-        </NocButton>
-      </section>
-
-      {/* What your trainer sees.
-          Enforced by RLS (migration 0032), not by hiding a panel: switching one
-          off removes those rows from every trainer's queries. The wording names
-          trainers specifically, because gym staff are deliberately not gated and
-          a switch implying otherwise would be the same lie as the six dead ones
-          this page used to carry. */}
-      <section>
-        <SectionHead title={t('What your trainer sees')} />
-        <div style={{ marginTop: 2 }}>
-          {SHARE_ROWS.map((row, i) => (
-            <SwitchRow
-              key={row.key}
-              label={row.label}
-              description={row.description}
-              on={share[row.key]}
-              busy={busy === row.key}
-              disabled={busy === row.key}
-              onToggle={() => toggleShare(row.key)}
-              last={i === SHARE_ROWS.length - 1}
-            />
-          ))}
-        </div>
-        {/* Named, so "my trainer" is somebody specific. A trainer sees only
-            their own trainees (0082) — the coaches you have trained with. */}
-        {coaches && (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
-              {coaches.length === 0 ? 'No coach has trained you yet' : 'Coaches these switches apply to'}
-            </p>
-            {coaches.length > 0 && (
-              <div className="flex flex-wrap" style={{ gap: 10, marginTop: 8 }}>
-                {coaches.map((c) => (
-                  <span key={c.trainer.id} className="inline-flex items-center" style={{ gap: 6, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                    <Avatar name={c.name} photoUrl={c.trainer.photo_url} size={24} /> {c.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <Footnote>
-          Your name, membership and gym check-ins are always visible to gym staff — that is how the
-          front desk runs. Your training plan is visible to your coaches too, so they can plan around it.
-          These switches cover the personal logs you keep in Progress.
-        </Footnote>
-      </section>
-
-      {coachOn !== null && (
-        <section>
-          <SectionHead title={t('AI coach')} />
-          <SwitchRow
-            label="Let the coach read my training"
-            description="Your first name, goals, experience level, routines, weekly plan and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
-            on={coachOn}
-            busy={busy === 'coach'}
-            disabled={busy === 'coach'}
-            onToggle={() => void toggleCoach()}
-            last
-          />
-        </section>
-      )}
-
-      <SignInMethods returnPath="/member/settings" />
-
-      {/* ── Your data (RA 10173) ── */}
-      <section>
-        <SectionHead title={t('Your data')} />
-        <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-          Download a copy of everything the gym holds about you — membership, payments, visits, bookings,
-          workouts, goals, points and notes — as one file. The front desk can give you the same file.
-        </p>
-        <NocButton variant="structure" className="w-full" style={{ marginTop: 12 }} disabled={exporting}
-          icon={<DownloadSimple size={16} />} onClick={() => void downloadMyData()}>
-          {exporting ? 'Preparing…' : 'Download my data'}
-        </NocButton>
-        <Footnote>
-          Something wrong? Most details you can fix yourself in Edit profile; for the rest, ask at the desk.
-        </Footnote>
-      </section>
-
-      <section>
-        <SectionHead title={t('Language')} />
-        {/* English or Filipino for the main screens (lib/i18n.ts, 0095). Saved
-            to the member's row, so it follows them to a new phone. */}
-        <div className="flex" style={{ gap: 8, marginTop: 10 }}>
-          {([['en', 'English'], ['fil', 'Filipino']] as [Lang, string][]).map(([code, name]) => (
-            <Chip key={code} label={name} on={lang === code} onClick={() => void chooseLanguage(code)} />
-          ))}
-        </div>
-        <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-          {lang === 'fil'
-            ? 'Naka-Filipino ang mga pangunahing screen. Nasa English pa ang ibang bahagi.'
-            : 'Filipino covers the main screens — navigation, check-in and Settings. The rest stays in English for now.'}
-        </p>
-      </section>
-
-      <section>
-        <SectionHead title={t('Account & app')} />
-        <div style={{ marginTop: 2 }}>
-          {links.map((l) => (
-            <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
-              onClick={() => navigate(l.to)} />
-          ))}
-          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
-            style={{ gap: 10, padding: '13px 0', fontSize: 14.5, color: 'var(--color-text-secondary)' }}>
-            <SignOut size={17} aria-hidden /> {t('Log out')}
-          </button>
-        </div>
-      </section>
-
-      <section>
-        <SectionHead title={t('About')} meta="Core Fitness member app" />
-        <div style={{ marginTop: 2 }}>
-          {about.map(([k, v]) => (
-            <LineRow key={k} gutter={k} gutterWidth={72} title={v} />
-          ))}
-        </div>
-        {/* The gym's own contact details, from gym_settings — tap to call or write. */}
-        {(gym?.phone || gym?.email) && (
-          <div className="flex" style={{ gap: 9, marginTop: 12 }}>
-            {gym?.phone && (
-              <a href={`tel:${dialable(gym.phone)}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}
-                onClick={() => {
-                  // A computer or a browser with nothing to dial with ignores a
-                  // tel: link silently, which reads as a broken button. The
-                  // number goes on the clipboard and on screen either way.
-                  void navigator.clipboard?.writeText(gym.phone ?? '').catch(() => undefined);
-                  toast.info(`Calling ${gym.phone} — the number is copied too.`);
-                }}>
-                <Phone size={15} aria-hidden /> Call the gym
-              </a>
-            )}
-            {gym?.email && (
-              <a href={`mailto:${gym.email}`} className="flex-1 flex items-center justify-center noc-press" style={linkBtn}>
-                <EnvelopeSimple size={15} aria-hidden /> Email
-              </a>
-            )}
-          </div>
-        )}
-        {gym?.phone && (
-          <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
-            {gym.phone}{gym.email ? ` · ${gym.email}` : ''}
-          </p>
-        )}
+        <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
+          style={{ gap: 10, padding: '16px 0', fontSize: 14.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
+          <SignOut size={17} aria-hidden /> {t('Log out')}
+        </button>
       </section>
 
       <Modal
