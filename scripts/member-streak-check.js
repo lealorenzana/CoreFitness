@@ -255,7 +255,7 @@ async (page) => {
     new MutationObserver(() => {
       const t = document.body?.innerText ?? '';
       if (/Milestone reached/.test(t) && !window.__seen.includes('milestone')) window.__seen.push('milestone');
-      if (document.querySelector('.streak-orb--ignite') && !window.__seen.includes('ignite')) window.__seen.push('ignite');
+      if (document.querySelector('.streak-orb--ignite, [data-streak-line][data-ignite]') && !window.__seen.includes('ignite')) window.__seen.push('ignite');
     }).observe(document, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
   });
 
@@ -268,14 +268,18 @@ async (page) => {
   out.push('the hourglass when it needs every day left: ' + (/Ends tonight/.test(t) ? 'Ends tonight' : 'MISSING'));
   out.push('at risk says what to do: ' + (/Train today to keep your streak\./.test(t) ? 'train today' : 'MISSING'));
   out.push('this week against the target: ' + (/2 of 3 this week/.test(t) ? '2 of 3' : 'MISSING'));
-  out.push('the road to the next milestone: ' + (/8 to 12w/.test(t) ? '8 to 12' : 'MISSING'));
-  const segs = await page.locator('.streak-hero .streak-seg').count();
-  const on = await page.locator('.streak-hero .streak-seg--on').count();
-  const nextSeg = await page.locator('.streak-hero .streak-seg--next').count();
+  // Today carries the streak as one line in its strip (redesign, 2026-10-26); the orb, the weeks and
+  // the road are the sheet's — so the orb is checked there, and the road's numbers in the sheet below.
+  out.push('Today shows the streak as a line, not the big card: ' + ((await page.locator('[data-streak-line]').count()) === 1 && (await page.locator('.streak-hero').count()) === 0 ? 'yes' : 'MISSING'));
+  await hero.click();
+  await page.getByText('Your gym streak', { exact: true }).waitFor({ timeout: 5000 });
+  const segs = await page.locator('.streak-orb .streak-seg').count();
+  const on = await page.locator('.streak-orb .streak-seg--on').count();
+  const nextSeg = await page.locator('.streak-orb .streak-seg--next').count();
   out.push('the orb: one segment per target day, filled for each day, the next one lit: ' + (segs === 3 && on === 2 && nextSeg === 1 ? '3 / 2 / 1' : `MISSING ${segs}/${on}/${nextSeg}`));
   const centred = await page.evaluate(() => {
-    const o = document.querySelector('.streak-hero .streak-orb').getBoundingClientRect();
-    const f = document.querySelector('.streak-hero .streak-orb__flame svg').getBoundingClientRect();
+    const o = document.querySelector('.streak-orb').getBoundingClientRect();
+    const f = document.querySelector('.streak-orb__flame svg').getBoundingClientRect();
     return Math.abs((o.x + o.width / 2) - (f.x + f.width / 2)) < 3 && Math.abs((o.y + o.height / 2) - (f.y + f.height / 2)) < 4;
   });
   out.push('the flame sits in the middle of the ring: ' + (centred ? 'yes' : 'OFF CENTRE'));
@@ -284,9 +288,7 @@ async (page) => {
   out.push('…and the orb ignites: ' + ((await page.evaluate(() => window.__seen)).includes('ignite') ? 'yes' : 'MISSING'));
   await shot('streak-today');
 
-  // 2 - tap it: the streak's story.
-  await hero.click();
-  await page.getByText('Your gym streak', { exact: true }).waitFor({ timeout: 5000 });
+  // 2 - the streak's story (the sheet is open already).
   const sheetText = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   let st = await sheetText();
   out.push('the sheet: the flame large, the run and the tier: ' + (/weeks in a row · Flame/.test(st) && /Best 6 weeks/.test(st) ? 'yes' : 'MISSING'));
@@ -316,13 +318,13 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('saved: target and reminder sent: ' + (CALLS.set_streak_target?.p_target === 4 && CALLS.set_streak_target?.p_nudges === false ? '4, reminder off' : 'MISSING ' + JSON.stringify(CALLS.set_streak_target)));
   t = await text();
-  out.push('the orb follows: four segments: ' + ((await page.locator('.streak-hero .streak-seg').count()) === 4 && /2 of 4 this week/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the line follows: 2 of 4 this week: ' + (/2 of 4 this week/.test(t) ? 'yes' : 'MISSING'));
   void tokens;
 
   // 4 - no streak here (Progress switched off, or before 0151): nothing drawn.
   STREAK = null;
   await go('/member/home');
   t = await text();
-  out.push('no streak, no card: ' + (!/week streak|No streak yet/.test(t) && (await page.locator('.streak-hero').count()) === 0 ? 'nothing drawn' : 'MISSING'));
+  out.push('no streak, no line: ' + (!/week streak|No streak yet/.test(t) && (await page.locator('[data-streak-line]').count()) === 0 ? 'nothing drawn' : 'MISSING'));
   return out.join('\n');
 }

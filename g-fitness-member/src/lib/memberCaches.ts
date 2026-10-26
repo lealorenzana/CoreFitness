@@ -5,6 +5,8 @@ import { clearFeatureCache } from '../hooks/useFeatures';
 import { clearGymApp } from './gymApp';
 import { clearHere } from './here';
 import { clearAchievementCache } from './api/achievements';
+import { clearAssistantPlacement } from './assistantPlacement';
+import { clearCheckedInToday } from '../hooks/useCheckedInToday';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -58,4 +60,7 @@ export function clearMemberCaches(): void {
   // had no clearer at all — not even on logout, so it also survived one person
   // signing out and another signing in on the same phone.
   clearAchievementCache();
+  // Where this member keeps the assistant (0213) — theirs, not the next person's.
+  clearAssistantPlacement();
+  clearCheckedInToday();
 }

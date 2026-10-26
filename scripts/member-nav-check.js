@@ -257,20 +257,20 @@ async (page) => {
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
 
-  const pills = async () => page.evaluate(() => [...document.querySelectorAll('header button, [role="navigation"] button')]
-    .map((b) => b.innerText.trim()).filter(Boolean));
   const strip = async (hub) => page.evaluate((h) => [...document.querySelectorAll(`[data-hub="${h}"] [role="tab"]`)]
     .map((b) => b.innerText.trim()), hub);
-  const tap = async (name) => { await page.getByRole('button', { name, exact: true }).first().click(); await page.waitForTimeout(1200); };
 
+  // Train is Workout · Classes · Coach since the redesign (2026-10-26); the sections the rail of pills
+  // led to are Workout's rows (Progress, Challenges, Routines…) and Coach's (My bookings, Coaches, Rooms).
   await go('/member/book-class');
   let t = await text();
-  const rail = await pills();
-  out.push('Train has four sections: ' + (['Workouts', 'Progress', 'Coaching', 'Challenges'].every((x) => rail.includes(x))
-    && !rail.includes('Coach notes') && !rail.includes('Goals') && !rail.includes('Squad') ? 'yes' : 'MISSING ' + JSON.stringify(rail)));
+  const trainTabs = await page.getByRole('tablist').first().getByRole('tab').allInnerTexts();
+  out.push('Train has Workout, Classes and Coach: ' + (JSON.stringify(trainTabs.map((x) => x.trim())) === JSON.stringify(['Workout', 'Classes', 'Coach'])
+    && ['Routines', 'Progress', 'Challenges'].every((x) => t.includes(x)) && !/Coach notes|Goals|Squad/.test(t) ? 'yes' : 'MISSING ' + JSON.stringify(trainTabs)));
   await shot('nav-train');
+  const row = async (name) => { await page.getByRole('button', { name: new RegExp('^' + name) }).first().click(); await page.waitForTimeout(1200); };
 
-  await tap('Progress');
+  await row('Progress');
   let tabs = await strip('progress');
   out.push('Progress tabs: ' + (JSON.stringify(tabs) === JSON.stringify(['Overview', 'Body', 'Targets', 'Photos', 'Achievements']) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   t = await text();
@@ -284,7 +284,7 @@ async (page) => {
   out.push('Achievements carries the same strip: ' + ((await strip('progress')).length === 5 && /\/member\/achievements$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   await page.getByRole('button', { name: 'Train' }).last().click();
   await page.waitForTimeout(1200);
-  await tap('Progress');
+  await row('Progress');
   out.push('the section reopens on the tab last used: ' + (/\/member\/achievements$/.test(page.url()) ? 'yes (Achievements)' : 'MISSING ' + page.url()));
 
   await go('/member/progress?tab=feedback');

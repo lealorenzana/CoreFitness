@@ -1,6 +1,6 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowsClockwise, Barbell, Bell, CalendarDots, ChalkboardTeacher, ChartLineUp, ClipboardText, GearSix, Gift, House, Receipt, Scales, Storefront, Trophy, User, UserCircle, Users } from '@phosphor-icons/react';
+import { Barbell, House, User } from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -52,7 +52,7 @@ export interface Tab {
 
 export const TABS: Tab[] = [
   { id: 'today', label: 'Today', path: '/member/home', icon: House, eyebrow: 'Your day' },
-  { id: 'train', label: 'Train', path: '/member/book-class', icon: Barbell, eyebrow: 'Classes and 1-on-1' },
+  { id: 'train', label: 'Train', path: '/member/book-class', icon: Barbell, eyebrow: 'Train' },
   { id: 'you', label: 'You', path: '/member/membership', icon: User, eyebrow: 'Membership and points' },
 ];
 
@@ -148,37 +148,6 @@ export interface Destination {
   hub?: HubId;
 }
 
-/**
- * The rail under each tab's header: that tab's own screens, one tap away.
- *
- * Progress's five tabs are addressed by `?tab=`, which ProgressHub already
- * reads — so "Goals" lands on Goals rather than on whichever tab was open last.
- */
-export const RAILS: Record<TabId, Destination[]> = {
-  today: [
-    // One Inbox (2026-10-10): notifications for you, and what the gym posts for everyone.
-    { label: 'Inbox', path: '/member/notifications', icon: Bell, hub: 'inbox' },
-    { label: 'Log a reading', path: '/member/progress?tab=body', icon: Scales , module: 'progress' },
-  ],
-  // Four sections instead of fifteen pills (2026-10-05): each opens a HUBS
-  // section whose own tabs hold the screens that used to be pills of their own.
-  train: [
-    { label: 'Workouts', path: '/member/workouts/today', icon: ClipboardText, hub: 'plan' },
-    { label: 'Progress', path: '/member/progress', icon: ChartLineUp, hub: 'progress' },
-    { label: 'Coaching', path: '/member/booking-history', icon: ChalkboardTeacher, hub: 'coaching' },
-    { label: 'Challenges', path: '/member/challenges', icon: Trophy, hub: 'compete' },
-  ],
-  you: [
-    { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise },
-    { label: 'Payments', path: '/member/payments', icon: Receipt },
-    { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots },
-    { label: 'Spend points', path: '/member/rewards', icon: Gift , module: 'points' },
-    { label: 'Shop', path: '/member/shop', icon: Storefront, module: 'shop' },
-    { label: 'Invite a friend', path: '/member/refer', icon: Users , module: 'referrals' },
-    { label: 'Edit profile', path: '/member/profile/edit', icon: UserCircle },
-    { label: 'Settings', path: '/member/settings', icon: GearSix },
-  ],
-};
 
 export type HubId = 'plan' | 'progress' | 'coaching' | 'compete' | 'inbox';
 

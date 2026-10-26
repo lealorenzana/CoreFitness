@@ -306,17 +306,27 @@ function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): st
   return `${spec} · ${order.filter((d) => days.includes(d)).map((d) => WEEKDAY_SHORT[d]).join(', ')}`;
 }
 
-export default function BookClass() {
+/**
+ * `mode` (redesign, 2026-10-26): Train's own tabs choose what this page books —
+ * `classes` (group classes, with the gym's events under them) or `pt` (1-on-1)
+ * — and this page's own tab row is not drawn, so Train has one row of tabs.
+ * Without a mode it is the page it always was.
+ */
+export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
   const navigate = useNavigate();
   const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
-  const [chosenFilter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
+  const [urlFilter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
+  const chosenFilter: Filter = mode ?? urlFilter;
   /** The gym's booking choices (0180); 'coach' for both until read. */
   const [modes, setModes] = useState<BookingModes>({ classMode: 'coach', ptMode: 'coach' });
   useEffect(() => { void getBookingModes().then(setModes); }, []);
   /** A kind the gym switched off is not a tab, and an old link to it lands on the next one. */
   const offered: Filter[] = (['classes', 'pt', 'events'] as Filter[])
     .filter((f) => !(f === 'classes' && modes.classMode === 'off') && !(f === 'pt' && modes.ptMode === 'off'));
-  const filter: Filter = offered.includes(chosenFilter) ? chosenFilter : offered[0];
+  const filter: Filter = offered.includes(chosenFilter) ? chosenFilter
+    : mode === 'classes' ? 'events' : offered[0];
+  /** Events sit under the classes on Train's Classes tab, rather than behind a tab of their own. */
+  const showEvents = filter === 'events' || (mode === 'classes' && filter === 'classes');
   const classInstant = modes.classMode === 'instant';
   const ptInstant = modes.ptMode === 'instant';
   const [weekOffset, setWeekOffset] = useState<0 | 7>(0);
@@ -547,9 +557,7 @@ export default function BookClass() {
     return src.filter((iso) => { const t = new Date(iso).getTime(); return t >= from && t < to; }).length;
   }, [filter, slots, visibleClasses]);
 
-  useSetTabHeader('train',
-    weekOffset === 7 ? 'Next week' : undefined,
-    weekOffset === 7 ? weekRangeLabel(start) : undefined);
+  useSetTabHeader('train', undefined, weekOffset === 7 ? `Next week · ${weekRangeLabel(start)}` : undefined);
 
   // ── Why the member can't book, in the order they'd hit it (0017) ──
   const quotaReached =
@@ -584,7 +592,7 @@ export default function BookClass() {
 
   return (
     <Page>
-      <TextTabs<Filter>
+      {!mode && <TextTabs<Filter>
         label="What to book"
         tabs={[
           { id: 'classes' as Filter, label: 'Group classes', icon: <UsersThree size={15} weight="bold" /> },
@@ -593,7 +601,7 @@ export default function BookClass() {
         ].filter((t) => offered.includes(t.id))}
         active={filter}
         onChange={changeFilter}
-      />
+      />}
 
       {loading ? <SkeletonList /> : (
         <>
@@ -806,8 +814,8 @@ export default function BookClass() {
           )}
 
           {/* ── Events ── */}
-          {filter === 'events' && (
-            <section>
+          {showEvents && (
+            <section data-train-events>
               <SectionHead title="Coming up" meta={events == null ? undefined : `${upcomingEvents.length} ${upcomingEvents.length === 1 ? 'event' : 'events'}`} />
               {events == null ? (
                 <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DotsNine, QrCode } from '@phosphor-icons/react';
 import CheckInSheet from '../ui/CheckInSheet';
@@ -8,49 +8,8 @@ import { TABS, tabForPath, tabPath } from './memberNav';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
 import { useT } from '../../lib/i18n';
-import { useLiveData } from '../../hooks/useLiveData';
-import { getCurrentMemberId } from '../../services/bookingService';
-import { checkedInSince } from '../../lib/api/attendance';
+import { useCheckedInToday } from '../../hooks/useCheckedInToday';
 
-/** Local midnight, as an instant. See `checkedInSince`. */
-function startOfToday(): Date {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
-}
-
-/**
- * Has this member checked in today?
- *
- * One cheap yes/no for the bar, refreshed the way every live screen here is —
- * on return to the app, on focus, on a slow poll — and once more whenever the
- * sheet closes, because closing the sheet is the moment the desk may just have
- * scanned the code.
- *
- * A failed read leaves the last known answer standing. The block reads "Check
- * in" until proven otherwise, which is the safe default: the sheet itself
- * refuses to show a live code to someone already checked in, so a stale
- * "Check in" costs one tap, where a false "Checked in" would hide the code from
- * a member standing at the desk.
- */
-function useCheckedInToday(): [boolean, () => void] {
-  const [checkedIn, setCheckedIn] = useState(false);
-
-  const refresh = useCallback(() => {
-    void (async () => {
-      try {
-        const id = await getCurrentMemberId();
-        if (!id) return;
-        setCheckedIn(await checkedInSince(id, startOfToday()));
-      } catch {
-        // Keep the last answer; the next tick covers it.
-      }
-    })();
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
-  useLiveData(refresh, { intervalMs: 60_000 });
-  return [checkedIn, refresh];
-}
 
 /**
  * The bar: Today · Train · You · More, a hairline, and the check-in block.
@@ -77,7 +36,8 @@ export default function TabBar() {
   const more = useHistorySheet('more');
   const sheetOpen = checkInSheet.open;
   const menuOpen = more.open;
-  const [checkedIn, refreshCheckIn] = useCheckedInToday();
+  const [known, refreshCheckIn] = useCheckedInToday();
+  const checkedIn = known === true;
   // However the code sheet closes — its button or Back — re-ask whether today counts.
   const wasOpen = useRef(sheetOpen);
   useEffect(() => {

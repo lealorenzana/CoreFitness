@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
-import { RAILS, hubEntry, visibleDestinations, type Tab } from './memberNav';
-import { useGymApp } from '../../hooks/useGymApp';
+import { type Tab } from './memberNav';
+import AssistantButton from './AssistantButton';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
-import { weekRangeLabel } from '../../utils/dates';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
 import { dateLocale, tr, useLanguage, useT, type Lang } from '../../lib/i18n';
 
@@ -24,10 +23,9 @@ function titleFor(tab: Tab, now: Date, o: HeaderOverride | undefined, lang: Lang
         now.toLocaleDateString(lang === 'fil' ? 'fil-PH' : 'en-GB', { day: 'numeric', month: 'long' }),
       ];
     case 'train':
-      // The Train matrix starts today and runs seven days, so the title names
-      // exactly the days the matrix shows.
-      // The page overrides both lines when the matrix moves to next week.
-      return [o?.title ?? tr('This week', lang), o?.sub ?? weekRangeLabel(now)];
+      // Train holds every training feature now (redesign, 2026-10-26); the
+      // booking week says which week it shows in the second line when it moves.
+      return [o?.title ?? tr('Your training', lang), o?.sub ?? ''];
     case 'you':
       // The plan name arrives from the page. Until it does the line is empty
       // rather than a placeholder — a missed lookup renders nothing, never a
@@ -75,9 +73,10 @@ export function IconButton({
  *   Today     — a top row: your photo, a greeting and first name (to Profile) on
  *               the left, the bell and Settings on the right; then the title
  *   Train/You — the title with the bell and Settings beside it
- *   then the eyebrow, a fading rule, and the rail of that tab's own screens
+ *   Train/You carry their eyebrow above the title. No rail of chips (2026-10-26).
  *
- * The assistant is not here: it is the floating chat bubble again (Layout).
+ * The assistant sits here, left of the bell, unless the member chose the
+ * floating bubble (0213, `AssistantButton`).
  * Top padding is real room under the status bar; the title used to start 6px
  * below the safe area and read as jammed against the top edge.
  *
@@ -85,9 +84,6 @@ export function IconButton({
  * Only on the three roots: a pushed screen has its own "Back" header.
  */
 export default function TabHeader({ tab }: { tab: Tab }) {
-  // What this gym runs (0110). Null until the read lands, which every
-  // consumer reads as "show everything" — never as "hide everything".
-  const gymApp = useGymApp();
   const navigate = useNavigate();
   const override = useTabHeaderOverride(tab.id);
   const now = new Date();
@@ -101,6 +97,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
 
   const actions = (
     <div className="flex items-center flex-none" style={{ gap: 12 }}>
+      <AssistantButton />
       <Notifications />
       <IconButton label="Settings" onClick={() => navigate('/member/settings')}>
         <GearSix size={17} />
@@ -130,6 +127,8 @@ export default function TabHeader({ tab }: { tab: Tab }) {
           header is one block rather than an empty row above it. */}
       <div className="flex items-start justify-between" style={{ gap: 12 }}>
         <h1 key={tab.id} className="noc-rise min-w-0">
+          {/* Train and You name themselves above the title; Today's title is the date. */}
+          {!isToday && <span className="eyebrow block" style={{ marginBottom: 6 }}>{t(tab.eyebrow)}</span>}
           <span className="screen-title block">{line1}</span>
           {/* A non-breaking space holds the line's height while You's plan name
               loads, so the rail does not jump up and then down. */}
@@ -137,44 +136,13 @@ export default function TabHeader({ tab }: { tab: Tab }) {
             {line2 || ' '}
           </span>
         </h1>
-        {!isToday && <div style={{ paddingTop: 4 }}>{actions}</div>}
+        {!isToday && <div style={{ paddingTop: 22 }}>{actions}</div>}
       </div>
 
-      <p className="eyebrow" style={{ marginTop: 12 }}>{t(tab.eyebrow)}</p>
-
-      <div className="rule" style={{ marginTop: 12 }} />
-
-      <nav aria-label={`${tab.label} screens`} className="rail" style={{
-        margin: '0 calc(var(--gutter) * -1)',
-        padding: '12px var(--gutter) 12px',
-      }}>
-        {/* Plain pills with an icon (member's request, 2026-09-17): no colour
-            treatment — the gradient ring, then amber, were both tried and
-            removed. The icon is the only addition over the original. */}
-        {visibleDestinations(RAILS[tab.id], gymApp).map((d) => {
-          const RailIcon = d.icon;
-          return (
-            <button
-              key={d.path}
-              onClick={() => navigate(d.hub ? hubEntry(d.hub, gymApp) : d.path)}
-              className="flex-none whitespace-nowrap noc-press inline-flex items-center"
-              style={{
-                gap: 7,
-                padding: '8px 13px 8px 11px',
-                borderRadius: 'var(--radius-pill)',
-                border: '1px solid var(--color-hairline)',
-                color: 'var(--color-text-secondary)',
-                fontSize: 12.5,
-              }}
-            >
-              {RailIcon && (
-                <RailIcon aria-hidden size={15} style={{ color: 'var(--color-text-secondary)' }} />
-              )}
-              {t(d.label)}
-            </button>
-          );
-        })}
-      </nav>
+      {/* Room under the title, where the rail of chips used to be (redesign,
+          2026-10-26): one row of navigation per page at most, and the tab bar
+          and More already lead everywhere the rail did. */}
+      <div style={{ height: 14 }} />
     </header>
   );
 }

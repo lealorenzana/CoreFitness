@@ -70,6 +70,18 @@
       "app": "member"
     },
     {
+      "file": "member-shared-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-today-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-train-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },

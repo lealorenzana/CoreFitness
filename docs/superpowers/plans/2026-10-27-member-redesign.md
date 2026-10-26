@@ -64,8 +64,8 @@
 **Interfaces:**
 - Produces:
   - `LineRow` new optional props `icon?: Icon` (Phosphor component) and `tone?: 'mine' | 'act' | 'info'` (default `'info'`); renders a 38px tile before the text. Existing callers unchanged.
-  - `type AssistantPlacement = 'header' | 'floating'`; `useAssistantPlacement(): { placement: AssistantPlacement; save(p: AssistantPlacement): Promise<void>; failed: boolean }` — reads `member_profiles.assistant_button` once per session (memory cache, cleared by `clearMemberCaches()`), any read error → `'header'`, `save` uses `assertWrote`.
-  - `useAssistantAllowed(): boolean` — the existing `ChatheadGate` conditions (gym module `assistant`, plan `ai_model`, failed check shows), extracted so the header button and the bubble share them.
+  - `lib/assistantPlacement.ts`: `type AssistantPlacement = 'header' | 'floating'`; `useAssistantPlacement(): AssistantPlacement` (reads `member_profiles.assistant_button` once per session, memory only, any read error → `'header'`); `saveAssistantPlacement(next): Promise<void>` (throws `Your choice could not be saved.`; `assertWrote`); `clearAssistantPlacement()` in `clearMemberCaches()`.
+  - `hooks/useAssistantAllowed.ts` `useAssistantAllowed(): boolean` — the existing `ChatheadGate` conditions (gym module `assistant`, plan `ai_model`, failed check shows), extracted so the header button and the bubble share them.
   - `<AssistantButton />` — 36px violet sparkle icon button → `/member/chatbot`, renders only when allowed and placement is `header`.
 - [ ] **Step 1: Write `scripts/member-shared-check.js`** (fixture head from `member-more-back-check.js`, lines 1–117). Assertions:
   - on `/member/home`, `/member/book-class`, `/member/membership` the header has a button named `Ask the assistant` and no element `[data-floating-chathead]`;
@@ -86,7 +86,7 @@
 - Create: `g-fitness-member/src/components/home/TodayStrip.tsx`, `scripts/member-today-check.js`
 
 **Interfaces:**
-- Produces: `<TodayStrip />` — plan chip, days left, points (gym `pointsName`), seven day marks (done / today / planned) and one streak line; whole strip is a button to `/member/progress`.
+- Produces: `<TodayStrip />` — the membership line, visits this month, the seven day marks (done / today / planned, tapping opens the attendance calendar as before) and the compact streak line (`<StreakStrip compact />`, opening the same streak sheet). Points stay on You: Today has no points read, and adding one is not this task. `hooks/useCheckedInToday.ts` — one shared `[boolean | null, refresh]` store for the bar and the Now row.
 - [ ] **Step 1: Write `scripts/member-today-check.js`** (fixture of `member-door-check.js` + its session lines). Assertions:
   - exactly one `[data-today-strip]`, containing the plan name, `days left`, the points figure and 7 day marks;
   - none of the old month card, week strip or streak card selectors remain;

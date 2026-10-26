@@ -7,8 +7,8 @@ import TabHeader from './TabHeader';
 import { tabRootFor } from './memberNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
 import FloatingChathead from '../ui/FloatingChathead';
-import { useFeatures } from '../../hooks/useFeatures';
-import { isEnabled } from '../../lib/api/planFeatures';
+import { useAssistantAllowed } from '../../hooks/useAssistantAllowed';
+import { useAssistantPlacement } from '../../lib/assistantPlacement';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
@@ -17,8 +17,6 @@ import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
 import GymPaused from '../ui/GymPaused';
 import ModuleGate from '../ModuleGate';
-import { useGymApp } from '../../hooks/useGymApp';
-import { moduleOn } from '../../lib/gymApp';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { useEffect } from 'react';
 
@@ -39,24 +37,17 @@ import { useEffect } from 'react';
  * plan exactly as before (see `ChatheadGate`).
  */
 /**
- * The assistant chathead, shown only for plans that include it (`ai_model`,
- * 0049/0059), and not on the full assistant screen it would open.
- *
- * A failed check deliberately falls through to *showing* it: a lock that appears
- * because the network dropped is the same lie as an empty list reading "nothing
- * here", and `FeatureLock` treats a failed check the same way. The route itself
- * still locks and explains for a plan without it.
+ * The floating assistant bubble — only when the member chose it (0213; the
+ * default is the header button, `AssistantButton`), only where the assistant is
+ * allowed (`useAssistantAllowed`), and not on the screens that have their own
+ * control in that corner: the assistant itself, a chat with a coach (0131).
  */
 function ChatheadGate({ pathname }: { pathname: string }) {
-  const { features, loading, error } = useFeatures();
-  const app = useGymApp();
-  // The gym's own switch first (0110): a gym that turned the assistant off
-  // must not have it floating on every screen, whatever a member's plan says.
-  if (!moduleOn(app, 'assistant')) return null;
+  const allowed = useAssistantAllowed();
+  const placement = useAssistantPlacement();
+  if (!allowed || placement !== 'floating') return null;
   if (pathname.startsWith('/member/chatbot')) return null;
-  // A chat with a coach (0131) has its own Send button in that corner.
   if (pathname.startsWith('/member/messages/')) return null;
-  if (!error && (loading || !isEnabled(features, 'ai_model'))) return null;
   return <FloatingChathead />;
 }
 
@@ -79,6 +70,7 @@ export default function Layout() {
   // close button (the session stays open and Today offers to resume it).
   const immersive = IMMERSIVE.test(location.pathname);
   const fills = FILLS.test(location.pathname);
+  const floating = useAssistantPlacement() === 'floating';
 
   // Was `mainRef.current.scrollTo(0, 0)` on every pathname change — a deliberate
   // reset that sent the member back to the top of Home every time they came
@@ -126,6 +118,9 @@ export default function Layout() {
           paddingRight: immersive ? 0 : 'var(--gutter)',
           // A root's header already ends in the rail's own padding.
           paddingTop: immersive ? 0 : root ? 4 : 'var(--gutter)',
+          // The floating bubble parks over the bottom-right corner; room under the
+          // last row means scrolling to the end always uncovers it (0213).
+          paddingBottom: floating && !fills && !immersive ? 72 : undefined,
         }}
       >
         {/* `min-h-full flex flex-col` so a page can ask to fill the screen with

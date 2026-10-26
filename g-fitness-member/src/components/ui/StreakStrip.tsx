@@ -21,7 +21,12 @@ const celebrated = new Set<string>();
  * road to the milestones, and the target. Renders nothing when there is no
  * streak here (Progress switched off, 0141, or 0151 not live).
  */
-export default function StreakStrip() {
+/**
+ * `compact` (redesign, 2026-10-26): one line inside Today's strip — the flame,
+ * the count and the same line of advice — opening the same sheet. Every number
+ * the full card shows is in that sheet.
+ */
+export default function StreakStrip({ compact = false }: { compact?: boolean }) {
   const [card, setCard] = useState<StreakCard | null>(null);
   const [open, setOpen] = useState(false);
   const [ignite, setIgnite] = useState(false);
@@ -68,6 +73,48 @@ export default function StreakStrip() {
       toast.error(e instanceof Error ? e.message : 'Could not save that.');
     }
   };
+
+  if (compact) {
+    // Two short lines: the count with its warning and this week against the
+    // target, then the advice. The orb, the twelve weeks and the road are the sheet.
+    return (
+      <>
+        <button onClick={() => setOpen(true)} data-streak-line data-ignite={ignite || undefined}
+          aria-label={`Your gym streak: ${card.current} weeks. Open your streak`}
+          className="w-full flex items-center text-left noc-press-soft"
+          style={{ gap: 10, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-separator)' }}>
+          <span className="min-w-0 flex-1 block">
+            <span className="flex items-center flex-wrap" style={{ gap: 7 }}>
+              {/* A secured week or a milestone flares the flame here, as it did the orb. */}
+              <span key={ignite ? 'lit' : 'still'} className={`streak-count tabular-nums${ignite ? ' noc-pop' : ''}`}
+                style={{ fontSize: 13, ...(ignite ? { filter: 'drop-shadow(0 0 8px var(--color-secondary))' } : {}) }}>
+                <Flame size={14} weight={card.current > 0 ? 'fill' : 'regular'} aria-hidden />
+                {card.current}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                {card.current > 0 ? 'week streak' : 'No streak yet'}
+              </span>
+              {card.atRisk && (
+                <span className="streak-chip streak-chip--risk">
+                  <HourglassMedium size={12} weight="fill" aria-hidden />
+                  {card.daysLeft === 1 ? 'Ends tonight' : `${card.daysLeft} days left`}
+                </span>
+              )}
+              {card.frozen && (
+                <span className="streak-chip"><Snowflake size={12} weight="bold" aria-hidden /> Paused</span>
+              )}
+              <span className="tabular-nums" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {card.daysThisWeek} of {card.target} this week
+              </span>
+            </span>
+            <span className="block truncate" style={{ marginTop: 4, fontSize: 12.5, color: lineColor }}>{line.text}</span>
+          </span>
+          <CaretRight size={14} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+        </button>
+        <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} />
+      </>
+    );
+  }
 
   return (
     <>

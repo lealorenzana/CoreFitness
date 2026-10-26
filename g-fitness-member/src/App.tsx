@@ -58,7 +58,7 @@ const PauseOrCancel = lazyPage(() => import('./pages/PauseOrCancel'));
 const Waiver = lazyPage(() => import('./pages/Waiver'));
 const EditProfile = lazyPage(() => import('./pages/EditProfile'));
 const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
-const BookClass = lazyPage(() => import('./pages/BookClass'));
+const TrainPage = lazyPage(() => import('./pages/train/TrainPage'));
 const MyCoach = lazyPage(() => import('./pages/MyCoach'));
 const GymMap = lazyPage(() => import('./pages/GymMap'));
 const Equipment = lazyPage(() => import('./pages/Equipment'));
@@ -310,7 +310,7 @@ function App() {
           <Route path="trainers" element={<Trainers />} />
           <Route path="coach" element={<MyCoach />} />
           <Route path="equipment" element={<Equipment />} />
-          <Route path="book-class" element={<BookClass />} />
+          <Route path="book-class" element={<TrainPage />} />
           <Route path="booking-history" element={<BookingHistory />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />
           <Route path="trainer/:trainerId/evaluations" element={<MyEvaluations />} />
@@ -372,7 +372,7 @@ function App() {
               mention their session. Fixing the SQL would not help the rows
               already sitting in the table; an alias fixes both. */}
           <Route path="bookings" element={<Navigate to="/member/booking-history" replace />} />
-          <Route path="book" element={<Navigate to="/member/book-class" replace />} />
+          <Route path="book" element={<Navigate to="/member/book-class?tab=classes" replace />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           {/* Asking the desk to pause or stop (0118). The screen asks; the desk
               still makes the change. */}

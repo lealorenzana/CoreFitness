@@ -41,6 +41,22 @@ export default function FloatingChathead() {
   const hasCoach = useRef<Promise<boolean> | null>(null);
   useEffect(() => { hasCoach.current = coachAvailable(); }, []);
 
+  // While the page scrolls the bubble shrinks to a dot, so it never sits on a
+  // row being scrolled past; it comes back once scrolling stops (0213).
+  const [scrolling, setScrolling] = useState(false);
+  useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      setScrolling(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setScrolling(false), 600);
+    };
+    main.addEventListener('scroll', onScroll, { passive: true });
+    return () => { main.removeEventListener('scroll', onScroll); clearTimeout(timer); };
+  }, []);
+
   // Track position for edge-snapping
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -147,8 +163,9 @@ export default function FloatingChathead() {
           <div
             role="button"
             aria-label="Open the AI assistant"
+            data-floating-chathead
             className="ai-orb relative grid place-items-center rounded-full"
-            style={{ width: bubbleSize, height: bubbleSize }}
+            style={{ width: bubbleSize, height: bubbleSize, transform: scrolling ? 'scale(0.74)' : 'none', opacity: scrolling ? 0.7 : 1, transition: 'transform 0.2s ease, opacity 0.2s ease' }}
           >
             <span aria-hidden className="ai-orb__ring absolute inset-0 rounded-full" />
             <span aria-hidden className="ai-orb__core absolute rounded-full" style={{ inset: 2 }} />

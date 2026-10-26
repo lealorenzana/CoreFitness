@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cn } from '../../lib/utils';
-import { CaretRight } from '@phosphor-icons/react';
+import { CaretRight, type Icon } from '@phosphor-icons/react';
 
 /**
  * The Nocturne kit: the pieces every rebuilt member screen is made of.
@@ -107,7 +107,16 @@ export function LineRow({
   onClick,
   dim,
   last,
+  icon: RowIcon,
+  tone = 'info',
 }: {
+  /**
+   * The kind of thing this row is, as a 38px tile before the text (redesign,
+   * 2026-10-26): `mine` violet — yours, a state; `act` amber — something to do;
+   * `info` grey — information.
+   */
+  icon?: Icon;
+  tone?: 'mine' | 'act' | 'info';
   gutter?: ReactNode;
   gutterWidth?: number;
   title: ReactNode;
@@ -120,8 +129,20 @@ export function LineRow({
   /** Omit the separator under the final row. */
   last?: boolean;
 }) {
+  const tile = tone === 'mine'
+    ? { bg: 'var(--color-primary-light)', edge: 'color-mix(in srgb, var(--color-primary) 45%, transparent)', fg: 'var(--color-primary-300)' }
+    : tone === 'act'
+      ? { bg: 'var(--color-secondary-light)', edge: 'color-mix(in srgb, var(--color-secondary) 40%, transparent)', fg: 'var(--color-secondary-300)' }
+      : { bg: 'var(--color-surface-raised)', edge: 'var(--color-hairline)', fg: 'var(--color-text-secondary)' };
   const body = (
     <>
+      {RowIcon && (
+        <span aria-hidden data-row-icon={tone} className="flex-none grid place-items-center" style={{
+          width: 38, height: 38, borderRadius: 12, background: tile.bg, border: `1px solid ${tile.edge}`, color: tile.fg,
+        }}>
+          <RowIcon size={18} />
+        </span>
+      )}
       {gutter != null && (
         <span className="flex-none" style={{ width: gutterWidth, fontSize: 13, color: 'var(--color-text-muted)' }}>
           {gutter}

@@ -264,16 +264,21 @@ async (page) => {
     .map((b) => b.innerText.trim()), hub);
   const tap = async (name) => { await page.getByRole('button', { name, exact: true }).first().click(); await page.waitForTimeout(1200); };
 
-  await go('/member/book-class');
+  // Train is Workout · Classes · Coach since the redesign (2026-10-26): with classes switched off the
+  // Classes tab holds only the gym's events, and 1-on-1 is the Coach tab.
+  await go('/member/book-class?tab=classes');
   let t = await text();
-  out.push('classes switched off: no Group classes tab: ' + (!/Group classes/.test(t) ? 'yes' : 'STILL SHOWN'));
-  out.push('…and the page opens on 1-on-1: ' + (/1-on-1/.test(t) ? 'yes' : 'MISSING'));
+  out.push('classes switched off: no class booking, only events: ' + (!/classes? booked this week|of \d+ classes this week/.test(t)
+    && (await page.locator('[data-train-events]').count()) === 1 ? 'yes' : 'STILL SHOWN'));
+  await go('/member/book-class?tab=coach');
+  t = await text();
+  out.push('…and 1-on-1 is on Coach: ' + (/Pick a coach|1-on-1/.test(t) ? 'yes' : 'MISSING'));
   await shot('booking-modes-off');
 
   RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'coach' }];
-  await go('/member/book-class?show=classes');
+  await go('/member/book-class?tab=classes');
   t = await text();
-  out.push('classes back on: the tab returns: ' + (/Group classes/.test(t) ? 'yes' : 'MISSING'));
+  out.push('classes back on: the class booking returns: ' + (/classes? booked this week|of \d+ classes this week|Sunrise HIIT/.test(t) ? 'yes' : 'MISSING'));
   const row = page.getByText('Sunrise HIIT').first();
   const seen = await row.isVisible().catch(() => false);
   if (!seen) {

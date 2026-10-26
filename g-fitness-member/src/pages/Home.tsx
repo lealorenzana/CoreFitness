@@ -5,10 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { Barbell, Lock } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page } from '../components/ui/page';
-import { Eyebrow, NocButton, Panel, ProgressBar, StatusPill } from '../components/ui/noc';
+import { NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
 import CheckInSheet from '../components/ui/CheckInSheet';
-import WeekMarks from '../components/ui/WeekMarks';
-import StreakStrip from '../components/ui/StreakStrip';
+import TodayStrip from '../components/home/TodayStrip';
+import { useCheckedInToday } from '../hooks/useCheckedInToday';
 import ProgramNext from '../components/workout/ProgramNext';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -20,8 +20,7 @@ import { getCurrentMemberId } from '../services/bookingService';
 import {
   getMemberHome, getTodayExtras, type MemberHome, type TodayExtras,
 } from '../services/memberHomeService';
-import { DAY_LABELS } from '../lib/api/gymPlans';
-import { getOpenRoutineSession, getRoutine, startRoutineSession } from '../lib/api/routines';
+import { startPlannedRoutine } from '../lib/startPlannedRoutine';
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
@@ -77,6 +76,10 @@ interface Entry {
   pill?: { label: string; tone: 'structure' | 'action' | 'muted' };
   action?: string;
   onClick?: () => void;
+  /** Today's workout: drawn as a card with the one filled button (redesign, 2026-10-26). */
+  card?: { label: string; locked: boolean };
+  /** A real fraction only — `ProgressBar` draws nothing without one. */
+  progress?: number;
 }
 
 /**
@@ -114,6 +117,9 @@ export default function Home() {
   const [extras, setExtras] = useState<TodayExtras | null>(() => readCache<TodayExtras>(EXTRAS_KEY) ?? null);
   const [loading, setLoading] = useState(cached === undefined);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  // The same answer the bar's check-in block shows — one source, so the two can
+  // never disagree (they did, 2026-10-26).
+  const [liveCheckedIn, refreshCheckedIn] = useCheckedInToday();
 
   /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
   const load = useCallback(async (quiet = false) => {
@@ -140,13 +146,11 @@ export default function Home() {
     try {
       const id = await getCurrentMemberId();
       if (!id) return;
-      const open = await getOpenRoutineSession(id);
-      if (open) { navigate(`/member/track/session/${open.logId}`); return; }
-      const routine = await getRoutine(routineId);
-      if (!routine) { toast.error('That routine is gone — pick another in your plan.'); navigate('/member/gym-plan'); return; }
-      navigate(`/member/track/session/${await startRoutineSession(id, routine)}`);
+      navigate(await startPlannedRoutine(id, routineId));
     } catch (err) {
       toast.error(errorMessage(err, 'Could not start that workout'));
+      // A routine deleted since it was planned: the plan is where to pick another.
+      if (err instanceof Error && /routine is gone/.test(err.message)) navigate('/member/gym-plan');
     }
   };
 
@@ -199,8 +203,8 @@ export default function Home() {
       title: home.expiryDate ? 'Membership expired' : 'No active membership',
       meta: 'Renew at the front desk to check in and book again.',
     });
-  } else if (home.checkedInToday) {
-    const at = home.checkInAtToday ? ` at ${clock(home.checkInAtToday)}` : '';
+  } else if (liveCheckedIn ?? home.checkedInToday) {
+    const at = home.checkedInToday && home.checkInAtToday ? ` at ${clock(home.checkInAtToday)}` : '';
     const points = extras?.checkinPoints != null && moduleOn(gymApp, 'points') ? `${extras.checkinPoints} points added. ` : '';
     entries.push({
       key: 'now', gutter: 'Now', live: true,
@@ -233,8 +237,19 @@ export default function Home() {
         ? (home.checkedInToday ? 'Planned for today' : extras?.remindAt ? `Planned for ${hourLabel(extras.remindAt)}` : 'Planned for today')
         : extras?.remindAt ? `You planned to train at ${hourLabel(extras.remindAt)}` : 'You planned to train today',
       ...(todayRoutine
-        ? { action: lockedOut('workout_tracker') ? 'See plan' : 'Start', onClick: () => void startPlanned(todayRoutine.id) }
+        ? { card: { label: lockedOut('workout_tracker') ? 'See plan' : 'Start workout', locked: lockedOut('workout_tracker') },
+            onClick: () => void startPlanned(todayRoutine.id) }
         : { onClick: () => navigate('/member/gym-plan') }),
+    });
+  } else if (!home.frozen && !home.expired) {
+    // No routine planned for today: the way to train is still here — it was the
+    // "Start a workout" button under the agenda, which repeated a planned day's Start.
+    entries.push({
+      key: 'workout', gutter: 'Today',
+      title: 'Start a workout',
+      meta: 'Pick one of your routines, or start an empty workout.',
+      card: { label: lockedOut('workout_tracker') ? 'See routines' : 'Start a workout', locked: lockedOut('workout_tracker') },
+      onClick: () => navigate('/member/track'),
     });
   }
 
@@ -273,6 +288,18 @@ export default function Home() {
   }
 
   const c = extras?.challenge;
+  if (c) {
+    // The joined challenge, with its own server-computed progress — moved here
+    // from the month panel; drawn only with a real target and count.
+    entries.push({
+      key: 'challenge',
+      gutter: shortDate(c.endsOn),
+      title: c.title,
+      meta: `${c.progress} of ${c.target} · ends ${shortDate(c.endsOn)}`,
+      progress: c.target > 0 ? Math.min(1, c.progress / c.target) : undefined,
+      onClick: () => navigate('/member/challenges'),
+    });
+  }
   if (!b) {
     entries.push({
       key: 'end', gutter: 'Later',
@@ -291,99 +318,44 @@ export default function Home() {
     });
   }
 
+  const monthName = now.toLocaleDateString('en-US', { month: 'short' });
+  const remind = extras?.remindAt ? `at ${hourLabel(extras.remindAt)}` : null;
+
   return (
     <Page>
-      <PushPrompt />
       {/* What changed in the app (0212), once. */}
       <WhatsNew app="member" />
-      {/* Whose gym this is, on the screen a member opens every day.
-
-          The logo has existed since 0067 and reached the phone in 0112, and no
-          component drew it — a gym owner could upload one from two screens,
-          see it previewed on both, and no member would ever see it. The
-          welcome line (0110) had the same problem. Both are here now, in one
-          strip, because they are one thought: this is your gym, and this is
-          what it is telling you today.
-
-          Drawn whenever the gym is known. A gym with no logo gets a monogram
-          in its own colour, never the Core Fitness mark. */}
+      {/* Whose gym this is, on the screen a member opens every day: the logo
+          (0067/0112) and the welcome line (0110), one strip. A gym with no logo
+          gets a monogram in its own colour, never the Core Fitness mark. */}
       {gymApp && (
-        <div className="flex items-center" style={{ gap: 10, marginBottom: 12 }}>
-          <GymMark
-            name={gymApp.gymName}
-            logoUrl={gymApp.logoUrl}
-            accent={rampFor(gymApp.accent, 'violet').base}
-            size={34}
-          />
+        <div className="flex items-center" style={{ gap: 10 }}>
+          <GymMark name={gymApp.gymName} logoUrl={gymApp.logoUrl} accent={rampFor(gymApp.accent, 'violet').base} size={30} />
           <div className="min-w-0">
-            <p className="truncate" style={{
-              fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)',
-            }}>
+            <p className="truncate" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
               {gymApp.shortName?.trim() || gymApp.gymName}
             </p>
             {gymApp.welcomeMessage && (
-              <p style={{
-                fontSize: 12, lineHeight: 1.4, marginTop: 1,
-                color: 'var(--color-text-secondary)',
-              }}>
-                {gymApp.welcomeMessage}
-              </p>
+              <p style={{ fontSize: 12, lineHeight: 1.4, marginTop: 1, color: 'var(--color-text-secondary)' }}>{gymApp.welcomeMessage}</p>
             )}
           </div>
         </div>
       )}
 
-      {/* The gym-wide goal (0124) — nothing when the gym has none running. */}
-      {/* Each follows its own switch (0141): classwork is Rooms, the gym goal is Squads. */}
-      <TermsUpdateStrip />
-      {/* The paid plan they picked at sign-up, asked about once (2026-10-12). */}
-      <FinishPlanCard />
-      {moduleOn(gymApp, 'rooms') && <DueStrip />}
-      {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
-
-      {/* ── Month panel ── */}
+      {/* ── The strip: membership, this month, this week, the streak ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
-        <Panel glow="structure" style={{ padding: '16px 16px 14px' }}>
-          <div className="flex items-end justify-between" style={{ gap: 12 }}>
-            <div>
-              <Eyebrow>{now.toLocaleDateString('en-US', { month: 'long' })}</Eyebrow>
-              <p className="flex items-baseline" style={{ gap: 6, marginTop: 6 }}>
-                <span style={{
-                  fontSize: 'var(--text-hero)', fontWeight: 600, lineHeight: 1,
-                  letterSpacing: 'var(--tracking-hero)', color: 'var(--color-text-primary)',
-                }}>
-                  {home.checkInsThisMonth}
-                </span>
-                <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                  {home.checkInsThisMonth === 1 ? 'visit' : 'visits'} this month
-                </span>
-              </p>
-            </div>
-            <div className="text-right min-w-0">
-              {extras?.unreadCount != null && (
-                <button onClick={() => navigate('/member/notifications')}
-                  style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                  {extras.unreadCount === 0
-                    ? 'No updates'
-                    : `${extras.unreadCount} ${extras.unreadCount === 1 ? 'update' : 'updates'}`}
-                </button>
-              )}
-              <p style={{ fontSize: 12, marginTop: 3, color: 'var(--color-text-muted)' }}>{membershipLine}</p>
-            </div>
-          </div>
-
-          {/* Drawn only when a joined challenge has a real target and a real
-              count — the same rule as a ring with no denominator. */}
-          {c && (
-            <button onClick={() => navigate('/member/challenges')} className="w-full text-left block" style={{ marginTop: 14 }}>
-              <ProgressBar fraction={c.progress / c.target} />
-              <span className="flex justify-between" style={{ marginTop: 7, gap: 12, fontSize: 12 }}>
-                <span className="truncate" style={{ color: 'var(--color-text-secondary)' }}>{c.title}</span>
-                <span className="flex-none" style={{ color: 'var(--color-primary-300)' }}>{c.progress} of {c.target}</span>
-              </span>
-            </button>
-          )}
-        </Panel>
+        <TodayStrip
+          membershipLine={membershipLine}
+          visitsThisMonth={home.checkInsThisMonth}
+          monthName={monthName}
+          week={home.weekCheckIns}
+          dayNumbers={home.weekDayNumbers}
+          todayIndex={today}
+          planned={planned}
+          nextPlanned={nextPlanned}
+          remindAt={remind}
+          showStreak={moduleOn(gymApp, 'progress')}
+        />
 
         {/* What the plan holds back — one line, and the screen that lists it. */}
         {home.access && !home.access.isFullAccess && !home.frozen && (
@@ -398,9 +370,7 @@ export default function Home() {
           </button>
         )}
 
-        {/* Renewal is the one action worth a filled slab — and only when the
-            membership is actually ending. Otherwise a member missing half the
-            gym still needs a way out of the tier, as an outline. */}
+        {/* Renewal is the one action worth a filled slab — only when the membership is actually ending. */}
         {(home.expired || home.expiringSoon) && !home.frozen && (
           <NocButton variant={home.expired ? 'fill' : 'action'} onClick={() => navigate('/member/renew-membership')}>
             {home.expired ? 'Renew membership' : `Renew — ${term.value} ${term.unit} left`.replace(/\s+/g, ' ')}
@@ -413,45 +383,10 @@ export default function Home() {
         )}
       </div>
 
-      {/* ── Week marks ── */}
-      <section aria-label="This week">
-        {/* The strip opens the full calendar — Attendance pages back through
-            every month with a visit. Only the strip is the button: the line
-            under it holds its own links, and a button cannot hold buttons. */}
-        <button onClick={() => navigate('/member/attendance-history')}
-          aria-label="This week's visits. Open the full attendance calendar"
-          className="w-full block text-left noc-press-soft">
-          <WeekMarks days={home.weekCheckIns} dayNumbers={home.weekDayNumbers} todayIndex={today} planned={planned} />
-        </button>
-        <div className="flex items-center justify-between" style={{ marginTop: 10, fontSize: 12, gap: 12 }}>
-          <button onClick={() => navigate('/member/attendance-history')} className="text-left"
-            style={{ color: 'var(--color-text-muted)' }}>
-            {home.weekCheckIns.filter(Boolean).length} of 7 days this week
-            <span style={{ color: 'var(--color-primary-300)' }}> · See calendar</span>
-          </button>
-          {planned && planned.length === 0 ? (
-            <button onClick={() => navigate('/member/gym-plan')} style={{ color: 'var(--color-secondary)' }}>
-              Set a training plan
-            </button>
-          ) : nextPlanned != null ? (
-            <button onClick={() => navigate('/member/gym-plan')} style={{ color: 'var(--color-text-secondary)' }}>
-              Rest day · next {DAY_LABELS[nextPlanned]}
-              {extras?.remindAt ? ` at ${hourLabel(extras.remindAt)}` : ''}
-            </button>
-          ) : null}
-        </div>
-      </section>
-
-      {/* The gym streak (0151): what the week's days add up to. Its own switch is
-          Progress (0141); the card also renders nothing when there is no streak. */}
-      {moduleOn(gymApp, 'progress') && <StreakStrip />}
-
-      {/* The program they follow (0122): the next day, one tap to start. Nothing when they follow none. */}
-      {moduleOn(gymApp, 'programs') && <ProgramNext />}
-
-      {/* ── Agenda ── */}
-      <section aria-label="Your day" className="noc-rows">
+      {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
+      <section aria-label="Your day" className="noc-rows" data-today-timeline>
         {entries.map((e, i) => {
+          const head = i === 0 || entries[i - 1].gutter !== e.gutter;
           const content = (
             <>
               <span className="block" style={{
@@ -465,30 +400,43 @@ export default function Home() {
                   {e.meta}
                 </span>
               )}
+              {e.progress != null && <span className="block" style={{ marginTop: 8 }}><ProgressBar fraction={e.progress} /></span>}
               {e.pill && <span className="block" style={{ marginTop: 8 }}><StatusPill {...e.pill} /></span>}
               {e.action && (
-                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-secondary)' }}>
+                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
                   {e.action}
                 </span>
               )}
             </>
           );
           return (
-            <div key={e.key} className="flex" style={{ gap: 14 }}>
-              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                {e.gutter}
+            <div key={e.key} className="flex" style={{ gap: 14 }} data-timeline-group={head ? e.gutter : undefined}>
+              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12,
+                color: e.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)', fontWeight: e.live ? 600 : 400 }}>
+                {head ? e.gutter : ''}
               </span>
               <div className="relative flex-1 min-w-0" style={{
                 borderLeft: '1px solid rgba(233, 233, 237, 0.12)',
                 paddingLeft: 16,
-                paddingBottom: i === entries.length - 1 ? 0 : 22,
+                paddingBottom: i === entries.length - 1 ? 0 : 20,
               }}>
                 <span aria-hidden className="absolute rounded-full" style={{
                   left: -4, top: 6, width: 7, height: 7,
                   background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
                   boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgba(233, 233, 237, 0.18)',
                 }} />
-                {e.onClick
+                {e.card ? (
+                  <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,
+                    background: 'var(--color-surface)', padding: 12 }}>
+                    {content}
+                    <span className="block" style={{ marginTop: 10 }}>
+                      <NocButton variant="fill" className="w-full" onClick={e.onClick}
+                        icon={e.card.locked ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}>
+                        {e.card.label}
+                      </NocButton>
+                    </span>
+                  </div>
+                ) : e.onClick
                   ? <button onClick={e.onClick} className="w-full text-left block">{content}</button>
                   : <div>{content}</div>}
               </div>
@@ -497,18 +445,15 @@ export default function Home() {
         })}
       </section>
 
-      <div className="flex flex-col" style={{ gap: 16 }}>
-        <div className="rule" />
-        <div className="flex" style={{ gap: 9 }}>
-          <NocButton variant="ghost" className="flex-1"
-            icon={lockedOut('workout_tracker') ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}
-            onClick={() => navigate('/member/track')}>
-            Start a workout
-          </NocButton>
-        </div>
-      </div>
+      {/* Things to read or finish, below the day: each renders nothing when it has nothing to say. */}
+      {moduleOn(gymApp, 'programs') && <ProgramNext />}
+      {moduleOn(gymApp, 'rooms') && <DueStrip />}
+      {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
+      <TermsUpdateStrip />
+      <FinishPlanCard />
+      <PushPrompt />
 
-      <CheckInSheet open={checkInOpen} onClose={() => { setCheckInOpen(false); void load(true); }} />
+      <CheckInSheet open={checkInOpen} onClose={() => { setCheckInOpen(false); refreshCheckedIn(); void load(true); }} />
     </Page>
   );
 }
