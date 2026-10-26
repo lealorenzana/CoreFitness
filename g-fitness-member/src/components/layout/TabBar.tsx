@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DotsNine, QrCode } from '@phosphor-icons/react';
 import CheckInSheet from '../ui/CheckInSheet';
 import EverythingSheet from './EverythingSheet';
+import { useHistorySheet } from '../../hooks/useHistorySheet';
 import { TABS, tabForPath, tabPath } from './memberNav';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
@@ -70,9 +71,19 @@ export default function TabBar() {
   const t = useT();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Both sheets live in history, so Android's back gesture closes them
+  // (useHistorySheet) instead of moving the page underneath.
+  const checkInSheet = useHistorySheet('checkin');
+  const more = useHistorySheet('more');
+  const sheetOpen = checkInSheet.open;
+  const menuOpen = more.open;
   const [checkedIn, refreshCheckIn] = useCheckedInToday();
+  // However the code sheet closes — its button or Back — re-ask whether today counts.
+  const wasOpen = useRef(sheetOpen);
+  useEffect(() => {
+    if (wasOpen.current && !sheetOpen) refreshCheckIn();
+    wasOpen.current = sheetOpen;
+  }, [sheetOpen, refreshCheckIn]);
   const app = useGymApp();
   // A gym that does not scan codes (0110) gets no check-in block: a button that
   // shows a code nobody will scan is a promise the desk cannot keep.
@@ -137,7 +148,7 @@ export default function TabBar() {
         })}
 
         <button
-          onClick={() => setMenuOpen(true)}
+          onClick={more.show}
           aria-haspopup="dialog"
           aria-expanded={menuOpen}
           className="flex-1 flex flex-col items-center justify-start noc-press"
@@ -151,7 +162,7 @@ export default function TabBar() {
         {scans && <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgba(233, 233, 237, 0.12)' }} />}
 
         {scans && <button
-          onClick={() => setSheetOpen(true)}
+          onClick={checkInSheet.show}
           aria-label={checkedIn ? 'Checked in today. Show my code' : 'Check in. Show my code'}
           // Breathes while there is a check-in to do; still once it is done.
           className={`flex-none flex flex-col items-center justify-center noc-press${checkedIn ? '' : ' noc-breathe'}`}
@@ -173,8 +184,8 @@ export default function TabBar() {
         </button>}
       </nav>
 
-      <CheckInSheet open={sheetOpen} onClose={() => { setSheetOpen(false); refreshCheckIn(); }} />
-      <EverythingSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CheckInSheet open={sheetOpen} onClose={checkInSheet.close} />
+      <EverythingSheet open={menuOpen} onClose={more.close} onGo={more.go} />
     </>
   );
 }

@@ -66,6 +66,10 @@
       "app": "member"
     },
     {
+      "file": "member-more-back-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },

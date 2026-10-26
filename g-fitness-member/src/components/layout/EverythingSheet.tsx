@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ArrowUpRight, X } from '@phosphor-icons/react';
 import { EVERYTHING, visibleDestinations } from './memberNav';
 import { useGymApp } from '../../hooks/useGymApp';
@@ -19,10 +19,9 @@ import { useT } from '../../lib/i18n';
  * or it paints perfectly and cannot be tapped (shipped three times before).
  * `createPortal` runs only while open, so nothing sits over the app at rest.
  */
-export default function EverythingSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function EverythingSheet({ open, onClose, onGo }: { open: boolean; onClose: () => void; onGo: (path: string) => void }) {
   const gymApp = useGymApp();
   const t = useT();
-  const navigate = useNavigate();
   const location = useLocation();
   // Asked each time the sheet opens: a guide applied a minute ago brings Meals in.
 
@@ -88,7 +87,7 @@ export default function EverythingSheet({ open, onClose }: { open: boolean; onCl
               return (
                 <button
                   key={item.path}
-                  onClick={() => { onClose(); if (!current) navigate(item.path); }}
+                  onClick={() => { if (current) onClose(); else onGo(item.path); }}
                   aria-current={current ? 'page' : undefined}
                   className="w-full flex items-center justify-between text-left"
                   style={{
