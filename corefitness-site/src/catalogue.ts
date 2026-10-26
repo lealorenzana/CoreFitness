@@ -63,6 +63,7 @@ export const CATALOGUE: CatalogueGroup[] = [
     id: 'members', icon: 'phone', title: 'The member’s app',
     lede: 'An app members actually install — Android, and from the browser on iPhone.',
     items: [
+      ['One app, three tabs', 'Today is one timeline of what is next, Train holds every workout, class and coach, and More finds any screen by search.'],
       ['Today', 'Their membership, next class, streak and what the gym wants them to know, on one screen.'],
       ['Workouts, routines and programs', 'A player that logs every set — even with no signal — and finds their personal records itself.'],
       ['Progress', 'Body readings, goals with numbers, records and a weekly streak that counts training days.'],

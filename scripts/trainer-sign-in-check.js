@@ -89,7 +89,7 @@ async (page) => {
   // Members have the same section.
   ROLE = 'member';
   await page.evaluate(() => localStorage.removeItem('trainerMode'));
-  await go('/member/settings');
+  await go('/member/settings?section=signin');
   out.push('members have Sign-in methods too: ' + ((await page.locator('[data-sign-in-methods]').count()) === 1 ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

@@ -272,7 +272,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
                 }}>
                   {formatCheckInCode(home.memberId)}
                 </p>
-                <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
+                <p className="text-center" data-checkin-plan style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
                   {home.planName ?? t('Membership')}{validTo ? ` · ${t('valid to')} ${validTo}` : ''} · {t('read the code out if the camera fails')}
                 </p>
 

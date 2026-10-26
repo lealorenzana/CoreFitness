@@ -98,6 +98,10 @@
       "app": "member"
     },
     {
+      "file": "member-checkin-sheet-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },
