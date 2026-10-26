@@ -506,6 +506,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-search-check.js",
+      "app": "admin"
+    },
+    {
       "file": "platform-whats-new-check.js",
       "app": "platform"
     }

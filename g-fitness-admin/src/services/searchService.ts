@@ -15,7 +15,8 @@ import type { ProfileRow } from '../types/db';
 
 export type SearchKind =
   | 'member' | 'trainer' | 'staff' | 'class' | 'template'
-  | 'event' | 'plan' | 'payment' | 'resource';
+  | 'event' | 'plan' | 'payment' | 'resource'
+  | 'product' | 'exercise' | 'program' | 'challenge' | 'reward' | 'badge' | 'equipment';
 
 export interface SearchHit {
   id: string;
@@ -114,7 +115,8 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
   const asNumber = Number(term.replace(/[₱,\s]/g, ''));
   const numeric = Number.isFinite(asNumber) && term.replace(/[₱,\s]/g, '') !== '';
 
-  const [members, trainers, staff, classes, templates, events, plans, payments, resources] =
+  const [members, trainers, staff, classes, templates, events, plans, payments, resources,
+    products, exercises, programs, challenges, rewards, badges, equipment] =
     await Promise.all([
       // Half of what identifies a member lives on `member_profiles`, not
       // `profiles` — address, emergency contact, QR code, experience level. Two
@@ -241,6 +243,37 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
             .select('id, title, category, provider')
             .or(anyColumn(['title', 'category', 'provider', 'description'], term))
             .limit(PER_KIND) as never)),
+
+      // The rest of what the gym manages (2026-10-26: "search everything").
+      // Each is one table, matched on its own words; RLS keeps it to this gym.
+      section('product', async () =>
+        unwrap<{ id: string; name: string; category: string | null; price: number; active: boolean }>(
+          await supabase.from('shop_products').select('id, name, category, price, active')
+            .or(anyColumn(['name', 'category', 'description'], term)).limit(PER_KIND) as never)),
+      section('exercise', async () =>
+        unwrap<{ id: string; name: string; muscle_group: string | null; equipment: string | null; is_active: boolean }>(
+          await supabase.from('exercises').select('id, name, muscle_group, equipment, is_active')
+            .or(anyColumn(['name', 'muscle_group', 'equipment'], term)).limit(PER_KIND) as never)),
+      section('program', async () =>
+        unwrap<{ id: string; name: string; level: string | null; weeks: number | null }>(
+          await supabase.from('gym_programs').select('id, name, level, weeks').eq('hidden', false).is('member_id', null)
+            .or(anyColumn(['name', 'description'], term)).limit(PER_KIND) as never)),
+      section('challenge', async () =>
+        unwrap<{ id: string; title: string; ends_on: string | null; is_active: boolean }>(
+          await supabase.from('challenges').select('id, title, ends_on, is_active')
+            .or(anyColumn(['title', 'description'], term)).order('starts_on', { ascending: false }).limit(PER_KIND) as never)),
+      section('reward', async () =>
+        unwrap<{ id: string; name: string; cost_points: number; is_active: boolean }>(
+          await supabase.from('rewards').select('id, name, cost_points, is_active')
+            .or(anyColumn(['name', 'description'], term)).limit(PER_KIND) as never)),
+      section('badge', async () =>
+        unwrap<{ id: string; title: string; description: string | null }>(
+          await supabase.from('achievements').select('id, title, description')
+            .or(anyColumn(['title', 'description'], term)).limit(PER_KIND) as never)),
+      section('equipment', async () =>
+        unwrap<{ id: string; name: string; category: string | null; status: string | null }>(
+          await supabase.from('gym_equipment').select('id, name, category, status')
+            .or(anyColumn(['name', 'notes', 'location_note'], term)).limit(PER_KIND) as never)),
     ]);
 
   const hits: SearchHit[] = [
@@ -297,6 +330,38 @@ export async function globalSearch(rawTerm: string): Promise<SearchResults> {
       subtitle: [r.category, r.provider].filter(Boolean).join(' · ') || null,
       href: '/resources',
     })),
+    ...products.map((r): SearchHit => ({
+      id: r.id, kind: 'product', title: r.name,
+      subtitle: [r.category, peso.format(r.price)].filter(Boolean).join(' · '),
+      tag: r.active ? null : 'Not sold', href: '/shop',
+    })),
+    ...exercises.map((r): SearchHit => ({
+      id: r.id, kind: 'exercise', title: r.name,
+      subtitle: [r.muscle_group, r.equipment].filter(Boolean).join(' · ') || null,
+      tag: r.is_active ? null : 'Hidden', href: '/exercises',
+    })),
+    ...programs.map((r): SearchHit => ({
+      id: r.id, kind: 'program', title: r.name,
+      subtitle: [r.level, r.weeks ? `${r.weeks} weeks` : null].filter(Boolean).join(' · ') || null,
+      href: '/programs',
+    })),
+    ...challenges.map((r): SearchHit => ({
+      id: r.id, kind: 'challenge', title: r.title,
+      subtitle: r.ends_on ? `Ends ${r.ends_on}` : null,
+      tag: r.is_active ? null : 'Off', href: '/challenges',
+    })),
+    ...rewards.map((r): SearchHit => ({
+      id: r.id, kind: 'reward', title: r.name,
+      subtitle: `${r.cost_points} points`, tag: r.is_active ? null : 'Hidden', href: '/rewards?tab=catalogue',
+    })),
+    ...badges.map((r): SearchHit => ({
+      id: r.id, kind: 'badge', title: r.title, subtitle: r.description, href: '/achievements',
+    })),
+    ...equipment.map((r): SearchHit => ({
+      id: r.id, kind: 'equipment', title: r.name,
+      subtitle: r.category ? r.category.replace(/_/g, ' ') : null,
+      tag: r.status === 'repair' ? 'Under repair' : r.status === 'soon' ? 'Coming soon' : null, href: '/equipment',
+    })),
   ];
 
   return { hits, failed };
@@ -312,9 +377,25 @@ export const KIND_LABEL: Record<SearchKind, string> = {
   plan: 'Plans',
   payment: 'Payments',
   resource: 'Resources',
+  product: 'Shop',
+  exercise: 'Exercises',
+  program: 'Programs',
+  challenge: 'Challenges',
+  reward: 'Rewards',
+  badge: 'Badges',
+  equipment: 'Equipment',
+};
+
+/** The sidebar page each kind opens, so a kind this account cannot open is not offered. */
+export const KIND_PAGE: Record<SearchKind, string> = {
+  member: '/members', trainer: '/trainers', staff: '/settings', class: '/schedule', template: '/schedule',
+  event: '/notifications', plan: '/membership-plans', payment: '/payments', resource: '/resources',
+  product: '/shop', exercise: '/exercises', program: '/programs', challenge: '/challenges',
+  reward: '/rewards', badge: '/achievements', equipment: '/equipment',
 };
 
 /** Section order in the palette — most-searched first, not alphabetical. */
 export const KIND_ORDER: SearchKind[] = [
-  'member', 'trainer', 'staff', 'class', 'template', 'event', 'plan', 'payment', 'resource',
+  'member', 'trainer', 'staff', 'payment', 'class', 'template', 'event', 'plan', 'product',
+  'exercise', 'program', 'challenge', 'reward', 'badge', 'equipment', 'resource',
 ];

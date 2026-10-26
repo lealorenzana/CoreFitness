@@ -23,7 +23,7 @@ export const PARENT: Record<string, string> = {
   quests: 'engagement', referrals: 'engagement',
 };
 
-type Modules = Record<string, boolean>;
+export type Modules = Record<string, boolean>;
 
 let cached: Modules = {};
 let inFlight: Promise<Modules> | null = null;
