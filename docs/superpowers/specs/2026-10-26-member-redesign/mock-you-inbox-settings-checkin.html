@@ -1,0 +1,193 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#08080E;--s1:#12121C;--s2:#161522;--s3:#1E1D2B;--v:#7C3AED;--v3:#c4b5fd;--v4:#a78bfa;--vl:#1E1333;--a:#F59E0B;--a3:#fcd34d;--al:#1F1A0A;--t1:#e9e9ed;--t2:#b2b6ca;--t3:#9397ab;--sep:rgba(233,233,237,.08);--edge:rgba(233,233,237,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0d16;font-family:Inter,system-ui,sans-serif;color:var(--t1);padding:36px;display:flex;gap:36px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:14px;align-items:center}
+.cap{font-size:15px;font-weight:600;color:var(--t1)} .cap small{display:block;font-weight:400;color:var(--t3);font-size:12px;margin-top:3px;max-width:393px;text-align:center}
+.phone{width:393px;height:852px;background:var(--bg);border-radius:34px;border:1px solid var(--edge);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sb{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;font-weight:600;flex:none}
+main{flex:1;overflow:hidden;padding:6px 20px 0}
+.row{display:flex;align-items:center}
+.av{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--v);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--v3);background:var(--vl)}
+.ib{width:36px;height:36px;border-radius:10px;border:1px solid var(--edge);display:grid;place-items:center;color:var(--t2);font-size:18px;position:relative}
+.dot{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--a)}
+.title{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.title.m{color:var(--t3)}
+.eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
+.strip{margin-top:16px;border:1px solid var(--edge);border-radius:16px;padding:12px 14px;background:linear-gradient(180deg,rgba(124,58,237,.10),transparent 70%),var(--s1)}
+.days{display:flex;gap:6px;margin-top:10px}
+.d{flex:1;text-align:center;font-size:10px;color:var(--t3)} .d i{display:block;height:26px;border-radius:8px;border:1px solid var(--edge);margin-bottom:4px;display:grid;place-items:center;font-size:12px;font-style:normal}
+.d.on i{border-color:var(--a);background:var(--al);color:var(--a3)} .d.on{color:var(--a3);font-weight:700}
+.d.done i{background:var(--vl);border-color:var(--v);color:var(--v3)}
+.tl{margin-top:18px}
+.grp{display:grid;grid-template-columns:54px minmax(0,1fr);position:relative}
+.grp:before{content:"";position:absolute;left:61px;top:6px;bottom:0;width:1px;background:var(--sep)}
+.wh{font-size:11px;color:var(--t3);padding-top:3px;letter-spacing:.02em;line-height:1.3}
+.wh.now{color:var(--v3);font-weight:600}
+.items{padding-left:18px;padding-bottom:14px;position:relative}
+.items:before{content:"";position:absolute;left:4px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--s3);border:1px solid var(--edge)}
+.grp.n .items:before{background:var(--v);border-color:var(--v);box-shadow:0 0 10px var(--v)}
+.it{padding:2px 0 10px}
+.it b{display:block;font-size:15px;font-weight:600}
+.it span{font-size:12.5px;color:var(--t2);line-height:1.45}
+.it .lk{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--a);font-weight:600;margin-top:6px}
+.card{border:1px solid var(--edge);border-radius:16px;padding:12px;background:var(--s1);margin:2px 0 10px}
+.btn{height:40px;border-radius:12px;background:var(--a);color:#1b1203;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px}
+.chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--edge);color:var(--t2)}
+.chip.v{border-color:rgba(124,58,237,.5);color:var(--v3);background:var(--vl)}
+.chip.a{border-color:rgba(245,158,11,.45);color:var(--a3);background:var(--al)}
+nav{height:76px;flex:none;border-top:1px solid var(--edge);display:flex;align-items:stretch;padding:0 14px 8px;background:var(--bg)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:9px;color:var(--t3);font-size:12px}
+.tab .mk{width:16px;height:2px;border-radius:1px}
+.tab.on{color:var(--v4)} .tab.on .mk{background:var(--v);box-shadow:0 0 6px var(--v)}
+.tab i{font-size:21px}
+.sepv{width:1px;margin:14px 10px 6px;background:var(--edge)}
+.ci{width:92px;margin-top:10px;border-radius:10px;border:1px solid var(--a);background:rgba(245,158,11,.12);box-shadow:0 0 22px -9px var(--a);color:var(--a);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px}
+.ci i{font-size:21px}
+.search{height:44px;border-radius:12px;border:1px solid var(--edge);background:var(--s1);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--t3);font-size:14px;margin-top:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.tile{border:1px solid var(--edge);border-radius:14px;background:var(--s1);padding:10px 4px;text-align:center;font-size:11px;color:var(--t2)}
+.tile i{display:block;font-size:20px;color:var(--v3);margin-bottom:5px}
+.gh{display:flex;align-items:center;gap:10px;margin:18px 0 4px}
+.gh:before{content:"";width:14px;height:2px;border-radius:1px;background:var(--v);box-shadow:0 0 6px var(--v)}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sep)}
+.li .ic{width:34px;height:34px;border-radius:10px;background:var(--s2);border:1px solid var(--edge);display:grid;place-items:center;color:var(--t2);font-size:17px;flex:none}
+.li b{display:block;font-size:14.5px;font-weight:500}
+.li span{font-size:12px;color:var(--t3)}
+.li .ar{margin-left:auto;color:var(--t3)}
+.seg{display:flex;gap:6px;margin-top:14px}
+.seg span{flex:1;text-align:center;height:34px;line-height:32px;border-radius:10px;border:1px solid var(--edge);font-size:13px;color:var(--t2)}
+.seg span.on{background:var(--vl);border-color:var(--v);color:var(--v3);font-weight:600}
+.hero{margin-top:14px;border-radius:18px;border:1px solid rgba(124,58,237,.45);padding:16px;background:radial-gradient(120% 120% at 0 0,rgba(124,58,237,.35),transparent 60%),var(--s1)}
+.bar{height:6px;border-radius:3px;background:var(--s3);margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:40%;background:var(--v)}
+.ex{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--sep);font-size:14px}
+.ex .n{width:26px;height:26px;border-radius:8px;background:var(--s2);display:grid;place-items:center;font-size:12px;color:var(--t3);flex:none}
+.ex.done .n{background:var(--vl);color:var(--v3)}
+.ex > span:last-child{margin-left:auto;font-size:12px;color:var(--t3)}
+</style></head><body>
+<style>
+.ib.ai{border-color:rgba(124,58,237,.55);color:var(--v3);background:var(--vl)}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--sep);margin-top:14px}
+.tabs span{padding:0 0 10px;font-size:14px;color:var(--t3)}.tabs span.on{color:var(--t1);font-weight:600;box-shadow:inset 0 -2px 0 var(--v)}
+.cnt{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--s3);color:var(--t2);margin-left:6px;font-weight:500}
+.ic.v{background:var(--vl);border-color:rgba(124,58,237,.45);color:var(--v3)}
+.ic.a{background:var(--al);border-color:rgba(245,158,11,.4);color:var(--a3)}
+.li .r{margin-left:auto;font-size:13px;color:var(--a);font-weight:600;flex:none}
+.li .n{margin-left:auto;font-size:11px;color:var(--t3);flex:none}
+.li .s{margin-left:auto;font-size:12px;color:var(--t3);flex:none;display:flex;align-items:center;gap:4px}
+.note{font-size:11px;color:var(--t3);margin:14px 0 2px;letter-spacing:.12em;text-transform:uppercase}
+.mem{margin-top:14px;border-radius:18px;border:1px solid rgba(124,58,237,.45);padding:14px 16px;background:radial-gradient(120% 120% at 0 0,rgba(124,58,237,.30),transparent 60%),var(--s1)}
+.out{height:40px;border-radius:12px;border:1px solid var(--a);color:var(--a);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;background:var(--al)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px}
+.stats b{display:block;font-size:22px;font-weight:800}.stats span{font-size:11px;color:var(--t3)}
+.pts{display:flex;align-items:center;gap:12px;margin-top:14px;border:1px solid var(--edge);border-radius:16px;padding:12px 14px;background:var(--s1)}
+.seg2{display:flex;border:1px solid var(--edge);border-radius:10px;overflow:hidden;font-size:12px}
+.seg2 span{padding:6px 10px;color:var(--t3)}.seg2 span.on{background:var(--vl);color:var(--v3);font-weight:600}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s1);border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid var(--edge);padding:10px 22px 0}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 14px}
+.qr{width:220px;height:220px;margin:16px auto 0;border-radius:18px;background:#fff;display:grid;place-items:center}
+.qr i{font-size:190px;color:#08080E}
+.code{text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.2em;margin-top:10px}
+.sel{height:44px;border-radius:12px;border:1px solid var(--edge);background:var(--s2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--t2);margin-top:8px}
+.tg{width:40px;height:24px;border-radius:12px;background:var(--v);position:relative;flex:none}.tg:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.tg.off{background:var(--s3)}.tg.off:after{right:auto;left:3px}
+.dim{position:absolute;inset:0;background:rgba(5,4,10,.6)}
+</style>
+</head>
+<body>
+
+<!-- YOU -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<main>
+<div class="row" style="align-items:flex-start"><div><div class="eb">Membership and points</div><div class="title" style="margin-top:4px">You</div></div>
+<div class="row" style="gap:8px;margin-left:auto"><div class="ib ai"><i class="ti ti-sparkles"></i></div><div class="ib"><i class="ti ti-bell"></i><span class="dot"></span></div><div class="ib"><i class="ti ti-settings"></i></div></div></div>
+<div class="li" style="margin-top:10px"><span class="av" style="width:42px;height:42px">LL</span><div><b>Lea Lorenzana</b><span>Member since Sep 13, 2025</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="mem">
+<div class="row" style="justify-content:space-between"><span class="eb" style="color:var(--v3)">Membership</span><span class="chip v">Active</span></div>
+<div style="font-size:22px;font-weight:800;margin-top:6px">Premium</div>
+<div class="row" style="justify-content:space-between;font-size:12.5px;color:var(--t2);margin-top:2px"><span><b style="color:var(--t1);font-size:16px">11</b> of 29 days left</span><span>ends Nov 6</span></div>
+<div class="bar"><i style="width:38%"></i></div>
+<div class="out"><i class="ti ti-refresh"></i>Renew or change plan</div>
+</div>
+<div class="stats"><div><b>7</b><span>visit days</span></div><div><b>16</b><span>classes</span></div><div><b>2</b><span>1-on-1</span></div><div><b>5</b><span>workouts</span></div></div>
+<div class="pts"><span class="ic a"><i class="ti ti-coins"></i></span><div><div style="font-size:22px;font-weight:800">6,565 <span style="font-size:12px;color:var(--t3);font-weight:500">CORE Points</span></div><span style="font-size:12px;color:var(--t2)">Enough for every reward</span></div><span class="r lk" style="margin-left:auto;margin-top:0;color:var(--a)">Spend</span></div>
+<div class="li" style="margin-top:6px"><span class="ic"><i class="ti ti-history"></i></span><div><b>Activity</b><span>Checked in · +10 · Oct 26</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-receipt"></i></span><div><b>Payments</b><span>Last: ₱1,500 · Oct 7</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-list-details"></i></span><div><b>What Premium includes</b><span>Everything in the app</span></div><i class="ti ti-chevron-right ar"></i></div>
+</main>
+<nav><div class="tab"><span class="mk"></span><i class="ti ti-home"></i>Today</div><div class="tab"><span class="mk"></span><i class="ti ti-barbell"></i>Train</div><div class="tab on"><span class="mk"></span><i class="ti ti-user"></i>You</div><div class="tab"><span class="mk"></span><i class="ti ti-grid-dots"></i>More</div><span class="sepv"></span><div class="ci"><i class="ti ti-qrcode"></i>Check in</div></nav>
+</div>
+<div class="cap">You<small>The chip row goes. Membership card, this term's numbers and points stay on top; the long activity list, payments, plan details and account become rows that open their own pages. Points have one name everywhere.</small></div></div>
+
+<!-- INBOX -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<main>
+<div class="row" style="gap:6px;color:var(--t2);font-size:13px"><i class="ti ti-arrow-left"></i>Back</div>
+<div class="row" style="align-items:flex-end;margin-top:8px"><div><div class="title">Inbox</div><div style="font-size:12.5px;color:var(--t3);margin-top:2px">26 unread</div></div>
+<div class="row" style="gap:8px;margin-left:auto"><div class="ib"><i class="ti ti-checks"></i></div><div class="ib"><i class="ti ti-archive"></i></div></div></div>
+<div class="tabs"><span class="on">All<span class="cnt">26</span></span><span>Unread</span><span>From the gym<span class="cnt">2</span></span></div>
+<div class="note">Pinned · from the gym</div>
+<div class="li"><span class="ic a"><i class="ti ti-speakerphone"></i></span><div><b>We are closed today</b><span>We open again tomorrow at 7 AM</span></div><span class="n">1d</span></div>
+<div class="note">Today</div>
+<div class="li"><span class="ic v"><i class="ti ti-qrcode"></i></span><div><b>Checked in at the kiosk</b><span>+10 points</span></div><span class="n">1h</span></div>
+<div class="li"><span class="ic"><i class="ti ti-barbell"></i></span><div><b>Push day at 5:30 PM</b><span>Planned · not checked in yet</span></div><span class="r">Start</span></div>
+<div class="note">This week</div>
+<div class="li"><span class="ic"><i class="ti ti-calendar-event"></i></span><div><b>Training session tomorrow</b><span>With Gabby Coach at 7:00 AM</span></div><span class="n">5d</span></div>
+<div class="li"><span class="ic v"><i class="ti ti-qrcode"></i></span><div><b>Checked in ×2</b><span>Kiosk and front desk</span></div><span class="n">6d</span></div>
+<div class="note">Earlier</div>
+<div class="li"><span class="ic v"><i class="ti ti-award"></i></span><div><b>5 badges unlocked</b><span>Baseline, Tracked, Joined In +2</span></div><i class="ti ti-chevron-down ar"></i></div>
+<div class="li"><span class="ic a"><i class="ti ti-gift"></i></span><div><b>You can claim a reward</b><span>4,665 points · enough for a locker</span></div><span class="r">Spend</span></div>
+</main>
+<nav><div class="tab on"><span class="mk"></span><i class="ti ti-home"></i>Today</div><div class="tab"><span class="mk"></span><i class="ti ti-barbell"></i>Train</div><div class="tab"><span class="mk"></span><i class="ti ti-user"></i>You</div><div class="tab"><span class="mk"></span><i class="ti ti-grid-dots"></i>More</div><span class="sepv"></span><div class="ci"><i class="ti ti-qrcode"></i>Check in</div></nav>
+</div>
+<div class="cap">Inbox<small>One row of tabs (All · Unread · From the gym); Archived moves to the header. The gym's own messages pin to the top. Repeats fold ("Checked in ×2", "5 badges") and open to show each one. Icons say what each item is.</small></div></div>
+
+<!-- SETTINGS -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<main>
+<div class="row" style="gap:6px;color:var(--t2);font-size:13px"><i class="ti ti-arrow-left"></i>Back</div>
+<div class="title" style="margin-top:8px">Settings</div>
+<div style="font-size:12.5px;color:var(--t3);margin-top:2px">Alerts, privacy and your account</div>
+<div class="li" style="margin-top:10px"><span class="ic v"><i class="ti ti-bell"></i></span><div><b>Notifications</b><span>Push on · 6 of 6 kinds</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic v"><i class="ti ti-eye"></i></span><div><b>What your coaches see</b><span>Body, goals and workouts · 4 coaches</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic v"><i class="ti ti-sparkles"></i></span><div><b>AI coach</b><span>Can read your training</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li" style="flex-wrap:wrap"><span class="ic"><i class="ti ti-hand-finger"></i></span><div><b>Assistant button</b><span>Where the sparkle button sits</span></div><div class="seg2" style="margin-left:auto"><span class="on">Header</span><span>Floating</span></div></div>
+<div class="li"><span class="ic"><i class="ti ti-key"></i></span><div><b>Sign-in</b><span>Email · Google not linked</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-language"></i></span><div><b>Language</b><span>English</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-download"></i></span><div><b>Your data</b><span>Download everything the gym holds</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-user-cog"></i></span><div><b>Account</b><span>Interests, email, password</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-file-text"></i></span><div><b>Help and legal</b><span>Assistant, privacy, terms</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-building"></i></span><div><b>Core Fitness Lab</b><span>Open 6 AM – 11 PM · call or email</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="row" style="gap:8px;color:var(--a);font-size:14px;font-weight:600;margin-top:16px"><i class="ti ti-logout"></i>Log out</div>
+</main>
+<nav><div class="tab"><span class="mk"></span><i class="ti ti-home"></i>Today</div><div class="tab"><span class="mk"></span><i class="ti ti-barbell"></i>Train</div><div class="tab on"><span class="mk"></span><i class="ti ti-user"></i>You</div><div class="tab"><span class="mk"></span><i class="ti ti-grid-dots"></i>More</div><span class="sepv"></span><div class="ci"><i class="ti ti-qrcode"></i>Check in</div></nav>
+</div>
+<div class="cap">Settings<small>One short list. Each row says its current state ("Push on · 6 of 6") and opens its own page with the same switches as today. The new Assistant button choice sits right here: Header or Floating.</small></div></div>
+
+<!-- CHECK-IN SHEET -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<main><div class="title" style="opacity:.25">Monday</div></main>
+<div class="dim"></div>
+<div class="sheet">
+<div class="grab"></div>
+<div class="row" style="justify-content:space-between"><div><div style="font-size:20px;font-weight:700">Check in</div><div style="font-size:12.5px;color:var(--t3)">Show this at the desk or the kiosk</div></div><div class="ib"><i class="ti ti-x"></i></div></div>
+<div class="qr"><i class="ti ti-qrcode"></i></div>
+<div class="code">B7C 2D1</div>
+<div style="text-align:center;font-size:12px;color:var(--t3);margin-top:4px">Premium · valid to Nov 6 · read the code out if the camera fails</div>
+<div style="font-size:13.5px;font-weight:600;margin-top:16px">What are you doing today?</div>
+<div class="sel">Weights<i class="ti ti-chevron-down" style="margin-left:auto"></i></div>
+<div class="row" style="margin-top:12px;gap:10px"><div><div style="font-size:13px;font-weight:600">Make this my usual</div><div style="font-size:12px;color:var(--t3)">Picked for you every visit</div></div><span class="tg" style="margin-left:auto"></span></div>
+<div style="text-align:center;font-size:12px;color:var(--t3);margin-top:14px">The desk can still change it.</div>
+</div>
+</div>
+<div class="cap">Check-in<small>Same parts as today's sheet: the code (big, on white so cameras read it), the typed code, plan and expiry, what you're doing today and "make it my usual". Rises from the bar; Back closes it (fixed earlier today).</small></div></div>
+
+</body></html>
