@@ -1,6 +1,11 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
-import { Barbell, House, User } from '@phosphor-icons/react';
+import {
+  ArrowsClockwise, Barbell, Bell, Books, Buildings, CalendarCheck, CalendarDots, CalendarPlus, CalendarStar, Camera,
+  ChalkboardTeacher, ChartLineUp, ChatsCircle, EnvelopeSimple, FileText, GearSix, Gift, House, IdentificationCard, Key,
+  ListChecks, Medal, PauseCircle, Ranking, Receipt, Scales, Sparkle, Storefront, Target, Trophy, User, UserCircle,
+  UserPlus, UsersThree, Wrench,
+} from '@phosphor-icons/react';
 
 /**
  * The member app's navigation, in one place.
@@ -131,8 +136,10 @@ export interface Destination {
    * purpose, because CLAUDE.md forbids gating it.
    */
   module?: FeatureKey;
-  /** Drawn in the rail pill before the label. */
+  /** Drawn before the label — More's rows and tiles, Train's and You's rows. */
   icon?: Icon;
+  /** One line on what the screen is for (More, 2026-10-26). */
+  blurb?: string;
   /**
    * Rebuilds `label` from this gym's own nouns when it renamed any of them
    * (0114). `label` stays the default and is what ships for every gym that did
@@ -251,70 +258,79 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
   {
     group: 'Today',
     items: [
-      { label: 'Today', path: '/member/home' },
-      { label: 'Inbox — for you', path: '/member/notifications' },
-      { label: 'Inbox — from the gym', path: '/member/events' , module: 'push' },
-      { label: 'Ask the assistant', path: '/member/chatbot' , module: 'assistant' },
+      { label: 'Today', path: '/member/home', icon: House, blurb: 'Your day: check-in, workout, bookings' },
+      // One Inbox (redesign, 2026-10-26): it used to be listed twice, once per tab.
+      { label: 'Inbox', path: '/member/notifications', icon: Bell, blurb: 'Everything sent to you' },
+      { label: 'Gym events', path: '/member/events' , module: 'push', icon: CalendarStar, blurb: 'What the gym has coming up' },
+      { label: 'Ask the assistant', path: '/member/chatbot' , module: 'assistant', icon: Sparkle, blurb: 'Questions about training and the gym' },
     ],
   },
   {
     group: 'Workouts',
     items: [
-      { label: 'Book a session', path: '/member/book-class' , module: 'classes' },
-      { label: "Today's workout", path: '/member/workouts/today' },
-      { label: 'Plan your week', path: '/member/gym-plan' , module: 'progress' },
-      { label: 'Routines', path: '/member/track' , module: 'progress' },
-      { label: 'Programs', path: '/member/programs' , module: 'programs' },
-      { label: 'Browse free workouts', path: '/member/workouts' },
-      { label: 'Equipment', path: '/member/equipment', module: 'equipment' },
+      { label: 'Book a session', path: '/member/book-class?tab=classes' , module: 'classes', icon: CalendarPlus, blurb: 'Group classes and 1-on-1 sessions' },
+      { label: "Today's workout", path: '/member/workouts/today', icon: Barbell, blurb: 'Everything planned for today' },
+      { label: 'Plan your week', path: '/member/gym-plan' , module: 'progress', icon: CalendarCheck, blurb: 'Training days and reminders' },
+      { label: 'Routines', path: '/member/track' , module: 'progress', icon: ListChecks, blurb: 'Your saved workouts' },
+      { label: 'Programs', path: '/member/programs' , module: 'programs', icon: CalendarDots, blurb: 'Multi-week plans' },
+      { label: 'Browse free workouts', path: '/member/workouts', icon: Books, blurb: 'No plan needed' },
+      { label: 'Equipment', path: '/member/equipment', module: 'equipment', icon: Wrench, blurb: 'What the gym has, how to use it' },
     ],
   },
   {
     group: 'Progress',
     items: [
-      { label: 'Overview', path: '/member/progress' , module: 'progress' },
-      { label: 'Body', path: '/member/progress?tab=body' , module: 'progress' },
-      { label: 'Targets', path: '/member/progress?tab=goals' , module: 'targets' },
-      { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos' },
-      { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement' },
+      { label: 'Overview', path: '/member/progress' , module: 'progress', icon: ChartLineUp, blurb: 'How you are doing' },
+      { label: 'Body', path: '/member/progress?tab=body' , module: 'progress', icon: Scales, blurb: 'Weight and measurements' },
+      { label: 'Targets', path: '/member/progress?tab=goals' , module: 'targets', icon: Target, blurb: 'What you are working towards' },
+      { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos', icon: Camera, blurb: 'Private, yours to compare' },
+      { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement', icon: Medal, blurb: 'Badges and your earned level' },
     ],
   },
   {
     group: 'Coaching',
     items: [
-      { label: 'My bookings', path: '/member/booking-history' , module: 'classes' },
+      { label: 'My bookings', path: '/member/booking-history' , module: 'classes', icon: CalendarCheck, blurb: 'Coming and past' },
       { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
-        words: (w) => w('trainers', true) },
-      { label: 'Rooms', path: '/member/rooms' , module: 'rooms' },
+        words: (w) => w('trainers', true), icon: ChalkboardTeacher, blurb: 'Who coaches here' },
+      { label: 'Rooms', path: '/member/rooms' , module: 'rooms', icon: ChatsCircle, blurb: 'Your coach’s rooms and messages' },
     ],
   },
   {
     group: 'Challenges',
     items: [
-      { label: 'Challenges', path: '/member/challenges' , module: 'engagement' },
-      { label: 'Season', path: '/member/season' , module: 'seasons' },
-      { label: 'Team', path: '/member/squad' , module: 'squads' },
+      { label: 'Challenges', path: '/member/challenges' , module: 'engagement', icon: Trophy, blurb: 'Targets with dates, for points' },
+      { label: 'Season', path: '/member/season' , module: 'seasons', icon: Ranking, blurb: 'This month’s standings' },
+      { label: 'Team', path: '/member/squad' , module: 'squads', icon: UsersThree, blurb: 'Your squad’s weekly target' },
     ],
   },
   {
     group: 'Account',
     items: [
-      { label: 'Membership', path: '/member/membership' },
-      { label: 'Renew', path: '/member/renew' },
-      { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests' },
-      { label: 'Waiver', path: '/member/waiver' },
-      { label: 'Payments', path: '/member/payments' },
-      { label: 'Attendance', path: '/member/attendance-history' },
-      { label: 'Spend points', path: '/member/rewards' , module: 'points' },
-      { label: 'Shop', path: '/member/shop', module: 'shop' },
-      { label: 'Invite a friend', path: '/member/refer' , module: 'referrals' },
-      { label: 'Profile', path: '/member/profile' },
-      { label: 'Settings', path: '/member/settings' },
+      { label: 'Membership', path: '/member/membership', icon: IdentificationCard, blurb: 'Your plan, days left, points' },
+      { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise, blurb: 'Renew or change your plan' },
+      { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests', icon: PauseCircle, blurb: 'Ask the desk to freeze or end it' },
+      { label: 'Waiver', path: '/member/waiver', icon: FileText, blurb: 'The gym’s waiver' },
+      { label: 'Payments', path: '/member/payments', icon: Receipt, blurb: 'Every payment and receipt' },
+      { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots, blurb: 'Every visit' },
+      { label: 'Spend points', path: '/member/rewards' , module: 'points', icon: Gift, blurb: 'Rewards at the desk' },
+      { label: 'Shop', path: '/member/shop', module: 'shop', icon: Storefront, blurb: 'What the gym sells' },
+      { label: 'Invite a friend', path: '/member/refer' , module: 'referrals', icon: UserPlus, blurb: 'Share your gym' },
+      { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
+      { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, language' },
       // Which gym this app is showing. One gym: the screen is where you join
       // another. Several: it is how you switch (docs/TENANCY.md).
-      { label: 'Gyms', path: '/choose-gym' },
-      { label: 'Change password', path: '/member/change-password' },
-      { label: 'Change email', path: '/member/change-email' },
+      { label: 'Gyms', path: '/choose-gym', icon: Buildings, blurb: 'Switch gym, or join another' },
+      { label: 'Change password', path: '/member/change-password', icon: Key, blurb: 'Your sign-in password' },
+      { label: 'Change email', path: '/member/change-email', icon: EnvelopeSimple, blurb: 'The address you sign in with' },
     ],
   },
+];
+
+/** The four tiles at the top of More: the places members open most (redesign, 2026-10-26). */
+export const MORE_TILES: Destination[] = [
+  { label: 'Book', path: '/member/book-class?tab=classes', module: 'classes', icon: CalendarPlus },
+  { label: 'Progress', path: '/member/progress', module: 'progress', icon: ChartLineUp },
+  { label: 'Rewards', path: '/member/rewards', module: 'points', icon: Gift },
+  { label: 'Payments', path: '/member/payments', icon: Receipt },
 ];

@@ -90,6 +90,10 @@
       "app": "member"
     },
     {
+      "file": "member-more-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-invite-check.js",
       "app": "member"
     },
