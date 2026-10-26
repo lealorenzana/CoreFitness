@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaperPlaneRight, Trash } from '@phosphor-icons/react';
 import RichText from '../components/ui/RichText';
@@ -253,7 +253,12 @@ function Assistant() {
     return () => { cancelled = true; };
   }, [greeting, refreshList, updateCoach, refreshNames]);
 
-  useEffect(() => {
+  // A layout effect, not a passive one: a passive effect runs after paint, and a
+  // scroll event left over from the previous scroll could land between the reply's
+  // text reaching the DOM and the effect — it measured the list a reply's height
+  // from the bottom, switched following off, and the newest message stayed out
+  // of view (member-chat-scroll-check failed about one run in two).
+  useLayoutEffect(() => {
     messagesRef.current = messages;
     // Scroll the transcript itself — scrollIntoView also moves every scrolling
     // ancestor, which dragged the whole page and stranded the composer. And only
@@ -263,7 +268,7 @@ function Assistant() {
     // Instant, not smooth: a smooth scroll fires scroll events on the way down,
     // which read as "the member scrolled up" and switched following off.
     if (el && atBottom.current) el.scrollTop = el.scrollHeight;
-  }, [messages, isTyping]);
+  }, [messages, isTyping, working, cards]);
 
   const stored = messages.filter((m) => m.id !== GREETING_ID);
   const setupOpen = !!coach?.allowed && coach.consent !== null && (
