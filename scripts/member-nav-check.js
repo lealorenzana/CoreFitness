@@ -312,7 +312,8 @@ async (page) => {
 
   // One Inbox (2026-10-10): what is for you, and what the gym posts, side by side.
   await go('/member/notifications');
-  tabs = await strip('inbox');
-  out.push('Inbox: For you · From the gym: ' + (tabs.includes('For you') && tabs.includes('From the gym') ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  // One row since the redesign (2026-10-26): All · Unread · From the gym, the last opening the gym's page.
+  tabs = (await page.getByRole('tablist').first().getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('Inbox: All · Unread · From the gym: ' + (tabs[0] === 'All' && /^Unread/.test(tabs[1] ?? '') && tabs.includes('From the gym') && (await page.getByRole('tablist').count()) === 1 ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   return out.join(String.fromCharCode(10));
 }

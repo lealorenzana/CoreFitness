@@ -1,6 +1,7 @@
 import { Check } from '@phosphor-icons/react';
 import type { Notification } from '../../services/notificationService';
 import { getRelativeTime } from '../../services/notificationService';
+import { NOTIFICATION_ICON, TILE } from '../../utils/notificationIcon';
 
 /**
  * One notification row, drawn the same way in the bell and in the full list
@@ -75,6 +76,9 @@ export default function NotificationListItem({
         }} />
       )}
 
+      {/* What kind of notice this is (redesign, 2026-10-26). */}
+      <TypeTile n={n} />
+
       <span className="flex-1 min-w-0">
         <span className="block truncate" style={{
           fontSize: 14.5, color: n.read ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
@@ -91,5 +95,18 @@ export default function NotificationListItem({
       </span>
       {trailing}
     </div>
+  );
+}
+
+function TypeTile({ n }: { n: Notification }) {
+  const kind = NOTIFICATION_ICON[n.type] ?? NOTIFICATION_ICON.info;
+  const c = TILE[kind.tone];
+  const KindIcon = kind.icon;
+  return (
+    <span aria-hidden data-notification-kind={n.type} className="shrink-0 grid place-items-center" style={{
+      width: 36, height: 36, borderRadius: 11, background: c.bg, border: `1px solid ${c.edge}`, color: c.fg,
+    }}>
+      <KindIcon size={17} />
+    </span>
   );
 }

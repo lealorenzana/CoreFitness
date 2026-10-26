@@ -79,6 +79,7 @@ export function PageTitle({
   back = false,
   action,
   fallback = '/member/home',
+  hub = true,
 }: {
   title: string;
   subtitle?: string;
@@ -86,6 +87,8 @@ export function PageTitle({
   action?: ReactNode;
   /** Where Back lands when there is no history. A screen shared with trainers passes theirs. */
   fallback?: string;
+  /** False when the page draws its section's tabs itself, in its own one row (Inbox, 2026-10-26). */
+  hub?: boolean;
 }) {
   const navigate = useNavigate();
   return (
@@ -117,7 +120,7 @@ export function PageTitle({
         </div>
         {action && <div className="flex-shrink-0 self-center">{action}</div>}
       </div>
-      <HubStrip />
+      {hub && <HubStrip />}
     </header>
   );
 }

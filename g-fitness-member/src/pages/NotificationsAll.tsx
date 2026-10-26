@@ -3,7 +3,11 @@ import { useUrlState } from '../hooks/useUrlState';
 import { usePaged } from '../hooks/usePaging';
 import Pager from '../components/ui/Pager';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Archive, Checks, Envelope, EnvelopeOpen, Trash } from '@phosphor-icons/react';
+import { Archive, CaretDown, Checks, Envelope, EnvelopeOpen, Trash, Tray } from '@phosphor-icons/react';
+import { foldNotifications } from '../lib/foldNotifications';
+import { IconButton } from '../components/layout/TabHeader';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 
 import NotificationListItem from '../components/ui/NotificationListItem';
 import NotificationDetail from '../components/ui/NotificationDetail';
@@ -32,11 +36,8 @@ import Modal from '../components/ui/Modal';
 
 type Tab = 'inbox' | 'unread' | 'archived';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'inbox', label: 'Inbox' },
-  { id: 'unread', label: 'Unread' },
-  { id: 'archived', label: 'Archived' },
-];
+/** The one row of tabs (redesign, 2026-10-26). 'gym' is not a filter: it is the gym's own page. */
+type RowTab = 'inbox' | 'unread' | 'gym';
 
 export default function NotificationsAll() {
   const navigate = useNavigate();
@@ -51,6 +52,11 @@ export default function NotificationsAll() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Folded rows the member opened ("Checked in ×4" → each one). */
+  const [openFolds, setOpenFolds] = useState<Set<string>>(new Set());
+  const gymApp = useGymApp();
+  // What the gym posts lives on its own page (/member/events); the tab goes there. Off with push (0141).
+  const gymTab = !isTrainer && moduleOn(gymApp, 'push');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,38 +178,43 @@ export default function NotificationsAll() {
           somewhere the member had not been. A trainer falls back to theirs. */}
       <PageTitle
         back
+        hub={false}
         fallback={isTrainer ? '/trainer/home' : '/member/home'}
-        title={isTrainer ? 'Updates' : 'Inbox'}
-        subtitle={loading ? undefined : `${all.length} total · ${unreadCount} unread`}
+        title={tab === 'archived' ? 'Archived' : isTrainer ? 'Updates' : 'Inbox'}
+        subtitle={loading ? undefined : `${unreadCount} unread · ${all.length} in all`}
         action={!loading && all.length > 0 ? (
-          <button onClick={() => (selecting ? exitSelect() : setSelecting(true))}
-            style={{ fontSize: 13, color: selecting ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
-            {selecting ? 'Done' : 'Select'}
-          </button>
+          <div className="flex items-center" style={{ gap: 10 }}>
+            {!selecting && tab !== 'archived' && unreadCount > 0 && (
+              <IconButton label="Mark all as read" onClick={() => void markAllRead()}><Checks size={16} /></IconButton>
+            )}
+            {!selecting && (
+              <IconButton label={tab === 'archived' ? 'Back to the inbox' : 'Archived'}
+                onClick={() => { setTab(tab === 'archived' ? 'inbox' : 'archived'); setSelected(new Set()); }}>
+                {tab === 'archived' ? <Tray size={16} /> : <Archive size={16} />}
+              </IconButton>
+            )}
+            <button onClick={() => (selecting ? exitSelect() : setSelecting(true))}
+              style={{ fontSize: 13, color: selecting ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
+              {selecting ? 'Done' : 'Select'}
+            </button>
+          </div>
         ) : undefined}
       />
 
-      <TextTabs<Tab>
-        label="Notifications"
-        tabs={TABS.map((t) => ({ id: t.id, label: t.id === 'unread' && unreadCount > 0 ? `Unread · ${unreadCount}` : t.label }))}
-        active={tab}
-        onChange={(id) => { setTab(id); setSelected(new Set()); }}
-      />
-
-      {/* Announcements and events are the other half of "what has the gym told
-          me". Hidden for a trainer: /member/events is not on their nav, and a
-          link to somewhere they cannot use is worse than none. */}
-      {!isTrainer && !selecting && (
-        <div className="flex items-center justify-between" style={{ gap: 12, marginTop: -8, fontSize: 13 }}>
-          <button onClick={() => navigate('/member/events')} style={{ color: 'var(--color-primary-300)' }}>
-            Events and announcements
-          </button>
-          {unreadCount > 0 && (
-            <button onClick={markAllRead} className="flex items-center" style={{ gap: 6, color: 'var(--color-secondary)' }}>
-              <Checks size={15} /> Mark all as read
-            </button>
-          )}
-        </div>
+      {tab !== 'archived' && (
+        <TextTabs<RowTab>
+          label="Notifications"
+          tabs={([
+            { id: 'inbox' as RowTab, label: 'All' },
+            { id: 'unread' as RowTab, label: unreadCount > 0 ? `Unread · ${unreadCount}` : 'Unread' },
+            ...(gymTab ? [{ id: 'gym' as RowTab, label: 'From the gym' }] : []),
+          ])}
+          active={tab as RowTab}
+          onChange={(id) => {
+            if (id === 'gym') { navigate('/member/events'); return; }
+            setTab(id); setSelected(new Set());
+          }}
+        />
       )}
 
       {selecting && (
@@ -235,16 +246,37 @@ export default function NotificationsAll() {
           {buckets.map(([label, items]) => (
             <div key={label}>
               <p className="eyebrow" style={{ padding: '14px var(--card-pad) 4px' }}>{label}</p>
-              {items.map((n) => (
-                <NotificationListItem
-                  key={n.id}
-                  notification={n}
-                  selectable={selecting}
-                  selected={selected.has(n.id)}
-                  onToggleSelect={() => toggleSelect(n.id)}
-                  onClick={() => openDetail(n)}
-                />
-              ))}
+              {foldNotifications(items).map((e) => {
+                const row = (n: Notification) => (
+                  <NotificationListItem
+                    key={n.id}
+                    notification={n}
+                    selectable={selecting}
+                    selected={selected.has(n.id)}
+                    onToggleSelect={() => toggleSelect(n.id)}
+                    onClick={() => openDetail(n)}
+                  />
+                );
+                if (e.kind === 'single') return row(e.item);
+                // Selecting works on each notice, so a fold opens while selecting.
+                const open = selecting || openFolds.has(`${label}:${e.key}`);
+                const unread = e.items.filter((n) => !n.read).length;
+                return (
+                  <div key={`${label}:${e.key}`} data-fold={e.title}>
+                    <NotificationListItem
+                      notification={{ ...e.items[0], title: `${e.title} ×${e.items.length}`, read: unread === 0,
+                        message: unread > 0 ? `${unread} new · tap to ${open ? 'fold them' : 'see each one'}` : `Tap to ${open ? 'fold them' : 'see each one'}` }}
+                      onClick={() => setOpenFolds((s) => {
+                        const k = `${label}:${e.key}`; const next = new Set(s);
+                        if (next.has(k)) next.delete(k); else next.add(k);
+                        return next;
+                      })}
+                      trailing={<CaretDown size={14} aria-hidden style={{ marginTop: 10, flex: 'none', color: 'var(--color-text-muted)', transform: open ? 'rotate(180deg)' : 'none' }} />}
+                    />
+                    {open && <div style={{ paddingLeft: 24 }}>{e.items.map(row)}</div>}
+                  </div>
+                );
+              })}
             </div>
           ))}
           <div style={{ padding: '0 var(--card-pad)' }}>
