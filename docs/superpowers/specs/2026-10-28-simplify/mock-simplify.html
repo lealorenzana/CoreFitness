@@ -81,8 +81,9 @@ td{padding:10px 6px;border-bottom:1px solid var(--sep)}
 
   <!-- MEMBER: Today -->
   <section class="screen" data-s="m-today" data-bar="m" data-tab="0">
-    <h1 class="h1">Today</h1><p class="sub">Wednesday 28 October</p>
-    <div class="hero" style="margin-top:14px"><div style="display:flex;align-items:center;gap:10px"><i class="ph-fill ph-fire" style="font-size:26px;color:var(--a)"></i><div class="grow"><b>4-week streak</b><small>1 of 3 days this week</small></div><span class="pill p">Checked in</span></div></div>
+    <div class="head"><div><h1 class="h1">Today</h1><p class="sub">Wednesday 28 October</p></div><span class="pill p me"><i class="ph-fill ph-coins"></i> 1,240 pts</span></div>
+    <div class="row" style="margin-top:8px;border:1px solid color-mix(in srgb,var(--a) 40%,transparent);background:var(--al);border-radius:14px;padding:10px 12px"><i class="ph-fill ph-identification-card" style="color:var(--a);font-size:20px"></i><div class="grow"><b style="font-size:13.5px">Premium ends in 5 days</b><small>Renew at the desk or in You</small></div></div>
+    <div class="hero" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><i class="ph-fill ph-fire" style="font-size:26px;color:var(--a)"></i><div class="grow"><b>4-week streak</b><small>1 of 3 days this week</small></div><span class="pill p">Checked in</span></div></div>
     <p class="eyebrow">Today's workout</p>
     <div class="card"><div class="row"><div class="ti mine"><i class="ph ph-barbell"></i></div><div class="grow"><b>Push day</b><small>From your plan · 6 exercises · 45 min</small></div></div></div>
     <button class="btn act" style="margin-top:10px">Start workout</button>
@@ -116,7 +117,7 @@ td{padding:10px 6px;border-bottom:1px solid var(--sep)}
       <div class="row"><div class="grow"><small>Until 1 Jan · Chat · Classwork · Progress</small><div class="bar"><i style="width:35%"></i></div></div></div></div>
     <p class="eyebrow">Your sessions</p>
     <div class="card">
-      <div class="row"><div class="ti mine"><i class="ph ph-calendar-check"></i></div><div class="grow"><b>Fri 30 Oct, 9:00</b><small>With Ben · confirmed</small></div></div>
+      <div class="row"><div class="ti mine"><i class="ph ph-calendar-check"></i></div><div class="grow"><b>Fri 30 Oct, 9:00</b><small>With Ben · confirmed</small></div><i class="ph ph-chat-circle-text" style="color:var(--p300);font-size:20px"></i></div>
       <div class="row"><div class="ti info"><i class="ph ph-hourglass-medium"></i></div><div class="grow"><b>Tue 3 Nov, 18:00</b><small>With Ben · waiting for him to say yes</small></div></div>
     </div>
     <div class="grid2" style="margin-top:12px"><button class="btn act">Book a session</button><button class="btn line">Find a coach</button></div>
@@ -146,13 +147,14 @@ td{padding:10px 6px;border-bottom:1px solid var(--sep)}
       <div class="row"><i class="ph ph-user-plus" style="font-size:20px"></i><div class="grow"><b>Invite a friend</b></div></div>
       <div class="row"><i class="ph ph-buildings" style="font-size:20px"></i><div class="grow"><b>Gyms</b></div></div>
       <div class="row"><i class="ph ph-user-circle" style="font-size:20px"></i><div class="grow"><b>Profile</b></div></div>
-      <div class="row"><i class="ph ph-gear" style="font-size:20px"></i><div class="grow"><b>Settings</b></div></div>
+      <div class="row"><i class="ph ph-gear" style="font-size:20px"></i><div class="grow"><b>Settings</b><small>Alerts, privacy, sign-in, password, email</small></div></div>
+      <div class="row"><i class="ph ph-question" style="font-size:20px"></i><div class="grow"><b>Help</b></div></div>
     </div>
   </section>
 
   <!-- COACH: Today -->
   <section class="screen" data-s="c-today" data-bar="c" data-tab="0">
-    <div class="head"><div><h1 class="h1">Today</h1><p class="sub">Wednesday 28 October</p></div><div class="av me">BC<span class="dot"></span></div></div>
+    <div class="head"><div><h1 class="h1">Today</h1><p class="sub">Wednesday 28 October</p></div><div class="me" style="display:flex;gap:8px;align-items:center"><span class="pill" style="padding:7px"><i class="ph ph-qr-code"></i></span><span class="pill" style="padding:7px;position:relative"><i class="ph ph-bell"></i></span><div class="av">BC<span class="dot"></span></div></div></div>
     <div class="hero" style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);text-align:center"><div><b>3</b><small style="display:block;font-size:12px;color:var(--t2)">sessions today</small></div><div><b style="color:var(--a300)">2</b><small style="display:block;font-size:12px;color:var(--t2)">to decide</small></div><div><b>1</b><small style="display:block;font-size:12px;color:var(--t2)">needs you</small></div></div>
     <p class="eyebrow">To decide</p>
     <div class="card">
@@ -211,7 +213,7 @@ td{padding:10px 6px;border-bottom:1px solid var(--sep)}
   </div>
   <div class="main">
     <h1 style="font-size:22px;font-weight:800">Personal training</h1><p class="sub">Single sessions and monthly packages, in one place</p>
-    <div class="tabs"><span class="tab on">To decide · 3</span><span class="tab">Sessions</span><span class="tab">Packages</span><span class="tab">Coaches</span></div>
+    <div class="tabs"><span class="tab on">To decide · 3</span><span class="tab">Sessions</span><span class="tab">Packages</span></div>
     <table>
       <tr><th>Member</th><th>What</th><th>Coach</th><th>When</th><th></th></tr>
       <tr><td>Lea Lorenzana</td><td>Single session</td><td>Ben Cruz</td><td>Sun 1 Nov, 9:00 · waiting 2 days</td><td><span class="pill">Decline</span> <span class="pill p">Confirm</span></td></tr>
@@ -248,16 +250,16 @@ td{padding:10px 6px;border-bottom:1px solid var(--sep)}
 
 <script>
 const NOTES = {
-  'm-today': `<b>Today</b> answers "what now?": your streak and check-in, today's workout with one Start button, and your next session. Challenges, points and the rest moved out.`,
+  'm-today': `<b>Today</b> answers "what now?": your streak and check-in, today's workout with one Start button, and your next session. Also kept: membership warnings (ending soon, frozen), the Terms notice, What's new, the daily arrival and moments, and your points. Today's challenge moves to Rewards.`,
   'm-workout': `<b>Workout</b> — <b>Your plan</b> is your week and the program you follow, today's workout, and your own saved workouts. <b>Library</b> is free workouts and programs to start. Routines, Programs, Plan your week and Free workouts stop being four separate places.`,
-  'm-coach': `<b>Coach</b> — your package (one place: chat, classwork, progress), your sessions coming and past, and <b>Book a session</b>. My bookings and Rooms fold in here. If a gym turns Classes on, a <b>Classes</b> tab appears between Workout and Coach.`,
+  'm-coach': `<b>Coach</b> — your package (one place: chat, classwork, progress), your sessions coming and past, and <b>Book a session</b>. Tap a session to chat with that coach — chat is for single sessions too. My bookings and Rooms fold in here. If a gym turns Classes on, a <b>Classes</b> tab appears between Workout and Coach.`,
   'm-you': `<b>You</b> — your <b>level</b> (only the earned one is called level), then three tabs: <b>Progress</b> (body, targets, photos — the old Progress hub), <b>Badges & records</b>, <b>Membership</b> (plan, renew, payments, attendance, pause, waiver).`,
-  'm-more': `<b>More</b> — nine entries. <b>Rewards</b> is points, challenges and what you can get, in one place (Season is off unless the gym turns it on). The AI is <b>Assistant</b>, never "coach". Friends appears here only if the gym runs it.`,
-  'c-today': `<b>Today</b> (from wave 1) — the day in three numbers, everything to decide (session requests and package asks), your day. Your photo top-right opens the You sheet with your status.`,
+  'm-more': `<b>More</b> — nine entries. <b>Rewards</b> is points, challenges and what you can get, in one place (Season is off unless the gym turns it on). The AI is <b>Assistant</b>, never "coach". Change password and email are inside Settings. <b>Friends is removed.</b>`,
+  'c-today': `<b>Today</b> (from wave 1) — the day in three numbers, everything to decide (session requests and package asks), your day. Top-right: your check-in QR, the bell, and your photo (opens the You sheet with your status). What's new still shows once.`,
   'c-pt': `<b>Personal training</b> — everyone you train as a Discord-style list: photo with status dot, last message, unread count. Package trainees first, then single-session trainees. Start coaching someone and how you're paid live here.`,
   'c-room': `<b>A package trainee</b> — the room and the chat are one place: <b>Chat</b>, <b>Classwork</b>, <b>Progress</b>, and <b>About</b> (their sheet: progress, training, notes, emergency contact). A single-session trainee has Chat and About only.`,
   'c-sched': `<b>Schedule</b> — your sessions this week (package and single), and <b>Your hours</b> as a tab instead of a separate page. Classes appear here only if the gym runs them.`,
-  admin: `<b>Admin</b> — one <b>Personal training</b> page: what to decide (session requests, package payments, members who want a coach), sessions, packages and coaches. Classes, Bookings and Coaching no longer stand alone; class pages show only if Classes is on.`,
+  admin: `<b>Admin</b> — one <b>Personal training</b> page: what to decide (session requests, package payments, members who want a coach), sessions and packages. Bookings and Coaching no longer stand alone; class pages show only if Classes is on. The sidebar here is shortened — every other admin page (Members, Attendance, Payments, Plans, Shop, Rewards, Notifications, Invitations, Trainers, Activity, Your app, Settings, Help, Your plan) stays as it is.`,
 };
 const phone = document.getElementById('phone'), desk = document.getElementById('desk');
 function show(p) {

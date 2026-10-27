@@ -34,16 +34,21 @@ Core Fitness is multi-tenant, so features other gyms might use are **switched of
 ### Removed — permanently
 - **Coaching groups** (join-code groups) and **group packages** (`coachings.kind = 'group'`).
 - **Rooms of single-session trainees** (no package), with their posts and classwork.
+- **Class rooms**, with their posts and classwork (owner confirmed 2026-10-28): rooms are package-only, so a gym that
+  turns Classes back on gets classes without rooms.
+- **Friends, completely** (owner, 2026-10-28) — 0217's friendships and cheers, the friend code, the findable and
+  share-wins settings, the Friends pages, Today's strip, the coach's view of cheers, the owner's switch and count, and
+  Privacy §2's clause. Deleted with their data.
 - This is a **hard delete in the migration**, the owner's explicit choice over "hide". The migration header and the
   paste instructions say so in plain words before anything is pasted.
 
 ### Off for every gym now; the owner can switch each back on (Your app)
 - **Classes** — every class screen disappears in all three apps while off.
 - **Squads (Team)**, **Gym events**, **Season**.
-- Friends was already off by default (0217).
 
 ### The member app — three tabs, one job each
-- **Today** — check in, today's workout, your next session, your streak. Nothing else.
+- **Today** — check in, today's workout, your next session, your streak. Notices stay: membership warnings (ending, frozen,
+  gym paused), the Terms notice, What's new, the daily arrival and moments, the points chip. Today's challenge moves to Rewards.
 - **Train** — **Workout · Coach** (· Classes, between them, only if the gym turns Classes on).
   - **Workout**: *Your plan* (your week and today's workout; the routine or program you follow lives here) and
     *Library* (free workouts and programs you can start). Routines, Programs and Plan your week stop being separate places.
@@ -54,7 +59,9 @@ Core Fitness is multi-tenant, so features other gyms might use are **switched of
 - **Rewards** — points, challenges and spending them, one place. Season is off by default.
 - **Names**: the AI is **"Assistant"** everywhere, never "coach". **"Level" means only the earned level**; the
   self-declared one becomes a setting, *How much do you train?*, never called a level.
-- **More** — about ten entries: Inbox, Rewards, Shop, Equipment, Invite, Friends (if on), Gyms, Profile, Settings, Help.
+- **More** — ten entries: Inbox, Rewards, Assistant, Shop, Equipment, Invite, Gyms, Profile, Settings (with password and
+  email inside), Help.
+- **Chat** stays for single sessions too: a session row opens the chat with that coach.
 
 ### The coach app — bottom tabs, a Discord feel inside
 - **Today** — what needs you (session requests, package asks and payments), your day, find a trainee (wave 1, kept).
@@ -63,12 +70,14 @@ Core Fitness is multi-tenant, so features other gyms might use are **switched of
   opens the chat and their sheet. *Start coaching someone* and *How members pay you* live here.
 - **Schedule** — your sessions this week, with your bookable hours as a section (Hours stops being its own page).
 - The **Bookings page is removed** (requests are decided on Today; booked sessions are in Schedule).
-- The rail of rooms goes. The You sheet (status, Library, Equipment, Achievements, Gyms, Settings) stays, opened from the coach's photo.
+- The rail of rooms goes. The header carries the check-in QR (0200), the bell and the coach's photo, which opens the You
+  sheet (status, Library, Equipment, Achievements, Gyms, Settings). What's new still shows once.
 - Wave 2's finished pieces carry over: the coaching tabs become Personal training's package view, the room's Progress
   marks with words, the trainee sheet's tabs, one toast at a time, one-line headers.
 
 ### The admin app
-- One **Personal training** page: session requests, packages, coaches.
+- One **Personal training** page: what to decide, sessions, packages. The Trainers page stays where it is.
+- Every other admin page stays as it is.
 - Class pages (Schedule, class bookings) hide when Classes is off.
 
 ## Constraints
