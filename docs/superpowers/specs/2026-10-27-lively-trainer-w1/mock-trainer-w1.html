@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach wave 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
+<style>
+:root{--bg:#08080E;--surface:#12121C;--raised:#161522;--high:#1E1D2B;--p:#7C3AED;--p300:#c4b5fd;--p400:#a78bfa;--pl:#1E1333;
+  --a:#F59E0B;--a300:#fcd34d;--al:#1F1A0A;--t1:#e9e9ed;--t2:#b2b6ca;--tm:#9397ab;--hair:rgba(233,233,237,.16);--gold:#F59E0B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050509;color:var(--t1);font-family:Inter,system-ui,sans-serif;min-height:100vh;display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:28px 16px 60px;flex-wrap:wrap}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--p300);outline-offset:2px;border-radius:8px}
+.phone{width:393px;height:852px;border-radius:46px;background:var(--bg);position:relative;overflow:hidden;flex:none;box-shadow:0 0 0 10px #15151d,0 0 0 11px #26263a,0 40px 120px rgba(0,0,0,.6)}
+.status{position:absolute;top:14px;left:30px;right:30px;display:flex;justify-content:space-between;font-size:13px;font-weight:600;z-index:3}
+/* the hub: rail + panel + you bar (kept from the Discord redesign) */
+.rail{position:absolute;left:0;top:44px;bottom:84px;width:72px;border-right:1px solid rgba(233,233,237,.06);display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:10px}
+.rb{display:grid;justify-items:center;gap:3px;font-size:10.5px;color:var(--tm);width:64px}
+.rb .ic{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:22px;background:var(--surface);position:relative;color:var(--t2)}
+.rb.on .ic{background:var(--p);color:#fff;border-radius:14px}.rb.on{color:var(--t1);font-weight:600}
+.rb .ic.room{background:color-mix(in srgb,var(--p) 60%,#000);color:#fff;font-weight:800;font-size:14px;border-radius:50%}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--a);color:#1a1205;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.sep{width:30px;height:1px;background:rgba(233,233,237,.1)}
+.panel{position:absolute;left:72px;right:0;top:44px;bottom:84px;overflow-y:auto;padding:6px 16px 20px;scrollbar-width:none}
+.panel::-webkit-scrollbar{display:none}
+.youbar{position:absolute;left:10px;right:10px;bottom:12px;height:62px;border-radius:18px;background:var(--raised);border:1px solid var(--hair);display:flex;align-items:center;gap:10px;padding:0 12px}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;background:var(--pl);color:var(--p300);border:1px solid color-mix(in srgb,var(--p) 50%,transparent);flex:none}
+.av.sm{width:32px;height:32px;font-size:12px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--hair);color:var(--t2)}
+.h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:12.5px;color:var(--tm);margin-top:2px}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--tm);margin-top:18px}
+.search{display:flex;align-items:center;gap:8px;height:40px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);padding:0 12px;color:var(--tm);font-size:13.5px;margin-top:12px}
+.card{border:1px solid var(--hair);border-radius:18px;background:var(--surface);padding:12px}
+.arrive{border:1px solid color-mix(in srgb,var(--p) 45%,transparent);background:linear-gradient(150deg,var(--pl),var(--surface) 70%);border-radius:18px;padding:12px;margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center}
+.arrive b{display:block;font-size:22px;font-weight:800}.arrive small{font-size:11.5px;color:var(--t2)}
+.arrive .act b{color:var(--a300)}
+.req{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(233,233,237,.07)}
+.req:first-of-type{border-top:0}
+.grow{flex:1;min-width:0}.grow b{display:block;font-size:14px}.grow small{display:block;font-size:12px;color:var(--tm);margin-top:1px}
+.ok{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--a);color:#1a1205;font-size:18px;flex:none}
+.no{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--hair);color:var(--t2);font-size:16px;flex:none}
+.done{font-size:12px;font-weight:700;color:var(--p300)}
+.tl{display:grid;grid-template-columns:46px minmax(0,1fr);row-gap:12px;margin-top:8px;font-size:13px}
+.tl .t{color:var(--tm);font-size:12px;padding-top:2px}.tl .t.live{color:var(--p300);font-weight:700}
+.tl b{display:block;font-size:14px}.tl small{color:var(--tm);font-size:12px}
+.need{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(233,233,237,.07)}
+.need:first-of-type{border-top:0}
+.ti{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:none;font-size:18px}
+.ti.act{background:var(--al);color:var(--a)}.ti.mine{background:var(--pl);color:var(--p300)}
+/* the trainee-win card */
+.wincard{position:absolute;left:12px;right:12px;top:52px;z-index:20;border-radius:18px;padding:12px;background:var(--raised);border:1px solid color-mix(in srgb,var(--p) 50%,transparent);
+  box-shadow:0 14px 40px rgba(0,0,0,.55);transform:translateY(-130%);transition:transform .45s cubic-bezier(.2,1.2,.3,1)}
+.wincard.on{transform:none}
+.medal{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#2a1a02;font-size:18px;flex:none;
+  background:radial-gradient(circle at 32% 28%,#fff6d8,var(--tier) 40%,color-mix(in srgb,var(--tier) 55%,#000) 100%);box-shadow:0 0 0 2px color-mix(in srgb,var(--tier) 70%,#000)}
+.btn{height:38px;padding:0 14px;border-radius:12px;font-size:13px;font-weight:800;display:inline-flex;align-items:center;gap:6px}
+.btn.act{background:var(--a);color:#1a1205}.btn.line{border:1px solid var(--hair);color:var(--t2);font-weight:600}
+/* the congrats sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;border-radius:24px 24px 0 0;background:#13121c;border-top:1px solid var(--hair);padding:16px 18px 24px;transform:translateY(105%);transition:transform .4s cubic-bezier(.2,1,.3,1)}
+.sheet.on{transform:none}
+.scrim{position:absolute;inset:0;z-index:25;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.on{opacity:1;pointer-events:auto}
+textarea{width:100%;height:84px;border-radius:14px;border:1px solid var(--hair);background:var(--surface);color:var(--t1);font:inherit;font-size:14px;padding:10px 12px;resize:none;margin-top:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{padding:6px 11px;border-radius:999px;border:1px solid var(--hair);font-size:12.5px;color:var(--t2)}
+/* the coach's milestone moment (members' wave 1 moment) */
+.moment{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 24px 26px;opacity:0;pointer-events:none;transition:opacity .35s}
+.moment.on{opacity:1;pointer-events:auto}
+.moment .scrimm{position:absolute;inset:0;z-index:-1;background:radial-gradient(120% 70% at 50% 108%,color-mix(in srgb,var(--p) 55%,transparent),transparent 62%),rgba(6,6,11,.95)}
+.moment>.scrimm+*{margin-top:auto}
+.big{width:150px;height:150px;border-radius:50%;position:relative;overflow:hidden;display:grid;place-items:center;font-size:58px;color:#2a1a02;margin-top:24px;
+  background:radial-gradient(circle at 32% 28%,#fff6d8,var(--tier) 38%,color-mix(in srgb,var(--tier) 55%,#000) 100%);box-shadow:0 0 0 6px color-mix(in srgb,var(--tier) 70%,#000),0 0 60px color-mix(in srgb,var(--tier) 55%,transparent);
+  transform:rotateY(100deg) scale(.6);opacity:0;transition:transform 1.1s cubic-bezier(.2,1.2,.3,1),opacity .3s}
+.moment.on .big{transform:none;opacity:1}
+.big .shine{position:absolute;inset:-40%;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.75) 50%,transparent 60%);transform:translateX(-120%)}
+.moment.on .big .shine{animation:shine 1.4s ease .9s}
+@keyframes shine{to{transform:translateX(120%)}}
+.mh{font-size:28px;font-weight:800;margin-top:18px}.ms{font-size:14px;color:var(--t2);margin-top:6px;max-width:290px;line-height:1.45}
+.cta{margin-top:auto;width:100%;height:52px;border-radius:16px;background:var(--a);color:#1a1205;font-weight:800;font-size:15px}
+.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+.in{animation:rise .45s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:calc(var(--i,0)*90ms)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+/* side panel */
+.side{width:min(460px,100%);display:flex;flex-direction:column;gap:18px}
+.side h1{font-size:24px;font-weight:800}.side .lead{color:var(--t2);font-size:14.5px;line-height:1.5;margin-top:6px}
+.picker{display:grid;gap:8px}
+.pick{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;border:1px solid var(--hair);background:var(--surface);text-align:left}
+.pick i{font-size:20px;color:var(--p300);margin-top:1px}.pick b{display:block;font-size:14.5px}.pick small{display:block;color:var(--tm);font-size:12.5px;margin-top:2px}
+.pick[aria-pressed="true"]{border-color:var(--p);background:var(--pl)}
+.notes{font-size:13.5px;color:var(--t2);line-height:1.55;border-left:2px solid var(--hair);padding-left:12px}
+.notes b{color:var(--t1)}.notes ul{margin:6px 0 0 18px}.notes .real{display:block;margin-top:8px;font-size:12.5px;color:var(--tm)}
+.note{font-size:12px;color:var(--tm)}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="status"><span>9:41</span><span><i class="ph-fill ph-cell-signal-full"></i> <i class="ph-fill ph-battery-high"></i></span></div>
+  <nav class="rail">
+    <div class="rb on"><div class="ic"><i class="ph-fill ph-sun"></i><span class="badge">3</span></div>Today</div>
+    <div class="rb"><div class="ic"><i class="ph ph-chat-circle-text"></i><span class="badge">2</span></div>Messages</div>
+    <div class="sep"></div>
+    <div class="rb"><div class="ic room">MH</div>Morning HIIT</div>
+    <div class="rb"><div class="ic room">8F</div>8-week fat loss</div>
+    <div class="rb"><div class="ic"><i class="ph ph-plus"></i></div>New room</div>
+  </nav>
+  <main class="panel" id="panel">
+    <h1 class="h1">Today</h1><p class="sub">Tuesday 27 October</p>
+    <div class="search"><i class="ph ph-magnifying-glass"></i> Find a trainee</div>
+    <div class="arrive in" id="arrive">
+      <div><b>3</b><small>sessions today</small></div><div class="act"><b>2</b><small>requests</small></div><div><b>2</b><small>need you</small></div>
+    </div>
+    <p class="eyebrow">Requests · decide here</p>
+    <div class="card" style="margin-top:8px" id="reqs">
+      <div class="req in" style="--i:1" data-r="1"><div class="av sm">LL</div><div class="grow"><b>Lea Lorenzana</b><small>1-on-1 · Sun 1 Nov, 9:00 · waiting 2 days</small></div><button class="no" title="Decline"><i class="ph ph-x"></i></button><button class="ok" title="Accept"><i class="ph-bold ph-check"></i></button></div>
+      <div class="req in" style="--i:2" data-r="2"><div class="av sm">JT</div><div class="grow"><b>Joy Torres</b><small>HIIT class · Fri 30 Oct, 7:00</small></div><button class="no" title="Decline"><i class="ph ph-x"></i></button><button class="ok" title="Accept"><i class="ph-bold ph-check"></i></button></div>
+    </div>
+    <p class="eyebrow">Your day</p>
+    <div class="tl in" style="--i:3">
+      <span class="t live">7:00</span><div><b>Morning HIIT</b><small>Studio · 12 places</small></div>
+      <span class="t">10:00</span><div><b>1-on-1 · Ana Reyes</b><small>60 min</small></div>
+      <span class="t">18:00</span><div><b>1-on-1 · Ben Cruz</b><small>45 min</small></div>
+    </div>
+    <p class="eyebrow">Needs you</p>
+    <div class="card in" style="--i:4;margin-top:8px">
+      <div class="need"><div class="ti act"><i class="ph ph-clipboard-text"></i></div><div class="grow"><b>1 piece of classwork to check</b><small>Ana Reyes · Leg day</small></div><button class="btn line">Check</button></div>
+      <div class="need"><div class="ti mine"><i class="ph ph-user-circle-minus"></i></div><div class="grow"><b>Mia hasn't been in for 9 days</b><small>Send her a nudge</small></div><button class="btn line">Message</button></div>
+    </div>
+  </main>
+  <div class="youbar"><div class="av">BC</div><div class="grow"><b style="font-size:14px">Ben Cruz</b><small>Coach · Core Fitness</small></div><span class="pill">● Available</span><span class="pill" style="padding:6px"><i class="ph ph-bell"></i></span></div>
+
+  <div class="wincard" id="wincard">
+    <div style="display:flex;gap:10px;align-items:center"><div class="medal" style="--tier:var(--p300)"><i class="ph-fill ph-crown-simple"></i></div>
+      <div class="grow"><b>Ana set a new record</b><small>Barbell Squat · 80 kg — best was 75 kg</small></div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn line" data-close-card>Later</button><button class="btn act" data-congrats><i class="ph-fill ph-hands-clapping"></i> Send congrats</button></div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div style="width:40px;height:4px;border-radius:2px;background:var(--hair);margin:0 auto 12px"></div>
+    <b style="font-size:17px">Congrats to Ana</b><p class="sub">Goes to your 1-on-1 chat with her. Change it if you like.</p>
+    <textarea id="msg">80 kg squat — new record! Great work, Ana. 💪</textarea>
+    <div class="chips"><span class="chip">Proud of you</span><span class="chip">Keep it going</span><span class="chip">Let's go heavier</span></div>
+    <button class="cta" style="margin-top:14px" data-send>Send to Ana</button>
+  </div>
+  <div class="moment" id="moment"><div class="scrimm"></div>
+    <p class="eyebrow" style="color:var(--p300);margin:0" id="mEy">Coach milestone</p>
+    <div class="big" id="mMedal" style="--tier:var(--gold)"><i class="ph-fill ph-barbell" id="mIcon"></i><div class="shine"></div></div>
+    <h2 class="mh" id="mTitle">50 sessions run</h2>
+    <p class="ms" id="mSub">52 1-on-1s and classes coached so far. Your next mark is 100.</p>
+    <button class="cta" data-close-moment>Done</button>
+  </div>
+  <canvas class="fx" id="fx"></canvas>
+</div>
+
+<div class="side">
+  <div><h1>Coach app · wave 1</h1><p class="lead">The Discord layout stays. Today becomes the coach's control panel — decide, see the day, reach anyone — and the coach gets their own moments. Tap a step to play it; the phone is interactive too (✓ and ✕ on requests).</p></div>
+  <div class="picker" role="group">
+    <button class="pick" data-p="today"><i class="ph ph-sun"></i><span><b>Today, clean and in control</b><small>Labelled rail · find a trainee · the day in three numbers · decide requests right here · the day · who needs you</small></span></button>
+    <button class="pick" data-p="arrive"><i class="ph ph-sun-horizon"></i><span><b>The first open of the day</b><small>The three numbers count up with a chime, once a day</small></span></button>
+    <button class="pick" data-p="win"><i class="ph ph-crown-simple"></i><span><b>A trainee's win → Send congrats</b><small>A small card slides in; congrats goes to their 1-on-1 chat</small></span></button>
+    <button class="pick" data-p="sessions"><i class="ph ph-barbell"></i><span><b>Milestone: 50 sessions run</b><small>Full moment, like members' badges</small></span></button>
+    <button class="pick" data-p="rating"><i class="ph ph-star"></i><span><b>Milestone: average reaches 4.5★</b><small>Only once you have 3+ ratings</small></span></button>
+    <button class="pick" data-p="trainees"><i class="ph ph-users-three"></i><span><b>Milestone: 10 people coached</b><small>People you have coached</small></span></button>
+  </div>
+  <div class="notes" id="notes"></div>
+  <p class="note">Mock-up with sample people. Wave 2 (Bookings, Coaching, rooms and the trainee sheet made clean) comes after this is built.</p>
+</div>
+
+<script>
+const $ = (q) => document.querySelector(q);
+let ac;
+const tone = (f, at, d, v = .1) => { ac = ac || new AudioContext(); const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .012); g.gain.exponentialRampToValueAtTime(.0008, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .05); };
+const chime = () => [659.25, 987.77].forEach((f, i) => tone(f, i * .09, .9));
+const medal = () => { tone(1318.5, 0, 1.6, .08); tone(659.25, .12, 1.6, .08); };
+const pop = () => tone(880, 0, .15, .09);
+const fx = window.confetti ? confetti.create($('#fx'), { resize: true }) : null;
+const burst = () => fx && fx({ particleCount: 110, spread: 80, startVelocity: 38, origin: { y: .35 }, colors: ['#7C3AED', '#c4b5fd', '#F59E0B', '#fff'] });
+const NOTES = {
+  today: `<b>Today, clean and in control</b> (fixes the audit's 1–4):<ul><li>The rail is <b>labelled</b> — Today, Messages, each room's name, New room.</li><li><b>Find a trainee</b> at the top: type a name, open their sheet. One step instead of three.</li><li>The day in <b>three numbers</b>: sessions, requests (amber — they wait on you), who needs you.</li><li><b>Requests are decided here</b>: ✓ accepts, ✕ asks once more, then declines. Bookings stays for history.</li><li>Your day as a timeline, the live one lit; Needs you with one action each — Check, Message.</li><li>Quiet day? It still shows requests, who needs you and Find a trainee — never one lonely line.</li></ul><span class="real">Real: the same reads Today already makes (bookings, pt_sessions, review queue, roster).</span>`,
+  arrive: `<b>The first open of the day</b>: the three numbers count up with a soft chime and a buzz, once a day per coach (remembered on the account, like members'). The owner's celebrations and sounds switches apply.`,
+  win: `<b>A trainee's win</b>: a small card slides in — never full screen — when a trainee sets a record, reaches a target, finishes a challenge or a streak milestone. <b>Send congrats</b> opens a short message (editable, with quick phrases) that goes into your 1-on-1 chat with them. App closed? It waits in your bell, and as a push if you allow it.<span class="real">Only what the member shares with you: records and targets follow their sharing switches; streaks and challenges always.</span>`,
+  sessions: `<b>Your own milestones</b>, as full moments like members' badges: sessions run (10, 25, 50, 100, 250). Played once, remembered on your account.`,
+  rating: `<b>Ratings</b>: your first rating, and your average reaching 4.5★ — only once you have three or more, the same rule members see.`,
+  trainees: `<b>People coached</b>: 1, 5, 10 and 25 — everyone who has had a 1-on-1, a class or a coaching term with you. Plus the coach badges the gym already has, which now play this way too.`,
+};
+const MOMENTS = {
+  sessions: ['Coach milestone', 'barbell', 'gold', '50 sessions run', '52 1-on-1s and classes coached so far. Your next mark is 100.'],
+  rating: ['New rating mark', 'star', 'gold', '4.5★ average', 'From 6 ratings by the people you coach. Members see it on your profile.'],
+  trainees: ['Coach milestone', 'users-three', 'p300', '10 people coached', '10 people have trained with you so far. Your next mark is 25.'],
+};
+function count(el, to) { let v = 0; const s = setInterval(() => { v++; el.textContent = v; if (v >= to) clearInterval(s); }, 140); }
+function play(p) {
+  document.querySelectorAll('.pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === p)));
+  $('#notes').innerHTML = NOTES[p];
+  $('#moment').classList.remove('on'); $('#wincard').classList.remove('on'); $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on');
+  if (p === 'arrive' || p === 'today') {
+    const a = $('#arrive'); a.classList.remove('in'); void a.offsetWidth; a.classList.add('in');
+    if (p === 'arrive') { a.querySelectorAll('b').forEach((b) => count(b, +b.textContent)); chime(); navigator.vibrate?.(20); }
+  }
+  if (p === 'win') { setTimeout(() => { $('#wincard').classList.add('on'); pop(); navigator.vibrate?.(25); }, 200); }
+  if (MOMENTS[p]) {
+    const [ey, ic, tier, t, s] = MOMENTS[p];
+    $('#mEy').textContent = ey; $('#mIcon').className = `ph-fill ph-${ic}`; $('#mMedal').style.setProperty('--tier', `var(--${tier})`);
+    $('#mTitle').textContent = t; $('#mSub').textContent = s;
+    const m = $('#moment'); m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); medal(); navigator.vibrate?.([20, 40, 90]); setTimeout(burst, 500);
+  }
+}
+document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => play(b.dataset.p)));
+document.querySelector('[data-close-card]').onclick = () => $('#wincard').classList.remove('on');
+document.querySelector('[data-congrats]').onclick = () => { $('#wincard').classList.remove('on'); $('#sheet').classList.add('on'); $('#scrim').classList.add('on'); };
+document.querySelector('[data-send]').onclick = () => { $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); pop(); };
+document.querySelector('[data-close-moment]').onclick = () => $('#moment').classList.remove('on');
+document.querySelectorAll('.req').forEach((r) => {
+  r.querySelector('.ok').onclick = () => { r.querySelector('.ok').outerHTML = '<span class="done">Accepted</span>'; r.querySelector('.no').remove(); pop(); };
+  r.querySelector('.no').onclick = () => { r.querySelector('.no').outerHTML = '<span class="done" style="color:var(--tm)">Declined</span>'; r.querySelector('.ok').remove(); };
+});
+play('today');
+</script>
+</body>
+</html>

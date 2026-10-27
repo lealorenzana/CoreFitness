@@ -23,6 +23,8 @@ export type NotificationType =
   | 'gym_plan'
   /** A friend request, an accepted one, or a cheer (0217). */
   | 'friends'
+  /** A trainee's record, streak, target or challenge, to their coach (0218). */
+  | 'trainee_win'
   | 'system';
 
 export interface Notification {

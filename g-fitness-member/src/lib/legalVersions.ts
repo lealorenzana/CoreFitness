@@ -8,7 +8,7 @@
  * old date, which is what makes an agreement to it mean something.
  */
 export const TERMS_VERSION = '2026-10-11';   // paying in the app through PayMongo (0192)
-export const PRIVACY_VERSION = '2026-10-27';   // what the phone keeps for offline use (§4); Friends, wins and cheers (§2, 0217)
+export const PRIVACY_VERSION = '2026-10-27';   // what the phone keeps for offline use (§4); Friends, wins and cheers (§2, 0217); your wins told to your coaches (§2, 0218)
 
 export type LegalDocument = 'member_terms' | 'member_privacy';
 

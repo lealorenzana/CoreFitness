@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { currentGymId } from './gymContext';
 import { storedSession } from './offlineReads';
 import type { AchievementDef } from '../data/achievements';
+import type { CoachMilestone } from './api/coachMoments';
 
 /**
  * The big moments (wave 1 of the lively member app, 2026-10-27; spec
@@ -30,7 +31,9 @@ export type Moment =
   /** nextDays / nextWeeks: what the next level still needs, not its totals. */
   | { kind: 'level'; from: string | null; to: string; next: string | null; nextDays: number | null; nextWeeks: number | null }
   | { kind: 'target'; id: string; title: string; unit: string; start: number | null; target: number | null; points: number | null }
-  | { kind: 'challenge'; id: string; title: string; points: number | null };
+  | { kind: 'challenge'; id: string; title: string; points: number | null }
+  /** A coach's own milestone (0218): counted in SQL, played once per account. */
+  | { kind: 'coach'; milestone: CoachMilestone };
 
 let queue: Moment[] = [];
 const listeners = new Set<() => void>();

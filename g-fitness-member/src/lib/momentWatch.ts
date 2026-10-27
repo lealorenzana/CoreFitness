@@ -93,7 +93,7 @@ export function checkForMoments(force = false): Promise<void> {
 }
 
 /** The start-up splash (#boot in index.html) has gone, or ten seconds passed. */
-function splashGone(): Promise<void> {
+export function splashGone(): Promise<void> {
   return new Promise((done) => {
     const t0 = Date.now();
     const look = () => (!document.getElementById('boot') || Date.now() - t0 > 10_000 ? done() : window.setTimeout(look, 200));

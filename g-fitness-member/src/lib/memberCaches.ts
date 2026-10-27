@@ -11,6 +11,7 @@ import { clearOfflineReads } from './offlineReads';
 import { clearMomentCache } from './moments';
 import { clearLivelyCache } from './livelyCache';
 import { clearFriendsGate } from './friendsGate';
+import { clearCoachOpening } from './api/coachMoments';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -75,4 +76,6 @@ export function clearMemberCaches(): void {
   clearLivelyCache();
   // Whether this gym runs Friends (0217).
   clearFriendsGate();
+  // The coach hub's once-per-open arrival and milestones (0218).
+  clearCoachOpening();
 }

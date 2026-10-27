@@ -1453,3 +1453,33 @@ img { -webkit-user-drag: none; user-select: none; }
 .fr-clap { position: absolute; pointer-events: none; color: var(--color-secondary); animation: fr-clap .9s ease-out forwards; }
 @keyframes fr-clap { 0% { opacity: 1; transform: translate(0, 0) scale(.6); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .fr-clap { display: none; } }
+
+/* ── The coach's Today and a trainee's win (wave 1 of the lively coach app, 2026-10-27) ── */
+.td-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 12px; padding: 12px 8px; border-radius: 18px; text-align: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: linear-gradient(150deg, var(--color-primary-light), var(--color-surface) 70%); }
+.td-n b { display: block; font-size: 22px; font-weight: 800; color: var(--color-text-primary); line-height: 1.15; }
+.td-n small { display: block; font-size: 12px; color: var(--color-text-secondary); }
+.td-n.td-act b { color: var(--color-secondary-300); }
+.td-arrive { animation: td-arrive .6s cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes td-arrive { from { transform: translateY(8px) scale(.97); opacity: 0; } }
+.td-card { margin-top: 8px; padding: 2px 12px; border-radius: 18px; border: 1px solid var(--color-hairline); background: var(--color-surface); }
+.td-ok, .td-no, .td-ask { flex: none; display: grid; place-items: center; height: 36px; border-radius: 12px; }
+.td-ok { width: 36px; background: var(--color-secondary); color: var(--color-bg); }
+.td-no { min-width: 36px; padding: 0 8px; border: 1px solid var(--color-hairline); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; }
+.td-ask { padding: 0 12px; border: 1px solid var(--color-secondary); color: var(--color-secondary-300); font-size: 13px; font-weight: 700; }
+.td-ok:disabled, .td-no:disabled, .td-ask:disabled { opacity: .5; }
+
+.tw-card { position: absolute; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 10px); padding: 12px; border-radius: 18px;
+  background: color-mix(in srgb, var(--color-surface) 94%, #000); border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .55); transform: translateY(-130%); transition: transform .45s cubic-bezier(.2, 1.2, .3, 1); }
+.tw-card.on { transform: none; }
+.tw-card.mo-still { transition: none; }
+.tw-medal { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; color: #2a1a02;
+  background: radial-gradient(circle at 32% 28%, #fff6d8, var(--color-primary-300) 40%, color-mix(in srgb, var(--color-primary-300) 55%, #000) 100%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-300) 70%, #000); }
+
+@media (prefers-reduced-motion: reduce) {
+  .td-arrive { animation: none; }
+  .tw-card { transition: none; }
+}

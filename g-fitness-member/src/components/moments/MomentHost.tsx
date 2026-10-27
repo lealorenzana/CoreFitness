@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Coins, FlagCheckered, Fire, Medal, Target, TrendUp } from '@phosphor-icons/react';
+import { Barbell, Check, Coins, FlagCheckered, Fire, Medal, Star, Target, TrendUp, UsersThree } from '@phosphor-icons/react';
+import type { CoachMilestone } from '../../lib/api/coachMoments';
 import { tierStyle } from '../../data/achievements';
 import { levelLabel } from '../../lib/api/achievements';
 import { useGymApp } from '../../hooks/useGymApp';
@@ -45,6 +46,7 @@ function Full({ m, still }: { m: Moment; still: boolean }) {
     case 'level': return <LevelMoment m={m} still={still} />;
     case 'target': return <TargetMoment m={m} still={still} />;
     case 'challenge': return <ChallengeMoment m={m} still={still} />;
+    case 'coach': return <CoachMoment m={m} still={still} />;
   }
 }
 
@@ -251,6 +253,49 @@ function ChallengeMoment({ m, still }: { m: Extract<Moment, { kind: 'challenge' 
   );
 }
 
+// ── A coach's milestone (0218) ───────────────────────────────────────────────
+
+/** Words for a coach's milestone: every number is the one SQL counted. */
+function coachMilestoneText(c: CoachMilestone): { icon: typeof Barbell; eyebrow: string; title: string; line: string } {
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  switch (c.kind) {
+    case 'sessions': return { icon: Barbell, eyebrow: 'Coach milestone', title: `${c.value} sessions run`,
+      line: `${plural(c.total, '1-on-1 or class', '1-on-1s and classes')} coached so far.${c.next ? ` Your next mark is ${c.next}.` : ''}` };
+    case 'people': return { icon: UsersThree, eyebrow: 'Coach milestone', title: c.value === 1 ? 'Your first trainee' : `${c.value} people coached`,
+      line: `${plural(c.total, 'person has', 'people have')} trained with you so far.${c.next ? ` Your next mark is ${c.next}.` : ''}` };
+    case 'first_rating': return { icon: Star, eyebrow: 'New rating', title: 'Your first rating',
+      line: 'Someone you coached rated you. Members see your average once three have.' };
+    case 'top_rating': return { icon: Star, eyebrow: 'New rating mark', title: `${c.value.toFixed(1)}★ average`,
+      line: `From ${plural(c.total, 'rating', 'ratings')} by the people you coach. Members see it on your profile.` };
+  }
+}
+
+function CoachMoment({ m, still }: { m: Extract<Moment, { kind: 'coach' }>; still: boolean }) {
+  const { ref, burst } = useConfetti(still);
+  const t = coachMilestoneText(m.milestone);
+  const tier = m.milestone.kind === 'people' ? 'var(--color-primary-300)' : 'var(--color-secondary)';
+  const step = useSteps([200, 250, 500, 300, 150], still, (s) => {
+    if (s === 2) { play('medal'); buzz([20, 40, 90]); }
+    if (s === 3) burst(0.32, 90);
+  });
+  const Icon = t.icon;
+  return (
+    <Layer still={still} canvas={ref}>
+      <p className={on(step, 1, 'mo-eyebrow mo-in')}>{t.eyebrow}</p>
+      <div className="mo-stage" style={{ ['--tier' as string]: tier }}>
+        <Rays fired={step >= 3} />
+        <div className={on(step, 2, 'mo-medal')} style={{ ['--tier' as string]: tier }}>
+          <div className="mo-face" style={{ color: '#2a1a02' }}><Icon size={56} weight="fill" /></div>
+          <div className="mo-shine" />
+        </div>
+      </div>
+      <h2 className={on(step, 4, 'mo-h1 mo-in')} data-coach-moment={m.milestone.kind}>{t.title}</h2>
+      <p className={on(step, 5, 'mo-sub mo-in')}>{t.line}</p>
+      <button type="button" className="mo-cta" onClick={nextMoment} data-moment-done>Done</button>
+    </Layer>
+  );
+}
+
 // ── The owner turned celebrations down ───────────────────────────────────────
 
 function SmallCard({ m, still }: { m: Moment; still: boolean }) {
@@ -280,5 +325,6 @@ function cardText(m: Moment, word: string): [typeof Check, string, string | null
     case 'level': return [TrendUp, `Earned level: ${levelLabel(m.to as never)}`, null];
     case 'target': return [Target, `Target reached: ${m.title}`, pts(m.points)];
     case 'challenge': return [FlagCheckered, `Challenge finished: ${m.title}`, pts(m.points)];
+    case 'coach': { const t = coachMilestoneText(m.milestone); return [t.icon, t.title, t.eyebrow]; }
   }
 }

@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import WhatsNew from '../../components/WhatsNew';
 import TodayPanel from './hub/TodayPanel';
 import YouSheet from './hub/YouSheet';
+import TraineeWinCard from '../../components/trainer/TraineeWinCard';
+import { arrivalLeft, claimCoachOpening, coachOpening, startArrival } from '../../lib/api/coachMoments';
+import { buzz, holdMoments, loadMomentPrefs, play, showMoment } from '../../lib/moments';
+import { splashGone } from '../../lib/momentWatch';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Bell, CalendarBlank, Camera, CaretRight, ChartLineUp, ChatCircleDots, ClipboardText, Hash, MagnifyingGlass, Plus, QrCode, Sun, UsersThree, X,
@@ -22,7 +26,9 @@ import { myConversations, type Conversation } from '../../lib/api/chat';
 import { uploadContentPhoto } from '../../lib/api/exerciseMedia';
 import { myPresence, setMyPresence, PRESENCE_LABEL, type Presence } from '../../lib/api/presence';
 import { getUnreadCount } from '../../lib/api/notifications';
-import { getCurrentTrainerId, getTrainerOverview } from '../../services/trainerService';
+import { getCurrentTrainerId } from '../../services/trainerService';
+import { coachDecides, loadTrainerRequests } from '../../services/trainerRequests';
+import { getBookingModes } from '../../lib/api/bookings';
 import { listTrainerClasses } from '../../lib/api/classes';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
@@ -81,6 +87,35 @@ export default function TrainerHub() {
   const [trainerId, setTrainerId] = useState<string | null>(null);
   /** The user bar's You panel (redesign, 2026-10-27). */
   const [youOpen, setYouOpen] = useState(false);
+  /** The first open of the day (0218): Today's three numbers count up. */
+  const [arriving, setArriving] = useState(false);
+
+  // Opening the hub (wave 1 of the lively coach app): the day's arrival first,
+  // then any milestone the coach has newly reached, as a full moment — each
+  // counted and marked played in SQL (0218), so it plays once per account.
+  useEffect(() => {
+    let alive = true;
+    const timers: number[] = [];
+    void (async () => {
+      await loadMomentPrefs();
+      const o = await coachOpening();
+      // Not under the start-up splash: the arrival is for the coach to see.
+      await splashGone();
+      if (!alive) return;
+      const fresh = claimCoachOpening();
+      if (fresh && o.arrive) startArrival();
+      // A hub remounted mid-arrival (the shell re-keys a screen) carries on with it.
+      const left = arrivalLeft();
+      if (left > 0) {
+        holdMoments(true);
+        setArriving(true);
+        if (fresh) timers.push(window.setTimeout(() => { play('chime'); buzz(20); }, 250));
+        timers.push(window.setTimeout(() => { holdMoments(false); setArriving(false); }, left));
+      }
+      if (fresh) o.milestones.forEach((m) => showMoment({ kind: 'coach', milestone: m }));
+    })();
+    return () => { alive = false; timers.forEach(clearTimeout); holdMoments(false); };
+  }, []);
 
   const load = useCallback(async () => {
     await syncRooms();
@@ -98,14 +133,15 @@ export default function TrainerHub() {
     setCoachCheckin(!door.error && !!(door.data as { coach_checkin_on?: boolean } | null)?.coach_checkin_on);
     const p = (prof as { data: { first_name: string | null; last_name: string | null; photo_url: string | null } | null }).data;
     if (uid) setMe({ id: uid, name: [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'You', photo: p?.photo_url ?? null });
-    // Today and requests come from the trainer's own overview (classes, bookings).
+    // Today's classes, and the requests still this coach's to decide (the same rule Today and Bookings use).
     const tid = await getCurrentTrainerId().catch(() => null);
     setTrainerId(tid);
     if (tid) {
-      const [ov, cls] = await Promise.all([getTrainerOverview(tid).catch(() => null), listTrainerClasses(tid).catch(() => [] as ClassRow[])]);
+      const [reqs, modes, cls] = await Promise.all([loadTrainerRequests(tid).catch(() => null), getBookingModes().catch(() => null),
+        listTrainerClasses(tid).catch(() => [] as ClassRow[])]);
       // Today's classes from the coach's own list (the timeline needs every one, with its room and places).
       setToday(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).toDateString() === new Date().toDateString()));
-      setRequests(ov?.pendingBookings ?? 0);
+      if (reqs && modes) setRequests(reqs.filter((r) => coachDecides(r, modes)).length);
       const now = Date.now();
       setUpcoming(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).getTime() > now).sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? '')));
     }
@@ -143,7 +179,7 @@ export default function TrainerHub() {
       <WhatsNew app="trainer" />
       {/* ---- the rail ---- */}
       <nav aria-label="Your rooms" className="flex flex-col items-center flex-none scrollbar-hide"
-        style={{ width: 68, gap: 10, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>
+        style={{ width: 74, gap: 8, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>
         <RailButton label="Today" on={view === 'today'} onClick={() => select(null)} badge={requests + queue.length} dataAttr="today">
           <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
             background: view === 'today' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'today' ? '#fff' : 'var(--color-text-secondary)' }}>
@@ -171,10 +207,11 @@ export default function TrainerHub() {
           );
         })}
         {roomsOn && (
-          <button type="button" onClick={() => setCreating(true)} aria-label="New group" className="grid place-items-center noc-press flex-none"
-            style={{ width: 46, height: 46, borderRadius: 23, background: 'var(--color-surface)', color: 'var(--color-primary-300)' }}>
-            <Plus size={20} />
-          </button>
+          <RailButton label="New group" on={false} onClick={() => setCreating(true)}>
+            <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit', background: 'var(--color-surface)', color: 'var(--color-primary-300)' }}>
+              <Plus size={20} />
+            </span>
+          </RailButton>
         )}
       </nav>
 
@@ -185,7 +222,7 @@ export default function TrainerHub() {
           <RoomPanel room={open} upcoming={upcoming.filter((c) => sameClass(c.name, open.name)).slice(0, 5)}
             onPhoto={(url) => setPhotos((m) => new Map(m).set(open.id, url))} />
         ) : view === 'today' ? (
-          <TodayPanel trainerId={trainerId} classes={today} requests={requests} queue={queue} />
+          <TodayPanel trainerId={trainerId} classes={today} queue={queue} onRequests={setRequests} arriving={arriving} />
         ) : (
           <>
             <div className="flex items-center justify-between" style={{ gap: 8 }}>
@@ -259,6 +296,8 @@ export default function TrainerHub() {
         </div>
       )}
 
+      {/* A trainee's win, as a small card (0218). */}
+      <TraineeWinCard />
       {me && <CoachCheckInSheet open={qrOpen} onClose={() => setQrOpen(false)} trainerId={me.id} />}
       {me && <YouSheet open={youOpen} onClose={() => setYouOpen(false)} me={me} presence={presence} tones={PRESENCE_TONE}
         onPresence={(p) => void changeStatus(p)} />}
@@ -307,15 +346,20 @@ function RailButton({ label, on, onClick, onLong, badge, room, dataAttr, childre
 }) {
   // Hold a room for its settings, as in Discord (never the browser's image menu).
   const lp = useLongPress(() => onLong?.());
+  // Every rail button says what it is underneath (wave 1, 2026-10-27): "MH" alone told a new coach nothing.
   return (
     <button type="button" onClick={() => { if (!lp.consumed()) onClick(); }} {...(onLong ? lp.handlers : {})}
       aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined} data-rail-today={dataAttr === 'today' || undefined}
-      className="relative flex-none noc-press select-none" style={{ width: 46, height: 46, WebkitTouchCallout: 'none' }}>
-      {/* Discord's pill: a bar at the edge marks the open one. */}
-      <span aria-hidden className="absolute" style={{ left: -11, top: on ? 8 : 19, width: 4, height: on ? 30 : 8, borderRadius: 4,
-        background: on ? 'var(--color-text-primary)' : 'transparent', transition: 'all .15s' }} />
-      <span className="block overflow-hidden" style={{ width: 46, height: 46, borderRadius: on ? 15 : 23, transition: 'border-radius .15s' }}>{children}</span>
-      {badge ? <Badge n={badge} /> : null}
+      className="flex flex-col items-center flex-none noc-press select-none" style={{ width: 70, gap: 4, WebkitTouchCallout: 'none' }}>
+      <span className="relative block" style={{ width: 46, height: 46 }}>
+        {/* Discord's pill: a bar at the edge marks the open one. */}
+        <span aria-hidden className="absolute" style={{ left: -12, top: on ? 8 : 19, width: 4, height: on ? 30 : 8, borderRadius: 4,
+          background: on ? 'var(--color-text-primary)' : 'transparent', transition: 'all .15s' }} />
+        <span className="block overflow-hidden" style={{ width: 46, height: 46, borderRadius: on ? 15 : 23, transition: 'border-radius .15s' }}>{children}</span>
+        {badge ? <Badge n={badge} /> : null}
+      </span>
+      <span aria-hidden data-rail-label className="block truncate" style={{ maxWidth: 68, fontSize: 12, lineHeight: 1.15, textAlign: 'center',
+        fontWeight: on ? 700 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{label}</span>
     </button>
   );
 }

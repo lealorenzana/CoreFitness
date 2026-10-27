@@ -4,8 +4,8 @@ import Avatar from '../../components/ui/Avatar';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { Chip, NocButton, Panel, StatusPill } from '../../components/ui/noc';
 import { toast } from '../../components/ui/Toast';
-import { getBookingModes, listTrainerBookings, updateBookingStatus, type BookingModes } from '../../lib/api/bookings';
-import { listTrainerPtSessions, setPtSessionStatus } from '../../lib/api/ptSessions';
+import { getBookingModes, type BookingModes } from '../../lib/api/bookings';
+import { decideRequest, decidedText, loadTrainerRequests, modeFor, waitedLabel, type TrainerRequest } from '../../services/trainerRequests';
 import { listMembers } from '../../lib/api/members';
 import { getCurrentTrainerId } from '../../services/trainerService';
 import { errorMessage } from '../../utils/errorMessage';
@@ -52,19 +52,8 @@ const FILTER_LABEL: Record<'all' | BookingStatus, string> = {
   pending: 'Pending', approved: 'Approved', rejected: 'Declined', cancelled: 'Cancelled', all: 'All',
 };
 
-/** A class booking and a PT session, flattened into the one queue a trainer works. */
-interface Request {
-  kind: 'class' | 'pt';
-  id: string;
-  memberId: string;
-  title: string;
-  status: BookingStatus;
-  /** NULL for a class with no time on it — 0001 allows that. */
-  startsAt: string | null;
-  requestedAt: string;
-  /** Under "coach then desk" (0180): this coach has accepted; the desk confirms. */
-  coachOk: boolean;
-}
+/** A class booking and a PT session, flattened into the one queue a trainer works (services/trainerRequests.ts). */
+type Request = TrainerRequest;
 
 /**
  * Still in the future, so `cancel_booking()` will accept it.
@@ -84,21 +73,6 @@ interface Snapshot {
 }
 
 const CACHE_KEY = 'trainer:bookings';
-
-/**
- * How long the member has been waiting, in words.
- *
- * The point of the screen: a trainer scanning a list needs to see that
- * somebody has been waiting three days, not compute it from a request date.
- * Returns null under an hour — "waiting 12 minutes" is noise.
- */
-function waitedLabel(requestedAt: string): string | null {
-  const hours = (Date.now() - new Date(requestedAt).getTime()) / 3_600_000;
-  if (hours < 1) return null;
-  if (hours < 24) return `waiting ${Math.floor(hours)}h`;
-  const days = Math.floor(hours / 24);
-  return `waiting ${days} day${days === 1 ? '' : 's'}`;
-}
 
 /** True once a member has waited long enough that the delay is the story. */
 function isOverdue(requestedAt: string): boolean {
@@ -120,15 +94,14 @@ export default function TrainerBookings() {
   /** Who approves each kind at this gym (0180); 'coach' (0071) until read. */
   const [modes, setModes] = useState<BookingModes>({ classMode: 'coach', ptMode: 'coach' });
   useEffect(() => { void getBookingModes().then(setModes); }, []);
-  const modeOf = (req: Request) => (req.kind === 'class' ? modes.classMode : modes.ptMode);
+  const modeOf = (req: Request) => modeFor(req, modes);
 
   const load = useCallback(async (quiet = false) => {
     try {
       const trainerId = await getCurrentTrainerId();
       if (!trainerId) throw new Error('Not signed in');
-      const [classRows, ptRows, members] = await Promise.all([
-        listTrainerBookings(trainerId),
-        listTrainerPtSessions(trainerId).catch(() => []),
+      const [merged, members] = await Promise.all([
+        loadTrainerRequests(trainerId),
         listMembers().catch(() => []),
       ]);
 
@@ -138,36 +111,6 @@ export default function TrainerBookings() {
         nameMap[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
         photoMap[m.profile.id] = m.profile.photo_url ?? null;
       }
-
-      const merged: Request[] = [
-        ...classRows.map((b): Request => ({
-          kind: 'class',
-          id: b.id,
-          memberId: b.member_id,
-          title: b.classes?.name ?? 'Class',
-          status: b.status,
-          startsAt: b.classes?.scheduled_at ?? null,
-          requestedAt: b.requested_at,
-          coachOk: !!(b as { coach_ok_at?: string | null }).coach_ok_at,
-        })),
-        ...ptRows.map((s): Request => ({
-          kind: 'pt',
-          id: s.id,
-          memberId: s.member_id,
-          title: 'Personal training',
-          status: s.status,
-          startsAt: s.starts_at,
-          requestedAt: s.requested_at,
-          coachOk: !!(s as { coach_ok_at?: string | null }).coach_ok_at,
-        })),
-      ].sort((a, b) => {
-        // Pending first — this is a work queue, not an archive. Within pending,
-        // longest wait at the top.
-        if ((a.status === 'pending') !== (b.status === 'pending')) {
-          return a.status === 'pending' ? -1 : 1;
-        }
-        return a.requestedAt.localeCompare(b.requestedAt);
-      });
 
       setNames(nameMap);
       setPhotos(photoMap);
@@ -209,19 +152,8 @@ export default function TrainerBookings() {
       const trainerId = await getCurrentTrainerId();
       if (!trainerId) throw new Error('Not signed in');
 
-      if (req.kind === 'class') {
-        await updateBookingStatus(req.id, status, trainerId);
-      } else {
-        await setPtSessionStatus(req.id, status);
-      }
-
-      toast.success(
-        status === 'approved' && modeOf(req) === 'coach_desk'
-          ? 'Accepted — the front desk confirms it next.'
-          : status === 'approved'
-          ? `Confirmed for ${names[req.memberId] ?? 'the member'}.`
-          : `Declined. ${names[req.memberId] ?? 'The member'} has been told.`
-      );
+      await decideRequest(req, status, trainerId);
+      toast.success(decidedText(req, status, modes, names[req.memberId]));
       await load(true);
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save that decision'));
