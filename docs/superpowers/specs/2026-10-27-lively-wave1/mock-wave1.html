@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wave 1 moments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
+<style>
+:root{
+  --bg:#08080E; --surface:#12121C; --raised:#161522; --high:#1E1D2B;
+  --p:#7C3AED; --p300:#c4b5fd; --p400:#a78bfa; --pl:#1E1333;
+  --a:#F59E0B; --a300:#fcd34d; --al:#1F1A0A;
+  --t1:#e9e9ed; --t2:#b2b6ca; --tm:#9397ab; --hair:rgba(233,233,237,.16);
+  --gold:#F59E0B; --silver:#A8B0BE; --bronze:#C77B3E;
+}
+:root[data-theme="blue"]{ --p:#2563EB; --p300:#93c5fd; --p400:#60a5fa; --pl:#0f1a33; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050509;color:var(--t1);font-family:Inter,system-ui,sans-serif;min-height:100vh;
+  display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:28px 16px 60px;flex-wrap:wrap}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--p300);outline-offset:2px;border-radius:8px}
+
+/* ── the phone (a frame for the mock-up only — the app ships frameless) ── */
+.phone{width:393px;height:852px;border-radius:46px;background:var(--bg);position:relative;overflow:hidden;
+  box-shadow:0 0 0 10px #15151d,0 0 0 11px #26263a,0 40px 120px rgba(0,0,0,.6);flex:none}
+.screen{position:absolute;inset:0;padding:54px 20px 0;overflow:hidden}
+.status{position:absolute;top:14px;left:30px;right:30px;display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--t1)}
+canvas.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+
+/* the Today screen behind every moment — the app as it is */
+.hello{display:flex;align-items:center;gap:12px}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;
+  background:var(--pl);color:var(--p300);border:1px solid color-mix(in srgb,var(--p) 55%,transparent)}
+.hello small{display:block;font-size:12.5px;color:var(--tm)}
+.hello b{font-size:15px}
+.day{margin-top:18px;font-size:30px;font-weight:800;line-height:1.05}
+.day span{display:block;color:var(--tm);font-weight:700}
+.week{margin-top:16px;border:1px solid var(--hair);border-radius:18px;padding:12px}
+.week .top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--t2)}
+.dots{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:10px}
+.dot{height:38px;border-radius:10px;border:1px solid var(--hair);display:grid;place-items:center;color:var(--tm);font-size:14px}
+.dot.on{background:linear-gradient(160deg,var(--p),color-mix(in srgb,var(--p) 50%,#000));border-color:var(--p300);color:#fff}
+.dot.today{border-color:var(--a);color:var(--a)}
+.dlabels{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:5px;text-align:center;font-size:11.5px;color:var(--tm)}
+.tl{margin-top:18px;display:grid;grid-template-columns:44px minmax(0,1fr);row-gap:18px;font-size:13px}
+.tl .w{color:var(--tm);font-size:12px;padding-top:2px}
+.tl b{display:block;font-size:15px}
+.tl p{color:var(--t2);margin-top:2px}
+.tl a{display:inline-block;margin-top:6px;color:var(--a);font-weight:700}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:72px;border-top:1px solid var(--hair);background:rgba(8,8,14,.92);
+  display:flex;align-items:center;justify-content:space-around;padding:0 12px 8px;font-size:11.5px;color:var(--tm)}
+.tabbar div{display:grid;place-items:center;gap:3px}
+.tabbar i{font-size:21px}
+.tabbar .ci{border:1px solid var(--a);color:var(--a);border-radius:14px;padding:6px 14px;background:var(--al)}
+
+/* ── moments ── */
+.layer{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:70px 24px 28px;opacity:0;transition:opacity .35s ease}
+.layer.show{opacity:1}
+/* the moment sits in the middle of the screen; its button stays at the bottom */
+.layer > .scrim + *{margin-top:auto}
+.layer .scrim{position:absolute;inset:0;z-index:-1;background:
+  radial-gradient(120% 70% at 50% 108%,color-mix(in srgb,var(--p) 55%,transparent),transparent 62%),
+  rgba(6,6,11,.94);backdrop-filter:blur(8px)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--p300)}
+.h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:8px}
+.sub{font-size:14px;color:var(--t2);margin-top:6px;line-height:1.45;max-width:300px}
+.in{opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .5s cubic-bezier(.2,.9,.3,1.2)}
+.in.on{opacity:1;transform:none}
+.cta{margin-top:auto;width:100%;height:52px;border-radius:16px;background:var(--a);color:#1a1205;font-weight:800;font-size:15px}
+.ghost{width:100%;height:48px;border-radius:16px;border:1px solid var(--hair);color:var(--t2);font-weight:600;margin-top:10px}
+.tap{margin-top:auto;font-size:12.5px;color:var(--tm)}
+.points{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:8px 14px;border-radius:999px;
+  background:var(--al);border:1px solid color-mix(in srgb,var(--a) 45%,transparent);color:var(--a300);font-weight:700;font-size:14px}
+.points .tot{color:var(--tm);font-weight:500}
+
+/* check-in: the code becomes a check */
+.code{width:150px;height:150px;border-radius:22px;background:#fff;display:grid;place-items:center;position:relative;
+  transition:all .55s cubic-bezier(.5,0,.2,1)}
+.code .qr{width:116px;height:116px;background:
+  conic-gradient(from 90deg at 25% 25%,#111 25%,#fff 0) 0 0/16px 16px;transition:opacity .25s}
+.code.done{width:96px;height:96px;border-radius:50%;background:var(--p);box-shadow:0 0 0 0 color-mix(in srgb,var(--p) 60%,transparent);
+  animation:ping 1s ease-out .2s}
+.code.done .qr{opacity:0}
+.code i{position:absolute;font-size:48px;color:#fff;transform:scale(0);transition:transform .4s cubic-bezier(.2,1.6,.4,1) .25s}
+.code.done i{transform:scale(1)}
+@keyframes ping{to{box-shadow:0 0 0 46px transparent}}
+
+/* the streak odometer */
+.streak{display:flex;align-items:center;gap:14px;margin-top:26px;padding:14px 18px;border-radius:20px;border:1px solid var(--hair);background:var(--raised)}
+.flame{font-size:40px;color:var(--a);filter:drop-shadow(0 0 0 transparent);transform:scale(.6);opacity:.35;transition:all .5s cubic-bezier(.2,1.5,.4,1)}
+.flame.lit{transform:scale(1);opacity:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--a) 70%,transparent));animation:breathe 2.4s ease-in-out 1s infinite}
+@keyframes breathe{50%{transform:scale(1.07)}}
+.odo{height:44px;overflow:hidden;font-size:40px;font-weight:900;line-height:44px;font-variant-numeric:tabular-nums}
+.odo .col{display:block;transition:transform .7s cubic-bezier(.5,0,.2,1.15)}
+.odo .col.roll{transform:translateY(-44px)}
+.streak .lbl{text-align:left;font-size:13px;color:var(--t2);line-height:1.35}
+.streak .lbl b{display:block;color:var(--t1);font-size:15px}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;margin-top:18px}
+.wk span{height:8px;border-radius:4px;background:var(--high)}
+.wk span.on{background:var(--p)}
+.wk span.now{background:var(--high);position:relative;overflow:hidden}
+.wk span.now::after{content:"";position:absolute;inset:0;background:var(--a);transform:scaleX(0);transform-origin:left;transition:transform .6s ease}
+.wk span.now.fill::after{transform:scaleX(1)}
+.wkl{width:100%;margin-top:7px;display:flex;justify-content:space-between;font-size:12px;color:var(--tm)}
+
+/* workout finish */
+.trophy{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;font-size:48px;color:#fff;
+  background:radial-gradient(circle at 35% 30%,var(--p400),var(--p));box-shadow:0 0 50px color-mix(in srgb,var(--p) 60%,transparent);
+  transform:scale(.3) translateY(-40px);opacity:0;transition:all .6s cubic-bezier(.2,1.6,.4,1)}
+.trophy.on{transform:none;opacity:1}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;margin-top:20px}
+.tile{border:1px solid var(--hair);border-radius:18px;padding:13px 14px;text-align:left;background:var(--surface);opacity:.25;transition:all .35s}
+.tile.on{opacity:1}
+.tile b{display:block;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.tile small{font-size:12.5px;color:var(--tm)}
+.tile.beat.flash{border-color:var(--p300);box-shadow:0 0 24px color-mix(in srgb,var(--p) 45%,transparent)}
+.record{width:100%;margin-top:14px;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;text-align:left;
+  background:linear-gradient(100deg,var(--pl),var(--raised));border:1px solid color-mix(in srgb,var(--p) 60%,transparent);
+  transform:scale(.6);opacity:0;transition:all .5s cubic-bezier(.2,1.6,.4,1)}
+.record.on{transform:none;opacity:1}
+.record i{font-size:28px;color:var(--p300)}
+.record b{display:block;font-size:15px}
+.record small{color:var(--t2);font-size:12.5px}
+.level{width:100%;margin-top:14px;text-align:left}
+.level .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--t2)}
+.bar{height:10px;border-radius:5px;background:var(--high);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:5px;background:linear-gradient(90deg,var(--p),var(--p400));transition:width 1.1s cubic-bezier(.3,0,.2,1)}
+
+/* badge: the medal */
+.stage{perspective:700px;margin-top:30px;position:relative;width:180px;height:180px;display:grid;place-items:center}
+.medal{width:150px;height:150px;border-radius:50%;position:relative;transform:rotateY(100deg) scale(.6);opacity:0;
+  transition:transform 1.1s cubic-bezier(.2,1.2,.3,1),opacity .3s;transform-style:preserve-3d;
+  background:radial-gradient(circle at 32% 28%,#fff6d8,var(--tier) 38%,color-mix(in srgb,var(--tier) 55%,#000) 100%);
+  box-shadow:0 0 0 6px color-mix(in srgb,var(--tier) 70%,#000),0 0 60px color-mix(in srgb,var(--tier) 55%,transparent);overflow:hidden}
+.medal.on{transform:none;opacity:1}
+.medal .face{position:absolute;inset:18px;border-radius:50%;border:2px solid rgba(255,255,255,.45);display:grid;place-items:center;
+  font-size:56px;color:#2a1a02;background:radial-gradient(circle at 40% 30%,rgba(255,255,255,.35),transparent 60%)}
+.medal .shine{position:absolute;inset:-40%;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.75) 50%,transparent 60%);transform:translateX(-120%)}
+.medal.on .shine{animation:shine 1.4s ease .9s}
+@keyframes shine{to{transform:translateX(120%)}}
+.rays{position:absolute;inset:0}
+.rays span{position:absolute;left:50%;top:50%;width:3px;height:28px;margin:-14px 0 0 -1.5px;border-radius:2px;background:var(--tier);
+  opacity:0;transform:rotate(var(--r)) translateY(-70px)}
+.rays.go span{animation:ray .7s ease-out forwards}
+@keyframes ray{0%{opacity:0;transform:rotate(var(--r)) translateY(-60px) scaleY(.4)}40%{opacity:1}100%{opacity:0;transform:rotate(var(--r)) translateY(-118px) scaleY(1)}}
+.tier{display:inline-block;margin-top:14px;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--tier);border:1px solid var(--tier)}
+.rare{margin-top:10px;font-size:13px;color:var(--t2)}
+
+/* level up: one ring */
+.ring{position:relative;width:190px;height:190px;margin-top:26px}
+.ring svg{transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center}
+.ring .num .odo{height:84px;font-size:76px;line-height:84px}
+.ring .num .odo .col.roll{transform:translateY(-84px)}
+.ring .flash{position:absolute;inset:-8px;border-radius:50%;box-shadow:0 0 0 0 color-mix(in srgb,var(--p) 70%,transparent);opacity:0}
+.ring .flash.go{animation:ringflash 1s ease-out}
+@keyframes ringflash{0%{opacity:1;box-shadow:0 0 0 0 color-mix(in srgb,var(--p) 70%,transparent)}100%{opacity:0;box-shadow:0 0 0 40px transparent}}
+.ringcap{position:absolute;bottom:34px;left:0;right:0;font-size:12.5px;color:var(--tm)}
+
+/* target */
+.target{width:100%;margin-top:30px;padding:16px;border-radius:20px;border:1px solid var(--hair);background:var(--raised);text-align:left}
+.target .t{display:flex;justify-content:space-between;align-items:center}
+.target b{font-size:17px}
+.target .v{font-size:13px;color:var(--t2);font-variant-numeric:tabular-nums}
+.target .bar{height:14px;border-radius:7px}
+.target .bar i{background:linear-gradient(90deg,var(--p),var(--p400))}
+.target.done .bar i{background:var(--p300)}
+.stamp{margin-top:22px;width:88px;height:88px;border-radius:50%;display:grid;place-items:center;font-size:44px;color:#fff;background:var(--p);
+  transform:scale(2.2) rotate(-25deg);opacity:0;transition:all .45s cubic-bezier(.2,1.4,.4,1)}
+.stamp.on{transform:none;opacity:1}
+.podium{margin-top:24px;font-size:64px;font-weight:900;line-height:1;color:var(--p300);font-variant-numeric:tabular-nums}
+.podium small{display:block;font-size:14px;font-weight:600;color:var(--t2);margin-top:6px}
+
+/* first open of the day: an arrival on Today, then the normal screen */
+.arrive{margin-top:16px;border-radius:20px;padding:14px;border:1px solid color-mix(in srgb,var(--p) 45%,transparent);
+  background:linear-gradient(150deg,var(--pl),var(--surface) 70%);overflow:hidden;max-height:0;opacity:0;padding-top:0;padding-bottom:0;
+  transition:max-height .6s cubic-bezier(.3,0,.2,1),opacity .4s,padding .6s}
+.arrive.on{max-height:320px;opacity:1;padding-top:14px;padding-bottom:14px}
+.arrive .r{display:flex;align-items:center;gap:12px}
+.arrive .r + .r{margin-top:12px}
+.arrive .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;flex:none}
+.arrive .fl{background:var(--al);color:var(--a)}
+.arrive .lv{background:var(--pl);color:var(--p300)}
+.arrive .qs{background:var(--high);color:var(--t1)}
+.arrive .x{flex:1;min-width:0;text-align:left;font-size:13px;color:var(--t2)}
+.arrive .x b{display:block;color:var(--t1);font-size:14.5px}
+.arrive .bar{height:7px;margin-top:6px}
+.letters span{display:inline-block;opacity:0;transform:translateY(6px);transition:all .4s}
+.letters.on span{opacity:1;transform:none}
+
+/* the calm version: a card at the top, no burst */
+.toast{position:absolute;left:14px;right:14px;top:52px;z-index:45;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;
+  background:var(--raised);border:1px solid color-mix(in srgb,var(--p) 45%,transparent);box-shadow:0 12px 40px rgba(0,0,0,.5);
+  transform:translateY(-20px);opacity:0;transition:all .35s ease}
+.toast.on{transform:none;opacity:1}
+.toast i{font-size:26px;color:var(--p300)}
+.toast b{display:block;font-size:14.5px}
+.toast small{font-size:12.5px;color:var(--t2)}
+
+/* reduce motion: every moment arrives finished */
+.still *, .still{transition:none !important;animation:none !important}
+
+/* ── the panel beside the phone ── */
+.panel{width:min(440px,100%);display:flex;flex-direction:column;gap:22px}
+.panel h1{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.panel p.lead{color:var(--t2);font-size:14.5px;line-height:1.5;margin-top:6px}
+.moments{display:grid;gap:8px}
+.mbtn{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--hair);background:var(--surface);text-align:left}
+.mbtn:hover{border-color:color-mix(in srgb,var(--p) 55%,transparent)}
+.mbtn[aria-pressed="true"]{border-color:var(--p);background:var(--pl)}
+.mbtn i{font-size:22px;color:var(--p300);margin-top:1px}
+.mbtn b{display:block;font-size:15px}
+.mbtn small{display:block;color:var(--tm);font-size:12.5px;margin-top:2px;line-height:1.4}
+.sw{display:grid;gap:8px}
+.sw h2{font-size:13px;font-weight:700;color:var(--tm)}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--hair);font-size:14px}
+.toggle > span:first-child{text-align:left}
+.toggle small{display:block;color:var(--tm);font-size:12px}
+.knob{width:42px;height:24px;border-radius:12px;background:var(--high);position:relative;flex:none;transition:background .2s}
+.knob::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle[aria-checked="true"] .knob{background:var(--p)}
+.toggle[aria-checked="true"] .knob::after{transform:translateX(18px)}
+.real{font-size:12.5px;color:var(--tm);line-height:1.5;border-left:2px solid var(--hair);padding-left:12px}
+.real b{color:var(--t2)}
+.note{font-size:12px;color:var(--tm)}
+@media (max-width:900px){ body{gap:24px} }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone" aria-label="Phone preview">
+  <div class="screen" id="screen">
+    <div class="status"><span>9:41</span><span><i class="ph-fill ph-cell-signal-full"></i> <i class="ph-fill ph-battery-high"></i></span></div>
+    <div class="hello"><div class="av">LL</div><div><small id="greet">Good morning</small><b>Lea</b></div></div>
+    <div id="arrive" class="arrive" aria-live="polite">
+      <div class="r"><div class="ic fl"><i class="ph-fill ph-fire"></i></div>
+        <div class="x"><b>6-day streak</b>Check in today to make it 7.</div></div>
+      <div class="r"><div class="ic lv"><i class="ph-fill ph-lightning"></i></div>
+        <div class="x"><b>Earned level 4</b><div class="bar"><i id="arrLv"></i></div></div>
+        <div class="x" style="flex:none;font-size:12px" id="arrLvN">0 / 600</div></div>
+      <div class="r"><div class="ic qs"><i class="ph ph-target"></i></div>
+        <div class="x"><b>This week's quest</b>Log 9 sets · 6 to go</div></div>
+    </div>
+    <div class="day"><span class="letters" id="dayL">Tuesday</span>27 October</div>
+    <div class="week">
+      <div class="top"><span>25 days left on Premium</span><span><b>6</b> visits in Oct</span></div>
+      <div class="dots"><div class="dot on"><i class="ph-bold ph-check"></i></div><div class="dot on"><i class="ph-bold ph-check"></i></div><div class="dot today"><i class="ph-fill ph-lightning"></i></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="dlabels"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+    </div>
+    <div class="tl">
+      <div class="w">Now</div><div><b>Not checked in yet</b><p>The floor is open until 9 PM.</p><a>Show my code</a></div>
+      <div class="w">Today</div><div><b>Leg day</b><p>You planned to train at 6 PM.</p><a>Start a workout</a></div>
+      <div class="w">Later</div><div><b>Nothing booked</b><p>Classes and 1-on-1s are on Train.</p><a>Book</a></div>
+    </div>
+    <div class="tabbar">
+      <div style="color:var(--p300)"><i class="ph-fill ph-house"></i>Today</div><div><i class="ph ph-barbell"></i>Train</div>
+      <div><i class="ph ph-user"></i>You</div><div><i class="ph ph-dots-nine"></i>More</div>
+      <div class="ci"><i class="ph ph-qr-code"></i>Check in</div>
+    </div>
+  </div>
+  <canvas class="fx" id="fx"></canvas>
+  <div id="layer"></div>
+</div>
+
+<div class="panel">
+  <div>
+    <h1>Wave 1 · the big moments</h1>
+    <p class="lead">Tap a moment to play it on the phone. Turn on your sound. Every number here is sample data; the note under each moment says where the real number comes from.</p>
+  </div>
+
+  <div class="moments" role="group" aria-label="Moments">
+    <button class="mbtn" data-m="daily"><i class="ph ph-sun-horizon"></i><span><b>First open of the day</b><small>A short arrival on Today, then the normal screen.</small></span></button>
+    <button class="mbtn" data-m="checkin"><i class="ph ph-qr-code"></i><span><b>Checking in</b><small>When the desk scans your code.</small></span></button>
+    <button class="mbtn" data-m="workout"><i class="ph ph-barbell"></i><span><b>Finishing a workout</b><small>The finish screen you have, made livelier.</small></span></button>
+    <button class="mbtn" data-m="badge"><i class="ph ph-medal"></i><span><b>Badge unlocked</b><small>The unlock you have, made richer.</small></span></button>
+    <button class="mbtn" data-m="level"><i class="ph ph-arrow-fat-lines-up"></i><span><b>Level up</b><small>New: when your earned level rises.</small></span></button>
+    <button class="mbtn" data-m="target"><i class="ph ph-target"></i><span><b>Target reached</b><small>New: when a target with a number is settled.</small></span></button>
+    <button class="mbtn" data-m="challenge"><i class="ph ph-flag-checkered"></i><span><b>Challenge won</b><small>New: when a challenge you joined ends.</small></span></button>
+  </div>
+
+  <p class="real" id="real">Pick a moment.</p>
+
+  <div class="sw">
+    <h2>The member</h2>
+    <button class="toggle" role="switch" aria-checked="true" data-t="sound"><span>Sounds<small>On by default; Settings turns them off.</small></span><span class="knob"></span></button>
+    <button class="toggle" role="switch" aria-checked="true" data-t="vibe"><span>Vibration<small>On Android phones; iPhones ignore it.</small></span><span class="knob"></span></button>
+    <button class="toggle" role="switch" aria-checked="false" data-t="reduce"><span>Phone set to reduce motion<small>Every moment then arrives finished and still.</small></span><span class="knob"></span></button>
+  </div>
+  <div class="sw">
+    <h2>The gym owner (admin app)</h2>
+    <button class="toggle" role="switch" aria-checked="true" data-t="celebrate"><span>Celebrations<small>Off: each moment is a small card instead.</small></span><span class="knob"></span></button>
+    <button class="toggle" role="switch" aria-checked="true" data-t="gymsound"><span>Sounds<small>Off: no sound for anyone at this gym.</small></span><span class="knob"></span></button>
+    <button class="toggle" role="switch" aria-checked="false" data-t="blue"><span>Gym colour: blue<small>Shows the moments follow the gym's own colour.</small></span><span class="knob"></span></button>
+  </div>
+  <p class="note">Mock-up only. Artwork (medal faces, level emblems) can become AI-generated or licensed art in the build; the motion and layout are what this page asks you to approve.</p>
+</div>
+
+<script>
+const S = { sound:true, vibe:true, reduce:false, celebrate:true, gymsound:true, blue:false };
+const $ = (s, r = document) => r.querySelector(s);
+const sleep = (ms) => new Promise((r) => setTimeout(r, S.reduce ? 0 : ms));
+let run = 0; // a newer moment cancels an older one
+
+/* ── sound: soft synthesized chimes (clean and modern), no files to license ── */
+let ac;
+function tone(freq, at, dur, vol = 0.12, type = 'sine') {
+  if (!S.sound || !S.gymsound) return;
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+  // a quiet octave on top gives the chime its glassy edge
+  const o2 = ac.createOscillator(), g2 = ac.createGain();
+  o2.type = 'sine'; o2.frequency.setValueAtTime(freq * 2, t);
+  g2.gain.setValueAtTime(0, t); g2.gain.linearRampToValueAtTime(vol * 0.25, t + 0.01);
+  g2.gain.exponentialRampToValueAtTime(0.0008, t + dur * 0.6);
+  o2.connect(g2).connect(ac.destination); o2.start(t); o2.stop(t + dur);
+}
+const SFX = {
+  chime: () => [659.25, 987.77].forEach((f, i) => tone(f, i * 0.09, 0.9, 0.1)),
+  arrive: () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.085, 1.1, 0.1)),
+  pop: () => { tone(880, 0, 0.12, 0.09, 'triangle'); tone(1318.5, 0.04, 0.18, 0.06); },
+  tick: () => tone(1567.98, 0, 0.05, 0.035, 'triangle'),
+  record: () => [783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => tone(f, i * 0.07, 1.2, 0.09)),
+  level: () => { [392, 523.25, 659.25, 783.99].forEach((f, i) => tone(f, i * 0.11, 1.4, 0.1)); tone(1046.5, 0.5, 1.8, 0.11); },
+  medal: () => { tone(1318.5, 0, 1.6, 0.08); tone(1975.5, 0.12, 1.4, 0.05); tone(659.25, 0.12, 1.6, 0.08); },
+  snap: () => { tone(1046.5, 0, 0.2, 0.1, 'triangle'); tone(1568, 0.06, 0.6, 0.07); },
+};
+const buzz = (p) => { if (S.vibe && navigator.vibrate) navigator.vibrate(p); };
+
+/* ── confetti on the phone's own canvas, in the gym's colours ── */
+const fx = window.confetti ? confetti.create($('#fx'), { resize: true }) : null;
+function burst(y = 0.35, n = 90) {
+  if (!fx || S.reduce) return;
+  const cs = getComputedStyle(document.documentElement);
+  const colors = [cs.getPropertyValue('--p').trim(), cs.getPropertyValue('--p300').trim(), cs.getPropertyValue('--a').trim(), '#ffffff'];
+  fx({ particleCount: n, spread: 75, startVelocity: 38, origin: { y }, colors, scalar: 0.9, ticks: 180 });
+  setTimeout(() => fx({ particleCount: Math.round(n / 2), spread: 110, startVelocity: 28, origin: { y }, colors, scalar: 0.8, ticks: 160 }), 160);
+}
+
+function countUp(el, from, to, ms, fmt = (v) => v.toLocaleString('en-PH'), tickEvery = 0) {
+  return new Promise((done) => {
+    if (S.reduce) { el.textContent = fmt(to); return done(); }
+    const t0 = performance.now(); let last = -1;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3), v = Math.round(from + (to - from) * e);
+      el.textContent = fmt(v);
+      if (tickEvery && v !== last && v % tickEvery === 0) SFX.tick();
+      last = v;
+      k < 1 ? requestAnimationFrame(step) : done();
+    };
+    requestAnimationFrame(step);
+  });
+}
+const on = (el) => el && el.classList.add('on');
+
+/* ── the stage ── */
+const layer = $('#layer');
+function open(html, cls = '') {
+  layer.innerHTML = `<div class="layer ${cls} ${S.reduce ? 'still' : ''}"><div class="scrim"></div>${html}</div>`;
+  const l = layer.firstElementChild;
+  l.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === l || e.target.classList.contains('scrim') || e.target.classList.contains('tap')) close(); });
+  requestAnimationFrame(() => l.classList.add('show'));
+  return l;
+}
+function close() {
+  run++;
+  const l = layer.firstElementChild;
+  if (!l) return;
+  l.classList.remove('show'); l.classList.remove('on');
+  setTimeout(() => { if (layer.firstElementChild === l) layer.innerHTML = ''; }, 350);
+}
+/** The owner turned celebrations down: the same moment, as a card. */
+function card(icon, title, line) {
+  layer.innerHTML = `<div class="toast ${S.reduce ? 'still' : ''}" role="status"><i class="ph-fill ${icon}"></i><span><b>${title}</b><small>${line}</small></span></div>`;
+  const t = layer.firstElementChild;
+  requestAnimationFrame(() => t.classList.add('on'));
+  SFX.pop(); buzz(25);
+  const my = run;
+  setTimeout(() => { if (my === run) close(); }, 3200);
+  t.addEventListener('click', close);
+}
+
+const REAL = {
+  daily: '<b>Real numbers:</b> streak from <b>my_streak()</b>, earned level and points to the next from <b>member_progression()</b>, the quest from <b>roll_weekly_quests()</b>. Plays once per day per account (a column, never the phone), and only when Today opens.',
+  checkin: '<b>Real numbers:</b> the scan is what the check-in sheet already waits for; the streak from <b>my_streak()</b> after the visit; the points are the <b>point_ledger</b> row the visit credited (0 on a plan without points — then no points line at all).',
+  workout: '<b>Real numbers:</b> the finish screen\'s own minutes, sets, kg and "beat last time"; a record from <b>member_personal_records()</b>; the points the ledger credited and the level bar from <b>member_progression()</b>. Offline it says the points come when back online.',
+  badge: '<b>Real numbers:</b> the badge from <b>achievement_unlocks</b> (seen on show, as now; at most three in a row); its tier; "12% of members have it" from <b>achievement_rarity()</b>.',
+  level: '<b>Real numbers:</b> <b>member_progression()</b> before and after. The last level celebrated is kept on the account so it plays once. Named "earned level" — never confused with the self-declared experience level.',
+  target: '<b>Real numbers:</b> a target with a number marked reached by <b>settle_my_goals()</b> (never a hand tick), its start, target and best; the points it paid.',
+  challenge: '<b>Real numbers:</b> <b>settle_challenges()</b> and <b>challenge_progress()</b>: your place and how many joined; the reward it paid.',
+};
+
+/* ── the moments ── */
+const M = {
+  async daily(my) {
+    const a = $('#arrive'), d = $('#dayL');
+    a.classList.remove('on'); $('#arrLv').style.width = '0';
+    d.innerHTML = [...'Tuesday'].map((c, i) => `<span style="transition-delay:${i * 40}ms">${c}</span>`).join('');
+    d.classList.remove('on');
+    await sleep(80); d.classList.add('on');
+    await sleep(380); if (my !== run) return;
+    SFX.chime(); buzz(20);
+    a.classList.add('on');
+    await sleep(500);
+    $('#arrLv').style.width = '62%';
+    await countUp($('#arrLvN'), 0, 372, 1100, (v) => `${v} / 600`);
+    await sleep(5200); if (my !== run) return;
+    a.classList.remove('on');
+  },
+
+  async checkin(my) {
+    const l = open(`
+      <div class="code" id="code"><div class="qr"></div><i class="ph-bold ph-check"></i></div>
+      <div class="in" id="t1"><p class="eyebrow" style="margin-top:22px">Checked in</p><h2 class="h1">You're in, Lea</h2>
+        <p class="sub">Cardio today. Have a good session.</p></div>
+      <div class="streak in" id="st"><i class="ph-fill ph-fire flame" id="fl"></i>
+        <div class="odo"><span class="col" id="oc"><span style="display:block">6</span><span style="display:block">7</span></span></div>
+        <div class="lbl"><b>day streak</b>Your longest is 12.</div></div>
+      <div class="wk in" id="wk"><span class="on"></span><span class="on"></span><span class="now" id="now"></span><span></span><span></span><span></span><span></span></div>
+      <div class="wkl in" id="wkl"><span>3 of 4 days this week</span><span>your plan: 4 a week</span></div>
+      <div class="points in" id="pt"><i class="ph-fill ph-coins"></i> +10 for the visit <span class="tot" id="tot">240</span></div>
+      <button class="cta" data-close>Done</button>`);
+    await sleep(500); if (my !== run) return;
+    $('#code', l).classList.add('done'); SFX.arrive(); buzz([30, 50, 70]);
+    await sleep(500); on($('#t1', l));
+    await sleep(350); on($('#st', l));
+    await sleep(300); $('#fl', l).classList.add('lit'); $('#oc', l).classList.add('roll'); SFX.snap();
+    await sleep(600); on($('#wk', l)); on($('#wkl', l)); $('#now', l).classList.add('fill');
+    await sleep(600); on($('#pt', l)); SFX.pop(); buzz(15);
+    countUp($('#tot', l), 240, 250, 700, (v) => `${v} total`);
+    burst(0.3, 70);
+  },
+
+  async workout(my) {
+    const l = open(`
+      <div class="trophy" id="tr"><i class="ph-fill ph-trophy"></i></div>
+      <p class="eyebrow in" id="e" style="margin-top:16px">Workout complete</p>
+      <h2 class="h1 in" id="h">Leg day</h2>
+      <div class="tiles">
+        <div class="tile" id="a"><b id="av">0</b><small>minutes</small></div>
+        <div class="tile" id="b"><b id="bv">0</b><small>sets</small></div>
+        <div class="tile" id="c"><b id="cv">0</b><small>kg lifted</small></div>
+        <div class="tile beat" id="d"><b id="dv">0</b><small>sets beat last time</small></div>
+      </div>
+      <div class="record" id="rec"><i class="ph-fill ph-crown-simple"></i><span><b>New record · Barbell Squat</b><small>65 kg × 8 — your best was 60 kg</small></span></div>
+      <div class="points in" id="pt"><i class="ph-fill ph-coins"></i> +25 for the workout</div>
+      <div class="level in" id="lv"><div class="row"><span>Earned level 4</span><span id="lvn">372 / 600</span></div><div class="bar"><i id="lvb" style="width:62%"></i></div></div>
+      <button class="cta" data-close style="margin-top:16px">See it in Attendance</button>`);
+    await sleep(250); if (my !== run) return;
+    on($('#tr', l)); SFX.chime(); buzz(30);
+    await sleep(350); on($('#e', l)); on($('#h', l));
+    for (const [id, to, step] of [['a', 52, 4], ['b', 14, 1], ['c', 4280, 400], ['d', 3, 1]]) {
+      if (my !== run) return;
+      await sleep(180); on($('#' + id, l));
+      await countUp($('#' + id + 'v', l), 0, to, 520, undefined, step);
+    }
+    $('#d', l).classList.add('flash');
+    await sleep(350); if (my !== run) return;
+    on($('#rec', l)); SFX.record(); buzz([40, 60, 40, 60, 120]); burst(0.55, 110);
+    await sleep(900); on($('#pt', l)); SFX.pop();
+    await sleep(400); on($('#lv', l));
+    await sleep(200); $('#lvb', l).style.width = '66%';
+    countUp($('#lvn', l), 372, 397, 1000, (v) => `${v} / 600`);
+  },
+
+  async badge(my) {
+    const l = open(`
+      <p class="eyebrow in" id="e">Badge unlocked</p>
+      <div class="stage" style="--tier:var(--gold)"><div class="rays" id="rays">${Array.from({ length: 12 }, (_, i) => `<span style="--r:${i * 30}deg"></span>`).join('')}</div>
+        <div class="medal" id="md" style="--tier:var(--gold)"><div class="face"><i class="ph-fill ph-barbell"></i></div><div class="shine"></div></div></div>
+      <h2 class="h1 in" id="h">Iron regular</h2>
+      <p class="sub in" id="s">You checked in 20 times.</p>
+      <span class="tier in" id="ti" style="--tier:var(--gold)">Gold</span>
+      <p class="rare in" id="ra">12% of members at your gym have it.</p>
+      <p class="tap">Tap to continue · 1 more</p>`);
+    await sleep(200); if (my !== run) return;
+    on($('#e', l));
+    await sleep(250); on($('#md', l)); SFX.medal(); buzz([20, 40, 90]);
+    await sleep(500); $('#rays', l).classList.add('go'); burst(0.32, 60);
+    await sleep(300); on($('#h', l));
+    await sleep(150); on($('#s', l)); on($('#ti', l));
+    await sleep(250); on($('#ra', l));
+  },
+
+  async level(my) {
+    const C = 2 * Math.PI * 82;
+    const l = open(`
+      <p class="eyebrow in" id="e">Earned level</p>
+      <div class="ring"><svg width="190" height="190" viewBox="0 0 190 190">
+          <circle cx="95" cy="95" r="82" fill="none" stroke="var(--high)" stroke-width="12"/>
+          <circle id="arc" cx="95" cy="95" r="82" fill="none" stroke="var(--p)" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="${C}" stroke-dashoffset="${C * 0.15}" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/></svg>
+        <div class="num"><div class="odo"><span class="col" id="oc"><span style="display:block">4</span><span style="display:block">5</span></span></div></div>
+        <div class="flash" id="fl"></div>
+      </div>
+      <h2 class="h1 in" id="h">Level 5</h2>
+      <p class="sub in" id="s">Levels come from the points you earn at the gym. 600 more for level 6.</p>
+      <p class="tap">Tap to continue</p>`);
+    await sleep(300); if (my !== run) return;
+    on($('#e', l));
+    await sleep(200); $('#arc', l).style.strokeDashoffset = '0';
+    if (!S.reduce) for (let i = 0; i < 6; i++) setTimeout(() => my === run && SFX.tick(), i * 170);
+    await sleep(1250); if (my !== run) return;
+    $('#fl', l).classList.add('go'); $('#oc', l).classList.add('roll'); SFX.level(); buzz([40, 60, 40, 60, 160]); burst(0.38, 120);
+    await sleep(500); on($('#h', l));
+    await sleep(200); on($('#s', l));
+  },
+
+  async target(my) {
+    const l = open(`
+      <p class="eyebrow in" id="e">Target reached</p>
+      <div class="target in" id="tg"><div class="t"><b>Squat 100 kg</b><span class="v" id="tv">92 kg</span></div>
+        <div class="bar"><i id="tb" style="width:80%"></i></div>
+        <div class="t" style="margin-top:8px"><span class="v">Started at 60 kg · Oct 1</span><span class="v">100 kg</span></div></div>
+      <div class="stamp" id="sp"><i class="ph-bold ph-check"></i></div>
+      <h2 class="h1 in" id="h">100 kg squat</h2>
+      <p class="sub in" id="s">Four weeks from 60 kg to 100 kg.</p>
+      <div class="points in" id="pt"><i class="ph-fill ph-coins"></i> +50 for the target</div>
+      <button class="cta" data-close>Set a new target</button>`);
+    await sleep(200); if (my !== run) return;
+    on($('#e', l)); on($('#tg', l));
+    await sleep(400); $('#tb', l).style.transition = 'width .9s cubic-bezier(.4,0,.2,1)'; $('#tb', l).style.width = '100%';
+    countUp($('#tv', l), 92, 100, 900, (v) => `${v} kg`, 1);
+    await sleep(950); if (my !== run) return;
+    $('#tg', l).classList.add('done'); on($('#sp', l)); SFX.snap(); buzz([30, 40, 90]); burst(0.5, 90);
+    await sleep(350); on($('#h', l));
+    await sleep(150); on($('#s', l));
+    await sleep(350); on($('#pt', l)); SFX.pop();
+  },
+
+  async challenge(my) {
+    const l = open(`
+      <p class="eyebrow in" id="e">Challenge won</p>
+      <div class="stage" style="--tier:var(--p300);margin-top:22px"><div class="rays" id="rays">${Array.from({ length: 12 }, (_, i) => `<span style="--r:${i * 30}deg"></span>`).join('')}</div>
+        <div class="medal" id="md" style="--tier:var(--p300)"><div class="face" style="color:#160b33"><i class="ph-fill ph-flag-checkered"></i></div><div class="shine"></div></div></div>
+      <h2 class="h1 in" id="h">October visits</h2>
+      <div class="podium in" id="pd"><span id="pl">23</span><small id="plc">of 23 who joined</small></div>
+      <div class="points in" id="pt"><i class="ph-fill ph-coins"></i> +100 for 1st place</div>
+      <button class="cta" data-close>See the board</button>`);
+    await sleep(200); if (my !== run) return;
+    on($('#e', l));
+    await sleep(200); on($('#md', l)); SFX.medal(); buzz([20, 40, 90]);
+    await sleep(450); $('#rays', l).classList.add('go');
+    await sleep(200); on($('#h', l)); on($('#pd', l));
+    const ord = (v) => v + ([, 'st', 'nd', 'rd'][(v % 100 >> 3 ^ 1) && v % 10] || 'th');
+    await countUp($('#pl', l), 23, 1, 1300, ord, 1);
+    if (my !== run) return;
+    SFX.record(); buzz([40, 60, 40, 60, 160]); burst(0.4, 130);
+    await sleep(350); on($('#pt', l)); SFX.pop();
+  },
+};
+
+const CARD = {
+  checkin: ['ph-check-circle', 'You\'re in, Lea', '7-day streak · +10 points'],
+  workout: ['ph-trophy', 'Leg day done', '14 sets · new squat record · +25 points'],
+  badge: ['ph-medal', 'Badge unlocked: Iron regular', 'Gold · checked in 20 times'],
+  level: ['ph-arrow-fat-lines-up', 'Earned level 5', '600 more points for level 6'],
+  target: ['ph-target', 'Target reached: Squat 100 kg', '+50 points'],
+  challenge: ['ph-flag-checkered', 'You won October visits', '1st of 23 · +100 points'],
+};
+
+function play(m) {
+  const my = ++run;
+  layer.innerHTML = '';
+  document.querySelectorAll('.mbtn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.m === m)));
+  $('#real').innerHTML = REAL[m];
+  if (m === 'daily') return M.daily(my);
+  if (!S.celebrate) return card(...CARD[m]);
+  M[m](my);
+}
+
+document.querySelectorAll('.mbtn').forEach((b) => b.addEventListener('click', () => play(b.dataset.m)));
+document.querySelectorAll('.toggle').forEach((t) => t.addEventListener('click', () => {
+  const k = t.dataset.t; S[k] = !S[k]; t.setAttribute('aria-checked', String(S[k]));
+  if (k === 'blue') document.documentElement.dataset.theme = S.blue ? 'blue' : '';
+}));
+// The phone's own setting is read too, the way the app will.
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { S.reduce = true; $('[data-t="reduce"]').setAttribute('aria-checked', 'true'); }
+</script>
+</body>
+</html>
