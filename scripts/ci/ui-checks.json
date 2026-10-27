@@ -150,6 +150,10 @@
       "app": "member"
     },
     {
+      "file": "member-stuck-workout-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-coach-place-check.js",
       "app": "member"
     },

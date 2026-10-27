@@ -127,6 +127,12 @@ function WorkoutRun() {
   const [last, setLast] = useState<Map<string, LastSet[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * An open workout this player cannot run — its routine was deleted, or the
+   * gym's workout has no exercises yet. It still blocks starting another, so
+   * the way out lives here: finish it (keeping what was logged) or discard it.
+   */
+  const [stuck, setStuck] = useState<{ startedAt: string; sets: number } | null>(null);
   const [idx, setIdx] = useState(0);
   const [started, setStarted] = useState<Set<number>>(new Set());
   const [finished, setFinished] = useState<Set<number>>(new Set());
@@ -252,7 +258,12 @@ function WorkoutRun() {
         // Anything logged offline last time is shown straight away and sent below.
         const waiting = me ? pendingFor(logId, me).filter((q) => !serverSets.some((x) => x.id === q.id)) : [];
         const recorded = [...serverSets, ...waiting.map(fromQueued)];
-        if (!r) throw new Error('The routine for this workout was deleted. Finish or discard it from My routines.');
+        if (!r || r.exercises.length === 0) {
+          if (!alive) return;
+          if (!s.completedAt) setStuck({ startedAt: s.startedAt, sets: recorded.length });
+          setError(!r ? 'The routine for this workout was deleted.' : 'This workout has no exercises yet, so there is nothing to log in it.');
+          return;
+        }
         const lastMap = await lastSetsFor(r.exercises.map((e) => e.exerciseId).filter(Boolean) as string[])
           .catch(() => new Map<string, LastSet[]>());
         if (!alive) return;
@@ -487,6 +498,22 @@ function WorkoutRun() {
     }
   };
 
+  /** Finishes a workout the player cannot run, keeping the sets already logged. */
+  const finishStuck = async () => {
+    if (!logId || !stuck || busy) return;
+    setBusy(true);
+    try {
+      const minutes = Math.max(1, Math.round((Date.now() - new Date(stuck.startedAt).getTime()) / 60_000));
+      await completeSession(logId, Math.min(minutes, 240));
+      toast.success('Workout finished.');
+      navigate('/member/track', { replace: true });
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not finish the workout'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ── Loading, failure, finished ───────────────────────────────────────────
   if (loading) return <SkeletonList count={4} />;
   if (error || !routine || !ex) {
@@ -494,6 +521,25 @@ function WorkoutRun() {
       <div className="flex flex-col" style={{ gap: 14 }}>
         <PageTitle title="Workout" back fallback="/member/track" />
         <p role="alert" style={{ fontSize: 14, color: 'var(--color-secondary)' }}>{error ?? 'This routine has no exercises.'}</p>
+        {stuck && (
+          <div className="flex flex-col" style={{ gap: 10 }} data-stuck-workout>
+            <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+              It is still open, which stops you starting another.{' '}
+              {stuck.sets > 0
+                ? `Finish it to keep the ${stuck.sets} ${stuck.sets === 1 ? 'set' : 'sets'} you logged, or discard it.`
+                : 'Nothing was logged in it, so discarding loses nothing.'}
+            </p>
+            {stuck.sets > 0 && (
+              <NocButton variant="fill" onClick={finishStuck} disabled={busy}>
+                Finish and keep {stuck.sets} {stuck.sets === 1 ? 'set' : 'sets'}
+              </NocButton>
+            )}
+            <NocButton variant={stuck.sets > 0 ? 'ghost' : 'action'} disabled={busy}
+              onClick={() => (confirmDiscard || stuck.sets === 0 ? void discard() : setConfirmDiscard(true))}>
+              {confirmDiscard ? `Tap again to discard ${stuck.sets} ${stuck.sets === 1 ? 'set' : 'sets'}` : 'Discard this workout'}
+            </NocButton>
+          </div>
+        )}
         <NocButton variant="ghost" onClick={() => navigate('/member/track')}>Back to My routines</NocButton>
       </div>
     );

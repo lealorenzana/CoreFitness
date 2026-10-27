@@ -8,7 +8,7 @@ import FeatureLock from '../components/ui/FeatureLock';
 import { toast } from '../components/ui/Toast';
 import { getCurrentMemberId } from '../services/bookingService';
 import {
-  getOpenRoutineSession, listRoutines, routineSourceLabel, routineSummary, startRoutineSession, type Routine,
+  discardSession, getOpenRoutineSession, listRoutines, routineSourceLabel, routineSummary, startRoutineSession, type Routine,
 } from '../lib/api/routines';
 import { useGymApp } from '../hooks/useGymApp';
 import { word } from '../lib/gymApp';
@@ -30,6 +30,8 @@ export default function Routines() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
+  /** Discarding the open workout takes a second tap — its sets go with it. */
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -68,6 +70,19 @@ export default function Routines() {
     }
   };
 
+  const discardOpen = async () => {
+    if (!open) return;
+    if (!confirmDiscard) { setConfirmDiscard(true); return; }
+    try {
+      await discardSession(open.logId);
+      setOpen(null);
+      setConfirmDiscard(false);
+      toast.success('Workout discarded.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not discard the workout'));
+    }
+  };
+
   const title = (
     <PageTitle back fallback="/member/workouts/today" title="Routines"
       subtitle="Saved workouts you repeat — yours, your coach's and the AI coach's" />
@@ -85,16 +100,25 @@ export default function Routines() {
             {/* A workout already under way comes first — it is the one thing
                 the member most likely came back for. */}
             {open && (
-              <Panel glow="action" onClick={() => navigate(open.routineId || open.gymWorkoutId
-                ? `/member/track/session/${open.logId}` : '/member/track/log')}>
+              <Panel glow="action">
                 <Eyebrow tone="action">In progress</Eyebrow>
                 <p className="flex items-center" style={{ gap: 8, marginTop: 6, fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   <Lightning size={18} weight="fill" style={{ color: 'var(--color-secondary)' }} />
                   {open.activity ?? 'Workout'}
                 </p>
-                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-secondary)' }}>
-                  Resume workout
-                </span>
+                {/* Two actions, so the card is not one button: a workout that cannot
+                    run (no exercises, routine deleted) must still be closable here. */}
+                <div className="flex items-center" style={{ gap: 18, marginTop: 8 }} data-open-workout>
+                  <button type="button" onClick={() => navigate(open.routineId || open.gymWorkoutId
+                    ? `/member/track/session/${open.logId}` : '/member/track/log')}
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                    Resume workout
+                  </button>
+                  <button type="button" onClick={() => void discardOpen()}
+                    style={{ fontSize: 13, color: confirmDiscard ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                    {confirmDiscard ? 'Tap again to discard' : 'Discard'}
+                  </button>
+                </div>
               </Panel>
             )}
 

@@ -113,6 +113,13 @@ export async function leaveProgram(programId: string): Promise<void> {
 
 /** Opens a workout log for one program day; returns its id for the player. */
 export async function startProgramDay(dayId: string): Promise<string> {
+  // A day whose workout has no exercises would open a session the player
+  // cannot run — and an open session blocks every other workout. Say so first.
+  const day = await supabase.from('gym_program_days').select('workout_id, gym_workouts (gym_workout_items (id))').eq('id', dayId).maybeSingle();
+  const items = (day.data as unknown as { gym_workouts: { gym_workout_items: unknown[] } | null } | null)?.gym_workouts?.gym_workout_items;
+  if (!day.error && Array.isArray(items) && items.length === 0) {
+    throw new Error('This day has no exercises yet. Ask the gym to add some before you start it.');
+  }
   const { data, error } = await supabase.rpc('start_program_day', { p_day: dayId });
   if (error) throw new Error(clean(error.message));
   return data as string;
