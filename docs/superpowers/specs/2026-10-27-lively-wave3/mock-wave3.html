@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wave 3 friends</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+:root{
+  --bg:#08080E; --surface:#12121C; --raised:#161522; --high:#1E1D2B;
+  --p:#7C3AED; --p300:#c4b5fd; --p400:#a78bfa; --pl:#1E1333;
+  --a:#F59E0B; --a300:#fcd34d; --al:#1F1A0A;
+  --t1:#e9e9ed; --t2:#b2b6ca; --tm:#9397ab; --hair:rgba(233,233,237,.16);
+  --gold:#F59E0B; --silver:#A8B0BE; --bronze:#C77B3E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050509;color:var(--t1);font-family:Inter,system-ui,sans-serif;min-height:100vh;display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:28px 16px 60px;flex-wrap:wrap}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--p300);outline-offset:2px;border-radius:8px}
+.phone{width:393px;height:852px;border-radius:46px;background:var(--bg);position:relative;overflow:hidden;flex:none;box-shadow:0 0 0 10px #15151d,0 0 0 11px #26263a,0 40px 120px rgba(0,0,0,.6)}
+.screen{position:absolute;inset:0 0 72px;padding:50px 20px 24px;overflow-y:auto;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.status{position:absolute;top:14px;left:30px;right:30px;display:flex;justify-content:space-between;font-size:13px;font-weight:600;z-index:3}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:72px;border-top:1px solid var(--hair);background:rgba(8,8,14,.95);display:flex;align-items:center;justify-content:space-around;padding:0 12px 8px;font-size:11.5px;color:var(--tm);z-index:3}
+.tabbar div{display:grid;place-items:center;gap:3px}.tabbar i{font-size:21px}.tabbar .on{color:var(--p300)}
+.tabbar .ci{border:1px solid var(--p);color:var(--p300);border-radius:14px;padding:6px 14px;background:var(--pl)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--p300)}
+.h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.back{font-size:14px;color:var(--p300);display:flex;gap:6px;align-items:center}
+.sub{font-size:13px;color:var(--t2);margin-top:4px;line-height:1.45}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin-top:22px}
+.sec b{font-size:17px}.sec small{font-size:12.5px;color:var(--tm)}
+.tabs{display:flex;gap:18px;margin-top:12px;font-size:14px}.tabs .on{font-weight:700;border-bottom:2px solid var(--p);padding-bottom:6px}.tabs span{color:var(--tm)}
+.tabs .n{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--a);color:#1a1205;font-size:11px;font-weight:800;margin-left:4px;padding:0 5px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid rgba(233,233,237,.07)}
+.row:first-child{border-top:0}
+.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none;background:var(--high);color:var(--t1)}
+.av.sm{width:30px;height:30px;font-size:11.5px}
+.grow{flex:1;min-width:0}.grow b{display:block;font-size:15px}.grow small{display:block;font-size:12.5px;color:var(--tm);margin-top:2px}
+.btn{height:36px;padding:0 14px;border-radius:12px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;flex:none}
+.btn.act{background:var(--a);color:#1a1205}
+.btn.line{border:1px solid var(--hair);color:var(--t2)}
+.btn.mine{border:1px solid color-mix(in srgb,var(--p) 55%,transparent);color:var(--p300);background:var(--pl)}
+.search{display:flex;align-items:center;gap:8px;height:44px;border-radius:14px;border:1px solid var(--hair);background:var(--surface);padding:0 12px;color:var(--tm);font-size:14px;margin-top:14px}
+.card{border:1px solid var(--hair);border-radius:20px;background:var(--surface);padding:14px}
+.glow{border-color:color-mix(in srgb,var(--p) 45%,transparent);background:linear-gradient(150deg,var(--pl),var(--surface) 70%)}
+.win{border:1px solid var(--hair);border-radius:18px;background:var(--surface);padding:12px 14px;margin-top:10px}
+.win .top{display:flex;gap:10px;align-items:center}
+.win .what{display:flex;gap:10px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--raised)}
+.win .what i{font-size:22px}
+.win .foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.cheer{height:34px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--a);color:var(--a300);background:var(--al);transition:transform .2s}
+.cheer.done{border-color:color-mix(in srgb,var(--p) 55%,transparent);color:var(--p300);background:var(--pl)}
+.cheer:active{transform:scale(.94)}
+.burst{position:absolute;pointer-events:none;font-size:18px;animation:fly .9s ease-out forwards}
+@keyframes fly{0%{opacity:1;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1.1)}}
+.medal{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#2a1a02;font-size:18px;flex:none;
+  background:radial-gradient(circle at 32% 28%,#fff6d8,var(--tier) 40%,color-mix(in srgb,var(--tier) 55%,#000) 100%);box-shadow:0 0 0 2px color-mix(in srgb,var(--tier) 70%,#000)}
+.strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-top:10px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.chipwin{flex:none;width:200px;border:1px solid var(--hair);border-radius:16px;background:var(--surface);padding:10px 12px}
+.chipwin b{font-size:13.5px}.chipwin small{display:block;font-size:12px;color:var(--tm);margin-top:2px}
+.qr{width:200px;height:200px;margin:18px auto 0;border-radius:20px;background:#fff;display:grid;place-items:center}
+.qr div{width:160px;height:160px;background:conic-gradient(from 90deg at 25% 25%,#111 25%,#fff 0) 0 0/14px 14px}
+.toggle{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-top:1px solid rgba(233,233,237,.07);text-align:left;width:100%}
+.toggle:first-child{border-top:0}
+.toggle small{display:block;color:var(--tm);font-size:12.5px;margin-top:2px}
+.knob{width:42px;height:24px;border-radius:12px;background:var(--high);position:relative;flex:none}
+.knob::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle[aria-checked="true"] .knob{background:var(--p)}.toggle[aria-checked="true"] .knob::after{transform:translateX(18px)}
+.notif{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:16px;border:1px solid color-mix(in srgb,var(--a) 45%,transparent);background:var(--al);margin-top:12px}
+.notif i{font-size:22px;color:var(--a)}
+.in{animation:rise .45s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:calc(var(--i,0)*90ms)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+.desk{width:100%;border-radius:14px;border:1px solid var(--hair);background:#0d0d14;padding:14px;margin-top:10px;font-size:13px}
+.desk b{font-size:14px}
+.panel{width:min(440px,100%);display:flex;flex-direction:column;gap:18px}
+.panel h1{font-size:24px;font-weight:800}
+.panel .lead{color:var(--t2);font-size:14.5px;line-height:1.5;margin-top:6px}
+.picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pick{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid var(--hair);background:var(--surface);text-align:left;font-size:14px;font-weight:600}
+.pick i{font-size:19px;color:var(--p300)}
+.pick[aria-pressed="true"]{border-color:var(--p);background:var(--pl)}
+.notes{font-size:13.5px;color:var(--t2);line-height:1.55;border-left:2px solid var(--hair);padding-left:12px}
+.notes b{color:var(--t1)}.notes ul{margin:6px 0 0 18px}
+.notes .real{display:block;margin-top:8px;font-size:12.5px;color:var(--tm)}
+.note{font-size:12px;color:var(--tm)}
+</style>
+</head>
+<body>
+<div class="phone"><div class="status"><span>9:41</span><span><i class="ph-fill ph-cell-signal-full"></i> <i class="ph-fill ph-battery-high"></i></span></div>
+  <div class="screen" id="screen"></div><div class="tabbar" id="tabbar"></div></div>
+
+<div class="panel">
+  <div><h1>Wave 3 · friends, wins and cheers</h1>
+    <p class="lead">Pick a screen. Friends is the one new feature in the lively app; everything else in it shows wins the app already records. Sample people and numbers throughout.</p></div>
+  <div class="picker" role="group" aria-label="Screens">
+    <button class="pick" data-s="today"><i class="ph ph-house"></i>Today · friends' wins</button>
+    <button class="pick" data-s="wins"><i class="ph ph-hands-clapping"></i>Friends · wins</button>
+    <button class="pick" data-s="friends"><i class="ph ph-users"></i>Friends · your friends</button>
+    <button class="pick" data-s="add"><i class="ph ph-user-plus"></i>Add a friend</button>
+    <button class="pick" data-s="code"><i class="ph ph-qr-code"></i>Your friend code</button>
+    <button class="pick" data-s="requests"><i class="ph ph-envelope-simple"></i>Requests</button>
+    <button class="pick" data-s="privacy"><i class="ph ph-lock-simple"></i>Your privacy</button>
+    <button class="pick" data-s="others"><i class="ph ph-eye"></i>Coach &amp; owner see</button>
+  </div>
+  <div class="notes" id="notes"></div>
+  <p class="note">Mock-up only. Wave 3 needs one database update (friends, requests, cheers and the rules for who sees what), pasted like the others, before it is built.</p>
+</div>
+
+<script>
+const $ = (q) => document.querySelector(q);
+const TAB = { today: 'Today', wins: 'More', friends: 'More', add: 'More', code: 'More', requests: 'More', privacy: 'More', others: 'More' };
+const WINS = [
+  ['AR', 'Ana Reyes', 'New record · Barbell Squat', '80 kg × 5 — her best was 75 kg', 'crown-simple', 'p300', '2h', 1],
+  ['BC', 'Ben Cruz', '12-week streak', 'Blaze — twelve weeks in a row', 'fire', 'gold', '5h', 0],
+  ['MS', 'Mia Santos', 'Badge: Night owl', 'Silver · 20 check-ins after 8pm', 'moon', 'silver', 'yesterday', 0],
+  ['JT', 'Joy Torres', 'Target reached · 5 kg down', 'From 68 kg to 63 kg', 'target', 'p300', 'yesterday', 0],
+];
+const win = ([i, n, what, line, ic, tier, when, cheered], k) => `<div class="win in" style="--i:${k}"><div class="top"><div class="av sm">${i}</div><div class="grow"><b style="font-size:14px">${n}</b><small>${when}${k === 0 ? ' · your friend' : k === 1 ? ' · your squad' : ' · your friend'}</small></div></div>
+  <div class="what"><div class="medal" style="--tier:var(--${tier})"><i class="ph-fill ph-${ic}"></i></div><div class="grow"><b style="font-size:14.5px">${what}</b><small>${line}</small></div></div>
+  <div class="foot"><span class="sub" style="margin:0;font-size:12.5px">${cheered ? 'You cheered' : ''}</span><button class="cheer${cheered ? ' done' : ''}" data-cheer>${cheered ? '<i class="ph-fill ph-hands-clapping"></i> Cheered' : '<i class="ph ph-hands-clapping"></i> Cheer'}</button></div></div>`;
+
+const S = {
+  today: { notes: `<b>Today</b> gets one short strip under the timeline: your friends' latest wins, newest first, with <b>See all</b> to the Friends page. It is not there when you have no friends yet — then one line offers to add some.<span class="real">Real: the wins feed (below), only from friends and squad mates who share.</span>`,
+    html: `<div style="display:flex;align-items:center;gap:12px"><div class="av">LL</div><div class="grow"><small style="margin:0">Good morning</small><b>Lea</b></div></div>
+      <h1 class="h1" style="margin-top:14px">Tuesday<br><span style="color:var(--tm)">27 October</span></h1>
+      <div class="card" style="margin-top:14px;color:var(--tm);font-size:13px">… your strip, the timeline, as now …</div>
+      <div class="sec"><b>Friends' wins</b><small>See all</small></div>
+      <div class="strip">${WINS.slice(0, 3).map(([i, n, what, , ic, tier]) => `<div class="chipwin in"><div style="display:flex;gap:8px;align-items:center"><div class="medal" style="--tier:var(--${tier});width:28px;height:28px;font-size:13px"><i class="ph-fill ph-${ic}"></i></div><b>${n.split(' ')[0]}</b></div><small>${what}</small></div>`).join('')}</div>` },
+  wins: { notes: `<b>Friends → Wins</b>: what your friends and squad mates achieved, newest first — records, streak milestones, badges, a higher earned level, targets reached, challenges finished. Not every workout, which would bury the rest.<ul><li><b>Cheer</b> sends them a notification: "Lea cheered your squat record". A little burst of claps when you tap.</li><li>Once cheered it says so; tap again to take it back.</li><li>No count of cheers on a win (your choice).</li></ul><span class="real">Real: the same records the moments use (ledger, achievement_unlocks, member_personal_records, settled targets and challenges); only from people who share their wins.</span>`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Friends</h1>
+      <div class="tabs"><span class="on">Wins</span><span>Your friends</span><span>Requests<b class="n">2</b></span></div>
+      ${WINS.map(win).join('')}` },
+  friends: { notes: `<b>Your friends</b>: everyone you are friends with, with their streak and earned level (what they share). Tap one to see their recent wins. <b>Add a friend</b> sits at the top.<ul><li>Removing a friend is one tap in their row's menu — no notice is sent.</li></ul>`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Friends</h1>
+      <div class="tabs"><span>Wins</span><span class="on">Your friends</span><span>Requests<b class="n">2</b></span></div>
+      <button class="btn act" style="width:100%;height:46px;justify-content:center;margin-top:14px"><i class="ph-bold ph-user-plus"></i> Add a friend</button>
+      <div style="margin-top:8px">${[['AR', 'Ana Reyes', '13-week streak · Intermediate'], ['BC', 'Ben Cruz', 'your squad · 12-week streak'], ['JT', 'Joy Torres', '3-week streak · Beginner']].map(([i, n, l], k) => `<div class="row in" style="--i:${k}"><div class="av">${i}</div><div class="grow"><b>${n}</b><small>${l}</small></div><i class="ph ph-dots-three-vertical" style="color:var(--tm)"></i></div>`).join('')}</div>` },
+  add: { notes: `<b>Add a friend</b>, three ways: search your own gym by name, scan their friend code at the gym, or pick from people you may know — your squad and the people you invited (or who invited you). <b>Both of you agree</b>: a request waits until they accept.<ul><li>Search finds only people at your gym who are findable (on unless they switch it off).</li></ul>`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Add a friend</h1>
+      <div class="search"><i class="ph ph-magnifying-glass"></i> Search your gym by name</div>
+      <button class="btn mine" style="width:100%;height:44px;justify-content:center;margin-top:10px"><i class="ph ph-scan"></i> Scan a friend code</button>
+      <div class="sec"><b>People you may know</b><small>your squad · invited</small></div>
+      ${[['MS', 'Mia Santos', 'In your squad', 0], ['RD', 'Rico Dela Cruz', 'You invited him', 0], ['KV', 'Kim Villar', 'Request sent', 1]].map(([i, n, l, sent], k) => `<div class="row in" style="--i:${k}"><div class="av">${i}</div><div class="grow"><b>${n}</b><small>${l}</small></div>${sent ? '<span class="btn line">Sent</span>' : '<button class="btn act">Add</button>'}</div>`).join('')}` },
+  code: { notes: `<b>Your friend code</b>: a QR a friend scans with <b>Scan a friend code</b> to send you a request — handy at the gym. It is not your check-in code and opens nothing else.`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Your friend code</h1><p class="sub">A friend scans this to add you. It is not your check-in code.</p>
+      <div class="qr"><div></div></div><p style="text-align:center;margin-top:14px;font-weight:700">Lea Lorenzana</p>
+      <button class="btn mine" style="width:100%;height:44px;justify-content:center;margin-top:18px"><i class="ph ph-scan"></i> Scan theirs instead</button>` },
+  requests: { notes: `<b>Requests</b>: people who asked to be your friend — Accept or Decline (they are not told you declined) — and the ones you sent, which you can cancel. The bell gets a notification for a new request and when yours is accepted.`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Friends</h1>
+      <div class="tabs"><span>Wins</span><span>Your friends</span><span class="on">Requests<b class="n">2</b></span></div>
+      <div class="sec"><b>For you</b><small>2</small></div>
+      ${[['RD', 'Rico Dela Cruz', 'You invited him'], ['PL', 'Pia Lim', 'At your gym']].map(([i, n, l], k) => `<div class="row in" style="--i:${k}"><div class="av">${i}</div><div class="grow"><b>${n}</b><small>${l}</small></div><button class="btn act">Accept</button><button class="btn line" style="padding:0 10px"><i class="ph ph-x"></i></button></div>`).join('')}
+      <div class="sec"><b>You sent</b><small>1</small></div>
+      <div class="row"><div class="av">KV</div><div class="grow"><b>Kim Villar</b><small>Waiting for her</small></div><button class="btn line">Cancel</button></div>
+      <div class="notif"><i class="ph-fill ph-hands-clapping"></i><div><b style="font-size:14px">Ana cheered your squat record</b><p class="sub" style="margin-top:2px">In your bell, and as a push when you allow it.</p></div></div>` },
+  privacy: { notes: `<b>Your privacy</b> (Settings → Friends): two switches, both yours.<ul><li><b>Findable by name</b> — on by default; off means only your code or the squad can reach you.</li><li><b>Share my wins</b> — with friends and your squad; on by default. Off: nobody sees your wins, and you can still cheer others.</li></ul>The gym owner can turn friends and cheers off for the whole gym (the third switch).`,
+    html: `<p class="back"><i class="ph ph-arrow-left"></i> Back</p><h1 class="h1" style="margin-top:10px">Friends</h1><p class="sub">Who can find you, and who sees your wins</p>
+      <div class="card" style="margin-top:14px;padding:4px 14px">
+        <button class="toggle" aria-checked="true"><span><b style="font-size:15px">Findable by name</b><small>People at your gym can find you in Add a friend</small></span><span class="knob"></span></button>
+        <button class="toggle" aria-checked="true"><span><b style="font-size:15px">Share my wins</b><small>Your friends and your squad see your records, streaks and badges</small></span><span class="knob"></span></button></div>` },
+  others: { notes: `<b>What others see</b> (your choices):<ul><li><b>Your coach</b>, on a trainee's sheet: the cheers that trainee received lately — who is cheering them on.</li><li><b>The owner and desk</b>, in the member drawer: counts only — friends, cheers received. Never who, never what.</li><li><b>The owner</b> can switch friends and cheers off for the gym (Your app → Celebrations, a third switch).</li></ul>`,
+    html: `<p class="eyebrow">Coach · trainee sheet</p>
+      <div class="desk"><b>Ana Reyes</b><p class="sub">Cheers this week</p><div style="display:flex;gap:6px;margin-top:8px">${['LL', 'BC', 'JT'].map((i) => `<div class="av sm">${i}</div>`).join('')}<span class="sub" style="align-self:center;margin-left:6px">3 friends cheered her squat record</span></div></div>
+      <p class="eyebrow" style="margin-top:22px">Admin · member drawer</p>
+      <div class="desk"><b>Ana Reyes</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div><p class="sub" style="margin:0">Friends</p><b style="font-size:22px">6</b></div><div><p class="sub" style="margin:0">Cheers received</p><b style="font-size:22px">14</b></div></div><p class="sub" style="margin-top:8px">Counts only — never who, never what.</p></div>
+      <p class="eyebrow" style="margin-top:22px">Admin · Your app → Celebrations</p>
+      <div class="desk" style="display:flex;justify-content:space-between;align-items:center"><span><b>Friends &amp; cheers</b><p class="sub" style="margin:2px 0 0">Off: no friends, wins or cheers at your gym</p></span><span class="knob" style="background:var(--p)"></span></div>` },
+};
+
+function show(s) {
+  $('#screen').innerHTML = S[s].html; $('#screen').scrollTop = 0; $('#notes').innerHTML = S[s].notes;
+  $('#tabbar').innerHTML = ['Today', 'Train', 'You', 'More'].map((t) => `<div class="${TAB[s] === t ? 'on' : ''}"><i class="ph${TAB[s] === t ? '-fill' : ''} ph-${{ Today: 'house', Train: 'barbell', You: 'user', More: 'dots-nine' }[t]}"></i>${t}</div>`).join('') + '<div class="ci"><i class="ph ph-qr-code"></i>Check in</div>';
+  document.querySelectorAll('.pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === s)));
+  document.querySelectorAll('[data-cheer]').forEach((b) => b.addEventListener('click', (e) => {
+    const on = !b.classList.contains('done');
+    b.classList.toggle('done', on);
+    b.innerHTML = on ? '<i class="ph-fill ph-hands-clapping"></i> Cheered' : '<i class="ph ph-hands-clapping"></i> Cheer';
+    b.closest('.win').querySelector('.foot .sub').textContent = on ? 'You cheered' : '';
+    if (on && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const r = b.getBoundingClientRect(), pr = $('.phone').getBoundingClientRect();
+      for (let k = 0; k < 7; k++) {
+        const p = document.createElement('span'); p.className = 'burst'; p.textContent = '👏';
+        p.style.left = `${r.left - pr.left + r.width / 2}px`; p.style.top = `${r.top - pr.top}px`;
+        p.style.setProperty('--x', `${(Math.random() - 0.5) * 120}px`); p.style.setProperty('--y', `${-40 - Math.random() * 60}px`);
+        $('.phone').appendChild(p); setTimeout(() => p.remove(), 950);
+      }
+      navigator.vibrate?.(20);
+    }
+  }));
+}
+document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => show(b.dataset.s)));
+show('wins');
+</script>
+</body>
+</html>
