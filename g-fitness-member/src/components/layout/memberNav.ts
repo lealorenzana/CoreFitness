@@ -177,7 +177,7 @@ export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
     { label: 'Today', path: '/member/workouts/today' },
     { label: 'Routines', path: '/member/track', module: 'progress' },
     { label: 'Programs', path: '/member/programs', module: 'programs' },
-    { label: 'Browse', path: '/member/workouts' },
+    { label: 'Free workouts', path: '/member/workouts' },
   ] },
   { id: 'progress', label: 'Progress', tabs: [
     { label: 'Overview', path: '/member/progress', module: 'progress' },

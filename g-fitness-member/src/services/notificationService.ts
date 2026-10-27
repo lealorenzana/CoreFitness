@@ -40,6 +40,8 @@ export interface Notification {
   archived: boolean;
   /** Swiped left: out of the bell, still in the inbox list. */
   cleared: boolean;
+  /** Written by the gym itself (0215) — pinned at the top of the Inbox. */
+  fromGym?: boolean;
 }
 
 /**
@@ -66,6 +68,7 @@ function toNotification(row: NotificationRow): Notification {
     metadata: row.metadata ?? undefined,
     archived: row.archived_at != null,
     cleared: row.cleared_at != null,
+    fromGym: row.from_gym === true,
   };
 }
 

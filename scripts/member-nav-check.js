@@ -307,7 +307,7 @@ async (page) => {
   // One Workouts section (2026-10-10): the week planner opens from Today, not as a tab.
   await go('/member/track');
   tabs = await strip('plan');
-  out.push('Workouts tabs: ' + (['Today', 'Routines', 'Programs', 'Browse'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  out.push('Workouts tabs: ' + (['Today', 'Routines', 'Programs', 'Free workouts'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
   await shot('nav-plan');
 
   // One Inbox (2026-10-10): what is for you, and what the gym posts, side by side.

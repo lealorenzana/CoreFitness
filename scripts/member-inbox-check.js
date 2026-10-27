@@ -126,7 +126,7 @@ async (page) => {
   const NOTES = [
     row('attendance', 'Checked in', 'You checked in at the kiosk.', 1),
     row('gym_plan', 'Push day', 'You planned Push day today at 5:30 PM.', 6, { action_url: '/member/gym-plan' }),
-    row('system', 'We are closed today', 'We open again tomorrow at 7 AM.', 26),
+    row('system', 'We are closed today', 'We open again tomorrow at 7 AM.', 26, { from_gym: true }),
     ...[3, 4, 5, 6].map((d) => row('attendance', 'Checked in', 'Your QR code was scanned at the front desk.', d * 24 + 2)),
     ...[1, 2, 3, 4, 5].map((i) => row('achievement', 'Badge unlocked', `Badge ${i}.`, 24 * 9 + i)),
     row('system', 'You can claim a reward', 'You have 4665 G Points — enough for Locker.', 24 * 9, { action_url: '/member/rewards' }),
@@ -153,6 +153,9 @@ async (page) => {
   say('repeated check-ins in a group fold into one row', foldN >= 2, (m.match(/Checked in[^·]{0,6}/g) ?? []).join(' | '));
   say('five badges fold into one row', /Badge unlocked ×5/.test(m));
   say('the gym\'s closure stands alone', /We are closed today/.test(m));
+  const pin = (await page.locator('[data-pinned]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  say('the gym\'s own message is pinned on top, once', /Pinned · from the gym/i.test(pin) && /We are closed today/.test(pin)
+    && (m.match(/We are closed today/g) ?? []).length === 1, pin.slice(0, 120));
   say('each kind has its own tile', (await page.locator('[data-notification-kind="attendance"]').count()) > 0
     && (await page.locator('[data-notification-kind="system"]').count()) > 0 && (await page.locator('[data-notification-kind="booking"]').count()) > 0);
   say('the pager counts real notifications (36 in the inbox → two pages)', /36 notifications/.test(m) || /page 1 of 2/i.test(m), m.slice(-160));

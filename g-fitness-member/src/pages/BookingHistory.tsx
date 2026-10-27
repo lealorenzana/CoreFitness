@@ -277,7 +277,8 @@ export default function BookingHistory() {
           never push the one thing you came to do off the bottom. */}
       <PageTitle
         back
-        fallback="/member/book-class"
+        hub={false}
+        fallback="/member/book-class?tab=coach"
         title="My bookings"
         subtitle="Classes and 1-on-1 — what's coming, what happened"
         action={

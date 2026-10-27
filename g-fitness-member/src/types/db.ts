@@ -233,6 +233,8 @@ export interface NotificationRow {
   /** Optional picture the gym attached to an announcement (0065). NULL is
    *  normal — automated receipts and reminders never carry one. */
   image_url: string | null;
+  /** 0215: written by the gym itself (an announcement); absent before 0215. */
+  from_gym?: boolean;
   read: boolean;
   /**
    * Inbox state (0029). Both hide the row from the bell, and they are not the

@@ -154,9 +154,15 @@ export async function broadcastNotification(input: {
     action_url: input.actionUrl ?? null,
     image_url: input.imageUrl ?? null,
     read: false,
+    // Written by the gym (0215): the member Inbox pins these above everything automatic.
+    from_gym: true,
   }));
 
-  const { error } = await supabase.from('notifications').insert(rows);
+  let { error } = await supabase.from('notifications').insert(rows);
+  // Before 0215 the column does not exist — send without the mark rather than not at all.
+  if (error && /from_gym/.test(error.message ?? '')) {
+    ({ error } = await supabase.from('notifications').insert(rows.map(({ from_gym: _drop, ...r }) => { void _drop; return r; })));
+  }
   if (error) throw error;
   return { recipients: rows.length, recipientIds };
 }

@@ -85,8 +85,19 @@ export default function NotificationsAll() {
     return tab === 'unread' ? inbox.filter((n) => !n.read) : inbox;
   }, [all, tab]);
 
+  // What the gym itself wrote (0215) in the last fortnight pins above the day
+  // groups on All, newest first; archiving one takes it out of the pin.
+  const PIN_DAYS = 14;
+  // Read once when the page opens (a clock read during render is not pure).
+  const [openedAt] = useState(() => Date.now());
+  const pinned = useMemo(() => (tab === 'inbox'
+    ? visible.filter((n) => n.fromGym && openedAt - new Date(n.timestamp).getTime() < PIN_DAYS * 86_400_000)
+    : []), [visible, tab, openedAt]);
+  const pinnedIds = useMemo(() => new Set(pinned.map((n) => n.id)), [pinned]);
+  const listed = useMemo(() => visible.filter((n) => !pinnedIds.has(n.id)), [visible, pinnedIds]);
+
   // Twenty to a page (2026-10-10); a new tab starts on page 1.
-  const paged = usePaged(visible, undefined, tab);
+  const paged = usePaged(listed, undefined, tab);
   const buckets = bucketize(paged.rows);
   const unreadCount = all.filter((n) => !n.archived && !n.read).length;
   const allSelected = visible.length > 0 && visible.every((n) => selected.has(n.id));
@@ -243,6 +254,15 @@ export default function NotificationsAll() {
           // Room for the action bar so the last row is never trapped under it.
           marginBottom: selecting && selected.size > 0 ? '5rem' : undefined,
         }}>
+          {pinned.length > 0 && paged.page === 1 && (
+            <div data-pinned>
+              <p className="eyebrow" style={{ padding: '14px var(--card-pad) 4px' }}>Pinned · from the gym</p>
+              {pinned.map((n) => (
+                <NotificationListItem key={n.id} notification={n} selectable={selecting} selected={selected.has(n.id)}
+                  onToggleSelect={() => toggleSelect(n.id)} onClick={() => openDetail(n)} />
+              ))}
+            </div>
+          )}
           {buckets.map(([label, items]) => (
             <div key={label}>
               <p className="eyebrow" style={{ padding: '14px var(--card-pad) 4px' }}>{label}</p>

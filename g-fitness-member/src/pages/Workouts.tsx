@@ -225,7 +225,7 @@ export default function Workouts() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/workouts/today" title="Browse"
+      <PageTitle back hub={false} fallback="/member/book-class" title="Free workouts"
         subtitle="Free workouts and exercises — always free, for everyone" />
 
       {/* The gym's own programs (0122), first: its own training beats anyone's links. */}
