@@ -169,7 +169,9 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
     // `pointer-events-auto` *inside* AnimatePresence, and an exiting child is
     // kept mounted until its animation finishes, which on a page that is not
     // compositing is never: an invisible layer over the whole app, eating taps.
-    <div className="absolute inset-0" style={{ pointerEvents: open ? 'auto' : 'none' }}>
+    // Above anything resting on the screen (What's new sits at 5); empty and
+    // click-through while closed, so its height costs nothing.
+    <div className="absolute inset-0" style={{ pointerEvents: open ? 'auto' : 'none', zIndex: 30 }}>
     <AnimatePresence>
       {open && (
         <>

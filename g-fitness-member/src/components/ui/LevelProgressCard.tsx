@@ -183,7 +183,7 @@ export default function LevelProgressCard({
       >
         <span
           className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: `${accent}1F`, border: `1px solid ${accent}59` }}
+          style={{ background: `color-mix(in srgb, ${accent} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 35%, transparent)` }}
         >
           <MotionIcon icon={Emblem} motion={emblemMotion} size={22} color={accent} />
         </span>

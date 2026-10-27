@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGymApp } from '../../../hooks/useGymApp';
 import { pointsWord } from '../../../lib/gymApp';
 import {
@@ -11,7 +12,7 @@ import ExercisePicker from '../../../components/ui/ExercisePicker';
 import GlassSheet from '../../../components/ui/GlassSheet';
 import Modal from '../../../components/ui/Modal';
 import Disclosure from '../../../components/ui/Disclosure';
-import { Eyebrow, InlineStat, NocButton, Panel, ProgressBar, StatusPill } from '../../../components/ui/noc';
+import { Eyebrow, InlineStat, NocButton, Panel, ProgressBar, StatusPill, SeeAll } from '../../../components/ui/noc';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { toast } from '../../../components/ui/Toast';
 import { errorMessage } from '../../../utils/errorMessage';
@@ -204,6 +205,7 @@ const blankDraft = {
 };
 
 export default function GoalsTab() {
+  const navigate = useNavigate();
   const gymApp = useGymApp();
   const memberId = useMemberId();
   const [snap, setSnap] = useState<GoalsSnapshot | null>(null);
@@ -531,8 +533,10 @@ export default function GoalsTab() {
       {done.length > 0 && (
         <Disclosure title="Reached" meta={`${done.length}`} icon={<Trophy size={17} weight="duotone" />}>
           <div className="flex flex-col" style={{ gap: 10 }}>
-            {done.map((g) => <GoalCard key={g.id} g={g} onEdit={openEdit} onRemove={setRemoving} onDone={done1} />)}
+            {/* The latest 5; every one is on its own page (a long list is a preview + See all). */}
+            {done.slice(0, 5).map((g) => <GoalCard key={g.id} g={g} onEdit={openEdit} onRemove={setRemoving} onDone={done1} />)}
           </div>
+          {done.length > 5 && <SeeAll label="See all targets reached" count={done.length} onClick={() => navigate('/member/progress/reached')} />}
         </Disclosure>
       )}
 

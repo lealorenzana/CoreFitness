@@ -81,7 +81,7 @@ export default function AchievementUnlockOverlay({
               <motion.span
                 className="relative w-24 h-24 rounded-full flex items-center justify-center"
                 style={{
-                  background: `${tierStyle(def.tier).ring}26`,
+                  background: `color-mix(in srgb, ${tierStyle(def.tier).ring} 15%, transparent)`,
                   border: `2px solid ${tierStyle(def.tier).ring}`,
                   boxShadow: `0 0 46px -6px ${tierStyle(def.tier).glow}`,
                 }}

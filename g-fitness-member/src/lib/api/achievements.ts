@@ -146,7 +146,7 @@ export function levelLabel(level: TrainingLevel): string {
 export const LEVEL_ACCENT: Record<TrainingLevel, string> = {
   beginner: '#A8B0BE',
   intermediate: '#F59E0B',
-  advanced: '#A78BFA',
+  advanced: 'var(--color-primary-300)',
 };
 
 // ─── The catalogue (migration 0038) ──────────────────────────────────────────

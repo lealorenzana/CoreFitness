@@ -339,7 +339,7 @@ function RoomPicture({ name, photo, size = 46 }: { name: string; photo: string |
   const parts = name.replace(/[·|]/g, ' ').split(/\s+/).filter(Boolean);
   return (
     <span className="grid place-items-center" style={{ width: size, height: size, fontSize: size > 50 ? 16 : 13, fontWeight: 800, color: '#fff',
-      background: 'color-mix(in srgb, var(--color-primary) 55%, #1a1726)' }}>
+      background: 'color-mix(in srgb, var(--color-primary) 55%, #18181e)' }}>
       {(parts.slice(0, 2).map((p) => p[0]).join('') || '?').toUpperCase()}
     </span>
   );

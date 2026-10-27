@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { Camera, Lock, Trash } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip, NocButton, Panel, SectionHead } from '../components/ui/noc';
@@ -59,6 +61,10 @@ export default function ProgressPhotos() {
     catch (e) { toast.error(errorMessage(e, 'That did not work')); }
   };
 
+  // Six photo days to a page; a new pose filter starts on page 1.
+  const allDays = useMemo(() => [...new Set((photos ?? []).filter((p) => filter === 'all' || p.pose === filter).map((p) => p.takenOn))], [photos, filter]);
+  const days = usePaged(allDays, 6, filter);
+
   if (photos === null) return <Page><PageTitle back title="Progress photos" /><SkeletonList /></Page>;
   if (photos === undefined) {
     return <Page><PageTitle back title="Progress photos" /><p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Progress photos are not switched on at your gym yet.</p></Page>;
@@ -67,7 +73,6 @@ export default function ProgressPhotos() {
   const shown = photos.filter((p) => filter === 'all' || p.pose === filter);
   const pair = compare.map((id) => photos.find((p) => p.id === id)).filter(Boolean) as ProgressPhoto[];
   const pick = (id: string) => setCompare((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c.slice(-1), id]));
-  const byDate = [...new Set(shown.map((p) => p.takenOn))];
 
   return (
     <Page>
@@ -137,7 +142,7 @@ export default function ProgressPhotos() {
         </div>
         {photos.length === 0 && <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No photos yet. Take one every few weeks, same pose and light, to see the change.</p>}
         {photos.length > 0 && <p style={{ fontSize: 12, marginBottom: 8, color: 'var(--color-text-muted)' }}>Tap two photos to compare them side by side.</p>}
-        {byDate.map((d) => (
+        {days.rows.map((d) => (
           <div key={d} style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-text-secondary)' }}>{dateLabel(d)}</p>
             <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
@@ -162,6 +167,8 @@ export default function ProgressPhotos() {
             </div>
           </div>
         ))}
+        <Pager page={days.page} pages={days.pages} total={days.total}
+          noun={days.total === 1 ? 'day of photos' : 'days of photos'} onPage={days.setPage} />
       </section>
     </Page>
   );

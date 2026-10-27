@@ -72,7 +72,8 @@ export const TIER_STYLE: Record<AchievementTier, { ring: string; glow: string; l
   bronze:   { ring: '#C77B3E', glow: 'rgba(199,123,62,0.35)',  label: 'Bronze' },
   silver:   { ring: '#A8B0BE', glow: 'rgba(168,176,190,0.35)', label: 'Silver' },
   gold:     { ring: '#F59E0B', glow: 'rgba(245,158,11,0.40)',  label: 'Gold' },
-  platinum: { ring: '#A78BFA', glow: 'rgba(167,139,250,0.40)', label: 'Platinum' },
+  // The top tier wears the gym's own colour (it was a fixed violet).
+  platinum: { ring: 'var(--color-primary-300)', glow: 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)', label: 'Platinum' },
 };
 
 /**

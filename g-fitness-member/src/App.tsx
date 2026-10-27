@@ -25,6 +25,10 @@ const Programs = lazyPage(() => import('./pages/Programs'));
 const Season = lazyPage(() => import('./pages/Season'));
 const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
+const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
+const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
+const ReachedTargets = lazyPage(() => import('./pages/progress/ReachedTargets'));
+const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
 const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
@@ -343,12 +347,16 @@ function App() {
           <Route path="rewards/requests" element={<RewardRequests />} />
           <Route path="challenges" element={<Challenges />} />
           <Route path="season" element={<Season />} />
+          <Route path="season/records" element={<SeasonRecords />} />
           <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
+          <Route path="refer/invited" element={<ReferInvited />} />
           <Route path="challenges/completed" element={<Challenges completedOnly />} />
           <Route path="activity" element={<AccountActivity />} />
           <Route path="workout-history" element={<WorkoutHistory />} />
           <Route path="progress" element={<ProgressHub />} />
+          <Route path="progress/reached" element={<ReachedTargets />} />
+          <Route path="progress/readings" element={<BodyReadings />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="notifications" element={<NotificationsAll />} />
           <Route path="gym-plan" element={<GymPlan />} />

@@ -119,7 +119,7 @@ frame** — it ships as a real Android **TWA**. Full reference: [DESIGN_SYSTEM �
 - **Member colour roles** (Core Fitness colour on Nocturne's structure — the user asked for colour, not the
   prototype's greys): **violet = where you are / what you have** (selection, progress, state); **amber =
   what you can do next** (book, renew, save, send). Violet #7C3AED is 3.5:1, so **violet text is
-  `--color-primary-300`**. No reds or greens — errors are amber. **Type floor 12px**, Inter only (Anton is gone).
+  `--color-primary-300`**. No reds or greens — errors are amber. **Inside a gym, never a fixed violet** — not `#7C3AED`, not a violet-black ground: use `var(--color-primary*)` / `color-mix(…)` so the gym's theme reaches it (only Login, Register and the gym map, before any gym, wear Core Fitness violet); `member-theme-check` judges every colour by hue in four themes. **Type floor 12px**, Inter only (Anton is gone).
 - **Build screens from `components/ui/noc.tsx`** (`PageTitle`, `LineRow`, `NocButton`, `Panel`,
   `StatusPill`, `TextTabs`, `Chip`, `ProgressBar`, `InlineStat`) and `Field`/`TextInput`/`Select`. A list is
   rows on the page, **not a card per row**; a long list is a preview plus `SeeAll` to **its own page — never an in-place "show more"**; `ProgressBar` renders **nothing without a real fraction**.

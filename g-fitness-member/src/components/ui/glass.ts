@@ -20,7 +20,9 @@ export const GLASS: CSSProperties = {
   // Dark first (member's request, 2026-09-17): the lighter violet tint read as
   // grey-purple over the app. Near-opaque near-black, with just enough violet
   // at the top edge and blur behind to stay glass.
-  background: 'linear-gradient(180deg, rgba(20, 17, 34, 0.94) 0%, rgba(9, 8, 15, 0.97) 100%)',
+  // The tint at the top edge is the gym's own colour (applyAccent), never a fixed
+  // violet — a blue gym's sheets were violet-black (2026-10-27).
+  background: 'linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 9%, rgba(14, 14, 20, 0.95)) 0%, rgba(9, 9, 13, 0.97) 100%)',
   backdropFilter: 'blur(24px) saturate(160%)',
   WebkitBackdropFilter: 'blur(24px) saturate(160%)',
   border: '1px solid rgba(255, 255, 255, 0.10)',

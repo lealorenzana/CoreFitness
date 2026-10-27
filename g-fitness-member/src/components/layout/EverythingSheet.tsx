@@ -92,6 +92,8 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
       style={{
         // Full-screen glass: the screen you came from stays, blurred, behind it.
         ...GLASS,
+        // Above anything resting on the screen (What's new sits at 5).
+        zIndex: 30,
         border: 'none',
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',

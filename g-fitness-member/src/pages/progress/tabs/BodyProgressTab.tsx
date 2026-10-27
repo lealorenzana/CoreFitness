@@ -2,8 +2,10 @@ import BodyMap, { type BodyMapData, type BodyRegionKey } from '../../../componen
 import { Field, TextInput } from '../../../components/ui/Field';
 import StepFlow, { BigNumberInput, type FlowStep } from '../../../components/ui/StepFlow';
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FIELDS } from '../bodyFields';
 import { ClockCounterClockwise, Info, Plus, Ruler } from '@phosphor-icons/react';
-import { Chip, Eyebrow, InlineStat, LineRow, NocButton, Panel } from '../../../components/ui/noc';
+import { Chip, Eyebrow, InlineStat, LineRow, NocButton, Panel, SeeAll } from '../../../components/ui/noc';
 import Disclosure from '../../../components/ui/Disclosure';
 import { useMemberId } from '../hooks/useMemberId';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -26,20 +28,6 @@ import { readCache, writeCache } from '../../../lib/pageCache';
  * and drag any trend line to the floor.
  */
 
-const FIELDS = [
-  { key: 'weight', label: 'Weight', unit: 'kg' },
-  { key: 'height', label: 'Height', unit: 'cm' },
-  { key: 'bodyFatPct', label: 'Body fat', unit: '%' },
-  { key: 'neck', label: 'Neck', unit: 'cm' },
-  { key: 'shoulders', label: 'Shoulders', unit: 'cm' },
-  { key: 'chest', label: 'Chest', unit: 'cm' },
-  { key: 'arms', label: 'Upper arms', unit: 'cm' },
-  { key: 'forearms', label: 'Forearms', unit: 'cm' },
-  { key: 'waist', label: 'Waist', unit: 'cm' },
-  { key: 'hips', label: 'Hips', unit: 'cm' },
-  { key: 'legs', label: 'Thighs', unit: 'cm' },
-  { key: 'calves', label: 'Calves', unit: 'cm' },
-] as const;
 
 type FieldKey = typeof FIELDS[number]['key'];
 
@@ -95,6 +83,7 @@ function lastTwo(
 const CACHE_KEY = 'member:progress:body';
 
 export default function BodyProgressTab() {
+  const navigate = useNavigate();
   const memberId = useMemberId();
   const cached = readCache<BodyProgressEntry[]>(CACHE_KEY);
   const [entries, setEntries] = useState<BodyProgressEntry[]>(cached ?? []);
@@ -429,7 +418,7 @@ export default function BodyProgressTab() {
           meta={`${entries.length} ${entries.length === 1 ? 'reading' : 'readings'}`}
           icon={<ClockCounterClockwise size={17} weight="duotone" />}
         >
-          {[...entries].reverse().map((e, i, all) => {
+          {[...entries].reverse().slice(0, 5).map((e, i, all) => {
             const values = FIELDS.filter((f) => f.key !== 'weight' && e[f.key] != null)
               .map((f) => `${f.label} ${e[f.key]}${f.unit === '%' ? '%' : ` ${f.unit}`}`);
             return (
@@ -443,6 +432,7 @@ export default function BodyProgressTab() {
               />
             );
           })}
+          {entries.length > 5 && <SeeAll label="See all readings" count={entries.length} onClick={() => navigate('/member/progress/readings')} />}
         </Disclosure>
       )}
 

@@ -116,56 +116,78 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(s)); }, [KEY, sessionFor(MEMBER, ME.email)]);
 
-  // ── A gym in its own colours: nothing on Today keeps Core Fitness's violet ──────────────────────────────
+  // ── A gym in its own colours: no violet anywhere, in any theme (2026-10-27) ──────────────────────────────
+  // Judged by hue, not by a list of codes: any colour on screen between 250° and 300° with real saturation
+  // is violet, whatever its exact value — the check-in sheet's violet-black glass slipped past a list.
   const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
   const H = { 'Access-Control-Allow-Origin': '*' };
   const json = (r, body) => r.fulfill({ status: 200, contentType: 'application/json', headers: H, body: JSON.stringify(body) });
-  await page.route('**/rest/v1/rpc/my_gym_app', (r) => json(r, [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: 'Lab', logo_url: null,
-    accent: 'blue', accent_action: 'sky', points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules: {} }]));
-  await page.route('**/rest/v1/rpc/my_whats_new', (r) => json(r, { id: 'rel-x', title: 'A cleaner, simpler app', items: ['Today is one timeline.'], published_at: new Date().toISOString() }));
-  // The theme is painted from the gym context (useGymBrand → applyAccent).
+  let theme = { accent: 'blue', action: 'sky' };
   await page.route('**/rest/v1/rpc/my_gym_context', (r) => json(r, [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', role: 'member', status: 'active',
-    lock_reason: null, short_name: null, logo_url: null, accent: 'blue', accent_action: 'sky', gym_count: 1 }]));
-  await go('/member/home', ME);
-  await page.waitForTimeout(2500);
-  // Core Fitness violet in any computed colour, border, shadow or gradient on the screen.
-  const VIOLET = /124,\s*58,\s*237|139,\s*92,\s*246|167,\s*139,\s*250|196,\s*181,\s*253|42,\s*28,\s*82/;
-  const hits = await page.evaluate((src) => {
-    const re = new RegExp(src);
+    lock_reason: null, short_name: null, logo_url: null, accent: theme.accent, accent_action: theme.action, gym_count: 1 }]));
+  await page.route('**/rest/v1/rpc/my_gym_app', (r) => json(r, [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: 'Lab', logo_url: null,
+    accent: theme.accent, accent_action: theme.action, points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules: {} }]));
+  await page.route('**/rest/v1/rpc/my_whats_new', (r) => json(r, { id: 'rel-x', title: 'A cleaner, simpler app', items: ['Today is one timeline.'], published_at: new Date().toISOString() }));
+  const scan = () => page.evaluate(() => {
+    const violetIn = (str) => {
+      for (const m of String(str).matchAll(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/g)) {
+        const [r, g, b] = [m[1], m[2], m[3]].map(Number); const a = m[4] == null ? 1 : Number(m[4]);
+        if (a < 0.04) continue;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b); if (max - min < 10) continue;
+        const l = (max + min) / 510, d = (max - min) / 255, s = d / (1 - Math.abs(2 * l - 1));
+        let h = max === r ? ((g - b) / (max - min)) % 6 : max === g ? (b - r) / (max - min) + 2 : (r - g) / (max - min) + 4;
+        h = (h * 60 + 360) % 360;
+        if (h >= 250 && h <= 300 && s > 0.18) return `rgb(${r},${g},${b})`;
+      }
+      return null;
+    };
     const found = [];
     for (const el of document.querySelectorAll('body *')) {
       const c = getComputedStyle(el);
       for (const prop of ['color', 'backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow']) {
-        if (re.test(c[prop])) { found.push(`${el.tagName.toLowerCase()}${el.dataset.whatsNew !== undefined ? '[data-whats-new]' : ''} ${prop}`); break; }
+        const v = violetIn(c[prop]);
+        if (v) { found.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 24)} ${prop} ${v}`); break; }
       }
     }
-    return found.slice(0, 8);
-  }, VIOLET.source);
-  say('What\'s new is showing', (await page.locator('[data-whats-new]').count()) === 1);
-  say('no Core Fitness violet anywhere on Today in a blue gym', hits.length === 0, hits.join(' | '));
-  await page.screenshot({ path: 'shots/member-theme-blue.png' });
-  const scan = () => page.evaluate((src) => {
-    const re = new RegExp(src); const found = [];
-    for (const el of document.querySelectorAll('body *')) {
-      const c = getComputedStyle(el);
-      for (const prop of ['color', 'backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow']) {
-        if (re.test(c[prop])) { found.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)} ${prop}`); break; }
-      }
+    return found.slice(0, 5);
+  });
+  for (const t of [{ accent: 'blue', action: 'sky' }, { accent: 'emerald', action: 'lime' }, { accent: 'orange', action: 'amber' }, { accent: 'red', action: 'amber' }]) {
+    theme = t;
+    const bad = [];
+    // Every main screen in blue; the other themes walk Today, You and Achievements (the runner allows 180 s).
+    const screens = t.accent === 'blue'
+      ? ['/member/home', '/member/book-class', '/member/book-class?tab=classes', '/member/membership', '/member/notifications',
+        '/member/settings', '/member/progress', '/member/achievements', '/member/events', '/member/rewards']
+      : ['/member/home', '/member/achievements'];
+    for (const p of screens) {
+      await go(p, ME);
+      await page.waitForTimeout(700);
+      const h = await scan();
+      if (h.length) bad.push(`${p}: ${h.join(' | ')}`);
     }
-    return found.slice(0, 6);
-  }, VIOLET.source);
-  for (const p of ['/member/book-class', '/member/book-class?tab=classes', '/member/membership', '/member/notifications', '/member/settings',
-    '/member/progress', '/member/booking-history', '/member/events', '/member/workouts', '/member/rewards', '/member/activity', '/trainer/welcome']) {
-    await go(p, ME);
-    await page.waitForTimeout(1200);
-    const h = await scan();
-    say(`${p}: no Core Fitness violet`, h.length === 0, h.join(' | '));
+    // The sheets: the check-in code and More.
+    await go('/member/home', ME);
+    await page.waitForTimeout(1100);
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: /Show my code/ }).click();
+    await page.waitForTimeout(900);
+    const hs = await scan(); if (hs.length) bad.push(`check-in sheet: ${hs.join(' | ')}`);
+    if (t.accent === 'blue') await page.screenshot({ path: 'shots/member-theme-checkin-blue.png' });
+    if (t.accent === 'blue') {
+      // An open sheet covers what rests on the screen: where the What's new card sits, the sheet is on top.
+      const covered = await page.evaluate(() => {
+        const card = document.querySelector('[data-whats-new]');
+        if (!card) return 'no card';
+        const r = card.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height - 4);
+        return top && !card.contains(top) ? 'covered' : 'card on top';
+      });
+      say('the open check-in sheet covers the What is new card', covered === 'covered', covered);
+    }
+    await page.goBack(); await page.waitForTimeout(600);
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'More' }).click();
+    await page.waitForTimeout(700);
+    const hm = await scan(); if (hm.length) bad.push(`More: ${hm.join(' | ')}`);
+    say(`${t.accent} theme: no violet on any screen or sheet`, bad.length === 0, bad.join(' || '));
   }
-  await go('/member/home', ME);
-  await page.waitForTimeout(1200);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'More' }).click();
-  await page.waitForTimeout(700);
-  const hm = await scan();
-  say('More: no Core Fitness violet', hm.length === 0, hm.join(' | '));
   return out.join('\n');
 }

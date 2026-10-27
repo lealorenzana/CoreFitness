@@ -4,7 +4,7 @@ import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
 import { Trophy } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
+import { LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill, SeeAll } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
 import { toast } from '../components/ui/Toast';
@@ -204,12 +204,13 @@ export default function Season() {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
             None yet. Beat your best on any exercise in the tracker and it lands here — your first time on an exercise sets the bar.
           </p>
-        ) : records.map((r, i) => (
+        ) : records.slice(0, 5).map((r, i, shown) => (
           <LineRow key={r.id} title={r.exerciseName}
             meta={`up from ${recordValue(r.kind, r.previous)} · ${new Date(r.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
             action={<span className="tabular-nums" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-300)' }}>{recordValue(r.kind, r.value)}</span>}
-            last={i === records.length - 1} />
+            last={i === shown.length - 1} />
         ))}
+        {records && records.length > 5 && <SeeAll label="See all your records" count={records.length} onClick={() => navigate('/member/season/records')} />}
       </section>
     </Page>
   );

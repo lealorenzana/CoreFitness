@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShareNetwork } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
+import { LineRow, NocButton, Panel, SectionHead, StatusPill, SeeAll } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { getGymApp } from '../lib/gymApp';
@@ -17,6 +18,7 @@ import { myReferralCode, myReferrals, referralRewards, type MyReferral } from '.
  * the gym's point rules; a rule the gym switched off is not promised.
  */
 export default function Refer() {
+  const navigate = useNavigate();
   const [code, setCode] = useState<string | null | undefined>(undefined);
   const [slug, setSlug] = useState<string | null>(null);
   const [list, setList] = useState<MyReferral[]>([]);
@@ -84,13 +86,14 @@ export default function Refer() {
         <SectionHead title="Your invitations" meta={list.length ? `${paid} joined and paid` : undefined} />
         {list.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nobody yet. Share your link to start.</p>
-        ) : list.map((r, i) => (
-          <LineRow key={i} title={r.friendName} last={i === list.length - 1}
+        ) : list.slice(0, 5).map((r, i, shown) => (
+          <LineRow key={i} title={r.friendName} last={i === shown.length - 1}
             meta={r.status === 'rewarded'
               ? (r.points > 0 ? `Paid — ${r.points} points for you` : 'Paid — past this month’s five')
               : 'Joined — waiting for their first payment'}
             action={<StatusPill label={r.status === 'rewarded' ? 'Paid' : 'Joined'} tone={r.status === 'rewarded' ? 'structure' : 'muted'} />} />
         ))}
+        {list.length > 5 && <SeeAll label="See all friends you invited" count={list.length} onClick={() => navigate('/member/refer/invited')} />}
       </section>
     </Page>
   );

@@ -1,6 +1,8 @@
 import { Check } from '@phosphor-icons/react';
 import { useUrlState } from '../hooks/useUrlState';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePaged } from '../hooks/usePaging';
+import Pager from '../components/ui/Pager';
 import { useNavigate } from 'react-router-dom';
 
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -126,6 +128,8 @@ export default function Events() {
       // Sorted after the reverse so soonest-first still holds inside each group.
       .sort((a, b) => Number(b.event.is_featured) - Number(a.event.is_featured));
   }, [events, mine, tab]);
+  // Twenty to a page; a new tab starts on page 1.
+  const paged = usePaged(visible, undefined, tab);
 
   return (
     <Page>
@@ -154,7 +158,7 @@ export default function Events() {
         </p>
       ) : (
         <div className="flex flex-col" style={{ gap: 14 }}>
-          {visible.map(({ event, status }) => {
+          {paged.rows.map(({ event, status }) => {
             const going = mine.has(event.id);
             const taken = counts.get(event.id) ?? 0;
             const full = taken >= event.capacity && !going;
@@ -247,6 +251,8 @@ export default function Events() {
               </Panel>
             );
           })}
+          <Pager page={paged.page} pages={paged.pages} total={paged.total}
+            noun={paged.total === 1 ? 'event' : 'events'} onPage={paged.setPage} />
         </div>
       )}
 

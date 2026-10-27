@@ -1,5 +1,5 @@
 /**
- * One Workouts section (2026-10-10, 0172): Today · Routines · Programs · Browse.
+ * One Workouts section (2026-10-10, 0172): Today · Routines · Programs · Free workouts ("Browse" until 2026-10-27).
  * The first visit explains program → routines → today's workout until Skip or
  * a first workout (the flag is the database's); then Today shows the program's
  * next day with one Start; routines say where they came from; a member with
@@ -90,7 +90,7 @@ async (page) => {
   // ---- Today ----
   t = await text();
   out.push("today's workout is the program's next day: " + (/Pull day · Week 1, Day 2/.test(t) && (await page.getByRole('button', { name: 'Start workout' }).count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('the section reads Today · Routines · Programs · Browse: ' + (/Today/.test(t) && /Routines/.test(t) && /Programs/.test(t) && /Browse/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the section reads Today · Routines · Programs · Free workouts: ' + (/Today/.test(t) && /Routines/.test(t) && /Programs/.test(t) && /Free workouts/.test(t) ? 'yes' : 'MISSING'));
   out.push('routines say where they came from: ' + (/Yours/.test(t) && /AI coach/.test(t) && /Coach Ben/.test(t) ? 'yes' : 'MISSING'));
   await go('/member/workouts/today');
   out.push('the introduction does not come back: ' + ((await page.locator('[data-intro-step]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
