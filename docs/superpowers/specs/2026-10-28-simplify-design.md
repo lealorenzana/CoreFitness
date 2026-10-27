@@ -1,0 +1,93 @@
+# Simplify the apps — one way to do each thing (2026-10-28)
+
+## Why
+
+The owner, after wave 1 of the lively coach app: *"class, bookings, rooms, 1-on-1, groups — it's just too much."*
+The apps grew one feature at a time, and the same idea now has several names and several screens:
+
+- **"1-on-1" meant two things**: a single session (`pt_sessions`) and a monthly package (`coachings`).
+- **Class, coaching group, room and squad** all looked like "a group".
+- **"Booking" is not a thing** — it is a reservation of a class place or a session — yet it had its own page.
+- **Rooms and Messages** both carried a coach's 1-on-1 conversation.
+- Members had **five places for "what do I do today"** (Today's workout, Routines, Programs, Free workouts, Plan your week),
+  **three places for results** (Progress, Season records, You's trophy room), and **eight game systems**
+  (points, spend points, challenges, season, team, friends, badges, streak).
+- **Names collide**: "Coach" (a person) beside "Ask the assistant" whose model is called the AI coach; two "levels".
+
+**Success:** a member or coach opening any screen can say what it is for in one sentence, and no two screens answer the same question.
+
+## What the real gym does (owner's answer)
+
+Personal training only: **single 1-on-1 sessions** and **monthly coaching packages**. No group classes, no small coach-led groups.
+Core Fitness is multi-tenant, so features other gyms might use are **switched off by default**, not removed.
+
+## Decisions (the owner's)
+
+### Personal training
+- One idea, two ways to buy it: **single sessions** and **monthly packages**. Members see it as **Coach**;
+  the admin and coach apps call it **Personal training**.
+- All three ways to start a package stay: member asks, coach offers, desk assigns.
+- Chat stays for anyone a coach trains (session or package).
+- **A package's room and its chat are one place**: it opens on the chat, with Classwork and Progress beside it.
+- **Rooms exist only for packages.**
+
+### Removed — permanently
+- **Coaching groups** (join-code groups) and **group packages** (`coachings.kind = 'group'`).
+- **Rooms of single-session trainees** (no package), with their posts and classwork.
+- This is a **hard delete in the migration**, the owner's explicit choice over "hide". The migration header and the
+  paste instructions say so in plain words before anything is pasted.
+
+### Off for every gym now; the owner can switch each back on (Your app)
+- **Classes** — every class screen disappears in all three apps while off.
+- **Squads (Team)**, **Gym events**, **Season**.
+- Friends was already off by default (0217).
+
+### The member app — three tabs, one job each
+- **Today** — check in, today's workout, your next session, your streak. Nothing else.
+- **Train** — **Workout · Coach** (· Classes, between them, only if the gym turns Classes on).
+  - **Workout**: *Your plan* (your week and today's workout; the routine or program you follow lives here) and
+    *Library* (free workouts and programs you can start). Routines, Programs and Plan your week stop being separate places.
+  - **Coach**: book a session, your package (chat · Classwork · Progress), your sessions (coming and past). The Rooms
+    page and My bookings page fold in here.
+- **You** — the trophy room (earned level, badges, records), **Progress** (body, targets, photos — one place, moved
+  from the separate Progress hub), **Membership** (plan, renew, payments, attendance, pause or cancel, waiver).
+- **Rewards** — points, challenges and spending them, one place. Season is off by default.
+- **Names**: the AI is **"Assistant"** everywhere, never "coach". **"Level" means only the earned level**; the
+  self-declared one becomes a setting, *How much do you train?*, never called a level.
+- **More** — about ten entries: Inbox, Rewards, Shop, Equipment, Invite, Friends (if on), Gyms, Profile, Settings, Help.
+
+### The coach app — bottom tabs, a Discord feel inside
+- **Today** — what needs you (session requests, package asks and payments), your day, find a trainee (wave 1, kept).
+- **Personal training** — everyone you train, as a Discord-style chat list: photo with status dot, last message,
+  unread count. A package trainee opens their room (chat · Classwork · Progress · their sheet); a single-session trainee
+  opens the chat and their sheet. *Start coaching someone* and *How members pay you* live here.
+- **Schedule** — your sessions this week, with your bookable hours as a section (Hours stops being its own page).
+- The **Bookings page is removed** (requests are decided on Today; booked sessions are in Schedule).
+- The rail of rooms goes. The You sheet (status, Library, Equipment, Achievements, Gyms, Settings) stays, opened from the coach's photo.
+- Wave 2's finished pieces carry over: the coaching tabs become Personal training's package view, the room's Progress
+  marks with words, the trainee sheet's tabs, one toast at a time, one-line headers.
+
+### The admin app
+- One **Personal training** page: session requests, packages, coaches.
+- Class pages (Schedule, class bookings) hide when Classes is off.
+
+## Constraints
+- **A redesign never drops a feature** except the two removals above: everything else is merged or switched off.
+- Every switch already exists as a gym module (`moduleOn`) or is added the same way; **RLS is the boundary** — a module
+  that is off refuses in SQL, not only in the UI, where it already does so today.
+- Members are archived, never deleted — the hard delete covers **only** groups and single-session rooms' content.
+- Legal pages change in the same commit when a rule changes (Privacy mentions rooms, squads, friends).
+- Old routes and notification `action_url`s keep working: they redirect to the new home of each screen.
+- Each migration ships with its marker, verify file, probe entry, CI suite and harness.
+
+## Order (owner's choice: mock-ups first, then in parts)
+1. Mock-ups: member app, coach app, admin Personal training — approved before any building.
+2. Build in parts: (a) the migration (switches off, removals, package-only rooms); (b) coach app; (c) member app;
+   (d) admin; each verified, pushed and deployed.
+
+## Calls I made (the owner can overrule)
+- **Class rooms** go with Classes: rooms are package-only, so a gym that turns Classes back on gets classes without
+  rooms. Their content is deleted with the groups'. *(To confirm with the owner.)*
+- The coach's status (Available/Away/On leave) moves from the bottom bar into the header next to their photo, since
+  the bottom is now the tab bar.
+- Weekly quests, if a gym runs them, go inside Rewards with challenges.
