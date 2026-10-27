@@ -4,7 +4,7 @@ import {
   ArrowsClockwise, Barbell, Bell, Books, Buildings, CalendarCheck, CalendarDots, CalendarPlus, CalendarStar, Camera,
   ChalkboardTeacher, ChartLineUp, ChatsCircle, EnvelopeSimple, FileText, GearSix, Gift, House, IdentificationCard, Key,
   ListChecks, Medal, PauseCircle, Ranking, Receipt, Scales, Sparkle, Storefront, Target, Trophy, User, UserCircle,
-  UserPlus, UsersThree, Wrench,
+  UserPlus, UsersThree, Wrench, HandsClapping,
 } from '@phosphor-icons/react';
 
 /**
@@ -302,6 +302,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Challenges', path: '/member/challenges' , module: 'engagement', icon: Trophy, blurb: 'Targets with dates, for points' },
       { label: 'Season', path: '/member/season' , module: 'seasons', icon: Ranking, blurb: 'This month’s standings' },
       { label: 'Team', path: '/member/squad' , module: 'squads', icon: UsersThree, blurb: 'Your squad’s weekly target' },
+      // 0217: shown only where the gym switched Friends on (EverythingSheet asks).
+      { label: 'Friends', path: '/member/friends', icon: HandsClapping, blurb: 'Your friends, their wins, cheers' },
     ],
   },
   {

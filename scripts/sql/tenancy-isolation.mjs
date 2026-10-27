@@ -176,7 +176,9 @@ const GLOBAL = [
   // 0196: why the AI coach failed — for the platform, definer functions only, no policy.
   'ai_coach_errors',
   // 0194: a day pass bought in the app — read through definer functions only.
-  'day_passes'];
+  'day_passes',
+  // 0212: the platform's What's new notes, one set for every gym, and who has read them.
+  'app_releases', 'app_release_reads'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
@@ -850,8 +852,9 @@ check('the three plans gyms are already on exist as rows',
 check('no price is invented: only the trial and the three decided tiers carry a number',
   (await one("select string_agg(key, ',' order by key) as k from platform_plans where price_monthly is not null")).k === 'growth,pro,starter,trial'
   && Number((await one("select price_monthly from platform_plans where key = 'trial'")).price_monthly) === 0);
+// Since 0209 Lobby TV is sold by plan (on Pro, Premium and the trial only) — the one deliberate exception.
 check('every plan opens including everything, so pasting takes nothing away',
-  (await one('select count(*)::int as n from platform_plan_features where not enabled')).n === 0
+  (await one("select count(*)::int as n from platform_plan_features where not enabled and feature_key <> 'lobby_tv'")).n === 0
   && (await one('select count(*)::int as n from platform_plan_features')).n
      === (await one('select ((select count(*) from platform_plans) * (select count(*) from platform_features))::int as n')).n);
 check('a gym cannot be put on a plan that does not exist',

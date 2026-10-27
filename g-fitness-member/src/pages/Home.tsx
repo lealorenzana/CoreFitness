@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import FriendsWinsStrip from '../components/friends/FriendsWinsStrip';
 import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
@@ -453,6 +454,8 @@ export default function Home() {
       {moduleOn(gymApp, 'programs') && <ProgramNext />}
       {moduleOn(gymApp, 'rooms') && <DueStrip />}
       {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
+      {/* Friends' latest wins (0217) — nothing unless the gym runs Friends. */}
+      <FriendsWinsStrip />
       <TermsUpdateStrip />
       <FinishPlanCard />
       <PushPrompt />

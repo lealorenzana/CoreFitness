@@ -27,6 +27,9 @@ const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
 const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
 const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
+const Friends = lazyPage(() => import('./pages/friends/Friends'));
+const AddFriend = lazyPage(() => import('./pages/friends/AddFriend'));
+const FriendCode = lazyPage(() => import('./pages/friends/FriendCode'));
 const ReachedTargets = lazyPage(() => import('./pages/progress/ReachedTargets'));
 const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
 const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
@@ -348,6 +351,10 @@ function App() {
           <Route path="challenges" element={<Challenges />} />
           <Route path="season" element={<Season />} />
           <Route path="season/records" element={<SeasonRecords />} />
+          {/* Friends, wins and cheers (0217) — each page says so when the gym has them off. */}
+          <Route path="friends" element={<Friends />} />
+          <Route path="friends/add" element={<AddFriend />} />
+          <Route path="friends/code" element={<FriendCode />} />
           <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
           <Route path="refer/invited" element={<ReferInvited />} />

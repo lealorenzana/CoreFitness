@@ -21,6 +21,8 @@ export type NotificationType =
   | 'attendance'
   /** Server-generated training-plan nudge (0030). */
   | 'gym_plan'
+  /** A friend request, an accepted one, or a cheer (0217). */
+  | 'friends'
   | 'system';
 
 export interface Notification {

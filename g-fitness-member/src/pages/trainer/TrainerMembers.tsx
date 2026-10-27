@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import TraineeCheers from '../../components/trainer/TraineeCheers';
 import { useSearchParams } from 'react-router-dom';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
 import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
@@ -378,6 +379,7 @@ export default function TrainerMembers() {
             {/* Their squad this week (0124) — name and figures, never its code. */}
             <TraineeSquad memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
             <TraineeStreak memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
+            <TraineeCheers memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
             <TraineePhotos memberId={selectedMember.id} firstName={selectedMember.name.split(' ')[0]} />
 
             {/* Notes already sent, newest first, with the member's side of it. */}

@@ -1,5 +1,5 @@
 import {
-  Barbell, CalendarCheck, CalendarStar, ChatCircleText, IdentificationCard, Info, Medal, Megaphone, QrCode, Receipt, Target,
+  Barbell, CalendarCheck, HandsClapping, CalendarStar, ChatCircleText, IdentificationCard, Info, Medal, Megaphone, QrCode, Receipt, Target,
   type Icon,
 } from '@phosphor-icons/react';
 import type { NotificationType } from '../services/notificationService';
@@ -17,6 +17,8 @@ export const NOTIFICATION_ICON: Record<NotificationType, { icon: Icon; tone: 'mi
   goal_milestone: { icon: Target, tone: 'mine' },
   booking: { icon: CalendarCheck, tone: 'mine' },
   trainer_feedback: { icon: ChatCircleText, tone: 'mine' },
+  // A friend request, an accepted one, or a cheer (0217): a friend did something for you.
+  friends: { icon: HandsClapping, tone: 'mine' },
   membership: { icon: IdentificationCard, tone: 'act' },
   gym_plan: { icon: Barbell, tone: 'act' },
   payment: { icon: Receipt, tone: 'info' },

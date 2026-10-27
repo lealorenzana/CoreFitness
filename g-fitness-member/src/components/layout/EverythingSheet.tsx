@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useFriendsOn } from '../../hooks/useFriendsOn';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { CaretRight, MagnifyingGlass, X } from '@phosphor-icons/react';
@@ -26,6 +27,8 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
   const t = useT();
   const location = useLocation();
   const [query, setQuery] = useState('');
+  // Friends is the owner's switch (0217), not a module: the entry is there only when it is on.
+  const friendsOn = useFriendsOn();
   // A fresh search each time the sheet opens (compared during render, not in an effect).
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) { setWasOpen(open); if (open) setQuery(''); }
@@ -45,7 +48,7 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
   // A group whose every item belongs to something this gym does not run
   // disappears with them, rather than leaving an empty heading.
   const groups = EVERYTHING
-    .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp) }))
+    .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp).filter((d) => d.path !== '/member/friends' || friendsOn === true) }))
     .filter(({ items }) => items.length > 0);
   const tiles = visibleDestinations(MORE_TILES, gymApp);
 

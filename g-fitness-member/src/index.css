@@ -1443,3 +1443,13 @@ img { -webkit-user-drag: none; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   .lv-in, .lv-fill, .lv-flame svg, .lv-flame .lv-halo, .lv-medal--new .lv-shine, .lv-coin, .lv-sway { animation: none; }
 }
+
+/* ── Wave 3: friends, wins and cheers (components/friends) ──
+   Cheer is amber (what you can do); cheered is the gym's colour (what you did).
+   The claps burst once from the button; reduced motion skips them. */
+.fr-cheer { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  border: 1px solid var(--color-secondary); color: var(--color-secondary-300); background: var(--color-secondary-light); }
+.fr-cheer--on { border-color: color-mix(in srgb, var(--color-primary) 55%, transparent); color: var(--color-primary-300); background: var(--color-primary-light); }
+.fr-clap { position: absolute; pointer-events: none; color: var(--color-secondary); animation: fr-clap .9s ease-out forwards; }
+@keyframes fr-clap { 0% { opacity: 1; transform: translate(0, 0) scale(.6); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .fr-clap { display: none; } }

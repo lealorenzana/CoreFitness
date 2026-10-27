@@ -190,6 +190,8 @@ async (page) => {
   await page.goto('http://localhost:5174/gym-app?tab=pay', { waitUntil: 'domcontentloaded' });
   await page.locator('[data-gym-paymongo]').waitFor({ timeout: 10000 });
   const connectBtn = page.getByRole('button', { name: 'Connect PayMongo' });
+  // The tab's frame draws before the account's state has loaded; wait for the button itself.
+  await connectBtn.waitFor({ timeout: 10000 }).catch(() => {});
   out.push('Your app has an Online payments tab to connect PayMongo: ' + ((await connectBtn.count()) === 1 ? 'yes' : 'MISSING'));
   await page.getByLabel('PayMongo secret key').fill('not-a-key');
   out.push('…which only takes a PayMongo secret key: ' + (await connectBtn.isDisabled() ? 'yes' : 'NO'));

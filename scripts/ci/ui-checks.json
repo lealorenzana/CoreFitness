@@ -166,6 +166,10 @@
       "app": "member"
     },
     {
+      "file": "member-friends-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-coach-place-check.js",
       "app": "member"
     },
