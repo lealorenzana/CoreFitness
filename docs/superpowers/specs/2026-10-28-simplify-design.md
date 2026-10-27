@@ -63,17 +63,22 @@ Core Fitness is multi-tenant, so features other gyms might use are **switched of
   email inside), Help.
 - **Chat** stays for single sessions too: a session row opens the chat with that coach.
 
-### The coach app — bottom tabs, a Discord feel inside
-- **Today** — what needs you (session requests, package asks and payments), your day, find a trainee (wave 1, kept).
-- **Personal training** — everyone you train, as a Discord-style chat list: photo with status dot, last message,
-  unread count. A package trainee opens their room (chat · Classwork · Progress · their sheet); a single-session trainee
-  opens the chat and their sheet. *Start coaching someone* and *How members pay you* live here.
-- **Schedule** — your sessions this week, with your bookable hours as a section (Hours stops being its own page).
-- The **Bookings page is removed** (requests are decided on Today; booked sessions are in Schedule).
-- The rail of rooms goes. The header carries the check-in QR (0200), the bell and the coach's photo, which opens the You
-  sheet (status, Library, Equipment, Achievements, Gyms, Settings). What's new still shows once.
-- Wave 2's finished pieces carry over: the coaching tabs become Personal training's package view, the room's Progress
-  marks with words, the trainee sheet's tabs, one toast at a time, one-line headers.
+### The coach app — the Discord design stays (owner, 2026-10-28)
+The owner keeps today's look: the rail on the left, the panel beside it, the coach at the bottom (photo, name, status,
+check-in QR, bell) and the You sheet. **No bottom tabs.** Only what the rail holds changes:
+- **Today** (rail, first) — what needs you (session requests, package asks and payments), your day, find a trainee (wave 1).
+- **Personal training** (rail, second; was "Messages") — everyone you train, Discord-DM style: photo with status dot, last
+  message, unread count; sections "On a package" and "Single sessions"; search. A single-session trainee opens the chat
+  and their sheet.
+- **One round icon per package trainee** (their photo, unread count on it), like a Discord server — opens their place:
+  Chat · Classwork · Progress · About. Class and group icons are gone.
+- **+ Start coaching someone** at the bottom of the rail (only where the gym lets coaches offer packages); "New group" is gone.
+- **The You sheet** keeps its four tiles: **Schedule** (this week's sessions, and Classes when the gym runs them),
+  **Hours** (opens Schedule's hours tab — no separate page), **Packages** (was Coaching: Needs you · Training · Ended ·
+  Payments), **Library**; then Profile, Achievements, Equipment, Gyms, Settings.
+- The **Bookings page is removed** (requests are decided on Today; confirmed sessions are in Schedule).
+- Wave 2's finished pieces carry over: Packages' tabs, the room's Progress marks with words, the trainee sheet's tabs,
+  one toast at a time, one-line headers.
 
 ### The admin app
 - One **Personal training** page: what to decide, sessions, packages. The Trainers page stays where it is.
@@ -97,6 +102,4 @@ Core Fitness is multi-tenant, so features other gyms might use are **switched of
 ## Calls I made (the owner can overrule)
 - **Class rooms** go with Classes: rooms are package-only, so a gym that turns Classes back on gets classes without
   rooms. Their content is deleted with the groups'. *(To confirm with the owner.)*
-- The coach's status (Available/Away/On leave) moves from the bottom bar into the header next to their photo, since
-  the bottom is now the tab bar.
 - Weekly quests, if a gym runs them, go inside Rewards with challenges.
