@@ -618,16 +618,14 @@ function WorkoutRun() {
                 </NocButton>
               )}
             </div>
-            {lastSets.length > 0 && (
-              <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-muted)' }}>
-                Last time: {lastSets.map(describeSet).join(', ')}
-              </p>
-            )}
-            <div className="grid" style={{ gridTemplateColumns: ex.isTimed ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 14 }}>
-              <MiniStat value={`${exSets.length}/${ex.targetSets}`} label="sets" />
-              {!ex.isTimed && <MiniStat value={Math.round(volumeHere).toLocaleString()} label="kg moved" />}
-              <MiniStat value={ex.restSeconds > 0 ? clock(ex.restSeconds) : '—'} label="rest" />
-            </div>
+            {/* One line of progress (redesign, 2026-10-27): the three tiles restated the
+                target line above, and "last time" showed three times on one screen — it
+                is the set card's now, next to the numbers it is compared with. */}
+            <p className="tabular-nums" data-run-progress style={{ fontSize: 13, marginTop: 6, color: 'var(--color-text-muted)' }}>
+              <b style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{exSets.length} of {ex.targetSets}</b> sets done
+              {!ex.isTimed && volumeHere > 0 ? <> · <b style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{Math.round(volumeHere).toLocaleString()}</b> kg moved</> : null}
+              {lastSets.length > 0 && focus == null ? <> · last time {lastSets.map(describeSet).join(', ')}</> : null}
+            </p>
           </div>
 
           {/* ── The set in focus ── */}
@@ -733,7 +731,7 @@ function WorkoutRun() {
                 const logged = loggedAt(n);
                 return (
                   <SetRow key={n} n={n} logged={logged} queued={!!logged && queued.has(logged.id)} planned={describeDraft(draftFor(n), ex.isTimed)}
-                    prev={prevFor(n)} focused={isStarted && focus === n} flashing={flash === n} busy={busy}
+                    focused={isStarted && focus === n} flashing={flash === n} busy={busy}
                     beat={logged ? beatLast(logged, prevFor(n)) : false}
                     onFocus={() => { setFocusSet(n); setStarted((s) => new Set(s).add(idx)); }}
                     onTick={() => void tick(n)} onUndo={() => logged && void untick(logged)} />
@@ -887,24 +885,14 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-function MiniStat({ value, label }: { value: ReactNode; label: string }) {
-  return (
-    <div style={{ ...glassCard, borderRadius: 14, padding: '10px 12px' }}>
-      <p className="tabular-nums truncate" style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)' }}>{value}</p>
-      <p style={{ fontSize: 11.5, marginTop: 1, color: 'var(--color-text-muted)' }}>{label}</p>
-    </div>
-  );
-}
-
 function SetRow({
-  n, logged, queued, planned, prev, focused, flashing, beat, busy, onFocus, onTick, onUndo,
+  n, logged, queued, planned, focused, flashing, beat, busy, onFocus, onTick, onUndo,
 }: {
   n: number;
   logged: WorkoutSet | null;
   /** Saved on the phone, not on the server yet. */
   queued: boolean;
   planned: string;
-  prev: LastSet | undefined;
   focused: boolean;
   flashing: boolean;
   beat: boolean;
@@ -940,7 +928,7 @@ function SetRow({
             )}
           </span>
           <span className="block truncate" style={{ fontSize: 12, marginTop: 1, color: 'var(--color-text-muted)' }}>
-            {logged ? (queued ? 'On this phone · uploads when online' : 'Saved') : focused ? 'In focus' : 'Planned'}{prev ? ` · last ${describeSet(prev)}` : ''}
+            {logged ? (queued ? 'On this phone · uploads when online' : 'Saved') : focused ? 'In focus' : 'Planned'}
           </span>
         </span>
       </button>
@@ -949,12 +937,12 @@ function SetRow({
         className="grid place-items-center noc-press disabled:opacity-50"
         style={{
           width: 44, height: 44, borderRadius: 13, flex: 'none',
-          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-lift))' : 'rgba(255, 255, 255, 0.04)',
-          border: logged ? '1px solid color-mix(in srgb, var(--color-primary-300) 50%, transparent)' : '1px solid rgba(233, 233, 237, 0.16)',
+          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-lift))' : 'transparent',
+          border: logged ? '1px solid color-mix(in srgb, var(--color-primary-300) 50%, transparent)' : '1px dashed rgba(233, 233, 237, 0.14)',
           boxShadow: logged ? '0 0 18px -4px color-mix(in srgb, var(--color-primary) 80%, transparent)' : undefined,
-          color: logged ? '#fff' : 'var(--color-text-secondary)',
+          color: logged ? '#fff' : 'var(--color-text-muted)',
         }}>
-        <Check size={18} weight="bold" />
+        <Check size={logged ? 18 : 16} weight="bold" />
       </button>
     </div>
   );
