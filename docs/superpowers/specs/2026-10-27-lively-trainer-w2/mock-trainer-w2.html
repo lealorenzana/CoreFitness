@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach wave 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+:root{--bg:#08080E;--surface:#12121C;--raised:#161522;--high:#1E1D2B;--p:#7C3AED;--p300:#c4b5fd;--pl:#1E1333;
+  --a:#F59E0B;--a300:#fcd34d;--al:#1F1A0A;--t1:#e9e9ed;--t2:#b2b6ca;--tm:#9397ab;--hair:rgba(233,233,237,.14);--sep:rgba(233,233,237,.07)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050509;color:var(--t1);font-family:Inter,system-ui,sans-serif;min-height:100vh;display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:28px 16px 60px;flex-wrap:wrap}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.phone{width:393px;height:852px;border-radius:46px;background:var(--bg);position:relative;overflow:hidden;flex:none;box-shadow:0 0 0 10px #15151d,0 0 0 11px #26263a,0 40px 120px rgba(0,0,0,.6)}
+.status{position:absolute;top:14px;left:30px;right:30px;display:flex;justify-content:space-between;font-size:13px;font-weight:600;z-index:3}
+.screen{position:absolute;inset:44px 0 0;overflow-y:auto;padding:4px 18px 30px;scrollbar-width:none;display:none}
+.screen.on{display:block}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);margin-top:6px}
+.h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:6px}
+.sub{font-size:12.5px;color:var(--tm);margin-top:2px}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tm);margin:20px 0 8px}
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--sep);margin-top:14px}
+.tab{padding:9px 0;font-size:14px;color:var(--tm);font-weight:600;position:relative;white-space:nowrap}
+.tab.on{color:var(--t1)}.tab.on:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--p)}
+.tab b{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--a);color:#1a1205;font-size:11px;margin-left:5px;padding:0 4px}
+.card{border:1px solid var(--hair);border-radius:18px;background:var(--surface);padding:2px 12px}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--sep)}
+.row:first-child{border-top:0}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;background:var(--pl);color:var(--p300);border:1px solid color-mix(in srgb,var(--p) 50%,transparent);flex:none}
+.av.lg{width:52px;height:52px;font-size:16px}
+.grow{flex:1;min-width:0}.grow b{display:block;font-size:14.5px}.grow small{display:block;font-size:12px;color:var(--tm);margin-top:1px}
+.ok{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--a);color:#1a1205;font-size:18px;flex:none}
+.no{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--hair);color:var(--t2);font-size:16px;flex:none}
+.amber{color:var(--a300)}.muted{color:var(--tm)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--hair);color:var(--t2);white-space:nowrap}
+.pill.p{border-color:color-mix(in srgb,var(--p) 55%,transparent);color:var(--p300)}
+.pill.a{border-color:color-mix(in srgb,var(--a) 55%,transparent);color:var(--a300)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:var(--al);border:1px solid color-mix(in srgb,var(--a) 35%,transparent);font-size:13px;color:var(--t2);margin-top:12px}
+.note i{color:var(--a);font-size:18px;margin-top:1px}.note b{color:var(--t1)}
+.btn{height:44px;border-radius:14px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.act{background:var(--a);color:#1a1205}.btn.line{border:1px solid var(--hair);color:var(--t1);font-weight:600}
+.step{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--sep)}
+.step:first-child{border-top:0}
+.ti{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:none;font-size:18px}
+.ti.act{background:var(--al);color:var(--a)}.ti.mine{background:var(--pl);color:var(--p300)}.ti.info{background:var(--raised);color:var(--t2);border:1px solid var(--hair)}
+.field{display:flex;align-items:center;gap:8px;height:40px;border-radius:12px;border:1px solid var(--hair);background:var(--bg);padding:0 12px;font-size:14px;margin-top:8px}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.pair .btn{height:40px;font-size:13.5px}
+.marks{display:flex;gap:4px;margin-top:8px}
+.mk{height:26px;min-width:26px;padding:0 7px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700}
+.mk.on{background:var(--pl);color:var(--p300)}.mk.late{background:var(--raised);color:var(--t2);border:1px solid var(--hair)}.mk.miss{background:var(--al);color:var(--a300)}.mk.due{border:1px dashed var(--hair);color:var(--tm)}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.bar{height:6px;border-radius:3px;background:var(--high);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--p);border-radius:3px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.stat{border:1px solid var(--hair);border-radius:14px;padding:10px;background:var(--surface)}
+.stat b{display:block;font-size:17px}.stat small{font-size:12px;color:var(--tm)}
+.quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.qa{border:1px solid var(--hair);border-radius:14px;padding:10px 6px;display:grid;justify-items:center;gap:4px;font-size:12.5px;font-weight:600;background:var(--surface)}
+.qa i{font-size:20px;color:var(--p300)}.qa.act i{color:var(--a)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.tile{border:1px solid var(--hair);border-radius:16px;padding:12px;background:var(--surface);text-align:left}
+.tile i{font-size:22px;color:var(--p300)}.tile b{display:block;font-size:14.5px;margin-top:8px}.tile small{display:block;font-size:12px;color:var(--tm);margin-top:2px}
+.sheetbg{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:96px;border-radius:24px 24px 0 0;background:#13121c;border-top:1px solid var(--hair);padding:12px 18px 24px;overflow-y:auto;scrollbar-width:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--hair);margin:0 auto 12px}
+.toast{position:absolute;left:18px;right:18px;bottom:22px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--raised);border:1px solid var(--hair);font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.toast i{color:var(--p300);font-size:18px}
+.side{width:min(470px,100%);display:flex;flex-direction:column;gap:16px}
+.side h1{font-size:24px;font-weight:800}.side .lead{color:var(--t2);font-size:14.5px;line-height:1.5;margin-top:6px}
+.picker{display:grid;gap:8px}
+.pick{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;border:1px solid var(--hair);background:var(--surface);text-align:left}
+.pick i{font-size:20px;color:var(--p300);margin-top:1px}.pick b{display:block;font-size:14.5px}.pick small{display:block;color:var(--tm);font-size:12.5px;margin-top:2px}
+.pick[aria-pressed="true"]{border-color:var(--p);background:var(--pl)}
+.notes{font-size:13.5px;color:var(--t2);line-height:1.55;border-left:2px solid var(--hair);padding-left:12px}
+.notes b{color:var(--t1)}.notes ul{margin:6px 0 0 18px}
+.fine{font-size:12px;color:var(--tm)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span><i class="ph-fill ph-cell-signal-full"></i> <i class="ph-fill ph-battery-high"></i></span></div>
+
+  <!-- Bookings -->
+  <section class="screen" data-s="bookings">
+    <span class="back"><i class="ph ph-arrow-left"></i> Today</span>
+    <h1 class="h1">Bookings</h1>
+    <p class="sub">Your classes and 1-on-1s</p>
+    <div class="tabs"><span class="tab on">To decide<b>2</b></span><span class="tab">Booked</span><span class="tab">Declined</span><span class="tab">Cancelled</span></div>
+    <div class="note"><i class="ph-fill ph-hourglass-medium"></i><span><b>Lea has waited 2 days.</b> A quick no lets her book someone else.</span></div>
+    <p class="eyebrow">Yours to decide</p>
+    <div class="card">
+      <div class="row"><div class="av">LL</div><div class="grow"><b>Lea Lorenzana</b><small>1-on-1 · Sun 1 Nov, 9:00 · <span class="amber">waiting 2 days</span></small></div><button class="no"><i class="ph ph-x"></i></button><button class="ok"><i class="ph-bold ph-check"></i></button></div>
+      <div class="row"><div class="av">JT</div><div class="grow"><b>Joy Torres</b><small>HIIT · Fri 30 Oct, 7:00 · waiting 3h</small></div><button class="no"><i class="ph ph-x"></i></button><button class="ok"><i class="ph-bold ph-check"></i></button></div>
+    </div>
+    <p class="eyebrow">Waiting on the front desk</p>
+    <div class="card" style="opacity:.85">
+      <div class="row"><div class="av">AR</div><div class="grow"><b>Ana Reyes</b><small>HIIT · Fri 30 Oct, 7:00 · the desk decides classes here</small></div></div>
+      <div class="row"><div class="av">BC</div><div class="grow"><b>Ben Cruz</b><small>1-on-1 · Sat 31 Oct, 9:00 · you accepted; the desk confirms</small></div><span class="pill p">Accepted</span></div>
+    </div>
+  </section>
+
+  <!-- Coaching -->
+  <section class="screen" data-s="coaching">
+    <span class="back"><i class="ph ph-arrow-left"></i> Back</span>
+    <h1 class="h1">Coaching</h1>
+    <p class="sub">Terms you run: asked, paid, training</p>
+    <div class="tabs"><span class="tab on">Needs you<b>2</b></span><span class="tab">Training 3</span><span class="tab">Ended</span></div>
+    <div class="card" style="margin-top:14px">
+      <div class="step"><div class="ti act"><i class="ph ph-hand-waving"></i></div><div class="grow"><b>Lea asks for 3 months, 1-on-1</b><small>Set your price, then accept</small>
+        <div class="field"><span class="muted">₱</span> 1,500 <span class="muted" style="margin-left:auto;font-size:12px">for 3 months</span></div>
+        <div class="pair"><button class="btn line">Decline</button><button class="btn act">Accept</button></div></div></div>
+      <div class="step"><div class="ti act"><i class="ph ph-receipt"></i></div><div class="grow"><b>Ana paid ₱1,500 · ref GC-777</b><small>Check it reached you, then start the term</small>
+        <div class="pair"><button class="btn line">Not found</button><button class="btn act">It arrived</button></div></div></div>
+    </div>
+    <button class="btn line" style="margin-top:14px"><i class="ph ph-plus"></i> Start coaching someone</button>
+    <div class="toast"><i class="ph-fill ph-check-circle"></i> Received — the coaching has started</div>
+  </section>
+
+  <!-- Trainee sheet -->
+  <section class="screen" data-s="trainee">
+    <div class="sheetbg"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div style="display:flex;gap:12px;align-items:center"><div class="av lg">AR</div><div class="grow"><b style="font-size:18px">Ana Reyes</b><small>Premium · active · last in 9 days ago</small></div><i class="ph ph-x" style="font-size:20px;color:var(--t2)"></i></div>
+      <div class="quick"><button class="qa"><i class="ph ph-chat-circle-text"></i>Message</button><button class="qa act"><i class="ph ph-paper-plane-tilt"></i>Recommend</button><button class="qa"><i class="ph ph-list-plus"></i>New routine</button></div>
+      <div class="stats"><div class="stat"><b>Beginner</b><small>Says</small></div><div class="stat"><b>Intermediate</b><small>Earned</small></div><div class="stat"><b>2</b><small>Visits (30d)</small></div></div>
+      <div class="tabs"><span class="tab on">Progress</span><span class="tab">Training</span><span class="tab">Notes</span><span class="tab">Safety</span></div>
+      <p class="eyebrow">This week</p>
+      <div class="card">
+        <div class="row"><div class="ti act"><i class="ph-fill ph-fire"></i></div><div class="grow"><b>4-week streak</b><small>1 of 3 days this week</small></div></div>
+        <div class="row"><div class="ti mine"><i class="ph-fill ph-crown-simple"></i></div><div class="grow"><b>Barbell Squat · 80 kg</b><small>New record, 2 days ago</small></div></div>
+        <div class="row"><div class="ti mine"><i class="ph ph-target"></i></div><div class="grow"><b>Lose 3 kg</b><small>1.5 of 3 kg</small><div class="bar"><i style="width:50%"></i></div></div></div>
+      </div>
+      <p class="eyebrow">More</p>
+      <div class="card">
+        <div class="row"><div class="ti info"><i class="ph ph-ruler"></i></div><div class="grow"><b>Latest measurement</b><small>64.5 kg · 22% fat — 20 Oct</small></div></div>
+        <div class="row"><div class="ti info"><i class="ph ph-trophy"></i></div><div class="grow"><b>Badges · 6 of 20</b><small>Next: Class Regular — 2 more classes</small></div></div>
+        <div class="row"><div class="ti info"><i class="ph ph-users-three"></i></div><div class="grow"><b>Squad · Early crew</b><small>9 of 12 days this week</small></div></div>
+        <div class="row"><div class="ti info"><i class="ph ph-images"></i></div><div class="grow"><b>Progress photos</b><small>Not shared with coaches</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Room progress -->
+  <section class="screen" data-s="room">
+    <span class="back"><i class="ph ph-arrow-left"></i> Back</span>
+    <h1 class="h1">Morning HIIT</h1>
+    <p class="sub">Class · 2 members</p>
+    <div class="tabs"><span class="tab">Stream</span><span class="tab">Classwork</span><span class="tab">People</span><span class="tab on">Progress</span></div>
+    <div class="note"><i class="ph-fill ph-warning-circle"></i><span><b>Ana needs a look:</b> two pieces of classwork missing, no workout in 10 days.</span></div>
+    <div class="legend"><span class="mk on"><i class="ph-bold ph-check"></i> On time</span><span class="mk late"><i class="ph ph-clock"></i> Late</span><span class="mk miss"><i class="ph-bold ph-exclamation-mark"></i> Missing</span><span class="mk due">Not due yet</span></div>
+    <p class="eyebrow">Last 3 pieces of classwork</p>
+    <div class="card">
+      <div class="row" style="align-items:flex-start"><div class="av">AR</div><div class="grow"><b>Ana Reyes <span class="pill a" style="margin-left:6px">Needs a look</span></b><small>Trained 12 days ago · 5 of last 8 classes</small>
+        <div class="marks"><span class="mk on" title="Leg day — on time"><i class="ph-bold ph-check"></i></span><span class="mk miss" title="Core — missing"><i class="ph-bold ph-exclamation-mark"></i></span><span class="mk miss" title="Push — missing"><i class="ph-bold ph-exclamation-mark"></i></span></div></div><b style="font-size:17px">33%</b></div>
+      <div class="row" style="align-items:flex-start"><div class="av">LL</div><div class="grow"><b>Lea Lorenzana</b><small>Trained yesterday · 8 of last 8 classes</small>
+        <div class="marks"><span class="mk on"><i class="ph-bold ph-check"></i></span><span class="mk on"><i class="ph-bold ph-check"></i></span><span class="mk due">due Fri</span></div></div><b style="font-size:17px">100%</b></div>
+    </div>
+    <p class="fine" style="margin-top:10px">Tap a mark for that piece of classwork.</p>
+  </section>
+
+  <!-- You sheet -->
+  <section class="screen" data-s="you">
+    <div class="sheetbg"></div>
+    <div class="sheet" style="top:150px">
+      <div class="grab"></div>
+      <div style="display:flex;gap:12px;align-items:center"><div class="av lg">BC</div><div class="grow"><b style="font-size:18px">Ben Cruz</b><small>Coach · Core Fitness</small></div></div>
+      <div style="display:flex;gap:6px;margin-top:12px"><span class="pill p">● Available</span><span class="pill">● Away</span><span class="pill">● On leave</span></div>
+      <p class="eyebrow">Your work</p>
+      <div class="tiles" style="margin-top:0">
+        <button class="tile"><i class="ph ph-calendar-blank"></i><b>Schedule</b><small>3 classes this week</small></button>
+        <button class="tile"><i class="ph ph-clock"></i><b>Hours</b><small>When members can book you</small></button>
+        <button class="tile"><i class="ph ph-handshake"></i><b>Coaching</b><small><span class="amber">2 need you</span></small></button>
+        <button class="tile"><i class="ph ph-books"></i><b>Library</b><small>Exercises and programs</small></button>
+      </div>
+      <p class="eyebrow">You</p>
+      <div class="card">
+        <div class="row"><i class="ph ph-user-circle" style="font-size:20px;color:var(--t2)"></i><div class="grow"><b>Profile</b></div><i class="ph ph-caret-right muted"></i></div>
+        <div class="row"><i class="ph ph-trophy" style="font-size:20px;color:var(--t2)"></i><div class="grow"><b>Achievements</b></div><i class="ph ph-caret-right muted"></i></div>
+        <div class="row"><i class="ph ph-barbell" style="font-size:20px;color:var(--t2)"></i><div class="grow"><b>Equipment</b></div><i class="ph ph-caret-right muted"></i></div>
+        <div class="row"><i class="ph ph-buildings" style="font-size:20px;color:var(--t2)"></i><div class="grow"><b>Gyms</b></div><i class="ph ph-caret-right muted"></i></div>
+        <div class="row"><i class="ph ph-gear" style="font-size:20px;color:var(--t2)"></i><div class="grow"><b>Settings</b></div><i class="ph ph-caret-right muted"></i></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="side">
+  <div><h1>Coach app · wave 2</h1><p class="lead">The everyday coach screens made clean: one header, one row of tabs, what needs the coach first, and nothing cut off. Same features; nothing removed. Pick a screen.</p></div>
+  <div class="picker">
+    <button class="pick" data-p="bookings"><i class="ph ph-tray"></i><span><b>Bookings</b><small>Title no longer cut off · tabs fit · one count · yours vs the desk's apart</small></span></button>
+    <button class="pick" data-p="coaching"><i class="ph ph-handshake"></i><span><b>Coaching</b><small>Needs you · Training · Ended · each step says what to do · starting a term moves to a button</small></span></button>
+    <button class="pick" data-p="trainee"><i class="ph ph-user-focus"></i><span><b>A trainee's sheet</b><small>Quick actions on top · Progress · Training · Notes · Safety</small></span></button>
+    <button class="pick" data-p="room"><i class="ph ph-chart-line-up"></i><span><b>A room's progress</b><small>Marks with words, who needs a look first</small></span></button>
+    <button class="pick" data-p="you"><i class="ph ph-user-circle"></i><span><b>The You sheet</b><small>Your work as four tiles, the rest as a short list</small></span></button>
+  </div>
+  <div class="notes" id="notes"></div>
+  <p class="fine">Mock-up with sample people. Every number on the real screens is one they already read.</p>
+</div>
+
+<script>
+const NOTES = {
+  bookings: `<b>Bookings</b><ul><li>The header is just <b>Bookings</b> — the cut-off "Requests for you…" line goes.</li><li>Four short tabs that fit: <b>To decide</b> (with its count), Booked, Declined, Cancelled. The duplicate "3 pending" line goes.</li><li><b>Yours to decide</b> first, with ✓ and ✕ as on Today. What the front desk decides, or what you already accepted, sits apart below as plain rows — no buttons that are not yours.</li><li>The overdue nudge names who has waited.</li><li>Cancelling a booked session (with its reason) stays on Booked, as now.</li></ul>`,
+  coaching: `<b>Coaching</b><ul><li>Three tabs: <b>Needs you</b> (asks and payments to check), <b>Training</b>, <b>Ended</b>.</li><li>Each item is one step that says what to do: "Set your price, then accept", "Check it reached you".</li><li>The long form to start a term yourself moves behind <b>Start coaching someone</b> (a sheet with the same fields).</li><li>Toasts: one at a time, newest replaces the last, so two never stack over the page.</li></ul>`,
+  trainee: `<b>A trainee's sheet</b><ul><li>Header: name, plan and status, and when they were last in (no more "No plan · none" — it says "No plan yet").</li><li><b>Quick actions</b>: Message, Recommend, New routine.</li><li>The same stats (Says · Earned · Visits).</li><li>Four tabs instead of one long scroll: <b>Progress</b> (streak, records, targets, measurement, badges, squad, cheers, photos), <b>Training</b> (program, training plan, routines, recent workouts), <b>Notes</b> (your notes and their status, send one), <b>Safety</b> (emergency contact, tap to call).</li><li>"Not shared" still says so — never an empty block.</li></ul>`,
+  room: `<b>A room's progress</b><ul><li>Who needs a look comes first, in words.</li><li>The legend is marks with words: <b>On time · Late · Missing · Not due yet</b> — no more ✓ L ! –.</li><li>Each mark is tappable and opens that piece of classwork.</li></ul>`,
+  you: `<b>The You sheet</b><ul><li>Status as before.</li><li><b>Your work</b> as four tiles with a live line each — Schedule, Hours, Coaching (amber when something needs you), Library.</li><li>The rest — Profile, Achievements, Equipment, Gyms, Settings — as a short list.</li><li>Still gated by the gym's switches.</li></ul>`,
+};
+function show(p) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.dataset.s === p));
+  document.querySelectorAll('.pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === p)));
+  document.getElementById('notes').innerHTML = NOTES[p];
+}
+document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => show(b.dataset.p)));
+show('bookings');
+</script>
+</body>
+</html>
