@@ -92,6 +92,22 @@ async (page) => {
   out.push('a message goes through the chat it always did: ' + (SENT.some((b) => b.p_conversation === 'c1' && b.p_body === 'Thanks coach!') ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach-place.png', fullPage: true });
 
+  // ---- with no signal, a message waits on the phone and goes when it returns (2026-10-27) ----
+  await page.context().setOffline(true);
+  await page.evaluate(() => dispatchEvent(new Event('offline')));
+  await page.getByLabel('Message').fill('On my way, no signal here');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.waitForTimeout(600);
+  const waitingBubble = await page.locator('[data-waiting-message]').innerText().catch(() => '');
+  out.push('offline, the message shows as waiting: ' + (/On my way, no signal here/.test(waitingBubble) && /Waiting to send/.test(waitingBubble) ? 'yes' : 'MISSING ' + waitingBubble));
+  out.push('…and has not gone: ' + (!SENT.some((b) => b.p_body === 'On my way, no signal here') ? 'yes' : 'SENT'));
+  await page.screenshot({ path: 'shots/member-coach-place-offline.png' });
+  await page.context().setOffline(false);
+  await page.evaluate(() => dispatchEvent(new Event('online')));
+  await page.waitForTimeout(2500);
+  out.push('back online, it goes: ' + (SENT.some((b) => b.p_conversation === 'c1' && b.p_body === 'On my way, no signal here') ? 'yes' : 'MISSING'));
+  out.push('…and is no longer waiting: ' + ((await page.locator('[data-waiting-message]').count()) === 0 ? 'yes' : 'STILL WAITING'));
+
   // ---- Coaching has no separate Messages / Notes ----
   await go('/member/rooms');
   const tabs = await page.evaluate(() => [...document.querySelectorAll('[data-hub="coaching"] [role="tab"]')].map((e) => e.textContent.trim()));

@@ -21,6 +21,10 @@ let lastUser: string | null | undefined;
 export function forgetGymWhenAccountChanges(): void {
   supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user?.id ?? null;
+    // With no signal, supabase-js can drop a session it could not refresh. That
+    // is not a different account: the app keeps running on its own copy
+    // (offlineReads.ts) and signs back in when the signal returns.
+    if (user === null && !navigator.onLine) return;
     if (lastUser !== undefined && user !== lastUser) {
       clearGymContext();
       clearMemberCaches();

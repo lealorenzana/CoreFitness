@@ -12,6 +12,7 @@ import { setLanguage } from '../lib/i18n';
 import { supabase } from '../lib/supabaseClient';
 import { clearPushOnSignOut } from '../lib/api/push';
 import { clearMemberCaches } from '../lib/memberCaches';
+import { forgetOfflineSession } from '../lib/offlineReads';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 
 interface User {
@@ -126,6 +127,8 @@ const PER_USER_KEYS = [
  */
 export const logout = async (): Promise<void> => {
   await clearPushOnSignOut();
+  // The offline copy of the session goes first, so nothing can sign back in with it.
+  forgetOfflineSession();
   await supabase.auth.signOut();
   PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
   // Every per-member, per-gym cache, in one list — the same list `switchGym()`

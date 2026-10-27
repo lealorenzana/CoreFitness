@@ -1,5 +1,8 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { cancelJobs, newId, pending, registerSender, sendOrQueue } from '../outbox';
+import { isOffline, storedSession } from '../offlineReads';
+import { dropQueuedForLog } from '../offlineSets';
 
 /**
  * Saved workout routines and the guided sessions that run them (migration 0086).
@@ -121,14 +124,29 @@ export async function listRoutines(memberId: string): Promise<Routine[]> {
   return ((data ?? []) as unknown as RoutineRow[]).map(toRoutine);
 }
 
+/** Routines started this session, so the player can open one with no signal. */
+const startedHere = new Map<string, Routine>();
+
 export async function getRoutine(id: string): Promise<Routine | null> {
   const q = (cols: string) => supabase.from('workout_routines').select(cols).eq('id', id).maybeSingle();
-  let res = await q(SELECT);
-  if (res.error) res = await q(SELECT_0145);
-  if (res.error) res = await q(BASE_SELECT);
-  const { data, error } = res;
-  if (error) throw error;
-  return data ? toRoutine(data as unknown as RoutineRow) : null;
+  try {
+    let res = await q(SELECT);
+    if (res.error && !isOffline(res.error)) res = await q(SELECT_0145);
+    if (res.error && !isOffline(res.error)) res = await q(BASE_SELECT);
+    const { data, error } = res;
+    if (error) throw error;
+    return data ? toRoutine(data as unknown as RoutineRow) : null;
+  } catch (err) {
+    // No signal: the routine as it was started, or as the Routines list last saved it.
+    if (!isOffline(err)) throw err;
+    const known = startedHere.get(id);
+    if (known) return known;
+    const me = storedSession()?.user.id;
+    const list = me ? await listRoutines(me).catch(() => []) : [];
+    const hit = list.find((r) => r.id === id);
+    if (hit) return hit;
+    throw err;
+  }
 }
 
 export interface RoutineDraft {
@@ -196,15 +214,33 @@ export async function deleteRoutine(id: string): Promise<void> {
   assertWrote(data, 'That routine could not be removed — it may not be yours.');
 }
 
-/** Opens a session for a routine. The routine's name is the session's activity. */
-export async function startRoutineSession(memberId: string, routine: Routine): Promise<string> {
-  const { data, error } = await supabase
-    .from('workout_logs')
-    .insert({ member_id: memberId, activity: routine.name, routine_id: routine.id })
-    .select('id')
-    .single();
+// Offline (lib/outbox.ts). The session's id is made on the phone, so its sets
+// can be logged against it before it reaches the server, and a resend after a
+// lost reply hits the primary key (23505) and counts as started.
+registerSender('workout-start', async (p) => {
+  const { error } = await supabase.from('workout_logs').insert(p);
   if (error) throw error;
-  return data.id as string;
+});
+registerSender('workout-discard', async (p) => {
+  const { error } = await supabase.from('workout_logs').delete().eq('id', p.logId as string).is('completed_at', null);
+  if (error) throw error;
+});
+
+/** Opens a session for a routine — with no signal too. The routine's name is the session's activity. */
+export async function startRoutineSession(memberId: string, routine: Routine): Promise<string> {
+  const id = newId();
+  startedHere.set(routine.id, routine);
+  await sendOrQueue('workout-start', `Workout: ${routine.name}`, { id, member_id: memberId, activity: routine.name, routine_id: routine.id });
+  return id;
+}
+
+/** A session started with no signal that has not reached the server yet. */
+function waitingStart(logId: string) {
+  return pending('workout-start').find((j) => j.payload.id === logId) ?? null;
+}
+/** Finished or discarded on this phone, waiting to tell the server. */
+function closedHere(logId: string): boolean {
+  return pending().some((j) => (j.kind === 'workout-finish' || j.kind === 'workout-discard') && j.payload.logId === logId);
 }
 
 /** The open (unfinished) session, with the routine it runs if any. */
@@ -220,10 +256,17 @@ export async function getOpenRoutineSession(memberId: string): Promise<
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  // Started on this phone with no signal, and not finished or discarded since.
+  const local = pending('workout-start').filter((j) => j.payload.member_id === memberId && !closedHere(j.payload.id as string)).pop();
+  if (local) {
+    return { logId: local.payload.id as string, routineId: (local.payload.routine_id as string) ?? null, gymWorkoutId: null,
+      activity: (local.payload.activity as string) ?? null, startedAt: new Date(local.queuedAt).toISOString() };
+  }
   const full = await q('id, routine_id, gym_workout_id, activity, created_at');
   const { data, error } = !full.error ? full : await q('id, routine_id, activity, created_at');
   if (error) throw error;
   const row = data as unknown as Record<string, string | null> | null;
+  if (row && closedHere(row.id as string)) return null;
   return row
     ? {
         logId: row.id as string,
@@ -248,6 +291,11 @@ export interface SessionHeader {
 }
 
 export async function getSession(logId: string): Promise<SessionHeader | null> {
+  const local = waitingStart(logId);
+  if (local) {
+    return { logId, routineId: (local.payload.routine_id as string) ?? null, gymWorkoutId: null, programDayId: null,
+      activity: (local.payload.activity as string) ?? null, startedAt: new Date(local.queuedAt).toISOString(), completedAt: null };
+  }
   const q = (cols: string) => supabase.from('workout_logs').select(cols).eq('id', logId).maybeSingle();
   let res = await q('id, routine_id, gym_workout_id, program_day_id, activity, created_at, completed_at');
   if (res.error) res = await q('id, routine_id, activity, created_at, completed_at');
@@ -269,10 +317,20 @@ export async function getSession(logId: string): Promise<SessionHeader | null> {
 
 /** Abandon an open session and every set in it (sets cascade). */
 export async function discardSession(logId: string): Promise<void> {
+  // Never reached the server: take it back, and the sets logged in it.
+  if (waitingStart(logId)) {
+    cancelJobs((j) => j.payload.id === logId || j.payload.logId === logId);
+    dropQueuedForLog(logId);
+    return;
+  }
+  if (isOffline()) { await sendOrQueue('workout-discard', 'Discarding a workout', { logId }); return; }
   const { data, error } = await supabase
     .from('workout_logs').delete().eq('id', logId).is('completed_at', null)
     .select('id');
-  if (error) throw error;
+  if (error) {
+    if (isOffline(error)) { await sendOrQueue('workout-discard', 'Discarding a workout', { logId }); return; }
+    throw error;
+  }
   assertWrote(data, 'That workout could not be discarded — it may already be finished.');
 }
 

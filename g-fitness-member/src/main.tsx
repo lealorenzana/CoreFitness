@@ -8,6 +8,7 @@ import { installErrorReporter } from './lib/errorReporter';
 import { forgetGymWhenAccountChanges } from './lib/accountWatch';
 import ErrorBoundary from './components/ErrorBoundary';
 import { feelLikeAnApp } from './lib/appFeel';
+import './lib/outboxSenders';
 
 // Registers the service worker and reloads onto a new deploy — see appUpdate.ts.
 keepAppUpdated();

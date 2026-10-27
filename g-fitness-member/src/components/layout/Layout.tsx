@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -63,6 +65,8 @@ const FILLS = /^\/member\/chatbot\/?$/;
 
 export default function Layout() {
   const location = useLocation();
+  // Back online after showing saved data: the page reads again (offlineReads.ts).
+  const sync = useSyncExternalStore(subscribeSaved, syncTick, () => 0);
   const mainRef = useRef<HTMLDivElement>(null);
   const root = tabRootFor(location.pathname);
   // A routine being run takes the whole screen (2026-09-19): no bar, no chat
@@ -132,7 +136,7 @@ export default function Layout() {
             the framer fade this replaced: framer's `initial={{ opacity: 0 }}`
             is driven by rAF, and on a page that is not compositing it stays at
             zero — the trap CLAUDE.md names. */}
-        <div key={location.pathname} className={`${fills ? 'h-full' : 'min-h-full'} flex flex-col noc-screen`}>
+        <div key={`${location.pathname}#${sync}`} className={`${fills ? 'h-full' : 'min-h-full'} flex flex-col noc-screen`}>
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>

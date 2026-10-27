@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { currentGymId } from '../gymContext';
+import { newId, registerSender, sendOrQueue } from '../outbox';
 
 /**
  * Coaching rooms (0128) and their classwork (0129) — a Google Classroom for
@@ -132,12 +133,23 @@ async function currentGym(): Promise<string> {
   return id;
 }
 
-export async function addPost(roomId: string, body: string, videoUrl: string | null, photoUrl: string | null): Promise<void> {
-  const { error } = await supabase.from('room_posts').insert({
-    gym_id: await currentGym(), room_id: roomId, body: body.trim(), video_url: videoUrl || null, photo_url: photoUrl || null,
+// Offline (lib/outbox.ts): the row's id is made here, so a resend after a lost
+// reply hits the primary key (23505) and counts as already posted.
+registerSender('room-post', async (p) => {
+  const { error } = await supabase.from('room_posts').insert(p);
+  if (error) throw Object.assign(new Error(/is_allowed_video_url|video_url/i.test(error.message)
+    ? 'Only YouTube or Vimeo links can be added.' : clean(error.message)), { code: error.code });
+});
+registerSender('room-comment', async (p) => {
+  const { error } = await supabase.from('room_comments').insert(p);
+  if (error) throw Object.assign(new Error(/row-level security/i.test(error.message)
+    ? 'You cannot comment here.' : clean(error.message)), { code: error.code });
+});
+
+export async function addPost(roomId: string, body: string, videoUrl: string | null, photoUrl: string | null): Promise<'sent' | 'queued'> {
+  return sendOrQueue('room-post', 'Post', {
+    id: newId(), gym_id: await currentGym(), room_id: roomId, body: body.trim(), video_url: videoUrl || null, photo_url: photoUrl || null,
   });
-  if (error) throw new Error(/is_allowed_video_url|video_url/i.test(error.message)
-    ? 'Only YouTube or Vimeo links can be added.' : clean(error.message));
 }
 
 export async function deletePost(postId: string): Promise<void> {
@@ -146,10 +158,8 @@ export async function deletePost(postId: string): Promise<void> {
   if (!data || data.length === 0) throw new Error('That post could not be removed.');
 }
 
-export async function addComment(postId: string, body: string): Promise<void> {
-  const { error } = await supabase.from('room_comments').insert({ gym_id: await currentGym(), post_id: postId, body: body.trim() });
-  if (error) throw new Error(/row-level security/i.test(error.message)
-    ? 'You cannot comment here.' : clean(error.message));
+export async function addComment(postId: string, body: string): Promise<'sent' | 'queued'> {
+  return sendOrQueue('room-comment', 'Comment', { id: newId(), gym_id: await currentGym(), post_id: postId, body: body.trim() });
 }
 
 export async function deleteComment(commentId: string): Promise<void> {

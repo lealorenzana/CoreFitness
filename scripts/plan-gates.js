@@ -311,10 +311,12 @@ async (page) => {
     //    carries a lock mark on a plan without the tracker.
     {
       await visit('/member/home');
-      const bubble = await page.locator('.cursor-grab').count();
+      // Since 0213 the assistant sits in the header by default (the member may
+      // float it instead): either place counts — both follow `ai_model`.
+      const bubble = await page.locator('.cursor-grab, [data-assistant-header]').count();
       const expected = DEFAULTS.ai_model[plan.idx];
       rows.push({
-        key: 'ai_model (chat bubble)', path: '/member/home',
+        key: 'ai_model (assistant)', path: '/member/home',
         expected: expected ? 'present' : 'absent', got: bubble > 0 ? 'present' : 'absent',
         pass: (bubble > 0) === expected, wordsFromDb: null,
       });

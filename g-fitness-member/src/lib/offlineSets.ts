@@ -1,5 +1,9 @@
 import { addSet, type NewSet } from './api/workoutSets';
 import { reportError } from './errorReporter';
+import { afterFlush, pending, registerSender } from './outbox';
+import { storedSession } from './offlineReads';
+import { supabase } from './supabaseClient';
+import { assertWrote } from './api/mutate';
 
 /**
  * Sets logged with no signal (2026-09-19).
@@ -77,6 +81,14 @@ export function dropQueued(id: string): void {
   write(read().filter((q) => q.id !== id));
 }
 
+/** Every set waiting for one workout — it was discarded before it reached the server. */
+export function dropQueuedForLog(logId: string): void {
+  write(read().filter((q) => q.logId !== logId));
+}
+
+/** A workout started with no signal that the server does not have yet (lib/outbox.ts). */
+const logWaiting = (logId: string) => pending('workout-start').some((j) => j.payload.id === logId);
+
 let flushing: Promise<{ sent: number; left: number }> | null = null;
 
 /**
@@ -91,6 +103,8 @@ export function flushOutbox(memberId: string): Promise<{ sent: number; left: num
     let sent = 0;
     const mine = read().filter((q) => q.memberId === memberId).sort((a, b) => a.queuedAt - b.queuedAt);
     for (const q of mine) {
+      // Its workout has not reached the server yet; the set would point at nothing.
+      if (logWaiting(q.logId)) continue;
       try {
         await addSet(q.logId, q.set, q.id);
         dropQueued(q.id);
@@ -107,3 +121,29 @@ export function flushOutbox(memberId: string): Promise<{ sent: number; left: num
   })();
   return flushing.finally(() => { flushing = null; });
 }
+
+// Once the outbox has sent what it can (a workout started offline among it),
+// the sets logged in those workouts follow.
+afterFlush(() => {
+  const me = storedSession()?.user.id;
+  if (me && read().some((q) => q.memberId === me)) void flushOutbox(me);
+});
+
+/**
+ * Finishing a workout with no signal (lib/outbox.ts). Finishing is what awards
+ * the points, so it goes only once every set of that workout is on the server:
+ * until then it stays queued, behind them.
+ */
+registerSender('workout-finish', async (p) => {
+  const memberId = p.memberId as string;
+  const logId = p.logId as string;
+  await flushOutbox(memberId);
+  if (read().some((q) => q.logId === logId && q.memberId === memberId)) {
+    throw new Error('Network request failed — sets for this workout are still waiting');
+  }
+  const { data, error } = await supabase.from('workout_logs')
+    .update({ completed_at: p.completedAt as string, duration_minutes: p.minutes as number | null })
+    .eq('id', logId).select('id');
+  if (error) throw error;
+  assertWrote(data, 'That session could not be finished — it may not be yours to close.');
+});

@@ -149,7 +149,7 @@ export const progressService = {
   async addBodyProgress(
     memberId: string,
     entry: Partial<Omit<BodyProgressEntry, 'id' | 'memberId'>>
-  ): Promise<BodyProgressEntry> {
+  ): Promise<BodyProgressEntry & { queued: boolean }> {
     const saved = await saveMeasurement({
       member_id: memberId,
       measured_on: entry.date ?? todayDate(),
@@ -169,7 +169,8 @@ export const progressService = {
       calf_cm: entry.calves ?? null,
       notes: null,
     });
-    return toEntry(saved);
+    // `queued`: no signal, so it waits on the phone (lib/outbox.ts).
+    return { ...toEntry(saved), queued: saved.queued === true };
   },
 
   // ── Workouts ───────────────────────────────────────────────────────────────

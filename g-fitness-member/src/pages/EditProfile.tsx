@@ -163,19 +163,22 @@ export default function EditProfile() {
         return;
       }
       const t = (v: string) => v.trim() || null;
+      let how: 'sent' | 'queued' = 'sent';
       if (form.firstName !== saved.firstName || form.lastName !== saved.lastName || form.phone !== saved.phone) {
-        await updateMyProfile({ first_name: form.firstName.trim(), last_name: form.lastName.trim(), phone: t(form.phone) });
+        how = await updateMyProfile({ first_name: form.firstName.trim(), last_name: form.lastName.trim(), phone: t(form.phone) });
       }
-      await updateMemberProfile(memberId, {
+      if ((await updateMemberProfile(memberId, {
         date_of_birth: form.dateOfBirth || null,
         gender: form.gender || null,
         address: t(form.address),
         emergency_contact_name: t(form.emergencyName),
         emergency_contact_phone: t(form.emergencyPhone),
         emergency_contact_relationship: t(form.emergencyRelationship),
-      });
+      })) === 'queued') how = 'queued';
       setSaved(form);
-      toast.success('Saved — the front desk sees the new details');
+      // With no signal it waits on the phone (lib/outbox.ts) — the desk does not see it yet.
+      if (how === 'queued') toast.info('Saved on this phone — it goes when you are back online.');
+      else toast.success('Saved — the front desk sees the new details');
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save your profile'));
     } finally {

@@ -145,12 +145,12 @@ export default function TrainerEditProfile() {
     try {
       const id = await getCurrentTrainerId();
       if (!id) throw new Error('Not signed in');
-      await updateMyProfile({
+      const a = await updateMyProfile({
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         phone: form.phone.trim() || null,
       });
-      await updateTrainerProfile(id, {
+      const b = await updateTrainerProfile(id, {
         specialization: form.specialization.trim() || null,
         bio: form.bio.trim() || null,
         availability: form.availability.trim() || null,
@@ -159,7 +159,8 @@ export default function TrainerEditProfile() {
         focus_areas: toList(form.focusAreas),
         achievements: form.achievements.trim() || null,
       });
-      toast.success('Profile updated');
+      if (a === 'queued' || b === 'queued') toast.info('Saved on this phone — it goes when you are back online.');
+      else toast.success('Profile updated');
       navigate('/trainer/profile');
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save your profile'));

@@ -44,7 +44,9 @@ export default defineConfig({
           'apple-touch-icon-*.png',
         ],
         // SPA: serve the cached shell for any navigation so the app still opens
-        // offline. Data fetches are deliberately NOT cached (see below).
+        // offline. Data is not cached by this worker: the app keeps what each
+        // screen last read itself, per account, and says it is saved
+        // (src/lib/offlineReads.ts) — never a silent stale answer.
         navigateFallback: 'index.html',
         // Never serve a cached response for Supabase — a stale membership status
         // or QR payload would be worse than an honest offline error.
@@ -53,7 +55,17 @@ export default defineConfig({
         // Serving the app shell for /core-fitness.apk opened the app at an
         // unknown path, which bounced a signed-in member to Today — no download.
         navigateFallbackDenylist: [/^\/api/, /supabase\.co/, /\.apk$/, /^\/\.well-known\//],
-        runtimeCaching: [],
+        // Public pictures (gym logos, avatars, photos) so an offline screen is
+        // not a page of broken images. Public files only — never a signed URL.
+        runtimeCaching: [{
+          urlPattern: /\/storage\/v1\/object\/public\//,
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'cf-pictures-v1',
+            expiration: { maxEntries: 300, maxAgeSeconds: 30 * 86_400 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        }],
       },
     }),
   ],

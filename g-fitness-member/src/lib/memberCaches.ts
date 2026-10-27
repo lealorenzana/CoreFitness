@@ -7,6 +7,7 @@ import { clearHere } from './here';
 import { clearAchievementCache } from './api/achievements';
 import { clearAssistantPlacement } from './assistantPlacement';
 import { clearCheckedInToday } from '../hooks/useCheckedInToday';
+import { clearOfflineReads } from './offlineReads';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -63,4 +64,6 @@ export function clearMemberCaches(): void {
   // Where this member keeps the assistant (0213) — theirs, not the next person's.
   clearAssistantPlacement();
   clearCheckedInToday();
+  // What screens saved for offline (offlineReads.ts) — this account, this gym.
+  clearOfflineReads();
 }

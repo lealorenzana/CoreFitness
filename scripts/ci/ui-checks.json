@@ -154,6 +154,10 @@
       "app": "member"
     },
     {
+      "file": "member-offline-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-coach-place-check.js",
       "app": "member"
     },

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { registerSender, sendOrQueue } from '../outbox';
 
 /**
  * Coach <-> member chat (0131). A member talks to the coaches they train with,
@@ -55,6 +56,20 @@ export async function listMessages(conversationId: string): Promise<Message[]> {
 export async function sendMessage(conversationId: string, body: string): Promise<void> {
   const { error } = await supabase.rpc('send_message', { p_conversation: conversationId, p_body: body.trim() });
   if (error) throw new Error(clean(error.message));
+}
+
+// Offline (lib/outbox.ts): the job holds who it is for, so a first message
+// ever — whose conversation does not exist yet — opens it when it goes.
+registerSender('message', async (p) => {
+  await sendMessage(await openConversation(p.otherId as string), p.body as string);
+});
+
+/**
+ * A message to someone, sent now or — with no signal — kept and sent when it
+ * returns. `'queued'` means it is waiting; the chat shows it as such.
+ */
+export function sendMessageTo(otherId: string, otherName: string, body: string): Promise<'sent' | 'queued'> {
+  return sendOrQueue('message', `Message to ${otherName.split(' ')[0]}`, { otherId, body: body.trim() });
 }
 
 export async function markRead(conversationId: string): Promise<void> {

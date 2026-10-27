@@ -219,7 +219,7 @@ async (page) => {
   const main = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
   globalThis.__offline = false;
   // Cleared once per test, not on every navigation — step 3 reloads on purpose.
-  await page.addInitScript(() => { if (!sessionStorage.getItem('outbox-reset')) { localStorage.removeItem('cf:set-outbox:v1'); sessionStorage.setItem('outbox-reset', '1'); } });
+  await page.addInitScript(() => { if (!sessionStorage.getItem('outbox-reset')) { localStorage.removeItem('cf:set-outbox:v1'); localStorage.removeItem('cf:outbox:v1'); sessionStorage.setItem('outbox-reset', '1'); } });
 
   await go('/member/track/session/L1');
   await page.waitForTimeout(600);
@@ -241,10 +241,12 @@ async (page) => {
   out.push('row says: ' + (/On this phone/.test(t) ? 'On this phone' : 'MISSING'));
   await page.screenshot({ path: 'shots/offline-01-queued.png' });
 
-  // 2 — finishing is refused while a set is waiting
+  // 2 — finishing with no signal waits on the phone, behind its set (2026-10-27;
+  //     it used to be refused). The server is not told until the set is there.
   await btn('Finish workout early').click();
-  await page.waitForTimeout(900);
-  out.push('finish blocked: ' + (DB.workout_logs[0].completed_at ? 'NO — it finished' : 'yes'));
+  await page.waitForTimeout(1200);
+  const finishWaiting = await page.evaluate(() => JSON.parse(localStorage.getItem('cf:outbox:v1') || '[]').filter((j) => j.kind === 'workout-finish').length);
+  out.push('finish waits on the phone: ' + (!DB.workout_logs[0].completed_at && finishWaiting === 1 ? 'yes' : 'NO completed=' + DB.workout_logs[0].completed_at + ' waiting=' + finishWaiting));
 
   // 3 — a reload keeps it (the phone died, the app reopened)
   await go('/member/track/session/L1');
@@ -261,6 +263,7 @@ async (page) => {
   out.push('outbox after: ' + left);
   t = await main();
   out.push('row now: ' + (/On this phone/.test(t) ? 'STILL QUEUED' : 'Saved'));
+  out.push('…and the finish followed the set: ' + (DB.workout_logs[0].completed_at ? 'yes' : 'NO'));
   await page.screenshot({ path: 'shots/offline-02-synced.png' });
   return out.join('\n');
 }

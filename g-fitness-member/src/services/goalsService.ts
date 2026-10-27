@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { newId, sendOrQueue } from '../lib/outbox';
 import {
   listGoals, listMeasurements, createGoal, updateGoal, deleteGoal,
   type FitnessGoalRow, type BodyMeasurementRow,
@@ -235,14 +236,13 @@ export interface NewGoal {
   deadline?: string | null;
 }
 
-export async function addGoal(memberId: string, g: NewGoal): Promise<void> {
+/** Saved now, or — with no signal — kept on the phone and sent later (lib/outbox.ts). */
+export async function addGoal(memberId: string, g: NewGoal): Promise<'sent' | 'queued'> {
   if (g.kind === 'habit') {
-    const { error } = await supabase.from('fitness_goals').insert({
-      member_id: memberId, title: g.title, metric: 'custom',
+    return sendOrQueue('goal-add', 'Target', {
+      id: newId(), member_id: memberId, title: g.title, metric: 'custom',
       template_key: g.templateKey, target_value: g.targetValue ?? null, target_date: g.deadline ?? null,
     });
-    if (error) throw error;
-    return;
   }
   // A lift goal with no start given starts at the member's best so far, so the
   // bar has a real denominator from day one. No history leaves it empty.
@@ -251,7 +251,7 @@ export async function addGoal(memberId: string, g: NewGoal): Promise<void> {
     const h = await getExerciseHistory(memberId, g.exerciseId).catch(() => []);
     start = h.length ? Math.max(...h.map((p) => p.topWeightKg)) : null;
   }
-  await createGoal({
+  return createGoal({
     member_id: memberId,
     title: g.title,
     metric: g.kind === 'body' ? (g.metric as string) : g.kind === 'strength' ? 'lift_kg' : 'custom',
@@ -262,13 +262,13 @@ export async function addGoal(memberId: string, g: NewGoal): Promise<void> {
   });
 }
 
-export async function editGoal(id: string, p: { title: string; targetValue: number | null; deadline: string | null }): Promise<void> {
-  await updateGoal(id, { title: p.title, target_value: p.targetValue, target_date: p.deadline });
+export async function editGoal(id: string, p: { title: string; targetValue: number | null; deadline: string | null }): Promise<'sent' | 'queued'> {
+  return updateGoal(id, { title: p.title, target_value: p.targetValue, target_date: p.deadline });
 }
 
 /** Only a custom goal is ticked by hand — the others settle themselves (0087). */
-export async function markCustomDone(id: string): Promise<void> {
-  await updateGoal(id, { achieved_on: todayKey() });
+export async function markCustomDone(id: string): Promise<'sent' | 'queued'> {
+  return updateGoal(id, { achieved_on: todayKey() });
 }
 
 export async function removeGoal(id: string): Promise<void> {

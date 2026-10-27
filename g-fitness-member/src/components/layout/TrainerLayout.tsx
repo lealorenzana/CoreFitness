@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -32,6 +34,8 @@ import ModuleGate from '../ModuleGate';
  */
 export default function TrainerLayout() {
   const location = useLocation();
+  // Back online after showing saved data: the page reads again (offlineReads.ts).
+  const sync = useSyncExternalStore(subscribeSaved, syncTick, () => 0);
   const mainRef = useRef<HTMLDivElement>(null);
   // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
   const hub = location.pathname === '/trainer/home' || location.pathname === '/trainer/rooms';
@@ -66,7 +70,7 @@ export default function TrainerLayout() {
       >
         {/* CSS entrance, keyed on the path — never framer's rAF-driven
             `initial`, which stays at zero on a page that is not compositing. */}
-        <div key={location.pathname} className="min-h-full flex flex-col noc-screen">
+        <div key={`${location.pathname}#${sync}`} className="min-h-full flex flex-col noc-screen">
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>

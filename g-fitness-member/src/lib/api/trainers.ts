@@ -1,5 +1,6 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { registerSender, sendOrQueue } from '../outbox';
 import type { ProfileRow, TrainerProfileRow } from '../../types/db';
 
 export interface TrainerWithProfile {
@@ -28,15 +29,20 @@ export async function getTrainer(id: string): Promise<TrainerWithProfile | null>
   return { profile: profiles, trainer: trainer as TrainerProfileRow };
 }
 
-export async function updateTrainerProfile(
-  id: string,
-  updates: Partial<Omit<TrainerProfileRow, 'profile_id'>>
-): Promise<void> {
+// Offline (lib/outbox.ts): the same change twice is the same change.
+registerSender('trainer-profile', async (p) => {
   const { data, error } = await supabase
-    .from('trainer_profiles').update(updates).eq('profile_id', id)
+    .from('trainer_profiles').update(p.updates as Partial<TrainerProfileRow>).eq('profile_id', p.id as string)
     .select('profile_id');
   if (error) throw error;
   assertWrote(data, 'Those trainer details could not be saved. Please refresh and try again.');
+});
+
+export async function updateTrainerProfile(
+  id: string,
+  updates: Partial<Omit<TrainerProfileRow, 'profile_id'>>
+): Promise<'sent' | 'queued'> {
+  return sendOrQueue('trainer-profile', 'Your coach details', { id, updates });
 }
 
 /**

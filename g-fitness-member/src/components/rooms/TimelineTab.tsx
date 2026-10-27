@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, CalendarBlank, ChatCircleText, ClipboardText, NotePencil, PaperPlaneRight } from '@phosphor-icons/react';
 import { TextArea } from '../ui/Field';
 import { toast } from '../ui/Toast';
 import { supabase } from '../../lib/supabaseClient';
 import { coachTimeline, type TimelineItem } from '../../lib/api/coachPlace';
-import { listMessages, markRead, myConversations, openConversation, sendMessage, setMuted, type Conversation } from '../../lib/api/chat';
+import { listMessages, markRead, myConversations, sendMessageTo, setMuted, type Conversation } from '../../lib/api/chat';
+import { pending, subscribeOutbox, type Job } from '../../lib/outbox';
+
+const NONE: Job[] = [];
 import { roomPeople, type Room } from '../../lib/api/rooms';
 import { markFeedback } from '../../lib/api/trainerFeedback';
 import { useGymApp } from '../../hooks/useGymApp';
@@ -99,6 +102,10 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
     return () => { alive = false; window.clearInterval(t); };
   }, [load, mode, room.id, room.trainerId, room.trainerName]);
 
+  // Messages written with no signal, still on the phone (lib/outbox.ts).
+  const queuedJobs = useSyncExternalStore(subscribeOutbox, () => pending('message'), () => NONE);
+  const waitingMsgs = queuedJobs.filter((j) => j.payload.otherId === other?.id);
+
   // Oldest first on screen; scroll to the bottom only when something new arrived.
   const shown = [...older, ...[...(items ?? [])].reverse()]
     .filter((x, i, all) => all.findIndex((y) => y.kind === x.kind && y.id === x.id) === i);
@@ -146,10 +153,10 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
     if (!text || !other || busy) return;
     setBusy(true);
     try {
-      const conv = await openConversation(other.id);
-      await sendMessage(conv, text);
+      // With no signal it waits on the phone and shows below as "Waiting to send" (lib/outbox.ts).
+      const how = await sendMessageTo(other.id, other.name, text);
       setDraft('');
-      await Promise.all([load(), loadConv()]);
+      if (how === 'sent') await Promise.all([load(), loadConv()]);
     } catch (err) {
       toast.error(errorMessage(err, 'Your message could not be sent'));
     } finally {
@@ -250,6 +257,15 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
         }
         return <div key={`s${it.id}`} data-timeline-kind="post">{card(<ChatCircleText size={18} />, `Posted · ${when(it.at)}`, it.body)}</div>;
       })}
+      {waitingMsgs.map((j) => (
+        <div key={`q${j.id}`} className="flex" data-timeline-kind="message" data-waiting-message style={{ justifyContent: 'flex-end' }}>
+          <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: 16, borderBottomRightRadius: 4, whiteSpace: 'pre-wrap', fontSize: 14,
+            background: 'color-mix(in srgb, var(--color-primary) 55%, transparent)', color: '#fff' }}>
+            {String(j.payload.body)}
+            <span style={{ display: 'block', fontSize: 12, marginTop: 2, opacity: 0.8, textAlign: 'right' }}>Waiting to send</span>
+          </div>
+        </div>
+      ))}
       <div ref={bottom} />
 
       {chatOn && conv && (

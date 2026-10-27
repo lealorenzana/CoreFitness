@@ -1,5 +1,7 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { pending, sendOrQueue } from '../outbox';
+import { storedSession } from '../offlineReads';
 
 /**
  * The exercise catalogue and what the member actually lifted (migration 0050).
@@ -104,14 +106,14 @@ export async function startSession(memberId: string, planId?: string | null): Pr
  * Passing it explicitly keeps the number something the member can see and
  * correct.
  */
-export async function completeSession(logId: string, durationMinutes: number | null): Promise<void> {
-  const { data: data, error: error } = await supabase
-    .from('workout_logs')
-    .update({ completed_at: new Date().toISOString(), duration_minutes: durationMinutes })
-    .eq('id', logId)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That session could not be finished — it may not be yours to close.');
+/**
+ * Finishes a session — or, with no signal, keeps the finish on the phone to go
+ * after its sets (lib/offlineSets.ts). `'queued'` means the points come then.
+ */
+export async function completeSession(logId: string, durationMinutes: number | null): Promise<'sent' | 'queued'> {
+  return sendOrQueue('workout-finish', 'Finishing your workout', {
+    logId, minutes: durationMinutes, completedAt: new Date().toISOString(), memberId: storedSession()?.user.id ?? null,
+  });
 }
 
 export async function listSets(logId: string): Promise<WorkoutSet[]> {
@@ -154,6 +156,11 @@ export interface NewSet {
  * an offline retry safe (lib/offlineSets.ts): a second attempt hits 23505.
  */
 export async function addSet(logId: string, set: NewSet, id?: string): Promise<string> {
+  // Its workout was started with no signal and has not reached the server yet:
+  // the set waits with it (the player queues on a network failure).
+  if (pending('workout-start').some((j) => j.payload.id === logId)) {
+    throw new Error('Network request failed — this workout has not reached the server yet');
+  }
   const { data, error } = await supabase
     .from('workout_sets')
     .insert({

@@ -32,17 +32,23 @@ export default function StreamTab({ room, canPost, canComment }: { room: Room; c
   }, [room.id]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const run = async (fn: () => Promise<void>, ok?: string) => {
+  const run = async (fn: () => Promise<void | 'sent' | 'queued'>, ok?: string) => {
     setBusy(true);
-    try { await fn(); if (ok) toast.success(ok); await load(); }
+    try {
+      // With no signal a post or comment waits on the phone (lib/outbox.ts) — say so, never "Posted".
+      if ((await fn()) === 'queued') { toast.info('Saved on this phone — it goes up when you are back online.'); return; }
+      if (ok) toast.success(ok);
+      await load();
+    }
     catch (e) { toast.error(errorMessage(e, 'That did not work')); }
     finally { setBusy(false); }
   };
 
   const post = () => run(async () => {
     if (video.trim() && !embedUrl(video.trim())) throw new Error(`${ALLOWED_VIDEO_HINT} only.`);
-    await addPost(room.id, body, video.trim() || null, photo);
+    const how = await addPost(room.id, body, video.trim() || null, photo);
     setBody(''); setVideo(''); setPhoto(null);
+    return how;
   }, 'Posted to the room.');
 
   const pickPhoto = async (file: File | undefined) => {
@@ -131,7 +137,7 @@ export default function StreamTab({ room, canPost, canComment }: { room: Room; c
                     <button type="button" className="flex-none" disabled={busy || !(drafts[p.id] ?? '').trim()}
                       style={{ fontSize: 13, fontWeight: 700, padding: '8px 4px', color: 'var(--color-secondary)',
                         opacity: busy || !(drafts[p.id] ?? '').trim() ? 0.45 : 1 }}
-                      onClick={() => void run(async () => { await addComment(p.id, drafts[p.id]); setDrafts({ ...drafts, [p.id]: '' }); })}>
+                      onClick={() => void run(async () => { const how = await addComment(p.id, drafts[p.id]); setDrafts({ ...drafts, [p.id]: '' }); return how; })}>
                       Send
                     </button>
                   </div>

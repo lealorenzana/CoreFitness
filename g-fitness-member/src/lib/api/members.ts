@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { registerSender, sendOrQueue } from '../outbox';
 import type { ProfileRow, MemberProfileRow } from '../../types/db';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../legalVersions';
 
@@ -53,17 +54,22 @@ export const NO_MEMBER_ROW = 'NO_MEMBER_ROW';
  * row's owner and `member_profiles_select_self` covers them — this is the one
  * case the `.insert().select()` warning elsewhere does not apply to.
  */
-export async function updateMemberProfile(
-  memberId: string,
-  updates: Partial<MemberProfileRow>
-): Promise<void> {
+// Offline (lib/outbox.ts): the same change twice is the same change.
+registerSender('member-profile', async (p) => {
   const { data, error } = await supabase
     .from('member_profiles')
-    .update(updates)
-    .eq('profile_id', memberId)
+    .update(p.updates as Partial<MemberProfileRow>)
+    .eq('profile_id', p.memberId as string)
     .select('profile_id');
   if (error) throw error;
   if (!data || data.length === 0) throw new Error(NO_MEMBER_ROW);
+});
+
+export async function updateMemberProfile(
+  memberId: string,
+  updates: Partial<MemberProfileRow>
+): Promise<'sent' | 'queued'> {
+  return sendOrQueue('member-profile', 'Your details', { memberId, updates });
 }
 
 /**

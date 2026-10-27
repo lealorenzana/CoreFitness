@@ -383,7 +383,7 @@ export default function GoalsTab() {
     const num = (v: string) => (v.trim() === '' ? null : Number(v));
     setSaving(true);
     try {
-      await addGoal(memberId, {
+      const how = await addGoal(memberId, {
         kind: d.kind, title,
         metric: d.kind === 'body' ? d.metric : undefined,
         exerciseId: d.kind === 'strength' ? d.exerciseId : undefined,
@@ -392,7 +392,7 @@ export default function GoalsTab() {
         targetValue: d.kind === 'custom' ? null : num(d.target),
         deadline: d.deadline || null,
       });
-      toast.success('Target set');
+      if (how === 'queued') toast.info('Saved on this phone — it goes when you are back online.'); else toast.success('Target set');
       setCreating(false);
       await load(true);
     } catch (err) {
@@ -411,12 +411,12 @@ export default function GoalsTab() {
     if (!editing) return;
     setSaving(true);
     try {
-      await editGoal(editing.id, {
+      const how = await editGoal(editing.id, {
         title: edit.title.trim() || editing.title,
         targetValue: editing.kind === 'custom' ? null : edit.target.trim() === '' ? null : Number(edit.target),
         deadline: edit.deadline || null,
       });
-      toast.success('Target updated');
+      if (how === 'queued') toast.info('Saved on this phone — it goes when you are back online.'); else toast.success('Target updated');
       setEditing(null);
       await load(true);
     } catch (err) {
@@ -437,8 +437,8 @@ export default function GoalsTab() {
   };
   const done1 = async (g: GoalView) => {
     try {
-      await markCustomDone(g.id);
-      toast.success('Nicely done');
+      const how = await markCustomDone(g.id);
+      if (how === 'queued') toast.info('Saved on this phone — it goes when you are back online.'); else toast.success('Nicely done');
       await load();
     } catch (err) {
       toast.error(errorMessage(err, 'Could not update that target'));

@@ -1,5 +1,6 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
+import { registerSender, sendOrQueue } from '../outbox';
 import type { ProfileRow } from '../../types/db';
 
 export async function getMyProfile(): Promise<ProfileRow | null> {
@@ -18,31 +19,24 @@ export async function getProfile(id: string): Promise<ProfileRow | null> {
   return data;
 }
 
+// Offline (lib/outbox.ts): the same change twice is the same change.
+registerSender('profile', async (p) => {
+  const { data, error } = await supabase.from('profiles').update(p.updates as Record<string, unknown>).eq('id', p.userId as string).select('id');
+  if (error) throw error;
+  // `.select()` so a write RLS filters to nothing is told apart from success —
+  // a trainer once picked a photo, saw "Photo updated", and kept a NULL photo_url.
+  if (!data || data.length === 0) throw new Error('That change was not saved — your account may not have permission.');
+});
+
+/** Your own name, phone or photo — saved now, or kept on the phone with no signal. */
 export async function updateMyProfile(
   updates: Partial<Pick<ProfileRow, 'first_name' | 'last_name' | 'phone' | 'photo_url'>>
-): Promise<void> {
+): Promise<'sent' | 'queued'> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  // `.select()` so this becomes `UPDATE … RETURNING` and a zero-row result can
-  // be told apart from success.
-  //
-  // Without it, a write that RLS silently filters reports success: PostgREST
-  // returns no error for an UPDATE that matched nothing. That is how a trainer
-  // can pick a photo, see "Photo updated", and end up with `photo_url` still
-  // NULL — the same failure mode that made onboarding write nothing in 0033,
-  // and that admin "Recall" and "Undo check-in" both had until they were given
-  // this same treatment.
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', user.id)
-    .select('id');
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error('That change was not saved — your account may not have permission.');
-  }
+  return sendOrQueue('profile', 'Profile details', { userId: user.id, updates });
 }
 
 /** Admin-only: update another user's profile (e.g. editing a trainer's name/phone). */

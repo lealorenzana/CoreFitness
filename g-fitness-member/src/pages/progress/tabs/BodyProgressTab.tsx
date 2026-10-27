@@ -132,13 +132,14 @@ export default function BodyProgressTab() {
     }
     setSaving(true);
     try {
-      await progressService.addBodyProgress(memberId, {
+      const saved = await progressService.addBodyProgress(memberId, {
         weight: num(form.weight), height: num(form.height), bodyFatPct: num(form.bodyFatPct),
         chest: num(form.chest), waist: num(form.waist), arms: num(form.arms), legs: num(form.legs),
         neck: num(form.neck), shoulders: num(form.shoulders), forearms: num(form.forearms),
         hips: num(form.hips), calves: num(form.calves),
       });
-      toast.success('Measurement saved');
+      if (saved.queued) toast.info('Saved on this phone — it goes when you are back online.');
+      else toast.success('Measurement saved');
       setShowForm(false);
       setForm(blankForm());
       await load();

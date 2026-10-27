@@ -1,4 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session, type User } from '@supabase/supabase-js';
+import {
+  configureOfflineReads, forgetOfflineSession, isOffline, keepOfflineSession, offlineFetch, offlineSessionCopy, storedSession,
+} from './offlineReads';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -47,8 +50,67 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     storage: localStorage,
   },
+  // Reads are kept on the phone and shown when there is no signal (offlineReads.ts).
+  global: { fetch: offlineFetch },
 });
-supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') markRecovery(); });
+configureOfflineReads(supabaseUrl, (supabase.auth as unknown as { storageKey: string }).storageKey);
+
+/**
+ * Offline, the signed-in account is the one saved on this phone.
+ *
+ * With no signal the session cannot be refreshed: an hour after the last
+ * refresh `getSession()` answers "no session" and `getUser()` (which asks the
+ * server) answers "no user" — so every screen bounced to Login or said it
+ * could not tell who you are. When — and only when — the failure is the
+ * connection and this phone still holds the session, both answer with it, so
+ * the app opens on what it saved (offlineReads.ts). Nothing is sent with it:
+ * offline nothing is sent at all, and online the real refresh runs first. A
+ * session the server *refuses* is not the connection, and still signs out.
+ */
+const auth = supabase.auth;
+const realGetSession = auth.getSession.bind(auth);
+const realGetUser = auth.getUser.bind(auth);
+let restoring: ReturnType<typeof auth.setSession> | null = null;
+auth.getSession = (async () => {
+  const res = await realGetSession();
+  if (res.data.session) return res;
+  if (isOffline(res.error)) {
+    const saved = storedSession();
+    if (saved) return { data: { session: saved as unknown as Session }, error: null };
+    return res;
+  }
+  // Online, and supabase-js has no session — but this app's copy does: the
+  // library dropped it while there was no signal. Sign in again with its
+  // refresh token; a token the server refuses ends it, as it always did.
+  const copy = offlineSessionCopy();
+  if (!copy) return res;
+  restoring ??= auth.setSession({ access_token: copy.access_token, refresh_token: copy.refresh_token })
+    .finally(() => { restoring = null; });
+  const back = await restoring;
+  if (back.data.session) return { data: { session: back.data.session }, error: null };
+  if (!isOffline(back.error)) forgetOfflineSession();
+  return res;
+}) as typeof auth.getSession;
+auth.getUser = (async (jwt?: string) => {
+  let res = await realGetUser(jwt);
+  if (res.data.user) return res;
+  if (isOffline(res.error)) {
+    const saved = storedSession();
+    if (saved) return { data: { user: saved.user as unknown as User }, error: null };
+    return res;
+  }
+  // Back online after the library dropped the session: sign in again (above), then ask.
+  if (!jwt && offlineSessionCopy() && (await auth.getSession()).data.session) res = await realGetUser();
+  return res;
+}) as typeof auth.getUser;
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') markRecovery();
+  // The copy for offline (offlineReads.ts): kept fresh, and dropped by a
+  // sign-out that happened with a signal — never by one the library made
+  // because a refresh could not reach the server.
+  if (session) keepOfflineSession(session);
+  else if (event === 'SIGNED_OUT' && navigator.onLine) forgetOfflineSession();
+});
 
 /** True for an hour after this tab was opened by a password-reset link. */
 export function openedByResetLink(): boolean {

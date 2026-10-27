@@ -38,7 +38,7 @@ const fromQueued = (q: QueuedSet): WorkoutSet => ({
 /** The values being typed into one not-yet-logged set. */
 interface Draft { reps: string; kg: string; secs: string }
 
-interface Finished { minutes: number; sets: number; volume: number; beat: number }
+interface Finished { minutes: number; sets: number; volume: number; beat: number; /** Kept on the phone, no signal yet. */ waiting?: boolean }
 
 function clock(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -459,25 +459,24 @@ function WorkoutRun() {
     if (!logId || busy || !routine) return;
     if (sets.length === 0) { toast.error('Log at least one set first, or discard the workout.'); return; }
     // Finishing is what awards the points, so every set must be on the server first.
+    // Sets still on the phone go first; with no signal, the finish waits behind
+    // them on the phone too (lib/offlineSets.ts) and the points come when it goes.
     if (queued.size > 0 && memberId) {
       const { left } = await flushOutbox(memberId);
-      if (left > 0) {
-        toast.error(`${left} ${left === 1 ? 'set is' : 'sets are'} still waiting for signal. Finish when you are back online — nothing is lost.`);
-        return;
-      }
-      await refresh(logId, memberId).catch(() => undefined);
+      if (left === 0) await refresh(logId, memberId).catch(() => undefined);
     }
     setBusy(true);
     try {
       const minutes = Math.max(1, Math.round(elapsed / 60));
-      await completeSession(logId, minutes);
+      const how = await completeSession(logId, minutes);
+      if (how === 'queued') toast.info('Saved on this phone — your workout and its points go when you are back online.');
       const volume = sets.reduce((v, s) => v + (s.weightKg ?? 0) * (s.reps ?? 0), 0);
       const beat = routine.exercises.reduce((n, e) => {
         const prev = e.exerciseId ? last.get(e.exerciseId) ?? [] : [];
         return n + setsFor(sets, e).filter((s) => beatLast(s, prev.find((l) => l.setNumber === s.setNumber))).length;
       }, 0);
       setRest(null);
-      setDone({ minutes, sets: sets.length, volume, beat });
+      setDone({ minutes, sets: sets.length, volume, beat, waiting: how === 'queued' });
       buzz([90, 60, 90, 60, 220]);
       if (soundRef.current) { beep(784, 140); window.setTimeout(() => beep(1047, 260, 0.18), 150); }
     } catch (err) {
@@ -1082,7 +1081,9 @@ function FinishView({
           {routine.name}
         </h1>
         <p className="noc-rise" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
-          Saved to today. Tap today in your Attendance calendar to see every set.
+          {done.waiting
+            ? 'Saved on this phone. It goes to your Attendance calendar — with its points — when you are back online.'
+            : 'Saved to today. Tap today in your Attendance calendar to see every set.'}
         </p>
       </div>
 
