@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { pointsWord } from '../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Gift, Package, PushPin, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
+import { CaretRight, Coins, Gift, Package, PushPin, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
+import { CountNumber } from '../components/ui/lively';
 import FeatureLock from '../components/ui/FeatureLock';
 import GlassSheet from '../components/ui/GlassSheet';
 import RedemptionRow from '../components/ui/RedemptionRow';
@@ -152,10 +153,16 @@ export default function Rewards() {
 
           {/* ── Balance and target ── */}
           <Panel glow="structure">
-            <Eyebrow>{pointsWord(gymApp)}</Eyebrow>
-            <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
-              {balance == null ? '—' : balance.toLocaleString()}
-            </p>
+            {/* Wave 2: a coin that turns now and then, and the balance counting up. */}
+            <div className="flex items-center" style={{ gap: 14 }} data-rewards-balance>
+              <span className="lv-coin" aria-hidden><Coins size={24} weight="fill" /></span>
+              <div>
+                <Eyebrow>{pointsWord(gymApp)}</Eyebrow>
+                <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.05, marginTop: 2, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+                  {balance == null ? '—' : <CountNumber value={balance} />}
+                </p>
+              </div>
+            </div>
             {view && !view.ledgerFailed && (
               <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-text-secondary)' }}>
                 +{view.earnedThisMonth.toLocaleString()} this month
@@ -233,7 +240,7 @@ export default function Rewards() {
                           {r.id === target?.id && <span className="absolute -top-1 -right-1 grid place-items-center" style={{ width: 20, height: 20, borderRadius: 10, background: 'var(--color-secondary)', color: '#1A1205' }}><PushPin size={11} weight="fill" /></span>}
                         </span>
                       ) : (
-                        <span className="flex-none grid place-items-center orb-cell" aria-hidden
+                        <span className={`flex-none grid place-items-center orb-cell${canGet ? ' lv-can' : ''}`} aria-hidden data-can-get={canGet || undefined}
                           style={{ width: 42, height: 42, borderRadius: 12, color: canGet ? 'var(--color-secondary)' : 'var(--color-primary-300)' }}>
                           {r.id === target?.id ? <PushPin size={18} weight="fill" /> : <Gift size={18} />}
                         </span>

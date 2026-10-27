@@ -78,3 +78,14 @@ export function weekRangeLabel(from: Date): string {
     ? `${a} – ${to.getDate()}`
     : `${a} – ${MONTH_SHORT.format(to)} ${to.getDate()}`;
 }
+
+/**
+ * "today", "yesterday", "3 days ago", "2 weeks ago" — by calendar days on the
+ * phone's own clock, not 24-hour spans: a workout at 7 PM two days back is "2
+ * days ago" at 9 AM today, though fewer than 48 hours have passed.
+ */
+export function agoLabel(iso: string, now: number = Date.now()): string {
+  const day = (t: number) => { const x = new Date(t); x.setHours(0, 0, 0, 0); return x.getTime(); };
+  const d = Math.round((day(now) - day(new Date(iso).getTime())) / 86_400_000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? `${d} days ago` : `${Math.floor(d / 7)} weeks ago`;
+}

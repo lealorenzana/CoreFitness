@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { FlameMark } from './lively';
 import { CaretRight, Flame, HourglassMedium, Snowflake } from '@phosphor-icons/react';
 import { ProgressBar } from './noc';
 import { toast } from './Toast';
@@ -83,16 +84,13 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
           aria-label={`Your gym streak: ${card.current} weeks. Open your streak`}
           className="w-full flex items-center text-left noc-press-soft"
           style={{ gap: 10, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-separator)' }}>
+          {/* Wave 2: the flame grows with the streak's tier and breathes; a secured
+              week or a milestone still flares it. */}
+          <FlameMark key={ignite ? 'lit' : 'still'} weeks={card.current} style={ignite ? { animation: 'noc-pop .5s' } : undefined} />
           <span className="min-w-0 flex-1 block">
             <span className="flex items-center flex-wrap" style={{ gap: 7 }}>
-              {/* A secured week or a milestone flares the flame here, as it did the orb. */}
-              <span key={ignite ? 'lit' : 'still'} className={`streak-count tabular-nums${ignite ? ' noc-pop' : ''}`}
-                style={{ fontSize: 13, ...(ignite ? { filter: 'drop-shadow(0 0 8px var(--color-secondary))' } : {}) }}>
-                <Flame size={14} weight={card.current > 0 ? 'fill' : 'regular'} aria-hidden />
-                {card.current}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {card.current > 0 ? 'week streak' : 'No streak yet'}
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {card.current > 0 ? `${card.current}-week streak · ${TIER_LABEL[tier]}` : 'No streak yet'}
               </span>
               {card.atRisk && (
                 <span className="streak-chip streak-chip--risk">

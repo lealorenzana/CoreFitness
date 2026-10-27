@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { WarningCircle } from '@phosphor-icons/react';
+import { FlagCheckered, WarningCircle } from '@phosphor-icons/react';
+import { Medal } from '../components/ui/lively';
 import { Page, PageTitle } from '../components/ui/page';
 import { Eyebrow, Panel, ProgressBar, SeeAll, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import FeatureLock from '../components/ui/FeatureLock';
 import { useGymApp } from '../hooks/useGymApp';
-import { moduleOn } from '../lib/gymApp';
+import { moduleOn, pointsWord } from '../lib/gymApp';
 import { getCurrentMemberId } from '../services/bookingService';
 import { listChallenges, joinChallenge, leaveChallenge, type Challenge } from '../lib/api/challenges';
 import { errorMessage } from '../utils/errorMessage';
@@ -155,7 +156,18 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
             renderGroups.map(({ key, label, rows, collapsed }) => rows.length === 0 ? null : (
               <section key={key} className="flex flex-col" style={{ gap: 12 }}>
                 {collapsed ? (
-                  <SeeAll label="Completed challenges" count={rows.length} onClick={() => navigate('/member/challenges/completed')} />
+                  <>
+                    {/* Wave 2: what you finished, as a row of medals. */}
+                    <div className="lv-shelf" data-finished-medals>
+                      {rows.slice(0, 6).map((c) => (
+                        <figure key={c.id}>
+                          <Medal tier="var(--color-primary-300)" icon={FlagCheckered} size={60} />
+                          <figcaption>{c.title}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                    <SeeAll label="Completed challenges" count={rows.length} onClick={() => navigate('/member/challenges/completed')} />
+                  </>
                 ) : (
                   <Eyebrow mark={key === 'active'}>{label}</Eyebrow>
                 )}
@@ -175,6 +187,9 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
                     the card is the control, the "Join" word is a <span>.
                   */
                   const cardJoins = !c.joined && !done;
+                  // Close: two or fewer to go, or 80% there — said in amber, the action colour.
+                  const toGo = c.progress == null ? null : Math.max(0, c.target - c.progress);
+                  const close = c.joined && !done && toGo != null && toGo > 0 && (toGo <= 2 || (c.progress as number) / c.target >= 0.8);
 
                   const body = (
                     <>
@@ -189,7 +204,8 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
                             <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>{c.description}</p>
                           )}
                         </div>
-                        {done && <StatusPill label="Done" tone="structure" />}
+                        {done ? <StatusPill label="Done" tone="structure" />
+                          : <span className={`pill-left${close ? ' pill-left--close' : ''}`} data-days-left>{left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}</span>}
                       </div>
 
                       {c.joined && (
@@ -203,8 +219,13 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
                           {/* No bar for an unknown count — "you have done nothing"
                               is a claim, and a wrong one would discourage for no
                               reason. The sentence says it is unknown, not zero. */}
-                          <ProgressBar style={{ marginTop: 9 }}
+                          <ProgressBar style={{ marginTop: 9, height: 10, borderRadius: 5 }} tone={close ? 'action' : 'structure'}
                             fraction={c.progress == null || c.target <= 0 ? null : c.progress / c.target} />
+                          {close && (
+                            <p style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-secondary-300)' }} data-close>
+                              {toGo} more and it is yours
+                            </p>
+                          )}
                           {c.progress == null && (
                             <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-secondary)' }}>
                               Your progress could not be counted just now — this is unknown, not zero.
@@ -215,10 +236,10 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
 
                       <div className="flex items-center justify-between" style={{ gap: 12, marginTop: 14 }}>
                         <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                          {left === 0 ? 'Ends today' : `${left} day${left === 1 ? '' : 's'} left`}
+                          {done ? (left === 0 ? 'Ended today' : `${left} day${left === 1 ? '' : 's'} left`) : ''}
                           {/* With points off (0186) a challenge is still a challenge — just not a points one. */}
                           {c.rewardPoints > 0 && moduleOn(gymApp, 'points') && (
-                            <span style={{ color: 'var(--color-primary-300)' }}> · {c.rewardPoints} points</span>
+                            <span style={{ color: 'var(--color-primary-300)' }}>{done ? ` · ${c.rewardPoints} ${pointsWord(gymApp, true)}` : `${c.rewardPoints} ${pointsWord(gymApp, true)} when you finish`}</span>
                           )}
                         </p>
                         {cardJoins ? (

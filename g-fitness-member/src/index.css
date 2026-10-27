@@ -1368,3 +1368,78 @@ img { -webkit-user-drag: none; user-select: none; }
 .mo-trophy-drop.on { transform: none; opacity: 1; }
 
 .mo-still, .mo-still * { transition: none !important; animation: none !important; }
+
+/* ── Wave 2: the everyday screens, livelier (2026-10-27; components/ui/lively.tsx) ──
+   Approved mock-up: docs/superpowers/specs/2026-10-27-lively-wave2. One entrance
+   per screen (`lv-in`, staggered by --i); reduced motion shows it finished. */
+.lv-in { animation: lv-rise .5s cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: calc(var(--i, 0) * 120ms); }
+@keyframes lv-rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* the streak flame, grown by tier */
+.lv-flame { position: relative; display: inline-grid; place-items: center; flex: none; color: var(--color-secondary); }
+.lv-flame svg { position: relative; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-secondary) 65%, transparent)); animation: lv-breathe 2.4s ease-in-out infinite; }
+.lv-flame .lv-halo { position: absolute; inset: 2px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--color-secondary) 32%, transparent), transparent 70%); animation: lv-halo 2.4s ease-in-out infinite; }
+.lv-flame--out { color: var(--color-text-muted); }
+.lv-flame--out svg { filter: none; animation: none; }
+.lv-flame--blaze .lv-halo, .lv-flame--inferno .lv-halo { inset: -4px; }
+@keyframes lv-breathe { 50% { transform: scale(1.08) translateY(-1px); } }
+@keyframes lv-halo { 50% { opacity: .5; transform: scale(1.15); } }
+
+/* medals */
+.lv-medal { position: relative; overflow: hidden; flex: none; display: inline-grid; place-items: center; border-radius: 50%; color: #2a1a02;
+  background: radial-gradient(circle at 32% 28%, #fff6d8, var(--tier) 40%, color-mix(in srgb, var(--tier) 55%, #000) 100%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tier) 70%, #000), 0 0 22px color-mix(in srgb, var(--tier) 40%, transparent); }
+.lv-medal .lv-shine { position: absolute; inset: -40%; background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, .75) 50%, transparent 60%); transform: translateX(-120%); }
+.lv-medal--new .lv-shine { animation: lv-shine 1.4s ease .8s 2; }
+@keyframes lv-shine { to { transform: translateX(120%); } }
+.lv-medal--locked { background: var(--color-surface-high); box-shadow: inset 0 0 0 2px rgba(233, 233, 237, .08); color: var(--color-text-muted); }
+.lv-shelf { display: flex; gap: 14px; overflow-x: auto; padding: 12px 6px 10px; margin: 0 -6px; scrollbar-width: none; }
+.lv-shelf::-webkit-scrollbar { display: none; }
+.lv-shelf figure { display: grid; justify-items: center; gap: 6px; width: 76px; flex: none; text-align: center; margin: 0; }
+.lv-shelf figcaption { font-size: 12px; color: var(--color-text-secondary); line-height: 1.25; }
+
+/* the points chip */
+.lv-points { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; flex: none;
+  background: var(--color-secondary-light); border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, transparent); color: var(--color-secondary-300); }
+
+/* a bar that fills once on arrival */
+.lv-fill { animation: lv-fill 1s cubic-bezier(.3, 0, .2, 1) both; animation-delay: calc(var(--i, 0) * 120ms + 200ms); transform-origin: left; }
+@keyframes lv-fill { from { transform: scaleX(0); } }
+
+/* the earned-level emblem sways (LevelProgressCard's language) */
+.lv-sway { animation: lv-sway 2.6s ease-in-out infinite; transform-origin: 50% 10%; }
+@keyframes lv-sway { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+
+/* a challenge's days left, as a chip; amber when it is close */
+.pill-left { flex: none; display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--color-hairline); color: var(--color-text-secondary); }
+.pill-left--close { border-color: color-mix(in srgb, var(--color-secondary) 50%, transparent); color: var(--color-secondary-300); background: var(--color-secondary-light); }
+
+/* the season ladder and podium (components/season/SeasonParts.tsx) */
+.season-ladder { position: relative; padding-left: 48px; margin-top: 4px; }
+.season-ladder::before { content: ""; position: absolute; left: 19px; top: 18px; bottom: 18px; width: 3px; border-radius: 2px; background: var(--color-surface-high); }
+.season-ladder__fill { position: absolute; left: 19px; bottom: 0; width: 3px; border-radius: 2px; background: linear-gradient(0deg, var(--color-primary), var(--color-primary-300)); transition: height 1.2s cubic-bezier(.3, 0, .2, 1); }
+.season-ladder__rung { position: relative; }
+.season-ladder__rung::before { content: ""; position: absolute; left: -35px; top: 50%; margin-top: -7px; width: 13px; height: 13px; border-radius: 50%; background: var(--color-surface-high); border: 2px solid var(--color-bg); z-index: 1; }
+.season-ladder__rung.is-reached::before { background: var(--color-primary-300); }
+.season-ladder__you { position: absolute; left: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800;
+  background: var(--color-secondary); color: #1a1205; box-shadow: 0 0 0 3px var(--color-bg), 0 0 16px color-mix(in srgb, var(--color-secondary) 60%, transparent); transition: bottom 1.2s cubic-bezier(.3, 0, .2, 1); }
+.season-podium { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); align-items: end; gap: 8px; margin: 12px 0 6px; text-align: center; }
+.season-podium__av { width: 46px; height: 46px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center; font-weight: 800; font-size: 14px;
+  background: var(--color-surface-high); color: var(--color-text-primary); border: 2px solid var(--metal); }
+.season-podium__blk { display: flex; flex-direction: column; justify-content: center; margin-top: 8px; border-radius: 14px 14px 4px 4px; padding: 8px 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--metal) 30%, var(--color-surface)), var(--color-surface)); border: 1px solid color-mix(in srgb, var(--metal) 45%, transparent); }
+.season-podium__blk b { font-size: 13.5px; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-podium__blk small { font-size: 12px; color: var(--color-text-secondary); }
+.season-me { border: 1px solid var(--color-secondary); background: var(--color-secondary-light); border-radius: 14px; padding: 0 12px; margin-top: 6px; }
+
+/* a turning coin */
+.lv-coin { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #3a2600; flex: none;
+  background: radial-gradient(circle at 32% 28%, #fff3c4, var(--color-secondary) 45%, #a8650a); box-shadow: 0 0 0 2px #b57210, 0 0 22px color-mix(in srgb, var(--color-secondary) 45%, transparent);
+  animation: lv-turn 3.6s ease-in-out infinite; }
+@keyframes lv-turn { 0%, 70%, 100% { transform: rotateY(0); } 85% { transform: rotateY(180deg); } }
+.lv-can { box-shadow: 0 0 0 1px var(--color-secondary), 0 0 18px color-mix(in srgb, var(--color-secondary) 45%, transparent) !important; background: var(--color-secondary-light) !important; color: var(--color-secondary) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-in, .lv-fill, .lv-flame svg, .lv-flame .lv-halo, .lv-medal--new .lv-shine, .lv-coin, .lv-sway { animation: none; }
+}

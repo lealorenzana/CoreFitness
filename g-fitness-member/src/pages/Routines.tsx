@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { agoLabel as ago } from '../utils/dates';
+import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, CaretRight, Lightning, PencilSimple, Play, Plus } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -28,6 +30,8 @@ export default function Routines() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [open, setOpen] = useState<Awaited<ReturnType<typeof getOpenRoutineSession>>>(null);
   const [loading, setLoading] = useState(true);
+  /** When each routine was last finished (wave 2): routine id → ISO time. */
+  const [lastDone, setLastDone] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
   /** Discarding the open workout takes a second tap — its sets go with it. */
@@ -39,7 +43,14 @@ export default function Routines() {
       try {
         const id = await getCurrentMemberId();
         if (!id) throw new Error('Could not identify your account.');
-        const [list, session] = await Promise.all([listRoutines(id), getOpenRoutineSession(id)]);
+        const [list, session, logs] = await Promise.all([listRoutines(id), getOpenRoutineSession(id),
+          supabase.from('workout_logs').select('routine_id, completed_at').eq('member_id', id)
+            .not('routine_id', 'is', null).not('completed_at', 'is', null).order('completed_at', { ascending: false }).limit(200)]);
+        const last = new Map<string, string>();
+        for (const l of ((logs.error ? [] : logs.data) ?? []) as { routine_id: string; completed_at: string }[]) {
+          if (!last.has(l.routine_id)) last.set(l.routine_id, l.completed_at);
+        }
+        if (alive) setLastDone(last);
         if (!alive) return;
         setMemberId(id);
         setRoutines(list);
@@ -146,7 +157,8 @@ export default function Routines() {
                           <span className="min-w-0">
                             <span className="block truncate" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
                             <span className="block truncate" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
-                              {r.exercises.length === 0 ? 'No exercises yet — tap to add' : routineSummary(r)}
+                              {r.exercises.length === 0 ? 'No exercises yet — tap to add'
+                                : `${routineSummary(r)}${lastDone.has(r.id) ? ` · last done ${ago(lastDone.get(r.id) as string)}` : ''}`}
                             </span>
                             {/* Where it came from (2026-10-10): yours, the AI coach's (0145) or a coach's (0172). */}
                             <span className="block" style={{ marginTop: 5 }} data-routine-source={r.source}>

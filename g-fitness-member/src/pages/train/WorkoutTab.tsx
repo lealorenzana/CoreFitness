@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import { agoLabel as ago } from '../../utils/dates';
+import { ProgressRing } from '../../components/ui/lively';
+import { myStreak } from '../../lib/api/streak';
+import { supabase } from '../../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import {
   Barbell, Books, CalendarCheck, ChartLineUp, ListChecks, Lock, Play, Trophy, Wrench, CalendarDots,
@@ -21,6 +25,10 @@ import { useT } from '../../lib/i18n';
 
 interface Today {
   routine: Routine | null;
+  /** This week against the member's own target (my_streak), for the ring; null when there is no streak here. */
+  week: { days: number; target: number } | null;
+  /** The last finished workout: what, when, and how many sets (wave 2). */
+  last: { name: string; at: string; sets: number } | null;
   /** A workout already under way — "Continue", not a second start. */
   openLogId: string | null;
 }
@@ -48,11 +56,23 @@ export default function WorkoutTab() {
       try {
         const id = await getCurrentMemberId();
         if (!id) return;
-        const [extras, open] = await Promise.all([getTodayExtras(id), getOpenRoutineSession(id).catch(() => null)]);
+        const [extras, open, streak, lastLog] = await Promise.all([
+          getTodayExtras(id), getOpenRoutineSession(id).catch(() => null), myStreak().catch(() => null),
+          supabase.from('workout_logs').select('activity, completed_at, workout_sets(count)').eq('member_id', id)
+            .not('completed_at', 'is', null).order('completed_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
         const routine = extras.todayRoutine ? await getRoutine(extras.todayRoutine.id) : null;
-        if (alive) { setMemberId(id); setToday({ routine, openLogId: open?.logId ?? null }); }
+        const l = (lastLog.error ? null : lastLog.data) as { activity: string | null; completed_at: string; workout_sets: { count: number }[] } | null;
+        if (alive) {
+          setMemberId(id);
+          setToday({
+            routine, openLogId: open?.logId ?? null,
+            week: streak ? { days: streak.daysThisWeek, target: streak.target } : null,
+            last: l ? { name: l.activity ?? 'A workout', at: l.completed_at, sets: l.workout_sets?.[0]?.count ?? 0 } : null,
+          });
+        }
       } catch {
-        if (alive) setToday({ routine: null, openLogId: null });
+        if (alive) setToday({ routine: null, openLogId: null, week: null, last: null });
       }
     })();
     return () => { alive = false; };
@@ -88,18 +108,30 @@ export default function WorkoutTab() {
       {today == null ? <SkeletonList count={2} /> : (
         <Panel glow="structure" style={{ padding: 16 }}>
           <div data-train-hero>
-            <div className="flex items-center justify-between" style={{ gap: 10 }}>
-              <Eyebrow>{t('Today')}</Eyebrow>
-              {r?.source === 'trainer' && r.authorName && <StatusPill label={`${t('From')} ${r.authorName}`} tone="structure" />}
+            {/* Wave 2: this week as one ring, and the last workout in a line. */}
+            <div className="flex items-center" style={{ gap: 14 }}>
+              {today.week && today.week.target > 0 && (
+                <span data-train-ring>
+                  <ProgressRing fraction={today.week.days / today.week.target} label={`${today.week.days}/${today.week.target}`}
+                    size={74} />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between" style={{ gap: 10 }}>
+                  <Eyebrow>{today.week ? t('This week') : t('Today')}</Eyebrow>
+                  {r?.source === 'trainer' && r.authorName && <StatusPill label={`${t('From')} ${r.authorName}`} tone="structure" />}
+                </div>
+                <p style={{ fontSize: 20, fontWeight: 800, marginTop: 4, color: 'var(--color-text-primary)' }}>
+                  {r ? `${r.name} ${t('is next')}` : t('Nothing planned today')}
+                </p>
+                <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-secondary)' }}>
+                  {today.openLogId ? t('A workout is under way')
+                    : today.last ? `${t('Last time')}: ${today.last.name}, ${ago(today.last.at)}${today.last.sets > 0 ? ` · ${today.last.sets} ${today.last.sets === 1 ? t('set') : t('sets')}` : ''}`
+                    : r ? `${r.exercises.length} ${r.exercises.length === 1 ? t('exercise') : t('exercises')}`
+                    : t('Start one of your routines, or an empty workout.')}
+                </p>
+              </div>
             </div>
-            <p style={{ fontSize: 22, fontWeight: 800, marginTop: 6, color: 'var(--color-text-primary)' }}>
-              {r ? r.name : t('Nothing planned today')}
-            </p>
-            <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-secondary)' }}>
-              {today.openLogId ? t('A workout is under way')
-                : r ? `${r.exercises.length} ${r.exercises.length === 1 ? t('exercise') : t('exercises')}`
-                : t('Start one of your routines, or an empty workout.')}
-            </p>
             <div style={{ marginTop: 12 }}>
               <NocButton variant="fill" className="w-full" onClick={() => void start()}
                 icon={locked ? <Lock size={15} aria-label="Not on your plan" /> : <Play size={15} weight="fill" />}>

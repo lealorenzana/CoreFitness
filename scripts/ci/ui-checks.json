@@ -162,6 +162,10 @@
       "app": "member"
     },
     {
+      "file": "member-lively-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-coach-place-check.js",
       "app": "member"
     },

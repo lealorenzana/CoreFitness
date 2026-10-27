@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Podium, TierLadder } from '../components/season/SeasonParts';
+import { CountNumber } from '../components/ui/lively';
 import { useNavigate } from 'react-router-dom';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
@@ -107,7 +109,7 @@ export default function Season() {
 
       <Panel>
         <p className="tabular-nums" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, color: 'var(--color-text-primary)' }}>
-          {season.score.toLocaleString()}
+          <CountNumber value={season.score} />
           <span style={{ fontSize: 14, fontWeight: 600, marginLeft: 6, color: 'var(--color-text-muted)' }}>points this month</span>
         </p>
         {season.rank != null && (
@@ -131,11 +133,11 @@ export default function Season() {
       {tiers.length > 0 && (
         <section>
           <SectionHead title="Tiers" />
-          {tiers.map((t, i) => {
-            const reached = season.score >= t.pointsNeeded;
+          {/* Wave 2: a ladder, highest at the top, with "You" climbed to this month's score. */}
+          <TierLadder tiers={tiers} score={season.score} row={(t, reached) => {
             const claimed = claims.has(t.id);
             return (
-              <LineRow key={t.id} title={t.name} last={i === tiers.length - 1}
+              <LineRow title={t.name} last
                 meta={`${t.pointsNeeded.toLocaleString()} points${t.rewardName ? ` · ${t.rewardName}` : ''}`}
                 dim={!reached}
                 action={claimed
@@ -144,7 +146,7 @@ export default function Season() {
                     ? <NocButton variant="action" className="flex-none" disabled={busy} onClick={() => void claim(t)}>Claim</NocButton>
                     : reached ? <StatusPill label="Reached" tone="structure" /> : undefined} />
             );
-          })}
+          }} />
         </section>
       )}
 
@@ -172,10 +174,18 @@ export default function Season() {
         <SectionHead title="The board" meta="Opted-in members" />
         {board.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nobody has joined the board yet this month.</p>
-        ) : board.map((b, i) => (
-          <LineRow key={i} gutter={`#${i + 1}`} gutterWidth={36} title={`${b.firstName} ${b.lastInitial}.${b.isMe ? ' (you)' : ''}`}
-            meta={`${b.score.toLocaleString()} points`} last={i === board.length - 1} />
-        ))}
+        ) : (
+          <>
+            {/* Wave 2: the top three on a podium; everyone after as rows, your own lit. */}
+            <Podium board={board} />
+            {board.map((b, i) => (board.length >= 3 && i < 3) ? null : (
+              <div key={i} className={b.isMe ? 'season-me' : undefined} data-board-me={b.isMe || undefined}>
+                <LineRow gutter={`#${i + 1}`} gutterWidth={36} title={`${b.firstName} ${b.lastInitial}.${b.isMe ? ' (you)' : ''}`}
+                  meta={`${b.score.toLocaleString()} points`} last={i === board.length - 1 || b.isMe} />
+              </div>
+            ))}
+          </>
+        )}
         {onBoards !== null && (
           <label className="flex items-center" style={{ gap: 10, marginTop: 12, fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
             <input type="checkbox" checked={onBoards} disabled={busy} onChange={() => void toggleBoards()} aria-label="Show me on the boards" />

@@ -280,12 +280,15 @@ async (page) => {
   await shot('05-edit-saved');
 
   // 3 — Settings: coaches named, test alert, data export (no real download needed)
-  await go('/member/settings');
+  // Settings opens each section on its own since the redesign (2026-10-26): the coaches, then your data.
+  await go('/member/settings?section=coaches');
   await page.waitForTimeout(1500);
   await shot('06-settings');
   text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
   out.push('coaches: ' + (/Coaches these switches apply to[^|]{0,40}/.exec(text) || /No coach has trained you yet/.exec(text) || ['MISSING'])[0]);
   out.push('share label: ' + (text.includes('Workouts and routines') ? 'updated' : 'OLD'));
+  await go('/member/settings?section=data');
+  await page.waitForTimeout(1200);
   const dl = page.waitForEvent('download', { timeout: 8000 }).catch(() => null);
   await page.getByRole('button', { name: 'Download my data' }).click();
   const file = await dl;

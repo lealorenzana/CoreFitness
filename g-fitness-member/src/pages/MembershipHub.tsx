@@ -1,4 +1,6 @@
 import Avatar from '../components/ui/Avatar';
+import TrophyRoom from '../components/you/TrophyRoom';
+import { CountNumber } from '../components/ui/lively';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { pointsWord } from '../lib/gymApp';
@@ -182,6 +184,9 @@ export default function MembershipHub() {
         <CaretRight size={15} style={{ color: 'var(--color-text-muted)' }} aria-hidden />
       </button>
 
+      {/* ── The trophy room (wave 2): earned level, badges, records ── */}
+      <TrophyRoom />
+
       {/* ── Membership ── */}
       <Panel glow={status.tone === 'action' ? 'action' : 'structure'}>
         <div className="flex items-center justify-between" style={{ gap: 10 }}>
@@ -268,10 +273,10 @@ export default function MembershipHub() {
         <section>
           <SectionHead title="This term so far" meta={`${t.elapsedDays} ${t.elapsedDays === 1 ? 'day' : 'days'} in`} />
           <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
-            <InlineStat value={t.visitDays} label={t.visitDays === 1 ? 'visit day' : 'visit days'} />
-            <InlineStat value={t.classes} label={t.classes === 1 ? 'class' : 'classes'} />
-            <InlineStat value={t.sessions} label="1-on-1" />
-            <InlineStat value={t.workouts} label={t.workouts === 1 ? 'workout' : 'workouts'} />
+            <InlineStat value={<CountNumber value={t.visitDays} />} label={t.visitDays === 1 ? 'visit day' : 'visit days'} />
+            <InlineStat value={<CountNumber value={t.classes} />} label={t.classes === 1 ? 'class' : 'classes'} />
+            <InlineStat value={<CountNumber value={t.sessions} />} label="1-on-1" />
+            <InlineStat value={<CountNumber value={t.workouts} />} label={t.workouts === 1 ? 'workout' : 'workouts'} />
           </div>
           {rate != null && (
             <>

@@ -9,6 +9,7 @@ import { clearAssistantPlacement } from './assistantPlacement';
 import { clearCheckedInToday } from '../hooks/useCheckedInToday';
 import { clearOfflineReads } from './offlineReads';
 import { clearMomentCache } from './moments';
+import { clearLivelyCache } from './livelyCache';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -69,4 +70,6 @@ export function clearMemberCaches(): void {
   clearOfflineReads();
   // The big moments' switches, markers and queue (moments.ts) — this account, this gym.
   clearMomentCache();
+  // The points chip's last-shown balance (wave 2).
+  clearLivelyCache();
 }

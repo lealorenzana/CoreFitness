@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Medal } from '../components/ui/lively';
 import { useUrlState } from '../hooks/useUrlState';
 import { useLocation } from 'react-router-dom';
 import { HandHeart, Lock, SealCheck, Sparkle, Users } from '@phosphor-icons/react';
@@ -210,11 +211,11 @@ export default function Achievements() {
           {recent.length > 0 && (
             <section>
               <SectionHead title="Recently earned" meta={`Latest ${unlockedOn(recent[0].key)}`} />
-              <div className="flex overflow-x-auto scrollbar-hide noc-rows" style={{ gap: 14, marginTop: 12, paddingBottom: 4 }}>
+              <div className="flex overflow-x-auto scrollbar-hide noc-rows" style={{ gap: 14, marginTop: 4, padding: '10px 6px', marginLeft: -6, marginRight: -6 }}>
                 {recent.map((def) => (
                   <button key={def.key} onClick={() => setDetail(def)} className="flex-none flex flex-col items-center noc-press"
                     style={{ width: 76, gap: 8 }} aria-label={`${def.title}, earned ${unlockedOn(def.key)}`}>
-                    <Medallion def={def} have size={60} />
+                    <Medallion def={def} have size={60} shine />
                     <span className="w-full truncate text-center" style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{def.title}</span>
                   </button>
                 ))}
@@ -332,9 +333,12 @@ export default function Achievements() {
 }
 
 /** A badge: the icon in a disc ringed in its tier's colour — lit when earned, a quiet outline when not. */
-function Medallion({ def, have, size }: { def: AchievementDef; have: boolean; size: number }) {
+function Medallion({ def, have, size, shine = false }: { def: AchievementDef; have: boolean; size: number; shine?: boolean }) {
   const ring = tierStyle(def.tier).ring;
   const Icon = def.icon;
+  // Wave 2: an earned badge is a medal in its real metal (the top tier in the
+  // gym's colour); one earned lately catches the light as the page opens.
+  if (have) return <Medal tier={ring} icon={Icon} size={size} shine={shine} />;
   return (
     <span className="relative grid place-items-center rounded-full flex-none" style={{
       width: size, height: size,

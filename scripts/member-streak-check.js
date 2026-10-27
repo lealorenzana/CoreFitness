@@ -264,7 +264,8 @@ async (page) => {
   const hero = page.getByRole('button', { name: /Your gym streak: 4 weeks/ });
   await hero.waitFor({ timeout: 10000 });
   let t = await text();
-  out.push('the number with its flame: ' + (/4\s*week streak/.test(t) ? '4 week streak' : 'MISSING'));
+  // Wave 2 (2026-10-27): the line names the tier beside the count, and the flame grows with it.
+  out.push('the number with its flame: ' + (/4-week streak · Flame/.test(t) && (await page.locator('.lv-flame--flame').count()) === 1 ? '4-week streak · Flame' : 'MISSING'));
   out.push('the hourglass when it needs every day left: ' + (/Ends tonight/.test(t) ? 'Ends tonight' : 'MISSING'));
   out.push('at risk says what to do: ' + (/Train today to keep your streak\./.test(t) ? 'train today' : 'MISSING'));
   out.push('this week against the target: ' + (/2 of 3 this week/.test(t) ? '2 of 3' : 'MISSING'));
