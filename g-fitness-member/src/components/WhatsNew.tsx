@@ -34,10 +34,10 @@ export default function WhatsNew({ app }: { app: 'member' | 'trainer' }) {
   return createPortal(
     <div role="status" data-whats-new
       style={{ position: 'absolute', left: 12, right: 12, top: 'calc(env(safe-area-inset-top, 0px) + 12px)', pointerEvents: 'auto', zIndex: 5,
-        borderRadius: 20, padding: 16, background: 'radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.42), transparent 62%), #14131F',
-        border: '1px solid rgba(167,139,250,0.4)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.8)', animation: 'noc-rise 0.3s ease both' }}>
+        borderRadius: 20, padding: 16, background: 'radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--color-primary) 42%, transparent), transparent 62%), var(--color-surface-raised)',
+        border: '1px solid color-mix(in srgb, var(--color-primary-400) 40%, transparent)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.8)', animation: 'noc-rise 0.3s ease both' }}>
       <div className="flex items-start" style={{ gap: 12 }}>
-        <span className="grid place-items-center flex-none" style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(124,58,237,0.3)', color: 'var(--color-primary-300)' }}><Sparkles size={18} /></span>
+        <span className="grid place-items-center flex-none" style={{ width: 36, height: 36, borderRadius: 12, background: 'color-mix(in srgb, var(--color-primary) 30%, transparent)', color: 'var(--color-primary-300)' }}><Sparkles size={18} /></span>
         <div className="min-w-0" style={{ flex: 1 }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{t(r.title)}</p>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('From Core Fitness')}</p>

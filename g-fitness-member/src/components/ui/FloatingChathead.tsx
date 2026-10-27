@@ -170,7 +170,7 @@ export default function FloatingChathead() {
             <span aria-hidden className="ai-orb__ring absolute inset-0 rounded-full" />
             <span aria-hidden className="ai-orb__core absolute rounded-full" style={{ inset: 2 }} />
             <Sparkle aria-hidden size={22} weight="fill" className="relative" style={{
-              color: '#e9e3ff',
+              color: 'var(--color-primary-200)',
               filter: 'drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary-300) 85%, transparent))',
             }} />
             {!chatOpen && !isDragging && <span aria-hidden className="ai-orb__halo absolute rounded-full" />}

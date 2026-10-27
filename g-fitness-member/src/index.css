@@ -748,7 +748,7 @@ html, body {
 .orb-cell--ring {
   border: 1.5px solid transparent;
   background:
-    radial-gradient(130% 120% at 30% 10%, #2a1c52 0%, #0e0c18 70%) padding-box,
+    radial-gradient(130% 120% at 30% 10%, color-mix(in srgb, var(--color-primary) 30%, #0e0c18) 0%, #0e0c18 70%) padding-box,
     conic-gradient(from var(--orb-a), var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary)) border-box;
   box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--color-primary) 90%, transparent);
 }

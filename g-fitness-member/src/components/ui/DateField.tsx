@@ -113,7 +113,7 @@ export default function DateField({
           <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
             <button type="button" onClick={() => setYears((s) => !s)} data-date-header
               style={{ fontSize: 16, fontWeight: 700, padding: '6px 10px', borderRadius: 10,
-                color: 'var(--color-text-primary)', background: years ? 'rgba(124,58,237,0.18)' : 'transparent' }}>
+                color: 'var(--color-text-primary)', background: years ? 'color-mix(in srgb, var(--color-primary) 18%, transparent)' : 'transparent' }}>
               {MONTHS[view.m]} {view.y}
             </button>
             <div className="flex" style={{ gap: 8 }}>

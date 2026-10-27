@@ -186,7 +186,7 @@ export default function FinishInvite({ token }: { token: string }) {
                 {GENDER_OPTIONS.map((g) => (
                   <button key={g.value} type="button" aria-pressed={f.gender === g.value} onClick={() => set('gender', g.value)}
                     className="h-11 rounded-xl text-[13px] font-semibold"
-                    style={f.gender === g.value ? { background: 'rgba(124,58,237,0.22)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
+                    style={f.gender === g.value ? { background: 'color-mix(in srgb, var(--color-primary) 22%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary-400) 70%, transparent)', color: 'var(--color-primary-200)' }
                       : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>{g.label}</button>
                 ))}
               </div>
@@ -218,7 +218,7 @@ export default function FinishInvite({ token }: { token: string }) {
               {YEARS.map((y) => (
                 <button key={y.v} type="button" aria-pressed={f.years === y.v} onClick={() => set('years', f.years === y.v ? '' : y.v)}
                   className="h-10 min-w-[48px] px-3 rounded-xl text-[13px] font-semibold"
-                  style={f.years === y.v ? { background: 'rgba(124,58,237,0.22)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
+                  style={f.years === y.v ? { background: 'color-mix(in srgb, var(--color-primary) 22%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary-400) 70%, transparent)', color: 'var(--color-primary-200)' }
                     : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>{y.l}</button>
               ))}
               <TextInput type="number" min={0} max={70} value={f.years} onChange={(e) => set('years', e.target.value)} aria-label="Years coaching, exact" placeholder="Other" style={{ width: 84 }} />

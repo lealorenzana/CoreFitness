@@ -37,7 +37,7 @@ function MiniOrb({ size }: { size: number }) {
       <span className="ai-orb__ring absolute inset-0 rounded-full" />
       <span className="ai-orb__core absolute rounded-full" style={{ inset: Math.max(1.5, size / 27) }} />
       <Sparkle size={Math.round(size * 0.42)} weight="fill" className="relative"
-        style={{ color: '#e9e3ff', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary-300) 85%, transparent))' }} />
+        style={{ color: 'var(--color-primary-200)', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary-300) 85%, transparent))' }} />
     </span>
   );
 }

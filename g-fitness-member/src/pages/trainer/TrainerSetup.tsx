@@ -87,7 +87,7 @@ export default function TrainerSetup() {
         {steps.map((x) => (
           <Panel key={x.title} className="flex" style={{ gap: 12, alignItems: 'flex-start' }}>
             <span className="grid place-items-center flex-none" style={{ width: 36, height: 36, borderRadius: 12,
-              background: x.done ? 'rgba(124,58,237,0.25)' : 'var(--color-surface-high)', color: x.done ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
+              background: x.done ? 'color-mix(in srgb, var(--color-primary) 25%, transparent)' : 'var(--color-surface-high)', color: x.done ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
               {x.done ? <Check size={17} /> : <x.icon size={17} />}
             </span>
             <div className="min-w-0" style={{ flex: 1 }}>
