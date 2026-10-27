@@ -160,6 +160,10 @@ check('running Monday to Sunday', (await one(`select extract(isodow from starts_
   from challenges where id = '${child}'`)).d === 1);
 const enrolled = (await db.query(`select member_id from challenge_participants where challenge_id = '${child}'`)).rows.map((x) => x.member_id).sort();
 check('every active member is in it, and nobody else', JSON.stringify(enrolled) === JSON.stringify([P.m1, P.m2].sort()), JSON.stringify(enrolled));
+// m1's log stands for a real, finished workout (0219: only counting workouts are training days).
+await asOwner();
+await db.exec(`select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where member_id = '${P.m1}';
+  select set_config('app.workout_counting', '', false);`);
 await db.exec(`select settle_challenges(); select settle_challenges();`);
 check('m1 trained today, so the quest pays once',
   (await count(`select 1 from point_ledger where member_id = '${P.m1}' and rule_key = 'challenge_complete' and source_id = '${child}'`)) === 1);

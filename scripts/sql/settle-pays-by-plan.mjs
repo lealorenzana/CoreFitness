@@ -51,6 +51,7 @@ await db.exec(`
   insert into squad_members (gym_id, squad_id, member_id) values ('${GYM}', '${id('e1')}', '${MP}'), ('${GYM}', '${id('e1')}', '${MF}');
   insert into workout_logs (member_id, gym_id, activity, performed_on) values
     ('${MP}', '${GYM}', 'Gym', manila_today()), ('${MF}', '${GYM}', 'Gym', manila_today());
+  select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where not counts; select set_config('app.workout_counting', '', false);
   insert into gym_goals (id, gym_id, created_by, title, metric, target, starts_on, ends_on, reward_points)
     values ('${id('e2')}', '${GYM}', '${AD}', 'Two days together', 'training_days', 2, manila_today() - 1, manila_today() + 5, 40);
   select act_as_gym(null);`);

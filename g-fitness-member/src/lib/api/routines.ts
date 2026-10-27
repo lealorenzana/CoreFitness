@@ -218,7 +218,13 @@ export async function deleteRoutine(id: string): Promise<void> {
 // can be logged against it before it reaches the server, and a resend after a
 // lost reply hits the primary key (23505) and counts as started.
 registerSender('workout-start', async (p) => {
-  const { error } = await supabase.from('workout_logs').insert(p);
+  let { error } = await supabase.from('workout_logs').insert(p);
+  // Before 0219 there is no started_at column: start without it rather than not at all.
+  if (error && error.code === 'PGRST204' && /started_at/.test(error.message)) {
+    const rest = { ...p };
+    delete rest.started_at;
+    ({ error } = await supabase.from('workout_logs').insert(rest));
+  }
   if (error) throw error;
 });
 registerSender('workout-discard', async (p) => {
@@ -230,7 +236,10 @@ registerSender('workout-discard', async (p) => {
 export async function startRoutineSession(memberId: string, routine: Routine): Promise<string> {
   const id = newId();
   startedHere.set(routine.id, routine);
-  await sendOrQueue('workout-start', `Workout: ${routine.name}`, { id, member_id: memberId, activity: routine.name, routine_id: routine.id });
+  // started_at is the phone's time: a start saved with no signal reaches the server later, and a
+  // workout earns points only when it lasted 10+ minutes (0219; the server holds it within 3 hours).
+  await sendOrQueue('workout-start', `Workout: ${routine.name}`,
+    { id, member_id: memberId, activity: routine.name, routine_id: routine.id, started_at: new Date().toISOString() });
   return id;
 }
 

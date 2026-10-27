@@ -66,8 +66,9 @@ await db.exec(`insert into memberships (member_id, gym_id, plan_id, status, star
 const dayOf = (weeksAgo, d) => `(manila_week_start(${-weeksAgo}) + ${d})`;
 const checkin = (m, weeksAgo, d) => `insert into attendance (gym_id, member_id, check_in_time)
   values ('${GYM_A}', '${m}', (${dayOf(weeksAgo, d)} + time '12:00') at time zone 'Asia/Manila');`;
+// A seeded workout stands for a real one (0219: only counting workouts are training days).
 const workout = (m, weeksAgo, d) => `insert into workout_logs (gym_id, member_id, activity, performed_on)
-  values ('${GYM_A}', '${m}', 'Run', ${dayOf(weeksAgo, d)});`;
+  values ('${GYM_A}', '${m}', 'Run', ${dayOf(weeksAgo, d)}); select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where not counts; select set_config('app.workout_counting', '', false);`;
 const streakOf = async (m) => (await one(`select * from streak_weeks('${m}', '${GYM_A}')`));
 
 // ---- 1. the count -------------------------------------------------------------------------

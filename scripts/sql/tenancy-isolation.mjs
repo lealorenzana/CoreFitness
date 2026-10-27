@@ -643,8 +643,9 @@ check('pg_cron (no caller) settles a finished challenge — it saw zero progress
 check("the challenge's points land in the challenge's gym", reward?.g === GYM_B && reward?.points === 50, JSON.stringify(reward));
 // Goals: a goal settles in its own gym.
 await db.exec(`select act_as_gym('${GYM_B}');
-  insert into fitness_goals (gym_id, member_id, title, template_key, target_value)
-  values ('${GYM_B}', '${P.both}', 'Visit once', (select key from goal_templates where gym_id = '${GYM_B}' and metric = 'training_days' limit 1), 1);
+  insert into fitness_goals (gym_id, member_id, title, template_key, target_value, created_at)
+  values ('${GYM_B}', '${P.both}', 'Visit once', (select key from goal_templates where gym_id = '${GYM_B}' and metric = 'training_days' limit 1), 1,
+          now() - interval '8 days');
   select act_as_gym(null);`);
 await db.exec(`select settle_goals()`);
 check('a goal settles against its own gym', (await one(`select achieved_on is not null as done from fitness_goals where title = 'Visit once'`)).done === true);

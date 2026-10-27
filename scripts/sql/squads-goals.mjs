@@ -92,7 +92,8 @@ check('my_squad lists all five members', mine.length === 5 && mine[0].squad_name
 // Three members train today.
 await asOwner();
 await db.exec(`insert into workout_logs (member_id, gym_id, activity, performed_on) values
-  ${[M[0], M[1], M[2]].map((m) => `('${m}', '${GYM_A}', 'Gym', (now() at time zone 'Asia/Manila')::date)`).join(', ')}`);
+  ${[M[0], M[1], M[2]].map((m) => `('${m}', '${GYM_A}', 'Gym', (now() at time zone 'Asia/Manila')::date)`).join(', ')};
+  select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where not counts; select set_config('app.workout_counting', '', false);`);
 
 await as(M[5]);
 const board = (await db.query(`select * from squad_board()`)).rows;
