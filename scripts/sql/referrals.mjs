@@ -134,6 +134,9 @@ check('the desk sees who brought whom', (await count(`select * from gym_referral
 await asOwner();
 await db.exec(`insert into workout_logs (member_id, gym_id, activity, performed_on)
   values ('${R}', '${GYM_A}', 'Gym', (now() at time zone 'Asia/Manila')::date);
+  -- It stands for a real workout (0219: only counting workouts are training days).
+  select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where member_id = '${R}';
+  select set_config('app.workout_counting', '', false);
   insert into gym_goals (gym_id, title, metric, target, starts_on, ends_on, reward_points, created_by)
   values ('${GYM_A}', 'Cron goal', 'training_days', 1, current_date - 1, current_date + 1, 20, '${STAFF}');
   select act_as_gym(null);
