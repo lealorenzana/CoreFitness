@@ -7,6 +7,7 @@ import { useRef } from 'react';
 import TrainerTabHeader from './TrainerTabHeader';
 import { trainerTabRootFor } from './trainerNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
+import MomentHost from '../moments/MomentHost';
 import { Toaster } from '../ui/Toast';
 import PhoneChassis from './PhoneChassis';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
@@ -84,6 +85,8 @@ export default function TrainerLayout() {
 
       {/* Same component as the member shell — it grades by the caller's role. */}
       <AchievementWatcher />
+      {/* A coach's badges play here too (the member's other moments are theirs). */}
+      <MomentHost />
     </PhoneChassis>
   );
 }

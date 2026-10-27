@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import AchievementUnlockOverlay from './AchievementUnlockOverlay';
+import { useEffect } from 'react';
 import { type AchievementDef } from '../../data/achievements';
+import { showMoment } from '../../lib/moments';
 import {
-  achievementByKey, listUnlocks, loadCatalogue, markSeen, syncAchievements,
+  achievementByKey, getAchievementRarity, listUnlocks, loadCatalogue, markSeen, syncAchievements,
 } from '../../lib/api/achievements';
 import { getCurrentMemberId } from '../../services/bookingService';
 
@@ -34,12 +34,12 @@ import { getCurrentMemberId } from '../../services/bookingService';
 const MAX_CELEBRATIONS = 3;
 
 export default function AchievementWatcher() {
-  const [queue, setQueue] = useState<AchievementDef[]>([]);
-
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    // Once at start, and again whenever a big moment asks (lib/momentWatch.ts —
+    // after a check-in or a workout, which is when badges are earned).
+    const run = async () => {
       try {
         const uid = await getCurrentMemberId();
         if (!uid || cancelled) return;
@@ -63,7 +63,13 @@ export default function AchievementWatcher() {
           // Skipped rather than shown as a blank card.
           .filter((d): d is AchievementDef => d != null);
 
-        setQueue(defs.slice(0, MAX_CELEBRATIONS));
+        // Shown through the one moment queue (lib/moments.ts, wave 1), so a badge
+        // never plays over a check-in or a level-up — they take turns.
+        const shown = defs.slice(0, MAX_CELEBRATIONS);
+        const rarity = await getAchievementRarity().catch(() => null);
+        shown.forEach((def, i) => showMoment({
+          kind: 'badge', def, rarity: rarity?.get(def.key) ?? null, remaining: shown.length - 1 - i,
+        }));
 
         // Marked seen **here**, the moment they are shown — not when the member
         // taps through them.
@@ -84,24 +90,13 @@ export default function AchievementWatcher() {
         // interrupt someone's workout with, and every real number on screen is
         // unaffected.
       }
-    })();
+    };
+    void run();
+    const again = () => { void run(); };
+    window.addEventListener('cf:check-badges', again);
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.removeEventListener('cf:check-badges', again); };
   }, []);
 
-  // Purely advances the queue. Marking seen happens on show (above), so a
-  // member who never taps through is not condemned to the same celebration on
-  // every launch. A state updater must be pure anyway — the network call that
-  // used to live in here was a side effect inside `setQueue`.
-  const dismiss = useCallback(() => {
-    setQueue((q) => q.slice(1));
-  }, []);
-
-  return (
-    <AchievementUnlockOverlay
-      def={queue[0] ?? null}
-      remaining={Math.max(0, queue.length - 1)}
-      onDismiss={dismiss}
-    />
-  );
+  return null;
 }

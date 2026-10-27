@@ -132,13 +132,6 @@ export function subscribeSaved(fn: () => void): () => void {
   return () => { listeners.delete(fn); };
 }
 
-/** Called once the app has read live data again after showing saved data. */
-export function markLive(): void {
-  if (oldestShown == null) return;
-  oldestShown = null;
-  listeners.forEach((f) => f());
-}
-
 function noteShown(at: number) {
   if (oldestShown != null && oldestShown <= at) return;
   oldestShown = at;

@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
@@ -19,6 +19,7 @@ import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
 import { Bell, BellRinging, Buildings, DownloadSimple, Eye, HandTap, Key, Phone, EnvelopeSimple, SignOut, Sparkle, Translate, UserGear, type Icon } from '@phosphor-icons/react';
 import { saveAssistantPlacement, useAssistantPlacement, type AssistantPlacement } from '../lib/assistantPlacement';
+import { loadMomentPrefs, momentPrefs, setMemberSounds, subscribeMoments } from '../lib/moments';
 import { exportMemberData, downloadExport } from '../lib/memberDataExport';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
@@ -199,6 +200,15 @@ export default function Settings() {
   // A step of its own, so Back returns to the list.
   const openSection = (id: Section) => setParams({ section: id });
   const placement = useAssistantPlacement();
+  // Sounds for the big moments (0216): the member's own switch; the owner's can turn them off for the gym.
+  const moments = useSyncExternalStore(subscribeMoments, momentPrefs, momentPrefs);
+  useEffect(() => { void loadMomentPrefs(); }, []);
+  const toggleMomentSounds = async () => {
+    setBusy('momentSounds');
+    try { await setMemberSounds(!moments.memberSounds); }
+    catch (err) { toast.error(errorMessage(err, 'That setting was not saved')); }
+    finally { setBusy(null); }
+  };
   const [placementError, setPlacementError] = useState<string | null>(null);
   const choosePlacement = async (next: AssistantPlacement) => {
     if (next === placement) return;
@@ -425,6 +435,16 @@ export default function Settings() {
                   busy={busy === 'soundEnabled'}
                   disabled={busy === 'soundEnabled'}
                   onToggle={() => togglePref('soundEnabled')}
+                />
+                <SwitchRow
+                  label="Sounds for big moments"
+                  description={moments.gymSounds
+                    ? 'A chime when you check in, finish a workout or reach something'
+                    : 'Your gym has turned these sounds off'}
+                  on={moments.memberSounds && moments.gymSounds}
+                  busy={busy === 'momentSounds'}
+                  disabled={!moments.gymSounds || busy === 'momentSounds'}
+                  onToggle={() => void toggleMomentSounds()}
                 />
                 {categoryRows.map((row, i) => (
                   <SwitchRow

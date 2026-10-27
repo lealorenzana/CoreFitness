@@ -8,6 +8,7 @@ import { clearAchievementCache } from './api/achievements';
 import { clearAssistantPlacement } from './assistantPlacement';
 import { clearCheckedInToday } from '../hooks/useCheckedInToday';
 import { clearOfflineReads } from './offlineReads';
+import { clearMomentCache } from './moments';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -66,4 +67,6 @@ export function clearMemberCaches(): void {
   clearCheckedInToday();
   // What screens saved for offline (offlineReads.ts) — this account, this gym.
   clearOfflineReads();
+  // The big moments' switches, markers and queue (moments.ts) — this account, this gym.
+  clearMomentCache();
 }

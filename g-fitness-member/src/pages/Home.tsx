@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
@@ -341,6 +342,9 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* The first open of the day (wave 1): streak and earned level, then it folds away. */}
+      <DailyArrival />
 
       {/* ── The strip: membership, this month, this week, the streak ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>

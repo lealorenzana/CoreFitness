@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { celebrateCheckIn, checkForMoments } from '../../lib/momentWatch';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
@@ -124,6 +125,9 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
         if (cancelled || !fresh.checkedInToday) return;
         setHome(fresh);
         setJustScanned(true);
+        // The big moment (wave 1): the visit, the week, the streak, the points —
+        // then anything the visit just finished (a challenge, a level).
+        void celebrateCheckIn().then(() => checkForMoments(true));
       } catch {
         // A dropped poll is not worth a message. The next one covers it, and
         // the member can see their own screen either way.

@@ -158,6 +158,10 @@
       "app": "member"
     },
     {
+      "file": "member-moments-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-coach-place-check.js",
       "app": "member"
     },

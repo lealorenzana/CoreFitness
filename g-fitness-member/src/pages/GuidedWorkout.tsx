@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowRight, CaretDown, CaretLeft, CaretRight, Check, CheckCircle, CloudSlash, Flag, ListBullets, Pause, Play, Plus,
+  ArrowRight, CaretDown, Coins, Crown, CaretLeft, CaretRight, Check, CheckCircle, CloudSlash, Flag, ListBullets, Pause, Play, Plus,
   SpeakerHigh, SpeakerSlash, SunDim, Timer, TrendUp, Trophy,
 } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -24,6 +24,12 @@ import {
   type LastSet, type Routine, type RoutineExercise, type SessionHeader,
 } from '../lib/api/routines';
 import { errorMessage } from '../utils/errorMessage';
+import { pointsWord } from '../lib/gymApp';
+import { useGymApp } from '../hooks/useGymApp';
+import { on, useCountUp, useSteps } from '../components/moments/momentHooks';
+import { buzz as momentBuzz, play, pointsFor, reducedMotion } from '../lib/moments';
+import { checkForMoments } from '../lib/momentWatch';
+import { getProgression, levelLabel, type Progression } from '../lib/api/achievements';
 import { getCurrentMemberId } from '../services/bookingService';
 import {
   dropQueued, flushOutbox, isNetworkError, newSetId, pendingFor, queueSet, type QueuedSet,
@@ -152,6 +158,8 @@ function WorkoutRun() {
   const [overview, setOverview] = useState(false);
   /** When a set last came back as a personal record (0123) — replays the confetti. */
   const [recordFlash, setRecordFlash] = useState<number | null>(null);
+  /** Records set in this workout, for the finish screen's banner (wave 1). */
+  const [records, setRecords] = useState<{ name: string; line: string }[]>([]);
   /** The gym's guide for the exercise on screen (0121). */
   const [howTo, setHowTo] = useState(false);
   /** The set just logged, for its one ring-out. */
@@ -361,7 +369,10 @@ function WorkoutRun() {
         // The database decides what a record is (0123's trigger); ask it, and
         // celebrate only when it says yes. Never blocks the rest timer.
         void setWasRecord(id).then((pr) => {
-          if (pr) { toast.success(`New personal record — ${ex.name}!`); setRecordFlash(Date.now()); }
+          if (pr) {
+            toast.success(`New personal record — ${ex.name}!`); setRecordFlash(Date.now());
+            setRecords((r) => [...r, { name: ex.name, line: describeSet({ reps, weightKg, durationSeconds: secs }) }]);
+          }
         });
       } catch (err) {
         // No signal: keep it on the phone and carry on as if it had saved —
@@ -549,7 +560,7 @@ function WorkoutRun() {
       <div className="absolute inset-0 flex flex-col overflow-hidden">
         <WorkoutBackdrop icon={Trophy} cue="done" />
         <Confetti />
-        <FinishView routine={routine} sets={sets} last={last} done={done}
+        <FinishView routine={routine} sets={sets} last={last} done={done} logId={logId ?? null} records={records}
           onAttendance={() => navigate('/member/attendance-history')}
           onRoutines={() => navigate('/member/track', { replace: true })} />
       </div>
@@ -1051,22 +1062,56 @@ function RestTakeover({
 }
 
 function FinishView({
-  routine, sets, last, done, onAttendance, onRoutines,
+  routine, sets, last, done, logId, records, onAttendance, onRoutines,
 }: {
   routine: Routine;
   sets: WorkoutSet[];
   last: Map<string, LastSet[]>;
   done: Finished;
+  logId: string | null;
+  records: { name: string; line: string }[];
   onAttendance: () => void;
   onRoutines: () => void;
 }) {
+  // The big moment (wave 1, approved mock-up): trophy, title, the four stats
+  // counting up one after another, the beat tile, a record, the points the
+  // ledger paid for this workout, the earned level. Steps are CSS classes on a
+  // timer, so the screen always ends finished; reduced motion starts there.
+  const [still] = useState(reducedMotion);
+  const gymApp = useGymApp();
+  const step = useSteps([250, 350, 180, 520, 520, 520, 650, 900, 400], still, (n) => {
+    if (n === 1) { play('chime'); momentBuzz(30); }
+    if (n === 7 && records.length) { play('record'); momentBuzz([40, 60, 40, 60, 120]); }
+    if (n === 8) play('pop');
+  });
+  const tick = useCallback(() => play('tick'), []);
+  const minutes = useCountUp(done.minutes, step >= 3, still, { ms: 500, onTick: tick });
+  const setsN = useCountUp(done.sets, step >= 4, still, { ms: 500, onTick: tick });
+  const kg = useCountUp(Math.round(done.volume), step >= 5, still, { ms: 500 });
+  const beat = useCountUp(done.beat, step >= 6, still, { ms: 500, onTick: tick });
+  const [points, setPoints] = useState<number | null>(null);
+  const [prog, setProg] = useState<Progression | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      // Kept on the phone (offline): the points come when it goes, and the screen says so.
+      if (done.waiting || !logId) return;
+      const [p, g] = await Promise.all([pointsFor('workout_logs', logId), getProgression().catch(() => null)]);
+      if (alive) { setPoints(p); setProg(g); }
+    })();
+    // A badge, a level or a target this workout earned plays after the finish screen has had its turn.
+    const t = window.setTimeout(() => { if (!done.waiting) void checkForMoments(true); }, 4200);
+    return () => { alive = false; clearTimeout(t); };
+  }, [done.waiting, logId]);
+  const moreDays = prog?.nextDays != null ? Math.max(0, prog.nextDays - prog.trainingDays) : null;
+  const fraction = prog?.nextDays ? Math.min(1, prog.trainingDays / prog.nextDays) : null;
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ padding: '28px var(--gutter) 20px' }}>
       <div className="flex flex-col items-center text-center">
         <div className="relative grid place-items-center" style={{ width: 132, height: 132 }}>
           <span aria-hidden className="absolute rounded-full noc-gw-burst" style={{ inset: 18, border: '2px solid color-mix(in srgb, var(--color-primary-300) 60%, transparent)' }} />
           <span aria-hidden className="absolute rounded-full noc-gw-burst noc-gw-burst--late" style={{ inset: 18, border: '2px solid color-mix(in srgb, var(--color-secondary) 50%, transparent)' }} />
-          <span className="grid place-items-center noc-pop" style={{
+          <span className={`grid place-items-center ${on(step, 1, 'mo-trophy-drop')}`} style={{
             width: 96, height: 96, borderRadius: 999, color: '#fff',
             background: 'radial-gradient(120% 120% at 30% 20%, var(--color-primary-400) 0%, var(--color-primary) 55%, var(--color-primary-900) 100%)',
             boxShadow: '0 0 60px -8px color-mix(in srgb, var(--color-primary) 90%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
@@ -1087,12 +1132,47 @@ function FinishView({
         </p>
       </div>
 
-      <div className="grid noc-stack" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 22 }}>
-        <BigStat value={done.minutes} label="minutes" />
-        <BigStat value={done.sets} label="sets" />
-        <BigStat value={Math.round(done.volume).toLocaleString()} label="kg lifted" />
-        <BigStat value={done.beat} label={done.beat === 1 ? 'set beat last time' : 'sets beat last time'} highlight={done.beat > 0} />
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 22 }} data-finish-stats>
+        <div className={on(step, 3, 'mo-tile-dim')}><BigStat value={minutes} label="minutes" /></div>
+        <div className={on(step, 4, 'mo-tile-dim')}><BigStat value={setsN} label="sets" /></div>
+        <div className={on(step, 5, 'mo-tile-dim')}><BigStat value={kg.toLocaleString()} label="kg lifted" /></div>
+        <div className={`${on(step, 6, 'mo-tile-dim')}${step >= 7 && done.beat > 0 ? ' mo-flash-beat' : ''}`} style={{ borderRadius: 18 }}>
+          <BigStat value={beat} label={done.beat === 1 ? 'set beat last time' : 'sets beat last time'} highlight={done.beat > 0} />
+        </div>
       </div>
+
+      {/* A record the database confirmed during this workout (0123) — the first one, named. */}
+      {records.length > 0 && (
+        <div className={on(step, 7, 'mo-record')} style={{ marginTop: 14 }} data-finish-record>
+          <Crown size={28} weight="fill" style={{ color: 'var(--color-primary-300)', flex: 'none' }} />
+          <span className="min-w-0">
+            <b style={{ display: 'block', fontSize: 15, color: 'var(--color-text-primary)' }}>New record · {records[0].name}</b>
+            <small style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+              {records[0].line}{records.length > 1 ? ` · and ${records.length - 1} more` : ''}
+            </small>
+          </span>
+        </div>
+      )}
+
+      {points != null && points > 0 && (
+        <div className="flex justify-center">
+          <div className={on(step, 8, 'mo-points mo-in')} data-finish-points><Coins size={16} weight="fill" /> +{points} {pointsWord(gymApp, true)} for the workout</div>
+        </div>
+      )}
+      {prog && (
+        <div className={on(step, 9)} style={{ marginTop: 14 }} data-finish-level>
+          <div className="flex justify-between" style={{ gap: 10, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+            <span>Earned level: {levelLabel(prog.level)}</span>
+            <span className="tabular-nums">{prog.nextLevel && prog.nextDays ? `${prog.trainingDays} / ${prog.nextDays} training days` : 'The top level'}</span>
+          </div>
+          {fraction != null && <div className="mo-bar" style={{ height: 10, marginTop: 6 }}><i style={{ width: step >= 9 ? `${Math.round(fraction * 100)}%` : '0%' }} /></div>}
+          {prog.nextLevel && moreDays ? (
+            <p style={{ fontSize: 12, marginTop: 5, color: 'var(--color-text-muted)' }}>
+              {levelLabel(prog.nextLevel)} needs {moreDays} more training {moreDays === 1 ? 'day' : 'days'}{prog.nextWeeks && prog.nextWeeks > prog.consistentWeeks ? ` and ${prog.nextWeeks - prog.consistentWeeks} more consistent ${prog.nextWeeks - prog.consistentWeeks === 1 ? 'week' : 'weeks'}` : ''}.
+            </p>
+          ) : null}
+        </div>
+      )}
 
       <div className="noc-rise" style={{ ...glassCard, padding: '6px 16px', marginTop: 14 }}>
         {routine.exercises.map((e, i) => {

@@ -8,6 +8,8 @@ import TabBar from './TabBar';
 import TabHeader from './TabHeader';
 import { tabRootFor } from './memberNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
+import MomentHost from '../moments/MomentHost';
+import MomentWatcher from '../moments/MomentWatcher';
 import FloatingChathead from '../ui/FloatingChathead';
 import { useAssistantAllowed } from '../../hooks/useAssistantAllowed';
 import { useAssistantPlacement } from '../../lib/assistantPlacement';
@@ -152,6 +154,9 @@ export default function Layout() {
       {/* Sits at shell level so an unlock earned on any screen can surface
           there, rather than only on the page that happened to load it. */}
       <AchievementWatcher />
+      {/* The big moments (wave 1): one queue, played over any screen. */}
+      <MomentWatcher />
+      <MomentHost />
     </PhoneChassis>
   );
 }

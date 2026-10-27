@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Bell, Bot, Building2, Calendar, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake, Image,
-  Lock, MessageSquare, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone, Sparkles,
+  Lock, MessageSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone, Sparkles,
   ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
 import './attendance/att.css';
@@ -24,6 +24,7 @@ import JoinPoster from '../components/JoinPoster';
 import CoachTab from '../components/yourapp/CoachTab';
 import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
+import CelebrationsTab from '../components/yourapp/CelebrationsTab';
 import SavedThemes from '../components/yourapp/SavedThemes';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -50,8 +51,9 @@ const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 const APP_TABS: [AppTab, string, LucideIcon][] = [
   ['look', 'Look', Palette], ['words', 'Words', Type], ['runs', 'What you run', ToggleRight],
   ['join', 'Joining', DoorOpen], ['coach', 'AI coach', Bot], ['pay', 'Payments', CreditCard], ['tv', 'Lobby TV', Tv],
+  ['moments', 'Celebrations', PartyPopper],
 ];
-type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join' | 'pay' | 'tv';
+type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join' | 'pay' | 'tv' | 'moments';
 
 /** A kind of gym fills the six nouns in one tap; nothing is stored until Save. */
 const KINDS: { name: string; v: GymVocabulary }[] = [
@@ -474,6 +476,7 @@ export default function GymApp() {
       {tab === 'coach' && coachSold && coach && <CoachTab enabled={coach.enabled} sold={coachSold} onToggle={() => void toggle(coach)} />}
       {tab === 'pay' && <PayTab />}
       {tab === 'tv' && <TvTab />}
+      {tab === 'moments' && <CelebrationsTab />}
 
       {poster && (
         <JoinPoster
