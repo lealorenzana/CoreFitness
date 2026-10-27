@@ -127,7 +127,7 @@ async (page) => {
   out.push('habit 8 of 12: ' + /8 of 12/.test(text));
 
   // Create a strength goal through the flow
-  await page.getByRole('button', { name: 'New goal' }).click();
+  await page.getByRole('button', { name: 'New target' }).click();
   await page.waitForTimeout(600);
   await page.getByRole('button', { name: /A lift/ }).click();
   await page.getByRole('button', { name: /Next/ }).click();

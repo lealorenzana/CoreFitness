@@ -517,7 +517,7 @@ export default function GoalsTab() {
       )}
 
       <NocButton variant="action" className="w-full" icon={<Plus size={16} weight="bold" />} onClick={openCreate}>
-        New goal
+        New target
       </NocButton>
 
       {others.length > 0 && (

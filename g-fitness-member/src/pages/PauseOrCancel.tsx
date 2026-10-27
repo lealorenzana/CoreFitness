@@ -1,3 +1,4 @@
+import { CaretRight, PauseCircle, XCircle } from '@phosphor-icons/react';
 import { useCallback, useEffect, useState } from 'react';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
@@ -194,6 +195,8 @@ export default function PauseOrCancel() {
           {kind === null && (
             <>
               <LineRow
+                icon={PauseCircle} tone="info"
+                action={membership.status === 'frozen' ? undefined : <CaretRight size={14} />} actionTone="muted"
                 title="Pause for a while"
                 meta={membership.status === 'frozen'
                   ? 'Already paused — ask the desk to restart it'
@@ -202,6 +205,7 @@ export default function PauseOrCancel() {
                 onClick={membership.status === 'frozen' ? undefined : () => { setKind('freeze'); setReason(''); }}
               />
               <LineRow
+                icon={XCircle} tone="info" action={<CaretRight size={14} />} actionTone="muted"
                 title="Cancel my membership"
                 meta="Stop it for good. You may be owed part of this term back."
                 onClick={() => { setKind('cancel'); setReason(''); }}
