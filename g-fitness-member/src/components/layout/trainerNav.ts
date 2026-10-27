@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
-  Barbell, Buildings,
-  Bell, CalendarBlank, ClockCountdown, House, Trophy, User, UserCircle, UsersThree, Tray,
+  Barbell,
+  Bell, CalendarBlank, ClockCountdown, House, Trophy, User, UsersThree, Tray,
 } from '@phosphor-icons/react';
 import { visibleDestinations, type Destination, type WordReader } from './memberNav';
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp } from '../../lib/gymApp';
@@ -109,14 +109,8 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   schedule: [],
   bookings: [],
   // Schedule · Hours · Coaching · Library · Settings ride on the profile's toolbar (TrainerToolbar).
-  profile: [
-    { label: 'Edit profile', path: '/trainer/profile/edit', icon: UserCircle },
-    { label: 'Your day', path: '/trainer/today', icon: House },
-    { label: 'Equipment', path: '/trainer/equipment', icon: Barbell, module: 'equipment' },
-    { label: 'Achievements', path: '/trainer/achievements', icon: Trophy, module: 'engagement' },
-    // Coaches work at more than one gym; this is how they switch.
-    { label: 'Gyms', path: '/choose-gym', icon: Buildings },
-  ],
+  // The profile's screens moved to the You sheet (redesign, 2026-10-27).
+  profile: [],
 };
 
 /**

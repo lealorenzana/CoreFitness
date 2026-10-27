@@ -71,7 +71,13 @@ async (page) => {
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1600);
   };
+  // Today is the first stop (redesign, 2026-10-27); Messages is the next rail button.
   await go('/trainer/home');
+  out.push('the hub opens on Today: ' + ((await page.locator('[data-today-panel]').count()) === 1 && (await page.locator('[data-rail-today]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/trainer-hub-today.png' });
+  await page.locator('[data-rail-home]').click();
+  await page.waitForTimeout(800);
+  out.push('the Messages button opens Messages: ' + (/view=messages/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   const rows = await page.locator('[data-dm-row]').allInnerTexts();
   out.push('Messages lists each 1-on-1 trainee once: ' + (rows.length === 2 && rows.some((r) => /Lea Lorenzana/.test(r)) && rows.some((r) => /Ana Reyes/.test(r)) ? 'yes' : 'MISSING ' + JSON.stringify(rows)));
   out.push('…with the last message, when, and unread: ' + (rows.some((r) => /See you at 6, coach/.test(r) && /12m/.test(r) && /\b2\b/.test(r)) ? 'yes' : 'MISSING'));
@@ -96,21 +102,27 @@ async (page) => {
   });
   out.push('no browser menu on a long-pressed picture: ' + (blocked ? 'yes' : 'MISSING'));
   await page.keyboard.press('Escape');
-  await go('/trainer/home');
+  await go('/trainer/home?view=messages');
 
   await page.locator('[data-dm-row]').filter({ hasText: 'Lea Lorenzana' }).click();
   await page.waitForURL(/\/trainer\/rooms\/pt1/, { timeout: 8000 }).catch(() => {});
   out.push('a trainee opens your 1-on-1 room with them: ' + (/\/trainer\/rooms\/pt1/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
 
+  // The You sheet (redesign, 2026-10-27) holds every coach screen; the profile has no toolbar.
   await go('/trainer/profile');
-  const tools = await page.evaluate(() => document.querySelector('[data-trainer-toolbar]')?.innerText.replace(/\s+/g, ' ') ?? '');
-  out.push('the profile carries the coach’s tools: ' + (['Schedule', 'Hours', 'Coaching', 'Library', 'Settings'].every((x) => tools.includes(x)) ? 'yes' : 'MISSING ' + tools));
-  await page.screenshot({ path: 'shots/trainer-hub-profile.png' });
-  await page.locator('[data-trainer-toolbar]').getByText('Schedule').click();
+  out.push('the profile has no toolbar or chip row: ' + ((await page.locator('[data-trainer-toolbar]').count()) === 0 && (await page.locator('nav.rail').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await go('/trainer/home');
+  await page.locator('[data-you-button]').click();
+  await page.waitForTimeout(700);
+  const tools = await page.evaluate(() => document.querySelector('[data-you-sheet]')?.innerText.replace(/\s+/g, ' ') ?? '');
+  out.push('your name opens the You sheet with every coach screen: ' + (['Schedule', 'Hours', 'Coaching', 'Library', 'Profile', 'Equipment', 'Gyms', 'Settings'].every((x) => tools.includes(x)) ? 'yes' : 'MISSING ' + tools));
+  out.push('…and your status: ' + ((await page.locator('[data-you-sheet] [role="radio"]').count()) === 3 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/trainer-hub-you.png' });
+  await page.locator('[data-you-sheet]').getByText('Schedule', { exact: true }).click();
   await page.waitForTimeout(1200);
   out.push('Schedule opens full screen with a way back to Messages: ' + (/\/trainer\/schedule$/.test(page.url()) && (await page.locator('[data-hub-back]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.locator('[data-hub-back]').click();
   await page.waitForTimeout(1000);
-  out.push('…and Back returns to Messages: ' + (/\/trainer\/home$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('…and Back returns to the hub: ' + (/\/trainer\/home/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   return out.join('\n');
 }

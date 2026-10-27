@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import WhatsNew from '../../components/WhatsNew';
+import TodayPanel from './hub/TodayPanel';
+import YouSheet from './hub/YouSheet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Bell, CalendarBlank, Camera, CaretRight, ChatCircleDots, MagnifyingGlass, Plus, QrCode, Tray, UsersThree, X,
+  Bell, CalendarBlank, Camera, CaretRight, ChartLineUp, ChatCircleDots, ClipboardText, Hash, MagnifyingGlass, Plus, QrCode, Sun, UsersThree, X,
+  type Icon,
 } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
 import GlassSheet from '../../components/ui/GlassSheet';
 import CoachCheckInSheet from '../../components/ui/CoachCheckInSheet';
-import { NocButton } from '../../components/ui/noc';
+import { LineRow, NocButton } from '../../components/ui/noc';
 import { Field, TextArea, TextInput } from '../../components/ui/Field';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
@@ -72,10 +75,12 @@ export default function TrainerHub() {
   const [coachCheckin, setCoachCheckin] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [creating, setCreating] = useState(params.get('new') === '1');
-  const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
   /** A room held on the rail: its settings sheet. */
   const [held, setHeld] = useState<Room | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  /** The user bar's You panel (redesign, 2026-10-27). */
+  const [youOpen, setYouOpen] = useState(false);
 
   const load = useCallback(async () => {
     await syncRooms();
@@ -95,9 +100,11 @@ export default function TrainerHub() {
     if (uid) setMe({ id: uid, name: [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'You', photo: p?.photo_url ?? null });
     // Today and requests come from the trainer's own overview (classes, bookings).
     const tid = await getCurrentTrainerId().catch(() => null);
+    setTrainerId(tid);
     if (tid) {
       const [ov, cls] = await Promise.all([getTrainerOverview(tid).catch(() => null), listTrainerClasses(tid).catch(() => [] as ClassRow[])]);
-      setToday(ov?.todayClasses ?? []);
+      // Today's classes from the coach's own list (the timeline needs every one, with its room and places).
+      setToday(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).toDateString() === new Date().toDateString()));
       setRequests(ov?.pendingBookings ?? 0);
       const now = Date.now();
       setUpcoming(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).getTime() > now).sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? '')));
@@ -117,7 +124,10 @@ export default function TrainerHub() {
   const active = useMemo(() => (rooms ?? []).filter((r) => !r.archived), [rooms]);
   const servers = useMemo(() => active.filter((r) => r.kind !== 'pt'), [active]);
   const open = servers.find((r) => r.id === params.get('room')) ?? null;
+  // Today is the first stop (redesign, 2026-10-27); Messages and each room are a tap on the rail.
+  const view: 'today' | 'messages' | 'room' = open ? 'room' : params.get('view') === 'messages' ? 'messages' : 'today';
   const select = (id: string | null) => setParams(id ? { room: id } : {}, { replace: true });
+  const showMessages = () => setParams({ view: 'messages' }, { replace: true });
   const unreadDMs = convs.reduce((n, c) => n + (c.muted ? 0 : c.unread), 0);
 
   const changeStatus = async (p: Presence) => {
@@ -134,9 +144,16 @@ export default function TrainerHub() {
       {/* ---- the rail ---- */}
       <nav aria-label="Your rooms" className="flex flex-col items-center flex-none scrollbar-hide"
         style={{ width: 68, gap: 10, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>
-        <RailButton label="Messages" on={!open} onClick={() => select(null)} badge={unreadDMs + queue.length} dataAttr="home">
-          <span className="grid place-items-center" style={{ width: 46, height: 46, background: 'var(--color-primary)', color: '#fff', borderRadius: 'inherit' }}>
-            <ChatCircleDots size={24} weight="fill" />
+        <RailButton label="Today" on={view === 'today'} onClick={() => select(null)} badge={requests + queue.length} dataAttr="today">
+          <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
+            background: view === 'today' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'today' ? '#fff' : 'var(--color-text-secondary)' }}>
+            <Sun size={23} weight={view === 'today' ? 'fill' : 'regular'} />
+          </span>
+        </RailButton>
+        <RailButton label="Messages" on={view === 'messages'} onClick={showMessages} badge={unreadDMs} dataAttr="home">
+          <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
+            background: view === 'messages' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'messages' ? '#fff' : 'var(--color-text-secondary)' }}>
+            <ChatCircleDots size={24} weight={view === 'messages' ? 'fill' : 'regular'} />
           </span>
         </RailButton>
         <span aria-hidden style={{ width: 28, height: 2, borderRadius: 2, background: 'var(--color-border)' }} />
@@ -164,9 +181,11 @@ export default function TrainerHub() {
       {/* ---- the panel: Messages, or the open room ---- */}
       <section className="flex-1 min-w-0 flex flex-col overflow-y-auto scrollbar-hide"
         style={{ background: 'var(--color-bg)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
-        {open ? (
+        {view === 'room' && open ? (
           <RoomPanel room={open} upcoming={upcoming.filter((c) => sameClass(c.name, open.name)).slice(0, 5)}
             onPhoto={(url) => setPhotos((m) => new Map(m).set(open.id, url))} />
+        ) : view === 'today' ? (
+          <TodayPanel trainerId={trainerId} classes={today} requests={requests} queue={queue} />
         ) : (
           <>
             <div className="flex items-center justify-between" style={{ gap: 8 }}>
@@ -178,57 +197,21 @@ export default function TrainerHub() {
                 </button>
               )}
             </div>
-            <div className="flex items-center" style={{ gap: 8, marginTop: 10 }} data-hub-actions>
-              <HeadButton label="Search" onClick={() => { setSearching((s) => !s); setQ(''); }}><MagnifyingGlass size={17} /></HeadButton>
-              <HeadButton label="Requests" wide onClick={() => navigate('/trainer/bookings')} badge={requests}>
-                <Tray size={17} /><span style={{ fontSize: 13, fontWeight: 600 }}>Requests{requests ? ` · ${requests}` : ''}</span>
-              </HeadButton>
-              <HeadButton label="Members" wide onClick={() => navigate('/trainer/members')}>
-                <UsersThree size={17} /><span style={{ fontSize: 13, fontWeight: 600 }}>Members</span>
-              </HeadButton>
-            </div>
-            {searching && (
-              <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
-                <TextInput autoFocus value={q} placeholder="Find a trainee" aria-label="Find a trainee" onChange={(e) => setQ(e.target.value)} />
-                <button type="button" aria-label="Close search" onClick={() => { setSearching(false); setQ(''); }} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
-              </div>
-            )}
-
-            {/* Today, where Discord shows who is active: the classes you teach today. */}
-            <div className="flex scrollbar-hide" style={{ gap: 10, marginTop: 14, overflowX: 'auto', paddingBottom: 2 }} data-today-strip>
-              <button type="button" onClick={() => navigate('/trainer/today')} className="flex-none text-left noc-press"
-                style={{ width: 128, padding: 12, borderRadius: 16, background: 'var(--color-surface)', border: '1px solid var(--color-separator)' }}>
-                <CalendarBlank size={20} style={{ color: 'var(--color-primary-300)' }} />
-                <span className="block" style={{ fontSize: 13, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>Your day</span>
-                <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{today.length ? `${today.length} class${today.length === 1 ? '' : 'es'} today` : 'No classes today'}</span>
-              </button>
-              {today.map((c) => (
-                <button key={c.id} type="button" onClick={() => navigate('/trainer/schedule')} className="flex-none text-left noc-press" data-today-class
-                  style={{ width: 128, padding: 12, borderRadius: 16, background: 'var(--color-surface)', border: '1px solid var(--color-separator)' }}>
-                  <span className="block" style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-secondary)' }}>
-                    {new Date(c.scheduled_at ?? '').toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                  </span>
-                  <span className="block truncate" style={{ fontSize: 13, fontWeight: 700, marginTop: 6, color: 'var(--color-text-primary)' }}>{c.name}</span>
-                  <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{c.capacity ? `${c.capacity} places` : 'Class'}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* What waits for the coach's comment, like Discord's message requests. */}
-            {queue.length > 0 && (
-              <button type="button" onClick={() => navigate(`/trainer/rooms/${queue[0].roomId}/work/${queue[0].assignmentId}`)} data-review-row
-                className="flex items-center text-left noc-press" style={{ gap: 10, marginTop: 14, padding: '10px 12px', borderRadius: 14, background: 'color-mix(in srgb, var(--color-secondary) 12%, transparent)' }}>
-                <span className="grid place-items-center flex-none" style={{ width: 34, height: 34, borderRadius: 17, background: 'var(--color-secondary)', color: 'var(--color-bg)', fontWeight: 800, fontSize: 13 }}>{queue.length}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>{queue.length} turned in, waiting for your comment</span>
-                  <span className="block truncate" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{queue[0].memberName} · {queue[0].title}</span>
-                </span>
-                <CaretRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-              </button>
-            )}
+            {/* Search is a box, always there (the Requests button moved to Today, where it is a decision). */}
+            <label className="flex items-center" style={{ gap: 10, marginTop: 10, height: 42, padding: '0 12px', borderRadius: 12,
+              background: 'var(--color-surface)', border: '1px solid var(--color-hairline)' }}>
+              <MagnifyingGlass size={16} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+              <input value={q} placeholder="Find a trainee" aria-label="Find a trainee" onChange={(e) => setQ(e.target.value)}
+                className="flex-1 min-w-0 bg-transparent outline-none" style={{ fontSize: 14, color: 'var(--color-text-primary)' }} />
+              {q && <button type="button" aria-label="Clear the search" onClick={() => setQ('')} style={{ color: 'var(--color-text-muted)' }}><X size={15} /></button>}
+            </label>
 
             <DMList convs={convs} rooms={active.filter((r) => r.kind === 'pt')} q={q} onOpenRoom={(id) => navigate(`/trainer/rooms/${id}`)}
               onOpenConv={(id) => navigate(`/trainer/messages/${id}`)} />
+
+            <p className="eyebrow" style={{ marginTop: 18 }}>Members</p>
+            <LineRow icon={UsersThree} title="Your trainees" meta="Notes, plans and progress for everyone you coach"
+              action={<CaretRight size={14} />} actionTone="muted" onClick={() => navigate('/trainer/members')} last />
 
             {(rooms ?? []).some((r) => r.archived) && (
               <div style={{ marginTop: 18 }}>
@@ -248,13 +231,14 @@ export default function TrainerHub() {
         <div className="fixed flex items-center" data-user-panel data-presence={presence}
           style={{ left: 8, right: 8, bottom: 'calc(env(safe-area-inset-bottom) + 8px)', gap: 10, padding: '8px 10px', borderRadius: 18, zIndex: 30,
             background: 'color-mix(in srgb, var(--color-surface) 92%, #000)', border: '1px solid var(--color-separator)', boxShadow: '0 8px 24px rgba(0,0,0,.35)' }}>
-          <button type="button" onClick={() => navigate('/trainer/profile')} aria-label="Your profile" className="flex items-center min-w-0 flex-1 text-left noc-press" style={{ gap: 10 }}>
+          <button type="button" onClick={() => setYouOpen(true)} aria-label="You — your status and screens" data-you-button className="flex items-center min-w-0 flex-1 text-left noc-press" style={{ gap: 10 }}>
             <span className="relative flex-none">
               <Avatar name={me.name} photoUrl={me.photo} size={38} />
               <span className="absolute" style={{ right: -1, bottom: -1, width: 13, height: 13, borderRadius: 7, border: '2px solid var(--color-surface)', background: PRESENCE_TONE[presence] }} />
             </span>
             <span className="min-w-0">
               <span className="block truncate" style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-text-primary)' }}>{me.name}</span>
+              <span className="block truncate" style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Coach{app?.gymName ? ` · ${app.shortName?.trim() || app.gymName}` : ''}</span>
             </span>
           </button>
           <button type="button" onClick={() => setStatusOpen(true)} data-status-button className="flex-none noc-press"
@@ -276,6 +260,8 @@ export default function TrainerHub() {
       )}
 
       {me && <CoachCheckInSheet open={qrOpen} onClose={() => setQrOpen(false)} trainerId={me.id} />}
+      {me && <YouSheet open={youOpen} onClose={() => setYouOpen(false)} me={me} presence={presence} tones={PRESENCE_TONE}
+        onPresence={(p) => void changeStatus(p)} />}
 
       <GlassSheet open={statusOpen} onClose={() => setStatusOpen(false)} title="Your status" subtitle="Members see it on your card">
         <div className="flex flex-col" style={{ gap: 8, padding: '0 var(--gutter) 16px' }}>
@@ -323,7 +309,7 @@ function RailButton({ label, on, onClick, onLong, badge, room, dataAttr, childre
   const lp = useLongPress(() => onLong?.());
   return (
     <button type="button" onClick={() => { if (!lp.consumed()) onClick(); }} {...(onLong ? lp.handlers : {})}
-      aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined}
+      aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined} data-rail-today={dataAttr === 'today' || undefined}
       className="relative flex-none noc-press select-none" style={{ width: 46, height: 46, WebkitTouchCallout: 'none' }}>
       {/* Discord's pill: a bar at the edge marks the open one. */}
       <span aria-hidden className="absolute" style={{ left: -11, top: on ? 8 : 19, width: 4, height: on ? 30 : 8, borderRadius: 4,
@@ -369,10 +355,14 @@ function DMList({ convs, rooms, q, onOpenRoom, onOpenConv }: {
   convs: Conversation[]; rooms: Room[]; q: string; onOpenRoom: (id: string) => void; onOpenConv: (id: string) => void;
 }) {
   const named = (s: string) => s.toLowerCase().includes(q.trim().toLowerCase());
-  const talked = new Set(convs.map((c) => c.otherName.trim().toLowerCase()));
+  // A 1-on-1 room is named "<trainee> · 1-on-1"; matched on the person, so a
+  // trainee with both a chat and a room is one row (Lea showed twice, 2026-10-27).
+  const person = (s: string) => s.replace(/\s*·\s*1-on-1\s*$/i, '').trim().toLowerCase();
+  const ptPeople = new Set(rooms.map((r) => person(r.name)));
+  const talked = new Set(convs.map((c) => person(c.otherName)));
   const rows = [
-    ...convs.filter((c) => named(c.otherName)).map((c) => ({ key: c.id, name: c.otherName, photo: c.otherPhoto, line: c.lastMessage ? `${c.lastFromMe ? 'You: ' : ''}${c.lastMessage}` : 'No messages yet', at: c.lastMessageAt, unread: c.muted ? 0 : c.unread, open: () => onOpenConv(c.id) })),
-    ...rooms.filter((r) => !talked.has(r.name.trim().toLowerCase()) && named(r.name)).map((r) => ({ key: r.id, name: r.name, photo: null as string | null, line: r.toReview ? `${r.toReview} to review` : '1-on-1 room', at: r.lastPostAt, unread: r.toReview, open: () => onOpenRoom(r.id) })),
+    ...convs.filter((c) => named(c.otherName)).map((c) => ({ key: c.id, name: c.otherName, photo: c.otherPhoto, pt: ptPeople.has(person(c.otherName)), line: c.lastMessage ? `${c.lastFromMe ? 'You: ' : ''}${c.lastMessage}` : 'No messages yet', at: c.lastMessageAt, unread: c.muted ? 0 : c.unread, open: () => onOpenConv(c.id) })),
+    ...rooms.filter((r) => !talked.has(person(r.name)) && named(r.name)).map((r) => ({ key: r.id, name: r.name.replace(/\s*·\s*1-on-1\s*$/i, ''), photo: null as string | null, pt: true, line: r.toReview ? `${r.toReview} to review` : 'No messages yet', at: r.lastPostAt, unread: r.toReview, open: () => onOpenRoom(r.id) })),
   ];
   if (rows.length === 0) {
     return <p style={{ fontSize: 13, marginTop: 18, color: 'var(--color-text-muted)' }} data-dm-empty>{q ? 'No trainee by that name.' : 'Your 1-on-1 trainees appear here once they book you or start a coaching term.'}</p>;
@@ -384,7 +374,9 @@ function DMList({ convs, rooms, q, onOpenRoom, onOpenConv }: {
           <Avatar name={r.name} photoUrl={r.photo} size={44} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center" style={{ gap: 8 }}>
-              <span className="truncate flex-1" style={{ fontSize: 15, fontWeight: r.unread ? 800 : 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
+              <span className="truncate" style={{ fontSize: 15, fontWeight: r.unread ? 800 : 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
+              {r.pt && <span data-pt-tag style={{ fontSize: 10.5, padding: '1px 6px', borderRadius: 999, border: '1px solid var(--color-hairline)', color: 'var(--color-text-muted)', flex: 'none' }}>1-on-1</span>}
+              <span className="flex-1" />
               <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{ago(r.at)}</span>
             </span>
             <span className="flex items-center" style={{ gap: 8 }}>
@@ -402,7 +394,12 @@ function DMList({ convs, rooms, q, onOpenRoom, onOpenConv }: {
 function RoomPanel({ room, upcoming, onPhoto }: { room: Room; upcoming: ClassRow[]; onPhoto: (url: string) => void }) {
   const navigate = useNavigate();
   const file = useRef<HTMLInputElement>(null);
-  const channels: [string, string, number?][] = [['stream', 'stream'], ['classwork', 'classwork', room.toReview], ['progress', 'progress']];
+  const channels: { tab: string; label: string; blurb: string; icon: Icon; badge?: number }[] = [
+    { tab: 'stream', label: 'stream', blurb: 'Posts and photos', icon: Hash },
+    { tab: 'classwork', label: 'classwork', blurb: room.dueSoon ? `${room.dueSoon} due this week` : 'Work you set, and what comes back', icon: ClipboardText, badge: room.toReview },
+    { tab: 'progress', label: 'progress', blurb: 'How the room is doing', icon: ChartLineUp },
+    { tab: 'people', label: 'people', blurb: `${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`, icon: UsersThree },
+  ];
   const pick = async (f: File | undefined) => {
     if (!f) return;
     try { const url = await uploadContentPhoto(f); await setRoomPhoto(room.id, url); onPhoto(url); toast.success('Room picture set.'); }
@@ -426,24 +423,30 @@ function RoomPanel({ room, upcoming, onPhoto }: { room: Room; upcoming: ClassRow
       </div>
       {room.description && <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-secondary)' }}>{room.description}</p>}
 
-      <p style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginTop: 18 }}>Room</p>
+      <p className="eyebrow" style={{ marginTop: 18 }}>Channels</p>
       <div className="flex flex-col" style={{ gap: 2, marginTop: 4 }} data-channels>
-        {channels.map(([tab, label, badge]) => (
-          <button key={tab} type="button" onClick={() => go(tab)} className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '10px 8px', borderRadius: 10 }}>
-            <span style={{ fontSize: 18, color: 'var(--color-text-muted)' }}>#</span>
-            <span className="flex-1" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{label}</span>
-            {badge ? <span style={{ minWidth: 19, height: 19, padding: '0 5px', borderRadius: 10, fontSize: 11, fontWeight: 800, lineHeight: '19px', textAlign: 'center', background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{badge}</span> : null}
-          </button>
-        ))}
-        <button type="button" onClick={() => go('people')} className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '10px 8px', borderRadius: 10 }}>
-          <span style={{ fontSize: 18, color: 'var(--color-text-muted)' }}>#</span>
-          <span className="flex-1" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>people · {room.memberCount}</span>
-        </button>
+        {channels.map((c) => {
+          const ChannelIcon = c.icon;
+          return (
+            <button key={c.tab} type="button" onClick={() => go(c.tab)} data-channel={c.tab}
+              className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '8px', borderRadius: 12 }}>
+              <span className="grid place-items-center flex-none" style={{ width: 34, height: 34, borderRadius: 10,
+                background: 'var(--color-surface-raised)', border: '1px solid var(--color-hairline)', color: 'var(--color-text-secondary)' }}>
+                <ChannelIcon size={16} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.label}</span>
+                <span className="block truncate" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{c.blurb}</span>
+              </span>
+              {c.badge ? <span style={{ minWidth: 19, height: 19, padding: '0 5px', borderRadius: 10, fontSize: 11, fontWeight: 800, lineHeight: '19px', textAlign: 'center', background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{c.badge}</span> : null}
+            </button>
+          );
+        })}
       </div>
 
       {room.kind === 'class' && (
         <>
-          <p style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginTop: 18 }}>Upcoming sessions</p>
+          <p className="eyebrow" style={{ marginTop: 18 }}>Coming up</p>
           {upcoming.length === 0 ? (
             <p style={{ fontSize: 13, marginTop: 6, color: 'var(--color-text-muted)' }}>None on your schedule yet.</p>
           ) : (
@@ -451,8 +454,11 @@ function RoomPanel({ room, upcoming, onPhoto }: { room: Room; upcoming: ClassRow
               {upcoming.map((c) => (
                 <button key={c.id} type="button" onClick={() => navigate('/trainer/schedule')} className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '10px 8px', borderRadius: 10 }}>
                   <CalendarBlank size={17} style={{ color: 'var(--color-text-muted)' }} />
-                  <span className="flex-1" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
-                    {new Date(c.scheduled_at ?? '').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} · {new Date(c.scheduled_at ?? '').toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                  <span className="min-w-0 flex-1">
+                    <span className="block" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+                      {new Date(c.scheduled_at ?? '').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} · {new Date(c.scheduled_at ?? '').toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                    <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{[c.location, c.capacity ? `${c.capacity} places` : null].filter(Boolean).join(' · ')}</span>
                   </span>
                   <CaretRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                 </button>

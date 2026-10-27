@@ -1,0 +1,239 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#08080E;--s1:#12121C;--s2:#161522;--s3:#1E1D2B;--v:#7C3AED;--v3:#c4b5fd;--v4:#a78bfa;--vl:#1E1333;--a:#F59E0B;--a3:#fcd34d;--al:#1F1A0A;--t1:#e9e9ed;--t2:#b2b6ca;--t3:#9397ab;--sep:rgba(233,233,237,.08);--edge:rgba(233,233,237,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0d16;font-family:Inter,system-ui,sans-serif;color:var(--t1);padding:36px;display:flex;gap:36px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:14px;align-items:center}
+.cap{font-size:15px;font-weight:600;color:var(--t1)} .cap small{display:block;font-weight:400;color:var(--t3);font-size:12px;margin-top:3px;max-width:393px;text-align:center}
+.phone{width:393px;height:852px;background:var(--bg);border-radius:34px;border:1px solid var(--edge);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sb{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;font-weight:600;flex:none}
+main{flex:1;overflow:hidden;padding:6px 20px 0}
+.row{display:flex;align-items:center}
+.av{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--v);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--v3);background:var(--vl)}
+.ib{width:36px;height:36px;border-radius:10px;border:1px solid var(--edge);display:grid;place-items:center;color:var(--t2);font-size:18px;position:relative}
+.dot{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--a)}
+.title{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.title.m{color:var(--t3)}
+.eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
+.strip{margin-top:16px;border:1px solid var(--edge);border-radius:16px;padding:12px 14px;background:linear-gradient(180deg,rgba(124,58,237,.10),transparent 70%),var(--s1)}
+.days{display:flex;gap:6px;margin-top:10px}
+.d{flex:1;text-align:center;font-size:10px;color:var(--t3)} .d i{display:block;height:26px;border-radius:8px;border:1px solid var(--edge);margin-bottom:4px;display:grid;place-items:center;font-size:12px;font-style:normal}
+.d.on i{border-color:var(--a);background:var(--al);color:var(--a3)} .d.on{color:var(--a3);font-weight:700}
+.d.done i{background:var(--vl);border-color:var(--v);color:var(--v3)}
+.tl{margin-top:18px}
+.grp{display:grid;grid-template-columns:54px minmax(0,1fr);position:relative}
+.grp:before{content:"";position:absolute;left:61px;top:6px;bottom:0;width:1px;background:var(--sep)}
+.wh{font-size:11px;color:var(--t3);padding-top:3px;letter-spacing:.02em;line-height:1.3}
+.wh.now{color:var(--v3);font-weight:600}
+.items{padding-left:18px;padding-bottom:14px;position:relative}
+.items:before{content:"";position:absolute;left:4px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--s3);border:1px solid var(--edge)}
+.grp.n .items:before{background:var(--v);border-color:var(--v);box-shadow:0 0 10px var(--v)}
+.it{padding:2px 0 10px}
+.it b{display:block;font-size:15px;font-weight:600}
+.it span{font-size:12.5px;color:var(--t2);line-height:1.45}
+.it .lk{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--a);font-weight:600;margin-top:6px}
+.card{border:1px solid var(--edge);border-radius:16px;padding:12px;background:var(--s1);margin:2px 0 10px}
+.btn{height:40px;border-radius:12px;background:var(--a);color:#1b1203;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px}
+.chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--edge);color:var(--t2)}
+.chip.v{border-color:rgba(124,58,237,.5);color:var(--v3);background:var(--vl)}
+.chip.a{border-color:rgba(245,158,11,.45);color:var(--a3);background:var(--al)}
+nav{height:76px;flex:none;border-top:1px solid var(--edge);display:flex;align-items:stretch;padding:0 14px 8px;background:var(--bg)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:9px;color:var(--t3);font-size:12px}
+.tab .mk{width:16px;height:2px;border-radius:1px}
+.tab.on{color:var(--v4)} .tab.on .mk{background:var(--v);box-shadow:0 0 6px var(--v)}
+.tab i{font-size:21px}
+.sepv{width:1px;margin:14px 10px 6px;background:var(--edge)}
+.ci{width:92px;margin-top:10px;border-radius:10px;border:1px solid var(--a);background:rgba(245,158,11,.12);box-shadow:0 0 22px -9px var(--a);color:var(--a);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px}
+.ci i{font-size:21px}
+.search{height:44px;border-radius:12px;border:1px solid var(--edge);background:var(--s1);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--t3);font-size:14px;margin-top:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.tile{border:1px solid var(--edge);border-radius:14px;background:var(--s1);padding:10px 4px;text-align:center;font-size:11px;color:var(--t2)}
+.tile i{display:block;font-size:20px;color:var(--v3);margin-bottom:5px}
+.gh{display:flex;align-items:center;gap:10px;margin:18px 0 4px}
+.gh:before{content:"";width:14px;height:2px;border-radius:1px;background:var(--v);box-shadow:0 0 6px var(--v)}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sep)}
+.li .ic{width:34px;height:34px;border-radius:10px;background:var(--s2);border:1px solid var(--edge);display:grid;place-items:center;color:var(--t2);font-size:17px;flex:none}
+.li b{display:block;font-size:14.5px;font-weight:500}
+.li span{font-size:12px;color:var(--t3)}
+.li .ar{margin-left:auto;color:var(--t3)}
+.seg{display:flex;gap:6px;margin-top:14px}
+.seg span{flex:1;text-align:center;height:34px;line-height:32px;border-radius:10px;border:1px solid var(--edge);font-size:13px;color:var(--t2)}
+.seg span.on{background:var(--vl);border-color:var(--v);color:var(--v3);font-weight:600}
+.hero{margin-top:14px;border-radius:18px;border:1px solid rgba(124,58,237,.45);padding:16px;background:radial-gradient(120% 120% at 0 0,rgba(124,58,237,.35),transparent 60%),var(--s1)}
+.bar{height:6px;border-radius:3px;background:var(--s3);margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:40%;background:var(--v)}
+.ex{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--sep);font-size:14px}
+.ex .n{width:26px;height:26px;border-radius:8px;background:var(--s2);display:grid;place-items:center;font-size:12px;color:var(--t3);flex:none}
+.ex.done .n{background:var(--vl);color:var(--v3)}
+.ex > span:last-child{margin-left:auto;font-size:12px;color:var(--t3)}
+</style></head><body>
+<style>
+.ib.ai{border-color:rgba(124,58,237,.55);color:var(--v3);background:var(--vl)}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--sep);margin-top:14px}
+.tabs span{padding:0 0 10px;font-size:14px;color:var(--t3)}.tabs span.on{color:var(--t1);font-weight:600;box-shadow:inset 0 -2px 0 var(--v)}
+.cnt{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--s3);color:var(--t2);margin-left:6px;font-weight:500}
+.ic.v{background:var(--vl);border-color:rgba(124,58,237,.45);color:var(--v3)}
+.ic.a{background:var(--al);border-color:rgba(245,158,11,.4);color:var(--a3)}
+.li .r{margin-left:auto;font-size:13px;color:var(--a);font-weight:600;flex:none}
+.li .n{margin-left:auto;font-size:11px;color:var(--t3);flex:none}
+.li .s{margin-left:auto;font-size:12px;color:var(--t3);flex:none;display:flex;align-items:center;gap:4px}
+.note{font-size:11px;color:var(--t3);margin:14px 0 2px;letter-spacing:.12em;text-transform:uppercase}
+.mem{margin-top:14px;border-radius:18px;border:1px solid rgba(124,58,237,.45);padding:14px 16px;background:radial-gradient(120% 120% at 0 0,rgba(124,58,237,.30),transparent 60%),var(--s1)}
+.out{height:40px;border-radius:12px;border:1px solid var(--a);color:var(--a);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;background:var(--al)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px}
+.stats b{display:block;font-size:22px;font-weight:800}.stats span{font-size:11px;color:var(--t3)}
+.pts{display:flex;align-items:center;gap:12px;margin-top:14px;border:1px solid var(--edge);border-radius:16px;padding:12px 14px;background:var(--s1)}
+.seg2{display:flex;border:1px solid var(--edge);border-radius:10px;overflow:hidden;font-size:12px}
+.seg2 span{padding:6px 10px;color:var(--t3)}.seg2 span.on{background:var(--vl);color:var(--v3);font-weight:600}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s1);border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid var(--edge);padding:10px 22px 0}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 14px}
+.qr{width:220px;height:220px;margin:16px auto 0;border-radius:18px;background:#fff;display:grid;place-items:center}
+.qr i{font-size:190px;color:#08080E}
+.code{text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.2em;margin-top:10px}
+.sel{height:44px;border-radius:12px;border:1px solid var(--edge);background:var(--s2);display:flex;align-items:center;padding:0 12px;font-size:14px;color:var(--t2);margin-top:8px}
+.tg{width:40px;height:24px;border-radius:12px;background:var(--v);position:relative;flex:none}.tg:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.tg.off{background:var(--s3)}.tg.off:after{right:auto;left:3px}
+.dim{position:absolute;inset:0;background:rgba(5,4,10,.6)}
+</style>
+</head>
+<style>
+.hub{display:flex;flex:1;overflow:hidden}
+.rail{width:64px;flex:none;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:6px;border-right:1px solid var(--sep)}
+.srv{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:var(--s2);color:var(--t2);font-weight:800;font-size:13px;position:relative}
+.srv.on{border-radius:14px;background:var(--v);color:#fff}
+.srv.on:before{content:"";position:absolute;left:-10px;width:4px;height:28px;border-radius:0 3px 3px 0;background:#fff}
+.srv i{font-size:22px}
+.badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--a);color:#1b1203;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px;border:2px solid var(--bg)}
+.rsep{width:28px;height:2px;border-radius:1px;background:var(--s3)}
+.pane{flex:1;overflow:hidden;padding:6px 14px 0}
+.ptitle{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.psub{font-size:12.5px;color:var(--t3);margin-top:2px}
+.ub{height:64px;flex:none;margin:0 8px 8px;border-radius:16px;background:var(--s1);border:1px solid var(--edge);display:flex;align-items:center;gap:10px;padding:0 10px}
+.ub .av{width:38px;height:38px;font-size:12px;position:relative}
+.ub .av:after{content:"";position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--v4);border:2px solid var(--s1)}
+.status{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--edge);color:var(--v3);margin-left:auto}
+.ib2{width:36px;height:36px;border-radius:10px;border:1px solid var(--edge);display:grid;place-items:center;color:var(--t2);font-size:18px;position:relative}
+.wh2{font-size:11px;color:var(--t3);letter-spacing:.12em;text-transform:uppercase;margin:16px 0 4px}
+.req{border:1px solid rgba(245,158,11,.4);background:var(--al);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-top:12px}
+.req b{font-size:14px}
+.req span{font-size:12px;color:var(--t2)}
+.req .go{margin-left:auto;font-size:13px;font-weight:700;color:var(--a)}
+.chan{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;font-size:15px;color:var(--t2)}
+.chan.on{background:var(--s2);color:var(--t1)}
+.chan .ic{width:32px;height:32px;border-radius:10px;font-size:16px}
+.chan small{display:block;font-size:11.5px;color:var(--t3)}
+.chan .n{margin-left:auto;min-width:20px;height:20px;border-radius:10px;background:var(--a);color:#1b1203;font-size:11px;font-weight:800;display:grid;place-items:center}
+.dm{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--sep)}
+.dm .av{width:40px;height:40px;font-size:12px}
+.dm b{display:block;font-size:14.5px}
+.dm span{font-size:12.5px;color:var(--t2)}
+.dm .t{margin-left:auto;text-align:right;font-size:11px;color:var(--t3);flex:none}
+.tagx{font-size:10.5px;padding:1px 6px;border-radius:999px;border:1px solid var(--edge);color:var(--t3);margin-left:6px;font-weight:500}
+.sheet2{position:absolute;left:0;right:0;bottom:0;top:250px;background:var(--s1);border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid var(--edge);padding:10px 18px 0}
+</style>
+<body>
+
+<!-- 1 · TODAY -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<div class="hub">
+<div class="rail">
+<div class="srv on"><i class="ti ti-sun"></i></div>
+<div class="srv"><i class="ti ti-message-circle"></i><span class="badge">2</span></div>
+<div class="rsep"></div>
+<div class="srv" style="background:#3b2a6b;color:#fff">MH<span class="badge">1</span></div>
+<div class="srv" style="background:#23314f;color:#fff">8F</div>
+<div class="srv" style="color:var(--v3)"><i class="ti ti-plus"></i></div>
+</div>
+<div class="pane">
+<div class="ptitle">Today</div><div class="psub">Tuesday 27 October · 3 sessions</div>
+<div class="req"><i class="ti ti-inbox" style="font-size:20px;color:var(--a3)"></i><div><b>2 requests waiting</b><br><span>1-on-1 with Lea · Thu 5 PM, +1</span></div><span class="go">Decide</span></div>
+<div class="wh2">Your day</div>
+<div class="grp n"><div class="wh now" style="font-size:10.5px">Now</div><div class="items" style="padding-bottom:10px">
+<div class="it"><b style="font-size:14px">Morning HIIT</b><span>7:00 · Studio · 12 booked</span><br><span class="lk" style="font-size:12px"><i class="ti ti-users"></i>Take attendance</span></div></div></div>
+<div class="grp"><div class="wh" style="font-size:10.5px">5 PM</div><div class="items" style="padding-bottom:10px">
+<div class="it"><b style="font-size:14px">1-on-1 · Ana Reyes</b><span>Gym floor · Push day</span></div></div></div>
+<div class="grp"><div class="wh" style="font-size:10.5px">7 PM</div><div class="items" style="padding-bottom:10px">
+<div class="it"><b style="font-size:14px">8F Strength</b><span>Gym floor · 6 of 8</span></div></div></div>
+<div class="wh2">Needs you</div>
+<div class="li" style="padding:8px 0"><span class="ic" style="width:32px;height:32px;font-size:16px"><i class="ti ti-clipboard-check"></i></span><div><b style="font-size:14px">2 classwork to check</b><span>Morning HIIT</span></div></div>
+<div class="li" style="padding:8px 0;border:0"><span class="ic" style="width:32px;height:32px;font-size:16px"><i class="ti ti-user-exclamation"></i></span><div><b style="font-size:14px">Lea hasn't trained in 9 days</b><span>Send a nudge</span></div></div>
+</div></div>
+<div class="ub"><span class="av">BC</span><div><div style="font-size:13.5px;font-weight:700">Ben Cruz</div><div style="font-size:11px;color:var(--t3)">Coach · Core Fitness Lab</div></div><span class="status">Available</span><span class="ib2"><i class="ti ti-bell"></i><span class="dot"></span></span></div>
+</div>
+<div class="cap">Today — a new first stop in the rail<small>The coach's day lives in the rail as its own "server": requests waiting (amber, one tap to decide), the day as a timeline, and who needs them. It replaces the small "Your day" card.</small></div></div>
+
+<!-- 2 · MESSAGES -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<div class="hub">
+<div class="rail">
+<div class="srv"><i class="ti ti-sun"></i></div>
+<div class="srv on"><i class="ti ti-message-circle"></i><span class="badge">2</span></div>
+<div class="rsep"></div>
+<div class="srv" style="background:#3b2a6b;color:#fff">MH<span class="badge">1</span></div>
+<div class="srv" style="background:#23314f;color:#fff">8F</div>
+<div class="srv" style="color:var(--v3)"><i class="ti ti-plus"></i></div>
+</div>
+<div class="pane">
+<div class="row" style="justify-content:space-between"><div class="ptitle">Messages</div><span class="ib2" style="background:var(--v);color:#fff;border:0"><i class="ti ti-edit"></i></span></div>
+<div class="search" style="height:40px;margin-top:10px;font-size:13.5px"><i class="ti ti-search"></i>Find a trainee</div>
+<div class="dm" style="margin-top:6px"><span class="av">LL</span><div class="min"><b>Lea Lorenzana<span class="tagx">1-on-1</span></b><span>Should I skip leg day?</span></div><div class="t">20m<br><span class="chip a" style="padding:0 7px;font-size:11px">2</span></div></div>
+<div class="dm"><span class="av">AR</span><div><b>Ana Reyes<span class="tagx">1-on-1</span></b><span>You: Nice work on Tuesday</span></div><div class="t">2d</div></div>
+<div class="dm"><span class="av">MS</span><div><b>Marco Santos</b><span>Thanks coach!</span></div><div class="t">5d</div></div>
+<div class="wh2">Members</div>
+<div class="li" style="padding:8px 0;border:0"><span class="ic" style="width:32px;height:32px;font-size:16px"><i class="ti ti-users"></i></span><div><b style="font-size:14px">Your trainees</b><span>12 members · notes, plans, progress</span></div><i class="ti ti-chevron-right ar"></i></div>
+</div></div>
+<div class="ub"><span class="av">BC</span><div><div style="font-size:13.5px;font-weight:700">Ben Cruz</div><div style="font-size:11px;color:var(--t3)">Coach · Core Fitness Lab</div></div><span class="status">Available</span><span class="ib2"><i class="ti ti-bell"></i><span class="dot"></span></span></div>
+</div>
+<div class="cap">Messages — one row per person<small>A trainee's chat and their 1-on-1 room are one conversation, marked "1-on-1" — no more Lea twice. Search is a box, and Requests moved to Today where it is a decision.</small></div></div>
+
+<!-- 3 · ROOM -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<div class="hub">
+<div class="rail">
+<div class="srv"><i class="ti ti-sun"></i></div>
+<div class="srv"><i class="ti ti-message-circle"></i><span class="badge">2</span></div>
+<div class="rsep"></div>
+<div class="srv on" style="background:#3b2a6b">MH<span class="badge">1</span></div>
+<div class="srv" style="background:#23314f;color:#fff">8F</div>
+<div class="srv" style="color:var(--v3)"><i class="ti ti-plus"></i></div>
+</div>
+<div class="pane">
+<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="ptitle">Morning HIIT</div><div class="psub">Class · 12 members · Tue & Thu 7:00</div></div><span class="ib2"><i class="ti ti-settings"></i></span></div>
+<div class="wh2">Channels</div>
+<div class="chan on"><span class="ic v"><i class="ti ti-hash"></i></span><div>stream<small>Posts and photos</small></div></div>
+<div class="chan"><span class="ic"><i class="ti ti-clipboard-list"></i></span><div>classwork<small>2 due this week</small></div><span class="n">1</span></div>
+<div class="chan"><span class="ic"><i class="ti ti-chart-line"></i></span><div>progress<small>How the class is doing</small></div></div>
+<div class="chan"><span class="ic"><i class="ti ti-users"></i></span><div>people<small>12 members</small></div></div>
+<div class="wh2">Coming up</div>
+<div class="li" style="padding:8px 0"><span class="ic a" style="width:32px;height:32px;font-size:16px"><i class="ti ti-calendar-event"></i></span><div><b style="font-size:14px">Thu 30 Oct · 7:00</b><span>Studio · 9 booked</span></div></div>
+<div class="li" style="padding:8px 0;border:0"><span class="ic" style="width:32px;height:32px;font-size:16px"><i class="ti ti-calendar"></i></span><div><b style="font-size:14px">Tue 4 Nov · 7:00</b><span>Studio · 3 booked</span></div></div>
+</div></div>
+<div class="ub"><span class="av">BC</span><div><div style="font-size:13.5px;font-weight:700">Ben Cruz</div><div style="font-size:11px;color:var(--t3)">Coach · Core Fitness Lab</div></div><span class="status">Available</span><span class="ib2"><i class="ti ti-bell"></i><span class="dot"></span></span></div>
+</div>
+<div class="cap">A room — channels you can read at a glance<small>Each channel has an icon and a line on what is in it; unread counts sit on the channel. "Coming up" shows the next sessions with how many booked, not a blank line.</small></div></div>
+
+<!-- 4 · YOU SHEET -->
+<div class="col"><div class="phone">
+<div class="sb"><span>6:12</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-3"></i></span></div>
+<div class="hub" style="opacity:.25"><div class="rail"><div class="srv"><i class="ti ti-sun"></i></div></div><div class="pane"><div class="ptitle">Today</div></div></div>
+<div class="dim" style="top:0"></div>
+<div class="sheet2">
+<div class="grab"></div>
+<div class="row" style="gap:12px"><span class="av" style="width:52px;height:52px;font-size:15px">BC</span><div><div style="font-size:19px;font-weight:800">Ben Cruz</div><div style="font-size:12.5px;color:var(--t3)">Strength & conditioning · ★ 4.8 (23)</div></div></div>
+<div class="row" style="gap:6px;margin-top:12px"><span class="chip v">Available</span><span class="chip">Busy</span><span class="chip">Away</span></div>
+<div class="li" style="margin-top:8px"><span class="ic v"><i class="ti ti-calendar"></i></span><div><b>Schedule</b><span>Your classes and sessions</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-clock"></i></span><div><b>Hours</b><span>When members can book you</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-users"></i></span><div><b>Coaching</b><span>Terms, trainees and payments</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-books"></i></span><div><b>Library</b><span>Exercises and programs you write</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-user-circle"></i></span><div><b>Profile</b><span>Photo, bio and ratings</span></div><i class="ti ti-chevron-right ar"></i></div>
+<div class="li"><span class="ic"><i class="ti ti-settings"></i></span><div><b>Settings</b><span>Alerts, sign-in, language</span></div><i class="ti ti-chevron-right ar"></i></div>
+</div>
+</div>
+<div class="cap">You — tap your name in the user bar<small>Like Discord's user panel: status, then every coach screen as a described row. Replaces the profile page's chip row and the toolbar that only appeared there.</small></div></div>
+
+</body></html>

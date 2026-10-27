@@ -323,11 +323,14 @@ async (page) => {
   await go('/trainer/home');
   out.push('trainer hub draws no rooms or New group when rooms are off: ' + ((await page.locator('[data-rail-room]').count()) === 0
     && (await page.getByRole('button', { name: 'New group' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
-  out.push('trainer hub keeps Messages, Requests and the coach panel: ' + ((await page.locator('[data-rail-home]').count()) === 1
-    && (await page.getByRole('button', { name: 'Requests' }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('trainer hub keeps Today, Messages and the coach panel: ' + ((await page.locator('[data-rail-home]').count()) === 1
+    && (await page.locator('[data-rail-today]').count()) === 1 && (await page.locator('[data-you-button]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-switches-home.png' });
-  await go('/trainer/profile');
-  const tools = await page.evaluate(() => document.querySelector('[data-trainer-toolbar]')?.innerText.replace(/\s+/g, ' ') ?? '');
+  // The coach's screens live in the You sheet (2026-10-27).
+  await page.locator('[data-you-button]').click();
+  await page.waitForTimeout(700);
+  const tools = await page.evaluate(() => document.querySelector('[data-you-sheet]')?.innerText.replace(/\s+/g, ' ') ?? '');
+  await page.keyboard.press('Escape');
   out.push('trainer tools: ' + tools);
   out.push('trainer tools drop Schedule when classes are off: ' + (!/Schedule/.test(tools) && /Settings/.test(tools) ? 'yes' : 'STILL SHOWN'));
   await go('/trainer/rooms');

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
 import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
@@ -211,6 +212,19 @@ export default function TrainerMembers() {
   useEffect(() => {
     load(revisit.current);
   }, [load]);
+
+  // `?open=<member id>` (Today's "hasn't been in" rows, 2026-10-27) opens that
+  // trainee's sheet once the roster has them — once, so closing it stays closed.
+  const [params] = useSearchParams();
+  const openId = params.get('open');
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!openId || opened.current) return;
+    const m = members.find((x) => x.id === openId);
+    if (!m) return;
+    opened.current = true;
+    void (async () => { await openMember(m); })();
+  }, [members, openId, openMember]);
 
   /** Sends a real notification the member sees in their bell — the old version
    *  kept recommendations in component state, so they vanished on refresh and

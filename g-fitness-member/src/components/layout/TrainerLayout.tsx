@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
-import TrainerToolbar from './TrainerToolbar';
 import TrainerTabHeader from './TrainerTabHeader';
 import { trainerTabRootFor } from './trainerNav';
 import AchievementWatcher from '../ui/AchievementWatcher';
@@ -37,7 +36,6 @@ export default function TrainerLayout() {
   // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
   const hub = location.pathname === '/trainer/home' || location.pathname === '/trainer/rooms';
   const root = hub ? null : trainerTabRootFor(location.pathname);
-  const isProfile = location.pathname === '/trainer/profile';
 
   useScrollMemory(mainRef, location.pathname + location.search);
 
@@ -64,7 +62,6 @@ export default function TrainerLayout() {
           paddingLeft: 'var(--gutter)',
           paddingRight: 'var(--gutter)',
           paddingTop: root ? 4 : 'var(--gutter)',
-          paddingBottom: isProfile ? 96 : undefined,
         }}
       >
         {/* CSS entrance, keyed on the path — never framer's rAF-driven
@@ -78,8 +75,8 @@ export default function TrainerLayout() {
         </div>
       </main>
 
-      {/* No tab bar (2026-10-11): the hub is home; the coach's tools ride on their profile. */}
-      {isProfile && <TrainerToolbar />}
+      {/* No tab bar and no toolbar (2026-10-27): the coach's screens are in the
+          You sheet, opened from their name at the bottom of the hub. */}
 
       {/* Same component as the member shell — it grades by the caller's role. */}
       <AchievementWatcher />
